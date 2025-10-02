@@ -1,22 +1,46 @@
 extends Node
 class_name EventScheduler
 
-# Simple date-based theme selection. Can be overridden by RemoteConfig.
+# Date-based theme selection via config/events.json.
 
 func get_current_theme_name() -> String:
-	var now := Time.get_datetime_dict_from_system()
-	var month := int(now["month"])
-	var day := int(now["day"])
-	# Halloween: Oct 15 - Nov 2
-	if (month == 10 and day >= 15) or (month == 11 and day <= 2):
-		return "halloween"
-	# Christmas/Winter: Dec 1 - Jan 5
-	if (month == 12 and day >= 1) or (month == 1 and day <= 5):
-		return "christmas"
-	# Valentine's: Feb 7 - Feb 15
-	if (month == 2 and day >= 7 and day <= 15):
-		return "valentines"
-	# St. Patrick's: Mar 15 - Mar 21
-	if (month == 3 and day >= 15 and day <= 21):
-		return "st_patrick"
-	return "default"
+    var configured := _get_theme_from_config()
+    if configured != "":
+        return configured
+    return "default"
+
+func _get_theme_from_config() -> String:
+    var path := "res://config/events.json"
+    if not FileAccess.file_exists(path):
+        return ""
+    var f := FileAccess.open(path, FileAccess.READ)
+    if not f:
+        return ""
+    var data = JSON.parse_string(f.get_as_text())
+    f.close()
+    if typeof(data) != TYPE_DICTIONARY:
+        return ""
+    var events: Array = data.get("events", [])
+    var today := Time.get_datetime_dict_from_system()
+    var md := _fmt_md(today)
+    for e in events:
+        var name := String(e.get("name", ""))
+        var start := String(e.get("start", ""))
+        var end := String(e.get("end", ""))
+        if name == "" or start == "" or end == "":
+            continue
+        if _md_in_range(md, start, end):
+            return name
+    return ""
+
+func _fmt_md(dt: Dictionary) -> String:
+    var m := int(dt.get("month", 1))
+    var d := int(dt.get("day", 1))
+    return "%02d-%02d" % [m, d]
+
+func _md_in_range(md: String, start: String, end: String) -> bool:
+    # Handles ranges that wrap around year end (e.g., 12-20 to 01-05)
+    if start <= end:
+        return md >= start and md <= end
+    # wrap
+    return md >= start or md <= end

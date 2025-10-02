@@ -5,6 +5,7 @@ const Types := preload("res://scripts/match3/Types.gd")
 
 var name: String = "default"
 var color_textures: Array = [] # index -> Texture2D
+var chosen_set_dir: String = ""
 
 func _init(theme_name: String = "default") -> void:
 	name = theme_name
@@ -29,14 +30,15 @@ func _generate_color_textures(colors: int = 8) -> void:
 func _load_theme_images(theme_name: String) -> bool:
     var theme_dir := "res://assets/match3/%s" % theme_name
     if DirAccess.dir_exists_absolute(theme_dir):
-        color_textures.clear()
-        for i in range(5):
-            var p := "%s/color_%d.png" % [theme_dir, i]
-            if FileAccess.file_exists(p):
-                var tex: Texture2D = load(p)
-                if tex:
-                    color_textures.append(tex)
-        if color_textures.size() >= 3:
+        # Prefer a subfolder set if available (set_*/any folder with color_*.png)
+        var set_dir := _pick_set_dir(theme_dir)
+        if set_dir != "":
+            if _load_color_series_from_dir(set_dir):
+                chosen_set_dir = set_dir
+                return true
+        # Fallback to root files color_*.png
+        if _load_color_series_from_dir(theme_dir):
+            chosen_set_dir = theme_dir
             return true
     var cfg_path := "res://config/themes/%s.json" % theme_name
     if not FileAccess.file_exists(cfg_path):
@@ -57,6 +59,38 @@ func _load_theme_images(theme_name: String) -> bool:
         else:
             return false
     return true
+
+func _load_color_series_from_dir(dir_path: String) -> bool:
+    color_textures.clear()
+    for i in range(5):
+        var p := "%s/color_%d.png" % [dir_path, i]
+        if FileAccess.file_exists(p):
+            var tex: Texture2D = load(p)
+            if tex:
+                color_textures.append(tex)
+    return color_textures.size() >= 3
+
+func _pick_set_dir(theme_dir: String) -> String:
+    var dirs: Array[String] = []
+    var da := DirAccess.open(theme_dir)
+    if da:
+        da.list_dir_begin()
+        while true:
+            var item := da.get_next()
+            if item == "":
+                break
+            if da.current_is_dir() and not item.begins_with("."):
+                var candidate := "%s/%s" % [theme_dir, item]
+                # Check it has at least color_0.png
+                if FileAccess.file_exists("%s/color_0.png" % candidate):
+                    dirs.append(candidate)
+        da.list_dir_end()
+    if dirs.is_empty():
+        return ""
+    # Deterministic daily selection
+    var day_seed := int(Time.get_unix_time_from_system() / 86400)
+    var idx := abs(int(hash([theme_dir, day_seed])) % dirs.size())
+    return dirs[idx]
 
 func get_texture_for_piece(piece: Dictionary) -> Texture2D:
 	if piece == null:
