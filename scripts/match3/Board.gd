@@ -47,18 +47,22 @@ func has_valid_move() -> bool:
     return false
 
 func resolve_board() -> Dictionary:
-	# Returns { cleared:int, cascades:int }
-	var total_cleared := 0
-	var cascades := 0
-	while true:
-		var matches := _find_matches()
-		if matches.is_empty():
-			break
-		var cleared := _clear_matches_and_generate_specials(matches)
-		total_cleared += cleared
-		_apply_gravity_and_fill()
-		cascades += 1
-	return { "cleared": total_cleared, "cascades": cascades }
+    # Returns { cleared:int, cascades:int, color_counts:Dictionary<int,int> }
+    var total_cleared := 0
+    var cascades := 0
+    var total_color_counts := {}
+    while true:
+        var matches := _find_matches()
+        if matches.is_empty():
+            break
+        var result := _clear_matches_and_generate_specials(matches)
+        total_cleared += int(result.get("cleared", 0))
+        var cc: Dictionary = result.get("color_counts", {})
+        for k in cc.keys():
+            total_color_counts[k] = int(total_color_counts.get(k, 0)) + int(cc[k])
+        _apply_gravity_and_fill()
+        cascades += 1
+    return { "cleared": total_cleared, "cascades": cascades, "color_counts": total_color_counts }
 
 func shuffle_random() -> void:
     # Randomly shuffles normal pieces' colors (keeps dimensions)
@@ -175,34 +179,45 @@ func _same_color(a: Vector2i, b: Vector2i) -> bool:
 		return false
 	return pa.get("color") == pb.get("color")
 
-func _clear_matches_and_generate_specials(groups: Array) -> int:
-	var cleared := 0
-	for group in groups:
-		# Determine special creation
-		var created_special := false
-		if group.size() == 4:
-			# Create rocket at swap center if we know it, else first
-			var anchor := group[0]
-			var is_horiz := _is_same_y(group)
-			var piece := grid[anchor.y][anchor.x]
-			var color := piece.get("color")
-			var special := Types.make_rocket_h(color) if is_horiz else Types.make_rocket_v(color)
-			grid[anchor.y][anchor.x] = special
-			created_special = true
-		elif group.size() >= 5:
-			# Color bomb
-			var anchor2 := group[0]
-			grid[anchor2.y][anchor2.x] = Types.make_color_bomb()
-			created_special = true
-		# Clear other cells
-		for p in group:
-			if created_special and p == group[0]:
-				continue
-			grid[p.y][p.x] = null
-			cleared += 1
-	# Trigger special effects adjacent or overlapping with cleared
-	_activate_specials_after_clear()
-	return cleared
+func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
+    var cleared := 0
+    var color_counts := {}
+    # primary clears and special creation
+    for group in groups:
+        var created_special := false
+        if group.size() == 4:
+            var anchor := group[0]
+            var is_horiz := _is_same_y(group)
+            var piece := grid[anchor.y][anchor.x]
+            var color := piece.get("color")
+            var special := Types.make_rocket_h(color) if is_horiz else Types.make_rocket_v(color)
+            grid[anchor.y][anchor.x] = special
+            created_special = true
+        elif group.size() >= 5:
+            var anchor2 := group[0]
+            grid[anchor2.y][anchor2.x] = Types.make_color_bomb()
+            created_special = true
+        for p in group:
+            if created_special and p == group[0]:
+                continue
+            var piece_before = grid[p.y][p.x]
+            if piece_before != null:
+                var c := piece_before.get("color")
+                if c != null:
+                    color_counts[c] = int(color_counts.get(c, 0)) + 1
+            grid[p.y][p.x] = null
+            cleared += 1
+    # Special effects: compute positions and colors, then clear
+    var to_clear := _compute_specials_to_clear()
+    for p in to_clear:
+        var piece2 = grid[p.y][p.x]
+        if piece2 != null:
+            var c2 := piece2.get("color")
+            if c2 != null:
+                color_counts[c2] = int(color_counts.get(c2, 0)) + 1
+        grid[p.y][p.x] = null
+        cleared += 1
+    return { "cleared": cleared, "color_counts": color_counts }
 
 func _is_same_y(group: Array) -> bool:
 	if group.is_empty():
@@ -213,44 +228,38 @@ func _is_same_y(group: Array) -> bool:
 			return false
 	return true
 
-func _activate_specials_after_clear() -> void:
-	# Convert specials that are now isolated into clears too
-	# Rockets clear row/column; bombs clear 3x3; color bomb needs a target color (choose most common)
-	var to_clear: Array[Vector2i] = []
-	# Queue rocket lines
-	for y in range(size.y):
-		for x in range(size.x):
-			var piece = grid[y][x]
-			if piece == null:
-				continue
-			if Types.is_rocket(piece):
-				# clear full row or column
-				if piece.get("kind") == Types.PieceKind.ROCKET_H:
-					for xx in range(size.x):
-						if not (xx == x and y >= 0):
-							to_clear.append(Vector2i(xx, y))
-				elif piece.get("kind") == Types.PieceKind.ROCKET_V:
-					for yy in range(size.y):
-						if not (yy == y and x >= 0):
-							to_clear.append(Vector2i(x, yy))
-				# consume rocket itself
-				to_clear.append(Vector2i(x, y))
-			elif Types.is_bomb(piece):
-				for yy in range(max(0, y - 1), min(size.y, y + 2)):
-					for xx in range(max(0, x - 1), min(size.x, x + 2)):
-						to_clear.append(Vector2i(xx, yy))
-				to_clear.append(Vector2i(x, y))
-			elif Types.is_color_bomb(piece):
-				var target := _most_common_color()
-				for yy in range(size.y):
-					for xx in range(size.x):
-						var p2 = grid[yy][xx]
-						if p2 != null and not Types.is_color_bomb(p2) and p2.get("color") == target:
-							to_clear.append(Vector2i(xx, yy))
-				to_clear.append(Vector2i(x, y))
-	# Apply clears
-	for p in to_clear:
-		grid[p.y][p.x] = null
+func _compute_specials_to_clear() -> Array[Vector2i]:
+    # Determine cells to clear due to specials
+    var to_clear: Array[Vector2i] = []
+    for y in range(size.y):
+        for x in range(size.x):
+            var piece = grid[y][x]
+            if piece == null:
+                continue
+            if Types.is_rocket(piece):
+                if piece.get("kind") == Types.PieceKind.ROCKET_H:
+                    for xx in range(size.x):
+                        if not (xx == x):
+                            to_clear.append(Vector2i(xx, y))
+                elif piece.get("kind") == Types.PieceKind.ROCKET_V:
+                    for yy in range(size.y):
+                        if not (yy == y):
+                            to_clear.append(Vector2i(x, yy))
+                to_clear.append(Vector2i(x, y))
+            elif Types.is_bomb(piece):
+                for yy in range(max(0, y - 1), min(size.y, y + 2)):
+                    for xx in range(max(0, x - 1), min(size.x, x + 2)):
+                        to_clear.append(Vector2i(xx, yy))
+                to_clear.append(Vector2i(x, y))
+            elif Types.is_color_bomb(piece):
+                var target := _most_common_color()
+                for yy in range(size.y):
+                    for xx in range(size.x):
+                        var p2 = grid[yy][xx]
+                        if p2 != null and not Types.is_color_bomb(p2) and p2.get("color") == target:
+                            to_clear.append(Vector2i(xx, yy))
+                to_clear.append(Vector2i(x, y))
+    return to_clear
 
 func _most_common_color() -> int:
 	var counts := {}
