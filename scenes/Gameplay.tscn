@@ -1,6 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/Gameplay.gd" id="1_gd"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/heart.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/timer.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/coin.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/gear.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/hammer.png" id="6"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/bomb.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/shuffle.png" id="8"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/rocket.png" id="9"]
 
 [node name="Gameplay" type="Control"]
 anchor_right = 1.0
@@ -9,18 +17,50 @@ script = ExtResource("1_gd")
 
 [node name="TopBar" type="HBoxContainer" parent="."]
 anchor_right = 1.0
-offset_top = 10.0
-offset_left = 10.0
-offset_right = -10.0
+custom_minimum_size = Vector2(0, 72)
+theme_override_constants/separation = 24
 
-[node name="EnergyLabel" type="Label" parent="TopBar"]
-text = "Energy:"
+[node name="LeftCluster" type="HBoxContainer" parent="TopBar"]
+custom_minimum_size = Vector2(0, 64)
+theme_override_constants/separation = 8
 
-[node name="MovesLabel" type="Label" parent="TopBar"]
-text = "Moves:"
+[node name="EnergyIcon" type="TextureRect" parent="TopBar/LeftCluster"]
+texture = ExtResource(2)
+expand_mode = 1
+stretch_mode = 5
+custom_minimum_size = Vector2(32, 32)
 
-[node name="CoinsLabel" type="Label" parent="TopBar"]
-text = "Coins:"
+[node name="EnergyValue" type="Label" parent="TopBar/LeftCluster"]
+text = "0/0"
+
+[node name="MovesIcon" type="TextureRect" parent="TopBar/LeftCluster"]
+texture = ExtResource(3)
+expand_mode = 1
+stretch_mode = 5
+custom_minimum_size = Vector2(32, 32)
+
+[node name="MovesValue" type="Label" parent="TopBar/LeftCluster"]
+text = "0"
+
+[node name="Spacer" type="Control" parent="TopBar"]
+size_flags_horizontal = 3
+
+[node name="RightCluster" type="HBoxContainer" parent="TopBar"]
+custom_minimum_size = Vector2(0, 64)
+theme_override_constants/separation = 8
+
+[node name="CoinIcon" type="TextureRect" parent="TopBar/RightCluster"]
+texture = ExtResource(4)
+expand_mode = 1
+stretch_mode = 5
+custom_minimum_size = Vector2(32, 32)
+
+[node name="CoinValue" type="Label" parent="TopBar/RightCluster"]
+text = "0"
+
+[node name="SettingsIcon" type="TextureButton" parent="TopBar/RightCluster"]
+icon = ExtResource(5)
+custom_minimum_size = Vector2(40, 40)
 
 [node name="Grid" type="GridContainer" parent="."]
 columns = 8
@@ -38,16 +78,24 @@ anchor_left = 0.0
 anchor_right = 1.0
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -80.0
+offset_top = -100.0
+theme_override_constants/separation = 24
 
-[node name="BoosterBomb" type="Button" parent="BottomBar"]
-text = "Bomb (-50)"
+[node name="BoosterHammer" type="TextureButton" parent="BottomBar"]
+icon = ExtResource(6)
+custom_minimum_size = Vector2(72, 72)
 
-[node name="BoosterShuffle" type="Button" parent="BottomBar"]
-text = "Shuffle (-20)"
+[node name="BoosterBomb" type="TextureButton" parent="BottomBar"]
+icon = ExtResource(7)
+custom_minimum_size = Vector2(72, 72)
 
-[node name="RewardedButton" type="Button" parent="BottomBar"]
-text = "+Moves (Ad)"
+[node name="BoosterShuffle" type="TextureButton" parent="BottomBar"]
+icon = ExtResource(8)
+custom_minimum_size = Vector2(72, 72)
+
+[node name="BoosterRocket" type="TextureButton" parent="BottomBar"]
+icon = ExtResource(9)
+custom_minimum_size = Vector2(72, 72)
 
 [node name="BannerSpacer" type="Control" parent="."]
 anchor_left = 0.0

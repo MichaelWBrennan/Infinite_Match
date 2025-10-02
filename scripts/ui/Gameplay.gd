@@ -9,12 +9,13 @@ const ThemeProvider := preload("res://scripts/Theme.gd")
 const EventScheduler := preload("res://scripts/Events.gd")
 
 @onready var grid: GridContainer = $Grid
-@onready var energy_label: Label = $TopBar/EnergyLabel
-@onready var moves_label: Label = $TopBar/MovesLabel
-@onready var coins_label: Label = $TopBar/CoinsLabel
+@onready var energy_label: Label = $TopBar/LeftCluster/EnergyValue
+@onready var moves_label: Label = $TopBar/LeftCluster/MovesValue
+@onready var coins_label: Label = $TopBar/RightCluster/CoinValue
 @onready var booster_bomb: Button = $BottomBar/BoosterBomb
 @onready var booster_shuffle: Button = $BottomBar/BoosterShuffle
-@onready var rewarded_button: Button = $BottomBar/RewardedButton
+@onready var booster_hammer: Button = $BottomBar/BoosterHammer
+@onready var booster_rocket: Button = $BottomBar/BoosterRocket
 @onready var banner_spacer: Control = $BannerSpacer
 
 var moves_left: int = 20
@@ -36,7 +37,8 @@ func _ready() -> void:
     _init_board()
     booster_bomb.pressed.connect(_on_bomb)
     booster_shuffle.pressed.connect(_on_shuffle)
-    rewarded_button.pressed.connect(_on_rewarded)
+    booster_hammer.pressed.connect(_on_hammer)
+    booster_rocket.pressed.connect(_on_rocket)
     _update_ui()
 
 func _apply_banner_padding() -> void:
@@ -130,9 +132,29 @@ func _on_bomb() -> void:
         GameState.add_coins(int(res.get("cleared", 0)))
         tile_view._update_all_textures()
 
+func _on_hammer() -> void:
+    if GameState.spend_coins(30):
+        # remove a random tile
+        var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
+        board.set_piece(p, null)
+        var res := board.resolve_board()
+        GameState.add_coins(int(res.get("cleared", 0)))
+        tile_view._update_all_textures()
+
 func _on_shuffle() -> void:
     if GameState.spend_coins(20):
         board.shuffle_random()
+        tile_view._update_all_textures()
+
+func _on_rocket() -> void:
+    if GameState.spend_coins(40):
+        var Types = preload("res://scripts/match3/Types.gd")
+        var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
+        var horiz := rng.randi_range(0, 1) == 0
+        var color := int(board.get_piece(p).get("color"))
+        board.set_piece(p, horiz ? Types.make_rocket_h(color) : Types.make_rocket_v(color))
+        var res := board.resolve_board()
+        GameState.add_coins(int(res.get("cleared", 0)))
         tile_view._update_all_textures()
 
 func _on_rewarded() -> void:
