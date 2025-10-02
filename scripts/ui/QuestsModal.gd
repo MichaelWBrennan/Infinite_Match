@@ -11,7 +11,8 @@ func _ready() -> void:
     close_btn.pressed.connect(func(): queue_free())
 
 func _populate() -> void:
-    list.queue_free_children()
+    for c in list.get_children():
+        c.queue_free()
     for q in Quests.get_all():
         var h := HBoxContainer.new()
         var desc := Label.new()

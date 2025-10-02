@@ -29,7 +29,8 @@ func _refresh() -> void:
         buy_btn.text = "Buy Premium (%s)" % price
 
 func _build_track() -> void:
-    track_root.queue_free_children()
+    for c in track_root.get_children():
+        c.queue_free()
     var levels := RemoteConfig.get_int("season_levels", 30)
     for i in range(1, levels + 1):
         var row := HBoxContainer.new()
