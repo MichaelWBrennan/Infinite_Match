@@ -1,0 +1,57 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/Gameplay.gd" id="1_gd"]
+
+[node name="Gameplay" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_gd")
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+anchor_right = 1.0
+offset_top = 10.0
+offset_left = 10.0
+offset_right = -10.0
+
+[node name="EnergyLabel" type="Label" parent="TopBar"]
+text = "Energy:"
+
+[node name="MovesLabel" type="Label" parent="TopBar"]
+text = "Moves:"
+
+[node name="CoinsLabel" type="Label" parent="TopBar"]
+text = "Coins:"
+
+[node name="Grid" type="GridContainer" parent="."]
+columns = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -200.0
+offset_right = 160.0
+offset_bottom = 200.0
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -80.0
+
+[node name="BoosterBomb" type="Button" parent="BottomBar"]
+text = "Bomb (-50)"
+
+[node name="BoosterShuffle" type="Button" parent="BottomBar"]
+text = "Shuffle (-20)"
+
+[node name="RewardedButton" type="Button" parent="BottomBar"]
+text = "+Moves (Ad)"
+
+[node name="BannerSpacer" type="Control" parent="."]
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_minimum_size = Vector2(0, 50)

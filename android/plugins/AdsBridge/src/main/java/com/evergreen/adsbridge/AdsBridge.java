@@ -12,6 +12,12 @@ import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.ads.OnUserEarnedRewardListener;
 import com.google.android.gms.ads.OnPaidEventListener;
 import com.google.android.gms.ads.AdValue;
+import com.google.android.gms.ads.admanager.AdManagerAdView;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.AdSize;
+import android.widget.FrameLayout;
+import android.view.Gravity;
+import android.view.View;
 import com.google.android.gms.ads.initialization.InitializationStatus;
 import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.android.gms.ads.interstitial.InterstitialAd;
@@ -32,12 +38,15 @@ public class AdsBridge extends GodotPlugin {
 
     private RewardedAd rewardedAd;
     private InterstitialAd interstitialAd;
+    private AdView bannerView;
 
     private String rewardedUnitId = "ca-app-pub-3940256099942544/5224354917"; // TEST
     private String interstitialUnitId = "ca-app-pub-3940256099942544/1033173712"; // TEST
+    private String bannerUnitId = "ca-app-pub-3940256099942544/6300978111"; // TEST
 
     private String lastRewardLocation = "unknown";
     private String lastInterstitialLocation = "unknown";
+    private String lastBannerPosition = "bottom";
 
     public AdsBridge(Godot godot) {
         super(godot);
@@ -62,12 +71,16 @@ public class AdsBridge extends GodotPlugin {
         return Arrays.asList(
                 "setRewardedUnitId",
                 "setInterstitialUnitId",
+                "setBannerUnitId",
                 "loadRewarded",
                 "showRewarded",
                 "showRewarded", // overload with (String unitId, String location)
                 "loadInterstitial",
                 "showInterstitial",
-                "showInterstitial" // overload with (String unitId, String location)
+                "showInterstitial", // overload with (String unitId, String location)
+                "showBanner",
+                "hideBanner",
+                "destroy_banner"
         );
     }
 
@@ -93,6 +106,12 @@ public class AdsBridge extends GodotPlugin {
     public void setInterstitialUnitId(String unitId) {
         if (unitId != null && !unitId.isEmpty()) {
             interstitialUnitId = unitId;
+        }
+    }
+
+    public void setBannerUnitId(String unitId) {
+        if (unitId != null && !unitId.isEmpty()) {
+            bannerUnitId = unitId;
         }
     }
 
@@ -210,5 +229,71 @@ public class AdsBridge extends GodotPlugin {
     public void showInterstitial(String unitId, String location) {
         lastInterstitialLocation = (location != null ? location : "unknown");
         showInterstitial(unitId);
+    }
+
+    // Banner APIs
+    public void showBanner(String unitId, String position) {
+        if (unitId != null && !unitId.isEmpty()) bannerUnitId = unitId;
+        if (position != null && !position.isEmpty()) lastBannerPosition = position;
+        final Activity activity = getActivity();
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (bannerView == null) {
+                        bannerView = new AdView(activity);
+                        bannerView.setAdUnitId(bannerUnitId);
+                        bannerView.setAdSize(AdSize.BANNER);
+                        bannerView.setOnPaidEventListener(new OnPaidEventListener() {
+                            @Override
+                            public void onPaidEvent(@NonNull AdValue adValue) {
+                                emitSignal("ad_paid", "AdMob", bannerUnitId, "Banner", lastBannerPosition, adValue.getCurrencyCode(), adValue.getValueMicros());
+                            }
+                        });
+                        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                                FrameLayout.LayoutParams.WRAP_CONTENT,
+                                FrameLayout.LayoutParams.WRAP_CONTENT
+                        );
+                        params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                        activity.addContentView(bannerView, params);
+                    } else {
+                        bannerView.setAdUnitId(bannerUnitId);
+                        bannerView.setAdSize(AdSize.BANNER);
+                        bannerView.setVisibility(View.VISIBLE);
+                    }
+                    AdRequest request = new AdRequest.Builder().build();
+                    bannerView.loadAd(request);
+                } catch (Exception e) {
+                    Log.e(TAG, "showBanner exception: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public void hideBanner() {
+        final Activity activity = getActivity();
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (bannerView != null) {
+                    bannerView.setVisibility(View.GONE);
+                }
+            }
+        });
+    }
+
+    public void destroy_banner() {
+        final Activity activity = getActivity();
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (bannerView != null) {
+                    try {
+                        bannerView.destroy();
+                    } catch (Exception ignored) {}
+                    bannerView = null;
+                }
+            }
+        });
     }
 }

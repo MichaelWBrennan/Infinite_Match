@@ -1,0 +1,49 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/MainMenu.gd" id="1_gd"]
+
+[node name="MainMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_gd")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -220.0
+offset_right = 160.0
+offset_bottom = 220.0
+
+[node name="Title" type="Label" parent="VBox"]
+text = "Evergreen Puzzler"
+
+[node name="StartButton" type="Button" parent="VBox"]
+text = "Start Game"
+
+[node name="DailyButton" type="Button" parent="VBox"]
+text = "Daily Challenges"
+
+[node name="OfferwallButton" type="Button" parent="VBox"]
+text = "Free Rewards"
+
+[node name="ShopButton" type="Button" parent="VBox"]
+text = "Shop"
+
+[node name="CoinsLabel" type="Label" parent="VBox"]
+text = "Coins: 0"
+
+[node name="LeaderboardButton" type="Button" parent="VBox"]
+text = "Leaderboard"
+
+[node name="ReferButton" type="Button" parent="VBox"]
+text = "Refer a Friend"
+
+[node name="BannerSpacer" type="Control" parent="."]
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_minimum_size = Vector2(0, 50)

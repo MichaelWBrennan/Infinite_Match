@@ -24,10 +24,13 @@ Analytics="*res://scripts/Analytics.gd"
 AdManager="*res://scripts/AdManager.gd"
 IAPManager="*res://scripts/IAPManager.gd"
 RemoteConfig="*res://scripts/RemoteConfig.gd"
+GameState="*res://scripts/GameState.gd"
+Social="*res://scripts/Social.gd"
+LiveOps="*res://scripts/LiveOps.gd"
 
 [android]
 modules/use_custom_build=true
-plugins/Enabled=PackedStringArray("ByteBrew", "AdsBridge")
+plugins/Enabled=PackedStringArray("ByteBrew", "AdsBridge", "IAPBridge")
 
 [ios]
 modules/use_custom_build=true

@@ -15,8 +15,25 @@ func fetch_and_apply() -> void:
     _loaded = true
     _load_overrides()
     var defaults := {
+        # Rewards and ads
         "reward_boost": 5,
         "interstitial_interval": 45,
+        "interstitial_cooldown_min_s": 120,
+        "interstitial_cooldown_max_s": 180,
+        "banner_height_dp": 50,
+        # Ad units (replace remotely on prod)
+        "ad_rewarded_android": "ca-app-pub-3940256099942544/5224354917",
+        "ad_interstitial_android": "ca-app-pub-3940256099942544/1033173712",
+        "ad_banner_android": "ca-app-pub-3940256099942544/6300978111",
+        "ad_rewarded_ios": "TEST_REWARDED_IOS",
+        "ad_interstitial_ios": "TEST_INTERSTITIAL_IOS",
+        "ad_banner_ios": "TEST_BANNER_IOS",
+        # Offerwall
+        "offerwall_url": "",
+        # Economy
+        "energy_max": 5,
+        "energy_refill_minutes": 20,
+        "daily_reward_base": 50
     }
     _cache.merge(defaults, true)
     if Engine.has_singleton("ByteBrew"):
