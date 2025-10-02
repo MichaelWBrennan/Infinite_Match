@@ -1,0 +1,6 @@
+[config]
+name="AdMob"
+binary_type="local"
+
+[dependencies]
+remote=["com.google.android.gms:play-services-ads:23.4.0"]
