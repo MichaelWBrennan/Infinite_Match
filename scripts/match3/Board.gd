@@ -7,6 +7,7 @@ var size: Vector2i
 var num_colors: int
 var rng := RandomNumberGenerator.new()
 var grid: Array = [] # grid[y][x] -> piece dict
+var jelly_layers: Array = [] # jelly_layers[y][x] -> int (0 = none)
 
 func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -1) -> void:
     size = board_size
@@ -20,6 +21,12 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
 		grid[y] = []
 		for x in range(size.x):
 			grid[y].append(Types.make_normal(rng.randi_range(0, num_colors - 1)))
+	# Initialize jelly overlay grid
+	jelly_layers.resize(size.y)
+	for jy in range(size.y):
+		jelly_layers[jy] = []
+		for jx in range(size.x):
+			jelly_layers[jy].append(0)
 	_resolve_initial()
 
 func swap(a: Vector2i, b: Vector2i) -> void:
@@ -47,10 +54,11 @@ func has_valid_move() -> bool:
     return false
 
 func resolve_board() -> Dictionary:
-    # Returns { cleared:int, cascades:int, color_counts:Dictionary<int,int> }
+    # Returns { cleared:int, cascades:int, color_counts:Dictionary<int,int>, jelly_cleared:int }
     var total_cleared := 0
     var cascades := 0
     var total_color_counts := {}
+    var total_jelly_cleared := 0
     while true:
         var matches := _find_matches()
         if matches.is_empty():
@@ -60,9 +68,10 @@ func resolve_board() -> Dictionary:
         var cc: Dictionary = result.get("color_counts", {})
         for k in cc.keys():
             total_color_counts[k] = int(total_color_counts.get(k, 0)) + int(cc[k])
+        total_jelly_cleared += int(result.get("jelly_cleared", 0))
         _apply_gravity_and_fill()
         cascades += 1
-    return { "cleared": total_cleared, "cascades": cascades, "color_counts": total_color_counts }
+    return { "cleared": total_cleared, "cascades": cascades, "color_counts": total_color_counts, "jelly_cleared": total_jelly_cleared }
 
 func shuffle_random() -> void:
     # Randomly shuffles normal pieces' colors (keeps dimensions)
@@ -90,6 +99,22 @@ func get_piece(p: Vector2i) -> Dictionary:
 
 func set_piece(p: Vector2i, piece: Dictionary) -> void:
 	grid[p.y][p.x] = piece
+
+func set_jelly(p: Vector2i, layers: int) -> void:
+    if _in_bounds(p):
+        jelly_layers[p.y][p.x] = max(0, layers)
+
+func get_jelly(p: Vector2i) -> int:
+    if _in_bounds(p):
+        return int(jelly_layers[p.y][p.x])
+    return 0
+
+func count_jelly_remaining() -> int:
+    var total := 0
+    for y in range(size.y):
+        for x in range(size.x):
+            total += int(jelly_layers[y][x]) > 0 ? 1 : 0
+    return total
 
 func to_color_grid() -> Array:
 	var out: Array = []
@@ -182,6 +207,7 @@ func _same_color(a: Vector2i, b: Vector2i) -> bool:
 func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
     var cleared := 0
     var color_counts := {}
+    var jelly_cleared := 0
     # primary clears and special creation
     for group in groups:
         var created_special := false
@@ -195,7 +221,14 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
             created_special = true
         elif group.size() >= 5:
             var anchor2 := group[0]
-            grid[anchor2.y][anchor2.x] = Types.make_color_bomb()
+            var is_line := _is_same_y(group) or _is_same_x(group)
+            if is_line:
+                grid[anchor2.y][anchor2.x] = Types.make_color_bomb()
+            else:
+                # L/T shape -> bomb
+                var piece2 := grid[anchor2.y][anchor2.x]
+                var color2 := piece2.get("color")
+                grid[anchor2.y][anchor2.x] = Types.make_bomb(color2)
             created_special = true
         for p in group:
             if created_special and p == group[0]:
@@ -207,6 +240,7 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
                     color_counts[c] = int(color_counts.get(c, 0)) + 1
             grid[p.y][p.x] = null
             cleared += 1
+            jelly_cleared += _hit_jelly_at(p)
     # Special effects: compute positions and colors, then clear
     var to_clear := _compute_specials_to_clear()
     for p in to_clear:
@@ -217,7 +251,8 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
                 color_counts[c2] = int(color_counts.get(c2, 0)) + 1
         grid[p.y][p.x] = null
         cleared += 1
-    return { "cleared": cleared, "color_counts": color_counts }
+        jelly_cleared += _hit_jelly_at(p)
+    return { "cleared": cleared, "color_counts": color_counts, "jelly_cleared": jelly_cleared }
 
 func _is_same_y(group: Array) -> bool:
 	if group.is_empty():
@@ -227,6 +262,15 @@ func _is_same_y(group: Array) -> bool:
 		if p.y != y0:
 			return false
 	return true
+
+func _is_same_x(group: Array) -> bool:
+    if group.is_empty():
+        return false
+    var x0 := group[0].x
+    for p in group:
+        if p.x != x0:
+            return false
+    return true
 
 func _compute_specials_to_clear() -> Array[Vector2i]:
     # Determine cells to clear due to specials
@@ -290,3 +334,108 @@ func _apply_gravity_and_fill() -> void:
 		while write_y >= 0:
 			grid[write_y][x] = Types.make_normal(rng.randi_range(0, num_colors - 1))
 			write_y -= 1
+
+func _in_bounds(p: Vector2i) -> bool:
+    return p.x >= 0 and p.x < size.x and p.y >= 0 and p.y < size.y
+
+func _hit_jelly_at(p: Vector2i) -> int:
+    if not _in_bounds(p):
+        return 0
+    var layers: int = int(jelly_layers[p.y][p.x])
+    if layers > 0:
+        jelly_layers[p.y][p.x] = layers - 1
+        return 1
+    return 0
+
+# Special + Special combo activations (triggered explicitly from gameplay)
+func activate_color_bomb_combo(a: Vector2i, b: Vector2i) -> Dictionary:
+    var pa = grid[a.y][a.x]
+    var pb = grid[b.y][b.x]
+    var other := Types.is_color_bomb(pa) ? pb : pa
+    var target_color := other.get("color")
+    if target_color == null:
+        target_color = _most_common_color()
+    var to_clear: Array[Vector2i] = []
+    for y in range(size.y):
+        for x in range(size.x):
+            var p2 = grid[y][x]
+            if p2 != null and not Types.is_color_bomb(p2) and p2.get("color") == target_color:
+                to_clear.append(Vector2i(x, y))
+    # Also clear the color bomb tiles themselves
+    to_clear.append(a)
+    to_clear.append(b)
+    var initial := _clear_positions_collect_counts(to_clear)
+    _apply_gravity_and_fill()
+    return initial
+
+func activate_double_rocket(a: Vector2i, b: Vector2i) -> Dictionary:
+    var to_clear: Array[Vector2i] = []
+    # Clear rows and columns for both positions
+    for xx in range(size.x):
+        to_clear.append(Vector2i(xx, a.y))
+        to_clear.append(Vector2i(xx, b.y))
+    for yy in range(size.y):
+        to_clear.append(Vector2i(a.x, yy))
+        to_clear.append(Vector2i(b.x, yy))
+    var initial := _clear_positions_collect_counts(to_clear)
+    _apply_gravity_and_fill()
+    return initial
+
+func activate_bomb_rocket(a: Vector2i, b: Vector2i) -> Dictionary:
+    var pa = grid[a.y][a.x]
+    var pb = grid[b.y][b.x]
+    var rocket_pos := Types.is_rocket(pa) ? a : b
+    var rocket := grid[rocket_pos.y][rocket_pos.x]
+    var to_clear: Array[Vector2i] = []
+    if rocket.get("kind") == Types.PieceKind.ROCKET_H:
+        for dy in range(-1, 2):
+            var y := rocket_pos.y + dy
+            if y < 0 or y >= size.y:
+                continue
+            for xx in range(size.x):
+                to_clear.append(Vector2i(xx, y))
+    else:
+        for dx in range(-1, 2):
+            var x := rocket_pos.x + dx
+            if x < 0 or x >= size.x:
+                continue
+            for yy in range(size.y):
+                to_clear.append(Vector2i(x, yy))
+    # Include original positions
+    to_clear.append(a)
+    to_clear.append(b)
+    var initial := _clear_positions_collect_counts(to_clear)
+    _apply_gravity_and_fill()
+    return initial
+
+func activate_bomb_bomb(a: Vector2i, b: Vector2i) -> Dictionary:
+    var to_clear: Array[Vector2i] = []
+    for center in [a, b]:
+        for yy in range(max(0, center.y - 2), min(size.y, center.y + 3)):
+            for xx in range(max(0, center.x - 2), min(size.x, center.x + 3)):
+                to_clear.append(Vector2i(xx, yy))
+    var initial := _clear_positions_collect_counts(to_clear)
+    _apply_gravity_and_fill()
+    return initial
+
+func _clear_positions_collect_counts(to_clear: Array[Vector2i]) -> Dictionary:
+    var seen := {}
+    var cleared := 0
+    var jelly_cleared := 0
+    var color_counts := {}
+    for p in to_clear:
+        var key := str(p.x) + "," + str(p.y)
+        if seen.has(key):
+            continue
+        seen[key] = true
+        if not _in_bounds(p):
+            continue
+        var piece = grid[p.y][p.x]
+        if piece != null:
+            var c := piece.get("color")
+            if c != null:
+                color_counts[c] = int(color_counts.get(c, 0)) + 1
+            grid[p.y][p.x] = null
+            cleared += 1
+        jelly_cleared += _hit_jelly_at(p)
+    return { "cleared": cleared, "color_counts": color_counts, "jelly_cleared": jelly_cleared }

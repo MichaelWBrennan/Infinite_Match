@@ -27,6 +27,7 @@ RemoteConfig="*res://scripts/RemoteConfig.gd"
 GameState="*res://scripts/GameState.gd"
 Social="*res://scripts/Social.gd"
 LiveOps="*res://scripts/LiveOps.gd"
+LevelManager="*res://scripts/LevelManager.gd"
 
 [android]
 modules/use_custom_build=true

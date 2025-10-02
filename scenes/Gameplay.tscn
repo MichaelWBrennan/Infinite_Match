@@ -58,6 +58,9 @@ custom_minimum_size = Vector2(32, 32)
 [node name="CoinValue" type="Label" parent="TopBar/RightCluster"]
 text = "0"
 
+[node name="GoalsLabel" type="Label" parent="TopBar/RightCluster"]
+text = "Goals:"
+
 [node name="SettingsIcon" type="TextureButton" parent="TopBar/RightCluster"]
 icon = ExtResource(5)
 custom_minimum_size = Vector2(40, 40)
