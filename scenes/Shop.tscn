@@ -29,6 +29,24 @@ text = "Cosmetic Pack ($0.99-$4.99)"
 [node name="Starter" type="Button" parent="VBox"]
 text = "Starter Pack ($1.99-$9.99)"
 
+[node name="CoinsSmall" type="Button" parent="VBox"]
+text = "+500 Coins ($0.99)"
+
+[node name="CoinsMedium" type="Button" parent="VBox"]
+text = "+3000 Coins ($4.99)"
+
+[node name="CoinsLarge" type="Button" parent="VBox"]
+text = "+7500 Coins ($9.99)"
+
+[node name="CoinsHuge" type="Button" parent="VBox"]
+text = "+20000 Coins ($19.99)"
+
+[node name="EnergyRefill" type="Button" parent="VBox"]
+text = "Refill Energy ($0.99)"
+
+[node name="BoosterBundle" type="Button" parent="VBox"]
+text = "Booster Bundle ($2.99)"
+
 [node name="GetMore" type="Button" parent="VBox"]
 text = "Get More Currency (Ad/Offerwall)"
 

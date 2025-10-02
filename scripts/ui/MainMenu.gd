@@ -8,6 +8,7 @@ extends Control
 @onready var level_label: Label = $VBox/LevelLabel
 @onready var leaderboard_button: Button = $VBox/LeaderboardButton
 @onready var refer_button: Button = $VBox/ReferButton
+@onready var piggy_button: Button = $VBox/PiggyButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
@@ -22,6 +23,7 @@ func _ready() -> void:
     AdManager.show_banner("bottom")
     leaderboard_button.pressed.connect(_on_leaderboard)
     refer_button.pressed.connect(_on_refer)
+    piggy_button.pressed.connect(_on_piggy)
     # Surface an offer if available at menu open
     if Engine.has_singleton("Offers"):
         Offers.offer_available.connect(func(kind, sku):
@@ -60,16 +62,23 @@ func _on_refer() -> void:
     var code := Social.get_referral_code()
     Social.share("Play Evergreen Puzzler with me! Code: " + code)
 
+func _on_piggy() -> void:
+    var amount := PiggyBank.amount_current
+    var max := PiggyBank.amount_max
+    var price := PiggyBank.get_unlock_price_string()
+    var modal := load("res://scenes/OfferModal.tscn").instantiate()
+    modal.kind = 999 # piggy pseudo-kind
+    modal.sku = "piggy_bank_open"
+    add_child(modal)
+    Analytics.track_offer("view", "piggy")
+
 func _check_offers() -> void:
     if Engine.has_singleton("Offers"):
         # Offers autoload will emit if eligible during _ready
         pass
 
 func _show_offer_modal(kind, sku: String) -> void:
-    # Minimal modal using OS.alert to avoid new scenes
-    var info := Offers.describe_offer(int(kind))
-    var title := String(info.get("title", "Special Offer"))
-    var body := "Get more value now!"
-    OS.alert(body, title)
-    # Auto-accept starter for demo purposes; replace with real modal buttons
-    Offers.accept_offer(int(kind))
+    var modal := load("res://scenes/OfferModal.tscn").instantiate()
+    modal.kind = int(kind)
+    modal.sku = sku
+    add_child(modal)
