@@ -65,23 +65,24 @@ func preload_all() -> void:
         _interstitial_ready = true
 
 func show_rewarded(location: String, on_reward: Callable) -> void:
-    var provider = _ad_provider()
-    if provider and _rewarded_unit_id != "":
-        Analytics.track_ad("Reward", location)
-        if provider.has_method("show_rewarded"):
-            provider.show_rewarded(_rewarded_unit_id, func():
-                var reward_amount := _get_dynamic_reward(location)
-                on_reward.call(reward_amount)
-                rewarded_granted.emit(reward_amount)
-            )
-            return
-        elif provider.has_method("showRewarded"):
-            # Use provider signal to confirm reward
-            _pending_reward_callback = on_reward
-            _pending_reward_location = location
-            # Prefer overload with location if exists
-            provider.showRewarded(_rewarded_unit_id, location)
-            return
+    var providers := _ad_providers()
+    if _rewarded_unit_id != "":
+        for provider in providers:
+            if provider == null:
+                continue
+            Analytics.track_ad("Reward", location)
+            if provider.has_method("show_rewarded"):
+                provider.show_rewarded(_rewarded_unit_id, func():
+                    var reward_amount := _get_dynamic_reward(location)
+                    on_reward.call(reward_amount)
+                    rewarded_granted.emit(reward_amount)
+                )
+                return
+            elif provider.has_method("showRewarded"):
+                _pending_reward_callback = on_reward
+                _pending_reward_location = location
+                provider.showRewarded(_rewarded_unit_id, location)
+                return
     # Fallback simulation
     if _rewarded_ready:
         _rewarded_ready = false
@@ -106,17 +107,20 @@ func show_interstitial(location: String) -> void:
         return
     if not _interstitial_caps_allow(location):
         return
-    var provider = _ad_provider()
-    if provider and _interstitial_unit_id != "":
-        Analytics.track_ad("Interstitial", location)
-        if provider.has_method("show_interstitial"):
-            provider.show_interstitial(_interstitial_unit_id)
-            _mark_interstitial_shown()
-            return
-        elif provider.has_method("showInterstitial"):
-            provider.showInterstitial(_interstitial_unit_id, location)
-            _mark_interstitial_shown()
-            return
+    var providers := _ad_providers()
+    if _interstitial_unit_id != "":
+        for provider in providers:
+            if provider == null:
+                continue
+            Analytics.track_ad("Interstitial", location)
+            if provider.has_method("show_interstitial"):
+                provider.show_interstitial(_interstitial_unit_id)
+                _mark_interstitial_shown()
+                return
+            elif provider.has_method("showInterstitial"):
+                provider.showInterstitial(_interstitial_unit_id, location)
+                _mark_interstitial_shown()
+                return
     # Fallback simulation
     if _interstitial_ready:
         _interstitial_ready = false
@@ -146,6 +150,21 @@ func _ad_provider():
         if Engine.has_singleton(n):
             return Engine.get_singleton(n)
     return null
+
+func _ad_providers() -> Array:
+    var out: Array = []
+    var names = [
+        "AdsBridge",
+        "GodotGoogleMobileAds",
+        "UnityAdsBridge",
+        "AdMob",
+        "GoogleMobileAds",
+        "GMA"
+    ]
+    for n in names:
+        if Engine.has_singleton(n):
+            out.append(Engine.get_singleton(n))
+    return out
 
 func _get_remote_ad_unit(kind: String) -> String:
     var platform = "android" if OS.get_name() == "Android" else ("ios" if OS.get_name() == "iOS" else "editor")

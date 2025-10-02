@@ -48,6 +48,8 @@ text = "Season Pass"
 [node name="EventsButton" type="Button" parent="VBox"]
 text = "Events"
 
+[node name="SettingsButton" type="Button" parent="VBox"]
+text = "Settings"
 [node name="LevelLabel" type="Label" parent="VBox"]
 text = "Level: 1 (Stars: 0)"
 

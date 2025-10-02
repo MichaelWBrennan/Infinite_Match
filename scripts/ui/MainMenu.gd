@@ -12,6 +12,7 @@ extends Control
 @onready var piggy_button: Button = $VBox/PiggyButton
 @onready var season_button: Button = $VBox/SeasonPassButton
 @onready var events_button: Button = $VBox/EventsButton
+@onready var settings_button: Button = $VBox/SettingsButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
@@ -33,6 +34,7 @@ func _ready() -> void:
     piggy_button.pressed.connect(_on_piggy)
     season_button.pressed.connect(_on_season)
     events_button.pressed.connect(_on_events)
+    settings_button.pressed.connect(_on_settings)
     # Surface an offer if available at menu open
     if Engine.has_singleton("Offers"):
         Offers.offer_available.connect(func(kind, sku):
@@ -103,4 +105,8 @@ func _on_season() -> void:
 
 func _on_events() -> void:
     var modal := load("res://scenes/EventsCalendar.tscn").instantiate()
+    add_child(modal)
+
+func _on_settings() -> void:
+    var modal := load("res://scenes/SettingsModal.tscn").instantiate()
     add_child(modal)
