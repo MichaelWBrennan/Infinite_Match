@@ -104,13 +104,13 @@ func fetch_and_apply() -> void:
         await get_tree().create_timer(0.05).timeout
 
 func get_int(key: String, default_value: int) -> int:
-    return int(_cache.get(key, default_value))
+    return int(_region_override(key, _cache.get(key, default_value)))
 
 func get_string(key: String, default_value: String) -> String:
-    return str(_cache.get(key, default_value))
+    return str(_region_override(key, _cache.get(key, default_value)))
 
 func get_float(key: String, default_value: float) -> float:
-    var v = _cache.get(key, default_value)
+    var v = _region_override(key, _cache.get(key, default_value))
     if typeof(v) == TYPE_FLOAT:
         return v
     if typeof(v) == TYPE_INT:
@@ -150,3 +150,13 @@ func _try_merge_string_value(key: String, val: String) -> void:
         _cache[key] = int(val.to_int())
     else:
         _cache[key] = val
+
+func _region_override(key: String, base):
+    # If regional value exists, prefer it: e.g., key: "ad_interstitial_android", region: "BR" -> "ad_interstitial_android_BR"
+    if not Engine.has_singleton("Geo"):
+        return base
+    var rc := "_" + Geo.region_code
+    var rk := key + rc
+    if _cache.has(rk):
+        return _cache[rk]
+    return base

@@ -36,6 +36,8 @@ Localize="*res://scripts/Localize.gd"
 Quests="*res://scripts/Quests.gd"
 Notifications="*res://scripts/Notifications.gd"
 Economy="*res://scripts/Economy.gd"
+Geo="*res://scripts/Geo.gd"
+ConsentManager="*res://scripts/ConsentManager.gd"
 
 [android]
 modules/use_custom_build=true

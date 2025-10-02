@@ -4,6 +4,7 @@ class_name SeasonPassModal
 
 @onready var title_label: Label = $Panel/VBox/Title
 @onready var level_label: Label = $Panel/VBox/Level
+@onready var ends_label: Label = $Panel/VBox/EndsIn
 @onready var buy_btn: Button = $Panel/VBox/Buy
 @onready var close_btn: Button = $Panel/VBox/Close
 @onready var track_root: VBoxContainer = $Panel/VBox/Track
@@ -15,6 +16,7 @@ func _ready() -> void:
     buy_btn.pressed.connect(_on_buy)
     close_btn.pressed.connect(func(): queue_free())
     _build_track()
+    _start_end_timer()
 
 func _refresh() -> void:
     title_label.text = SeasonPass.is_premium() ? "Season Pass (Premium)" : "Season Pass"
@@ -52,6 +54,28 @@ func _build_track() -> void:
         )
         row.add_child(prem_btn)
         track_root.add_child(row)
+
+func _start_end_timer() -> void:
+    var end_ts := RemoteConfig.get_int("season_end_epoch", 0)
+    if end_ts <= 0:
+        ends_label.text = ""
+        return
+    _update_end_timer(end_ts)
+    var t := Timer.new()
+    t.wait_time = 1.0
+    t.autostart = true
+    t.one_shot = false
+    add_child(t)
+    t.timeout.connect(func(): _update_end_timer(end_ts))
+
+func _update_end_timer(end_ts: int) -> void:
+    var now := int(Time.get_unix_time_from_system())
+    var remain := max(0, end_ts - now)
+    var d := remain / 86400
+    var h := (remain % 86400) / 3600
+    var m := (remain % 3600) / 60
+    var s := remain % 60
+    ends_label.text = "Ends in %dd %02d:%02d:%02d" % [d, h, m, s]
 
 func _on_buy() -> void:
     IAPManager.purchase_item("season_pass_premium")
