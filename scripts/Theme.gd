@@ -7,12 +7,18 @@ var name: String = "default"
 var color_textures: Array = [] # index -> Texture2D
 var chosen_set_dir: String = ""
 
-func _init(theme_name: String = "default") -> void:
-	name = theme_name
-	# Attempt to load theme config; otherwise, generate colored squares
-	var ok := _load_theme_images(theme_name)
-	if not ok:
-		_generate_color_textures()
+func _init(theme_name: String = "default", preferred_set_dir: String = "") -> void:
+    name = theme_name
+    var ok := false
+    # If a preferred set dir is provided, try that first
+    if preferred_set_dir != "":
+        if _load_color_series_from_dir(preferred_set_dir):
+            chosen_set_dir = preferred_set_dir
+            ok = true
+    if not ok:
+        ok = _load_theme_images(theme_name)
+    if not ok:
+        _generate_color_textures()
 
 func _generate_color_textures(colors: int = 8) -> void:
 	color_textures.clear()

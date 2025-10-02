@@ -9,6 +9,32 @@ func get_current_theme_name() -> String:
         return configured
     return "default"
 
+func get_daily_event_set_dir(theme_name: String) -> String:
+    # Choose a rotating set directory under assets/match3/<theme>/set_xxx
+    var rotation := _load_rotation()
+    var count := 0
+    if typeof(rotation) == TYPE_DICTIONARY:
+        var daily_sets := rotation.get("daily_event_sets", {})
+        count = int(daily_sets.get(theme_name, daily_sets.get("default", 0)))
+    if count <= 0:
+        return ""
+    var day_index := int(Time.get_unix_time_from_system() / 86400) % count
+    var dir := "res://assets/match3/%s/set_%03d" % [theme_name, day_index]
+    return dir
+
+func _load_rotation() -> Dictionary:
+    var path := "res://config/rotation.json"
+    if not FileAccess.file_exists(path):
+        return {}
+    var f := FileAccess.open(path, FileAccess.READ)
+    if not f:
+        return {}
+    var data = JSON.parse_string(f.get_as_text())
+    f.close()
+    if typeof(data) == TYPE_DICTIONARY:
+        return data
+    return {}
+
 func _get_theme_from_config() -> String:
     var path := "res://config/events.json"
     if not FileAccess.file_exists(path):

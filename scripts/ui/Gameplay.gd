@@ -44,7 +44,9 @@ func _apply_banner_padding() -> void:
 
 func _init_board() -> void:
     var scheduler := EventScheduler.new()
-    theme_provider = ThemeProvider.new(scheduler.get_current_theme_name())
+    var theme_name := scheduler.get_current_theme_name()
+    var set_dir := scheduler.get_daily_event_set_dir(theme_name)
+    theme_provider = ThemeProvider.new(theme_name, set_dir)
     var day_seed := int(Time.get_unix_time_from_system() / 86400)
     var seed := int(hash([day_seed, GameState.session_count_total, randi()])) & 0x7fffffff
     board = LevelGenerator.generate(GRID_SIZE, NUM_COLORS, seed)
