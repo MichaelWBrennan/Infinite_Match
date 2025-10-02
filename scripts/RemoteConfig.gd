@@ -33,6 +33,9 @@ func fetch_and_apply() -> void:
         "seg_rv_engaged_interstitial_pct": 33,
         "disable_banners_for_payers": 1,
         "banner_height_dp": 50,
+        # Timers
+        "flash_offer_seconds": 3600,
+        "season_end_epoch": 0,
         # Ad units (replace remotely on prod)
         "ad_rewarded_android": "ca-app-pub-3940256099942544/5224354917",
         "ad_interstitial_android": "ca-app-pub-3940256099942544/1033173712",

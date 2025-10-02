@@ -29,6 +29,9 @@ text = "Special Offer"
 [node name="Desc" type="Label" parent="Panel/VBox"]
 text = "Limited time!"
 
+[node name="Timer" type="Label" parent="Panel/VBox"]
+text = "00:00:00"
+
 [node name="CTA" type="Button" parent="Panel/VBox"]
 text = "Buy"
 

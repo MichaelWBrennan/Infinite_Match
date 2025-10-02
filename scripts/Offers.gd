@@ -8,6 +8,7 @@ enum OfferKind { STARTER, COMEBACK, FLASH }
 
 var _last_flash_day: int = 0
 var _save_path := "user://offers.json"
+var _flash_offer_end_ts: int = 0
 
 func _ready() -> void:
     _load()
@@ -39,6 +40,8 @@ func is_flash_available() -> bool:
     if _last_flash_day == today:
         return false
     _last_flash_day = today
+    var seconds := RemoteConfig.get_int("flash_offer_seconds", 3600)
+    _flash_offer_end_ts = int(Time.get_unix_time_from_system()) + seconds
     _save()
     return true
 
@@ -49,7 +52,7 @@ func describe_offer(kind: int) -> Dictionary:
         OfferKind.COMEBACK:
             return {"title": "Welcome Back Bundle", "sku": "comeback_bundle", "coins": RemoteConfig.get_int("comeback_bonus_coins", 800)}
         OfferKind.FLASH:
-            return {"title": "Flash Deal", "sku": "coins_medium", "bonus": 20}
+            return {"title": "Flash Deal", "sku": "coins_medium", "bonus": 20, "ends_at": _flash_offer_end_ts}
         _:
             return {}
 
@@ -65,9 +68,10 @@ func _load() -> void:
         f.close()
         if typeof(d) == TYPE_DICTIONARY:
             _last_flash_day = int(d.get("last_flash_day", 0))
+            _flash_offer_end_ts = int(d.get("flash_offer_end_ts", 0))
 
 func _save() -> void:
-    var d := {"last_flash_day": _last_flash_day}
+    var d := {"last_flash_day": _last_flash_day, "flash_offer_end_ts": _flash_offer_end_ts}
     var f := FileAccess.open(_save_path, FileAccess.WRITE)
     if f:
         f.store_string(JSON.stringify(d))

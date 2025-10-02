@@ -34,6 +34,8 @@ SeasonPass="*res://scripts/SeasonPass.gd"
 Experiments="*res://scripts/Experiments.gd"
 Localize="*res://scripts/Localize.gd"
 Quests="*res://scripts/Quests.gd"
+Notifications="*res://scripts/Notifications.gd"
+Economy="*res://scripts/Economy.gd"
 
 [android]
 modules/use_custom_build=true

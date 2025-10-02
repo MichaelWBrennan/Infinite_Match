@@ -141,7 +141,7 @@ func _refresh_all_buttons() -> void:
     tile_view._update_all_textures()
 
 func _on_bomb() -> void:
-    if GameState.spend_coins(50):
+    if GameState.spend_coins(Economy.booster_cost("bomb")):
         # Convert random normal cell into a bomb, then resolve
         var cx := rng.randi_range(1, GRID_SIZE.x - 2)
         var cy := rng.randi_range(1, GRID_SIZE.y - 2)
@@ -156,7 +156,7 @@ func _on_bomb() -> void:
         tile_view._update_all_textures()
 
 func _on_hammer() -> void:
-    if GameState.spend_coins(30):
+    if GameState.spend_coins(Economy.booster_cost("hammer")):
         # remove a random tile
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         board.set_piece(p, null)
@@ -166,12 +166,12 @@ func _on_hammer() -> void:
         tile_view._update_all_textures()
 
 func _on_shuffle() -> void:
-    if GameState.spend_coins(20):
+    if GameState.spend_coins(Economy.booster_cost("shuffle")):
         board.shuffle_random()
         tile_view._update_all_textures()
 
 func _on_rocket() -> void:
-    if GameState.spend_coins(40):
+    if GameState.spend_coins(Economy.booster_cost("rocket")):
         var Types = preload("res://scripts/match3/Types.gd")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         var horiz := rng.randi_range(0, 1) == 0

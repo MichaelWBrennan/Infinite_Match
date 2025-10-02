@@ -9,6 +9,7 @@ class_name OfferModal
 @onready var desc_label: Label = $Panel/VBox/Desc
 @onready var price_btn: Button = $Panel/VBox/CTA
 @onready var close_btn: Button = $Panel/VBox/Close
+@onready var timer_label: Label = $Panel/VBox/Timer
 
 func _ready() -> void:
     var info := Offers.describe_offer(kind)
@@ -18,6 +19,8 @@ func _ready() -> void:
         price_text = "$" + str(IAPManager.get_price_usd(sku))
     desc_label.text = "Limited time offer!"
     price_btn.text = "Buy %s" % price_text
+    if info.has("ends_at"):
+        _start_timer(int(info["ends_at"]))
     price_btn.pressed.connect(func():
         Analytics.track_offer("cta", str(kind), sku)
         IAPManager.purchase_item(sku)
@@ -27,3 +30,20 @@ func _ready() -> void:
         Analytics.track_offer("dismiss", str(kind), sku)
         queue_free()
     )
+
+func _start_timer(end_ts: int) -> void:
+    _update_timer(end_ts)
+    var t := Timer.new()
+    t.wait_time = 1.0
+    t.autostart = true
+    t.one_shot = false
+    add_child(t)
+    t.timeout.connect(func(): _update_timer(end_ts))
+
+func _update_timer(end_ts: int) -> void:
+    var now := int(Time.get_unix_time_from_system())
+    var remain := max(0, end_ts - now)
+    var h := remain / 3600
+    var m := (remain % 3600) / 60
+    var s := remain % 60
+    timer_label.text = "%02d:%02d:%02d" % [h, m, s]
