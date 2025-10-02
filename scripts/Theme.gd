@@ -27,25 +27,36 @@ func _generate_color_textures(colors: int = 8) -> void:
 		color_textures.append(tex)
 
 func _load_theme_images(theme_name: String) -> bool:
-	var cfg_path := "res://config/themes/%s.json" % theme_name
-	if not FileAccess.file_exists(cfg_path):
-		return false
-	var f := FileAccess.open(cfg_path, FileAccess.READ)
-	if not f:
-		return false
-	var data = JSON.parse_string(f.get_as_text())
-	f.close()
-	if typeof(data) != TYPE_DICTIONARY:
-		return false
-	var paths: Array = data.get("colors", [])
-	color_textures.clear()
-	for p in paths:
-		var tex: Texture2D = load(p)
-		if tex:
-			color_textures.append(tex)
-		else:
-			return false
-	return true
+    var theme_dir := "res://assets/match3/%s" % theme_name
+    if DirAccess.dir_exists_absolute(theme_dir):
+        color_textures.clear()
+        for i in range(5):
+            var p := "%s/color_%d.png" % [theme_dir, i]
+            if FileAccess.file_exists(p):
+                var tex: Texture2D = load(p)
+                if tex:
+                    color_textures.append(tex)
+        if color_textures.size() >= 3:
+            return true
+    var cfg_path := "res://config/themes/%s.json" % theme_name
+    if not FileAccess.file_exists(cfg_path):
+        return false
+    var f := FileAccess.open(cfg_path, FileAccess.READ)
+    if not f:
+        return false
+    var data = JSON.parse_string(f.get_as_text())
+    f.close()
+    if typeof(data) != TYPE_DICTIONARY:
+        return false
+    var paths: Array = data.get("colors", [])
+    color_textures.clear()
+    for p in paths:
+        var tex: Texture2D = load(p)
+        if tex:
+            color_textures.append(tex)
+        else:
+            return false
+    return true
 
 func get_texture_for_piece(piece: Dictionary) -> Texture2D:
 	if piece == null:

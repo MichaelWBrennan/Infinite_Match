@@ -1,9 +1,9 @@
 {
   "colors": [
-    "res://assets/ui/icon.png",
-    "res://assets/ui/icon.png",
-    "res://assets/ui/icon.png",
-    "res://assets/ui/icon.png",
-    "res://assets/ui/icon.png"
+    "res://assets/match3/halloween/color_0.png",
+    "res://assets/match3/halloween/color_1.png",
+    "res://assets/match3/halloween/color_2.png",
+    "res://assets/match3/halloween/color_3.png",
+    "res://assets/match3/halloween/color_4.png"
   ]
 }
