@@ -254,6 +254,17 @@ func _interstitial_caps_allow(location: String) -> bool:
     _prune_interstitial_window()
     if _interstitials_shown_last_10min.size() >= per10:
         return false
+    # Segmentation: payers see fewer interstitials
+    if GameState.ever_purchased:
+        var payer_pct := clamp(RemoteConfig.get_int("seg_payer_interstitial_pct", 25), 0, 100)
+        if (randi() % 100) >= payer_pct:
+            return false
+    # Segmentation: RV engaged (watched >= N today) -> fewer interstitials
+    var rv_threshold := RemoteConfig.get_int("rv_engaged_threshold_today", 3)
+    if Analytics.has_method("rewarded_watched_today") and Analytics.rewarded_watched_today() >= rv_threshold:
+        var engaged_pct := clamp(RemoteConfig.get_int("seg_rv_engaged_interstitial_pct", 33), 0, 100)
+        if (randi() % 100) >= engaged_pct:
+            return false
     return true
 
 func _prune_interstitial_window() -> void:

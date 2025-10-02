@@ -27,6 +27,11 @@ func fetch_and_apply() -> void:
         "interstitial_on_gameover_pct": 66,
         "interstitial_cap_game_over_per_session": 2,
         "interstitial_cap_per_10min": 3,
+        # Segmentation
+        "seg_payer_interstitial_pct": 25,
+        "rv_engaged_threshold_today": 3,
+        "seg_rv_engaged_interstitial_pct": 33,
+        "disable_banners_for_payers": 1,
         "banner_height_dp": 50,
         # Ad units (replace remotely on prod)
         "ad_rewarded_android": "ca-app-pub-3940256099942544/5224354917",
@@ -63,7 +68,11 @@ func fetch_and_apply() -> void:
         # Booster bundle
         "booster_bundle_coins": 1000,
         # Piggy fallback
-        "piggy_open_fallback_coins": 1000
+        "piggy_open_fallback_coins": 1000,
+        # Season pass config
+        "season_levels": 30,
+        "season_free_coin_base": 50,
+        "season_premium_coin_base": 100
     }
     _cache.merge(defaults, true)
     if Engine.has_singleton("ByteBrew"):
