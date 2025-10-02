@@ -27,6 +27,9 @@ text = "Start Game"
 [node name="DailyButton" type="Button" parent="VBox"]
 text = "Daily Challenges"
 
+[node name="QuestsButton" type="Button" parent="VBox"]
+text = "Quests"
+
 [node name="OfferwallButton" type="Button" parent="VBox"]
 text = "Free Rewards"
 

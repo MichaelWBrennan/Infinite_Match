@@ -29,6 +29,8 @@ text = "Season Pass"
 [node name="Level" type="Label" parent="Panel/VBox"]
 text = "Level 0 XP 0"
 
+[node name="Track" type="VBoxContainer" parent="Panel/VBox"]
+
 [node name="Buy" type="Button" parent="Panel/VBox"]
 text = "Buy Premium"
 

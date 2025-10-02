@@ -2,6 +2,7 @@ extends Control
 
 @onready var start_button: Button = $VBox/StartButton
 @onready var daily_button: Button = $VBox/DailyButton
+@onready var quests_button: Button = $VBox/QuestsButton
 @onready var offerwall_button: Button = $VBox/OfferwallButton
 @onready var shop_button: Button = $VBox/ShopButton
 @onready var coins_label: Label = $VBox/CoinsLabel
@@ -16,6 +17,7 @@ extends Control
 func _ready() -> void:
     start_button.pressed.connect(_on_start)
     daily_button.pressed.connect(_on_daily)
+    quests_button.pressed.connect(_on_quests)
     offerwall_button.pressed.connect(_on_offerwall)
     shop_button.pressed.connect(_on_shop)
     GameState.currency_changed.connect(func(new_balance): _update_coins())
@@ -66,6 +68,10 @@ func _on_leaderboard() -> void:
 func _on_refer() -> void:
     var code := Social.get_referral_code()
     Social.share("Play Evergreen Puzzler with me! Code: " + code)
+func _on_quests() -> void:
+    var modal := load("res://scenes/QuestsModal.tscn").instantiate()
+    add_child(modal)
+
 
 func _on_piggy() -> void:
     var amount := PiggyBank.amount_current
