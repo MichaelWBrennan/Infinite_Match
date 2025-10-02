@@ -35,6 +35,9 @@ text = "Shop"
 [node name="CoinsLabel" type="Label" parent="VBox"]
 text = "Coins: 0"
 
+[node name="LevelLabel" type="Label" parent="VBox"]
+text = "Level: 1 (Stars: 0)"
+
 [node name="LeaderboardButton" type="Button" parent="VBox"]
 text = "Leaderboard"
 

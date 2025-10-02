@@ -16,6 +16,9 @@ var first_install_day: int = 0
 var last_seen_day: int = 0
 var session_count_total: int = 0
 var sessions_today: int = 0
+var current_level: int = 1
+var level_stars: Dictionary = {} # level_id -> stars (0-3)
+var level_best_score: Dictionary = {} # level_id -> best score
 
 var _save_path := "user://state.json"
 
@@ -117,6 +120,9 @@ func _save() -> void:
     data["last_seen_day"] = last_seen_day
     data["session_count_total"] = session_count_total
     data["sessions_today"] = sessions_today
+    data["current_level"] = current_level
+    data["level_stars"] = level_stars
+    data["level_best_score"] = level_best_score
     _store_json(data)
 
 func _load() -> void:
@@ -131,6 +137,9 @@ func _load() -> void:
     last_seen_day = int(data.get("last_seen_day", 0))
     session_count_total = int(data.get("session_count_total", 0))
     sessions_today = int(data.get("sessions_today", 0))
+    current_level = int(data.get("current_level", 1))
+    level_stars = data.get("level_stars", {})
+    level_best_score = data.get("level_best_score", {})
     if remove_ads:
         AdManager.set_remove_ads(true)
 
@@ -149,6 +158,27 @@ func _track_session() -> void:
 func start_game_round() -> bool:
     var should := ((sessions_today % 2) == 0)
     return should
+
+# Progression helpers
+func get_current_level() -> int:
+    return max(1, current_level)
+
+func get_level_stars(level_id: int) -> int:
+    return int(level_stars.get(str(level_id), 0))
+
+func get_level_best_score(level_id: int) -> int:
+    return int(level_best_score.get(str(level_id), 0))
+
+func complete_level(level_id: int, score: int, stars: int) -> void:
+    var key := str(level_id)
+    var prev_stars := int(level_stars.get(key, 0))
+    if stars > prev_stars:
+        level_stars[key] = stars
+    var prev_score := int(level_best_score.get(key, 0))
+    if score > prev_score:
+        level_best_score[key] = score
+    current_level = max(current_level, level_id + 1)
+    _save()
 
 func _load_json() -> Dictionary:
     var f := FileAccess.open(_save_path, FileAccess.READ)

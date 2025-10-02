@@ -6,5 +6,6 @@
   "goals": [
     { "type": "collect_color", "color": 0, "amount": 30 },
     { "type": "collect_color", "color": 1, "amount": 30 }
-  ]
+  ],
+  "score_stars": [500, 1500, 3000]
 }

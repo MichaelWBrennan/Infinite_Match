@@ -5,6 +5,7 @@ extends Control
 @onready var offerwall_button: Button = $VBox/OfferwallButton
 @onready var shop_button: Button = $VBox/ShopButton
 @onready var coins_label: Label = $VBox/CoinsLabel
+@onready var level_label: Label = $VBox/LevelLabel
 @onready var leaderboard_button: Button = $VBox/LeaderboardButton
 @onready var refer_button: Button = $VBox/ReferButton
 @onready var banner_spacer: Control = $BannerSpacer
@@ -16,6 +17,7 @@ func _ready() -> void:
     shop_button.pressed.connect(_on_shop)
     GameState.currency_changed.connect(func(new_balance): _update_coins())
     _update_coins()
+    _update_level()
     _apply_banner_padding()
     AdManager.show_banner("bottom")
     leaderboard_button.pressed.connect(_on_leaderboard)
@@ -27,6 +29,9 @@ func _apply_banner_padding() -> void:
 
 func _update_coins() -> void:
     coins_label.text = "Coins: %d" % GameState.coins
+
+func _update_level() -> void:
+    level_label.text = "Level: %d (Stars: %d)" % [GameState.get_current_level(), GameState.get_level_stars(GameState.get_current_level())]
 
 func _on_start() -> void:
     get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
