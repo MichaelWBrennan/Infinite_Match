@@ -14,6 +14,8 @@ var _remove_ads := false
 
 var _rewarded_ready := false
 var _interstitial_ready := false
+var _interstitials_shown_this_session: int = 0
+var _interstitials_shown_last_10min: Array[int] = [] # timestamps (ms)
 
 var _banner_visible := false
 var _banner_unit_id := ""
@@ -101,6 +103,8 @@ func show_interstitial(location: String) -> void:
     if _remove_ads:
         return
     if not _interstitial_cooldown_elapsed():
+        return
+    if not _interstitial_caps_allow(location):
         return
     var provider = _ad_provider()
     if provider and _interstitial_unit_id != "":
@@ -230,12 +234,36 @@ func _mark_interstitial_shown() -> void:
     _last_interstitial_time_ms = Time.get_ticks_msec()
     var cooldown_s := randi_range(_interstitial_cooldown_min_s, _interstitial_cooldown_max_s)
     _next_allowed_interstitial_time_ms = _last_interstitial_time_ms + int(cooldown_s) * 1000
+    _interstitials_shown_this_session += 1
+    _interstitials_shown_last_10min.append(_last_interstitial_time_ms)
+    _prune_interstitial_window()
     Analytics.mark_interstitial_shown()
 
 func _interstitial_cooldown_elapsed() -> bool:
     if _next_allowed_interstitial_time_ms == 0:
         return true
     return Time.get_ticks_msec() >= _next_allowed_interstitial_time_ms
+
+func _interstitial_caps_allow(location: String) -> bool:
+    # Cap per-session for game_over
+    var per_session_cap := RemoteConfig.get_int("interstitial_cap_game_over_per_session", 2)
+    if location == "game_over" and _interstitials_shown_this_session >= per_session_cap:
+        return false
+    # Cap over a rolling 10-minute window
+    var per10 := RemoteConfig.get_int("interstitial_cap_per_10min", 3)
+    _prune_interstitial_window()
+    if _interstitials_shown_last_10min.size() >= per10:
+        return false
+    return true
+
+func _prune_interstitial_window() -> void:
+    var now := Time.get_ticks_msec()
+    var cutoff := now - 10 * 60 * 1000
+    var filtered: Array[int] = []
+    for ts in _interstitials_shown_last_10min:
+        if ts >= cutoff:
+            filtered.append(ts)
+    _interstitials_shown_last_10min = filtered
 
 func _load_remove_ads_flag() -> void:
     if Engine.has_singleton("GameState"):

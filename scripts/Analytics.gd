@@ -39,6 +39,16 @@ static func track_purchase(store: String, currency: String, amount: float, item_
     if Engine.has_singleton("ByteBrew"):
         ByteBrewBridge.track_purchase(store, currency, amount, item_id, category)
 
+static func track_offer(event: String, kind: String, sku: String = "") -> void:
+    ByteBrewBridge.custom_event("offer_" + event, kind + (sku != "" ? (":" + sku) : ""))
+
+static func track_shop(event: String, sku: String = "") -> void:
+    ByteBrewBridge.custom_event("shop_" + event, sku)
+
+static func track_piggy(amount: int, max_amount: int) -> void:
+    ByteBrewBridge.custom_event("piggy_amount", amount)
+    ByteBrewBridge.custom_event("piggy_max", max_amount)
+
 static func mark_interstitial_shown() -> void:
     _interstitials_shown_today += 1
     ByteBrewBridge.custom_event("interstitial_shown_count", _interstitials_shown_today)

@@ -17,9 +17,16 @@ func fetch_and_apply() -> void:
     var defaults := {
         # Rewards and ads
         "reward_boost": 5,
+        "reward_energy": 5,
+        "reward_continue": 5,
+        "reward_level_win": 10,
+        "reward_shop_get_more": 10,
         "interstitial_interval": 45,
         "interstitial_cooldown_min_s": 120,
         "interstitial_cooldown_max_s": 180,
+        "interstitial_on_gameover_pct": 66,
+        "interstitial_cap_game_over_per_session": 2,
+        "interstitial_cap_per_10min": 3,
         "banner_height_dp": 50,
         # Ad units (replace remotely on prod)
         "ad_rewarded_android": "ca-app-pub-3940256099942544/5224354917",
@@ -33,7 +40,30 @@ func fetch_and_apply() -> void:
         # Economy
         "energy_max": 5,
         "energy_refill_minutes": 20,
-        "daily_reward_base": 50
+        "daily_reward_base": 50,
+        # Piggy bank
+        "piggy_enabled": 1,
+        "piggy_max": 5000,
+        "piggy_fill_per_clear": 1,
+        "piggy_unlock_price": 2.99,
+        # Starter/comeback offers
+        "starter_enabled": 1,
+        "starter_pack_small_coins": 500,
+        "starter_pack_large_coins": 5000,
+        "starter_discount_pct": 50,
+        "comeback_enabled": 1,
+        "comeback_days": 7,
+        "comeback_bonus_coins": 800,
+        "comeback_price": 1.99,
+        # Coin pack grants
+        "coins_small_amount": 500,
+        "coins_medium_amount": 3000,
+        "coins_large_amount": 7500,
+        "coins_huge_amount": 20000,
+        # Booster bundle
+        "booster_bundle_coins": 1000,
+        # Piggy fallback
+        "piggy_open_fallback_coins": 1000
     }
     _cache.merge(defaults, true)
     if Engine.has_singleton("ByteBrew"):

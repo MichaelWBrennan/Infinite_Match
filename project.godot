@@ -27,7 +27,9 @@ RemoteConfig="*res://scripts/RemoteConfig.gd"
 GameState="*res://scripts/GameState.gd"
 Social="*res://scripts/Social.gd"
 LiveOps="*res://scripts/LiveOps.gd"
+PiggyBank="*res://scripts/PiggyBank.gd"
 LevelManager="*res://scripts/LevelManager.gd"
+Offers="*res://scripts/Offers.gd"
 
 [android]
 modules/use_custom_build=true

@@ -22,6 +22,14 @@ func _ready() -> void:
     AdManager.show_banner("bottom")
     leaderboard_button.pressed.connect(_on_leaderboard)
     refer_button.pressed.connect(_on_refer)
+    # Surface an offer if available at menu open
+    if Engine.has_singleton("Offers"):
+        Offers.offer_available.connect(func(kind, sku):
+            Analytics.track_offer("available", str(kind), sku)
+            _show_offer_modal(kind, sku)
+        , CONNECT_ONE_SHOT)
+        # Trigger offer check on next idle frame
+        call_deferred("_check_offers")
 
 func _apply_banner_padding() -> void:
     var h := AdManager.get_banner_height_px()
@@ -51,3 +59,17 @@ func _on_leaderboard() -> void:
 func _on_refer() -> void:
     var code := Social.get_referral_code()
     Social.share("Play Evergreen Puzzler with me! Code: " + code)
+
+func _check_offers() -> void:
+    if Engine.has_singleton("Offers"):
+        # Offers autoload will emit if eligible during _ready
+        pass
+
+func _show_offer_modal(kind, sku: String) -> void:
+    # Minimal modal using OS.alert to avoid new scenes
+    var info := Offers.describe_offer(int(kind))
+    var title := String(info.get("title", "Special Offer"))
+    var body := "Get more value now!"
+    OS.alert(body, title)
+    # Auto-accept starter for demo purposes; replace with real modal buttons
+    Offers.accept_offer(int(kind))
