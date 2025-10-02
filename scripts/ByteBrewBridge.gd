@@ -44,3 +44,18 @@ static func track_purchase(store: String, currency: String, amount: float, item_
         # Try generic purchase event
         if bb.has_method("AddTrackedInAppPurchaseEvent"):
             bb.AddTrackedInAppPurchaseEvent(store, currency, amount, item_id, category)
+
+static func custom_event(name: String, value: Variant = null) -> void:
+    if has_plugin():
+        var bb = Engine.get_singleton("ByteBrew")
+        if not bb:
+            return
+        if value == null:
+            if bb.has_method("AddNewCustomEvent"):
+                bb.AddNewCustomEvent(name)
+        elif typeof(value) == TYPE_FLOAT or typeof(value) == TYPE_INT:
+            if bb.has_method("AddNewCustomEventWithNumericValue"):
+                bb.AddNewCustomEventWithNumericValue(name, float(value))
+        else:
+            if bb.has_method("AddNewCustomEventWithStringValue"):
+                bb.AddNewCustomEventWithStringValue(name, str(value))
