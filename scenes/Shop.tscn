@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/Shop.gd" id="1_gd"]
+
+[node name="Shop" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_gd")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -240.0
+offset_right = 180.0
+offset_bottom = 240.0
+
+[node name="Coins" type="Label" parent="VBox"]
+text = "Coins: 0"
+
+[node name="RemoveAds" type="Button" parent="VBox"]
+text = "Remove Ads ($2.99)"
+
+[node name="Cosmetic" type="Button" parent="VBox"]
+text = "Cosmetic Pack ($0.99-$4.99)"
+
+[node name="Starter" type="Button" parent="VBox"]
+text = "Starter Pack ($1.99-$9.99)"
+
+[node name="GetMore" type="Button" parent="VBox"]
+text = "Get More Currency (Ad/Offerwall)"
+
+[node name="Back" type="Button" parent="VBox"]
+text = "Back"

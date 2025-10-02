@@ -131,7 +131,8 @@ func _get_dynamic_reward(location: String) -> int:
 func _ad_provider():
     # Try common plugin singletons by name
     var names = [
-        "AdsBridge", # bundled Java bridge for Android
+        "AdsBridge", # bundled Java bridge for Android (AdMob)
+        "UnityAdsBridge", # optional Unity Ads bridge
         "GodotGoogleMobileAds", # popular GMA plugin
         "AdMob",
         "GoogleMobileAds",
@@ -161,8 +162,7 @@ func _on_ad_paid(provider_name: String, ad_unit: String, placement_type: String,
     Analytics.track_ad(placement_type, location, ad_unit, provider_name, revenue)
 
 func _on_interstitial_closed() -> void:
-    # Note closing tracked for churn analysis in Analytics via app focus events
-    pass
+    Analytics.mark_interstitial_closed()
 
 # Banner API
 func show_banner(position: String = "bottom") -> void:

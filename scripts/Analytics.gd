@@ -24,6 +24,7 @@ static func track_session_start() -> void:
         ByteBrewBridge.load_remote_configs(func(status):
             # no-op; ensure initialization
             pass)
+    _track_retention_markers()
 
 static func track_progression(stage: String, value: String = "") -> void:
     if Engine.has_singleton("ByteBrew"):
@@ -48,3 +49,16 @@ static func mark_interstitial_closed() -> void:
 
 static func track_arpdau(arpdau_usd: float) -> void:
     ByteBrewBridge.custom_event("arpdau_usd", arpdau_usd)
+
+static func _track_retention_markers() -> void:
+    if not Engine.has_singleton("ByteBrew"):
+        return
+    var install_day := GameState.first_install_day
+    var today := int(Time.get_unix_time_from_system() / 86400)
+    var days_since := max(0, today - install_day)
+    var d1 := (days_since >= 1)
+    var d7 := (days_since >= 7)
+    var d30 := (days_since >= 30)
+    ByteBrewBridge.custom_event("retention_d1", d1 ? 1 : 0)
+    ByteBrewBridge.custom_event("retention_d7", d7 ? 1 : 0)
+    ByteBrewBridge.custom_event("retention_d30", d30 ? 1 : 0)
