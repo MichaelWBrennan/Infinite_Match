@@ -8,10 +8,13 @@ var num_colors: int
 var rng := RandomNumberGenerator.new()
 var grid: Array = [] # grid[y][x] -> piece dict
 
-func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5) -> void:
-	size = board_size
-	num_colors = colors
-	rng.randomize()
+func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -1) -> void:
+    size = board_size
+    num_colors = colors
+    if seed >= 0:
+        rng.seed = seed
+    else:
+        rng.randomize()
 	grid.resize(size.y)
 	for y in range(size.y):
 		grid[y] = []
@@ -30,6 +33,19 @@ func is_adjacent(a: Vector2i, b: Vector2i) -> bool:
 func has_matches() -> bool:
 	return not _find_matches().is_empty()
 
+func has_valid_move() -> bool:
+    # Checks if any adjacent swap creates a match
+    for y in range(size.y):
+        for x in range(size.x):
+            var a := Vector2i(x, y)
+            var neighbors := [Vector2i(x + 1, y), Vector2i(x, y + 1)]
+            for b in neighbors:
+                if b.x >= size.x or b.y >= size.y:
+                    continue
+                if _creates_match_after_swap(a, b):
+                    return true
+    return false
+
 func resolve_board() -> Dictionary:
 	# Returns { cleared:int, cascades:int }
 	var total_cleared := 0
@@ -43,6 +59,27 @@ func resolve_board() -> Dictionary:
 		_apply_gravity_and_fill()
 		cascades += 1
 	return { "cleared": total_cleared, "cascades": cascades }
+
+func shuffle_random() -> void:
+    # Randomly shuffles normal pieces' colors (keeps dimensions)
+    var colors: Array = []
+    for y in range(size.y):
+        for x in range(size.x):
+            var p = grid[y][x]
+            if p == null:
+                continue
+            colors.append(p.get("color"))
+    colors.shuffle()
+    var i := 0
+    for y in range(size.y):
+        for x in range(size.x):
+            var p = grid[y][x]
+            if p == null:
+                grid[y][x] = Types.make_normal(rng.randi_range(0, num_colors - 1))
+            else:
+                var c := colors[i]
+                i += 1
+                grid[y][x] = Types.make_normal(c)
 
 func get_piece(p: Vector2i) -> Dictionary:
 	return grid[p.y][p.x]
@@ -95,6 +132,14 @@ func _find_matches() -> Array:
 				run2 = [Vector2i(x, y)] if y < size.y else []
 	# Merge overlapping groups into unique sets
 	return _merge_overlapping(groups)
+
+func _creates_match_after_swap(a: Vector2i, b: Vector2i) -> bool:
+    if not is_adjacent(a, b):
+        return false
+    swap(a, b)
+    var result := has_matches()
+    swap(a, b)
+    return result
 
 func _merge_overlapping(groups: Array) -> Array:
 	var merged: Array = []
