@@ -1,0 +1,35 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main, master, '**/release/**', 'cursor/**' ]
+  pull_request:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Godot
+        uses: firebelley/setup-godot@v1.3.1
+        with:
+          version: '4.3.0'
+          use-dotnet: false
+      - name: Export Android
+        run: |
+          mkdir -p build/Android
+          # Build AdsBridge aar (optional; Godot custom build can also handle)
+          pushd android/plugins/AdsBridge || true
+          if [ -f build.gradle ]; then ./gradlew assembleRelease || true; fi
+          popd || true
+          godot --headless --verbose --export-release "Android Release" build/Android/idle-tap-cash.apk
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/Android/idle-tap-cash.apk

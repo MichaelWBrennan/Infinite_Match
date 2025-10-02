@@ -1,2 +1,9 @@
-.DS_STORE
+build/
+.export/
+.export-import/
+.mono/
+.gradle/
 .DS_Store
+.vscode/
+.idea/
+**/*.import
