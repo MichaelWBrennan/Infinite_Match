@@ -84,6 +84,8 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             GameState.add_coins(int(res.get("cleared", 0)))
             if Engine.has_singleton("PiggyBank"):
                 PiggyBank.on_tiles_cleared(int(res.get("cleared", 0)))
+            if Engine.has_singleton("SeasonPass"):
+                SeasonPass.add_xp(int(res.get("cleared", 0)))
             tile_view._update_all_textures()
             _update_ui()
             _refresh_goals_text()
@@ -124,6 +126,8 @@ func _resolve_board() -> void:
     GameState.add_coins(int(result.get("cleared", 0)))
     if Engine.has_singleton("PiggyBank"):
         PiggyBank.on_tiles_cleared(int(result.get("cleared", 0)))
+    if Engine.has_singleton("SeasonPass"):
+        SeasonPass.add_xp(int(result.get("cleared", 0)))
     tile_view._update_all_textures()
 
 func _apply_gravity_and_fill() -> void:

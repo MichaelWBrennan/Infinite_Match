@@ -30,6 +30,7 @@ LiveOps="*res://scripts/LiveOps.gd"
 PiggyBank="*res://scripts/PiggyBank.gd"
 LevelManager="*res://scripts/LevelManager.gd"
 Offers="*res://scripts/Offers.gd"
+SeasonPass="*res://scripts/SeasonPass.gd"
 
 [android]
 modules/use_custom_build=true

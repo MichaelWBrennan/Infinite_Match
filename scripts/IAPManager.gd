@@ -21,6 +21,8 @@ var _prices := {
     "piggy_bank_open": 2.99,
     # Comeback bundle
     "comeback_bundle": 1.99,
+    # Season pass premium unlock
+    "season_pass_premium": 4.99,
 }
 
 func _ready() -> void:
@@ -105,6 +107,8 @@ func _handle_purchase_success(sku: String, order_id: String) -> void:
         PiggyBank.open_and_collect()
     elif sku == "comeback_bundle":
         GameState.add_coins(RemoteConfig.get_int("comeback_bonus_coins", 800))
+    elif sku == "season_pass_premium":
+        SeasonPass.unlock_premium()
     # Mark player as purchaser for segmentation
     if GameState.has_method("mark_purchased"):
         GameState.mark_purchased()
