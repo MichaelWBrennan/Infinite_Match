@@ -20,6 +20,9 @@ offset_bottom = 240.0
 [node name="Coins" type="Label" parent="VBox"]
 text = "Coins: 0"
 
+[node name="LimitedBanner" type="Button" parent="VBox"]
+text = "Limited Time Offer"
+
 [node name="RemoveAds" type="Button" parent="VBox"]
 text = "Remove Ads ($2.99)"
 
@@ -46,6 +49,18 @@ text = "Refill Energy ($0.99)"
 
 [node name="BoosterBundle" type="Button" parent="VBox"]
 text = "Booster Bundle ($2.99)"
+
+[node name="GemsSmall" type="Button" parent="VBox"]
+text = "+20 Gems ($0.99)"
+
+[node name="GemsMedium" type="Button" parent="VBox"]
+text = "+120 Gems ($4.99)"
+
+[node name="GemsLarge" type="Button" parent="VBox"]
+text = "+300 Gems ($9.99)"
+
+[node name="GemsHuge" type="Button" parent="VBox"]
+text = "+700 Gems ($19.99)"
 
 [node name="GetMore" type="Button" parent="VBox"]
 text = "Get More Currency (Ad/Offerwall)"

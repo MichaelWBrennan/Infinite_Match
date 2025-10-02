@@ -31,6 +31,8 @@ PiggyBank="*res://scripts/PiggyBank.gd"
 LevelManager="*res://scripts/LevelManager.gd"
 Offers="*res://scripts/Offers.gd"
 SeasonPass="*res://scripts/SeasonPass.gd"
+Experiments="*res://scripts/Experiments.gd"
+Localize="*res://scripts/Localize.gd"
 
 [android]
 modules/use_custom_build=true

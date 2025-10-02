@@ -191,14 +191,8 @@ func _on_rewarded() -> void:
 func _on_game_over() -> void:
     if show_interstitial_on_gameover:
         AdManager.show_interstitial_ad("game_over")
-    var ask_continue := true
-    if ask_continue:
-        AdManager.show_rewarded_ad("continue", func(amount: int):
-            moves_left = 5
-            _update_ui()
-        )
-    else:
-        get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+    var modal := load("res://scenes/ContinueModal.tscn").instantiate()
+    add_child(modal)
 
 func _on_level_won() -> void:
     var score := GameState.coins # simplistic: use coins as session score proxy

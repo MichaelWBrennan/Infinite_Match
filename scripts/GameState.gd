@@ -7,6 +7,8 @@ signal energy_changed(current, max)
 signal cosmetics_changed()
 
 var coins: int = 0
+signal gems_changed(new_balance)
+var gems: int = 0
 var energy_current: int = 0
 var energy_max: int = 5
 var last_energy_ts: int = 0
@@ -40,6 +42,19 @@ func spend_coins(amount: int) -> bool:
     if coins >= amount:
         coins -= amount
         currency_changed.emit(coins)
+        _save()
+        return true
+    return false
+
+func add_gems(amount: int) -> void:
+    gems += max(0, amount)
+    gems_changed.emit(gems)
+    _save()
+
+func spend_gems(amount: int) -> bool:
+    if gems >= amount:
+        gems -= amount
+        gems_changed.emit(gems)
         _save()
         return true
     return false
@@ -121,6 +136,7 @@ func _mark_daily_claimed() -> void:
 func _save() -> void:
     var data := _load_json()
     data["coins"] = coins
+    data["gems"] = gems
     data["energy_current"] = energy_current
     data["energy_max"] = energy_max
     data["last_energy_ts"] = last_energy_ts
@@ -139,6 +155,7 @@ func _save() -> void:
 func _load() -> void:
     var data := _load_json()
     coins = int(data.get("coins", 0))
+    gems = int(data.get("gems", 0))
     energy_current = int(data.get("energy_current", energy_max))
     energy_max = int(data.get("energy_max", energy_max))
     last_energy_ts = int(data.get("last_energy_ts", 0))

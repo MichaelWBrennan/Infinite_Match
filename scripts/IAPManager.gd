@@ -23,6 +23,11 @@ var _prices := {
     "comeback_bundle": 1.99,
     # Season pass premium unlock
     "season_pass_premium": 4.99,
+    # Gem packs (hard currency)
+    "gems_small": 0.99,
+    "gems_medium": 4.99,
+    "gems_large": 9.99,
+    "gems_huge": 19.99,
 }
 
 func _ready() -> void:
@@ -109,6 +114,14 @@ func _handle_purchase_success(sku: String, order_id: String) -> void:
         GameState.add_coins(RemoteConfig.get_int("comeback_bonus_coins", 800))
     elif sku == "season_pass_premium":
         SeasonPass.unlock_premium()
+    elif sku == "gems_small":
+        GameState.add_gems(RemoteConfig.get_int("gems_small_amount", 20))
+    elif sku == "gems_medium":
+        GameState.add_gems(RemoteConfig.get_int("gems_medium_amount", 120))
+    elif sku == "gems_large":
+        GameState.add_gems(RemoteConfig.get_int("gems_large_amount", 300))
+    elif sku == "gems_huge":
+        GameState.add_gems(RemoteConfig.get_int("gems_huge_amount", 700))
     # Mark player as purchaser for segmentation
     if GameState.has_method("mark_purchased"):
         GameState.mark_purchased()

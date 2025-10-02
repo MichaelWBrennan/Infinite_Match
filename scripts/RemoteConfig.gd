@@ -65,6 +65,11 @@ func fetch_and_apply() -> void:
         "coins_medium_amount": 3000,
         "coins_large_amount": 7500,
         "coins_huge_amount": 20000,
+        # Gem pack grants
+        "gems_small_amount": 20,
+        "gems_medium_amount": 120,
+        "gems_large_amount": 300,
+        "gems_huge_amount": 700,
         # Booster bundle
         "booster_bundle_coins": 1000,
         # Piggy fallback

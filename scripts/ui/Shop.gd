@@ -10,8 +10,13 @@ extends Control
 @onready var coins_huge_btn: Button = $VBox/CoinsHuge
 @onready var energy_refill_btn: Button = $VBox/EnergyRefill
 @onready var booster_bundle_btn: Button = $VBox/BoosterBundle
+@onready var gems_small_btn: Button = $VBox/GemsSmall
+@onready var gems_medium_btn: Button = $VBox/GemsMedium
+@onready var gems_large_btn: Button = $VBox/GemsLarge
+@onready var gems_huge_btn: Button = $VBox/GemsHuge
 @onready var get_more_btn: Button = $VBox/GetMore
 @onready var back_btn: Button = $VBox/Back
+@onready var limited_banner: Button = $VBox/LimitedBanner
 var _catalog_loaded := false
 
 func _ready() -> void:
@@ -26,8 +31,13 @@ func _ready() -> void:
     coins_huge_btn.pressed.connect(func(): IAPManager.purchase_item("coins_huge"))
     energy_refill_btn.pressed.connect(func(): IAPManager.purchase_item("energy_refill"))
     booster_bundle_btn.pressed.connect(func(): IAPManager.purchase_item("booster_bundle"))
+    gems_small_btn.pressed.connect(func(): IAPManager.purchase_item("gems_small"))
+    gems_medium_btn.pressed.connect(func(): IAPManager.purchase_item("gems_medium"))
+    gems_large_btn.pressed.connect(func(): IAPManager.purchase_item("gems_large"))
+    gems_huge_btn.pressed.connect(func(): IAPManager.purchase_item("gems_huge"))
     get_more_btn.pressed.connect(_on_get_more)
     back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+    limited_banner.pressed.connect(_on_limited)
     _apply_price_strings()
 
 func _update_coins() -> void:
@@ -62,6 +72,18 @@ func _apply_price_strings() -> void:
     var bb := IAPManager.get_price_string("booster_bundle")
     if bb != "":
         booster_bundle_btn.text = "Booster Bundle (%s)" % bb
+    var gs := IAPManager.get_price_string("gems_small")
+    if gs != "":
+        gems_small_btn.text = "+%d Gems (%s)" % [RemoteConfig.get_int("gems_small_amount", 20), gs]
+    var gm := IAPManager.get_price_string("gems_medium")
+    if gm != "":
+        gems_medium_btn.text = "+%d Gems (%s)" % [RemoteConfig.get_int("gems_medium_amount", 120), gm]
+    var gl := IAPManager.get_price_string("gems_large")
+    if gl != "":
+        gems_large_btn.text = "+%d Gems (%s)" % [RemoteConfig.get_int("gems_large_amount", 300), gl]
+    var gh := IAPManager.get_price_string("gems_huge")
+    if gh != "":
+        gems_huge_btn.text = "+%d Gems (%s)" % [RemoteConfig.get_int("gems_huge_amount", 700), gh]
     # Cosmetic pack price range stays textual unless querying individual SKUs
 
 func _on_get_more() -> void:
@@ -69,3 +91,7 @@ func _on_get_more() -> void:
     AdManager.show_rewarded_ad("shop_get_more", func(amount: int):
         GameState.add_coins(amount)
     )
+
+func _on_limited() -> void:
+    # Open flash offer via Offers
+    Offers.accept_offer(Offers.OfferKind.FLASH)
