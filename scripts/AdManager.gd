@@ -162,7 +162,8 @@ func _ad_providers() -> Array:
         "UnityAdsBridge",
         "AdMob",
         "GoogleMobileAds",
-        "GMA"
+        "GMA",
+        "MAXAds" # placeholder for mediation stack
     ]
     for n in names:
         if Engine.has_singleton(n):

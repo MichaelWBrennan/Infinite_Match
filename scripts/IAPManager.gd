@@ -28,6 +28,8 @@ var _prices := {
     "gems_medium": 4.99,
     "gems_large": 9.99,
     "gems_huge": 19.99,
+    # Subscriptions
+    "vip_sub_monthly": 4.99,
 }
 
 func _ready() -> void:
@@ -127,6 +129,11 @@ func _grant_items_for_sku(sku: String) -> void:
         GameState.add_coins(RemoteConfig.get_int("comeback_bonus_coins", 800))
     elif sku == "season_pass_premium":
         SeasonPass.unlock_premium()
+        category = "subscription"
+    elif sku == "vip_sub_monthly":
+        GameState.set_vip_days(30)
+        GameState.purchase_remove_ads()
+        category = "subscription"
     elif sku == "gems_small":
         GameState.add_gems(RemoteConfig.get_int("gems_small_amount", 20))
     elif sku == "gems_medium":

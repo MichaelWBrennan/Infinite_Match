@@ -43,6 +43,9 @@ Teams="*res://scripts/Teams.gd"
 Tournament="*res://scripts/Tournament.gd"
 Bingo="*res://scripts/Bingo.gd"
 Haptics="*res://scripts/Haptics.gd"
+Missions="*res://scripts/Missions.gd"
+EconomyTelemetry="*res://scripts/EconomyTelemetry.gd"
+Treasure="*res://scripts/Treasure.gd"
 
 [android]
 modules/use_custom_build=true

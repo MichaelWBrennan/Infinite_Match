@@ -105,12 +105,31 @@ func fetch_and_apply() -> void:
         "team_chest_threshold": 1000,
         "team_chest_reward_coins": 500,
         "tournament_active": 1,
+        "tournament_rule": "clears", # clears | jelly | ingredients
         "tournament_reward_first": 500,
         "tournament_reward_second": 300,
         "tournament_reward_third": 200,
         # Bingo event
         "bingo_active": 0,
         "bingo_reward_per_line": 100,
+        # Missions (FTUE 30-min flow)
+        "missions_enabled": 1,
+        # Weekly chest and win-streak
+        "weekly_chest_points_step": 1000,
+        "weekly_chest_coin_reward": 500,
+        "win_streak_coin_bonus_per": 2, # coins per streak step
+        # Dynamic bundles and ladder
+        "ladder_enabled": 1,
+        "ladder_stage1_sku": "starter_pack_small",
+        "ladder_stage2_sku": "starter_pack_large",
+        "dynamic_bundle_enabled": 1,
+        # Booster mastery
+        "booster_mastery_threshold": 20,
+        "booster_mastery_upgrade_cost": 1000,
+        # Treasure trail event
+        "treasure_active": 0,
+        "treasure_steps": 10,
+        "treasure_reward_per_step": 50,
         # Developer features
         "dev_enable_editor": 0,
         # DDA (dynamic difficulty adjustment)
