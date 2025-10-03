@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "Starterpaket",
+  "offer.title.flash": "Blitzangebot",
+  "offer.title.comeback": "Rückkehrpaket",
+  "modal.buy": "Kaufen",
+  "modal.close": "Schließen",
+  "modal.daily.title": "Tägliche Belohnung",
+  "modal.continue.title": "Keine Züge mehr",
+  "modal.continue.rv": "Anzeige ansehen",
+  "modal.continue.gems": "{{amount}} Edelsteine ausgeben",
+  "season.pass": "Saisonpass",
+  "season.pass.premium": "Saisonpass (Premium)",
+  "shop.remove_ads": "Werbung entfernen",
+  "shop.starter": "Starterpaket",
+  "shop.energy_refill": "Energie auffüllen",
+  "shop.booster_bundle": "Booster-Paket",
+  "shop.coins": "+{{amount}} Münzen",
+  "shop.gems": "+{{amount}} Edelsteine"
+}

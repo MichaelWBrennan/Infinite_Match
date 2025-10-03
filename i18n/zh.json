@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "新手礼包",
+  "offer.title.flash": "限时优惠",
+  "offer.title.comeback": "回归礼包",
+  "modal.buy": "购买",
+  "modal.close": "关闭",
+  "modal.daily.title": "每日奖励",
+  "modal.continue.title": "步数用尽",
+  "modal.continue.rv": "观看广告",
+  "modal.continue.gems": "消耗{{amount}}宝石",
+  "season.pass": "赛季通行证",
+  "season.pass.premium": "赛季通行证（高级）",
+  "shop.remove_ads": "移除广告",
+  "shop.starter": "新手礼包",
+  "shop.energy_refill": "能量恢复",
+  "shop.booster_bundle": "增益包",
+  "shop.coins": "+{{amount}} 金币",
+  "shop.gems": "+{{amount}} 宝石"
+}

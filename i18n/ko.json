@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "스타터 패키지",
+  "offer.title.flash": "플래시 오퍼",
+  "offer.title.comeback": "컴백 패키지",
+  "modal.buy": "구매",
+  "modal.close": "닫기",
+  "modal.daily.title": "일일 보상",
+  "modal.continue.title": "이동 불가",
+  "modal.continue.rv": "광고 보기",
+  "modal.continue.gems": "보석 {{amount}} 사용",
+  "season.pass": "시즌 패스",
+  "season.pass.premium": "시즌 패스 (프리미엄)",
+  "shop.remove_ads": "광고 제거",
+  "shop.starter": "스타터 패키지",
+  "shop.energy_refill": "에너지 회복",
+  "shop.booster_bundle": "부스터 번들",
+  "shop.coins": "+{{amount}} 코인",
+  "shop.gems": "+{{amount}} 보석"
+}
