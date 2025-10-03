@@ -112,6 +112,8 @@ func show_interstitial(location: String) -> void:
         for provider in providers:
             if provider == null:
                 continue
+            if not (provider.has_method("show_interstitial") or provider.has_method("showInterstitial")):
+                continue
             Analytics.track_ad("Interstitial", location)
             if provider.has_method("show_interstitial"):
                 provider.show_interstitial(_interstitial_unit_id)
@@ -127,6 +129,7 @@ func show_interstitial(location: String) -> void:
         Analytics.track_ad("Interstitial", location)
         await get_tree().create_timer(0.1).timeout
         _interstitial_ready = true
+        Analytics.custom_event("interstitial_simulated", location)
 
 # Wrapper with requested API name
 func show_interstitial_ad(location: String = "break") -> void:

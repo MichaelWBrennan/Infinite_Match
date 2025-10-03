@@ -52,10 +52,11 @@ func get_price_string(sku: String) -> String:
 func purchase_item(sku: String) -> void:
     if OS.get_name() == "Android" and Engine.has_singleton("IAPBridge"):
         var iap = Engine.get_singleton("IAPBridge")
-        if iap:
+        if iap and iap.has_method("purchase"):
             _connect_iap_signals(iap)
             iap.purchase(sku)
             return
+    Analytics.custom_event("iap_fallback_purchase", sku)
     # iOS or editor fallback: simulate purchase
     await get_tree().create_timer(0.2).timeout
     _handle_purchase_success(sku, "simulated")
@@ -63,7 +64,7 @@ func purchase_item(sku: String) -> void:
 func restore_purchases() -> void:
     if OS.get_name() == "Android" and Engine.has_singleton("IAPBridge"):
         var iap = Engine.get_singleton("IAPBridge")
-        if iap:
+        if iap and iap.has_method("restore"):
             _connect_iap_signals(iap)
             iap.restore()
             return
