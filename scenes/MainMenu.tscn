@@ -50,6 +50,8 @@ text = "Events"
 
 [node name="SettingsButton" type="Button" parent="VBox"]
 text = "Settings"
+[node name="InboxButton" type="Button" parent="VBox"]
+text = "Inbox"
 [node name="LevelLabel" type="Label" parent="VBox"]
 text = "Level: 1 (Stars: 0)"
 
@@ -58,6 +60,18 @@ text = "Leaderboard"
 
 [node name="ReferButton" type="Button" parent="VBox"]
 text = "Refer a Friend"
+
+[node name="MapButton" type="Button" parent="VBox"]
+text = "World Map"
+
+[node name="TeamButton" type="Button" parent="VBox"]
+text = "Team Chest"
+
+[node name="TournamentButton" type="Button" parent="VBox"]
+text = "Tournament"
+
+[node name="EditorButton" type="Button" parent="VBox"]
+text = "Level Editor"
 
 [node name="BannerSpacer" type="Control" parent="."]
 anchor_left = 0.0

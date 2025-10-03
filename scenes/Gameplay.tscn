@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/Gameplay.gd" id="1_gd"]
 [ext_resource type="Texture2D" path="res://assets/ui/icons/heart.png" id="2"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" path="res://assets/ui/icons/shuffle.png" id="8"]
 [ext_resource type="Texture2D" path="res://assets/ui/icons/rocket.png" id="9"]
 [ext_resource type="PackedScene" path="res://scenes/PiggyHUD.tscn" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/PerformanceHUD.tscn" id="11"]
 
 [node name="Gameplay" type="Control"]
 anchor_right = 1.0
@@ -102,6 +103,7 @@ icon = ExtResource(9)
 custom_minimum_size = Vector2(72, 72)
 
 [node name="BannerSpacer" type="Control" parent="."]
+[node name="PerfHUD" parent="." instance=ExtResource("11")]
 anchor_left = 0.0
 anchor_top = 1.0
 anchor_right = 1.0

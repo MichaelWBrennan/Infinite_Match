@@ -39,6 +39,10 @@ Economy="*res://scripts/Economy.gd"
 Geo="*res://scripts/Geo.gd"
 ConsentManager="*res://scripts/ConsentManager.gd"
 IOSPriceBridge="*res://scripts/IOSPriceBridge.gd"
+Teams="*res://scripts/Teams.gd"
+Tournament="*res://scripts/Tournament.gd"
+Bingo="*res://scripts/Bingo.gd"
+Haptics="*res://scripts/Haptics.gd"
 
 [android]
 modules/use_custom_build=true

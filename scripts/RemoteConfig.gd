@@ -97,6 +97,22 @@ func fetch_and_apply() -> void:
         "review_prompt_cooldown_days": 30,
         # Booster confirmations
         "booster_confirm_enabled": 1,
+        # World map and chests
+        "world_map_chest_star_step": 25,
+        "world_map_chest_coin_reward": 200,
+        "world_map_chest_gem_reward": 5,
+        # Teams & Tournament
+        "team_chest_threshold": 1000,
+        "team_chest_reward_coins": 500,
+        "tournament_active": 1,
+        "tournament_reward_first": 500,
+        "tournament_reward_second": 300,
+        "tournament_reward_third": 200,
+        # Bingo event
+        "bingo_active": 0,
+        "bingo_reward_per_line": 100,
+        # Developer features
+        "dev_enable_editor": 0,
         # DDA (dynamic difficulty adjustment)
         "dda_fails_soften_threshold": 2,
         "dda_max_soften_steps": 3,

@@ -13,6 +13,11 @@ extends Control
 @onready var season_button: Button = $VBox/SeasonPassButton
 @onready var events_button: Button = $VBox/EventsButton
 @onready var settings_button: Button = $VBox/SettingsButton
+@onready var inbox_button: Button = $VBox/InboxButton
+@onready var map_button: Button = $VBox/MapButton
+@onready var team_button: Button = $VBox/TeamButton
+@onready var tournament_button: Button = $VBox/TournamentButton
+@onready var editor_button: Button = $VBox/EditorButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
@@ -35,6 +40,16 @@ func _ready() -> void:
     season_button.pressed.connect(_on_season)
     events_button.pressed.connect(_on_events)
     settings_button.pressed.connect(_on_settings)
+    inbox_button.pressed.connect(_on_inbox)
+    if map_button:
+        map_button.pressed.connect(_on_map)
+    if team_button:
+        team_button.pressed.connect(_on_team)
+    if tournament_button:
+        tournament_button.pressed.connect(_on_tournament)
+    if editor_button:
+        editor_button.visible = RemoteConfig.get_int("dev_enable_editor", 0) == 1
+        editor_button.pressed.connect(_on_editor)
     # Surface an offer if available at menu open
     if Engine.has_singleton("Offers"):
         Offers.offer_available.connect(func(kind, sku):
@@ -121,4 +136,24 @@ func _on_events() -> void:
 
 func _on_settings() -> void:
     var modal := load("res://scenes/SettingsModal.tscn").instantiate()
+    add_child(modal)
+
+func _on_inbox() -> void:
+    var modal := load("res://scenes/Inbox.tscn").instantiate()
+    add_child(modal)
+
+func _on_map() -> void:
+    var modal := load("res://scenes/WorldMap.tscn").instantiate()
+    add_child(modal)
+
+func _on_team() -> void:
+    var modal := load("res://scenes/TeamModal.tscn").instantiate()
+    add_child(modal)
+
+func _on_tournament() -> void:
+    var modal := load("res://scenes/Tournament.tscn").instantiate()
+    add_child(modal)
+
+func _on_editor() -> void:
+    var modal := load("res://scenes/LevelEditor.tscn").instantiate()
     add_child(modal)

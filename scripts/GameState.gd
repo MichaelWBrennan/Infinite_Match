@@ -28,6 +28,9 @@ var wins_since_review: int = 0
 var last_review_day: int = 0
 var review_prompted: bool = false
 var color_blind_mode: bool = false
+var star_chests_claimed: int = 0
+var tournament_week_seed: int = 0
+var tournament_score: int = 0
 
 var _save_path := "user://state.json"
 
@@ -38,6 +41,7 @@ func _ready() -> void:
     _tick_energy_refill()
     # Show banner on menu by default
     AdManager.show_banner("bottom")
+    _ensure_tournament_week()
 
 func add_coins(amount: int) -> void:
     coins += max(0, amount)
@@ -174,6 +178,9 @@ func _save() -> void:
     data["last_review_day"] = last_review_day
     data["review_prompted"] = review_prompted
     data["color_blind_mode"] = color_blind_mode
+    data["star_chests_claimed"] = star_chests_claimed
+    data["tournament_week_seed"] = tournament_week_seed
+    data["tournament_score"] = tournament_score
     _store_json(data)
 
 func _load() -> void:
@@ -199,6 +206,9 @@ func _load() -> void:
     last_review_day = int(data.get("last_review_day", 0))
     review_prompted = bool(data.get("review_prompted", false))
     color_blind_mode = bool(data.get("color_blind_mode", false))
+    star_chests_claimed = int(data.get("star_chests_claimed", 0))
+    tournament_week_seed = int(data.get("tournament_week_seed", 0))
+    tournament_score = int(data.get("tournament_score", 0))
     if remove_ads:
         AdManager.set_remove_ads(true)
 
@@ -263,6 +273,46 @@ func maybe_prompt_review_after_win() -> void:
 
 func set_color_blind_mode(on: bool) -> void:
     color_blind_mode = on
+    _save()
+
+# --- World map star chest ---
+func total_stars() -> int:
+    var total := 0
+    for k in level_stars.keys():
+        total += int(level_stars[k])
+    return total
+
+func can_claim_star_chest() -> bool:
+    var step := RemoteConfig.get_int("world_map_chest_star_step", 25)
+    var next_idx := star_chests_claimed + 1
+    return total_stars() >= step * next_idx
+
+func claim_star_chest() -> Dictionary:
+    if not can_claim_star_chest():
+        return {}
+    star_chests_claimed += 1
+    var coins := RemoteConfig.get_int("world_map_chest_coin_reward", 200)
+    var gems_r := RemoteConfig.get_int("world_map_chest_gem_reward", 5)
+    add_coins(coins)
+    add_gems(gems_r)
+    Analytics.custom_event("star_chest_claim", coins)
+    _save()
+    return {"coins": coins, "gems": gems_r}
+
+# --- Tournament ---
+func _current_week_seed() -> int:
+    return int(Time.get_unix_time_from_system() / (7 * 86400))
+
+func _ensure_tournament_week() -> void:
+    var seed := _current_week_seed()
+    if tournament_week_seed != seed:
+        tournament_week_seed = seed
+        tournament_score = 0
+        _save()
+
+func add_tournament_points(points: int) -> void:
+    _ensure_tournament_week()
+    tournament_score += max(0, points)
     _save()
 
 # Return whether to show interstitial on game over this session, based on remote percentage

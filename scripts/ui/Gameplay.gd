@@ -31,6 +31,8 @@ var _hint_timer := 0.0
 var _hint_interval := 6.0
 var _last_hint_positions: Array[Vector2i] = []
 var _soften_steps_applied: int = 0
+var _ftue_step: int = 0
+var _ftue_overlay: Control
 
 func _ready() -> void:
     rng.randomize()
@@ -49,6 +51,7 @@ func _ready() -> void:
     booster_rocket.pressed.connect(_on_rocket)
     _update_ui()
     set_process(true)
+    _maybe_start_ftue()
 
 func _process(delta: float) -> void:
     _hint_timer += delta
@@ -82,6 +85,8 @@ func _init_board_and_level() -> void:
 func _on_cell_pressed(pos: Vector2i) -> void:
     _hint_timer = 0.0
     _clear_hint()
+    if _ftue_block_input_except(pos):
+        pass
     if first_selected == Vector2i(-1, -1):
         first_selected = pos
         _highlight(pos, true)
@@ -97,6 +102,11 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             moves_left -= 1
             var res := _resolve_after_swap_or_combo(first_selected, pos)
             GameState.add_coins(int(res.get("cleared", 0)))
+            if int(res.get("cleared", 0)) >= 10:
+                Haptics.medium()
+            elif int(res.get("cleared", 0)) >= 3:
+                Haptics.light()
+            GameState.add_tournament_points(int(res.get("cleared", 0)))
             if Engine.has_singleton("PiggyBank"):
                 PiggyBank.on_tiles_cleared(int(res.get("cleared", 0)))
             if Engine.has_singleton("SeasonPass"):
@@ -119,6 +129,7 @@ func _on_cell_pressed(pos: Vector2i) -> void:
         _highlight(first_selected, false)
         first_selected = pos
         _highlight(first_selected, true)
+    _advance_ftue_if_needed(pos)
 
 func _swap(a: Vector2i, b: Vector2i) -> void:
     board.swap(a, b)
@@ -299,6 +310,61 @@ func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
     coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
+
+func _maybe_start_ftue() -> void:
+    if GameState.session_count_total <= 2 and GameState.get_level_stars(1) == 0:
+        _ftue_step = 1
+        _show_ftue_overlay("Swap highlighted tiles to match 3!")
+
+func _ftue_block_input_except(pos: Vector2i) -> bool:
+    if _ftue_step == 0:
+        return false
+    # On step 1, allow only a specific pair
+    if _ftue_step == 1:
+        var a := Vector2i(3, 3)
+        var b := Vector2i(4, 3)
+        if first_selected == Vector2i(-1,-1):
+            # Only allow selecting a
+            return pos != a
+        else:
+            # Only allow swapping with b
+            return not (pos == b and board.is_adjacent(first_selected, pos))
+    return false
+
+func _advance_ftue_if_needed(pos: Vector2i) -> void:
+    if _ftue_step == 1 and first_selected == Vector2i(-1,-1):
+        # After successful swap, advance tutorial
+        _ftue_step = 2
+        _show_ftue_overlay("Great! Use boosters to help when stuck.")
+        await get_tree().create_timer(1.2).timeout
+        _hide_ftue_overlay()
+        _ftue_step = 0
+
+func _show_ftue_overlay(text: String) -> void:
+    if _ftue_overlay:
+        _ftue_overlay.queue_free()
+    var panel := Panel.new()
+    panel.modulate = Color(0,0,0,0.2)
+    panel.anchor_left = 0.0
+    panel.anchor_top = 0.0
+    panel.anchor_right = 1.0
+    panel.anchor_bottom = 1.0
+    var label := Label.new()
+    label.text = text
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    label.anchor_left = 0.0
+    label.anchor_top = 0.0
+    label.anchor_right = 1.0
+    label.anchor_bottom = 1.0
+    panel.add_child(label)
+    add_child(panel)
+    _ftue_overlay = panel
+
+func _hide_ftue_overlay() -> void:
+    if _ftue_overlay:
+        _ftue_overlay.queue_free()
+        _ftue_overlay = null
 
 func _apply_dynamic_difficulty_softeners() -> void:
     _soften_steps_applied = 0
