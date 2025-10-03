@@ -268,7 +268,7 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
     var cleared := 0
     var color_counts := {}
     var jelly_cleared := 0
-    var blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0, "vines":0}
+    var blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0, "vines":0, "honey":0, "licorice":0}
     # primary clears and special creation
     for group in groups:
         var created_special := false
