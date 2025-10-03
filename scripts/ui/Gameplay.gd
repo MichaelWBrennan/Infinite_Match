@@ -14,6 +14,8 @@ const LevelManager := preload("res://scripts/LevelManager.gd")
 @onready var moves_label: Label = $TopBar/LeftCluster/MovesValue
 @onready var coins_label: Label = $TopBar/RightCluster/CoinValue
 @onready var goals_label: Label = $TopBar/RightCluster/GoalsLabel
+@onready var boss_bar: TextureProgressBar = $TopBar/BossBar
+@onready var escape_timer_label: Label = $TopBar/EscapeTimer
 @onready var booster_bomb: Button = $BottomBar/BoosterBomb
 @onready var booster_shuffle: Button = $BottomBar/BoosterShuffle
 @onready var booster_hammer: Button = $BottomBar/BoosterHammer
@@ -34,6 +36,8 @@ var _soften_steps_applied: int = 0
 var _ftue_step: int = 0
 var _ftue_overlay: Control
 var _ftue_pair: Array[Vector2i] = []
+var _boss_hp_current: int = 0
+var _escape_time_left: int = 0
 
 func _ready() -> void:
     rng.randomize()
@@ -59,6 +63,11 @@ func _process(delta: float) -> void:
     if _hint_timer >= _hint_interval:
         _hint_timer = 0.0
         _show_hint()
+    if _escape_time_left > 0:
+        _escape_time_left = max(0, _escape_time_left - int(delta))
+        _update_escape_timer()
+        if _escape_time_left == 0:
+            _on_game_over()
 
 func _apply_banner_padding() -> void:
     banner_spacer.custom_minimum_size.y = AdManager.get_banner_height_px()
@@ -82,6 +91,7 @@ func _init_board_and_level() -> void:
     tile_view.setup(grid, board, theme_provider, func(pos: Vector2i): _on_cell_pressed(pos))
     _refresh_goals_text()
     _apply_prelevel_boosters()
+    _setup_boss_and_escape()
 
 func _on_cell_pressed(pos: Vector2i) -> void:
     _hint_timer = 0.0
@@ -112,6 +122,7 @@ func _on_cell_pressed(pos: Vector2i) -> void:
                 Bingo.progress("clear_tiles", int(res.get("cleared", 0)))
             if Engine.has_singleton("Treasure") and Treasure.active:
                 Treasure.progress(int(res.get("cleared", 0)))
+            _apply_boss_damage(int(res.get("cleared", 0)))
             if Engine.has_singleton("Teams"):
                 Teams.add_points(int(res.get("cleared", 0)))
             if Engine.has_singleton("PiggyBank"):
@@ -321,6 +332,33 @@ func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
     coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
+
+func _setup_boss_and_escape() -> void:
+    _boss_hp_current = max(0, LevelManager.boss_hp_total)
+    if boss_bar:
+        boss_bar.visible = _boss_hp_current > 0
+        boss_bar.max_value = max(1, _boss_hp_current)
+        boss_bar.value = _boss_hp_current
+    _escape_time_left = max(0, LevelManager.escape_seconds)
+    if escape_timer_label:
+        escape_timer_label.visible = _escape_time_left > 0
+        _update_escape_timer()
+
+func _apply_boss_damage(amount: int) -> void:
+    if _boss_hp_current <= 0:
+        return
+    _boss_hp_current = max(0, _boss_hp_current - amount)
+    if boss_bar:
+        boss_bar.value = _boss_hp_current
+    if _boss_hp_current == 0:
+        _on_level_won()
+
+func _update_escape_timer() -> void:
+    if not escape_timer_label:
+        return
+    var m := _escape_time_left / 60
+    var s := _escape_time_left % 60
+    escape_timer_label.text = "%02d:%02d" % [m, s]
 
 func _maybe_start_ftue() -> void:
     if GameState.session_count_total <= 2 and GameState.get_level_stars(1) == 0:
