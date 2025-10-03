@@ -95,6 +95,9 @@ func fetch_and_apply() -> void:
         "store_review_url": "",
         "review_prompt_min_wins": 3,
         "review_prompt_cooldown_days": 30,
+        # CMP & ATT
+        "cmp_enabled": 1,
+        "att_prompt_enabled": 1,
         # Booster confirmations
         "booster_confirm_enabled": 1,
         # World map and chests

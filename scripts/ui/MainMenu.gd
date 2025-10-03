@@ -37,8 +37,12 @@ func _ready() -> void:
     _apply_banner_padding()
     AdManager.show_banner("bottom")
     if ConsentManager.needs_consent():
-        var cm := load("res://scenes/ConsentModal.tscn").instantiate()
-        add_child(cm)
+        if CMP.should_show_cmp():
+            var cpm := load("res://scenes/CMPModal.tscn").instantiate()
+            add_child(cpm)
+        else:
+            var cm := load("res://scenes/ConsentModal.tscn").instantiate()
+            add_child(cm)
     leaderboard_button.pressed.connect(_on_leaderboard)
     refer_button.pressed.connect(_on_refer)
     piggy_button.pressed.connect(_on_piggy)

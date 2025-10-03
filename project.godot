@@ -46,6 +46,7 @@ Haptics="*res://scripts/Haptics.gd"
 Missions="*res://scripts/Missions.gd"
 EconomyTelemetry="*res://scripts/EconomyTelemetry.gd"
 Treasure="*res://scripts/Treasure.gd"
+CMP="*res://scripts/CMP.gd"
 
 [android]
 modules/use_custom_build=true
