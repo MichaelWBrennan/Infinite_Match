@@ -17,28 +17,32 @@ extends Control
 @onready var get_more_btn: Button = $VBox/GetMore
 @onready var back_btn: Button = $VBox/Back
 @onready var limited_banner: Button = $VBox/LimitedBanner
+@onready var badge_gems_medium: Label = $VBox/BadgeGemsMedium
+@onready var badge_gems_huge: Label = $VBox/BadgeGemsHuge
 var _catalog_loaded := false
 
 func _ready() -> void:
+    Analytics.track_shop("view")
     _update_coins()
     GameState.currency_changed.connect(func(_b): _update_coins())
-    remove_ads_btn.pressed.connect(func(): IAPManager.purchase_item("remove_ads"))
-    cosmetic_btn.pressed.connect(func(): IAPManager.purchase_item("cosmetic_pack_basic"))
-    starter_btn.pressed.connect(func(): IAPManager.purchase_item("starter_pack_small"))
-    coins_small_btn.pressed.connect(func(): IAPManager.purchase_item("coins_small"))
-    coins_medium_btn.pressed.connect(func(): IAPManager.purchase_item("coins_medium"))
-    coins_large_btn.pressed.connect(func(): IAPManager.purchase_item("coins_large"))
-    coins_huge_btn.pressed.connect(func(): IAPManager.purchase_item("coins_huge"))
-    energy_refill_btn.pressed.connect(func(): IAPManager.purchase_item("energy_refill"))
-    booster_bundle_btn.pressed.connect(func(): IAPManager.purchase_item("booster_bundle"))
-    gems_small_btn.pressed.connect(func(): IAPManager.purchase_item("gems_small"))
-    gems_medium_btn.pressed.connect(func(): IAPManager.purchase_item("gems_medium"))
-    gems_large_btn.pressed.connect(func(): IAPManager.purchase_item("gems_large"))
-    gems_huge_btn.pressed.connect(func(): IAPManager.purchase_item("gems_huge"))
+    remove_ads_btn.pressed.connect(func(): _buy("remove_ads"))
+    cosmetic_btn.pressed.connect(func(): _buy("cosmetic_pack_basic"))
+    starter_btn.pressed.connect(func(): _buy("starter_pack_small"))
+    coins_small_btn.pressed.connect(func(): _buy("coins_small"))
+    coins_medium_btn.pressed.connect(func(): _buy("coins_medium"))
+    coins_large_btn.pressed.connect(func(): _buy("coins_large"))
+    coins_huge_btn.pressed.connect(func(): _buy("coins_huge"))
+    energy_refill_btn.pressed.connect(func(): _buy("energy_refill"))
+    booster_bundle_btn.pressed.connect(func(): _buy("booster_bundle"))
+    gems_small_btn.pressed.connect(func(): _buy("gems_small"))
+    gems_medium_btn.pressed.connect(func(): _buy("gems_medium"))
+    gems_large_btn.pressed.connect(func(): _buy("gems_large"))
+    gems_huge_btn.pressed.connect(func(): _buy("gems_huge"))
     get_more_btn.pressed.connect(_on_get_more)
     back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
     limited_banner.pressed.connect(_on_limited)
     _apply_price_strings()
+    _apply_badges()
 
 func _update_coins() -> void:
     coins_label.text = "Coins: %d" % GameState.coins
@@ -85,6 +89,20 @@ func _apply_price_strings() -> void:
     if gh != "":
         gems_huge_btn.text = "+%d Gems (%s)" % [RemoteConfig.get_int("gems_huge_amount", 700), gh]
     # Cosmetic pack price range stays textual unless querying individual SKUs
+
+func _apply_badges() -> void:
+    var best := RemoteConfig.get_string("best_value_sku", "gems_huge")
+    var popular := RemoteConfig.get_string("most_popular_sku", "gems_medium")
+    if badge_gems_huge:
+        badge_gems_huge.visible = (best == "gems_huge") or (popular == "gems_huge")
+        badge_gems_huge.text = (best == "gems_huge") ? "Best Value" : (popular == "gems_huge") ? "Most Popular" : ""
+    if badge_gems_medium:
+        badge_gems_medium.visible = (best == "gems_medium") or (popular == "gems_medium")
+        badge_gems_medium.text = (best == "gems_medium") ? "Best Value" : (popular == "gems_medium") ? "Most Popular" : ""
+
+func _buy(sku: String) -> void:
+    Analytics.track_shop("click", sku)
+    IAPManager.purchase_item(sku)
 
 func _on_get_more() -> void:
     # Offer rewarded ad first, fallback to offerwall

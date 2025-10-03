@@ -38,6 +38,7 @@ Notifications="*res://scripts/Notifications.gd"
 Economy="*res://scripts/Economy.gd"
 Geo="*res://scripts/Geo.gd"
 ConsentManager="*res://scripts/ConsentManager.gd"
+IOSPriceBridge="*res://scripts/IOSPriceBridge.gd"
 
 [android]
 modules/use_custom_build=true
