@@ -186,6 +186,8 @@ func _http_post_json(url: String, payload: Dictionary) -> Dictionary:
     return {"ok": (code >= 200 and code < 300), "status": code, "body": text}
 
 func _validate_receipt(sku: String, order_id: String) -> bool:
+    if Engine.has_singleton("Backend") and Backend.base_url() != "":
+        return await Backend.verify_receipt(sku, order_id, _platform_name(), _device_id(), OS.get_locale(), Engine.get_version_info().get("string", ""))
     var url := _validation_url()
     if url == "":
         return true

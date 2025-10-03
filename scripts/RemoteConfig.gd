@@ -158,7 +158,9 @@ func fetch_and_apply() -> void:
         "pity_prelevel_booster_chance_pct": 30,
         # Receipt validation
         "enable_receipt_validation": 0,
-        "receipt_validation_url": ""
+        "receipt_validation_url": "",
+        # Backend base URL (when enabled)
+        "backend_base_url": ""
     }
     _cache.merge(defaults, true)
     if Engine.has_singleton("ByteBrew"):
