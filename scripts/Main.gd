@@ -18,6 +18,7 @@ func _ready() -> void:
     RemoteConfig.set_override("rv_prelevel_booster_enabled", int(cell3.to_int()))
     AdManager.preload_all()
     _apply_performance_mode()
+    ATT.request_if_enabled()
     get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 func _apply_performance_mode() -> void:
