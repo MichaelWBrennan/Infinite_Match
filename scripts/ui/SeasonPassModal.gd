@@ -19,14 +19,14 @@ func _ready() -> void:
     _start_end_timer()
 
 func _refresh() -> void:
-    title_label.text = SeasonPass.is_premium() ? "Season Pass (Premium)" : "Season Pass"
+    title_label.text = SeasonPass.is_premium() ? Localize.t("season.pass.premium", "Season Pass (Premium)") : Localize.t("season.pass", "Season Pass")
     level_label.text = "Level %d  XP %d" % [SeasonPass.level, SeasonPass.xp]
     buy_btn.disabled = SeasonPass.is_premium()
     if not SeasonPass.is_premium():
         var price := IAPManager.get_price_string("season_pass_premium")
         if price == "":
             price = "$4.99"
-        buy_btn.text = "Buy Premium (%s)" % price
+        buy_btn.text = "%s %s" % [Localize.t("modal.buy", "Buy"), price]
 
 func _build_track() -> void:
     for c in track_root.get_children():

@@ -8,9 +8,10 @@ class_name ContinueModal
 @onready var quit_btn: Button = $Panel/VBox/Quit
 
 func _ready() -> void:
-    title_label.text = "Out of Moves"
+    title_label.text = Localize.t("modal.continue.title", "Out of Moves")
     var gem_cost := RemoteConfig.get_int("continue_gem_cost", 10)
-    gem_btn.text = "Spend %d Gems" % gem_cost
+    gem_btn.text = Localize.tf("modal.continue.gems", "Spend %d Gems" % gem_cost, {"amount": gem_cost})
+    rv_btn.text = Localize.t("modal.continue.rv", "Watch Ad")
     rv_btn.pressed.connect(_on_rv)
     gem_btn.pressed.connect(func(): _on_gems(gem_cost))
     quit_btn.pressed.connect(func(): queue_free())

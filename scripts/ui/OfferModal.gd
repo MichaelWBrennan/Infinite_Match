@@ -13,12 +13,17 @@ class_name OfferModal
 
 func _ready() -> void:
     var info := Offers.describe_offer(kind)
-    title_label.text = String(info.get("title", "Special Offer"))
+    var title_key := "offer.title.starter"
+    if kind == Offers.OfferKind.FLASH:
+        title_key = "offer.title.flash"
+    elif kind == Offers.OfferKind.COMEBACK:
+        title_key = "offer.title.comeback"
+    title_label.text = Localize.t(title_key, String(info.get("title", "Special Offer")))
     var price_text := IAPManager.get_price_string(sku)
     if price_text == "":
         price_text = "$" + str(IAPManager.get_price_usd(sku))
-    desc_label.text = "Limited time offer!"
-    price_btn.text = "Buy %s" % price_text
+    desc_label.text = Localize.t("modal.daily.title", "Limited time offer!")
+    price_btn.text = "%s %s" % [Localize.t("modal.buy", "Buy"), price_text]
     if info.has("ends_at"):
         _start_timer(int(info["ends_at"]))
     price_btn.pressed.connect(func():

@@ -12,7 +12,9 @@ func _ready() -> void:
     lang_box.clear()
     for i in range(_langs.size()):
         lang_box.add_item(_langs[i], i)
+    privacy_btn.text = Localize.t("modal.close", "Privacy Policy")
     privacy_btn.pressed.connect(func(): OS.shell_open("https://example.com/privacy"))
+    close_btn.text = Localize.t("modal.close", "Close")
     close_btn.pressed.connect(func(): queue_free())
     lang_box.item_selected.connect(func(idx):
         var code := _langs[idx]

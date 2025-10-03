@@ -49,7 +49,7 @@ func _apply_banner_padding() -> void:
     banner_spacer.custom_minimum_size.y = h
 
 func _update_coins() -> void:
-    coins_label.text = "Coins: %d" % GameState.coins
+    coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
 
 func _update_level() -> void:
     level_label.text = "Level: %d (Stars: %d)" % [GameState.get_current_level(), GameState.get_level_stars(GameState.get_current_level())]

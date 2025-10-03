@@ -228,4 +228,4 @@ func _resolve_after_swap_or_combo(a: Vector2i, b: Vector2i) -> Dictionary:
 func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
-    coins_label.text = "Coins: %d" % GameState.coins
+    coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})

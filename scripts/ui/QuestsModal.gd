@@ -20,7 +20,7 @@ func _populate() -> void:
         h.add_child(desc)
         var btn := Button.new()
         var id := String(q.get("id", ""))
-        btn.text = "Claim"
+        btn.text = Localize.t("modal.buy", "Claim")
         btn.disabled = not Quests.can_claim(id)
         btn.pressed.connect(func():
             if Quests.claim(id):

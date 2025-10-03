@@ -9,7 +9,7 @@ class_name DailyRewardModal
 
 func _ready() -> void:
     var amount := GameState.grant_daily_reward()
-    title_label.text = "Daily Reward"
-    reward_label.text = "+%d Coins" % amount
+    title_label.text = Localize.t("modal.daily.title", "Daily Reward")
+    reward_label.text = Localize.tf("shop.coins", "+%d Coins" % amount, {"amount": amount})
     claim_btn.pressed.connect(func(): queue_free())
     close_btn.pressed.connect(func(): queue_free())
