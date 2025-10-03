@@ -15,6 +15,8 @@ var locked: Array = [] # locked[y][x] -> bool (true means locked until cleared)
 var chocolate: Array = [] # chocolate[y][x] -> int presence (1 means chocolate on cell)
 var vines: Array = [] # vines[y][x] -> int presence (1 means vine on cell)
 var portals: Dictionary = {} # "x,y" -> Vector2i exit cell
+var licorice_hp: Array = [] # licorice_hp[y][x] -> int (0 = none)
+var conveyors: Dictionary = {} # "x,y" -> Vector2i next cell
 var spawn_weights: Dictionary = {} # color(int) -> weight(int)
 var drop_mode_enabled: bool = false
 var drop_exit_rows: Array[int] = [] # rows at bottom that count as exits
@@ -36,6 +38,7 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
     locked.resize(size.y)
     chocolate.resize(size.y)
     vines.resize(size.y)
+    licorice_hp.resize(size.y)
     for y in range(size.y):
         grid[y] = []
         jelly_layers[y] = []
@@ -45,6 +48,7 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
         locked[y] = []
         chocolate[y] = []
         vines[y] = []
+        licorice_hp[y] = []
         for x in range(size.x):
             holes[y].append(false)
             crate_hp[y].append(0)
@@ -52,6 +56,7 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
             locked[y].append(false)
             chocolate[y].append(0)
             vines[y].append(0)
+            licorice_hp[y].append(0)
             grid[y].append(Types.make_normal(rng.randi_range(0, num_colors - 1)))
             jelly_layers[y].append(0)
 	_resolve_initial()
@@ -336,12 +341,19 @@ func _compute_specials_to_clear() -> Array[Vector2i]:
             if Types.is_rocket(piece):
                 if piece.get("kind") == Types.PieceKind.ROCKET_H:
                     for xx in range(size.x):
-                        if not (xx == x):
-                            to_clear.append(Vector2i(xx, y))
+                        if xx == x:
+                            continue
+                        # Licorice absorbs horizontal beams; skip cell if licorice present
+                        if int(licorice_hp[y][xx]) > 0:
+                            continue
+                        to_clear.append(Vector2i(xx, y))
                 elif piece.get("kind") == Types.PieceKind.ROCKET_V:
                     for yy in range(size.y):
-                        if not (yy == y):
-                            to_clear.append(Vector2i(x, yy))
+                        if yy == y:
+                            continue
+                        if int(licorice_hp[yy][x]) > 0:
+                            continue
+                        to_clear.append(Vector2i(x, yy))
                 to_clear.append(Vector2i(x, y))
             elif Types.is_bomb(piece):
                 for yy in range(max(0, y - 1), min(size.y, y + 2)):
@@ -385,12 +397,23 @@ func _apply_gravity_and_fill() -> void:
                 continue
             if grid[y][x] != null:
                 var dest := Vector2i(x, write_y)
+                var moved := false
+                # Portals: redirect to exit if available
                 var exit := _portal_exit_if_any(dest)
                 if exit != null and _in_bounds(exit) and not _is_hole(exit) and grid[exit.y][exit.x] == null:
                     grid[exit.y][exit.x] = grid[y][x]
                     if y != exit.y or x != exit.x:
                         grid[y][x] = null
-                else:
+                    moved = true
+                # Conveyors: advance piece along conveyor chain if configured
+                if not moved:
+                    var next := _conveyor_next_if_any(dest)
+                    if next != null and _in_bounds(next) and not _is_hole(next) and grid[next.y][next.x] == null:
+                        grid[next.y][next.x] = grid[y][x]
+                        if y != next.y or x != next.x:
+                            grid[y][x] = null
+                        moved = true
+                if not moved:
                     grid[write_y][x] = grid[y][x]
                     if write_y != y:
                         grid[y][x] = null
@@ -406,9 +429,16 @@ func _apply_gravity_and_fill() -> void:
                 piece = Types.make_ingredient()
             else:
                 piece = Types.make_normal(_choose_spawn_color())
+            var placed := false
             if exit2 != null and _in_bounds(exit2) and not _is_hole(exit2) and grid[exit2.y][exit2.x] == null:
                 grid[exit2.y][exit2.x] = piece
-            else:
+                placed = true
+            if not placed:
+                var next2 := _conveyor_next_if_any(dest2)
+                if next2 != null and _in_bounds(next2) and not _is_hole(next2) and grid[next2.y][next2.x] == null:
+                    grid[next2.y][next2.x] = piece
+                    placed = true
+            if not placed:
                 grid[write_y][x] = piece
             write_y -= 1
 
@@ -465,6 +495,12 @@ func _damage_blockers_or_clear_at(p: Vector2i, out_counts: Dictionary) -> bool:
     if int(chocolate[p.y][p.x]) > 0:
         chocolate[p.y][p.x] = 0
         out_counts["chocolate"] = int(out_counts.get("chocolate", 0)) + 1
+        return true
+    # Licorice decrements when hit and absorbs stripes/rockets without letting them pass
+    if int(licorice_hp[p.y][p.x]) > 0:
+        licorice_hp[p.y][p.x] = max(0, int(licorice_hp[p.y][p.x]) - 1)
+        if licorice_hp[p.y][p.x] == 0:
+            out_counts["licorice"] = int(out_counts.get("licorice", 0)) + 1
         return true
     return false
 
@@ -713,6 +749,15 @@ func _portal_exit_if_any(p: Vector2i) -> Vector2i:
     var key := _portal_key(p)
     if portals.has(key):
         return portals[key]
+    return null
+
+func _conveyor_key(p: Vector2i) -> String:
+    return str(p.x) + "," + str(p.y)
+
+func _conveyor_next_if_any(p: Vector2i) -> Vector2i:
+    var key := _conveyor_key(p)
+    if conveyors.has(key):
+        return conveyors[key]
     return null
 
 func set_vine(p: Vector2i, present: bool) -> void:
