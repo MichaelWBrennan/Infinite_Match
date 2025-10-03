@@ -73,6 +73,9 @@ text = "World Map"
 [node name="TeamButton" type="Button" parent="VBox"]
 text = "Team Chest"
 
+[node name="TeamLivesButton" type="Button" parent="VBox"]
+text = "Team Lives"
+
 [node name="TournamentButton" type="Button" parent="VBox"]
 text = "Tournament"
 
@@ -87,6 +90,9 @@ text = "Treasure Trail"
 
 [node name="BoosterMasteryButton" type="Button" parent="VBox"]
 text = "Booster Mastery"
+
+[node name="BingoButton" type="Button" parent="VBox"]
+text = "Bingo"
 
 [node name="BannerSpacer" type="Control" parent="."]
 anchor_left = 0.0

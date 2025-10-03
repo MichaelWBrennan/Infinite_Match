@@ -18,11 +18,13 @@ extends Control
 @onready var inbox_button: Button = $VBox/InboxButton
 @onready var map_button: Button = $VBox/MapButton
 @onready var team_button: Button = $VBox/TeamButton
+@onready var team_lives_button: Button = $VBox/TeamLivesButton
 @onready var tournament_button: Button = $VBox/TournamentButton
 @onready var editor_button: Button = $VBox/EditorButton
 @onready var weekly_button: Button = $VBox/WeeklyChestButton
 @onready var treasure_button: Button = $VBox/TreasureButton
 @onready var mastery_button: Button = $VBox/BoosterMasteryButton
+@onready var bingo_button: Button = $VBox/BingoButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
@@ -56,6 +58,8 @@ func _ready() -> void:
         map_button.pressed.connect(_on_map)
     if team_button:
         team_button.pressed.connect(_on_team)
+    if team_lives_button:
+        team_lives_button.pressed.connect(_on_team_lives)
     if tournament_button:
         tournament_button.pressed.connect(_on_tournament)
     if editor_button:
@@ -67,6 +71,8 @@ func _ready() -> void:
         treasure_button.pressed.connect(_on_treasure)
     if mastery_button:
         mastery_button.pressed.connect(_on_mastery)
+    if bingo_button:
+        bingo_button.pressed.connect(_on_bingo)
     # Surface an offer if available at menu open
     if Engine.has_singleton("Offers"):
         Offers.offer_available.connect(func(kind, sku):
@@ -175,6 +181,10 @@ func _on_team() -> void:
     var modal := load("res://scenes/TeamModal.tscn").instantiate()
     add_child(modal)
 
+func _on_team_lives() -> void:
+    var modal := load("res://scenes/TeamLives.tscn").instantiate()
+    add_child(modal)
+
 func _on_tournament() -> void:
     var modal := load("res://scenes/Tournament.tscn").instantiate()
     add_child(modal)
@@ -193,4 +203,8 @@ func _on_treasure() -> void:
 
 func _on_mastery() -> void:
     var modal := load("res://scenes/BoosterMastery.tscn").instantiate()
+    add_child(modal)
+
+func _on_bingo() -> void:
+    var modal := load("res://scenes/Bingo.tscn").instantiate()
     add_child(modal)

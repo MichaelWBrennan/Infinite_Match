@@ -35,3 +35,16 @@ func most_popular_sku() -> String:
     if payer_state() == "nonpayer" and ad_engagement() == "engaged":
         return "coins_medium"
     return base
+
+func fetch_and_apply_overrides() -> void:
+    if not Engine.has_singleton("Backend"):
+        return
+    var profile := {
+        "payer": payer_state(),
+        "skill": skill_tier(),
+        "ad": ad_engagement(),
+        "region": region()
+    }
+    var segs := await Backend.get_segments(profile)
+    for k in segs.keys():
+        RemoteConfig.set_override(String(k), segs[k])
