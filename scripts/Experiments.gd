@@ -18,6 +18,12 @@ func get_variant(name: String, variants: Array[String]) -> String:
     _save()
     return v
 
+func get_variant_and_track(name: String, variants: Array[String]) -> String:
+    var v := get_variant(name, variants)
+    if Engine.has_singleton("Analytics"):
+        Analytics.custom_event("exp_assign", name + ":" + v)
+    return v
+
 func _load() -> void:
     var f := FileAccess.open(_save_path, FileAccess.READ)
     if f:

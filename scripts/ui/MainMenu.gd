@@ -66,6 +66,8 @@ func _on_start() -> void:
         )
     else:
         get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
+    # Schedule a gentle return notification
+    Notifications.schedule_lapsed_return(3)
 
 func _on_daily() -> void:
     var modal := load("res://scenes/DailyRewardModal.tscn").instantiate()

@@ -8,6 +8,7 @@ var _initialized := false
 var _interstitials_shown_today := 0
 var _last_interstitial_close_time_ms: int = 0
 var _rewarded_today := 0
+var _session_start_ts: int = 0
 
 func _ready() -> void:
     _try_init()
@@ -17,6 +18,7 @@ func _try_init() -> void:
         return
     if Engine.has_singleton("ByteBrew"):
         _initialized = true
+        _session_start_ts = Time.get_ticks_msec()
     # iOS ByteBrew entry autoload will call into native once configured by export settings.
 
 static func track_session_start() -> void:
@@ -48,6 +50,9 @@ static func track_offer(event: String, kind: String, sku: String = "") -> void:
 static func track_shop(event: String, sku: String = "") -> void:
     ByteBrewBridge.custom_event("shop_" + event, sku)
 
+static func custom_event(name: String, value: Variant = null) -> void:
+    ByteBrewBridge.custom_event(name, value)
+
 static func track_piggy(amount: int, max_amount: int) -> void:
     ByteBrewBridge.custom_event("piggy_amount", amount)
     ByteBrewBridge.custom_event("piggy_max", max_amount)
@@ -65,6 +70,24 @@ static func mark_interstitial_closed() -> void:
 
 static func track_arpdau(arpdau_usd: float) -> void:
     ByteBrewBridge.custom_event("arpdau_usd", arpdau_usd)
+
+static func track_economy(source: String, kind: String, amount: int) -> void:
+    ByteBrewBridge.custom_event("econ_" + source + "_" + kind, amount)
+
+static func track_level_result(level_id: int, won: bool, moves_left: int, cleared: int, cascades: int) -> void:
+    var d := {
+        "level": level_id,
+        "won": won ? 1 : 0,
+        "moves_left": moves_left,
+        "cleared": cleared,
+        "cascades": cascades
+    }
+    ByteBrewBridge.custom_event("level_result", JSON.stringify(d))
+
+static func session_duration_seconds() -> float:
+    if _session_start_ts <= 0:
+        return 0.0
+    return float(Time.get_ticks_msec() - _session_start_ts) / 1000.0
 
 static func _track_retention_markers() -> void:
     if not Engine.has_singleton("ByteBrew"):

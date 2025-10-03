@@ -3,5 +3,18 @@ extends Node
 func _ready() -> void:
     Analytics.track_session_start()
     RemoteConfig.fetch_and_apply()
+    # Lightweight experiment-driven overrides
+    var cell1 := Experiments.get_variant_and_track("pricing_badges", ["control", "best_anchor", "decoy"])
+    match cell1:
+        "best_anchor":
+            RemoteConfig.set_override("best_value_sku", "gems_huge")
+        "decoy":
+            RemoteConfig.set_override("most_popular_sku", "gems_large")
+        _:
+            pass
+    var cell2 := Experiments.get_variant_and_track("interstitial_pct", ["66", "50", "80"]) # strings to int
+    RemoteConfig.set_override("interstitial_on_gameover_pct", int(cell2.to_int()))
+    var cell3 := Experiments.get_variant_and_track("rv_prelevel_booster", ["1", "0"]) # enable/disable
+    RemoteConfig.set_override("rv_prelevel_booster_enabled", int(cell3.to_int()))
     AdManager.preload_all()
     get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")

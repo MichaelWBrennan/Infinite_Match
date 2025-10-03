@@ -21,6 +21,9 @@ func fetch_and_apply() -> void:
         "reward_continue": 5,
         "reward_level_win": 10,
         "reward_shop_get_more": 10,
+        # Rewarded placements toggles
+        "rv_prelevel_booster_enabled": 1,
+        "rv_double_win_enabled": 1,
         "interstitial_interval": 45,
         "interstitial_cooldown_min_s": 120,
         "interstitial_cooldown_max_s": 180,
@@ -36,6 +39,8 @@ func fetch_and_apply() -> void:
         # Timers
         "flash_offer_seconds": 3600,
         "season_end_epoch": 0,
+        "season_active": "0",
+        "season_name": "",
         # Ad units (replace remotely on prod)
         "ad_rewarded_android": "ca-app-pub-3940256099942544/5224354917",
         "ad_interstitial_android": "ca-app-pub-3940256099942544/1033173712",
@@ -49,6 +54,7 @@ func fetch_and_apply() -> void:
         "energy_max": 5,
         "energy_refill_minutes": 20,
         "daily_reward_base": 50,
+        "continue_gem_cost": 10,
         # Piggy bank
         "piggy_enabled": 1,
         "piggy_max": 5000,
@@ -80,7 +86,25 @@ func fetch_and_apply() -> void:
         # Season pass config
         "season_levels": 30,
         "season_free_coin_base": 50,
-        "season_premium_coin_base": 100
+        "season_premium_coin_base": 100,
+        # Storefront decorations
+        "best_value_sku": "gems_huge",
+        "most_popular_sku": "gems_medium",
+        # In-app review
+        "store_review_url": "",
+        "review_prompt_min_wins": 3,
+        "review_prompt_cooldown_days": 30,
+        # Booster confirmations
+        "booster_confirm_enabled": 1,
+        # DDA (dynamic difficulty adjustment)
+        "dda_fails_soften_threshold": 2,
+        "dda_max_soften_steps": 3,
+        "dda_moves_bonus_per_step": 3,
+        "dda_reduce_colors_per_step": 0,
+        "pity_prelevel_booster_chance_pct": 30,
+        # Receipt validation
+        "enable_receipt_validation": 0,
+        "receipt_validation_url": ""
     }
     _cache.merge(defaults, true)
     if Engine.has_singleton("ByteBrew"):

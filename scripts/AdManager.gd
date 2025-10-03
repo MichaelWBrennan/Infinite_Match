@@ -195,6 +195,10 @@ func show_banner(position: String = "bottom") -> void:
     if _remove_ads:
         return
     var provider = _ad_provider()
+    # Respect remote config to disable banners for payers
+    if GameState.ever_purchased and RemoteConfig.get_int("disable_banners_for_payers", 1) == 1:
+        _banner_visible = false
+        return
     if provider and _banner_unit_id != "":
         if provider.has_method("showBanner"):
             provider.showBanner(_banner_unit_id, position)

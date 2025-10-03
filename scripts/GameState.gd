@@ -23,6 +23,11 @@ var current_level: int = 1
 var level_stars: Dictionary = {} # level_id -> stars (0-3)
 var level_best_score: Dictionary = {} # level_id -> best score
 var booster_inventory: Dictionary = {"pre_bomb": 0, "pre_rocket": 0, "pre_color_bomb": 0, "hammer": 0, "shuffle": 0, "bomb": 0, "rocket": 0}
+var fail_streak_by_level: Dictionary = {} # level_id -> consecutive fails
+var wins_since_review: int = 0
+var last_review_day: int = 0
+var review_prompted: bool = false
+var color_blind_mode: bool = false
 
 var _save_path := "user://state.json"
 
@@ -38,12 +43,16 @@ func add_coins(amount: int) -> void:
     coins += max(0, amount)
     currency_changed.emit(coins)
     _save()
+    ByteBrewBridge.custom_event("coins_added", amount)
+    ByteBrewBridge.custom_event("coins_balance", coins)
 
 func spend_coins(amount: int) -> bool:
     if coins >= amount:
         coins -= amount
         currency_changed.emit(coins)
         _save()
+        ByteBrewBridge.custom_event("coins_spent", amount)
+        ByteBrewBridge.custom_event("coins_balance", coins)
         return true
     return false
 
@@ -51,12 +60,16 @@ func add_gems(amount: int) -> void:
     gems += max(0, amount)
     gems_changed.emit(gems)
     _save()
+    ByteBrewBridge.custom_event("gems_added", amount)
+    ByteBrewBridge.custom_event("gems_balance", gems)
 
 func spend_gems(amount: int) -> bool:
     if gems >= amount:
         gems -= amount
         gems_changed.emit(gems)
         _save()
+        ByteBrewBridge.custom_event("gems_spent", amount)
+        ByteBrewBridge.custom_event("gems_balance", gems)
         return true
     return false
 
@@ -70,6 +83,8 @@ func consume_energy(cost: int = 1) -> bool:
         energy_current -= cost
         energy_changed.emit(energy_current, energy_max)
         _save()
+        ByteBrewBridge.custom_event("energy_spent", cost)
+        ByteBrewBridge.custom_event("energy_balance", energy_current)
         return true
     return false
 
@@ -77,6 +92,8 @@ func refill_energy() -> void:
     energy_current = energy_max
     energy_changed.emit(energy_current, energy_max)
     _save()
+    ByteBrewBridge.custom_event("energy_refill", energy_max)
+    ByteBrewBridge.custom_event("energy_balance", energy_current)
 
 func _tick_energy_refill() -> void:
     var refill_minutes := RemoteConfig.get_int("energy_refill_minutes", 20)
@@ -152,6 +169,11 @@ func _save() -> void:
     data["level_stars"] = level_stars
     data["level_best_score"] = level_best_score
     data["booster_inventory"] = booster_inventory
+    data["fail_streak_by_level"] = fail_streak_by_level
+    data["wins_since_review"] = wins_since_review
+    data["last_review_day"] = last_review_day
+    data["review_prompted"] = review_prompted
+    data["color_blind_mode"] = color_blind_mode
     _store_json(data)
 
 func _load() -> void:
@@ -172,6 +194,11 @@ func _load() -> void:
     level_stars = data.get("level_stars", {})
     level_best_score = data.get("level_best_score", {})
     booster_inventory = data.get("booster_inventory", booster_inventory)
+    fail_streak_by_level = data.get("fail_streak_by_level", {})
+    wins_since_review = int(data.get("wins_since_review", 0))
+    last_review_day = int(data.get("last_review_day", 0))
+    review_prompted = bool(data.get("review_prompted", false))
+    color_blind_mode = bool(data.get("color_blind_mode", false))
     if remove_ads:
         AdManager.set_remove_ads(true)
 
@@ -198,6 +225,44 @@ func _track_session() -> void:
         last_seen_day = today
     sessions_today += 1
     session_count_total += 1
+    _save()
+
+# --- Difficulty and review utilities ---
+func register_level_win(level_id: int) -> void:
+    var key := str(level_id)
+    fail_streak_by_level[key] = 0
+    wins_since_review += 1
+    _save()
+
+func register_level_fail(level_id: int) -> void:
+    var key := str(level_id)
+    fail_streak_by_level[key] = int(fail_streak_by_level.get(key, 0)) + 1
+    _save()
+
+func get_fail_streak(level_id: int) -> int:
+    return int(fail_streak_by_level.get(str(level_id), 0))
+
+func maybe_prompt_review_after_win() -> void:
+    if review_prompted:
+        return
+    var min_wins := RemoteConfig.get_int("review_prompt_min_wins", 3)
+    if wins_since_review < min_wins:
+        return
+    var cool_days := RemoteConfig.get_int("review_prompt_cooldown_days", 30)
+    var today := int(Time.get_unix_time_from_system() / 86400)
+    if last_review_day > 0 and (today - last_review_day) < cool_days:
+        return
+    var url := RemoteConfig.get_string("store_review_url", "")
+    if url == "":
+        return
+    OS.shell_open(url)
+    last_review_day = today
+    review_prompted = true
+    wins_since_review = 0
+    _save()
+
+func set_color_blind_mode(on: bool) -> void:
+    color_blind_mode = on
     _save()
 
 # Return whether to show interstitial on game over this session, based on remote percentage

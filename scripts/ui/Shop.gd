@@ -99,6 +99,7 @@ func _apply_badges() -> void:
     if badge_gems_medium:
         badge_gems_medium.visible = (best == "gems_medium") or (popular == "gems_medium")
         badge_gems_medium.text = (best == "gems_medium") ? "Best Value" : (popular == "gems_medium") ? "Most Popular" : ""
+    # Optional time-limited banner styling can be driven by remote config too
 
 func _buy(sku: String) -> void:
     Analytics.track_shop("click", sku)

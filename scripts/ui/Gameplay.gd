@@ -30,6 +30,7 @@ var show_interstitial_on_gameover := false
 var _hint_timer := 0.0
 var _hint_interval := 6.0
 var _last_hint_positions: Array[Vector2i] = []
+var _soften_steps_applied: int = 0
 
 func _ready() -> void:
     rng.randomize()
@@ -71,6 +72,7 @@ func _init_board_and_level() -> void:
     var seed := int(hash([day_seed, GameState.session_count_total, randi()])) & 0x7fffffff
     board = LevelGenerator.generate(LevelManager.board_size, LevelManager.num_colors, seed)
     LevelManager.apply_level_to_board(board)
+    _apply_dynamic_difficulty_softeners()
     tile_view = TileView.new()
     add_child(tile_view)
     tile_view.setup(grid, board, theme_provider, func(pos: Vector2i): _on_cell_pressed(pos))
@@ -160,8 +162,9 @@ func _refresh_all_buttons() -> void:
     tile_view._update_all_textures()
 
 func _on_bomb() -> void:
+    if not _confirm_booster_if_needed("Bomb"):
+        return
     if GameState.booster_consume("bomb", 1) or GameState.spend_coins(Economy.booster_cost("bomb")):
-        # Convert random normal cell into a bomb, then resolve
         var cx := rng.randi_range(1, GRID_SIZE.x - 2)
         var cy := rng.randi_range(1, GRID_SIZE.y - 2)
         var Types = preload("res://scripts/match3/Types.gd")
@@ -175,8 +178,9 @@ func _on_bomb() -> void:
         tile_view._update_all_textures()
 
 func _on_hammer() -> void:
+    if not _confirm_booster_if_needed("Hammer"):
+        return
     if GameState.booster_consume("hammer", 1) or GameState.spend_coins(Economy.booster_cost("hammer")):
-        # remove a random tile
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         board.set_piece(p, null)
         var res := board.resolve_board()
@@ -185,11 +189,15 @@ func _on_hammer() -> void:
         tile_view._update_all_textures()
 
 func _on_shuffle() -> void:
+    if not _confirm_booster_if_needed("Shuffle"):
+        return
     if GameState.booster_consume("shuffle", 1) or GameState.spend_coins(Economy.booster_cost("shuffle")):
         board.shuffle_random()
         tile_view._update_all_textures()
 
 func _on_rocket() -> void:
+    if not _confirm_booster_if_needed("Rocket"):
+        return
     if GameState.booster_consume("rocket", 1) or GameState.spend_coins(Economy.booster_cost("rocket")):
         var Types = preload("res://scripts/match3/Types.gd")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
@@ -200,6 +208,19 @@ func _on_rocket() -> void:
         LevelManager.on_resolve_result(res)
         GameState.add_coins(int(res.get("cleared", 0)))
         tile_view._update_all_textures()
+
+func _confirm_booster_if_needed(name: String) -> bool:
+    if RemoteConfig.get_int("booster_confirm_enabled", 1) != 1:
+        return true
+    var dlg := ConfirmationDialog.new()
+    dlg.title = Localize.t("booster.confirm.title", "Use Booster?")
+    dlg.dialog_text = Localize.t("booster.confirm.desc", "Use %s now?" % name)
+    add_child(dlg)
+    var result := false
+    dlg.confirmed.connect(func(): result = true)
+    dlg.popup_centered()
+    await dlg.tree_exited # Wait close
+    return result
 
 func _apply_prelevel_boosters() -> void:
     # Optionally place pre-level boosters
@@ -227,6 +248,7 @@ func _on_rewarded() -> void:
 func _on_game_over() -> void:
     if show_interstitial_on_gameover:
         AdManager.show_interstitial_ad("game_over")
+    GameState.register_level_fail(LevelManager.current_level_id)
     var modal := load("res://scenes/ContinueModal.tscn").instantiate()
     add_child(modal)
 
@@ -234,6 +256,8 @@ func _on_level_won() -> void:
     var score := GameState.coins # simplistic: use coins as session score proxy
     var stars := LevelManager.stars_for_score(score)
     GameState.complete_level(LevelManager.current_level_id, score, stars)
+    GameState.register_level_win(LevelManager.current_level_id)
+    GameState.maybe_prompt_review_after_win()
     # Offer RV double-win if enabled
     var allow_double := RemoteConfig.get_int("rv_double_win_enabled", 1) == 1
     if allow_double:
@@ -275,6 +299,28 @@ func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
     coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
+
+func _apply_dynamic_difficulty_softeners() -> void:
+    _soften_steps_applied = 0
+    var fails := GameState.get_fail_streak(LevelManager.current_level_id)
+    var threshold := RemoteConfig.get_int("dda_fails_soften_threshold", 2)
+    if fails < threshold:
+        return
+    var max_steps := RemoteConfig.get_int("dda_max_soften_steps", 3)
+    var steps := clamp(fails - threshold + 1, 1, max_steps)
+    # Apply moves bonus
+    var bonus_per := RemoteConfig.get_int("dda_moves_bonus_per_step", 3)
+    moves_left += steps * bonus_per
+    # Optionally reduce colors
+    var reduce_colors := RemoteConfig.get_int("dda_reduce_colors_per_step", 0)
+    if reduce_colors > 0:
+        var new_colors := max(3, LevelManager.num_colors - steps * reduce_colors)
+        board.num_colors = new_colors
+    # Pity prelevel booster chance
+    var pct := clamp(RemoteConfig.get_int("pity_prelevel_booster_chance_pct", 30), 0, 100)
+    if (randi() % 100) < pct:
+        GameState.booster_add("pre_color_bomb", 1)
+    _soften_steps_applied = steps
 
 func _find_any_hint() -> Array[Vector2i]:
     # Try all adjacent swaps and return first that yields a match
