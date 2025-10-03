@@ -44,6 +44,12 @@ func get_price_string(sku: String) -> String:
             var s = str(iap.getPriceString(sku))
             if s != "":
                 return s
+    if OS.get_name() == "iOS":
+        # Fallback to remote-config provided localized price if present
+        var key := "price_ios_" + sku
+        var rc := RemoteConfig.get_string(key, "")
+        if rc != "":
+            return rc
     var usd := get_price_usd(sku)
     if usd > 0.0:
         return "$%.2f" % usd
