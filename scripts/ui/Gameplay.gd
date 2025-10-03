@@ -33,6 +33,7 @@ var _last_hint_positions: Array[Vector2i] = []
 var _soften_steps_applied: int = 0
 var _ftue_step: int = 0
 var _ftue_overlay: Control
+var _ftue_pair: Array[Vector2i] = []
 
 func _ready() -> void:
     rng.randomize()
@@ -86,7 +87,7 @@ func _on_cell_pressed(pos: Vector2i) -> void:
     _hint_timer = 0.0
     _clear_hint()
     if _ftue_block_input_except(pos):
-        pass
+        return
     if first_selected == Vector2i(-1, -1):
         first_selected = pos
         _highlight(pos, true)
@@ -107,6 +108,10 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             elif int(res.get("cleared", 0)) >= 3:
                 Haptics.light()
             GameState.add_tournament_points(int(res.get("cleared", 0)))
+            if Engine.has_singleton("Bingo"):
+                Bingo.progress("clear_tiles", int(res.get("cleared", 0)))
+            if Engine.has_singleton("Teams"):
+                Teams.add_points(int(res.get("cleared", 0)))
             if Engine.has_singleton("PiggyBank"):
                 PiggyBank.on_tiles_cleared(int(res.get("cleared", 0)))
             if Engine.has_singleton("SeasonPass"):
@@ -314,6 +319,12 @@ func _update_ui() -> void:
 func _maybe_start_ftue() -> void:
     if GameState.session_count_total <= 2 and GameState.get_level_stars(1) == 0:
         _ftue_step = 1
+        # Use a real hint pair if possible
+        var hint := _find_any_hint()
+        if hint.size() == 2:
+            _ftue_pair = hint
+            _highlight(hint[0], true)
+            _highlight(hint[1], true)
         _show_ftue_overlay("Swap highlighted tiles to match 3!")
 
 func _ftue_block_input_except(pos: Vector2i) -> bool:
@@ -321,14 +332,13 @@ func _ftue_block_input_except(pos: Vector2i) -> bool:
         return false
     # On step 1, allow only a specific pair
     if _ftue_step == 1:
-        var a := Vector2i(3, 3)
-        var b := Vector2i(4, 3)
-        if first_selected == Vector2i(-1,-1):
-            # Only allow selecting a
-            return pos != a
-        else:
-            # Only allow swapping with b
-            return not (pos == b and board.is_adjacent(first_selected, pos))
+        if _ftue_pair.size() == 2:
+            var a := _ftue_pair[0]
+            var b := _ftue_pair[1]
+            if first_selected == Vector2i(-1,-1):
+                return pos != a
+            else:
+                return not (pos == b and board.is_adjacent(first_selected, pos))
     return false
 
 func _advance_ftue_if_needed(pos: Vector2i) -> void:
@@ -338,6 +348,10 @@ func _advance_ftue_if_needed(pos: Vector2i) -> void:
         _show_ftue_overlay("Great! Use boosters to help when stuck.")
         await get_tree().create_timer(1.2).timeout
         _hide_ftue_overlay()
+        if _ftue_pair.size() == 2:
+            _highlight(_ftue_pair[0], false)
+            _highlight(_ftue_pair[1], false)
+            _ftue_pair.clear()
         _ftue_step = 0
 
 func _show_ftue_overlay(text: String) -> void:
