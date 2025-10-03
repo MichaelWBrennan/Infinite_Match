@@ -224,9 +224,14 @@ func on_resolve_result(result: Dictionary) -> void:
 		elif str(g.get("type", "")) == "clear_jelly":
 			var add_j := int(result.get("jelly_cleared", 0))
 			goals_progress["clear_jelly"] = int(goals_progress.get("clear_jelly", 0)) + add_j
-        elif str(g.get("type", "")) == "deliver_ingredients":
+			# Event progress hooks
+			if Engine.has_singleton("Bingo") and add_j > 0:
+				Bingo.progress("clear_jelly", add_j)
+		elif str(g.get("type", "")) == "deliver_ingredients":
             var add_i := int(result.get("ingredients_delivered", 0))
             goals_progress["deliver_ingredients"] = int(goals_progress.get("deliver_ingredients", 0)) + add_i
+			if Engine.has_singleton("Bingo") and add_i > 0:
+				Bingo.progress("deliver_ingredients", add_i)
 	goals_updated.emit(goals_progress)
 
 func goals_completed() -> bool:
