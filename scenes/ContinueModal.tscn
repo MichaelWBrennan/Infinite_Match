@@ -32,5 +32,8 @@ text = "Watch Ad"
 [node name="Gems" type="Button" parent="Panel/VBox"]
 text = "Spend Gems"
 
+[node name="Bundle" type="Button" parent="Panel/VBox"]
+text = "Rescue Bundle ($0.99)"
+
 [node name="Quit" type="Button" parent="Panel/VBox"]
 text = "Quit"

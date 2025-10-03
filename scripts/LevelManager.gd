@@ -106,6 +106,8 @@ func _init_goals_progress() -> void:
                 goals_progress["clear_vines"] = 0
             "clear_licorice":
                 goals_progress["clear_licorice"] = 0
+            "clear_honey":
+                goals_progress["clear_honey"] = 0
             "deliver_ingredients":
                 goals_progress["deliver_ingredients"] = 0
 			_:

@@ -13,6 +13,7 @@ var blocker_overlays: Array = [] # crate/ice/lock/chocolate overlays
 var vine_overlays: Array = [] # vines overlays
 var licorice_overlays: Array = [] # licorice overlays
 var conveyor_overlays: Array = [] # arrows
+var portal_overlays: Array = [] # portal markers
 var color_blind_symbols: Array[Texture2D] = []
 
 func setup(container: GridContainer, match3_board, theme_provider, pressed_cb: Callable) -> void:
@@ -30,6 +31,7 @@ func _render_all() -> void:
     vine_overlays.resize(board.size.y)
     licorice_overlays.resize(board.size.y)
     conveyor_overlays.resize(board.size.y)
+    portal_overlays.resize(board.size.y)
     grid_container.columns = board.size.x
     for child in grid_container.get_children():
         child.queue_free()
@@ -40,6 +42,7 @@ func _render_all() -> void:
         vine_overlays[y] = []
         licorice_overlays[y] = []
         conveyor_overlays[y] = []
+        portal_overlays[y] = []
 		for x in range(board.size.x):
 			var btn := Button.new()
 			btn.focus_mode = Control.FOCUS_NONE
@@ -95,6 +98,15 @@ func _render_all() -> void:
             co.visible = false
             conveyor_overlays[y].append(co)
             btn.add_child(co)
+            # Portal dot marker
+            var po := Label.new()
+            po.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            po.text = "●"
+            po.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+            po.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+            po.visible = false
+            portal_overlays[y].append(po)
+            btn.add_child(po)
 	_update_all_textures()
 
 func update_cell(p: Vector2i) -> void:
@@ -213,6 +225,7 @@ func _update_all_textures() -> void:
 			_update_vine_overlay(Vector2i(x2, y2))
 			_update_licorice_overlay(Vector2i(x2, y2))
 			_update_conveyor_overlay(Vector2i(x2, y2))
+			_update_portal_overlay(Vector2i(x2, y2))
 
 func highlight(p: Vector2i, on: bool) -> void:
 	var btn: Button = buttons[p.y][p.x]
@@ -282,6 +295,16 @@ func _update_conveyor_overlay(p: Vector2i) -> void:
             elif dy == 1: lab.rotation_degrees = 90
             elif dy == -1: lab.rotation_degrees = 270
             lab.visible = true
+
+func _update_portal_overlay(p: Vector2i) -> void:
+    if portal_overlays.is_empty():
+        return
+    var po: Label = portal_overlays[p.y][p.x]
+    po.visible = false
+    if board != null:
+        var key := str(p.x)+","+str(p.y)
+        if board.portals.has(key):
+            po.visible = true
 
 func _update_jelly_overlay(p: Vector2i) -> void:
     var overlay: Control = jelly_overlays[p.y][p.x]

@@ -1,5 +1,22 @@
-# ByteBrewGoDotSDK
- ByteBrew is the free easy to integrate GoDot Android SDK that provides your game with Real-Time Analytic Tracking, Monetization Tracking, Attribution, Remote Configs and A/B Testing.
+# Evergreen Match-3 Platform
+
+This repository is a scalable, live-ops-ready Match-3 platform built on Godot 4.x, upgraded to compete with top-grossing titles.
+
+## Quick start
+- Godot 4.x is required.
+- Open project in Godot and run `scenes/MainMenu.tscn`.
+- Levels live in `config/levels/*.json`. Try demo: `level_101` (vines/portals), `level_102` (conveyors), `level_103` (licorice), `level_104` (honey).
+
+## Features
+- Advanced match-3 engine: rockets, bombs, color bombs; special combos; blockers (jelly, crates, ice, locks, chocolate, vines, licorice, honey); portals; conveyors; ingredients; goals and star thresholds.
+- Live ops: tournaments, offers (starter/comeback/flash), battle pass, piggy, events calendar; full remote-config keys.
+- Monetization: energy, rewarded ads, interstitials, offerwall, IAP catalog (coins/gems/passes), rescue bundle.
+- Analytics: ByteBrew bridge; adapters ready for Firebase/GameAnalytics.
+- Data-driven: JSON levels and spawn weights, remote overrides, i18n.
+
+## Docs
+See `/docs/architecture.md`, `/docs/economy.md`, `/docs/live_ops.md`, `/docs/roadmap.md`.
+
 
  ## Summary
  A product of ByteBrew’s all-in-one platform, the ByteBrew SDK gives you instant integration to the following key features and tools for your games on the ByteBrew Dashboard:
