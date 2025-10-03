@@ -8,6 +8,7 @@
   "modal.continue.title": "Out of Moves",
   "modal.continue.rv": "Watch Ad",
   "modal.continue.gems": "Spend {{amount}} Gems",
+  "modal.continue.bundle": "Rescue Bundle (%s)",
   "season.pass": "Season Pass",
   "season.pass.premium": "Season Pass (Premium)",
   "shop.remove_ads": "Remove Ads",
