@@ -44,6 +44,12 @@ func get_price_string(sku: String) -> String:
             var s = str(iap.getPriceString(sku))
             if s != "":
                 return s
+    if OS.get_name() == "iOS" and Engine.has_singleton("IOSPriceBridge"):
+        var ios = Engine.get_singleton("IOSPriceBridge")
+        if ios and ios.has_method("getPriceString"):
+            var sp = str(ios.getPriceString(sku))
+            if sp != "":
+                return sp
     if OS.get_name() == "iOS":
         # Fallback to remote-config provided localized price if present
         var key := "price_ios_" + sku
