@@ -611,6 +611,10 @@ func set_chocolate(p: Vector2i, present: bool) -> void:
     if _in_bounds(p):
         chocolate[p.y][p.x] = present ? 1 : 0
 
+func set_licorice(p: Vector2i, hp: int) -> void:
+    if _in_bounds(p):
+        licorice_hp[p.y][p.x] = max(0, hp)
+
 func set_spawn_weights(weights: Dictionary) -> void:
     spawn_weights = weights.duplicate()
 

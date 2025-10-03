@@ -30,6 +30,8 @@ var _prices := {
     "gems_huge": 19.99,
     # Subscriptions
     "vip_sub_monthly": 4.99,
+    # Rescue bundle (continue offer)
+    "rescue_bundle": 0.99,
 }
 
 func _ready() -> void:
@@ -119,6 +121,10 @@ func _grant_items_for_sku(sku: String) -> void:
         GameState.add_coins(RemoteConfig.get_int("coins_huge_amount", 20000))
     elif sku == "energy_refill":
         GameState.refill_energy()
+    elif sku == "rescue_bundle":
+        # Grant extra moves and a booster for the current session
+        if get_tree().current_scene and get_tree().current_scene.has_method("_grant_rescue_bundle"):
+            get_tree().current_scene._grant_rescue_bundle()
     elif sku == "booster_bundle":
         # Grant as coins equivalent until dedicated booster inventory exists
         GameState.add_coins(RemoteConfig.get_int("booster_bundle_coins", 1000))

@@ -14,6 +14,7 @@ static func clone_board(src: Match3Board) -> Match3Board:
 	b.locked = []
 	b.chocolate = []
 	b.vines = []
+	b.licorice_hp = []
 	for y in range(src.size.y):
 		b.grid.append([])
 		b.jelly_layers.append([])
@@ -23,6 +24,7 @@ static func clone_board(src: Match3Board) -> Match3Board:
 		b.locked.append([])
 		b.chocolate.append([])
 		b.vines.append([])
+		b.licorice_hp.append([])
 		for x in range(src.size.x):
 			var p = src.grid[y][x]
 			b.grid[y].append(p if p == null else p.duplicate(true))
@@ -33,12 +35,14 @@ static func clone_board(src: Match3Board) -> Match3Board:
 			b.locked[y].append(src.locked[y][x])
 			b.chocolate[y].append(src.chocolate[y][x])
 			b.vines[y].append(src.vines[y][x])
+			b.licorice_hp[y].append(src.licorice_hp[y][x])
 	b.spawn_weights = src.spawn_weights.duplicate()
 	b.drop_mode_enabled = src.drop_mode_enabled
 	b.drop_exit_rows = src.drop_exit_rows.duplicate()
 	b.ingredient_spawn_cols = src.ingredient_spawn_cols.duplicate()
 	b.ingredients_remaining = src.ingredients_remaining
 	b.portals = src.portals.duplicate()
+	b.conveyors = src.conveyors.duplicate()
 	return b
 
 static func _find_any_move(board: Match3Board) -> Array[Vector2i]:

@@ -104,6 +104,8 @@ func _init_goals_progress() -> void:
 				goals_progress["clear_jelly"] = 0
             "clear_vines":
                 goals_progress["clear_vines"] = 0
+            "clear_licorice":
+                goals_progress["clear_licorice"] = 0
             "deliver_ingredients":
                 goals_progress["deliver_ingredients"] = 0
 			_:
@@ -145,6 +147,10 @@ func apply_level_to_board(board) -> void:
         for ch in level_config.get("chocolate", []):
             if typeof(ch) == TYPE_ARRAY and ch.size() >= 2:
                 board.set_chocolate(Vector2i(int(ch[0]), int(ch[1])), true)
+    if level_config.has("licorice"):
+        for li in level_config.get("licorice", []):
+            if typeof(li) == TYPE_ARRAY and li.size() >= 3:
+                board.set_licorice(Vector2i(int(li[0]), int(li[1])), int(li[2]))
     if level_config.has("vines"):
         var vs: Array = level_config.get("vines", [])
         for v in vs:
@@ -240,6 +246,10 @@ func describe_goals() -> String:
                 var target_v := int(g.get("amount", 0))
                 var have_v := int(goals_progress.get("clear_vines", 0))
                 parts.append("Clear vines: %d/%d" % [have_v, target_v])
+            "clear_licorice":
+                var target_l := int(g.get("amount", 0))
+                var have_l := int(goals_progress.get("clear_licorice", 0))
+                parts.append("Clear licorice: %d/%d" % [have_l, target_l])
             "deliver_ingredients":
                 var target_i := int(g.get("amount", 0))
                 var have_i := int(goals_progress.get("deliver_ingredients", 0))
@@ -269,6 +279,10 @@ func on_resolve_result(result: Dictionary) -> void:
             var add_v := int(bc.get("vines", 0))
             var have_key := "clear_vines"
             goals_progress[have_key] = int(goals_progress.get(have_key, 0)) + add_v
+        elif str(g.get("type", "")) == "clear_licorice":
+            var bc2: Dictionary = result.get("blockers_cleared", {})
+            var add_l := int(bc2.get("licorice", 0))
+            goals_progress["clear_licorice"] = int(goals_progress.get("clear_licorice", 0)) + add_l
 		elif str(g.get("type", "")) == "deliver_ingredients":
             var add_i := int(result.get("ingredients_delivered", 0))
             goals_progress["deliver_ingredients"] = int(goals_progress.get("deliver_ingredients", 0)) + add_i
@@ -293,6 +307,10 @@ func goals_completed() -> bool:
             "clear_vines":
                 var amountv := int(g.get("amount", 0))
                 if int(goals_progress.get("clear_vines", 0)) < amountv:
+                    return false
+            "clear_licorice":
+                var amountl := int(g.get("amount", 0))
+                if int(goals_progress.get("clear_licorice", 0)) < amountl:
                     return false
             "deliver_ingredients":
                 var amount3 := int(g.get("amount", 0))

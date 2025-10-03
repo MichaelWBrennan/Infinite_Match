@@ -158,6 +158,8 @@ func fetch_and_apply() -> void:
         "pity_prelevel_booster_chance_pct": 30,
         # New blockers & systems
         "vines_enabled": 1,
+        "rescue_bundle_moves": 5,
+        "rescue_bundle_booster": 1,
         # Receipt validation
         "enable_receipt_validation": 0,
         "receipt_validation_url": "",
