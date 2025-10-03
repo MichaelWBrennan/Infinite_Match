@@ -188,13 +188,21 @@ func fetch_and_apply() -> void:
         await get_tree().create_timer(0.05).timeout
 
 func get_int(key: String, default_value: int) -> int:
-    return int(_region_override(key, _cache.get(key, default_value)))
+    var v = _cache.get(key, default_value)
+    v = _platform_override(key, v)
+    v = _region_override(key, v)
+    return int(v)
 
 func get_string(key: String, default_value: String) -> String:
-    return str(_region_override(key, _cache.get(key, default_value)))
+    var v = _cache.get(key, default_value)
+    v = _platform_override(key, v)
+    v = _region_override(key, v)
+    return str(v)
 
 func get_float(key: String, default_value: float) -> float:
-    var v = _region_override(key, _cache.get(key, default_value))
+    var v = _cache.get(key, default_value)
+    v = _platform_override(key, v)
+    v = _region_override(key, v)
     if typeof(v) == TYPE_FLOAT:
         return v
     if typeof(v) == TYPE_INT:
@@ -255,4 +263,22 @@ func _region_override(key: String, base):
     var rk := key + rc
     if _cache.has(rk):
         return _cache[rk]
+    return base
+
+func _platform_override(key: String, base):
+    var platform_suffix := ""
+    var os := OS.get_name()
+    match os:
+        "Android": platform_suffix = "_ANDROID"
+        "iOS": platform_suffix = "_IOS"
+        "Windows": platform_suffix = "_WINDOWS"
+        "macOS": platform_suffix = "_MAC"
+        "Linux": platform_suffix = "_LINUX"
+        _:
+            platform_suffix = ""
+    if platform_suffix == "":
+        return base
+    var pk := key + platform_suffix
+    if _cache.has(pk):
+        return _cache[pk]
     return base

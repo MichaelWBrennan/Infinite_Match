@@ -19,6 +19,15 @@ func _try_init() -> void:
     if Engine.has_singleton("ByteBrew"):
         _initialized = true
         _session_start_ts = Time.get_ticks_msec()
+        # Emit user agent/device info for downstream analytics segmentation
+        var ua := {
+            "os": OS.get_name(),
+            "locale": OS.get_locale(),
+            "screen": DisplayServer.screen_get_size().x as int,
+            "build": _build_version,
+            "engine": _engine_version
+        }
+        ByteBrewBridge.custom_event("user_agent", JSON.stringify(ua))
     # iOS ByteBrew entry autoload will call into native once configured by export settings.
 
 static func track_session_start() -> void:
