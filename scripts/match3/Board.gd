@@ -8,6 +8,16 @@ var num_colors: int
 var rng := RandomNumberGenerator.new()
 var grid: Array = [] # grid[y][x] -> piece dict
 var jelly_layers: Array = [] # jelly_layers[y][x] -> int (0 = none)
+var holes: Array = [] # holes[y][x] -> bool (true means no tile exists ever)
+var crate_hp: Array = [] # crate_hp[y][x] -> int (0 = none)
+var ice_hp: Array = [] # ice_hp[y][x] -> int (0 = none)
+var locked: Array = [] # locked[y][x] -> bool (true means locked until cleared)
+var chocolate: Array = [] # chocolate[y][x] -> int presence (1 means chocolate on cell)
+var spawn_weights: Dictionary = {} # color(int) -> weight(int)
+var drop_mode_enabled: bool = false
+var drop_exit_rows: Array[int] = [] # rows at bottom that count as exits
+var ingredient_spawn_cols: Array[int] = [] # columns to spawn ingredients from top
+var ingredients_remaining: int = 0
 
 func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -1) -> void:
     size = board_size
@@ -16,20 +26,36 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
         rng.seed = seed
     else:
         rng.randomize()
-	grid.resize(size.y)
-	for y in range(size.y):
-		grid[y] = []
-		for x in range(size.x):
-			grid[y].append(Types.make_normal(rng.randi_range(0, num_colors - 1)))
-	# Initialize jelly overlay grid
-	jelly_layers.resize(size.y)
-	for jy in range(size.y):
-		jelly_layers[jy] = []
-		for jx in range(size.x):
-			jelly_layers[jy].append(0)
+    grid.resize(size.y)
+    jelly_layers.resize(size.y)
+    holes.resize(size.y)
+    crate_hp.resize(size.y)
+    ice_hp.resize(size.y)
+    locked.resize(size.y)
+    chocolate.resize(size.y)
+    for y in range(size.y):
+        grid[y] = []
+        jelly_layers[y] = []
+        holes[y] = []
+        crate_hp[y] = []
+        ice_hp[y] = []
+        locked[y] = []
+        chocolate[y] = []
+        for x in range(size.x):
+            holes[y].append(false)
+            crate_hp[y].append(0)
+            ice_hp[y].append(0)
+            locked[y].append(false)
+            chocolate[y].append(0)
+            grid[y].append(Types.make_normal(rng.randi_range(0, num_colors - 1)))
+            jelly_layers[y].append(0)
 	_resolve_initial()
 
 func swap(a: Vector2i, b: Vector2i) -> void:
+    if _is_hole(a) or _is_hole(b):
+        return
+    if _is_locked(a) or _is_locked(b):
+        return
 	var tmp := grid[a.y][a.x]
 	grid[a.y][a.x] = grid[b.y][b.x]
 	grid[b.y][b.x] = tmp
@@ -54,11 +80,13 @@ func has_valid_move() -> bool:
     return false
 
 func resolve_board() -> Dictionary:
-    # Returns { cleared:int, cascades:int, color_counts:Dictionary<int,int>, jelly_cleared:int }
+    # Returns { cleared:int, cascades:int, color_counts:Dictionary<int,int>, jelly_cleared:int, blockers_cleared:Dictionary, ingredients_delivered:int }
     var total_cleared := 0
     var cascades := 0
     var total_color_counts := {}
     var total_jelly_cleared := 0
+    var total_blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0}
+    var total_ingredients := 0
     while true:
         var matches := _find_matches()
         if matches.is_empty():
@@ -69,9 +97,16 @@ func resolve_board() -> Dictionary:
         for k in cc.keys():
             total_color_counts[k] = int(total_color_counts.get(k, 0)) + int(cc[k])
         total_jelly_cleared += int(result.get("jelly_cleared", 0))
+        # blockers summary partials may be present
+        var bc: Dictionary = result.get("blockers_cleared", {})
+        for bk in bc.keys():
+            total_blockers_cleared[bk] = int(total_blockers_cleared.get(bk, 0)) + int(bc[bk])
         _apply_gravity_and_fill()
+        if drop_mode_enabled:
+            total_ingredients += _process_ingredient_delivery_and_spawn()
+        _spread_chocolate()
         cascades += 1
-    return { "cleared": total_cleared, "cascades": cascades, "color_counts": total_color_counts, "jelly_cleared": total_jelly_cleared }
+    return { "cleared": total_cleared, "cascades": cascades, "color_counts": total_color_counts, "jelly_cleared": total_jelly_cleared, "blockers_cleared": total_blockers_cleared, "ingredients_delivered": total_ingredients }
 
 func shuffle_random() -> void:
     # Randomly shuffles normal pieces' colors (keeps dimensions)
@@ -81,6 +116,8 @@ func shuffle_random() -> void:
             var p = grid[y][x]
             if p == null:
                 continue
+            if _is_hole(Vector2i(x,y)):
+                continue
             colors.append(p.get("color"))
     colors.shuffle()
     var i := 0
@@ -88,7 +125,8 @@ func shuffle_random() -> void:
         for x in range(size.x):
             var p = grid[y][x]
             if p == null:
-                grid[y][x] = Types.make_normal(rng.randi_range(0, num_colors - 1))
+                if not _is_hole(Vector2i(x,y)):
+                    grid[y][x] = Types.make_normal(_choose_spawn_color())
             else:
                 var c := colors[i]
                 i += 1
@@ -98,7 +136,9 @@ func get_piece(p: Vector2i) -> Dictionary:
 	return grid[p.y][p.x]
 
 func set_piece(p: Vector2i, piece: Dictionary) -> void:
-	grid[p.y][p.x] = piece
+    if _is_hole(p):
+        return
+    grid[p.y][p.x] = piece
 
 func set_jelly(p: Vector2i, layers: int) -> void:
     if _in_bounds(p):
@@ -141,7 +181,7 @@ func _find_matches() -> Array:
 	for y in range(size.y):
 		var run: Array = [Vector2i(0, y)]
 		for x in range(1, size.x + 1):
-			var cont := x < size.x and _same_color(Vector2i(x, y), Vector2i(x - 1, y))
+            var cont := x < size.x and _same_color(Vector2i(x, y), Vector2i(x - 1, y))
 			if cont:
 				run.append(Vector2i(x, y))
 			else:
@@ -200,6 +240,10 @@ func _array_has_vec(arr: Array, v: Vector2i) -> bool:
 func _same_color(a: Vector2i, b: Vector2i) -> bool:
 	var pa := grid[a.y][a.x]
 	var pb := grid[b.y][b.x]
+    if pa == null or pb == null:
+        return false
+    if _is_hole(a) or _is_hole(b):
+        return false
 	if Types.is_color_bomb(pa) or Types.is_color_bomb(pb):
 		return false
 	return pa.get("color") == pb.get("color")
@@ -208,6 +252,7 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
     var cleared := 0
     var color_counts := {}
     var jelly_cleared := 0
+    var blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0}
     # primary clears and special creation
     for group in groups:
         var created_special := false
@@ -238,7 +283,8 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
                 var c := piece_before.get("color")
                 if c != null:
                     color_counts[c] = int(color_counts.get(c, 0)) + 1
-            grid[p.y][p.x] = null
+            if not _damage_blockers_or_clear_at(p, blockers_cleared):
+                grid[p.y][p.x] = null
             cleared += 1
             jelly_cleared += _hit_jelly_at(p)
     # Special effects: compute positions and colors, then clear
@@ -249,10 +295,11 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
             var c2 := piece2.get("color")
             if c2 != null:
                 color_counts[c2] = int(color_counts.get(c2, 0)) + 1
-        grid[p.y][p.x] = null
+        if not _damage_blockers_or_clear_at(p, blockers_cleared):
+            grid[p.y][p.x] = null
         cleared += 1
         jelly_cleared += _hit_jelly_at(p)
-    return { "cleared": cleared, "color_counts": color_counts, "jelly_cleared": jelly_cleared }
+    return { "cleared": cleared, "color_counts": color_counts, "jelly_cleared": jelly_cleared, "blockers_cleared": blockers_cleared }
 
 func _is_same_y(group: Array) -> bool:
 	if group.is_empty():
@@ -325,18 +372,39 @@ func _most_common_color() -> int:
 	return best_c
 
 func _apply_gravity_and_fill() -> void:
-	for x in range(size.x):
-		var write_y := size.y - 1
-		for y in range(size.y - 1, -1, -1):
-			if grid[y][x] != null:
-				grid[write_y][x] = grid[y][x]
-				write_y -= 1
-		while write_y >= 0:
-			grid[write_y][x] = Types.make_normal(rng.randi_range(0, num_colors - 1))
-			write_y -= 1
+    for x in range(size.x):
+        var write_y := size.y - 1
+        for y in range(size.y - 1, -1, -1):
+            if _is_hole(Vector2i(x, y)):
+                continue
+            if grid[y][x] != null:
+                grid[write_y][x] = grid[y][x]
+                if write_y != y:
+                    grid[y][x] = null
+                write_y -= 1
+        while write_y >= 0:
+            if _is_hole(Vector2i(x, write_y)):
+                write_y -= 1
+                continue
+            # If drop mode uses ingredient spawns, bias spawns
+            if drop_mode_enabled and ingredient_spawn_cols.has(x) and rng.randi_range(0, 99) < 10 and not _column_has_ingredient(x):
+                grid[write_y][x] = Types.make_ingredient()
+            else:
+                grid[write_y][x] = Types.make_normal(_choose_spawn_color())
+            write_y -= 1
 
 func _in_bounds(p: Vector2i) -> bool:
     return p.x >= 0 and p.x < size.x and p.y >= 0 and p.y < size.y
+
+func _is_hole(p: Vector2i) -> bool:
+    if not _in_bounds(p):
+        return true
+    return bool(holes[p.y][p.x])
+
+func _is_locked(p: Vector2i) -> bool:
+    if not _in_bounds(p):
+        return false
+    return bool(locked[p.y][p.x])
 
 func _hit_jelly_at(p: Vector2i) -> int:
     if not _in_bounds(p):
@@ -346,6 +414,129 @@ func _hit_jelly_at(p: Vector2i) -> int:
         jelly_layers[p.y][p.x] = layers - 1
         return 1
     return 0
+
+# --- Blockers helpers ---
+func _damage_blockers_or_clear_at(p: Vector2i, out_counts: Dictionary) -> bool:
+    # Returns true if blockers consumed the hit and tile should not be cleared
+    if not _in_bounds(p) or _is_hole(p):
+        return false
+    # Lock breaks on first hit
+    if bool(locked[p.y][p.x]):
+        locked[p.y][p.x] = false
+        out_counts["lock"] = int(out_counts.get("lock", 0)) + 1
+        return true
+    # Ice HP decrements and may prevent tile clear until 0
+    if int(ice_hp[p.y][p.x]) > 0:
+        ice_hp[p.y][p.x] = max(0, int(ice_hp[p.y][p.x]) - 1)
+        if ice_hp[p.y][p.x] == 0:
+            out_counts["ice"] = int(out_counts.get("ice", 0)) + 1
+        return true
+    # Crate HP blocks cell content; decremented on hit
+    if int(crate_hp[p.y][p.x]) > 0:
+        crate_hp[p.y][p.x] = max(0, int(crate_hp[p.y][p.x]) - 1)
+        if crate_hp[p.y][p.x] == 0:
+            out_counts["crate"] = int(out_counts.get("crate", 0)) + 1
+        return true
+    # Chocolate is consumed when hit
+    if int(chocolate[p.y][p.x]) > 0:
+        chocolate[p.y][p.x] = 0
+        out_counts["chocolate"] = int(out_counts.get("chocolate", 0)) + 1
+        return true
+    return false
+
+func _spread_chocolate() -> void:
+    # Simple spread: each existing chocolate attempts to fill one adjacent normal empty cell
+    var sources: Array[Vector2i] = []
+    for y in range(size.y):
+        for x in range(size.x):
+            if int(chocolate[y][x]) > 0:
+                sources.append(Vector2i(x, y))
+    sources.shuffle()
+    for src in sources:
+        var dirs = [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
+        dirs.shuffle()
+        for d in dirs:
+            var np := src + d
+            if not _in_bounds(np) or _is_hole(np):
+                continue
+            if grid[np.y][np.x] != null:
+                continue
+            chocolate[np.y][np.x] = 1
+            break
+
+func _choose_spawn_color() -> int:
+    if spawn_weights.is_empty():
+        return rng.randi_range(0, num_colors - 1)
+    var total := 0
+    for k in spawn_weights.keys():
+        total += int(spawn_weights[k])
+    if total <= 0:
+        return rng.randi_range(0, num_colors - 1)
+    var r := rng.randi_range(1, total)
+    var acc := 0
+    for k in spawn_weights.keys():
+        acc += int(spawn_weights[k])
+        if r <= acc:
+            return int(k)
+    return rng.randi_range(0, num_colors - 1)
+
+func _process_ingredient_delivery_and_spawn() -> int:
+    var delivered := 0
+    # Deliver ingredients that reached exit rows (bottom rows typically)
+    for x in range(size.x):
+        for y in range(size.y):
+            if grid[y][x] != null and Types.is_ingredient(grid[y][x]) and drop_exit_rows.has(y) and not _is_hole(Vector2i(x,y)):
+                grid[y][x] = null
+                delivered += 1
+                if ingredients_remaining > 0:
+                    ingredients_remaining -= 1
+                break
+    # Spawn ingredients at top in configured columns if any remaining
+    if ingredients_remaining > 0:
+        for col in ingredient_spawn_cols:
+            var top := Vector2i(col, 0)
+            if _in_bounds(top) and not _is_hole(top) and grid[top.y][top.x] == null:
+                grid[top.y][top.x] = Types.make_ingredient()
+    return delivered
+
+func _column_has_ingredient(x: int) -> bool:
+    for y in range(size.y):
+        var p = grid[y][x]
+        if p != null and Types.is_ingredient(p):
+            return true
+    return false
+
+# Public setters used by LevelManager to apply advanced layout
+func set_hole(p: Vector2i, is_hole: bool) -> void:
+    if _in_bounds(p):
+        holes[p.y][p.x] = is_hole
+        if is_hole:
+            grid[p.y][p.x] = null
+
+func set_crate(p: Vector2i, hp: int) -> void:
+    if _in_bounds(p):
+        crate_hp[p.y][p.x] = max(0, hp)
+
+func set_ice(p: Vector2i, hp: int) -> void:
+    if _in_bounds(p):
+        ice_hp[p.y][p.x] = max(0, hp)
+
+func set_lock(p: Vector2i, locked_on: bool) -> void:
+    if _in_bounds(p):
+        locked[p.y][p.x] = locked_on
+
+func set_chocolate(p: Vector2i, present: bool) -> void:
+    if _in_bounds(p):
+        chocolate[p.y][p.x] = present ? 1 : 0
+
+func set_spawn_weights(weights: Dictionary) -> void:
+    spawn_weights = weights.duplicate()
+
+func configure_drop_mode(enabled: bool, exit_rows: Array[int], spawn_cols: Array[int], total_ingredients: int) -> void:
+    drop_mode_enabled = enabled
+    drop_exit_rows = exit_rows.duplicate()
+    ingredient_spawn_cols = spawn_cols.duplicate()
+    ingredients_remaining = max(0, total_ingredients)
 
 # Special + Special combo activations (triggered explicitly from gameplay)
 func activate_color_bomb_combo(a: Vector2i, b: Vector2i) -> Dictionary:

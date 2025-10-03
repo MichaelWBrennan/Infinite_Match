@@ -22,6 +22,7 @@ var sessions_today: int = 0
 var current_level: int = 1
 var level_stars: Dictionary = {} # level_id -> stars (0-3)
 var level_best_score: Dictionary = {} # level_id -> best score
+var booster_inventory: Dictionary = {"pre_bomb": 0, "pre_rocket": 0, "pre_color_bomb": 0, "hammer": 0, "shuffle": 0, "bomb": 0, "rocket": 0}
 
 var _save_path := "user://state.json"
 
@@ -150,6 +151,7 @@ func _save() -> void:
     data["current_level"] = current_level
     data["level_stars"] = level_stars
     data["level_best_score"] = level_best_score
+    data["booster_inventory"] = booster_inventory
     _store_json(data)
 
 func _load() -> void:
@@ -169,8 +171,23 @@ func _load() -> void:
     current_level = int(data.get("current_level", 1))
     level_stars = data.get("level_stars", {})
     level_best_score = data.get("level_best_score", {})
+    booster_inventory = data.get("booster_inventory", booster_inventory)
     if remove_ads:
         AdManager.set_remove_ads(true)
+
+func booster_add(name: String, count: int = 1) -> void:
+    booster_inventory[name] = int(booster_inventory.get(name, 0)) + max(0, count)
+    _save()
+
+func booster_has(name: String, count: int = 1) -> bool:
+    return int(booster_inventory.get(name, 0)) >= count
+
+func booster_consume(name: String, count: int = 1) -> bool:
+    if booster_has(name, count):
+        booster_inventory[name] = int(booster_inventory.get(name, 0)) - count
+        _save()
+        return true
+    return false
 
 func _track_session() -> void:
     var today := int(Time.get_unix_time_from_system() / 86400)
