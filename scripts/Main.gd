@@ -3,6 +3,12 @@ extends Node
 func _ready() -> void:
     Analytics.track_session_start()
     RemoteConfig.fetch_and_apply()
+    if Engine.has_singleton("CloudSave"):
+        CloudSave.load_completed.connect(func(ok):
+            if ok:
+                pass
+        )
+        CloudSave.load_profile()
     # Lightweight experiment-driven overrides
     var cell1 := Experiments.get_variant_and_track("pricing_badges", ["control", "best_anchor", "decoy"])
     match cell1:

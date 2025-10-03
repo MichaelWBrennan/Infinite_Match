@@ -1,0 +1,23 @@
+name: Validate Levels
+on:
+  push:
+    paths:
+      - 'config/levels/**.json'
+      - 'scripts/**.gd'
+  pull_request:
+    paths:
+      - 'config/levels/**.json'
+      - 'scripts/**.gd'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Godot
+        uses: segfault-labs/setup-godot@v1
+        with:
+          version: '4.3'
+          headless: true
+      - name: Run validation
+        run: godot --headless --path . --script res://scripts/tools/validate_levels.gd
