@@ -82,6 +82,9 @@ text = "Level Editor"
 [node name="WeeklyChestButton" type="Button" parent="VBox"]
 text = "Weekly Chest"
 
+[node name="TreasureButton" type="Button" parent="VBox"]
+text = "Treasure Trail"
+
 [node name="BannerSpacer" type="Control" parent="."]
 anchor_left = 0.0
 anchor_top = 1.0

@@ -110,6 +110,8 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             GameState.add_tournament_points(int(res.get("cleared", 0)))
             if Engine.has_singleton("Bingo"):
                 Bingo.progress("clear_tiles", int(res.get("cleared", 0)))
+            if Engine.has_singleton("Treasure") and Treasure.active:
+                Treasure.progress(int(res.get("cleared", 0)))
             if Engine.has_singleton("Teams"):
                 Teams.add_points(int(res.get("cleared", 0)))
             if Engine.has_singleton("PiggyBank"):

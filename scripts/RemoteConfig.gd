@@ -49,6 +49,9 @@ func fetch_and_apply() -> void:
         "ad_rewarded_ios": "TEST_REWARDED_IOS",
         "ad_interstitial_ios": "TEST_INTERSTITIAL_IOS",
         "ad_banner_ios": "TEST_BANNER_IOS",
+        # Floors (USD)
+        "floor_rewarded_usd": 0.00,
+        "floor_interstitial_usd": 0.00,
         # Offerwall
         "offerwall_url": "",
         # Economy

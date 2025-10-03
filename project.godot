@@ -47,6 +47,7 @@ Missions="*res://scripts/Missions.gd"
 EconomyTelemetry="*res://scripts/EconomyTelemetry.gd"
 Treasure="*res://scripts/Treasure.gd"
 CMP="*res://scripts/CMP.gd"
+AdMediation="*res://scripts/AdMediation.gd"
 
 [android]
 modules/use_custom_build=true

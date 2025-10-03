@@ -187,6 +187,7 @@ func _on_rewarded_earned(amount: int) -> void:
 func _on_ad_paid(provider_name: String, ad_unit: String, placement_type: String, location: String, currency: String, value_micros: int) -> void:
     var revenue = float(value_micros) / 1000000.0
     Analytics.track_ad(placement_type, location, ad_unit, provider_name, revenue)
+    AdMediation.record_ilrd(placement_type, location, provider_name, ad_unit, revenue)
 
 func _on_interstitial_closed() -> void:
     Analytics.mark_interstitial_closed()
