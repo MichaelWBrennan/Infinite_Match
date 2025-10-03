@@ -7,6 +7,7 @@ extends Control
 @onready var shop_button: Button = $VBox/ShopButton
 @onready var coins_label: Label = $VBox/CoinsLabel
 @onready var level_label: Label = $VBox/LevelLabel
+@onready var streak_label: Label = $VBox/StreakLabel
 @onready var leaderboard_button: Button = $VBox/LeaderboardButton
 @onready var refer_button: Button = $VBox/ReferButton
 @onready var piggy_button: Button = $VBox/PiggyButton
@@ -29,6 +30,7 @@ func _ready() -> void:
     GameState.currency_changed.connect(func(new_balance): _update_coins())
     _update_coins()
     _update_level()
+    _update_streak()
     _apply_banner_padding()
     AdManager.show_banner("bottom")
     if ConsentManager.needs_consent():
@@ -68,6 +70,10 @@ func _update_coins() -> void:
 
 func _update_level() -> void:
     level_label.text = "Level: %d (Stars: %d)" % [GameState.get_current_level(), GameState.get_level_stars(GameState.get_current_level())]
+
+func _update_streak() -> void:
+    if streak_label:
+        streak_label.text = "Streak: %d (Best: %d) Weekly: %d/%d" % [GameState.win_streak, GameState.best_win_streak, GameState.weekly_points, GameState.weekly_points_needed()]
 
 func _on_start() -> void:
     # Optional pre-level RV booster offer

@@ -3,6 +3,7 @@ extends Node
 class_name LevelManager
 
 const Types := preload("res://scripts/match3/Types.gd")
+const Match3Solver := preload("res://scripts/match3/Solver.gd")
 
 signal goals_updated(progress: Dictionary)
 signal level_loaded(level_id: int)
@@ -14,6 +15,7 @@ var move_limit: int = 20
 var board_size: Vector2i = Vector2i(8, 8)
 var num_colors: int = 5
 var score_star_thresholds: Array[int] = [500, 1500, 3000]
+var difficulty_score: float = 0.0
 var drop_mode: bool = false
 var drop_ingredient_target: int = 0
 
@@ -47,8 +49,9 @@ func load_level(id: int) -> void:
 	if typeof(data) != TYPE_DICTIONARY:
 		level_config = {}
 		return
-	level_config = data
-	_board_params_from_config()
+    level_config = data
+    _board_params_from_config()
+    difficulty_score = float(level_config.get("difficulty", -1.0))
 	_init_goals_progress()
 	level_loaded.emit(current_level_id)
 
@@ -169,6 +172,9 @@ func apply_level_to_board(board) -> void:
             if dm2.has("spawn_cols"):
                 spawn_cols = dm2.get("spawn_cols", [])
             board.configure_drop_mode(enabled, exits, spawn_cols, target)
+    # Dynamic difficulty estimation when not tagged
+    if difficulty_score < 0.0:
+        difficulty_score = Match3Solver.estimate_difficulty(board, move_limit, 10)
 
 func current_goals() -> Array:
 	return level_config.get("goals", [])

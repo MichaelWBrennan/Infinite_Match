@@ -8,3 +8,7 @@ func schedule_lapsed_return(days: int) -> void:
 
 func schedule_event_reminder(name: String, in_seconds: int) -> void:
     ByteBrewBridge.custom_event("notif_schedule_event", name + ":" + str(in_seconds))
+
+func trigger_behavioral(event: String, context: String = "") -> void:
+    # Central hook to orchestrate behavior-triggered push/inbox
+    ByteBrewBridge.custom_event("notif_behavior", event + (context != "" ? (":" + context) : ""))

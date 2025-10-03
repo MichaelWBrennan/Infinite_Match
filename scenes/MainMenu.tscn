@@ -55,6 +55,9 @@ text = "Inbox"
 [node name="LevelLabel" type="Label" parent="VBox"]
 text = "Level: 1 (Stars: 0)"
 
+[node name="StreakLabel" type="Label" parent="VBox"]
+text = "Streak: 0 (Best: 0) Weekly: 0/1000"
+
 [node name="LeaderboardButton" type="Button" parent="VBox"]
 text = "Leaderboard"
 
