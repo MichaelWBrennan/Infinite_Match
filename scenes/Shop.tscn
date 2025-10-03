@@ -56,11 +56,17 @@ text = "+20 Gems ($0.99)"
 [node name="GemsMedium" type="Button" parent="VBox"]
 text = "+120 Gems ($4.99)"
 
+[node name="BadgeGemsMedium" type="Label" parent="VBox"]
+text = "Most Popular"
+
 [node name="GemsLarge" type="Button" parent="VBox"]
 text = "+300 Gems ($9.99)"
 
 [node name="GemsHuge" type="Button" parent="VBox"]
 text = "+700 Gems ($19.99)"
+
+[node name="BadgeGemsHuge" type="Label" parent="VBox"]
+text = "Best Value"
 
 [node name="GetMore" type="Button" parent="VBox"]
 text = "Get More Currency (Ad/Offerwall)"
