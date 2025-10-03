@@ -55,7 +55,17 @@ func _update_level() -> void:
     level_label.text = "Level: %d (Stars: %d)" % [GameState.get_current_level(), GameState.get_level_stars(GameState.get_current_level())]
 
 func _on_start() -> void:
-    get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
+    # Optional pre-level RV booster offer
+    if RemoteConfig.get_int("rv_prelevel_booster_enabled", 1) == 1:
+        AdManager.show_rewarded_ad("prelevel_booster", func(amount: int):
+            # grant a random pre-level booster into inventory
+            var choices := ["pre_bomb", "pre_rocket", "pre_color_bomb"]
+            var i := randi() % choices.size()
+            GameState.booster_add(choices[i], 1)
+            get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
+        )
+    else:
+        get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
 
 func _on_daily() -> void:
     var modal := load("res://scenes/DailyRewardModal.tscn").instantiate()

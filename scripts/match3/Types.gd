@@ -3,7 +3,7 @@ class_name Match3Types
 
 # Types for match-3 pieces and helpers
 
-enum PieceKind { NORMAL, ROCKET_H, ROCKET_V, BOMB, COLOR_BOMB }
+enum PieceKind { NORMAL, ROCKET_H, ROCKET_V, BOMB, COLOR_BOMB, INGREDIENT }
 
 static func make_normal(color: int) -> Dictionary:
 	return {
@@ -35,6 +35,12 @@ static func make_color_bomb() -> Dictionary:
 		"color": null
 	}
 
+static func make_ingredient() -> Dictionary:
+    return {
+        "kind": PieceKind.INGREDIENT,
+        "color": null
+    }
+
 static func is_normal(piece: Dictionary) -> bool:
 	return piece.get("kind") == PieceKind.NORMAL
 
@@ -47,6 +53,9 @@ static func is_rocket(piece: Dictionary) -> bool:
 
 static func is_bomb(piece: Dictionary) -> bool:
 	return piece.get("kind") == PieceKind.BOMB
+
+static func is_ingredient(piece: Dictionary) -> bool:
+    return piece.get("kind") == PieceKind.INGREDIENT
 
 static func copy_piece(piece: Dictionary) -> Dictionary:
 	return { "kind": piece.get("kind"), "color": piece.get("color") }

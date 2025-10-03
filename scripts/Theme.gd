@@ -103,6 +103,8 @@ func get_texture_for_piece(piece: Dictionary) -> Texture2D:
 		return _make_clear_texture()
 	if Types.is_color_bomb(piece):
 		return _make_color_bomb_texture()
+	if Types.is_ingredient(piece):
+		return _make_ingredient_texture()
 	var color_index := int(piece.get("color", 0))
 	if color_index >= 0 and color_index < color_textures.size():
 		return color_textures[color_index]
@@ -122,3 +124,17 @@ func _make_color_bomb_texture() -> Texture2D:
 			for x in range(0, 96):
 				img.set_pixel(x, y, c)
 	return ImageTexture.create_from_image(img)
+
+func _make_ingredient_texture() -> Texture2D:
+    var img := Image.create(96, 96, false, Image.FORMAT_RGBA8)
+    img.fill(Color(0.95, 0.95, 0.95, 1))
+    # Draw a simple down arrow to hint drop objective
+    var arrow_color := Color(0.1, 0.1, 0.1, 1)
+    for y in range(30, 80):
+        var width := int((y - 30) / 3)
+        for x in range(48 - width, 48 + width):
+            img.set_pixel(x, y, arrow_color)
+    for y in range(65, 90):
+        for x in range(40, 56):
+            img.set_pixel(x, y, arrow_color)
+    return ImageTexture.create_from_image(img)

@@ -27,6 +27,9 @@ var board: Match3Board
 var tile_view: TileView
 var theme_provider: ThemeProvider
 var show_interstitial_on_gameover := false
+var _hint_timer := 0.0
+var _hint_interval := 6.0
+var _last_hint_positions: Array[Vector2i] = []
 
 func _ready() -> void:
     rng.randomize()
@@ -44,6 +47,13 @@ func _ready() -> void:
     booster_hammer.pressed.connect(_on_hammer)
     booster_rocket.pressed.connect(_on_rocket)
     _update_ui()
+    set_process(true)
+
+func _process(delta: float) -> void:
+    _hint_timer += delta
+    if _hint_timer >= _hint_interval:
+        _hint_timer = 0.0
+        _show_hint()
 
 func _apply_banner_padding() -> void:
     banner_spacer.custom_minimum_size.y = AdManager.get_banner_height_px()
@@ -65,8 +75,11 @@ func _init_board_and_level() -> void:
     add_child(tile_view)
     tile_view.setup(grid, board, theme_provider, func(pos: Vector2i): _on_cell_pressed(pos))
     _refresh_goals_text()
+    _apply_prelevel_boosters()
 
 func _on_cell_pressed(pos: Vector2i) -> void:
+    _hint_timer = 0.0
+    _clear_hint()
     if first_selected == Vector2i(-1, -1):
         first_selected = pos
         _highlight(pos, true)
@@ -89,6 +102,9 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             tile_view._update_all_textures()
             _update_ui()
             _refresh_goals_text()
+            if not board.has_valid_move():
+                board.shuffle_random()
+                tile_view._update_all_textures()
             if LevelManager.goals_completed():
                 _on_level_won()
             if moves_left <= 0:
@@ -129,6 +145,9 @@ func _resolve_board() -> void:
     if Engine.has_singleton("SeasonPass"):
         SeasonPass.add_xp(int(result.get("cleared", 0)))
     tile_view._update_all_textures()
+    if not board.has_valid_move():
+        board.shuffle_random()
+        tile_view._update_all_textures()
 
 func _apply_gravity_and_fill() -> void:
     # handled in board
@@ -141,7 +160,7 @@ func _refresh_all_buttons() -> void:
     tile_view._update_all_textures()
 
 func _on_bomb() -> void:
-    if GameState.spend_coins(Economy.booster_cost("bomb")):
+    if GameState.booster_consume("bomb", 1) or GameState.spend_coins(Economy.booster_cost("bomb")):
         # Convert random normal cell into a bomb, then resolve
         var cx := rng.randi_range(1, GRID_SIZE.x - 2)
         var cy := rng.randi_range(1, GRID_SIZE.y - 2)
@@ -156,7 +175,7 @@ func _on_bomb() -> void:
         tile_view._update_all_textures()
 
 func _on_hammer() -> void:
-    if GameState.spend_coins(Economy.booster_cost("hammer")):
+    if GameState.booster_consume("hammer", 1) or GameState.spend_coins(Economy.booster_cost("hammer")):
         # remove a random tile
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         board.set_piece(p, null)
@@ -166,12 +185,12 @@ func _on_hammer() -> void:
         tile_view._update_all_textures()
 
 func _on_shuffle() -> void:
-    if GameState.spend_coins(Economy.booster_cost("shuffle")):
+    if GameState.booster_consume("shuffle", 1) or GameState.spend_coins(Economy.booster_cost("shuffle")):
         board.shuffle_random()
         tile_view._update_all_textures()
 
 func _on_rocket() -> void:
-    if GameState.spend_coins(Economy.booster_cost("rocket")):
+    if GameState.booster_consume("rocket", 1) or GameState.spend_coins(Economy.booster_cost("rocket")):
         var Types = preload("res://scripts/match3/Types.gd")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         var horiz := rng.randi_range(0, 1) == 0
@@ -181,6 +200,23 @@ func _on_rocket() -> void:
         LevelManager.on_resolve_result(res)
         GameState.add_coins(int(res.get("cleared", 0)))
         tile_view._update_all_textures()
+
+func _apply_prelevel_boosters() -> void:
+    # Optionally place pre-level boosters
+    var Types = preload("res://scripts/match3/Types.gd")
+    if GameState.booster_consume("pre_bomb", 1):
+        var p := Vector2i(rng.randi_range(1, GRID_SIZE.x - 2), rng.randi_range(1, GRID_SIZE.y - 2))
+        var color := int(board.get_piece(p).get("color"))
+        board.set_piece(p, Types.make_bomb(color))
+    if GameState.booster_consume("pre_rocket", 1):
+        var p2 := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
+        var horiz := rng.randi_range(0, 1) == 0
+        var color2 := int(board.get_piece(p2).get("color"))
+        board.set_piece(p2, horiz ? Types.make_rocket_h(color2) : Types.make_rocket_v(color2))
+    if GameState.booster_consume("pre_color_bomb", 1):
+        var p3 := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
+        board.set_piece(p3, Types.make_color_bomb())
+    tile_view._update_all_textures()
 
 func _on_rewarded() -> void:
     AdManager.show_rewarded_ad("extra_moves", func(amount: int):
@@ -198,10 +234,20 @@ func _on_level_won() -> void:
     var score := GameState.coins # simplistic: use coins as session score proxy
     var stars := LevelManager.stars_for_score(score)
     GameState.complete_level(LevelManager.current_level_id, score, stars)
-    AdManager.show_rewarded_ad("level_win", func(_amount: int):
-        LevelManager.advance_to_next_level()
-        get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
-    )
+    # Offer RV double-win if enabled
+    var allow_double := RemoteConfig.get_int("rv_double_win_enabled", 1) == 1
+    if allow_double:
+        AdManager.show_rewarded_ad("level_win_double", func(_amount: int):
+            # grant small coin bonus, then continue
+            GameState.add_coins(RemoteConfig.get_int("reward_level_win", 10))
+            LevelManager.advance_to_next_level()
+            get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
+        )
+    else:
+        AdManager.show_rewarded_ad("level_win", func(_amount2: int):
+            LevelManager.advance_to_next_level()
+            get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
+        )
 
 func _refresh_goals_text() -> void:
     if goals_label:
@@ -229,3 +275,31 @@ func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
     coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
+
+func _find_any_hint() -> Array[Vector2i]:
+    # Try all adjacent swaps and return first that yields a match
+    for y in range(board.size.y):
+        for x in range(board.size.x):
+            var a := Vector2i(x, y)
+            var neighbors := [Vector2i(x + 1, y), Vector2i(x, y + 1)]
+            for b in neighbors:
+                if b.x >= board.size.x or b.y >= board.size.y:
+                    continue
+                if board._creates_match_after_swap(a, b):
+                    return [a, b]
+    return []
+
+func _show_hint() -> void:
+    if first_selected != Vector2i(-1, -1):
+        return
+    var hint := _find_any_hint()
+    if hint.size() == 2:
+        _last_hint_positions = hint
+        _highlight(hint[0], true)
+        _highlight(hint[1], true)
+
+func _clear_hint() -> void:
+    if _last_hint_positions.size() == 2:
+        _highlight(_last_hint_positions[0], false)
+        _highlight(_last_hint_positions[1], false)
+        _last_hint_positions.clear()
