@@ -13,6 +13,7 @@ func fetch_and_apply() -> void:
     if _loaded:
         return
     _loaded = true
+    _load_res_overrides()
     _load_overrides()
     var defaults := {
         # Rewards and ads
@@ -147,6 +148,18 @@ func set_override(key: String, value) -> void:
 
 func _load_overrides() -> void:
     var f := FileAccess.open(_overrides_path, FileAccess.READ)
+    if f:
+        var txt := f.get_as_text()
+        f.close()
+        var d = JSON.parse_string(txt)
+        if typeof(d) == TYPE_DICTIONARY:
+            _cache.merge(d, true)
+
+func _load_res_overrides() -> void:
+    var path := "res://config/remote_overrides.json"
+    if not FileAccess.file_exists(path):
+        return
+    var f := FileAccess.open(path, FileAccess.READ)
     if f:
         var txt := f.get_as_text()
         f.close()
