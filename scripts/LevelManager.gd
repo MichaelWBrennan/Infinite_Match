@@ -248,10 +248,24 @@ func stars_for_score(score: int) -> int:
 	return clamp(s, 0, 3)
 
 func next_level_id() -> int:
-	return current_level_id + 1
+    return current_level_id + 1
 
 func advance_to_next_level() -> void:
-	load_level(next_level_id())
+    var next := next_level_id()
+    if _is_gate_blocked(next):
+        # Emit loaded for same level to refresh UI elsewhere; gate UI handled at menu
+        level_loaded.emit(current_level_id)
+        return
+    load_level(next)
+
+func _is_gate_blocked(level_id: int) -> bool:
+    if RemoteConfig.get_int("gate_enabled", 1) != 1:
+        return false
+    var every := max(1, RemoteConfig.get_int("gate_every_levels", 50))
+    if level_id % every != 0:
+        return false
+    var need := RemoteConfig.get_int("gate_stars_per_gate", 75)
+    return GameState.total_stars() < need
 
 func _goal_key_collect_color(color: int) -> String:
 	return "collect_color_%d" % color

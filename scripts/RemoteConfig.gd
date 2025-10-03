@@ -144,6 +144,12 @@ func fetch_and_apply() -> void:
         "treasure_reward_per_step": 50,
         # Developer features
         "dev_enable_editor": 0,
+        # Map gating
+        "gate_enabled": 1,
+        "gate_every_levels": 50,
+        "gate_stars_per_gate": 75,
+        # Booster mastery bonuses
+        "booster_mastery_bonus_coins": 10,
         # DDA (dynamic difficulty adjustment)
         "dda_fails_soften_threshold": 2,
         "dda_max_soften_steps": 3,
