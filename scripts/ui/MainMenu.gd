@@ -22,6 +22,7 @@ extends Control
 @onready var editor_button: Button = $VBox/EditorButton
 @onready var weekly_button: Button = $VBox/WeeklyChestButton
 @onready var treasure_button: Button = $VBox/TreasureButton
+@onready var mastery_button: Button = $VBox/BoosterMasteryButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
@@ -64,6 +65,8 @@ func _ready() -> void:
         weekly_button.pressed.connect(_on_weekly)
     if treasure_button:
         treasure_button.pressed.connect(_on_treasure)
+    if mastery_button:
+        mastery_button.pressed.connect(_on_mastery)
     # Surface an offer if available at menu open
     if Engine.has_singleton("Offers"):
         Offers.offer_available.connect(func(kind, sku):
@@ -186,4 +189,8 @@ func _on_weekly() -> void:
 
 func _on_treasure() -> void:
     var modal := load("res://scenes/Treasure.tscn").instantiate()
+    add_child(modal)
+
+func _on_mastery() -> void:
+    var modal := load("res://scenes/BoosterMastery.tscn").instantiate()
     add_child(modal)

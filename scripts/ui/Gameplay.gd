@@ -183,6 +183,7 @@ func _on_bomb() -> void:
     if not _confirm_booster_if_needed("Bomb"):
         return
     if GameState.booster_consume("bomb", 1) or GameState.spend_coins(Economy.booster_cost("bomb")):
+        GameState.record_booster_use("bomb")
         var cx := rng.randi_range(1, GRID_SIZE.x - 2)
         var cy := rng.randi_range(1, GRID_SIZE.y - 2)
         var Types = preload("res://scripts/match3/Types.gd")
@@ -199,6 +200,7 @@ func _on_hammer() -> void:
     if not _confirm_booster_if_needed("Hammer"):
         return
     if GameState.booster_consume("hammer", 1) or GameState.spend_coins(Economy.booster_cost("hammer")):
+        GameState.record_booster_use("hammer")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         board.set_piece(p, null)
         var res := board.resolve_board()
@@ -210,6 +212,7 @@ func _on_shuffle() -> void:
     if not _confirm_booster_if_needed("Shuffle"):
         return
     if GameState.booster_consume("shuffle", 1) or GameState.spend_coins(Economy.booster_cost("shuffle")):
+        GameState.record_booster_use("shuffle")
         board.shuffle_random()
         tile_view._update_all_textures()
 
@@ -217,6 +220,7 @@ func _on_rocket() -> void:
     if not _confirm_booster_if_needed("Rocket"):
         return
     if GameState.booster_consume("rocket", 1) or GameState.spend_coins(Economy.booster_cost("rocket")):
+        GameState.record_booster_use("rocket")
         var Types = preload("res://scripts/match3/Types.gd")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         var horiz := rng.randi_range(0, 1) == 0
