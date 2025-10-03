@@ -10,6 +10,7 @@ class_name OfferModal
 @onready var price_btn: Button = $Panel/VBox/CTA
 @onready var close_btn: Button = $Panel/VBox/Close
 @onready var timer_label: Label = $Panel/VBox/Timer
+@onready var time_bar: TextureProgressBar = $Panel/VBox/TimeBar
 
 func _ready() -> void:
     var info := Offers.describe_offer(kind)
@@ -38,6 +39,9 @@ func _ready() -> void:
 
 func _start_timer(end_ts: int) -> void:
     _update_timer(end_ts)
+    var remain := max(0, end_ts - int(Time.get_unix_time_from_system()))
+    time_bar.max_value = remain
+    time_bar.value = remain
     var t := Timer.new()
     t.wait_time = 1.0
     t.autostart = true
@@ -52,3 +56,5 @@ func _update_timer(end_ts: int) -> void:
     var m := (remain % 3600) / 60
     var s := remain % 60
     timer_label.text = "%02d:%02d:%02d" % [h, m, s]
+    if time_bar.max_value > 0:
+        time_bar.value = max(0, time_bar.value - 1)
