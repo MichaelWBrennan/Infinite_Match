@@ -117,7 +117,7 @@ func _on_cell_pressed(pos: Vector2i) -> void:
                 Haptics.medium()
             elif int(res.get("cleared", 0)) >= 3:
                 Haptics.light()
-            GameState.add_tournament_points(int(res.get("cleared", 0)))
+            GameState.add_tournament_points(_tournament_points_from_result(res))
             if Engine.has_singleton("Bingo"):
                 Bingo.progress("clear_tiles", int(res.get("cleared", 0)))
             if Engine.has_singleton("Treasure") and Treasure.active:
@@ -332,6 +332,18 @@ func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
     coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
+
+func _tournament_points_from_result(result: Dictionary) -> int:
+    if Engine.has_singleton("Tournament") and Tournament.active:
+        var rule := RemoteConfig.get_string("tournament_rule", "clears")
+        match rule:
+            "jelly":
+                return int(result.get("jelly_cleared", 0))
+            "ingredients":
+                return int(result.get("ingredients_delivered", 0))
+            _:
+                return int(result.get("cleared", 0))
+    return int(result.get("cleared", 0))
 
 func _setup_boss_and_escape() -> void:
     _boss_hp_current = max(0, LevelManager.boss_hp_total)
