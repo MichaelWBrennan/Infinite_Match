@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "حزمة المبتدئين",
+  "offer.title.flash": "عرض سريع",
+  "offer.title.comeback": "حزمة العودة",
+  "modal.buy": "شراء",
+  "modal.close": "إغلاق",
+  "modal.daily.title": "مكافأة يومية",
+  "modal.continue.title": "لا مزيد من الحركات",
+  "modal.continue.rv": "مشاهدة إعلان",
+  "modal.continue.gems": "إنفاق {{amount}} من الجواهر",
+  "season.pass": "تذكرة الموسم",
+  "season.pass.premium": "تذكرة الموسم (مميز)",
+  "shop.remove_ads": "إزالة الإعلانات",
+  "shop.starter": "حزمة المبتدئين",
+  "shop.energy_refill": "تعبئة الطاقة",
+  "shop.booster_bundle": "حزمة المعززات",
+  "shop.coins": "+{{amount}} عملات",
+  "shop.gems": "+{{amount}} جواهر"
+}

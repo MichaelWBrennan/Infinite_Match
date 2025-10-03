@@ -82,6 +82,10 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             moves_left -= 1
             var res := _resolve_after_swap_or_combo(first_selected, pos)
             GameState.add_coins(int(res.get("cleared", 0)))
+            if Engine.has_singleton("PiggyBank"):
+                PiggyBank.on_tiles_cleared(int(res.get("cleared", 0)))
+            if Engine.has_singleton("SeasonPass"):
+                SeasonPass.add_xp(int(res.get("cleared", 0)))
             tile_view._update_all_textures()
             _update_ui()
             _refresh_goals_text()
@@ -120,6 +124,10 @@ func _resolve_board() -> void:
     var result := board.resolve_board()
     LevelManager.on_resolve_result(result)
     GameState.add_coins(int(result.get("cleared", 0)))
+    if Engine.has_singleton("PiggyBank"):
+        PiggyBank.on_tiles_cleared(int(result.get("cleared", 0)))
+    if Engine.has_singleton("SeasonPass"):
+        SeasonPass.add_xp(int(result.get("cleared", 0)))
     tile_view._update_all_textures()
 
 func _apply_gravity_and_fill() -> void:
@@ -133,7 +141,7 @@ func _refresh_all_buttons() -> void:
     tile_view._update_all_textures()
 
 func _on_bomb() -> void:
-    if GameState.spend_coins(50):
+    if GameState.spend_coins(Economy.booster_cost("bomb")):
         # Convert random normal cell into a bomb, then resolve
         var cx := rng.randi_range(1, GRID_SIZE.x - 2)
         var cy := rng.randi_range(1, GRID_SIZE.y - 2)
@@ -148,7 +156,7 @@ func _on_bomb() -> void:
         tile_view._update_all_textures()
 
 func _on_hammer() -> void:
-    if GameState.spend_coins(30):
+    if GameState.spend_coins(Economy.booster_cost("hammer")):
         # remove a random tile
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         board.set_piece(p, null)
@@ -158,12 +166,12 @@ func _on_hammer() -> void:
         tile_view._update_all_textures()
 
 func _on_shuffle() -> void:
-    if GameState.spend_coins(20):
+    if GameState.spend_coins(Economy.booster_cost("shuffle")):
         board.shuffle_random()
         tile_view._update_all_textures()
 
 func _on_rocket() -> void:
-    if GameState.spend_coins(40):
+    if GameState.spend_coins(Economy.booster_cost("rocket")):
         var Types = preload("res://scripts/match3/Types.gd")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         var horiz := rng.randi_range(0, 1) == 0
@@ -183,14 +191,8 @@ func _on_rewarded() -> void:
 func _on_game_over() -> void:
     if show_interstitial_on_gameover:
         AdManager.show_interstitial_ad("game_over")
-    var ask_continue := true
-    if ask_continue:
-        AdManager.show_rewarded_ad("continue", func(amount: int):
-            moves_left = 5
-            _update_ui()
-        )
-    else:
-        get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+    var modal := load("res://scenes/ContinueModal.tscn").instantiate()
+    add_child(modal)
 
 func _on_level_won() -> void:
     var score := GameState.coins # simplistic: use coins as session score proxy
@@ -226,4 +228,4 @@ func _resolve_after_swap_or_combo(a: Vector2i, b: Vector2i) -> Dictionary:
 func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
-    coins_label.text = "Coins: %d" % GameState.coins
+    coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})

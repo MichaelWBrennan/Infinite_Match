@@ -2,17 +2,23 @@ extends Control
 
 @onready var start_button: Button = $VBox/StartButton
 @onready var daily_button: Button = $VBox/DailyButton
+@onready var quests_button: Button = $VBox/QuestsButton
 @onready var offerwall_button: Button = $VBox/OfferwallButton
 @onready var shop_button: Button = $VBox/ShopButton
 @onready var coins_label: Label = $VBox/CoinsLabel
 @onready var level_label: Label = $VBox/LevelLabel
 @onready var leaderboard_button: Button = $VBox/LeaderboardButton
 @onready var refer_button: Button = $VBox/ReferButton
+@onready var piggy_button: Button = $VBox/PiggyButton
+@onready var season_button: Button = $VBox/SeasonPassButton
+@onready var events_button: Button = $VBox/EventsButton
+@onready var settings_button: Button = $VBox/SettingsButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
     start_button.pressed.connect(_on_start)
     daily_button.pressed.connect(_on_daily)
+    quests_button.pressed.connect(_on_quests)
     offerwall_button.pressed.connect(_on_offerwall)
     shop_button.pressed.connect(_on_shop)
     GameState.currency_changed.connect(func(new_balance): _update_coins())
@@ -20,15 +26,30 @@ func _ready() -> void:
     _update_level()
     _apply_banner_padding()
     AdManager.show_banner("bottom")
+    if ConsentManager.needs_consent():
+        var cm := load("res://scenes/ConsentModal.tscn").instantiate()
+        add_child(cm)
     leaderboard_button.pressed.connect(_on_leaderboard)
     refer_button.pressed.connect(_on_refer)
+    piggy_button.pressed.connect(_on_piggy)
+    season_button.pressed.connect(_on_season)
+    events_button.pressed.connect(_on_events)
+    settings_button.pressed.connect(_on_settings)
+    # Surface an offer if available at menu open
+    if Engine.has_singleton("Offers"):
+        Offers.offer_available.connect(func(kind, sku):
+            Analytics.track_offer("available", str(kind), sku)
+            _show_offer_modal(kind, sku)
+        , CONNECT_ONE_SHOT)
+        # Trigger offer check on next idle frame
+        call_deferred("_check_offers")
 
 func _apply_banner_padding() -> void:
     var h := AdManager.get_banner_height_px()
     banner_spacer.custom_minimum_size.y = h
 
 func _update_coins() -> void:
-    coins_label.text = "Coins: %d" % GameState.coins
+    coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
 
 func _update_level() -> void:
     level_label.text = "Level: %d (Stars: %d)" % [GameState.get_current_level(), GameState.get_level_stars(GameState.get_current_level())]
@@ -37,7 +58,8 @@ func _on_start() -> void:
     get_tree().change_scene_to_file("res://scenes/Gameplay.tscn")
 
 func _on_daily() -> void:
-    get_tree().change_scene_to_file("res://scenes/DailyChallenges.tscn")
+    var modal := load("res://scenes/DailyRewardModal.tscn").instantiate()
+    add_child(modal)
 
 func _on_offerwall() -> void:
     AdManager.open_offerwall()
@@ -51,3 +73,40 @@ func _on_leaderboard() -> void:
 func _on_refer() -> void:
     var code := Social.get_referral_code()
     Social.share("Play Evergreen Puzzler with me! Code: " + code)
+func _on_quests() -> void:
+    var modal := load("res://scenes/QuestsModal.tscn").instantiate()
+    add_child(modal)
+
+
+func _on_piggy() -> void:
+    var amount := PiggyBank.amount_current
+    var max := PiggyBank.amount_max
+    var price := PiggyBank.get_unlock_price_string()
+    var modal := load("res://scenes/OfferModal.tscn").instantiate()
+    modal.kind = 999 # piggy pseudo-kind
+    modal.sku = "piggy_bank_open"
+    add_child(modal)
+    Analytics.track_offer("view", "piggy")
+
+func _check_offers() -> void:
+    if Engine.has_singleton("Offers"):
+        # Offers autoload will emit if eligible during _ready
+        pass
+
+func _show_offer_modal(kind, sku: String) -> void:
+    var modal := load("res://scenes/OfferModal.tscn").instantiate()
+    modal.kind = int(kind)
+    modal.sku = sku
+    add_child(modal)
+
+func _on_season() -> void:
+    var modal := load("res://scenes/SeasonPassModal.tscn").instantiate()
+    add_child(modal)
+
+func _on_events() -> void:
+    var modal := load("res://scenes/EventsCalendar.tscn").instantiate()
+    add_child(modal)
+
+func _on_settings() -> void:
+    var modal := load("res://scenes/SettingsModal.tscn").instantiate()
+    add_child(modal)

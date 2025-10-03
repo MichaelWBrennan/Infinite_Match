@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "Starter Pack",
+  "offer.title.flash": "Flash Deal",
+  "offer.title.comeback": "Welcome Back Bundle",
+  "modal.buy": "Buy",
+  "modal.close": "Close",
+  "modal.daily.title": "Daily Reward",
+  "modal.continue.title": "Out of Moves",
+  "modal.continue.rv": "Watch Ad",
+  "modal.continue.gems": "Spend {{amount}} Gems",
+  "season.pass": "Season Pass",
+  "season.pass.premium": "Season Pass (Premium)",
+  "shop.remove_ads": "Remove Ads",
+  "shop.starter": "Starter Pack",
+  "shop.energy_refill": "Refill Energy",
+  "shop.booster_bundle": "Booster Bundle",
+  "shop.coins": "+{{amount}} Coins",
+  "shop.gems": "+{{amount}} Gems"
+}

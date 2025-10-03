@@ -7,6 +7,7 @@ var _build_version := "1.0.0"
 var _initialized := false
 var _interstitials_shown_today := 0
 var _last_interstitial_close_time_ms: int = 0
+var _rewarded_today := 0
 
 func _ready() -> void:
     _try_init()
@@ -34,14 +35,29 @@ static func track_progression(stage: String, value: String = "") -> void:
 static func track_ad(placement_type: String, location: String, ad_unit: String = "", provider: String = "", revenue: float = 0.0) -> void:
     if Engine.has_singleton("ByteBrew"):
         ByteBrewBridge.track_ad(placement_type, location, ad_unit, provider, revenue)
+    if placement_type == "Reward":
+        _rewarded_today += 1
 
 static func track_purchase(store: String, currency: String, amount: float, item_id: String, category: String) -> void:
     if Engine.has_singleton("ByteBrew"):
         ByteBrewBridge.track_purchase(store, currency, amount, item_id, category)
 
+static func track_offer(event: String, kind: String, sku: String = "") -> void:
+    ByteBrewBridge.custom_event("offer_" + event, kind + (sku != "" ? (":" + sku) : ""))
+
+static func track_shop(event: String, sku: String = "") -> void:
+    ByteBrewBridge.custom_event("shop_" + event, sku)
+
+static func track_piggy(amount: int, max_amount: int) -> void:
+    ByteBrewBridge.custom_event("piggy_amount", amount)
+    ByteBrewBridge.custom_event("piggy_max", max_amount)
+
 static func mark_interstitial_shown() -> void:
     _interstitials_shown_today += 1
     ByteBrewBridge.custom_event("interstitial_shown_count", _interstitials_shown_today)
+
+static func rewarded_watched_today() -> int:
+    return _rewarded_today
 
 static func mark_interstitial_closed() -> void:
     _last_interstitial_close_time_ms = Time.get_ticks_msec()

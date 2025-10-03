@@ -64,7 +64,8 @@ public class IAPBridge extends GodotPlugin implements PurchasesUpdatedListener {
         return Arrays.asList(
                 "querySkus",
                 "purchase",
-                "restore"
+                "restore",
+                "getPriceString"
         );
     }
 
@@ -140,6 +141,23 @@ public class IAPBridge extends GodotPlugin implements PurchasesUpdatedListener {
             }
             emitSignal("restore_complete");
         });
+    }
+
+    public String getPriceString(String sku) {
+        ProductDetails details = skuToDetails.get(sku);
+        if (details == null) {
+            return "";
+        }
+        List<ProductDetails.ProductOfferDetails> offers = details.getOneTimePurchaseOfferDetailsList();
+        if (offers == null || offers.isEmpty()) {
+            return "";
+        }
+        ProductDetails.ProductOfferDetails offer = offers.get(0);
+        ProductDetails.OneTimePurchaseOfferDetails price = offer.getOneTimePurchaseOfferDetails();
+        if (price != null) {
+            return price.getFormattedPrice();
+        }
+        return "";
     }
 
     @Override

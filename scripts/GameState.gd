@@ -7,11 +7,14 @@ signal energy_changed(current, max)
 signal cosmetics_changed()
 
 var coins: int = 0
+signal gems_changed(new_balance)
+var gems: int = 0
 var energy_current: int = 0
 var energy_max: int = 5
 var last_energy_ts: int = 0
 var remove_ads: bool = false
 var owned_cosmetics: Array[String] = []
+var ever_purchased: bool = false
 var first_install_day: int = 0
 var last_seen_day: int = 0
 var session_count_total: int = 0
@@ -43,6 +46,19 @@ func spend_coins(amount: int) -> bool:
         return true
     return false
 
+func add_gems(amount: int) -> void:
+    gems += max(0, amount)
+    gems_changed.emit(gems)
+    _save()
+
+func spend_gems(amount: int) -> bool:
+    if gems >= amount:
+        gems -= amount
+        gems_changed.emit(gems)
+        _save()
+        return true
+    return false
+
 func get_energy() -> int:
     _tick_energy_refill()
     return energy_current
@@ -55,6 +71,11 @@ func consume_energy(cost: int = 1) -> bool:
         _save()
         return true
     return false
+
+func refill_energy() -> void:
+    energy_current = energy_max
+    energy_changed.emit(energy_current, energy_max)
+    _save()
 
 func _tick_energy_refill() -> void:
     var refill_minutes := RemoteConfig.get_int("energy_refill_minutes", 20)
@@ -85,6 +106,10 @@ func purchase_remove_ads() -> void:
     AdManager.set_remove_ads(true)
     _save()
 
+func mark_purchased() -> void:
+    ever_purchased = true
+    _save()
+
 func own_cosmetic(id: String) -> void:
     if not owned_cosmetics.has(id):
         owned_cosmetics.append(id)
@@ -111,11 +136,13 @@ func _mark_daily_claimed() -> void:
 func _save() -> void:
     var data := _load_json()
     data["coins"] = coins
+    data["gems"] = gems
     data["energy_current"] = energy_current
     data["energy_max"] = energy_max
     data["last_energy_ts"] = last_energy_ts
     data["remove_ads"] = remove_ads
     data["owned_cosmetics"] = owned_cosmetics
+    data["ever_purchased"] = ever_purchased
     data["first_install_day"] = first_install_day
     data["last_seen_day"] = last_seen_day
     data["session_count_total"] = session_count_total
@@ -128,11 +155,13 @@ func _save() -> void:
 func _load() -> void:
     var data := _load_json()
     coins = int(data.get("coins", 0))
+    gems = int(data.get("gems", 0))
     energy_current = int(data.get("energy_current", energy_max))
     energy_max = int(data.get("energy_max", energy_max))
     last_energy_ts = int(data.get("last_energy_ts", 0))
     remove_ads = bool(data.get("remove_ads", false))
     owned_cosmetics = data.get("owned_cosmetics", [])
+    ever_purchased = bool(data.get("ever_purchased", false))
     first_install_day = int(data.get("first_install_day", 0))
     last_seen_day = int(data.get("last_seen_day", 0))
     session_count_total = int(data.get("session_count_total", 0))
@@ -154,10 +183,11 @@ func _track_session() -> void:
     session_count_total += 1
     _save()
 
-# Return whether to show interstitial on game over this session (every 2-3 sessions)
+# Return whether to show interstitial on game over this session, based on remote percentage
 func start_game_round() -> bool:
-    var should := ((sessions_today % 2) == 0)
-    return should
+    var pct := clamp(RemoteConfig.get_int("interstitial_on_gameover_pct", 66), 0, 100)
+    var r := randi() % 100
+    return r < pct
 
 # Progression helpers
 func get_current_level() -> int:

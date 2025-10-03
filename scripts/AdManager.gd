@@ -14,6 +14,8 @@ var _remove_ads := false
 
 var _rewarded_ready := false
 var _interstitial_ready := false
+var _interstitials_shown_this_session: int = 0
+var _interstitials_shown_last_10min: Array[int] = [] # timestamps (ms)
 
 var _banner_visible := false
 var _banner_unit_id := ""
@@ -63,23 +65,24 @@ func preload_all() -> void:
         _interstitial_ready = true
 
 func show_rewarded(location: String, on_reward: Callable) -> void:
-    var provider = _ad_provider()
-    if provider and _rewarded_unit_id != "":
-        Analytics.track_ad("Reward", location)
-        if provider.has_method("show_rewarded"):
-            provider.show_rewarded(_rewarded_unit_id, func():
-                var reward_amount := _get_dynamic_reward(location)
-                on_reward.call(reward_amount)
-                rewarded_granted.emit(reward_amount)
-            )
-            return
-        elif provider.has_method("showRewarded"):
-            # Use provider signal to confirm reward
-            _pending_reward_callback = on_reward
-            _pending_reward_location = location
-            # Prefer overload with location if exists
-            provider.showRewarded(_rewarded_unit_id, location)
-            return
+    var providers := _ad_providers()
+    if _rewarded_unit_id != "":
+        for provider in providers:
+            if provider == null:
+                continue
+            Analytics.track_ad("Reward", location)
+            if provider.has_method("show_rewarded"):
+                provider.show_rewarded(_rewarded_unit_id, func():
+                    var reward_amount := _get_dynamic_reward(location)
+                    on_reward.call(reward_amount)
+                    rewarded_granted.emit(reward_amount)
+                )
+                return
+            elif provider.has_method("showRewarded"):
+                _pending_reward_callback = on_reward
+                _pending_reward_location = location
+                provider.showRewarded(_rewarded_unit_id, location)
+                return
     # Fallback simulation
     if _rewarded_ready:
         _rewarded_ready = false
@@ -102,23 +105,31 @@ func show_interstitial(location: String) -> void:
         return
     if not _interstitial_cooldown_elapsed():
         return
-    var provider = _ad_provider()
-    if provider and _interstitial_unit_id != "":
-        Analytics.track_ad("Interstitial", location)
-        if provider.has_method("show_interstitial"):
-            provider.show_interstitial(_interstitial_unit_id)
-            _mark_interstitial_shown()
-            return
-        elif provider.has_method("showInterstitial"):
-            provider.showInterstitial(_interstitial_unit_id, location)
-            _mark_interstitial_shown()
-            return
+    if not _interstitial_caps_allow(location):
+        return
+    var providers := _ad_providers()
+    if _interstitial_unit_id != "":
+        for provider in providers:
+            if provider == null:
+                continue
+            if not (provider.has_method("show_interstitial") or provider.has_method("showInterstitial")):
+                continue
+            Analytics.track_ad("Interstitial", location)
+            if provider.has_method("show_interstitial"):
+                provider.show_interstitial(_interstitial_unit_id)
+                _mark_interstitial_shown()
+                return
+            elif provider.has_method("showInterstitial"):
+                provider.showInterstitial(_interstitial_unit_id, location)
+                _mark_interstitial_shown()
+                return
     # Fallback simulation
     if _interstitial_ready:
         _interstitial_ready = false
         Analytics.track_ad("Interstitial", location)
         await get_tree().create_timer(0.1).timeout
         _interstitial_ready = true
+        Analytics.custom_event("interstitial_simulated", location)
 
 # Wrapper with requested API name
 func show_interstitial_ad(location: String = "break") -> void:
@@ -142,6 +153,21 @@ func _ad_provider():
         if Engine.has_singleton(n):
             return Engine.get_singleton(n)
     return null
+
+func _ad_providers() -> Array:
+    var out: Array = []
+    var names = [
+        "AdsBridge",
+        "GodotGoogleMobileAds",
+        "UnityAdsBridge",
+        "AdMob",
+        "GoogleMobileAds",
+        "GMA"
+    ]
+    for n in names:
+        if Engine.has_singleton(n):
+            out.append(Engine.get_singleton(n))
+    return out
 
 func _get_remote_ad_unit(kind: String) -> String:
     var platform = "android" if OS.get_name() == "Android" else ("ios" if OS.get_name() == "iOS" else "editor")
@@ -230,12 +256,47 @@ func _mark_interstitial_shown() -> void:
     _last_interstitial_time_ms = Time.get_ticks_msec()
     var cooldown_s := randi_range(_interstitial_cooldown_min_s, _interstitial_cooldown_max_s)
     _next_allowed_interstitial_time_ms = _last_interstitial_time_ms + int(cooldown_s) * 1000
+    _interstitials_shown_this_session += 1
+    _interstitials_shown_last_10min.append(_last_interstitial_time_ms)
+    _prune_interstitial_window()
     Analytics.mark_interstitial_shown()
 
 func _interstitial_cooldown_elapsed() -> bool:
     if _next_allowed_interstitial_time_ms == 0:
         return true
     return Time.get_ticks_msec() >= _next_allowed_interstitial_time_ms
+
+func _interstitial_caps_allow(location: String) -> bool:
+    # Cap per-session for game_over
+    var per_session_cap := RemoteConfig.get_int("interstitial_cap_game_over_per_session", 2)
+    if location == "game_over" and _interstitials_shown_this_session >= per_session_cap:
+        return false
+    # Cap over a rolling 10-minute window
+    var per10 := RemoteConfig.get_int("interstitial_cap_per_10min", 3)
+    _prune_interstitial_window()
+    if _interstitials_shown_last_10min.size() >= per10:
+        return false
+    # Segmentation: payers see fewer interstitials
+    if GameState.ever_purchased:
+        var payer_pct := clamp(RemoteConfig.get_int("seg_payer_interstitial_pct", 25), 0, 100)
+        if (randi() % 100) >= payer_pct:
+            return false
+    # Segmentation: RV engaged (watched >= N today) -> fewer interstitials
+    var rv_threshold := RemoteConfig.get_int("rv_engaged_threshold_today", 3)
+    if Analytics.has_method("rewarded_watched_today") and Analytics.rewarded_watched_today() >= rv_threshold:
+        var engaged_pct := clamp(RemoteConfig.get_int("seg_rv_engaged_interstitial_pct", 33), 0, 100)
+        if (randi() % 100) >= engaged_pct:
+            return false
+    return true
+
+func _prune_interstitial_window() -> void:
+    var now := Time.get_ticks_msec()
+    var cutoff := now - 10 * 60 * 1000
+    var filtered: Array[int] = []
+    for ts in _interstitials_shown_last_10min:
+        if ts >= cutoff:
+            filtered.append(ts)
+    _interstitials_shown_last_10min = filtered
 
 func _load_remove_ads_flag() -> void:
     if Engine.has_singleton("GameState"):

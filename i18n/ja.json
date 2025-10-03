@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "スターターパック",
+  "offer.title.flash": "フラッシュオファー",
+  "offer.title.comeback": "カムバックパック",
+  "modal.buy": "購入",
+  "modal.close": "閉じる",
+  "modal.daily.title": "デイリーボーナス",
+  "modal.continue.title": "手数がありません",
+  "modal.continue.rv": "広告を見る",
+  "modal.continue.gems": "{{amount}} ジェムを使う",
+  "season.pass": "シーズンパス",
+  "season.pass.premium": "シーズンパス（プレミアム）",
+  "shop.remove_ads": "広告を削除",
+  "shop.starter": "スターターパック",
+  "shop.energy_refill": "エネルギー回復",
+  "shop.booster_bundle": "ブースターバンドル",
+  "shop.coins": "+{{amount}} コイン",
+  "shop.gems": "+{{amount}} ジェム"
+}

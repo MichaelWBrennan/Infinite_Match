@@ -27,7 +27,18 @@ RemoteConfig="*res://scripts/RemoteConfig.gd"
 GameState="*res://scripts/GameState.gd"
 Social="*res://scripts/Social.gd"
 LiveOps="*res://scripts/LiveOps.gd"
+PiggyBank="*res://scripts/PiggyBank.gd"
 LevelManager="*res://scripts/LevelManager.gd"
+Offers="*res://scripts/Offers.gd"
+SeasonPass="*res://scripts/SeasonPass.gd"
+Experiments="*res://scripts/Experiments.gd"
+Localize="*res://scripts/Localize.gd"
+Quests="*res://scripts/Quests.gd"
+Notifications="*res://scripts/Notifications.gd"
+Economy="*res://scripts/Economy.gd"
+Geo="*res://scripts/Geo.gd"
+ConsentManager="*res://scripts/ConsentManager.gd"
+IOSPriceBridge="*res://scripts/IOSPriceBridge.gd"
 
 [android]
 modules/use_custom_build=true

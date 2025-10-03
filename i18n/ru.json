@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "Стартовый набор",
+  "offer.title.flash": "Молниеносное предложение",
+  "offer.title.comeback": "Набор возврата",
+  "modal.buy": "Купить",
+  "modal.close": "Закрыть",
+  "modal.daily.title": "Ежедневная награда",
+  "modal.continue.title": "Ходы закончились",
+  "modal.continue.rv": "Смотреть рекламу",
+  "modal.continue.gems": "Потратить {{amount}} кристаллов",
+  "season.pass": "Сезонный пропуск",
+  "season.pass.premium": "Сезонный пропуск (Премиум)",
+  "shop.remove_ads": "Убрать рекламу",
+  "shop.starter": "Стартовый набор",
+  "shop.energy_refill": "Восстановить энергию",
+  "shop.booster_bundle": "Набор бустеров",
+  "shop.coins": "+{{amount}} Монет",
+  "shop.gems": "+{{amount}} Кристаллов"
+}

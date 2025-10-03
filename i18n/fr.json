@@ -1,0 +1,19 @@
+{
+  "offer.title.starter": "Pack de démarrage",
+  "offer.title.flash": "Offre éclair",
+  "offer.title.comeback": "Pack de retour",
+  "modal.buy": "Acheter",
+  "modal.close": "Fermer",
+  "modal.daily.title": "Récompense quotidienne",
+  "modal.continue.title": "Plus de coups",
+  "modal.continue.rv": "Regarder une pub",
+  "modal.continue.gems": "Dépenser {{amount}} gemmes",
+  "season.pass": "Passe de saison",
+  "season.pass.premium": "Passe de saison (Premium)",
+  "shop.remove_ads": "Supprimer les pubs",
+  "shop.starter": "Pack de démarrage",
+  "shop.energy_refill": "Recharge d'énergie",
+  "shop.booster_bundle": "Pack de bonus",
+  "shop.coins": "+{{amount}} Pièces",
+  "shop.gems": "+{{amount}} Gemmes"
+}
