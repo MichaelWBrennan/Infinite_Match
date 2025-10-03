@@ -22,6 +22,7 @@ var boss_hp_total: int = 0
 var escape_seconds: int = 0
 var vines_present: bool = false
 var portals_present: bool = false
+var conveyors_present: bool = false
 
 func _ready() -> void:
 	_load_or_init_current_level()
@@ -70,6 +71,7 @@ func _board_params_from_config() -> void:
     escape_seconds = 0
     vines_present = false
     portals_present = false
+    conveyors_present = false
 	if level_config.has("size"):
 		var s: Array = level_config.get("size", [8,8])
 		if s.size() >= 2:
@@ -204,6 +206,15 @@ func apply_level_to_board(board) -> void:
                 var exit := Vector2i(int(p[2]), int(p[3]))
                 board.set_portal(entry, exit)
         portals_present = not pts.is_empty()
+    # Conveyors config: array of mappings [[sx,sy,nx,ny], ...]
+    if level_config.has("conveyors"):
+        var cvs: Array = level_config.get("conveyors", [])
+        for c in cvs:
+            if typeof(c) == TYPE_ARRAY and c.size() >= 4:
+                var src := Vector2i(int(c[0]), int(c[1]))
+                var nxt := Vector2i(int(c[2]), int(c[3]))
+                board.conveyors[str(src.x)+","+str(src.y)] = nxt
+        conveyors_present = not cvs.is_empty()
     # Dynamic difficulty estimation when not tagged
     if difficulty_score < 0.0:
         difficulty_score = Match3Solver.estimate_difficulty(board, move_limit, 10)
