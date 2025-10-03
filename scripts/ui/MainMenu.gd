@@ -3,6 +3,7 @@ extends Control
 @onready var start_button: Button = $VBox/StartButton
 @onready var daily_button: Button = $VBox/DailyButton
 @onready var quests_button: Button = $VBox/QuestsButton
+@onready var missions_button: Button = $VBox/MissionsButton
 @onready var offerwall_button: Button = $VBox/OfferwallButton
 @onready var shop_button: Button = $VBox/ShopButton
 @onready var coins_label: Label = $VBox/CoinsLabel
@@ -19,12 +20,14 @@ extends Control
 @onready var team_button: Button = $VBox/TeamButton
 @onready var tournament_button: Button = $VBox/TournamentButton
 @onready var editor_button: Button = $VBox/EditorButton
+@onready var weekly_button: Button = $VBox/WeeklyChestButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
     start_button.pressed.connect(_on_start)
     daily_button.pressed.connect(_on_daily)
     quests_button.pressed.connect(_on_quests)
+    missions_button.pressed.connect(_on_missions)
     offerwall_button.pressed.connect(_on_offerwall)
     shop_button.pressed.connect(_on_shop)
     GameState.currency_changed.connect(func(new_balance): _update_coins())
@@ -52,6 +55,8 @@ func _ready() -> void:
     if editor_button:
         editor_button.visible = RemoteConfig.get_int("dev_enable_editor", 0) == 1
         editor_button.pressed.connect(_on_editor)
+    if weekly_button:
+        weekly_button.pressed.connect(_on_weekly)
     # Surface an offer if available at menu open
     if Engine.has_singleton("Offers"):
         Offers.offer_available.connect(func(kind, sku):
@@ -110,6 +115,10 @@ func _on_quests() -> void:
     var modal := load("res://scenes/QuestsModal.tscn").instantiate()
     add_child(modal)
 
+func _on_missions() -> void:
+    var modal := load("res://scenes/Missions.tscn").instantiate()
+    add_child(modal)
+
 
 func _on_piggy() -> void:
     var amount := PiggyBank.amount_current
@@ -162,4 +171,8 @@ func _on_tournament() -> void:
 
 func _on_editor() -> void:
     var modal := load("res://scenes/LevelEditor.tscn").instantiate()
+    add_child(modal)
+
+func _on_weekly() -> void:
+    var modal := load("res://scenes/WeeklyChest.tscn").instantiate()
     add_child(modal)

@@ -30,6 +30,9 @@ text = "Daily Challenges"
 [node name="QuestsButton" type="Button" parent="VBox"]
 text = "Quests"
 
+[node name="MissionsButton" type="Button" parent="VBox"]
+text = "Missions"
+
 [node name="OfferwallButton" type="Button" parent="VBox"]
 text = "Free Rewards"
 
@@ -75,6 +78,9 @@ text = "Tournament"
 
 [node name="EditorButton" type="Button" parent="VBox"]
 text = "Level Editor"
+
+[node name="WeeklyChestButton" type="Button" parent="VBox"]
+text = "Weekly Chest"
 
 [node name="BannerSpacer" type="Control" parent="."]
 anchor_left = 0.0
