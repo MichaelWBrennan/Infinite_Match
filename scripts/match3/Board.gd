@@ -17,6 +17,7 @@ var vines: Array = [] # vines[y][x] -> int presence (1 means vine on cell)
 var portals: Dictionary = {} # "x,y" -> Vector2i exit cell
 var licorice_hp: Array = [] # licorice_hp[y][x] -> int (0 = none)
 var conveyors: Dictionary = {} # "x,y" -> Vector2i next cell
+var honey_hp: Array = [] # honey_hp[y][x] -> int (0 = none)
 var spawn_weights: Dictionary = {} # color(int) -> weight(int)
 var drop_mode_enabled: bool = false
 var drop_exit_rows: Array[int] = [] # rows at bottom that count as exits
@@ -39,6 +40,7 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
     chocolate.resize(size.y)
     vines.resize(size.y)
     licorice_hp.resize(size.y)
+    honey_hp.resize(size.y)
     for y in range(size.y):
         grid[y] = []
         jelly_layers[y] = []
@@ -49,6 +51,7 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
         chocolate[y] = []
         vines[y] = []
         licorice_hp[y] = []
+        honey_hp[y] = []
         for x in range(size.x):
             holes[y].append(false)
             crate_hp[y].append(0)
@@ -57,6 +60,7 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
             chocolate[y].append(0)
             vines[y].append(0)
             licorice_hp[y].append(0)
+            honey_hp[y].append(0)
             grid[y].append(Types.make_normal(rng.randi_range(0, num_colors - 1)))
             jelly_layers[y].append(0)
 	_resolve_initial()
@@ -95,7 +99,7 @@ func resolve_board() -> Dictionary:
     var cascades := 0
     var total_color_counts := {}
     var total_jelly_cleared := 0
-    var total_blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0, "vines":0}
+    var total_blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0, "vines":0, "honey":0, "licorice":0}
     var total_ingredients := 0
     while true:
         var matches := _find_matches()
@@ -115,6 +119,7 @@ func resolve_board() -> Dictionary:
         if drop_mode_enabled:
             total_ingredients += _process_ingredient_delivery_and_spawn()
         _spread_chocolate()
+        _spread_honey()
         _spread_vines()
         cascades += 1
     return { "cleared": total_cleared, "cascades": cascades, "color_counts": total_color_counts, "jelly_cleared": total_jelly_cleared, "blockers_cleared": total_blockers_cleared, "ingredients_delivered": total_ingredients }
@@ -496,6 +501,12 @@ func _damage_blockers_or_clear_at(p: Vector2i, out_counts: Dictionary) -> bool:
         chocolate[p.y][p.x] = 0
         out_counts["chocolate"] = int(out_counts.get("chocolate", 0)) + 1
         return true
+    # Honey HP decrements; blocks clears until 0
+    if int(honey_hp[p.y][p.x]) > 0:
+        honey_hp[p.y][p.x] = max(0, int(honey_hp[p.y][p.x]) - 1)
+        if honey_hp[p.y][p.x] == 0:
+            out_counts["honey"] = int(out_counts.get("honey", 0)) + 1
+        return true
     # Licorice decrements when hit and absorbs stripes/rockets without letting them pass
     if int(licorice_hp[p.y][p.x]) > 0:
         licorice_hp[p.y][p.x] = max(0, int(licorice_hp[p.y][p.x]) - 1)
@@ -522,6 +533,28 @@ func _spread_chocolate() -> void:
             if grid[np.y][np.x] != null:
                 continue
             chocolate[np.y][np.x] = 1
+            break
+
+func _spread_honey() -> void:
+    # Honey attempts to grow to adjacent occupied tiles if HP > 0
+    var sources: Array[Vector2i] = []
+    for y in range(size.y):
+        for x in range(size.x):
+            if int(honey_hp[y][x]) > 0:
+                sources.append(Vector2i(x, y))
+    sources.shuffle()
+    for src in sources:
+        var dirs = [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
+        dirs.shuffle()
+        for d in dirs:
+            var np := src + d
+            if not _in_bounds(np) or _is_hole(np):
+                continue
+            if grid[np.y][np.x] == null:
+                continue
+            if int(honey_hp[np.y][np.x]) > 0:
+                continue
+            honey_hp[np.y][np.x] = 1
             break
 
 # Vines spread to adjacent occupied cells after cascades

@@ -242,6 +242,10 @@ func _update_blocker_overlay(p: Vector2i) -> void:
     # If licorice present, show its overlay instead
     if not licorice_overlays.is_empty() and board.licorice_hp.size() == board.size.y and int(board.licorice_hp[p.y][p.x]) > 0:
         visible = false
+    # If honey present, tint blocker overlay amber
+    if board.honey_hp.size() == board.size.y and int(board.honey_hp[p.y][p.x]) > 0:
+        overlay.color = Color(0.95, 0.7, 0.2, 0.35)
+        visible = true
     overlay.visible = visible
 
 func _update_vine_overlay(p: Vector2i) -> void:

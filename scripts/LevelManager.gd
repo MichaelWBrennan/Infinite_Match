@@ -139,6 +139,10 @@ func apply_level_to_board(board) -> void:
         for ic in level_config.get("ice", []):
             if typeof(ic) == TYPE_ARRAY and ic.size() >= 3:
                 board.set_ice(Vector2i(int(ic[0]), int(ic[1])), int(ic[2]))
+    if level_config.has("honey"):
+        for hn in level_config.get("honey", []):
+            if typeof(hn) == TYPE_ARRAY and hn.size() >= 3:
+                board.honey_hp[int(hn[1])][int(hn[0])] = max(0, int(hn[2]))
     if level_config.has("locks"):
         for lk in level_config.get("locks", []):
             if typeof(lk) == TYPE_ARRAY and lk.size() >= 2:
@@ -246,6 +250,14 @@ func describe_goals() -> String:
                 var target_v := int(g.get("amount", 0))
                 var have_v := int(goals_progress.get("clear_vines", 0))
                 parts.append("Clear vines: %d/%d" % [have_v, target_v])
+			"clear_licorice":
+				var target_l := int(g.get("amount", 0))
+				var have_l := int(goals_progress.get("clear_licorice", 0))
+				parts.append("Clear licorice: %d/%d" % [have_l, target_l])
+			"clear_honey":
+				var target_h := int(g.get("amount", 0))
+				var have_h := int(goals_progress.get("clear_honey", 0))
+				parts.append("Clear honey: %d/%d" % [have_h, target_h])
             "clear_licorice":
                 var target_l := int(g.get("amount", 0))
                 var have_l := int(goals_progress.get("clear_licorice", 0))
