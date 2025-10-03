@@ -14,6 +14,8 @@ const LevelManager := preload("res://scripts/LevelManager.gd")
 @onready var moves_label: Label = $TopBar/LeftCluster/MovesValue
 @onready var coins_label: Label = $TopBar/RightCluster/CoinValue
 @onready var goals_label: Label = $TopBar/RightCluster/GoalsLabel
+@onready var boss_bar: TextureProgressBar = $TopBar/BossBar
+@onready var escape_timer_label: Label = $TopBar/EscapeTimer
 @onready var booster_bomb: Button = $BottomBar/BoosterBomb
 @onready var booster_shuffle: Button = $BottomBar/BoosterShuffle
 @onready var booster_hammer: Button = $BottomBar/BoosterHammer
@@ -30,6 +32,12 @@ var show_interstitial_on_gameover := false
 var _hint_timer := 0.0
 var _hint_interval := 6.0
 var _last_hint_positions: Array[Vector2i] = []
+var _soften_steps_applied: int = 0
+var _ftue_step: int = 0
+var _ftue_overlay: Control
+var _ftue_pair: Array[Vector2i] = []
+var _boss_hp_current: int = 0
+var _escape_time_left: int = 0
 
 func _ready() -> void:
     rng.randomize()
@@ -48,12 +56,18 @@ func _ready() -> void:
     booster_rocket.pressed.connect(_on_rocket)
     _update_ui()
     set_process(true)
+    _maybe_start_ftue()
 
 func _process(delta: float) -> void:
     _hint_timer += delta
     if _hint_timer >= _hint_interval:
         _hint_timer = 0.0
         _show_hint()
+    if _escape_time_left > 0:
+        _escape_time_left = max(0, _escape_time_left - int(delta))
+        _update_escape_timer()
+        if _escape_time_left == 0:
+            _on_game_over()
 
 func _apply_banner_padding() -> void:
     banner_spacer.custom_minimum_size.y = AdManager.get_banner_height_px()
@@ -71,15 +85,19 @@ func _init_board_and_level() -> void:
     var seed := int(hash([day_seed, GameState.session_count_total, randi()])) & 0x7fffffff
     board = LevelGenerator.generate(LevelManager.board_size, LevelManager.num_colors, seed)
     LevelManager.apply_level_to_board(board)
+    _apply_dynamic_difficulty_softeners()
     tile_view = TileView.new()
     add_child(tile_view)
     tile_view.setup(grid, board, theme_provider, func(pos: Vector2i): _on_cell_pressed(pos))
     _refresh_goals_text()
     _apply_prelevel_boosters()
+    _setup_boss_and_escape()
 
 func _on_cell_pressed(pos: Vector2i) -> void:
     _hint_timer = 0.0
     _clear_hint()
+    if _ftue_block_input_except(pos):
+        return
     if first_selected == Vector2i(-1, -1):
         first_selected = pos
         _highlight(pos, true)
@@ -95,6 +113,18 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             moves_left -= 1
             var res := _resolve_after_swap_or_combo(first_selected, pos)
             GameState.add_coins(int(res.get("cleared", 0)))
+            if int(res.get("cleared", 0)) >= 10:
+                Haptics.medium()
+            elif int(res.get("cleared", 0)) >= 3:
+                Haptics.light()
+            GameState.add_tournament_points(_tournament_points_from_result(res))
+            if Engine.has_singleton("Bingo"):
+                Bingo.progress("clear_tiles", int(res.get("cleared", 0)))
+            if Engine.has_singleton("Treasure") and Treasure.active:
+                Treasure.progress(int(res.get("cleared", 0)))
+            _apply_boss_damage(int(res.get("cleared", 0)))
+            if Engine.has_singleton("Teams"):
+                Teams.add_points(int(res.get("cleared", 0)))
             if Engine.has_singleton("PiggyBank"):
                 PiggyBank.on_tiles_cleared(int(res.get("cleared", 0)))
             if Engine.has_singleton("SeasonPass"):
@@ -117,6 +147,7 @@ func _on_cell_pressed(pos: Vector2i) -> void:
         _highlight(first_selected, false)
         first_selected = pos
         _highlight(first_selected, true)
+    _advance_ftue_if_needed(pos)
 
 func _swap(a: Vector2i, b: Vector2i) -> void:
     board.swap(a, b)
@@ -160,8 +191,10 @@ func _refresh_all_buttons() -> void:
     tile_view._update_all_textures()
 
 func _on_bomb() -> void:
+    if not _confirm_booster_if_needed("Bomb"):
+        return
     if GameState.booster_consume("bomb", 1) or GameState.spend_coins(Economy.booster_cost("bomb")):
-        # Convert random normal cell into a bomb, then resolve
+        GameState.record_booster_use("bomb")
         var cx := rng.randi_range(1, GRID_SIZE.x - 2)
         var cy := rng.randi_range(1, GRID_SIZE.y - 2)
         var Types = preload("res://scripts/match3/Types.gd")
@@ -175,8 +208,10 @@ func _on_bomb() -> void:
         tile_view._update_all_textures()
 
 func _on_hammer() -> void:
+    if not _confirm_booster_if_needed("Hammer"):
+        return
     if GameState.booster_consume("hammer", 1) or GameState.spend_coins(Economy.booster_cost("hammer")):
-        # remove a random tile
+        GameState.record_booster_use("hammer")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         board.set_piece(p, null)
         var res := board.resolve_board()
@@ -185,12 +220,18 @@ func _on_hammer() -> void:
         tile_view._update_all_textures()
 
 func _on_shuffle() -> void:
+    if not _confirm_booster_if_needed("Shuffle"):
+        return
     if GameState.booster_consume("shuffle", 1) or GameState.spend_coins(Economy.booster_cost("shuffle")):
+        GameState.record_booster_use("shuffle")
         board.shuffle_random()
         tile_view._update_all_textures()
 
 func _on_rocket() -> void:
+    if not _confirm_booster_if_needed("Rocket"):
+        return
     if GameState.booster_consume("rocket", 1) or GameState.spend_coins(Economy.booster_cost("rocket")):
+        GameState.record_booster_use("rocket")
         var Types = preload("res://scripts/match3/Types.gd")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         var horiz := rng.randi_range(0, 1) == 0
@@ -200,6 +241,19 @@ func _on_rocket() -> void:
         LevelManager.on_resolve_result(res)
         GameState.add_coins(int(res.get("cleared", 0)))
         tile_view._update_all_textures()
+
+func _confirm_booster_if_needed(name: String) -> bool:
+    if RemoteConfig.get_int("booster_confirm_enabled", 1) != 1:
+        return true
+    var dlg := ConfirmationDialog.new()
+    dlg.title = Localize.t("booster.confirm.title", "Use Booster?")
+    dlg.dialog_text = Localize.t("booster.confirm.desc", "Use %s now?" % name)
+    add_child(dlg)
+    var result := false
+    dlg.confirmed.connect(func(): result = true)
+    dlg.popup_centered()
+    await dlg.tree_exited # Wait close
+    return result
 
 func _apply_prelevel_boosters() -> void:
     # Optionally place pre-level boosters
@@ -227,6 +281,7 @@ func _on_rewarded() -> void:
 func _on_game_over() -> void:
     if show_interstitial_on_gameover:
         AdManager.show_interstitial_ad("game_over")
+    GameState.register_level_fail(LevelManager.current_level_id)
     var modal := load("res://scenes/ContinueModal.tscn").instantiate()
     add_child(modal)
 
@@ -234,6 +289,8 @@ func _on_level_won() -> void:
     var score := GameState.coins # simplistic: use coins as session score proxy
     var stars := LevelManager.stars_for_score(score)
     GameState.complete_level(LevelManager.current_level_id, score, stars)
+    GameState.register_level_win(LevelManager.current_level_id)
+    GameState.maybe_prompt_review_after_win()
     # Offer RV double-win if enabled
     var allow_double := RemoteConfig.get_int("rv_double_win_enabled", 1) == 1
     if allow_double:
@@ -275,6 +332,131 @@ func _update_ui() -> void:
     energy_label.text = "Energy: %d/%d" % [GameState.get_energy(), GameState.energy_max]
     moves_label.text = "Moves: %d" % moves_left
     coins_label.text = Localize.tf("shop.coins", "Coins: %d" % GameState.coins, {"amount": GameState.coins})
+
+func _tournament_points_from_result(result: Dictionary) -> int:
+    if Engine.has_singleton("Tournament") and Tournament.active:
+        var rule := RemoteConfig.get_string("tournament_rule", "clears")
+        match rule:
+            "jelly":
+                return int(result.get("jelly_cleared", 0))
+            "ingredients":
+                return int(result.get("ingredients_delivered", 0))
+            _:
+                return int(result.get("cleared", 0))
+    return int(result.get("cleared", 0))
+
+func _setup_boss_and_escape() -> void:
+    _boss_hp_current = max(0, LevelManager.boss_hp_total)
+    if boss_bar:
+        boss_bar.visible = _boss_hp_current > 0
+        boss_bar.max_value = max(1, _boss_hp_current)
+        boss_bar.value = _boss_hp_current
+    _escape_time_left = max(0, LevelManager.escape_seconds)
+    if escape_timer_label:
+        escape_timer_label.visible = _escape_time_left > 0
+        _update_escape_timer()
+
+func _apply_boss_damage(amount: int) -> void:
+    if _boss_hp_current <= 0:
+        return
+    _boss_hp_current = max(0, _boss_hp_current - amount)
+    if boss_bar:
+        boss_bar.value = _boss_hp_current
+    if _boss_hp_current == 0:
+        _on_level_won()
+
+func _update_escape_timer() -> void:
+    if not escape_timer_label:
+        return
+    var m := _escape_time_left / 60
+    var s := _escape_time_left % 60
+    escape_timer_label.text = "%02d:%02d" % [m, s]
+
+func _maybe_start_ftue() -> void:
+    if GameState.session_count_total <= 2 and GameState.get_level_stars(1) == 0:
+        _ftue_step = 1
+        # Use a real hint pair if possible
+        var hint := _find_any_hint()
+        if hint.size() == 2:
+            _ftue_pair = hint
+            _highlight(hint[0], true)
+            _highlight(hint[1], true)
+        _show_ftue_overlay("Swap highlighted tiles to match 3!")
+
+func _ftue_block_input_except(pos: Vector2i) -> bool:
+    if _ftue_step == 0:
+        return false
+    # On step 1, allow only a specific pair
+    if _ftue_step == 1:
+        if _ftue_pair.size() == 2:
+            var a := _ftue_pair[0]
+            var b := _ftue_pair[1]
+            if first_selected == Vector2i(-1,-1):
+                return pos != a
+            else:
+                return not (pos == b and board.is_adjacent(first_selected, pos))
+    return false
+
+func _advance_ftue_if_needed(pos: Vector2i) -> void:
+    if _ftue_step == 1 and first_selected == Vector2i(-1,-1):
+        # After successful swap, advance tutorial
+        _ftue_step = 2
+        _show_ftue_overlay("Great! Use boosters to help when stuck.")
+        await get_tree().create_timer(1.2).timeout
+        _hide_ftue_overlay()
+        if _ftue_pair.size() == 2:
+            _highlight(_ftue_pair[0], false)
+            _highlight(_ftue_pair[1], false)
+            _ftue_pair.clear()
+        _ftue_step = 0
+
+func _show_ftue_overlay(text: String) -> void:
+    if _ftue_overlay:
+        _ftue_overlay.queue_free()
+    var panel := Panel.new()
+    panel.modulate = Color(0,0,0,0.2)
+    panel.anchor_left = 0.0
+    panel.anchor_top = 0.0
+    panel.anchor_right = 1.0
+    panel.anchor_bottom = 1.0
+    var label := Label.new()
+    label.text = text
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    label.anchor_left = 0.0
+    label.anchor_top = 0.0
+    label.anchor_right = 1.0
+    label.anchor_bottom = 1.0
+    panel.add_child(label)
+    add_child(panel)
+    _ftue_overlay = panel
+
+func _hide_ftue_overlay() -> void:
+    if _ftue_overlay:
+        _ftue_overlay.queue_free()
+        _ftue_overlay = null
+
+func _apply_dynamic_difficulty_softeners() -> void:
+    _soften_steps_applied = 0
+    var fails := GameState.get_fail_streak(LevelManager.current_level_id)
+    var threshold := RemoteConfig.get_int("dda_fails_soften_threshold", 2)
+    if fails < threshold:
+        return
+    var max_steps := RemoteConfig.get_int("dda_max_soften_steps", 3)
+    var steps := clamp(fails - threshold + 1, 1, max_steps)
+    # Apply moves bonus
+    var bonus_per := RemoteConfig.get_int("dda_moves_bonus_per_step", 3)
+    moves_left += steps * bonus_per
+    # Optionally reduce colors
+    var reduce_colors := RemoteConfig.get_int("dda_reduce_colors_per_step", 0)
+    if reduce_colors > 0:
+        var new_colors := max(3, LevelManager.num_colors - steps * reduce_colors)
+        board.num_colors = new_colors
+    # Pity prelevel booster chance
+    var pct := clamp(RemoteConfig.get_int("pity_prelevel_booster_chance_pct", 30), 0, 100)
+    if (randi() % 100) < pct:
+        GameState.booster_add("pre_color_bomb", 1)
+    _soften_steps_applied = steps
 
 func _find_any_hint() -> Array[Vector2i]:
     # Try all adjacent swaps and return first that yields a match

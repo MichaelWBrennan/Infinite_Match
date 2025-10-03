@@ -10,12 +10,14 @@ var buttons: Array = [] # 2D Buttons with icon textures
 var on_cell_pressed: Callable = func(_pos: Vector2i): pass
 var jelly_overlays: Array = [] # 2D TextureRects
 var blocker_overlays: Array = [] # crate/ice/lock/chocolate overlays
+var color_blind_symbols: Array[Texture2D] = []
 
 func setup(container: GridContainer, match3_board, theme_provider, pressed_cb: Callable) -> void:
 	grid_container = container
 	board = match3_board
 	theme = theme_provider
 	on_cell_pressed = pressed_cb
+	_ensure_color_blind_symbols(board.num_colors)
 	_render_all()
 
 func _render_all() -> void:
@@ -32,12 +34,12 @@ func _render_all() -> void:
 		for x in range(board.size.x):
 			var btn := Button.new()
 			btn.focus_mode = Control.FOCUS_NONE
-			btn.text = ""
+            btn.text = ""
 			btn.expand_icon = true
 			btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			var pos := Vector2i(x, y)
 			btn.pressed.connect(func(): on_cell_pressed.call(pos))
-			buttons[y].append(btn)
+            buttons[y].append(btn)
 			grid_container.add_child(btn)
             # Jelly overlay as a child control stacked above the button
             var overlay := ColorRect.new()
@@ -61,9 +63,105 @@ func _render_all() -> void:
 
 func update_cell(p: Vector2i) -> void:
 	var btn: Button = buttons[p.y][p.x]
-	btn.icon = theme.get_texture_for_piece(board.get_piece(p))
+    var tex := theme.get_texture_for_piece(board.get_piece(p))
+    if GameState.color_blind_mode and board.get_piece(p) != null:
+        # Overlay a simple symbol image for color-blind accessibility
+        var color := int(board.get_piece(p).get("color", -1))
+        if color >= 0 and color < color_blind_symbols.size() and color_blind_symbols[color] != null:
+            # Compose by setting the Button icon to the base texture; symbol could be drawn via a child
+            btn.icon = tex
+            # Ensure a symbol child exists
+            var sym: TextureRect = btn.get_node_or_null("CBIcon")
+            if sym == null:
+                sym = TextureRect.new()
+                sym.name = "CBIcon"
+                sym.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                sym.stretch_mode = TextureRect.STRETCH_SCALE
+                sym.size_flags_horizontal = Control.SIZE_FILL
+                sym.size_flags_vertical = Control.SIZE_FILL
+                btn.add_child(sym)
+            sym.texture = color_blind_symbols[color]
+            sym.visible = true
+        else:
+            btn.icon = tex
+            var sym2: TextureRect = btn.get_node_or_null("CBIcon")
+            if sym2:
+                sym2.visible = false
+    else:
+        btn.icon = tex
+        var sym3: TextureRect = btn.get_node_or_null("CBIcon")
+        if sym3:
+            sym3.visible = false
     _update_jelly_overlay(p)
     _update_blocker_overlay(p)
+
+func _ensure_color_blind_symbols(count: int) -> void:
+    if color_blind_symbols.size() >= count:
+        return
+    color_blind_symbols.resize(count)
+    for i in range(count):
+        color_blind_symbols[i] = _make_symbol_texture(i)
+
+func _make_symbol_texture(index: int) -> Texture2D:
+    var size := 96
+    var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+    img.fill(Color(0,0,0,0))
+    var cx := size / 2
+    var cy := size / 2
+    var r := size / 4
+    # Draw black border then white fill for contrast
+    func set_px(x: int, y: int, c: Color) -> void:
+        if x >= 0 and x < size and y >= 0 and y < size:
+            img.set_pixel(x, y, c)
+    match index % 6:
+        0:
+            # Circle
+            for y in range(size):
+                for x in range(size):
+                    var dx := x - cx
+                    var dy := y - cy
+                    var d2 := dx*dx + dy*dy
+                    if d2 <= (r*r):
+                        set_px(x, y, Color(1,1,1,0.9))
+                    elif d2 <= ((r+1)*(r+1)):
+                        set_px(x, y, Color(0,0,0,1))
+        1:
+            # Square
+            for y in range(cy - r, cy + r):
+                for x in range(cx - r, cx + r):
+                    set_px(x, y, Color(1,1,1,0.9))
+            for x in range(cx - r - 1, cx + r + 1):
+                set_px(x, cy - r - 1, Color(0,0,0,1))
+                set_px(x, cy + r, Color(0,0,0,1))
+            for y in range(cy - r - 1, cy + r + 1):
+                set_px(cx - r - 1, y, Color(0,0,0,1))
+                set_px(cx + r, y, Color(0,0,0,1))
+        2:
+            # Triangle (up)
+            for y in range(cy - r, cy + r):
+                var span := int(float(y - (cy - r)) / float(2*r) * (2*r))
+                for x in range(cx - span/2, cx + span/2):
+                    set_px(x, y, Color(1,1,1,0.9))
+        3:
+            # Diamond
+            for y in range(size):
+                for x in range(size):
+                    var d := abs(x - cx) + abs(y - cy)
+                    if d <= r:
+                        set_px(x, y, Color(1,1,1,0.9))
+        4:
+            # Plus
+            var w := r / 2
+            for y in range(cy - w, cy + w):
+                for x in range(cx - r, cx + r): set_px(x, y, Color(1,1,1,0.9))
+            for y2 in range(cy - r, cy + r):
+                for x2 in range(cx - w, cx + w): set_px(x2, y2, Color(1,1,1,0.9))
+        _:
+            # Cross
+            for t in range(-r, r):
+                set_px(cx + t, cy + t, Color(1,1,1,0.9))
+                set_px(cx + t, cy - t, Color(1,1,1,0.9))
+    return ImageTexture.create_from_image(img)
 
 func _update_all_textures() -> void:
 	for y in range(board.size.y):

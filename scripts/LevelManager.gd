@@ -3,6 +3,7 @@ extends Node
 class_name LevelManager
 
 const Types := preload("res://scripts/match3/Types.gd")
+const Match3Solver := preload("res://scripts/match3/Solver.gd")
 
 signal goals_updated(progress: Dictionary)
 signal level_loaded(level_id: int)
@@ -14,8 +15,11 @@ var move_limit: int = 20
 var board_size: Vector2i = Vector2i(8, 8)
 var num_colors: int = 5
 var score_star_thresholds: Array[int] = [500, 1500, 3000]
+var difficulty_score: float = 0.0
 var drop_mode: bool = false
 var drop_ingredient_target: int = 0
+var boss_hp_total: int = 0
+var escape_seconds: int = 0
 
 func _ready() -> void:
 	_load_or_init_current_level()
@@ -47,18 +51,21 @@ func load_level(id: int) -> void:
 	if typeof(data) != TYPE_DICTIONARY:
 		level_config = {}
 		return
-	level_config = data
-	_board_params_from_config()
+    level_config = data
+    _board_params_from_config()
+    difficulty_score = float(level_config.get("difficulty", -1.0))
 	_init_goals_progress()
 	level_loaded.emit(current_level_id)
 
 func _board_params_from_config() -> void:
 	board_size = Vector2i(8, 8)
 	num_colors = 5
-	move_limit = 20
+    move_limit = 20
 	score_star_thresholds = [500, 1500, 3000]
     drop_mode = false
     drop_ingredient_target = 0
+    boss_hp_total = 0
+    escape_seconds = 0
 	if level_config.has("size"):
 		var s: Array = level_config.get("size", [8,8])
 		if s.size() >= 2:
@@ -169,6 +176,16 @@ func apply_level_to_board(board) -> void:
             if dm2.has("spawn_cols"):
                 spawn_cols = dm2.get("spawn_cols", [])
             board.configure_drop_mode(enabled, exits, spawn_cols, target)
+    # Boss and Escape configs
+    if level_config.has("boss"):
+        var bcfg: Dictionary = level_config.get("boss", {})
+        boss_hp_total = int(bcfg.get("hp", 0))
+    if level_config.has("escape"):
+        var ecfg: Dictionary = level_config.get("escape", {})
+        escape_seconds = int(ecfg.get("seconds", 0))
+    # Dynamic difficulty estimation when not tagged
+    if difficulty_score < 0.0:
+        difficulty_score = Match3Solver.estimate_difficulty(board, move_limit, 10)
 
 func current_goals() -> Array:
 	return level_config.get("goals", [])
@@ -207,9 +224,14 @@ func on_resolve_result(result: Dictionary) -> void:
 		elif str(g.get("type", "")) == "clear_jelly":
 			var add_j := int(result.get("jelly_cleared", 0))
 			goals_progress["clear_jelly"] = int(goals_progress.get("clear_jelly", 0)) + add_j
-        elif str(g.get("type", "")) == "deliver_ingredients":
+			# Event progress hooks
+			if Engine.has_singleton("Bingo") and add_j > 0:
+				Bingo.progress("clear_jelly", add_j)
+		elif str(g.get("type", "")) == "deliver_ingredients":
             var add_i := int(result.get("ingredients_delivered", 0))
             goals_progress["deliver_ingredients"] = int(goals_progress.get("deliver_ingredients", 0)) + add_i
+			if Engine.has_singleton("Bingo") and add_i > 0:
+				Bingo.progress("deliver_ingredients", add_i)
 	goals_updated.emit(goals_progress)
 
 func goals_completed() -> bool:
@@ -242,10 +264,27 @@ func stars_for_score(score: int) -> int:
 	return clamp(s, 0, 3)
 
 func next_level_id() -> int:
-	return current_level_id + 1
+    return current_level_id + 1
 
 func advance_to_next_level() -> void:
-	load_level(next_level_id())
+    var next := next_level_id()
+    if _is_gate_blocked(next):
+        # Emit loaded for same level to refresh UI elsewhere; gate UI handled at menu
+        level_loaded.emit(current_level_id)
+        return
+    load_level(next)
+
+func _is_gate_blocked(level_id: int) -> bool:
+    if RemoteConfig.get_int("gate_enabled", 1) != 1:
+        return false
+    var every := max(1, RemoteConfig.get_int("gate_every_levels", 50))
+    if level_id % every != 0:
+        return false
+    var need := RemoteConfig.get_int("gate_stars_per_gate", 75)
+    return GameState.total_stars() < need
+
+func is_next_gate_blocked() -> bool:
+    return _is_gate_blocked(next_level_id())
 
 func _goal_key_collect_color(color: int) -> String:
 	return "collect_color_%d" % color

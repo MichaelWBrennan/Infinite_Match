@@ -91,14 +91,15 @@ func _apply_price_strings() -> void:
     # Cosmetic pack price range stays textual unless querying individual SKUs
 
 func _apply_badges() -> void:
-    var best := RemoteConfig.get_string("best_value_sku", "gems_huge")
-    var popular := RemoteConfig.get_string("most_popular_sku", "gems_medium")
+    var best := Segmentation.best_value_sku()
+    var popular := Segmentation.most_popular_sku()
     if badge_gems_huge:
         badge_gems_huge.visible = (best == "gems_huge") or (popular == "gems_huge")
         badge_gems_huge.text = (best == "gems_huge") ? "Best Value" : (popular == "gems_huge") ? "Most Popular" : ""
     if badge_gems_medium:
         badge_gems_medium.visible = (best == "gems_medium") or (popular == "gems_medium")
         badge_gems_medium.text = (best == "gems_medium") ? "Best Value" : (popular == "gems_medium") ? "Most Popular" : ""
+    # Optional time-limited banner styling can be driven by remote config too
 
 func _buy(sku: String) -> void:
     Analytics.track_shop("click", sku)

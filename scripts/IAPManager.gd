@@ -28,6 +28,8 @@ var _prices := {
     "gems_medium": 4.99,
     "gems_large": 9.99,
     "gems_huge": 19.99,
+    # Subscriptions
+    "vip_sub_monthly": 4.99,
 }
 
 func _ready() -> void:
@@ -71,7 +73,7 @@ func purchase_item(sku: String) -> void:
     Analytics.custom_event("iap_fallback_purchase", sku)
     # iOS or editor fallback: simulate purchase
     await get_tree().create_timer(0.2).timeout
-    _handle_purchase_success(sku, "simulated")
+    await _verify_and_grant(sku, "simulated")
 
 func restore_purchases() -> void:
     if OS.get_name() == "Android" and Engine.has_singleton("IAPBridge"):
@@ -89,12 +91,12 @@ func _connect_iap_signals(iap) -> void:
         iap.connect("purchase_failed", Callable(self, "_on_iap_failed"))
 
 func _on_iap_success(sku: String, order_id: String) -> void:
-    _handle_purchase_success(sku, order_id)
+    await _verify_and_grant(sku, order_id)
 
 func _on_iap_failed(reason: String) -> void:
     purchase_completed.emit("", false)
 
-func _handle_purchase_success(sku: String, order_id: String) -> void:
+func _grant_items_for_sku(sku: String) -> void:
     var category := "consumable"
     if sku == "remove_ads":
         GameState.purchase_remove_ads()
@@ -127,6 +129,11 @@ func _handle_purchase_success(sku: String, order_id: String) -> void:
         GameState.add_coins(RemoteConfig.get_int("comeback_bonus_coins", 800))
     elif sku == "season_pass_premium":
         SeasonPass.unlock_premium()
+        category = "subscription"
+    elif sku == "vip_sub_monthly":
+        GameState.set_vip_days(30)
+        GameState.purchase_remove_ads()
+        category = "subscription"
     elif sku == "gems_small":
         GameState.add_gems(RemoteConfig.get_int("gems_small_amount", 20))
     elif sku == "gems_medium":
@@ -140,6 +147,69 @@ func _handle_purchase_success(sku: String, order_id: String) -> void:
         GameState.mark_purchased()
     Analytics.track_purchase(_store_name(), "USD", get_price_usd(sku), sku, category)
     purchase_completed.emit(sku, true)
+
+func _should_validate_receipts() -> bool:
+    return RemoteConfig.get_int("enable_receipt_validation", 0) == 1 and RemoteConfig.get_string("receipt_validation_url", "") != ""
+
+func _validation_url() -> String:
+    return RemoteConfig.get_string("receipt_validation_url", "")
+
+func _device_id() -> String:
+    return OS.get_unique_id()
+
+func _platform_name() -> String:
+    return _store_name()
+
+func _make_receipt_payload(sku: String, order_id: String) -> Dictionary:
+    return {
+        "sku": sku,
+        "order_id": order_id,
+        "platform": _platform_name(),
+        "device_id": _device_id(),
+        "locale": OS.get_locale(),
+        "version": Engine.get_version_info().get("string", "")
+    }
+
+func _http_post_json(url: String, payload: Dictionary) -> Dictionary:
+    var req := HTTPRequest.new()
+    add_child(req)
+    var headers := ["Content-Type: application/json"]
+    var body := JSON.stringify(payload)
+    var err := req.request(url, headers, HTTPClient.METHOD_POST, body)
+    if err != OK:
+        return {"ok": false, "status": 0, "body": ""}
+    var result = await req.request_completed
+    # result: [result, response_code, headers, body]
+    var code := int(result[1])
+    var raw: PackedByteArray = result[3]
+    var text := raw.get_string_from_utf8()
+    return {"ok": (code >= 200 and code < 300), "status": code, "body": text}
+
+func _validate_receipt(sku: String, order_id: String) -> bool:
+    if Engine.has_singleton("Backend") and Backend.base_url() != "":
+        return await Backend.verify_receipt(sku, order_id, _platform_name(), _device_id(), OS.get_locale(), Engine.get_version_info().get("string", ""))
+    var url := _validation_url()
+    if url == "":
+        return true
+    var resp := await _http_post_json(url, _make_receipt_payload(sku, order_id))
+    if not bool(resp.get("ok", false)):
+        return false
+    var body := String(resp.get("body", ""))
+    var parsed = JSON.parse_string(body)
+    if typeof(parsed) == TYPE_DICTIONARY:
+        if bool(parsed.get("valid", false)):
+            return true
+    return false
+
+func _verify_and_grant(sku: String, order_id: String) -> void:
+    var ok := true
+    if _should_validate_receipts():
+        ok = await _validate_receipt(sku, order_id)
+    if not ok:
+        purchase_completed.emit(sku, false)
+        Analytics.custom_event("iap_validation_failed", sku)
+        return
+    _grant_items_for_sku(sku)
 
 func _store_name() -> String:
     if OS.get_name() == "iOS":

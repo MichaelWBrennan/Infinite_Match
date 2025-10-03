@@ -30,6 +30,9 @@ text = "Daily Challenges"
 [node name="QuestsButton" type="Button" parent="VBox"]
 text = "Quests"
 
+[node name="MissionsButton" type="Button" parent="VBox"]
+text = "Missions"
+
 [node name="OfferwallButton" type="Button" parent="VBox"]
 text = "Free Rewards"
 
@@ -50,14 +53,52 @@ text = "Events"
 
 [node name="SettingsButton" type="Button" parent="VBox"]
 text = "Settings"
+[node name="InboxButton" type="Button" parent="VBox"]
+text = "Inbox"
 [node name="LevelLabel" type="Label" parent="VBox"]
 text = "Level: 1 (Stars: 0)"
+
+[node name="StreakLabel" type="Label" parent="VBox"]
+text = "Streak: 0 (Best: 0) Weekly: 0/1000"
 
 [node name="LeaderboardButton" type="Button" parent="VBox"]
 text = "Leaderboard"
 
 [node name="ReferButton" type="Button" parent="VBox"]
 text = "Refer a Friend"
+
+[node name="MapButton" type="Button" parent="VBox"]
+text = "World Map"
+
+[node name="TeamButton" type="Button" parent="VBox"]
+text = "Team Chest"
+
+[node name="TeamLivesButton" type="Button" parent="VBox"]
+text = "Team Lives"
+
+[node name="TeamRaceButton" type="Button" parent="VBox"]
+text = "Team Race"
+
+[node name="TournamentButton" type="Button" parent="VBox"]
+text = "Tournament"
+
+[node name="EditorButton" type="Button" parent="VBox"]
+text = "Level Editor"
+
+[node name="WeeklyChestButton" type="Button" parent="VBox"]
+text = "Weekly Chest"
+
+[node name="TreasureButton" type="Button" parent="VBox"]
+text = "Treasure Trail"
+
+[node name="BoosterMasteryButton" type="Button" parent="VBox"]
+text = "Booster Mastery"
+
+[node name="BingoButton" type="Button" parent="VBox"]
+text = "Bingo"
+
+[node name="PromoButton" type="Button" parent="VBox"]
+text = "Promo Codes"
 
 [node name="BannerSpacer" type="Control" parent="."]
 anchor_left = 0.0

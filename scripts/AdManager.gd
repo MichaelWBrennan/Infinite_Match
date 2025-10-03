@@ -162,7 +162,8 @@ func _ad_providers() -> Array:
         "UnityAdsBridge",
         "AdMob",
         "GoogleMobileAds",
-        "GMA"
+        "GMA",
+        "MAXAds" # placeholder for mediation stack
     ]
     for n in names:
         if Engine.has_singleton(n):
@@ -186,6 +187,7 @@ func _on_rewarded_earned(amount: int) -> void:
 func _on_ad_paid(provider_name: String, ad_unit: String, placement_type: String, location: String, currency: String, value_micros: int) -> void:
     var revenue = float(value_micros) / 1000000.0
     Analytics.track_ad(placement_type, location, ad_unit, provider_name, revenue)
+    AdMediation.record_ilrd(placement_type, location, provider_name, ad_unit, revenue)
 
 func _on_interstitial_closed() -> void:
     Analytics.mark_interstitial_closed()
@@ -195,6 +197,10 @@ func show_banner(position: String = "bottom") -> void:
     if _remove_ads:
         return
     var provider = _ad_provider()
+    # Respect remote config to disable banners for payers
+    if GameState.ever_purchased and RemoteConfig.get_int("disable_banners_for_payers", 1) == 1:
+        _banner_visible = false
+        return
     if provider and _banner_unit_id != "":
         if provider.has_method("showBanner"):
             provider.showBanner(_banner_unit_id, position)

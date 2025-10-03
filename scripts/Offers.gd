@@ -15,8 +15,8 @@ func _ready() -> void:
     _check_initial_offers()
 
 func _check_initial_offers() -> void:
-    if is_starter_available():
-        offer_available.emit(OfferKind.STARTER, "starter_pack_small")
+    if _ladder_offer_available():
+        offer_available.emit(OfferKind.STARTER, _next_ladder_sku())
     elif is_comeback_available():
         offer_available.emit(OfferKind.COMEBACK, "comeback_bundle")
     elif is_flash_available():
@@ -48,7 +48,7 @@ func is_flash_available() -> bool:
 func describe_offer(kind: int) -> Dictionary:
     match kind:
         OfferKind.STARTER:
-            return {"title": "Starter Pack", "sku": "starter_pack_small", "bonus": RemoteConfig.get_int("starter_discount_pct", 50)}
+            return {"title": "Starter Pack", "sku": _next_ladder_sku(), "bonus": RemoteConfig.get_int("starter_discount_pct", 50)}
         OfferKind.COMEBACK:
             return {"title": "Welcome Back Bundle", "sku": "comeback_bundle", "coins": RemoteConfig.get_int("comeback_bonus_coins", 800)}
         OfferKind.FLASH:
@@ -60,6 +60,26 @@ func accept_offer(kind: int) -> void:
     var info := describe_offer(kind)
     if info.has("sku"):
         IAPManager.purchase_item(String(info["sku"]))
+
+func _ladder_enabled() -> bool:
+    return RemoteConfig.get_int("ladder_enabled", 1) == 1
+
+func _next_ladder_sku() -> String:
+    if not _ladder_enabled():
+        return "starter_pack_small"
+    # Simple 2-stage ladder based on purchase state
+    if not GameState.ever_purchased:
+        return RemoteConfig.get_string("ladder_stage1_sku", "starter_pack_small")
+    return RemoteConfig.get_string("ladder_stage2_sku", "starter_pack_large")
+
+func _ladder_offer_available() -> bool:
+    if not _ladder_enabled():
+        return is_starter_available()
+    # Stage 1: show if not purchased
+    if not GameState.ever_purchased:
+        return is_starter_available()
+    # Stage 2: small delay after first purchase
+    return GameState.session_count_total >= 3
 
 func _load() -> void:
     var f := FileAccess.open(_save_path, FileAccess.READ)

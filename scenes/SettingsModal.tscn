@@ -28,5 +28,8 @@ anchor_bottom = 1.0
 [node name="Privacy" type="Button" parent="Panel/VBox"]
 text = "Privacy Policy"
 
+[node name="ColorBlind" type="CheckBox" parent="Panel/VBox"]
+text = "Color-blind mode"
+
 [node name="Close" type="Button" parent="Panel/VBox"]
 text = "Close"

@@ -13,6 +13,7 @@ func fetch_and_apply() -> void:
     if _loaded:
         return
     _loaded = true
+    _load_res_overrides()
     _load_overrides()
     var defaults := {
         # Rewards and ads
@@ -21,6 +22,9 @@ func fetch_and_apply() -> void:
         "reward_continue": 5,
         "reward_level_win": 10,
         "reward_shop_get_more": 10,
+        # Rewarded placements toggles
+        "rv_prelevel_booster_enabled": 1,
+        "rv_double_win_enabled": 1,
         "interstitial_interval": 45,
         "interstitial_cooldown_min_s": 120,
         "interstitial_cooldown_max_s": 180,
@@ -36,6 +40,8 @@ func fetch_and_apply() -> void:
         # Timers
         "flash_offer_seconds": 3600,
         "season_end_epoch": 0,
+        "season_active": "0",
+        "season_name": "",
         # Ad units (replace remotely on prod)
         "ad_rewarded_android": "ca-app-pub-3940256099942544/5224354917",
         "ad_interstitial_android": "ca-app-pub-3940256099942544/1033173712",
@@ -43,12 +49,16 @@ func fetch_and_apply() -> void:
         "ad_rewarded_ios": "TEST_REWARDED_IOS",
         "ad_interstitial_ios": "TEST_INTERSTITIAL_IOS",
         "ad_banner_ios": "TEST_BANNER_IOS",
+        # Floors (USD)
+        "floor_rewarded_usd": 0.00,
+        "floor_interstitial_usd": 0.00,
         # Offerwall
         "offerwall_url": "",
         # Economy
         "energy_max": 5,
         "energy_refill_minutes": 20,
         "daily_reward_base": 50,
+        "continue_gem_cost": 10,
         # Piggy bank
         "piggy_enabled": 1,
         "piggy_max": 5000,
@@ -80,7 +90,77 @@ func fetch_and_apply() -> void:
         # Season pass config
         "season_levels": 30,
         "season_free_coin_base": 50,
-        "season_premium_coin_base": 100
+        "season_premium_coin_base": 100,
+        # Storefront decorations
+        "best_value_sku": "gems_huge",
+        "most_popular_sku": "gems_medium",
+        # In-app review
+        "store_review_url": "",
+        "review_prompt_min_wins": 3,
+        "review_prompt_cooldown_days": 30,
+        # CMP & ATT
+        "cmp_enabled": 1,
+        "att_prompt_enabled": 1,
+        # Booster confirmations
+        "booster_confirm_enabled": 1,
+        # Performance budgets and modes
+        "perf_cold_start_ms_budget": 3000,
+        "perf_memory_mb_budget": 512,
+        "lightweight_mode_enabled": 0,
+        "lazy_textures_enabled": 0,
+        "streaming_enabled": 0,
+        # World map and chests
+        "world_map_chest_star_step": 25,
+        "world_map_chest_coin_reward": 200,
+        "world_map_chest_gem_reward": 5,
+        # Teams & Tournament
+        "team_chest_threshold": 1000,
+        "team_chest_reward_coins": 500,
+        "tournament_active": 1,
+        "tournament_rule": "clears", # clears | jelly | ingredients
+        "tournament_reward_first": 500,
+        "tournament_reward_second": 300,
+        "tournament_reward_third": 200,
+        # Bingo event
+        "bingo_active": 0,
+        "bingo_reward_per_line": 100,
+        # Missions (FTUE 30-min flow)
+        "missions_enabled": 1,
+        # Weekly chest and win-streak
+        "weekly_chest_points_step": 1000,
+        "weekly_chest_coin_reward": 500,
+        "win_streak_coin_bonus_per": 2, # coins per streak step
+        # Dynamic bundles and ladder
+        "ladder_enabled": 1,
+        "ladder_stage1_sku": "starter_pack_small",
+        "ladder_stage2_sku": "starter_pack_large",
+        "dynamic_bundle_enabled": 1,
+        # Booster mastery
+        "booster_mastery_threshold": 20,
+        "booster_mastery_upgrade_cost": 1000,
+        # Treasure trail event
+        "treasure_active": 0,
+        "treasure_steps": 10,
+        "treasure_reward_per_step": 50,
+        # Developer features
+        "dev_enable_editor": 0,
+        # Map gating
+        "gate_enabled": 1,
+        "gate_every_levels": 50,
+        "gate_stars_per_gate": 75,
+        # Booster mastery bonuses
+        "booster_mastery_bonus_coins": 10,
+        # DDA (dynamic difficulty adjustment)
+        "dda_fails_soften_threshold": 2,
+        "dda_max_soften_steps": 3,
+        "dda_moves_bonus_per_step": 3,
+        "dda_reduce_colors_per_step": 0,
+        "pity_prelevel_booster_chance_pct": 30,
+        # Receipt validation
+        "enable_receipt_validation": 0,
+        "receipt_validation_url": "",
+        # Backend base URL (when enabled)
+        "backend_base_url": ""
     }
     _cache.merge(defaults, true)
     if Engine.has_singleton("ByteBrew"):
@@ -123,6 +203,18 @@ func set_override(key: String, value) -> void:
 
 func _load_overrides() -> void:
     var f := FileAccess.open(_overrides_path, FileAccess.READ)
+    if f:
+        var txt := f.get_as_text()
+        f.close()
+        var d = JSON.parse_string(txt)
+        if typeof(d) == TYPE_DICTIONARY:
+            _cache.merge(d, true)
+
+func _load_res_overrides() -> void:
+    var path := "res://config/remote_overrides.json"
+    if not FileAccess.file_exists(path):
+        return
+    var f := FileAccess.open(path, FileAccess.READ)
     if f:
         var txt := f.get_as_text()
         f.close()
