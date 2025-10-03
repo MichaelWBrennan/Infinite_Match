@@ -13,6 +13,8 @@ var crate_hp: Array = [] # crate_hp[y][x] -> int (0 = none)
 var ice_hp: Array = [] # ice_hp[y][x] -> int (0 = none)
 var locked: Array = [] # locked[y][x] -> bool (true means locked until cleared)
 var chocolate: Array = [] # chocolate[y][x] -> int presence (1 means chocolate on cell)
+var vines: Array = [] # vines[y][x] -> int presence (1 means vine on cell)
+var portals: Dictionary = {} # "x,y" -> Vector2i exit cell
 var spawn_weights: Dictionary = {} # color(int) -> weight(int)
 var drop_mode_enabled: bool = false
 var drop_exit_rows: Array[int] = [] # rows at bottom that count as exits
@@ -33,6 +35,7 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
     ice_hp.resize(size.y)
     locked.resize(size.y)
     chocolate.resize(size.y)
+    vines.resize(size.y)
     for y in range(size.y):
         grid[y] = []
         jelly_layers[y] = []
@@ -41,12 +44,14 @@ func _init(board_size: Vector2i = Vector2i(8, 8), colors: int = 5, seed: int = -
         ice_hp[y] = []
         locked[y] = []
         chocolate[y] = []
+        vines[y] = []
         for x in range(size.x):
             holes[y].append(false)
             crate_hp[y].append(0)
             ice_hp[y].append(0)
             locked[y].append(false)
             chocolate[y].append(0)
+            vines[y].append(0)
             grid[y].append(Types.make_normal(rng.randi_range(0, num_colors - 1)))
             jelly_layers[y].append(0)
 	_resolve_initial()
@@ -85,7 +90,7 @@ func resolve_board() -> Dictionary:
     var cascades := 0
     var total_color_counts := {}
     var total_jelly_cleared := 0
-    var total_blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0}
+    var total_blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0, "vines":0}
     var total_ingredients := 0
     while true:
         var matches := _find_matches()
@@ -105,6 +110,7 @@ func resolve_board() -> Dictionary:
         if drop_mode_enabled:
             total_ingredients += _process_ingredient_delivery_and_spawn()
         _spread_chocolate()
+        _spread_vines()
         cascades += 1
     return { "cleared": total_cleared, "cascades": cascades, "color_counts": total_color_counts, "jelly_cleared": total_jelly_cleared, "blockers_cleared": total_blockers_cleared, "ingredients_delivered": total_ingredients }
 
@@ -172,7 +178,7 @@ func _resolve_initial() -> void:
 		if matches.is_empty():
 			break
 		_clear_matches_and_generate_specials(matches)
-		_apply_gravity_and_fill()
+        _apply_gravity_and_fill()
 
 func _find_matches() -> Array:
 	# Returns array of arrays; each inner array contains Vector2i positions of a single group
@@ -252,7 +258,7 @@ func _clear_matches_and_generate_specials(groups: Array) -> Dictionary:
     var cleared := 0
     var color_counts := {}
     var jelly_cleared := 0
-    var blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0}
+    var blockers_cleared := {"crate":0, "ice":0, "lock":0, "chocolate":0, "vines":0}
     # primary clears and special creation
     for group in groups:
         var created_special := false
@@ -378,19 +384,32 @@ func _apply_gravity_and_fill() -> void:
             if _is_hole(Vector2i(x, y)):
                 continue
             if grid[y][x] != null:
-                grid[write_y][x] = grid[y][x]
-                if write_y != y:
-                    grid[y][x] = null
+                var dest := Vector2i(x, write_y)
+                var exit := _portal_exit_if_any(dest)
+                if exit != null and _in_bounds(exit) and not _is_hole(exit) and grid[exit.y][exit.x] == null:
+                    grid[exit.y][exit.x] = grid[y][x]
+                    if y != exit.y or x != exit.x:
+                        grid[y][x] = null
+                else:
+                    grid[write_y][x] = grid[y][x]
+                    if write_y != y:
+                        grid[y][x] = null
                 write_y -= 1
         while write_y >= 0:
             if _is_hole(Vector2i(x, write_y)):
                 write_y -= 1
                 continue
-            # If drop mode uses ingredient spawns, bias spawns
+            var dest2 := Vector2i(x, write_y)
+            var exit2 := _portal_exit_if_any(dest2)
+            var piece
             if drop_mode_enabled and ingredient_spawn_cols.has(x) and rng.randi_range(0, 99) < 10 and not _column_has_ingredient(x):
-                grid[write_y][x] = Types.make_ingredient()
+                piece = Types.make_ingredient()
             else:
-                grid[write_y][x] = Types.make_normal(_choose_spawn_color())
+                piece = Types.make_normal(_choose_spawn_color())
+            if exit2 != null and _in_bounds(exit2) and not _is_hole(exit2) and grid[exit2.y][exit2.x] == null:
+                grid[exit2.y][exit2.x] = piece
+            else:
+                grid[write_y][x] = piece
             write_y -= 1
 
 func _in_bounds(p: Vector2i) -> bool:
@@ -404,7 +423,7 @@ func _is_hole(p: Vector2i) -> bool:
 func _is_locked(p: Vector2i) -> bool:
     if not _in_bounds(p):
         return false
-    return bool(locked[p.y][p.x])
+    return bool(locked[p.y][p.x]) or int(vines[p.y][p.x]) > 0
 
 func _hit_jelly_at(p: Vector2i) -> int:
     if not _in_bounds(p):
@@ -424,6 +443,11 @@ func _damage_blockers_or_clear_at(p: Vector2i, out_counts: Dictionary) -> bool:
     if bool(locked[p.y][p.x]):
         locked[p.y][p.x] = false
         out_counts["lock"] = int(out_counts.get("lock", 0)) + 1
+        return true
+    # Vines break on first hit
+    if int(vines[p.y][p.x]) > 0:
+        vines[p.y][p.x] = 0
+        out_counts["vines"] = int(out_counts.get("vines", 0)) + 1
         return true
     # Ice HP decrements and may prevent tile clear until 0
     if int(ice_hp[p.y][p.x]) > 0:
@@ -462,6 +486,28 @@ func _spread_chocolate() -> void:
             if grid[np.y][np.x] != null:
                 continue
             chocolate[np.y][np.x] = 1
+            break
+
+# Vines spread to adjacent occupied cells after cascades
+func _spread_vines() -> void:
+    var sources: Array[Vector2i] = []
+    for y in range(size.y):
+        for x in range(size.x):
+            if int(vines[y][x]) > 0:
+                sources.append(Vector2i(x, y))
+    sources.shuffle()
+    for src in sources:
+        var dirs = [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
+        dirs.shuffle()
+        for d in dirs:
+            var np := src + d
+            if not _in_bounds(np) or _is_hole(np):
+                continue
+            if grid[np.y][np.x] == null:
+                continue
+            if int(vines[np.y][np.x]) > 0:
+                continue
+            vines[np.y][np.x] = 1
             break
 
 func _choose_spawn_color() -> int:
@@ -537,21 +583,49 @@ func configure_drop_mode(enabled: bool, exit_rows: Array[int], spawn_cols: Array
     drop_exit_rows = exit_rows.duplicate()
     ingredient_spawn_cols = spawn_cols.duplicate()
     ingredients_remaining = max(0, total_ingredients)
+    
 
 # Special + Special combo activations (triggered explicitly from gameplay)
 func activate_color_bomb_combo(a: Vector2i, b: Vector2i) -> Dictionary:
     var pa = grid[a.y][a.x]
     var pb = grid[b.y][b.x]
-    var other := Types.is_color_bomb(pa) ? pb : pa
-    var target_color := other.get("color")
-    if target_color == null:
-        target_color = _most_common_color()
     var to_clear: Array[Vector2i] = []
-    for y in range(size.y):
-        for x in range(size.x):
-            var p2 = grid[y][x]
-            if p2 != null and not Types.is_color_bomb(p2) and p2.get("color") == target_color:
-                to_clear.append(Vector2i(x, y))
+    # CB + CB clears entire board
+    if Types.is_color_bomb(pa) and Types.is_color_bomb(pb):
+        for yy in range(size.y):
+            for xx in range(size.x):
+                to_clear.append(Vector2i(xx, yy))
+    else:
+        var other := Types.is_color_bomb(pa) ? pb : pa
+        var target_color := other.get("color")
+        if target_color == null:
+            target_color = _most_common_color()
+        if Types.is_rocket(other):
+            # Clear rows and columns for each target-colored piece
+            for yy in range(size.y):
+                for xx in range(size.x):
+                    var p2 = grid[yy][xx]
+                    if p2 != null and not Types.is_color_bomb(p2) and p2.get("color") == target_color:
+                        for ex in range(size.x):
+                            to_clear.append(Vector2i(ex, yy))
+                        for ey in range(size.y):
+                            to_clear.append(Vector2i(xx, ey))
+        elif Types.is_bomb(other):
+            # 3x3 clears around each target-colored piece
+            for yy in range(size.y):
+                for xx in range(size.x):
+                    var p3 = grid[yy][xx]
+                    if p3 != null and not Types.is_color_bomb(p3) and p3.get("color") == target_color:
+                        for by in range(max(0, yy - 1), min(size.y, yy + 2)):
+                            for bx in range(max(0, xx - 1), min(size.x, xx + 2)):
+                                to_clear.append(Vector2i(bx, by))
+        else:
+            # Default CB + normal: clear all of that color
+            for yy in range(size.y):
+                for xx in range(size.x):
+                    var p4 = grid[yy][xx]
+                    if p4 != null and not Types.is_color_bomb(p4) and p4.get("color") == target_color:
+                        to_clear.append(Vector2i(xx, yy))
     # Also clear the color bomb tiles themselves
     to_clear.append(a)
     to_clear.append(b)
@@ -630,3 +704,20 @@ func _clear_positions_collect_counts(to_clear: Array[Vector2i]) -> Dictionary:
             cleared += 1
         jelly_cleared += _hit_jelly_at(p)
     return { "cleared": cleared, "color_counts": color_counts, "jelly_cleared": jelly_cleared }
+
+# --- Portals configuration ---
+func _portal_key(p: Vector2i) -> String:
+    return str(p.x) + "," + str(p.y)
+
+func _portal_exit_if_any(p: Vector2i) -> Vector2i:
+    var key := _portal_key(p)
+    if portals.has(key):
+        return portals[key]
+    return null
+
+func set_vine(p: Vector2i, present: bool) -> void:
+    if _in_bounds(p):
+        vines[p.y][p.x] = present ? 1 : 0
+
+func set_portal(entry: Vector2i, exit: Vector2i) -> void:
+    portals[_portal_key(entry)] = exit

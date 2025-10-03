@@ -156,6 +156,8 @@ func fetch_and_apply() -> void:
         "dda_moves_bonus_per_step": 3,
         "dda_reduce_colors_per_step": 0,
         "pity_prelevel_booster_chance_pct": 30,
+        # New blockers & systems
+        "vines_enabled": 1,
         # Receipt validation
         "enable_receipt_validation": 0,
         "receipt_validation_url": "",

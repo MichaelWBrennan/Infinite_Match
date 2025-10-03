@@ -10,6 +10,7 @@ var buttons: Array = [] # 2D Buttons with icon textures
 var on_cell_pressed: Callable = func(_pos: Vector2i): pass
 var jelly_overlays: Array = [] # 2D TextureRects
 var blocker_overlays: Array = [] # crate/ice/lock/chocolate overlays
+var vine_overlays: Array = [] # vines overlays
 var color_blind_symbols: Array[Texture2D] = []
 
 func setup(container: GridContainer, match3_board, theme_provider, pressed_cb: Callable) -> void:
@@ -24,6 +25,7 @@ func _render_all() -> void:
 	buttons.resize(board.size.y)
     jelly_overlays.resize(board.size.y)
     blocker_overlays.resize(board.size.y)
+    vine_overlays.resize(board.size.y)
     grid_container.columns = board.size.x
     for child in grid_container.get_children():
         child.queue_free()
@@ -31,6 +33,7 @@ func _render_all() -> void:
 		buttons[y] = []
         jelly_overlays[y] = []
         blocker_overlays[y] = []
+        vine_overlays[y] = []
 		for x in range(board.size.x):
 			var btn := Button.new()
 			btn.focus_mode = Control.FOCUS_NONE
@@ -38,7 +41,7 @@ func _render_all() -> void:
 			btn.expand_icon = true
 			btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			var pos := Vector2i(x, y)
-			btn.pressed.connect(func(): on_cell_pressed.call(pos))
+            btn.pressed.connect(func(): on_cell_pressed.call(pos))
             buttons[y].append(btn)
 			grid_container.add_child(btn)
             # Jelly overlay as a child control stacked above the button
@@ -59,6 +62,15 @@ func _render_all() -> void:
             bo.visible = false
             blocker_overlays[y].append(bo)
             btn.add_child(bo)
+            # Vine overlay (green tint)
+            var vo := ColorRect.new()
+            vo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            vo.color = Color(0.1, 0.6, 0.2, 0.35)
+            vo.size_flags_horizontal = Control.SIZE_FILL
+            vo.size_flags_vertical = Control.SIZE_FILL
+            vo.visible = false
+            vine_overlays[y].append(vo)
+            btn.add_child(vo)
 	_update_all_textures()
 
 func update_cell(p: Vector2i) -> void:
@@ -94,6 +106,7 @@ func update_cell(p: Vector2i) -> void:
             sym3.visible = false
     _update_jelly_overlay(p)
     _update_blocker_overlay(p)
+    _update_vine_overlay(p)
 
 func _ensure_color_blind_symbols(count: int) -> void:
     if color_blind_symbols.size() >= count:
@@ -167,6 +180,11 @@ func _update_all_textures() -> void:
 	for y in range(board.size.y):
 		for x in range(board.size.x):
 			update_cell(Vector2i(x, y))
+	# Ensure overlays reflect latest blockers after cascades
+	for y2 in range(board.size.y):
+		for x2 in range(board.size.x):
+			_update_blocker_overlay(Vector2i(x2, y2))
+			_update_vine_overlay(Vector2i(x2, y2))
 
 func highlight(p: Vector2i, on: bool) -> void:
 	var btn: Button = buttons[p.y][p.x]
@@ -190,7 +208,20 @@ func _update_blocker_overlay(p: Vector2i) -> void:
     if int(board.chocolate[p.y][p.x]) > 0:
         overlay.color = Color(0.25, 0.12, 0.05, 0.45)
         visible = true
+    # If vines present, show vine overlay instead of blocker overlay tint
+    if not vine_overlays.is_empty() and board.vines.size() == board.size.y and int(board.vines[p.y][p.x]) > 0:
+        visible = false
     overlay.visible = visible
+
+func _update_vine_overlay(p: Vector2i) -> void:
+    if vine_overlays.is_empty():
+        return
+    var vo: Control = vine_overlays[p.y][p.x]
+    var on := 0
+    # Board.vines is an array; guard for presence and dimensions
+    if board != null and board.has_method("to_color_grid") and board.vines.size() == board.size.y:
+        on = int(board.vines[p.y][p.x])
+    vo.visible = on > 0
 
 func _update_jelly_overlay(p: Vector2i) -> void:
     var overlay: Control = jelly_overlays[p.y][p.x]

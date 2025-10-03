@@ -20,6 +20,8 @@ var drop_mode: bool = false
 var drop_ingredient_target: int = 0
 var boss_hp_total: int = 0
 var escape_seconds: int = 0
+var vines_present: bool = false
+var portals_present: bool = false
 
 func _ready() -> void:
 	_load_or_init_current_level()
@@ -66,6 +68,8 @@ func _board_params_from_config() -> void:
     drop_ingredient_target = 0
     boss_hp_total = 0
     escape_seconds = 0
+    vines_present = false
+    portals_present = false
 	if level_config.has("size"):
 		var s: Array = level_config.get("size", [8,8])
 		if s.size() >= 2:
@@ -96,6 +100,8 @@ func _init_goals_progress() -> void:
 				goals_progress[key] = 0
 			"clear_jelly":
 				goals_progress["clear_jelly"] = 0
+            "clear_vines":
+                goals_progress["clear_vines"] = 0
             "deliver_ingredients":
                 goals_progress["deliver_ingredients"] = 0
 			_:
@@ -137,6 +143,12 @@ func apply_level_to_board(board) -> void:
         for ch in level_config.get("chocolate", []):
             if typeof(ch) == TYPE_ARRAY and ch.size() >= 2:
                 board.set_chocolate(Vector2i(int(ch[0]), int(ch[1])), true)
+    if level_config.has("vines"):
+        var vs: Array = level_config.get("vines", [])
+        for v in vs:
+            if typeof(v) == TYPE_ARRAY and v.size() >= 2:
+                board.set_vine(Vector2i(int(v[0]), int(v[1])), true)
+        vines_present = not vs.is_empty()
     # Spawn weights
     if level_config.has("spawn_weights"):
         var weights := level_config.get("spawn_weights", {})
@@ -183,6 +195,15 @@ func apply_level_to_board(board) -> void:
     if level_config.has("escape"):
         var ecfg: Dictionary = level_config.get("escape", {})
         escape_seconds = int(ecfg.get("seconds", 0))
+    # Portals config: array of mappings [[ex,ey,tx,ty], ...]
+    if level_config.has("portals"):
+        var pts: Array = level_config.get("portals", [])
+        for p in pts:
+            if typeof(p) == TYPE_ARRAY and p.size() >= 4:
+                var entry := Vector2i(int(p[0]), int(p[1]))
+                var exit := Vector2i(int(p[2]), int(p[3]))
+                board.set_portal(entry, exit)
+        portals_present = not pts.is_empty()
     # Dynamic difficulty estimation when not tagged
     if difficulty_score < 0.0:
         difficulty_score = Match3Solver.estimate_difficulty(board, move_limit, 10)
@@ -204,6 +225,10 @@ func describe_goals() -> String:
 				var target := int(g.get("amount", 0))
 				var have := int(goals_progress.get("clear_jelly", 0))
 				parts.append("Clear jelly: %d/%d" % [have, target])
+            "clear_vines":
+                var target_v := int(g.get("amount", 0))
+                var have_v := int(goals_progress.get("clear_vines", 0))
+                parts.append("Clear vines: %d/%d" % [have_v, target_v])
             "deliver_ingredients":
                 var target_i := int(g.get("amount", 0))
                 var have_i := int(goals_progress.get("deliver_ingredients", 0))
@@ -221,12 +246,18 @@ func on_resolve_result(result: Dictionary) -> void:
 			var key := _goal_key_collect_color(color)
 			var add := int(color_counts.get(color, 0))
 			goals_progress[key] = int(goals_progress.get(key, 0)) + add
-		elif str(g.get("type", "")) == "clear_jelly":
+        elif str(g.get("type", "")) == "clear_jelly":
 			var add_j := int(result.get("jelly_cleared", 0))
 			goals_progress["clear_jelly"] = int(goals_progress.get("clear_jelly", 0)) + add_j
 			# Event progress hooks
 			if Engine.has_singleton("Bingo") and add_j > 0:
 				Bingo.progress("clear_jelly", add_j)
+        elif str(g.get("type", "")) == "clear_vines":
+            # Count vines broken from blockers_cleared
+            var bc: Dictionary = result.get("blockers_cleared", {})
+            var add_v := int(bc.get("vines", 0))
+            var have_key := "clear_vines"
+            goals_progress[have_key] = int(goals_progress.get(have_key, 0)) + add_v
 		elif str(g.get("type", "")) == "deliver_ingredients":
             var add_i := int(result.get("ingredients_delivered", 0))
             goals_progress["deliver_ingredients"] = int(goals_progress.get("deliver_ingredients", 0)) + add_i
@@ -244,10 +275,14 @@ func goals_completed() -> bool:
 				var key := _goal_key_collect_color(color)
 				if int(goals_progress.get(key, 0)) < amount:
 					return false
-			"clear_jelly":
+            "clear_jelly":
 				var amount2 := int(g.get("amount", 0))
 				if int(goals_progress.get("clear_jelly", 0)) < amount2:
 					return false
+            "clear_vines":
+                var amountv := int(g.get("amount", 0))
+                if int(goals_progress.get("clear_vines", 0)) < amountv:
+                    return false
             "deliver_ingredients":
                 var amount3 := int(g.get("amount", 0))
                 if int(goals_progress.get("deliver_ingredients", 0)) < amount3:

@@ -92,6 +92,7 @@ func _init_board_and_level() -> void:
     _refresh_goals_text()
     _apply_prelevel_boosters()
     _setup_boss_and_escape()
+    # Announce presence of new systems for UI clarity (optional messaging)
 
 func _on_cell_pressed(pos: Vector2i) -> void:
     _hint_timer = 0.0
