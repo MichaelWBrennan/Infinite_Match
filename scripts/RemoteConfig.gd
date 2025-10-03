@@ -103,6 +103,12 @@ func fetch_and_apply() -> void:
         "att_prompt_enabled": 1,
         # Booster confirmations
         "booster_confirm_enabled": 1,
+        # Performance budgets and modes
+        "perf_cold_start_ms_budget": 3000,
+        "perf_memory_mb_budget": 512,
+        "lightweight_mode_enabled": 0,
+        "lazy_textures_enabled": 0,
+        "streaming_enabled": 0,
         # World map and chests
         "world_map_chest_star_step": 25,
         "world_map_chest_coin_reward": 200,

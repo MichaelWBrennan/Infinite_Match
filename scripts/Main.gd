@@ -17,4 +17,16 @@ func _ready() -> void:
     var cell3 := Experiments.get_variant_and_track("rv_prelevel_booster", ["1", "0"]) # enable/disable
     RemoteConfig.set_override("rv_prelevel_booster_enabled", int(cell3.to_int()))
     AdManager.preload_all()
+    _apply_performance_mode()
     get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+func _apply_performance_mode() -> void:
+    if RemoteConfig.get_int("lightweight_mode_enabled", 0) == 1:
+        ProjectSettings.set_setting("rendering/quality/filters/msaa", 0)
+        ProjectSettings.set_setting("rendering/textures/default_filters/anisotropic_filtering_level", 0)
+    if RemoteConfig.get_int("lazy_textures_enabled", 0) == 1:
+        # Placeholder: toggle any texture loading strategy if used
+        pass
+    if RemoteConfig.get_int("streaming_enabled", 0) == 1:
+        # Placeholder: enable streaming; requires asset pipeline
+        pass
