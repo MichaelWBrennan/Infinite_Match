@@ -18,6 +18,8 @@ var score_star_thresholds: Array[int] = [500, 1500, 3000]
 var difficulty_score: float = 0.0
 var drop_mode: bool = false
 var drop_ingredient_target: int = 0
+var boss_hp_total: int = 0
+var escape_seconds: int = 0
 
 func _ready() -> void:
 	_load_or_init_current_level()
@@ -58,10 +60,12 @@ func load_level(id: int) -> void:
 func _board_params_from_config() -> void:
 	board_size = Vector2i(8, 8)
 	num_colors = 5
-	move_limit = 20
+    move_limit = 20
 	score_star_thresholds = [500, 1500, 3000]
     drop_mode = false
     drop_ingredient_target = 0
+    boss_hp_total = 0
+    escape_seconds = 0
 	if level_config.has("size"):
 		var s: Array = level_config.get("size", [8,8])
 		if s.size() >= 2:
@@ -172,6 +176,13 @@ func apply_level_to_board(board) -> void:
             if dm2.has("spawn_cols"):
                 spawn_cols = dm2.get("spawn_cols", [])
             board.configure_drop_mode(enabled, exits, spawn_cols, target)
+    # Boss and Escape configs
+    if level_config.has("boss"):
+        var bcfg: Dictionary = level_config.get("boss", {})
+        boss_hp_total = int(bcfg.get("hp", 0))
+    if level_config.has("escape"):
+        var ecfg: Dictionary = level_config.get("escape", {})
+        escape_seconds = int(ecfg.get("seconds", 0))
     # Dynamic difficulty estimation when not tagged
     if difficulty_score < 0.0:
         difficulty_score = Match3Solver.estimate_difficulty(board, move_limit, 10)
@@ -266,6 +277,9 @@ func _is_gate_blocked(level_id: int) -> bool:
         return false
     var need := RemoteConfig.get_int("gate_stars_per_gate", 75)
     return GameState.total_stars() < need
+
+func is_next_gate_blocked() -> bool:
+    return _is_gate_blocked(next_level_id())
 
 func _goal_key_collect_color(color: int) -> String:
 	return "collect_color_%d" % color
