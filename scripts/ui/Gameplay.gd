@@ -119,6 +119,8 @@ func _on_cell_pressed(pos: Vector2i) -> void:
             elif int(res.get("cleared", 0)) >= 3:
                 Haptics.light()
             GameState.add_tournament_points(_tournament_points_from_result(res))
+            if Engine.has_singleton("Leagues"):
+                Leagues.add_points(int(res.get("cleared", 0)))
             if Engine.has_singleton("Bingo"):
                 Bingo.progress("clear_tiles", int(res.get("cleared", 0)))
             if Engine.has_singleton("Treasure") and Treasure.active:

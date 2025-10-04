@@ -82,6 +82,9 @@ text = "Team Race"
 [node name="TournamentButton" type="Button" parent="VBox"]
 text = "Tournament"
 
+[node name="LeaguesButton" type="Button" parent="VBox"]
+text = "Leagues"
+
 [node name="EditorButton" type="Button" parent="VBox"]
 text = "Level Editor"
 

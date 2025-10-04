@@ -22,6 +22,7 @@ extends Control
 @onready var tournament_button: Button = $VBox/TournamentButton
 @onready var team_race_button: Button = $VBox/TeamRaceButton
 @onready var editor_button: Button = $VBox/EditorButton
+@onready var leagues_button: Button = $VBox/LeaguesButton
 @onready var weekly_button: Button = $VBox/WeeklyChestButton
 @onready var treasure_button: Button = $VBox/TreasureButton
 @onready var mastery_button: Button = $VBox/BoosterMasteryButton
@@ -67,6 +68,8 @@ func _ready() -> void:
         team_race_button.pressed.connect(_on_team_race)
     if tournament_button:
         tournament_button.pressed.connect(_on_tournament)
+    if leagues_button:
+        leagues_button.pressed.connect(_on_leagues)
     if editor_button:
         editor_button.visible = RemoteConfig.get_int("dev_enable_editor", 0) == 1
         editor_button.pressed.connect(_on_editor)
@@ -200,6 +203,10 @@ func _on_team_race() -> void:
 
 func _on_tournament() -> void:
     var modal := load("res://scenes/Tournament.tscn").instantiate()
+    add_child(modal)
+
+func _on_leagues() -> void:
+    var modal := load("res://scenes/Leagues.tscn").instantiate()
     add_child(modal)
 
 func _on_editor() -> void:
