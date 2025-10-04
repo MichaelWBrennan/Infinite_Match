@@ -169,6 +169,8 @@ namespace Evergreen.Match3
             int cleared = 0;
             int jellyCleared = 0;
             var colorCounts = new Dictionary<int, int>();
+            bool hasSpecialMatch = false;
+            
             foreach (var group in groups)
             {
                 bool createdSpecial = false;
@@ -180,16 +182,22 @@ namespace Evergreen.Match3
                     var special = isHoriz ? MakeRocketH(piece.Color) : MakeRocketV(piece.Color);
                     Grid[anchor.x, anchor.y] = special;
                     createdSpecial = true;
+                    hasSpecialMatch = true;
                 }
                 else if (group.Count >= 5)
                 {
                     var anchor = group[0];
                     bool isLine = IsSameY(group) || IsSameX(group);
-                    if (isLine) Grid[anchor.x, anchor.y] = MakeColorBomb();
+                    if (isLine) 
+                    {
+                        Grid[anchor.x, anchor.y] = MakeColorBomb();
+                        hasSpecialMatch = true;
+                    }
                     else
                     {
                         var piece = Grid[anchor.x, anchor.y].Value;
                         Grid[anchor.x, anchor.y] = MakeBomb(piece.Color);
+                        hasSpecialMatch = true;
                     }
                     createdSpecial = true;
                 }
@@ -211,12 +219,43 @@ namespace Evergreen.Match3
                     jellyCleared += HitJellyAt(p);
                 }
             }
-            // TODO: specials detonation pass
+            
+            // Trigger effects and analytics
+            if (hasSpecialMatch)
+            {
+                // Trigger special match effects
+                if (Evergreen.Effects.MatchEffects.Instance != null)
+                {
+                    Evergreen.Effects.MatchEffects.Instance.PlayMatchEffect(Vector3.zero, groups.Count, true);
+                }
+                
+                // Update game integration
+                if (Evergreen.Game.GameIntegration.Instance != null)
+                {
+                    Evergreen.Game.GameIntegration.Instance.OnMatchMade(groups.Count, true);
+                }
+            }
+            else if (groups.Count > 0)
+            {
+                // Trigger normal match effects
+                if (Evergreen.Effects.MatchEffects.Instance != null)
+                {
+                    Evergreen.Effects.MatchEffects.Instance.PlayMatchEffect(Vector3.zero, groups.Count, false);
+                }
+                
+                // Update game integration
+                if (Evergreen.Game.GameIntegration.Instance != null)
+                {
+                    Evergreen.Game.GameIntegration.Instance.OnMatchMade(groups.Count, false);
+                }
+            }
+            
             return new Dictionary<string, object>
             {
                 {"cleared", cleared},
                 {"jelly_cleared", jellyCleared},
-                {"color_counts", colorCounts}
+                {"color_counts", colorCounts},
+                {"special_match", hasSpecialMatch}
             };
         }
 
