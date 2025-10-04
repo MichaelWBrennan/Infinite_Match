@@ -29,6 +29,7 @@ extends Control
 @onready var bingo_button: Button = $VBox/BingoButton
 @onready var promo_button: Button = $VBox/PromoButton
 @onready var decor_button: Button = $VBox/DecorButton
+@onready var meta_button: Button = $VBox/MetaButton
 @onready var banner_spacer: Control = $BannerSpacer
 
 func _ready() -> void:
@@ -85,6 +86,8 @@ func _ready() -> void:
         promo_button.pressed.connect(_on_promo)
     if decor_button:
         decor_button.pressed.connect(_on_decor)
+    if meta_button:
+        meta_button.pressed.connect(_on_meta)
     # Surface an offer if available at menu open
     if Engine.has_singleton("Offers"):
         Offers.offer_available.connect(func(kind, sku):
@@ -235,4 +238,8 @@ func _on_promo() -> void:
 
 func _on_decor() -> void:
     var modal := load("res://scenes/Decor.tscn").instantiate()
+    add_child(modal)
+
+func _on_meta() -> void:
+    var modal := load("res://scenes/Meta.tscn").instantiate()
     add_child(modal)

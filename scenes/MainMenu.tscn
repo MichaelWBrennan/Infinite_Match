@@ -106,6 +106,9 @@ text = "Promo Codes"
 [node name="DecorButton" type="Button" parent="VBox"]
 text = "Decor"
 
+[node name="MetaButton" type="Button" parent="VBox"]
+text = "Home/Rooms"
+
 [node name="BannerSpacer" type="Control" parent="."]
 anchor_left = 0.0
 anchor_top = 1.0
