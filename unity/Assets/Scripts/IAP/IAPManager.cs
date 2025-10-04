@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Purchasing;
 using UnityEngine.Purchasing.Extension;
 using Evergreen.Game;
+using UnityEngine.Networking;
 
 public class IAPManager : MonoBehaviour, IStoreListener
 {
@@ -79,19 +80,44 @@ public class IAPManager : MonoBehaviour, IStoreListener
     public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs e)
     {
         var sku = e.purchasedProduct.definition.id;
-        if (_grants.TryGetValue(sku, out var grant))
-        {
-            grant.Invoke();
-        }
-        else
-        {
-            Debug.LogWarning($"Unknown SKU {sku}");
-        }
-        return PurchaseProcessingResult.Complete;
+        // Verify receipt with backend before granting
+        var receipt = e.purchasedProduct.receipt;
+        StartCoroutine(VerifyAndGrant(sku, receipt));
+        return PurchaseProcessingResult.Pending;
     }
 
     public void OnPurchaseFailed(Product product, PurchaseFailureReason failureReason)
     {
         Debug.LogWarning($"Purchase failed {product.definition.id}: {failureReason}");
+    }
+
+    private System.Collections.IEnumerator VerifyAndGrant(string sku, string receipt)
+    {
+        var url = Evergreen.Game.RemoteConfigService.Get("receipt_validation_url", "http://localhost:3030/verify_receipt");
+        var body = new System.Collections.Generic.Dictionary<string, object>{
+            {"sku", sku}, {"receipt", receipt}, {"platform", Application.platform.ToString()}, {"locale", Application.systemLanguage.ToString()}, {"version", Application.version}
+        };
+        var json = Evergreen.Game.MiniJSON.Json.Serialize(body);
+        using (var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST))
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            req.uploadHandler = new UploadHandlerRaw(bytes);
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.SetRequestHeader("Content-Type", "application/json");
+            yield return req.SendWebRequest();
+            var ok = req.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
+            if (ok && req.downloadHandler.text.Contains("valid"))
+            {
+                if (_grants.TryGetValue(sku, out var grant)) grant.Invoke();
+                Evergreen.Game.AnalyticsAdapter.CustomEvent("purchase", sku);
+                Evergreen.Game.CloudSavePlayFab.Instance?.Save();
+                _controller.ConfirmPendingPurchase(_controller.products.WithID(sku));
+            }
+            else
+            {
+                Debug.LogWarning($"Receipt validation failed for {sku}: {req.error}");
+                _controller.ConfirmPendingPurchase(_controller.products.WithID(sku));
+            }
+        }
     }
 }
