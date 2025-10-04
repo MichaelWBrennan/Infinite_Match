@@ -1,4 +1,4 @@
-name: iOS CI
+name: Unity iOS Build
 
 on:
   push:
@@ -6,41 +6,22 @@ on:
   pull_request:
 
 jobs:
-  export-ios:
+  build-ios:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Godot
-        uses: firebelley/setup-godot@v1.3.1
+      - name: Unity - iOS Build
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
-          version: '4.3.0'
-          use-dotnet: false
-      - name: Export iOS Xcode project
-        run: |
-          mkdir -p build/iOS
-          godot --headless --export-release "iOS Release" build/iOS/Evergreen.xcodeproj
-      - name: Upload Xcode Project artifact
+          unityVersion: 2022.3.21f1
+          targetPlatform: iOS
+          projectPath: unity
+          allowDirtyBuild: true
+      - name: Upload iOS Xcode project
         uses: actions/upload-artifact@v4
         with:
-          name: ios-xcodeproj
-          path: build/iOS
-  build-ipa:
-    needs: export-ios
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Xcode signing
-        uses: apple-actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.APPLE_P12 }}
-          p12-password: ${{ secrets.APPLE_P12_PASSWORD }}
-          profile-base64: ${{ secrets.APPLE_MOBILEPROVISION }}
-      - name: Build ipa
-        run: |
-          xcodebuild -project build/iOS/Evergreen.xcodeproj -scheme Evergreen -configuration Release -archivePath build/iOS/Evergreen.xcarchive archive DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
-          xcodebuild -exportArchive -archivePath build/iOS/Evergreen.xcarchive -exportOptionsPlist config/exportOptions.plist -exportPath build/iOS
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: build/iOS/*.ipa
+          name: ios-xcode
+          path: build/iOS/**
+      # Optional signing/build steps can follow using your Apple certificates

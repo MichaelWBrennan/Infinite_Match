@@ -1,6 +1,0 @@
-[config]
-name="IAPBridge"
-binary_type="source"
-
-[dependencies]
-remote=["com.android.billingclient:billing:7.1.1"]

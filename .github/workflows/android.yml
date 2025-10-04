@@ -1,4 +1,4 @@
-name: Android CI
+name: Unity Android Build
 
 on:
   push:
@@ -10,33 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Decode Keystore (placeholder)
-        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
-        run: |
-          echo "$ANDROID_KEYSTORE_B64" | base64 -d > keystore.jks
+      - name: Unity - Android Build
+        uses: game-ci/unity-builder@v4
         env:
-          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
-          distribution: temurin
-          java-version: '17'
-      - name: Set up Godot
-        uses: firebelley/setup-godot@v1.3.1
-        with:
-          version: '4.3.0'
-          use-dotnet: false
-      - name: Export Android
-        run: |
-          mkdir -p build/Android
-          # Build AdsBridge aar (optional; Godot custom build can also handle)
-          pushd android/plugins/AdsBridge || true
-          if [ -f build.gradle ]; then ./gradlew assembleRelease || true; fi
-          popd || true
-          # If using custom build, set env vars for signing
-          godot --headless --verbose --export-release "Android Release" build/Android/evergreen.apk
-      - name: Upload artifact
+          unityVersion: 2022.3.21f1
+          targetPlatform: Android
+          projectPath: unity
+          allowDirtyBuild: true
+          # Optional keystore inputs (placeholders)
+          androidKeystoreName: user.keystore
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+      - name: Upload Android build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: build/Android/evergreen.apk
+          name: android-build
+          path: build/Android/**
