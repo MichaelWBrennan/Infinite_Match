@@ -10,6 +10,7 @@ public class Bootstrap : MonoBehaviour
         if (_instance != null) { Destroy(gameObject); return; }
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        Evergreen.Game.RemoteConfigService.Load();
         GameState.Load();
         EnsureManagers();
         MainMenuUI.Show();
