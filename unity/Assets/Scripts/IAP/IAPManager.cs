@@ -79,19 +79,37 @@ public class IAPManager : MonoBehaviour, IStoreListener
     public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs e)
     {
         var sku = e.purchasedProduct.definition.id;
-        if (_grants.TryGetValue(sku, out var grant))
-        {
-            grant.Invoke();
-        }
-        else
-        {
-            Debug.LogWarning($"Unknown SKU {sku}");
-        }
-        return PurchaseProcessingResult.Complete;
+        // Verify receipt with backend before granting
+        var receipt = e.purchasedProduct.receipt;
+        StartCoroutine(VerifyAndGrant(sku, receipt));
+        return PurchaseProcessingResult.Pending;
     }
 
     public void OnPurchaseFailed(Product product, PurchaseFailureReason failureReason)
     {
         Debug.LogWarning($"Purchase failed {product.definition.id}: {failureReason}");
+    }
+
+    private System.Collections.IEnumerator VerifyAndGrant(string sku, string receipt)
+    {
+        var payload = new WWWForm();
+        payload.AddField("sku", sku);
+        payload.AddField("receipt", receipt);
+        var url = System.IO.Path.Combine(Application.streamingAssetsPath, "..", "..", "server", "verify_receipt"); // replace with prod endpoint
+        using (var req = UnityEngine.Networking.UnityWebRequest.Post(url, payload))
+        {
+            yield return req.SendWebRequest();
+            var ok = req.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
+            if (ok && req.downloadHandler.text.Contains("valid"))
+            {
+                if (_grants.TryGetValue(sku, out var grant)) grant.Invoke();
+                _controller.ConfirmPendingPurchase(_controller.products.WithID(sku));
+            }
+            else
+            {
+                Debug.LogWarning($"Receipt validation failed for {sku}: {req.error}");
+                _controller.ConfirmPendingPurchase(_controller.products.WithID(sku));
+            }
+        }
     }
 }
