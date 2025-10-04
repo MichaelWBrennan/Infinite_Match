@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Purchasing;
 using UnityEngine.Purchasing.Extension;
 using Evergreen.Game;
+using UnityEngine.Networking;
 
 public class IAPManager : MonoBehaviour, IStoreListener
 {
@@ -92,17 +93,24 @@ public class IAPManager : MonoBehaviour, IStoreListener
 
     private System.Collections.IEnumerator VerifyAndGrant(string sku, string receipt)
     {
-        var payload = new WWWForm();
-        payload.AddField("sku", sku);
-        payload.AddField("receipt", receipt);
-        var url = System.IO.Path.Combine(Application.streamingAssetsPath, "..", "..", "server", "verify_receipt"); // replace with prod endpoint
-        using (var req = UnityEngine.Networking.UnityWebRequest.Post(url, payload))
+        var url = Evergreen.Game.RemoteConfigService.Get("receipt_validation_url", "http://localhost:3030/verify_receipt");
+        var body = new System.Collections.Generic.Dictionary<string, object>{
+            {"sku", sku}, {"receipt", receipt}, {"platform", Application.platform.ToString()}, {"locale", Application.systemLanguage.ToString()}, {"version", Application.version}
+        };
+        var json = Evergreen.Game.MiniJSON.Json.Serialize(body);
+        using (var req = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST))
         {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            req.uploadHandler = new UploadHandlerRaw(bytes);
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.SetRequestHeader("Content-Type", "application/json");
             yield return req.SendWebRequest();
             var ok = req.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
             if (ok && req.downloadHandler.text.Contains("valid"))
             {
                 if (_grants.TryGetValue(sku, out var grant)) grant.Invoke();
+                Evergreen.Game.AnalyticsAdapter.CustomEvent("purchase", sku);
+                Evergreen.Game.CloudSavePlayFab.Instance?.Save();
                 _controller.ConfirmPendingPurchase(_controller.products.WithID(sku));
             }
             else
