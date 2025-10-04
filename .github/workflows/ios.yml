@@ -18,7 +18,7 @@ jobs:
       - name: Export iOS Xcode project
         run: |
           mkdir -p build/iOS
-          godot --headless --export-release "iOS Release" build/iOS/IdleTapCash.xcodeproj
+          godot --headless --export-release "iOS Release" build/iOS/Evergreen.xcodeproj
       - name: Upload Xcode Project artifact
         uses: actions/upload-artifact@v4
         with:
@@ -37,8 +37,8 @@ jobs:
           profile-base64: ${{ secrets.APPLE_MOBILEPROVISION }}
       - name: Build ipa
         run: |
-          xcodebuild -project build/iOS/IdleTapCash.xcodeproj -scheme IdleTapCash -configuration Release -archivePath build/iOS/IdleTapCash.xcarchive archive DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
-          xcodebuild -exportArchive -archivePath build/iOS/IdleTapCash.xcarchive -exportOptionsPlist config/exportOptions.plist -exportPath build/iOS
+          xcodebuild -project build/iOS/Evergreen.xcodeproj -scheme Evergreen -configuration Release -archivePath build/iOS/Evergreen.xcarchive archive DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
+          xcodebuild -exportArchive -archivePath build/iOS/Evergreen.xcarchive -exportOptionsPlist config/exportOptions.plist -exportPath build/iOS
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:

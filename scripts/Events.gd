@@ -22,6 +22,14 @@ func get_daily_event_set_dir(theme_name: String) -> String:
     var dir := "res://assets/match3/%s/set_%03d" % [theme_name, day_index]
     return dir
 
+func get_event_today() -> Dictionary:
+    var rot := _load_rotation()
+    var today := int(Time.get_unix_time_from_system() / 86400)
+    var evs := rot.get("events", []) if typeof(rot) == TYPE_DICTIONARY else []
+    if evs.is_empty():
+        return {}
+    return evs[today % evs.size()]
+
 func _load_rotation() -> Dictionary:
     var path := "res://config/rotation.json"
     if not FileAccess.file_exists(path):

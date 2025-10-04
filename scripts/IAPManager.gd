@@ -232,6 +232,11 @@ func _init_platform() -> void:
         if iap and iap.has_method("querySkus"):
             var keys = PackedStringArray(_prices.keys())
             iap.querySkus(keys)
+    # Improved mediation/IAP scaffolding hooks (opt-in)
+    if Engine.has_singleton("AdMediation"):
+        # Optionally warm up placements
+        AdMediation.preload("interstitial")
+        AdMediation.preload("rewarded")
 
 func show_shop(callback: Callable) -> void:
     # Demo helper: attempt purchase of starter pack small

@@ -10,6 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Decode Keystore (placeholder)
+        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        run: |
+          echo "$ANDROID_KEYSTORE_B64" | base64 -d > keystore.jks
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -27,9 +33,10 @@ jobs:
           pushd android/plugins/AdsBridge || true
           if [ -f build.gradle ]; then ./gradlew assembleRelease || true; fi
           popd || true
-          godot --headless --verbose --export-release "Android Release" build/Android/idle-tap-cash.apk
+          # If using custom build, set env vars for signing
+          godot --headless --verbose --export-release "Android Release" build/Android/evergreen.apk
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: build/Android/idle-tap-cash.apk
+          path: build/Android/evergreen.apk

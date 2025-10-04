@@ -7,6 +7,8 @@ class_name LevelEditor
 var size := Vector2i(8,8)
 var jelly: Array = []
 var holes: Array = []
+var licorice: Array = []
+var honey: Array = []
 
 func _ready() -> void:
     _build_grid()
@@ -28,12 +30,20 @@ func _build_grid() -> void:
 func _toggle_jelly(x: int, y: int) -> void:
     jelly.append([x,y,1])
 
+func _add_licorice(x: int, y: int, hp: int=1) -> void:
+    licorice.append([x,y,hp])
+
+func _add_honey(x: int, y: int, hp: int=1) -> void:
+    honey.append([x,y,hp])
+
 func _save_level() -> void:
     var id := GameState.get_current_level()
     var path := "res://config/levels/level_%d.json" % id
     var data := {
         "size": [size.x, size.y],
-        "jelly": jelly
+        "jelly": jelly,
+        "licorice": licorice,
+        "honey": honey
     }
     var f := FileAccess.open(path, FileAccess.WRITE)
     if f:
