@@ -3,12 +3,16 @@ extends Node
 func _ready() -> void:
     Analytics.track_session_start()
     RemoteConfig.fetch_and_apply()
+    var cs = null
     if Engine.has_singleton("CloudSave"):
-        CloudSave.load_completed.connect(func(ok):
-            if ok:
-                pass
-        )
-        CloudSave.load_profile()
+        cs = CloudSave
+    else:
+        if ResourceLoader.exists("res://scripts/CloudSave.gd"):
+            cs = load("res://scripts/CloudSave.gd").new()
+            add_child(cs)
+    if cs != null:
+        cs.load_completed.connect(func(_ok): pass)
+        cs.load_profile()
     # Lightweight experiment-driven overrides
     var cell1 := Experiments.get_variant_and_track("pricing_badges", ["control", "best_anchor", "decoy"])
     match cell1:

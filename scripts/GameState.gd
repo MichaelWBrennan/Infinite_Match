@@ -270,12 +270,16 @@ func register_level_win(level_id: int) -> void:
     _inc_win_streak()
     _add_weekly_points(100) # base; tuned via remote if needed
     _save()
+    if Engine.has_singleton("CloudSave"):
+        CloudSave.save_profile()
 
 func register_level_fail(level_id: int) -> void:
     var key := str(level_id)
     fail_streak_by_level[key] = int(fail_streak_by_level.get(key, 0)) + 1
     win_streak = 0
     _save()
+    if Engine.has_singleton("CloudSave"):
+        CloudSave.save_profile()
 
 func get_fail_streak(level_id: int) -> int:
     return int(fail_streak_by_level.get(str(level_id), 0))

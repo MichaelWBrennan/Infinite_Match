@@ -60,7 +60,10 @@ static func track_shop(event: String, sku: String = "") -> void:
     ByteBrewBridge.custom_event("shop_" + event, sku)
 
 static func custom_event(name: String, value: Variant = null) -> void:
-    ByteBrewBridge.custom_event(name, value)
+    if Engine.has_singleton("AnalyticsRouter"):
+        AnalyticsRouter.custom_event(name, value)
+    else:
+        ByteBrewBridge.custom_event(name, value)
 
 static func track_piggy(amount: int, max_amount: int) -> void:
     ByteBrewBridge.custom_event("piggy_amount", amount)

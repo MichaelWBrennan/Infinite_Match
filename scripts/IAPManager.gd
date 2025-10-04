@@ -153,6 +153,8 @@ func _grant_items_for_sku(sku: String) -> void:
         GameState.mark_purchased()
     Analytics.track_purchase(_store_name(), "USD", get_price_usd(sku), sku, category)
     purchase_completed.emit(sku, true)
+    if Engine.has_singleton("CloudSave"):
+        CloudSave.save_profile()
 
 func _should_validate_receipts() -> bool:
     return RemoteConfig.get_int("enable_receipt_validation", 0) == 1 and RemoteConfig.get_string("receipt_validation_url", "") != ""

@@ -194,7 +194,7 @@ func _refresh_all_buttons() -> void:
 func _on_bomb() -> void:
     if not _confirm_booster_if_needed("Bomb"):
         return
-    if GameState.booster_consume("bomb", 1) or GameState.spend_coins(Economy.booster_cost("bomb")):
+    if GameState.booster_consume("bomb", 1) or _quick_buy_booster("bomb"):
         GameState.record_booster_use("bomb")
         var cx := rng.randi_range(1, GRID_SIZE.x - 2)
         var cy := rng.randi_range(1, GRID_SIZE.y - 2)
@@ -211,7 +211,7 @@ func _on_bomb() -> void:
 func _on_hammer() -> void:
     if not _confirm_booster_if_needed("Hammer"):
         return
-    if GameState.booster_consume("hammer", 1) or GameState.spend_coins(Economy.booster_cost("hammer")):
+    if GameState.booster_consume("hammer", 1) or _quick_buy_booster("hammer"):
         GameState.record_booster_use("hammer")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
         board.set_piece(p, null)
@@ -223,7 +223,7 @@ func _on_hammer() -> void:
 func _on_shuffle() -> void:
     if not _confirm_booster_if_needed("Shuffle"):
         return
-    if GameState.booster_consume("shuffle", 1) or GameState.spend_coins(Economy.booster_cost("shuffle")):
+    if GameState.booster_consume("shuffle", 1) or _quick_buy_booster("shuffle"):
         GameState.record_booster_use("shuffle")
         board.shuffle_random()
         tile_view._update_all_textures()
@@ -231,7 +231,10 @@ func _on_shuffle() -> void:
 func _on_rocket() -> void:
     if not _confirm_booster_if_needed("Rocket"):
         return
-    if GameState.booster_consume("rocket", 1) or GameState.spend_coins(Economy.booster_cost("rocket")):
+    if GameState.booster_consume("rocket", 1) or _quick_buy_booster("rocket"):
+func _quick_buy_booster(name: String) -> bool:
+    # Minimal quick-buy: spend coins; could show IAP micro-offer via RC
+    return GameState.spend_coins(Economy.booster_cost(name))
         GameState.record_booster_use("rocket")
         var Types = preload("res://scripts/match3/Types.gd")
         var p := Vector2i(rng.randi_range(0, GRID_SIZE.x - 1), rng.randi_range(0, GRID_SIZE.y - 1))
