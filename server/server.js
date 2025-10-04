@@ -3,8 +3,12 @@ const app = express();
 app.use(express.json());
 
 app.post('/verify_receipt', (req, res) => {
-  // naive stub: accept everything
-  res.json({ valid: true });
+  const { sku, receipt } = req.body || {};
+  if (!sku || !receipt) return res.status(400).json({ valid: false, error: 'missing_fields' });
+  // TODO: Verify with Google/Apple servers
+  // For now, accept if receipt length looks plausible
+  const ok = String(receipt).length > 20;
+  return res.json({ valid: ok });
 });
 
 app.post('/segments', (req, res) => {
