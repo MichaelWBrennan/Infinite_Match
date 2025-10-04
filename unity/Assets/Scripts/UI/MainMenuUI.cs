@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Evergreen.Game;
+using Evergreen.Social;
 
 public class MainMenuUI : MonoBehaviour
 {
@@ -17,5 +18,11 @@ public class MainMenuUI : MonoBehaviour
     public static void Show()
     {
         SceneManager.LoadScene("MainMenu");
+    }
+
+    // Hook this to a UI Button to open Team Chat
+    public void OnOpenChat()
+    {
+        TeamChatUIFactory.Show();
     }
 }
