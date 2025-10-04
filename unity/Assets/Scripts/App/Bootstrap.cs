@@ -27,5 +27,25 @@ public class Bootstrap : MonoBehaviour
             var go = new GameObject("IAPManager");
             go.AddComponent<IAPManager>();
         }
+        if (FindObjectOfType<Evergreen.Ads.AdMediation>() == null)
+        {
+            var go = new GameObject("AdMediation");
+            go.AddComponent<Evergreen.Ads.AdMediation>();
+        }
+        if (FindObjectOfType<Evergreen.Game.CloudSavePlayFab>() == null)
+        {
+            var go = new GameObject("CloudSavePlayFab");
+            go.AddComponent<Evergreen.Game.CloudSavePlayFab>();
+        }
+        if (FindObjectOfType<Evergreen.Social.TeamChat>() == null)
+        {
+            var go = new GameObject("TeamChat");
+            go.AddComponent<Evergreen.Social.TeamChat>();
+        }
+        if (FindObjectOfType<Evergreen.Social.TeamGifting>() == null)
+        {
+            var go = new GameObject("TeamGifting");
+            go.AddComponent<Evergreen.Social.TeamGifting>();
+        }
     }
 }
