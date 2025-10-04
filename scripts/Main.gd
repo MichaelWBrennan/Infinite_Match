@@ -13,6 +13,11 @@ func _ready() -> void:
     if cs != null:
         cs.load_completed.connect(func(_ok): pass)
         cs.load_profile()
+
+    # Ensure auxiliary systems exist even if not autoloaded
+    _ensure_singleton_or_node("Leagues", "res://scripts/Leagues.gd")
+    _ensure_singleton_or_node("MetaManager", "res://scripts/MetaManager.gd")
+    _ensure_singleton_or_node("AnalyticsRouter", "res://scripts/AnalyticsRouter.gd")
     # Lightweight experiment-driven overrides
     var cell1 := Experiments.get_variant_and_track("pricing_badges", ["control", "best_anchor", "decoy"])
     match cell1:
@@ -42,3 +47,10 @@ func _apply_performance_mode() -> void:
     if RemoteConfig.get_int("streaming_enabled", 0) == 1:
         # Placeholder: enable streaming; requires asset pipeline
         pass
+
+func _ensure_singleton_or_node(name: String, path: String) -> void:
+    if Engine.has_singleton(name):
+        return
+    if ResourceLoader.exists(path):
+        var inst = load(path).new()
+        add_child(inst)
