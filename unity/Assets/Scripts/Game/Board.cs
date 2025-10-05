@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Evergreen.Core;
 
 namespace Evergreen.Match3
 {
@@ -16,25 +17,68 @@ namespace Evergreen.Match3
         public int[,] Chocolate;
 
         private System.Random _rng = new System.Random();
+        
+        // Use memory-optimized pools
+        private static readonly ObjectPool<List<Vector2Int>> _vectorListPool = 
+            new ObjectPool<List<Vector2Int>>(
+                createFunc: () => new List<Vector2Int>(),
+                onGet: list => list.Clear(),
+                onReturn: list => list.Clear(),
+                maxSize: 50
+            );
+        
+        private static readonly ObjectPool<List<List<Vector2Int>>> _vectorListListPool = 
+            new ObjectPool<List<List<Vector2Int>>>(
+                createFunc: () => new List<List<Vector2Int>>(),
+                onGet: list => list.Clear(),
+                onReturn: list => list.Clear(),
+                maxSize: 20
+            );
+        
+        private static readonly ObjectPool<Dictionary<string, object>> _dictionaryPool = 
+            new ObjectPool<Dictionary<string, object>>(
+                createFunc: () => new Dictionary<string, object>(),
+                onGet: dict => dict.Clear(),
+                onReturn: dict => dict.Clear(),
+                maxSize: 30
+            );
+        
+        private static readonly ObjectPool<Dictionary<int, int>> _intDictionaryPool = 
+            new ObjectPool<Dictionary<int, int>>(
+                createFunc: () => new Dictionary<int, int>(),
+                onGet: dict => dict.Clear(),
+                onReturn: dict => dict.Clear(),
+                maxSize: 20
+            );
 
         public Board(Vector2Int size, int numColors, int? seed = null)
         {
-            Size = size;
-            NumColors = numColors;
-            if (seed.HasValue) _rng = new System.Random(seed.Value);
-            Grid = new Piece?[size.x, size.y];
-            JellyLayers = new int[size.x, size.y];
-            Holes = new bool[size.x, size.y];
-            CrateHp = new int[size.x, size.y];
-            IceHp = new int[size.x, size.y];
-            Locked = new bool[size.x, size.y];
-            Chocolate = new int[size.x, size.y];
-            for (int x = 0; x < size.x; x++)
-            for (int y = 0; y < size.y; y++)
+            using (Profiler.Start("Board Creation", "Board"))
             {
-                Grid[x, y] = MakeNormal(_rng.Next(0, NumColors));
+                Size = size;
+                NumColors = numColors;
+                if (seed.HasValue) _rng = new System.Random(seed.Value);
+                
+                // Track memory allocation
+                MemoryOptimizer.TrackAllocation("Board_Grid", 1, size.x * size.y * sizeof(Piece?));
+                MemoryOptimizer.TrackAllocation("Board_Arrays", 5, size.x * size.y * (sizeof(int) + sizeof(bool) + sizeof(int) + sizeof(int) + sizeof(int)));
+                
+                Grid = new Piece?[size.x, size.y];
+                JellyLayers = new int[size.x, size.y];
+                Holes = new bool[size.x, size.y];
+                CrateHp = new int[size.x, size.y];
+                IceHp = new int[size.x, size.y];
+                Locked = new bool[size.x, size.y];
+                Chocolate = new int[size.x, size.y];
+                
+                for (int x = 0; x < size.x; x++)
+                for (int y = 0; y < size.y; y++)
+                {
+                    Grid[x, y] = MakeNormal(_rng.Next(0, NumColors));
+                }
+                
+                ResolveInitial();
             }
-            ResolveInitial();
         }
 
         public static Piece MakeNormal(int color) => new Piece { Kind = PieceKind.Normal, Color = color };
@@ -61,38 +105,95 @@ namespace Evergreen.Match3
 
         public List<List<Vector2Int>> FindMatches()
         {
-            var groups = new List<List<Vector2Int>>();
-            // Horizontal
-            for (int y = 0; y < Size.y; y++)
+            var groups = _vectorListListPool.Get();
+            
+            try
             {
-                var run = new List<Vector2Int> { new Vector2Int(0, y) };
-                for (int x = 1; x < Size.x + 1; x++)
+                // Horizontal matches
+                for (int y = 0; y < Size.y; y++)
                 {
-                    bool cont = x < Size.x && SameColor(new Vector2Int(x, y), new Vector2Int(x - 1, y));
-                    if (cont) run.Add(new Vector2Int(x, y));
-                    else
+                    var run = _vectorListPool.Get();
+                    run.Add(new Vector2Int(0, y));
+                    
+                    for (int x = 1; x < Size.x + 1; x++)
                     {
-                        if (run.Count >= 3) groups.Add(new List<Vector2Int>(run));
-                        run = (x < Size.x) ? new List<Vector2Int> { new Vector2Int(x, y) } : new List<Vector2Int>();
+                        bool cont = x < Size.x && SameColor(new Vector2Int(x, y), new Vector2Int(x - 1, y));
+                        if (cont) 
+                        {
+                            run.Add(new Vector2Int(x, y));
+                        }
+                        else
+                        {
+                            if (run.Count >= 3) 
+                            {
+                                var matchGroup = _vectorListPool.Get();
+                                matchGroup.AddRange(run);
+                                groups.Add(matchGroup);
+                            }
+                            else
+                            {
+                                _vectorListPool.Return(run);
+                            }
+                            
+                            run = (x < Size.x) ? _vectorListPool.Get() : null;
+                            if (run != null) run.Add(new Vector2Int(x, y));
+                        }
+                    }
+                    
+                    if (run != null)
+                    {
+                        _vectorListPool.Return(run);
                     }
                 }
-            }
-            // Vertical
-            for (int x = 0; x < Size.x; x++)
-            {
-                var run = new List<Vector2Int> { new Vector2Int(x, 0) };
-                for (int y = 1; y < Size.y + 1; y++)
+                
+                // Vertical matches
+                for (int x = 0; x < Size.x; x++)
                 {
-                    bool cont = y < Size.y && SameColor(new Vector2Int(x, y), new Vector2Int(x, y - 1));
-                    if (cont) run.Add(new Vector2Int(x, y));
-                    else
+                    var run = _vectorListPool.Get();
+                    run.Add(new Vector2Int(x, 0));
+                    
+                    for (int y = 1; y < Size.y + 1; y++)
                     {
-                        if (run.Count >= 3) groups.Add(new List<Vector2Int>(run));
-                        run = (y < Size.y) ? new List<Vector2Int> { new Vector2Int(x, y) } : new List<Vector2Int>();
+                        bool cont = y < Size.y && SameColor(new Vector2Int(x, y), new Vector2Int(x, y - 1));
+                        if (cont) 
+                        {
+                            run.Add(new Vector2Int(x, y));
+                        }
+                        else
+                        {
+                            if (run.Count >= 3) 
+                            {
+                                var matchGroup = _vectorListPool.Get();
+                                matchGroup.AddRange(run);
+                                groups.Add(matchGroup);
+                            }
+                            else
+                            {
+                                _vectorListPool.Return(run);
+                            }
+                            
+                            run = (y < Size.y) ? _vectorListPool.Get() : null;
+                            if (run != null) run.Add(new Vector2Int(x, y));
+                        }
+                    }
+                    
+                    if (run != null)
+                    {
+                        _vectorListPool.Return(run);
                     }
                 }
+                
+                return MergeOverlapping(groups);
             }
-            return MergeOverlapping(groups);
+            finally
+            {
+                // Return the groups list to pool after processing
+                foreach (var group in groups)
+                {
+                    _vectorListPool.Return(group);
+                }
+                _vectorListListPool.Return(groups);
+            }
         }
 
         private bool SameColor(Vector2Int a, Vector2Int b)
@@ -139,124 +240,146 @@ namespace Evergreen.Match3
             int totalCleared = 0;
             int totalJelly = 0;
             int cascades = 0;
-            var colorCounts = new Dictionary<int, int>();
-            while (true)
+            var colorCounts = _intDictionaryPool.Get();
+            
+            try
             {
-                var matches = FindMatches();
-                if (matches.Count == 0) break;
-                var result = ClearMatchesAndGenerateSpecials(matches);
-                totalCleared += (int)result["cleared"];
-                totalJelly += (int)result["jelly_cleared"];
-                var cc = (Dictionary<int, int>)result["color_counts"];
-                foreach (var kv in cc)
+                while (true)
                 {
-                    colorCounts[kv.Key] = colorCounts.ContainsKey(kv.Key) ? colorCounts[kv.Key] + kv.Value : kv.Value;
+                    var matches = FindMatches();
+                    if (matches.Count == 0) break;
+                    
+                    var result = ClearMatchesAndGenerateSpecials(matches);
+                    totalCleared += (int)result["cleared"];
+                    totalJelly += (int)result["jelly_cleared"];
+                    
+                    var cc = (Dictionary<int, int>)result["color_counts"];
+                    foreach (var kv in cc)
+                    {
+                        colorCounts[kv.Key] = colorCounts.ContainsKey(kv.Key) ? colorCounts[kv.Key] + kv.Value : kv.Value;
+                    }
+                    
+                    // Return the result dictionary to pool
+                    _dictionaryPool.Return(result);
+                    
+                    ApplyGravityAndFill();
+                    cascades++;
                 }
-                ApplyGravityAndFill();
-                cascades++;
+                
+                var finalResult = _dictionaryPool.Get();
+                finalResult["cleared"] = totalCleared;
+                finalResult["jelly_cleared"] = totalJelly;
+                finalResult["cascades"] = cascades;
+                finalResult["color_counts"] = new Dictionary<int, int>(colorCounts); // Create a copy
+                
+                return finalResult;
             }
-            return new Dictionary<string, object>
+            finally
             {
-                {"cleared", totalCleared},
-                {"jelly_cleared", totalJelly},
-                {"cascades", cascades},
-                {"color_counts", colorCounts}
-            };
+                _intDictionaryPool.Return(colorCounts);
+            }
         }
 
         private Dictionary<string, object> ClearMatchesAndGenerateSpecials(List<List<Vector2Int>> groups)
         {
             int cleared = 0;
             int jellyCleared = 0;
-            var colorCounts = new Dictionary<int, int>();
+            var colorCounts = _intDictionaryPool.Get();
             bool hasSpecialMatch = false;
             
-            foreach (var group in groups)
+            try
             {
-                bool createdSpecial = false;
-                if (group.Count == 4)
+                foreach (var group in groups)
                 {
-                    var anchor = group[0];
-                    bool isHoriz = IsSameY(group);
-                    var piece = Grid[anchor.x, anchor.y].Value;
-                    var special = isHoriz ? MakeRocketH(piece.Color) : MakeRocketV(piece.Color);
-                    Grid[anchor.x, anchor.y] = special;
-                    createdSpecial = true;
-                    hasSpecialMatch = true;
-                }
-                else if (group.Count >= 5)
-                {
-                    var anchor = group[0];
-                    bool isLine = IsSameY(group) || IsSameX(group);
-                    if (isLine) 
+                    bool createdSpecial = false;
+                    if (group.Count == 4)
                     {
-                        Grid[anchor.x, anchor.y] = MakeColorBomb();
-                        hasSpecialMatch = true;
-                    }
-                    else
-                    {
+                        var anchor = group[0];
+                        bool isHoriz = IsSameY(group);
                         var piece = Grid[anchor.x, anchor.y].Value;
-                        Grid[anchor.x, anchor.y] = MakeBomb(piece.Color);
+                        var special = isHoriz ? MakeRocketH(piece.Color) : MakeRocketV(piece.Color);
+                        Grid[anchor.x, anchor.y] = special;
+                        createdSpecial = true;
                         hasSpecialMatch = true;
                     }
-                    createdSpecial = true;
-                }
-                foreach (var p in group)
-                {
-                    if (createdSpecial && p == group[0]) continue;
-                    var before = Grid[p.x, p.y];
-                    if (before.HasValue)
+                    else if (group.Count >= 5)
                     {
-                        var c = before.Value.Color;
-                        if (c >= 0)
+                        var anchor = group[0];
+                        bool isLine = IsSameY(group) || IsSameX(group);
+                        if (isLine) 
                         {
-                            if (!colorCounts.ContainsKey(c)) colorCounts[c] = 0;
-                            colorCounts[c] += 1;
+                            Grid[anchor.x, anchor.y] = MakeColorBomb();
+                            hasSpecialMatch = true;
                         }
+                        else
+                        {
+                            var piece = Grid[anchor.x, anchor.y].Value;
+                            Grid[anchor.x, anchor.y] = MakeBomb(piece.Color);
+                            hasSpecialMatch = true;
+                        }
+                        createdSpecial = true;
                     }
-                    if (!DamageBlockersOrClearAt(p)) Grid[p.x, p.y] = null;
-                    cleared++;
-                    jellyCleared += HitJellyAt(p);
-                }
-            }
-            
-            // Trigger effects and analytics
-            if (hasSpecialMatch)
-            {
-                // Trigger special match effects
-                if (Evergreen.Effects.MatchEffects.Instance != null)
-                {
-                    Evergreen.Effects.MatchEffects.Instance.PlayMatchEffect(Vector3.zero, groups.Count, true);
-                }
-                
-                // Update game integration
-                if (Evergreen.Game.GameIntegration.Instance != null)
-                {
-                    Evergreen.Game.GameIntegration.Instance.OnMatchMade(groups.Count, true);
-                }
-            }
-            else if (groups.Count > 0)
-            {
-                // Trigger normal match effects
-                if (Evergreen.Effects.MatchEffects.Instance != null)
-                {
-                    Evergreen.Effects.MatchEffects.Instance.PlayMatchEffect(Vector3.zero, groups.Count, false);
+                    foreach (var p in group)
+                    {
+                        if (createdSpecial && p == group[0]) continue;
+                        var before = Grid[p.x, p.y];
+                        if (before.HasValue)
+                        {
+                            var c = before.Value.Color;
+                            if (c >= 0)
+                            {
+                                if (!colorCounts.ContainsKey(c)) colorCounts[c] = 0;
+                                colorCounts[c] += 1;
+                            }
+                        }
+                        if (!DamageBlockersOrClearAt(p)) Grid[p.x, p.y] = null;
+                        cleared++;
+                        jellyCleared += HitJellyAt(p);
+                    }
                 }
                 
-                // Update game integration
-                if (Evergreen.Game.GameIntegration.Instance != null)
+                // Trigger effects and analytics
+                if (hasSpecialMatch)
                 {
-                    Evergreen.Game.GameIntegration.Instance.OnMatchMade(groups.Count, false);
+                    // Trigger special match effects
+                    if (Evergreen.Effects.MatchEffects.Instance != null)
+                    {
+                        Evergreen.Effects.MatchEffects.Instance.PlayMatchEffect(Vector3.zero, groups.Count, true);
+                    }
+                    
+                    // Update game integration
+                    if (Evergreen.Game.GameIntegration.Instance != null)
+                    {
+                        Evergreen.Game.GameIntegration.Instance.OnMatchMade(groups.Count, true);
+                    }
                 }
+                else if (groups.Count > 0)
+                {
+                    // Trigger normal match effects
+                    if (Evergreen.Effects.MatchEffects.Instance != null)
+                    {
+                        Evergreen.Effects.MatchEffects.Instance.PlayMatchEffect(Vector3.zero, groups.Count, false);
+                    }
+                    
+                    // Update game integration
+                    if (Evergreen.Game.GameIntegration.Instance != null)
+                    {
+                        Evergreen.Game.GameIntegration.Instance.OnMatchMade(groups.Count, false);
+                    }
+                }
+                
+                var result = _dictionaryPool.Get();
+                result["cleared"] = cleared;
+                result["jelly_cleared"] = jellyCleared;
+                result["color_counts"] = new Dictionary<int, int>(colorCounts); // Create a copy
+                result["special_match"] = hasSpecialMatch;
+                
+                return result;
             }
-            
-            return new Dictionary<string, object>
+            finally
             {
-                {"cleared", cleared},
-                {"jelly_cleared", jellyCleared},
-                {"color_counts", colorCounts},
-                {"special_match", hasSpecialMatch}
-            };
+                _intDictionaryPool.Return(colorCounts);
+            }
         }
 
         private int HitJellyAt(Vector2Int p)

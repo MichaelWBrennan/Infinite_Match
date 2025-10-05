@@ -3,28 +3,84 @@ using System.IO;
 using UnityEngine;
 using Evergreen.Match3;
 using Evergreen.Game;
+using Evergreen.Data;
 
 public class LevelManager : MonoBehaviour
 {
+    [Header("Level Settings")]
     public Vector2Int BoardSize = new Vector2Int(8, 8);
     public int NumColors = 5;
     public int MoveLimit = 20;
     public int[] ScoreStars = new []{500, 1500, 3000};
 
-    public Dictionary<string, object> LevelConfig;
+    [Header("Cache Settings")]
+    public bool enableCaching = true;
+    public int preloadLevels = 5;
+
+    public Dictionary<string, object> LevelConfig { get; private set; }
+    
+    private LevelCacheManager _cacheManager;
+
+    void Start()
+    {
+        _cacheManager = LevelCacheManager.Instance;
+        
+        if (enableCaching)
+        {
+            // Preload next few levels
+            PreloadNextLevels();
+        }
+    }
 
     public void LoadLevel(int id)
+    {
+        try
+        {
+            if (enableCaching)
+            {
+                LevelConfig = _cacheManager.GetLevelData(id);
+            }
+            else
+            {
+                LoadLevelFromFile(id);
+            }
+            
+            ApplyConfig();
+            
+            // Preload next levels if caching is enabled
+            if (enableCaching)
+            {
+                PreloadNextLevels();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to load level {id}: {e.Message}");
+            LevelConfig = new Dictionary<string, object>();
+            ApplyConfig();
+        }
+    }
+
+    private void LoadLevelFromFile(int id)
     {
         var path = Path.Combine(Application.streamingAssetsPath, "levels", $"level_{id}.json");
         if (File.Exists(path))
         {
             var txt = File.ReadAllText(path);
-            LevelConfig = MiniJSON.Json.Deserialize(txt) as Dictionary<string, object>;
-            ApplyConfig();
+            LevelConfig = JsonUtility.FromJsonToDictionary(txt);
         }
         else
         {
             LevelConfig = new Dictionary<string, object>();
+        }
+    }
+
+    private void PreloadNextLevels()
+    {
+        if (_cacheManager != null)
+        {
+            var currentLevel = GameState.CurrentLevel;
+            _cacheManager.PreloadLevels(currentLevel + 1, currentLevel + preloadLevels);
         }
     }
 
