@@ -145,7 +145,8 @@ namespace Evergreen.UI
             energyText.text = $"{Evergreen.Game.GameState.EnergyCurrent}/{Evergreen.Game.GameState.EnergyMax}";
             
             // Update energy bar color based on current energy
-            var energyBar = energyText.transform.parent.GetComponent<Image>();
+            var uiCache = UIComponentCache.Instance;
+            var energyBar = uiCache.GetImage(energyText.transform.parent.gameObject);
             if (energyBar != null)
             {
                 var energyRatio = (float)Evergreen.Game.GameState.EnergyCurrent / Evergreen.Game.GameState.EnergyMax;
@@ -179,12 +180,17 @@ namespace Evergreen.UI
             {
                 foreach (var room in DecorationSystem.Instance.rooms)
                 {
-                    var roomUI = Instantiate(roomPrefab, roomContainer);
-                    var roomScript = roomUI.GetComponent<RoomUI>();
-                    if (roomScript != null)
-                    {
-                        roomScript.SetupRoom(room);
-                    }
+                var uiCache = UIComponentCache.Instance;
+                var roomUI = uiCache.InstantiatePrefab("roomPrefab", roomContainer);
+                if (roomUI == null)
+                {
+                    roomUI = Instantiate(roomPrefab, roomContainer);
+                }
+                var roomScript = uiCache.GetComponentCached<RoomUI>(roomUI);
+                if (roomScript != null)
+                {
+                    roomScript.SetupRoom(room);
+                }
                 }
             }
         }
@@ -204,12 +210,17 @@ namespace Evergreen.UI
                 {
                     foreach (var item in category.items)
                     {
-                        var decorationUI = Instantiate(decorationPrefab, decorationContainer);
-                        var decorationScript = decorationUI.GetComponent<DecorationUI>();
-                        if (decorationScript != null)
-                        {
-                            decorationScript.SetupDecoration(item);
-                        }
+                    var uiCache = UIComponentCache.Instance;
+                    var decorationUI = uiCache.InstantiatePrefab("decorationPrefab", decorationContainer);
+                    if (decorationUI == null)
+                    {
+                        decorationUI = Instantiate(decorationPrefab, decorationContainer);
+                    }
+                    var decorationScript = uiCache.GetComponentCached<DecorationUI>(decorationUI);
+                    if (decorationScript != null)
+                    {
+                        decorationScript.SetupDecoration(item);
+                    }
                     }
                 }
             }

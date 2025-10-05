@@ -231,37 +231,18 @@ namespace Evergreen.UI
         
         private void InitializeEnhancedUI()
         {
-            // Initialize main canvas
-            mainCanvas = GetComponent<Canvas>();
-            if (mainCanvas == null)
-            {
-                mainCanvas = gameObject.AddComponent<Canvas>();
-            }
+            // Initialize using component cache for better performance
+            var uiCache = UIComponentCache.Instance;
+            mainCanvas = uiCache.MainCanvas;
+            graphicRaycaster = uiCache.GraphicRaycaster;
+            eventSystem = uiCache.EventSystem;
+            audioSource = uiCache.AudioSource;
             
-            mainCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            mainCanvas.sortingOrder = 0;
-            
-            // Initialize graphic raycaster
-            graphicRaycaster = GetComponent<GraphicRaycaster>();
-            if (graphicRaycaster == null)
+            // Ensure canvas is properly configured
+            if (mainCanvas != null)
             {
-                graphicRaycaster = gameObject.AddComponent<GraphicRaycaster>();
-            }
-            
-            // Initialize event system
-            eventSystem = FindObjectOfType<EventSystem>();
-            if (eventSystem == null)
-            {
-                var eventSystemObject = new GameObject("EventSystem");
-                eventSystem = eventSystemObject.AddComponent<EventSystem>();
-                eventSystemObject.AddComponent<StandaloneInputModule>();
-            }
-            
-            // Initialize audio source
-            audioSource = GetComponent<AudioSource>();
-            if (audioSource == null)
-            {
-                audioSource = gameObject.AddComponent<AudioSource>();
+                mainCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                mainCanvas.sortingOrder = 0;
             }
         }
         
@@ -566,8 +547,9 @@ namespace Evergreen.UI
         
         private void SetAnimationProperties(UIAnimation animation, UIPanel panel)
         {
-            var rectTransform = panel.panelObject.GetComponent<RectTransform>();
-            var canvasGroup = panel.panelObject.GetComponent<CanvasGroup>();
+            var uiCache = UIComponentCache.Instance;
+            var rectTransform = uiCache.GetRectTransform(panel.panelObject);
+            var canvasGroup = uiCache.GetComponentCached<CanvasGroup>(panel.panelObject);
             
             switch (animation.animationType)
             {
@@ -613,8 +595,9 @@ namespace Evergreen.UI
             var panel = GetPanel(animation.panelId);
             if (panel == null) yield break;
             
-            var rectTransform = panel.panelObject.GetComponent<RectTransform>();
-            var canvasGroup = panel.panelObject.GetComponent<CanvasGroup>();
+            var uiCache = UIComponentCache.Instance;
+            var rectTransform = uiCache.GetRectTransform(panel.panelObject);
+            var canvasGroup = uiCache.GetComponentCached<CanvasGroup>(panel.panelObject);
             
             var startTime = Time.time;
             var elapsed = 0f;
@@ -720,8 +703,9 @@ namespace Evergreen.UI
         {
             if (panel.panelObject == null) return;
             
-            // Apply theme to all UI elements in the panel
-            var buttons = panel.panelObject.GetComponentsInChildren<Button>();
+            // Apply theme to all UI elements in the panel using cached components
+            var uiCache = UIComponentCache.Instance;
+            var buttons = uiCache.GetButtonsInChildren(panel.panelObject);
             foreach (var button in buttons)
             {
                 var colors = button.colors;
@@ -730,14 +714,14 @@ namespace Evergreen.UI
                 button.colors = colors;
             }
             
-            var texts = panel.panelObject.GetComponentsInChildren<TextMeshProUGUI>();
+            var texts = uiCache.GetTextsInChildren(panel.panelObject);
             foreach (var text in texts)
             {
                 text.color = currentTheme.textColor;
                 text.fontSize = currentTheme.fontSize;
             }
             
-            var images = panel.panelObject.GetComponentsInChildren<Image>();
+            var images = uiCache.GetImagesInChildren(panel.panelObject);
             foreach (var image in images)
             {
                 if (image.name.Contains("Background"))
@@ -806,7 +790,8 @@ namespace Evergreen.UI
         {
             if (panel.panelObject == null) return;
             
-            var rectTransform = panel.panelObject.GetComponent<RectTransform>();
+            var uiCache = UIComponentCache.Instance;
+            var rectTransform = uiCache.GetRectTransform(panel.panelObject);
             if (rectTransform == null) return;
             
             // Apply layout-specific positioning and sizing
