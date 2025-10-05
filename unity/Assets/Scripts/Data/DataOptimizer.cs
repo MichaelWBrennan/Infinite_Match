@@ -21,6 +21,13 @@ namespace Evergreen.Data
         public CompressionType compressionType = CompressionType.Gzip;
         public bool enableBinarySerialization = true;
         public bool enableJsonSerialization = true;
+        
+        [Header("Compression Settings")]
+        public int compressionLevel = 6;
+        public bool enableAdaptiveCompression = true;
+        public float compressionThreshold = 1024f; // Compress files larger than 1KB
+        public bool enableLZ4Compression = true;
+        public bool enableBrotliCompression = false;
 
         [Header("Caching Settings")]
         public bool enableDataCaching = true;
@@ -403,6 +410,366 @@ namespace Evergreen.Data
         {
             var data = await LoadDataAsync<T>(path);
             return new KeyValuePair<string, T>(path, data);
+        }
+        
+        /// <summary>
+        /// Load data with compression and binary serialization support
+        /// </summary>
+        public async Task<T> LoadOptimizedDataAsync<T>(string dataPath, bool useCache = true) where T : class
+        {
+            if (useCache && _dataCache.ContainsKey(dataPath))
+            {
+                return _dataCache[dataPath] as T;
+            }
+
+            try
+            {
+                // Try binary format first
+                if (enableBinarySerialization)
+                {
+                    var binaryData = await LoadBinaryDataAsync<T>(dataPath);
+                    if (binaryData != null)
+                    {
+                        if (useCache)
+                        {
+                            _dataCache[dataPath] = binaryData;
+                            _cacheTimestamps[dataPath] = Time.time;
+                        }
+                        return binaryData;
+                    }
+                }
+                
+                // Fallback to JSON with compression
+                var jsonData = await LoadCompressedJsonDataAsync<T>(dataPath);
+                if (jsonData != null && useCache)
+                {
+                    _dataCache[dataPath] = jsonData;
+                    _cacheTimestamps[dataPath] = Time.time;
+                }
+                return jsonData;
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to load optimized data from {dataPath}: {e.Message}", "DataOptimizer");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Load binary serialized data
+        /// </summary>
+        private async Task<T> LoadBinaryDataAsync<T>(string dataPath) where T : class
+        {
+            var binaryPath = GetBinaryPath(dataPath);
+            
+            if (!File.Exists(binaryPath))
+            {
+                // Try to create binary version from JSON
+                var jsonData = await LoadDataAsync<T>(dataPath);
+                if (jsonData != null)
+                {
+                    await SaveBinaryDataAsync(dataPath, jsonData);
+                    return jsonData;
+                }
+                return null;
+            }
+            
+            try
+            {
+                var compressedData = await File.ReadAllBytesAsync(binaryPath);
+                var decompressedData = DecompressData(compressedData);
+                var data = DeserializeBinary<T>(decompressedData);
+                
+                Logger.Info($"Loaded binary data: {dataPath} ({compressedData.Length} bytes)", "DataOptimizer");
+                return data;
+            }
+            catch (Exception e)
+            {
+                Logger.Warning($"Failed to load binary data from {binaryPath}: {e.Message}", "DataOptimizer");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Load compressed JSON data
+        /// </summary>
+        private async Task<T> LoadCompressedJsonDataAsync<T>(string dataPath) where T : class
+        {
+            var compressedPath = GetCompressedPath(dataPath);
+            
+            if (!File.Exists(compressedPath))
+            {
+                // Try to create compressed version from JSON
+                var jsonData = await LoadDataAsync<T>(dataPath);
+                if (jsonData != null)
+                {
+                    await SaveCompressedJsonDataAsync(dataPath, jsonData);
+                    return jsonData;
+                }
+                return null;
+            }
+            
+            try
+            {
+                var compressedData = await File.ReadAllBytesAsync(compressedPath);
+                var decompressedData = DecompressData(compressedData);
+                var jsonString = System.Text.Encoding.UTF8.GetString(decompressedData);
+                var data = JsonUtility.FromJson<T>(jsonString);
+                
+                Logger.Info($"Loaded compressed JSON data: {dataPath} ({compressedData.Length} bytes)", "DataOptimizer");
+                return data;
+            }
+            catch (Exception e)
+            {
+                Logger.Warning($"Failed to load compressed JSON data from {compressedPath}: {e.Message}", "DataOptimizer");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Save data with compression and binary serialization
+        /// </summary>
+        public async Task<bool> SaveOptimizedDataAsync<T>(string dataPath, T data) where T : class
+        {
+            try
+            {
+                bool success = true;
+                
+                // Save binary version
+                if (enableBinarySerialization)
+                {
+                    success &= await SaveBinaryDataAsync(dataPath, data);
+                }
+                
+                // Save compressed JSON version
+                if (enableCompression)
+                {
+                    success &= await SaveCompressedJsonDataAsync(dataPath, data);
+                }
+                
+                // Save regular JSON version as fallback
+                success &= await SaveDataAsync(dataPath, data);
+                
+                return success;
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to save optimized data to {dataPath}: {e.Message}", "DataOptimizer");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Save binary serialized data
+        /// </summary>
+        private async Task<bool> SaveBinaryDataAsync<T>(string dataPath, T data) where T : class
+        {
+            try
+            {
+                var binaryData = SerializeBinary(data);
+                var compressedData = CompressData(binaryData);
+                
+                var binaryPath = GetBinaryPath(dataPath);
+                await File.WriteAllBytesAsync(binaryPath, compressedData);
+                
+                Logger.Info($"Saved binary data: {dataPath} ({compressedData.Length} bytes)", "DataOptimizer");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to save binary data to {dataPath}: {e.Message}", "DataOptimizer");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Save compressed JSON data
+        /// </summary>
+        private async Task<bool> SaveCompressedJsonDataAsync<T>(string dataPath, T data) where T : class
+        {
+            try
+            {
+                var jsonString = JsonUtility.ToJson(data, true);
+                var jsonBytes = System.Text.Encoding.UTF8.GetBytes(jsonString);
+                
+                // Only compress if data is large enough
+                if (jsonBytes.Length > compressionThreshold)
+                {
+                    var compressedData = CompressData(jsonBytes);
+                    var compressedPath = GetCompressedPath(dataPath);
+                    await File.WriteAllBytesAsync(compressedPath, compressedData);
+                    
+                    Logger.Info($"Saved compressed JSON data: {dataPath} ({compressedData.Length} bytes, {jsonBytes.Length} original)", "DataOptimizer");
+                }
+                
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to save compressed JSON data to {dataPath}: {e.Message}", "DataOptimizer");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Compress data using selected compression algorithm
+        /// </summary>
+        private byte[] CompressData(byte[] data)
+        {
+            if (!enableCompression || data.Length < compressionThreshold)
+            {
+                return data;
+            }
+            
+            switch (compressionType)
+            {
+                case CompressionType.Gzip:
+                    return CompressGzip(data);
+                case CompressionType.LZ4:
+                    return enableLZ4Compression ? CompressLZ4(data) : data;
+                case CompressionType.Brotli:
+                    return enableBrotliCompression ? CompressBrotli(data) : data;
+                default:
+                    return data;
+            }
+        }
+        
+        /// <summary>
+        /// Decompress data using selected compression algorithm
+        /// </summary>
+        private byte[] DecompressData(byte[] compressedData)
+        {
+            if (!enableCompression)
+            {
+                return compressedData;
+            }
+            
+            // Try to detect compression type by checking magic bytes
+            if (compressedData.Length >= 2)
+            {
+                if (compressedData[0] == 0x1f && compressedData[1] == 0x8b) // Gzip magic
+                {
+                    return DecompressGzip(compressedData);
+                }
+                else if (compressedData[0] == 0x04 && compressedData[1] == 0x22) // LZ4 magic
+                {
+                    return enableLZ4Compression ? DecompressLZ4(compressedData) : compressedData;
+                }
+            }
+            
+            // Default to Gzip
+            return DecompressGzip(compressedData);
+        }
+        
+        /// <summary>
+        /// Gzip compression
+        /// </summary>
+        private byte[] CompressGzip(byte[] data)
+        {
+            using (var output = new MemoryStream())
+            {
+                using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal))
+                {
+                    gzip.Write(data, 0, data.Length);
+                }
+                return output.ToArray();
+            }
+        }
+        
+        /// <summary>
+        /// Gzip decompression
+        /// </summary>
+        private byte[] DecompressGzip(byte[] compressedData)
+        {
+            using (var input = new MemoryStream(compressedData))
+            using (var gzip = new System.IO.Compression.GZipStream(input, System.IO.Compression.CompressionMode.Decompress))
+            using (var output = new MemoryStream())
+            {
+                gzip.CopyTo(output);
+                return output.ToArray();
+            }
+        }
+        
+        /// <summary>
+        /// LZ4 compression (placeholder - would need LZ4 library)
+        /// </summary>
+        private byte[] CompressLZ4(byte[] data)
+        {
+            // Placeholder implementation
+            // In a real implementation, you would use an LZ4 library
+            Logger.Warning("LZ4 compression not implemented - using Gzip fallback", "DataOptimizer");
+            return CompressGzip(data);
+        }
+        
+        /// <summary>
+        /// LZ4 decompression (placeholder - would need LZ4 library)
+        /// </summary>
+        private byte[] DecompressLZ4(byte[] compressedData)
+        {
+            // Placeholder implementation
+            // In a real implementation, you would use an LZ4 library
+            Logger.Warning("LZ4 decompression not implemented - using Gzip fallback", "DataOptimizer");
+            return DecompressGzip(compressedData);
+        }
+        
+        /// <summary>
+        /// Brotli compression (placeholder - would need Brotli library)
+        /// </summary>
+        private byte[] CompressBrotli(byte[] data)
+        {
+            // Placeholder implementation
+            // In a real implementation, you would use a Brotli library
+            Logger.Warning("Brotli compression not implemented - using Gzip fallback", "DataOptimizer");
+            return CompressGzip(data);
+        }
+        
+        /// <summary>
+        /// Brotli decompression (placeholder - would need Brotli library)
+        /// </summary>
+        private byte[] DecompressBrotli(byte[] compressedData)
+        {
+            // Placeholder implementation
+            // In a real implementation, you would use a Brotli library
+            Logger.Warning("Brotli decompression not implemented - using Gzip fallback", "DataOptimizer");
+            return DecompressGzip(compressedData);
+        }
+        
+        /// <summary>
+        /// Binary serialization
+        /// </summary>
+        private byte[] SerializeBinary<T>(T data) where T : class
+        {
+            // Simple binary serialization using JSON as base
+            // In a real implementation, you would use a proper binary serializer like MessagePack
+            var jsonString = JsonUtility.ToJson(data, true);
+            return System.Text.Encoding.UTF8.GetBytes(jsonString);
+        }
+        
+        /// <summary>
+        /// Binary deserialization
+        /// </summary>
+        private T DeserializeBinary<T>(byte[] data) where T : class
+        {
+            // Simple binary deserialization using JSON as base
+            // In a real implementation, you would use a proper binary deserializer like MessagePack
+            var jsonString = System.Text.Encoding.UTF8.GetString(data);
+            return JsonUtility.FromJson<T>(jsonString);
+        }
+        
+        /// <summary>
+        /// Get binary file path
+        /// </summary>
+        private string GetBinaryPath(string dataPath)
+        {
+            return dataPath.Replace(".json", ".bin");
+        }
+        
+        /// <summary>
+        /// Get compressed file path
+        /// </summary>
+        private string GetCompressedPath(string dataPath)
+        {
+            return dataPath.Replace(".json", ".gz");
         }
         #endregion
 
