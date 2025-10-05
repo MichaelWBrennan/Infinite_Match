@@ -67,9 +67,15 @@ namespace Evergreen.UI
                 bool canUnlock = DecorationSystem.Instance.CanUnlockRoom(roomData.id);
                 unlockButton.interactable = canUnlock;
                 
+                var uiCache = UIComponentCache.Instance;
+                var buttonText = uiCache.GetText(unlockButton.gameObject);
+                if (buttonText == null)
+                {
+                    buttonText = unlockButton.GetComponentInChildren<TextMeshProUGUI>();
+                }
+                
                 if (!canUnlock)
                 {
-                    var buttonText = unlockButton.GetComponentInChildren<TextMeshProUGUI>();
                     if (buttonText != null)
                     {
                         if (Evergreen.Game.GameState.CurrentLevel < roomData.unlockLevel)
@@ -82,7 +88,6 @@ namespace Evergreen.UI
                 }
                 else
                 {
-                    var buttonText = unlockButton.GetComponentInChildren<TextMeshProUGUI>();
                     if (buttonText != null)
                         buttonText.text = "Unlock";
                 }
@@ -111,7 +116,12 @@ namespace Evergreen.UI
         
         private void ShowNotification(string message)
         {
-            var notificationUI = FindObjectOfType<EnhancedMainMenuUI>();
+            var uiCache = UIComponentCache.Instance;
+            var notificationUI = uiCache.GetComponentCached<EnhancedMainMenuUI>(uiCache.MainCanvas?.gameObject);
+            if (notificationUI == null)
+            {
+                notificationUI = FindObjectOfType<EnhancedMainMenuUI>();
+            }
             if (notificationUI != null)
             {
                 notificationUI.ShowNotification(message);
