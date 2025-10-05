@@ -51,6 +51,15 @@ namespace Evergreen.Graphics
         public bool enableMobilePostProcessing = false;
         public int mobileShadowResolution = 256;
         public int mobileMaxLights = 2;
+        
+        [Header("Battery & Thermal Management")]
+        public bool enableBatteryMonitoring = true;
+        public bool enableThermalThrottling = true;
+        public float batteryLowThreshold = 0.2f;
+        public float batteryCriticalThreshold = 0.1f;
+        public float thermalThrottleThreshold = 0.8f;
+        public float thermalCooldownThreshold = 0.6f;
+        public bool enablePowerSavingMode = true;
 
         [Header("Performance")]
         public bool enableAdaptiveQuality = true;
@@ -61,6 +70,16 @@ namespace Evergreen.Graphics
         private UniversalRenderPipelineAsset _urpAsset;
         private Camera _mainCamera;
         private Dictionary<string, RendererFeature> _rendererFeatures = new Dictionary<string, RendererFeature>();
+        
+        // Battery and thermal monitoring
+        private float _currentBatteryLevel = 1.0f;
+        private float _currentThermalLevel = 0.0f;
+        private bool _isThermalThrottled = false;
+        private bool _isPowerSavingMode = false;
+        private float _lastBatteryCheck = 0f;
+        private float _lastThermalCheck = 0f;
+        private float _batteryCheckInterval = 5f;
+        private float _thermalCheckInterval = 2f;
         private bool _isLowPerformance = false;
         private float _lastPerformanceCheck = 0f;
         private int _currentQualityLevel = 2;
@@ -91,6 +110,16 @@ namespace Evergreen.Graphics
             if (enableAdaptiveQuality)
             {
                 CheckPerformanceAndAdjustQuality();
+            }
+            
+            if (enableBatteryMonitoring)
+            {
+                MonitorBattery();
+            }
+            
+            if (enableThermalThrottling)
+            {
+                MonitorThermal();
             }
         }
 
@@ -449,6 +478,277 @@ namespace Evergreen.Graphics
         {
             enablePostProcessing = enabled;
             SetPostProcessingEnabled(enabled);
+        }
+        #endregion
+        
+        #region Battery & Thermal Management
+        /// <summary>
+        /// Monitor battery level and adjust quality accordingly
+        /// </summary>
+        private void MonitorBattery()
+        {
+            if (Time.time - _lastBatteryCheck < _batteryCheckInterval) return;
+            
+            _lastBatteryCheck = Time.time;
+            
+            // Get battery level (simplified - in real implementation, use platform-specific APIs)
+            _currentBatteryLevel = GetBatteryLevel();
+            
+            // Check if we need to enter power saving mode
+            bool shouldEnterPowerSaving = _currentBatteryLevel <= batteryLowThreshold;
+            bool shouldEnterCriticalMode = _currentBatteryLevel <= batteryCriticalThreshold;
+            
+            if (shouldEnterCriticalMode && !_isPowerSavingMode)
+            {
+                EnterCriticalPowerMode();
+            }
+            else if (shouldEnterPowerSaving && !_isPowerSavingMode)
+            {
+                EnterPowerSavingMode();
+            }
+            else if (!shouldEnterPowerSaving && _isPowerSavingMode)
+            {
+                ExitPowerSavingMode();
+            }
+        }
+        
+        /// <summary>
+        /// Monitor thermal state and apply throttling
+        /// </summary>
+        private void MonitorThermal()
+        {
+            if (Time.time - _lastThermalCheck < _thermalCheckInterval) return;
+            
+            _lastThermalCheck = Time.time;
+            
+            // Get thermal level (simplified - in real implementation, use platform-specific APIs)
+            _currentThermalLevel = GetThermalLevel();
+            
+            // Check if we need to throttle
+            bool shouldThrottle = _currentThermalLevel >= thermalThrottleThreshold;
+            bool shouldCooldown = _currentThermalLevel <= thermalCooldownThreshold;
+            
+            if (shouldThrottle && !_isThermalThrottled)
+            {
+                ApplyThermalThrottling();
+            }
+            else if (shouldCooldown && _isThermalThrottled)
+            {
+                RemoveThermalThrottling();
+            }
+        }
+        
+        /// <summary>
+        /// Get battery level (platform-specific implementation needed)
+        /// </summary>
+        private float GetBatteryLevel()
+        {
+            // This is a simplified implementation
+            // In a real implementation, you would use platform-specific APIs:
+            // - Android: BatteryManager
+            // - iOS: UIDevice.batteryLevel
+            // - Unity: SystemInfo.batteryLevel (limited support)
+            
+            if (SystemInfo.batteryLevel >= 0)
+            {
+                return SystemInfo.batteryLevel;
+            }
+            
+            // Fallback: simulate battery level based on performance
+            return Mathf.Clamp01(1.0f - (_currentThermalLevel * 0.3f));
+        }
+        
+        /// <summary>
+        /// Get thermal level (platform-specific implementation needed)
+        /// </summary>
+        private float GetThermalLevel()
+        {
+            // This is a simplified implementation
+            // In a real implementation, you would use platform-specific APIs:
+            // - Android: ThermalManager
+            // - iOS: ProcessInfo.thermalState
+            // - Unity: SystemInfo.processorFrequency (limited support)
+            
+            // Simulate thermal level based on performance and frame rate
+            float currentFPS = 1.0f / Time.deltaTime;
+            float fpsRatio = currentFPS / targetFrameTime;
+            
+            // Thermal level increases when performance is poor
+            float thermalLevel = Mathf.Clamp01(1.0f - fpsRatio);
+            
+            // Add some randomness to simulate real thermal behavior
+            thermalLevel += Random.Range(-0.1f, 0.1f);
+            
+            return Mathf.Clamp01(thermalLevel);
+        }
+        
+        /// <summary>
+        /// Enter power saving mode
+        /// </summary>
+        private void EnterPowerSavingMode()
+        {
+            if (_isPowerSavingMode) return;
+            
+            _isPowerSavingMode = true;
+            
+            // Reduce quality settings
+            if (_urpAsset != null)
+            {
+                _urpAsset.shadowDistance = Mathf.Min(_urpAsset.shadowDistance, 25f);
+                _urpAsset.shadowCascadeCount = 1;
+                _urpAsset.shadowResolution = ShadowResolution.Low;
+            }
+            
+            // Reduce frame rate
+            Application.targetFrameRate = 30;
+            
+            // Disable expensive features
+            enableMobilePostProcessing = false;
+            enableMobileShadows = false;
+            
+            Logger.Info("Entered power saving mode due to low battery", "RenderPipelineOptimizer");
+        }
+        
+        /// <summary>
+        /// Enter critical power mode
+        /// </summary>
+        private void EnterCriticalPowerMode()
+        {
+            if (_isPowerSavingMode) return;
+            
+            _isPowerSavingMode = true;
+            
+            // Maximum quality reduction
+            if (_urpAsset != null)
+            {
+                _urpAsset.shadowDistance = 10f;
+                _urpAsset.shadowCascadeCount = 1;
+                _urpAsset.shadowResolution = ShadowResolution.Low;
+                _urpAsset.maxAdditionalLights = 0;
+            }
+            
+            // Very low frame rate
+            Application.targetFrameRate = 15;
+            
+            // Disable all expensive features
+            enableMobilePostProcessing = false;
+            enableMobileShadows = false;
+            enablePostProcessing = false;
+            
+            Logger.Warning("Entered critical power mode due to very low battery", "RenderPipelineOptimizer");
+        }
+        
+        /// <summary>
+        /// Exit power saving mode
+        /// </summary>
+        private void ExitPowerSavingMode()
+        {
+            if (!_isPowerSavingMode) return;
+            
+            _isPowerSavingMode = false;
+            
+            // Restore quality settings
+            if (_urpAsset != null)
+            {
+                _urpAsset.shadowDistance = shadowDistance;
+                _urpAsset.shadowCascadeCount = shadowCascades;
+                _urpAsset.shadowResolution = shadowResolution;
+                _urpAsset.maxAdditionalLights = maxAdditionalLights;
+            }
+            
+            // Restore frame rate
+            Application.targetFrameRate = 60;
+            
+            // Re-enable features
+            enableMobilePostProcessing = true;
+            enableMobileShadows = true;
+            enablePostProcessing = true;
+            
+            Logger.Info("Exited power saving mode", "RenderPipelineOptimizer");
+        }
+        
+        /// <summary>
+        /// Apply thermal throttling
+        /// </summary>
+        private void ApplyThermalThrottling()
+        {
+            if (_isThermalThrottled) return;
+            
+            _isThermalThrottled = true;
+            
+            // Reduce quality to prevent overheating
+            if (_urpAsset != null)
+            {
+                _urpAsset.shadowDistance = Mathf.Min(_urpAsset.shadowDistance, 30f);
+                _urpAsset.shadowCascadeCount = Mathf.Min(_urpAsset.shadowCascadeCount, 2);
+                _urpAsset.shadowResolution = ShadowResolution.Medium;
+            }
+            
+            // Reduce frame rate
+            Application.targetFrameRate = 45;
+            
+            // Disable some features
+            enableMobilePostProcessing = false;
+            
+            Logger.Warning($"Applied thermal throttling (thermal level: {_currentThermalLevel:F2})", "RenderPipelineOptimizer");
+        }
+        
+        /// <summary>
+        /// Remove thermal throttling
+        /// </summary>
+        private void RemoveThermalThrottling()
+        {
+            if (!_isThermalThrottled) return;
+            
+            _isThermalThrottled = false;
+            
+            // Restore quality settings
+            if (_urpAsset != null)
+            {
+                _urpAsset.shadowDistance = shadowDistance;
+                _urpAsset.shadowCascadeCount = shadowCascades;
+                _urpAsset.shadowResolution = shadowResolution;
+            }
+            
+            // Restore frame rate
+            Application.targetFrameRate = 60;
+            
+            // Re-enable features
+            enableMobilePostProcessing = true;
+            
+            Logger.Info("Removed thermal throttling", "RenderPipelineOptimizer");
+        }
+        
+        /// <summary>
+        /// Get current battery level
+        /// </summary>
+        public float GetCurrentBatteryLevel()
+        {
+            return _currentBatteryLevel;
+        }
+        
+        /// <summary>
+        /// Get current thermal level
+        /// </summary>
+        public float GetCurrentThermalLevel()
+        {
+            return _currentThermalLevel;
+        }
+        
+        /// <summary>
+        /// Check if currently in power saving mode
+        /// </summary>
+        public bool IsPowerSavingMode()
+        {
+            return _isPowerSavingMode;
+        }
+        
+        /// <summary>
+        /// Check if currently thermal throttled
+        /// </summary>
+        public bool IsThermalThrottled()
+        {
+            return _isThermalThrottled;
         }
         #endregion
     }

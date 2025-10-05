@@ -127,6 +127,8 @@ namespace Evergreen.Core
         public static long GetTextureMemoryUsage()
         {
             long totalMemory = 0;
+            
+            // Count cached textures
             foreach (var texture in _compressedTextureCache.Values)
             {
                 if (texture != null)
@@ -134,6 +136,17 @@ namespace Evergreen.Core
                     totalMemory += CalculateTextureMemorySize(texture);
                 }
             }
+            
+            // Count all textures in the scene
+            var allTextures = Resources.FindObjectsOfTypeAll<Texture2D>();
+            foreach (var texture in allTextures)
+            {
+                if (texture != null)
+                {
+                    totalMemory += CalculateTextureMemorySize(texture);
+                }
+            }
+            
             return totalMemory;
         }
 
@@ -184,6 +197,8 @@ namespace Evergreen.Core
         public static long GetAudioMemoryUsage()
         {
             long totalMemory = 0;
+            
+            // Count cached audio clips
             foreach (var clip in _compressedAudioCache.Values)
             {
                 if (clip != null)
@@ -191,6 +206,27 @@ namespace Evergreen.Core
                     totalMemory += CalculateAudioMemorySize(clip);
                 }
             }
+            
+            // Count all audio clips in the scene
+            var allAudioClips = Resources.FindObjectsOfTypeAll<AudioClip>();
+            foreach (var clip in allAudioClips)
+            {
+                if (clip != null)
+                {
+                    totalMemory += CalculateAudioMemorySize(clip);
+                }
+            }
+            
+            // Count audio sources
+            var audioSources = Object.FindObjectsOfType<AudioSource>();
+            foreach (var audioSource in audioSources)
+            {
+                if (audioSource.clip != null)
+                {
+                    totalMemory += CalculateAudioMemorySize(audioSource.clip);
+                }
+            }
+            
             return totalMemory;
         }
 

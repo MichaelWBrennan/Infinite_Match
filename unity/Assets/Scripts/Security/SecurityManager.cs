@@ -27,6 +27,13 @@ namespace Evergreen.Security
         public bool enableValueValidation = true;
         public bool enableBehaviorAnalysis = true;
         public float detectionThreshold = 0.8f;
+        
+        [Header("Detection Parameters")]
+        public float speedHackThreshold = 1.5f;
+        public float memoryHackThreshold = 0.3f;
+        public float valueValidationThreshold = 0.9f;
+        public int behaviorAnalysisWindow = 60; // seconds
+        public float suspiciousActivityThreshold = 0.7f;
 
         [Header("Data Protection")]
         public bool enableDataHashing = true;
@@ -48,6 +55,16 @@ namespace Evergreen.Security
         private CheatDetector _cheatDetector;
         private InputValidator _inputValidator;
         private MemoryProtector _memoryProtector;
+        
+        // Cheat detection tracking
+        private readonly Dictionary<string, SpeedHackDetection> _speedHackData = new Dictionary<string, SpeedHackDetection>();
+        private readonly Dictionary<string, MemoryHackDetection> _memoryHackData = new Dictionary<string, MemoryHackDetection>();
+        private readonly Dictionary<string, BehaviorAnalysis> _behaviorData = new Dictionary<string, BehaviorAnalysis>();
+        private readonly Dictionary<string, ValueValidation> _valueValidationData = new Dictionary<string, ValueValidation>();
+        
+        // Detection timers
+        private float _lastDetectionTime = 0f;
+        private float _detectionInterval = 1f;
         private NetworkSecurity _networkSecurity;
         private BehaviorAnalyzer _behaviorAnalyzer;
 
@@ -723,6 +740,429 @@ namespace Evergreen.Security
         {
             // Memory protection logic
         }
+        
+        #region Cheat Detection Algorithms
+        /// <summary>
+        /// Run all cheat detection algorithms
+        /// </summary>
+        private void RunCheatDetection()
+        {
+            if (!enableAntiCheat) return;
+            
+            // Detect speed hacks
+            if (enableSpeedHackDetection)
+            {
+                DetectSpeedHacks();
+            }
+            
+            // Detect memory hacks
+            if (enableMemoryHackDetection)
+            {
+                DetectMemoryHacks();
+            }
+            
+            // Validate game values
+            if (enableValueValidation)
+            {
+                ValidateGameValues();
+            }
+            
+            // Analyze player behavior
+            if (enableBehaviorAnalysis)
+            {
+                AnalyzePlayerBehavior();
+            }
+        }
+        
+        /// <summary>
+        /// Detect speed hacks by monitoring frame time consistency
+        /// </summary>
+        private void DetectSpeedHacks()
+        {
+            float currentTime = Time.time;
+            float deltaTime = Time.deltaTime;
+            float expectedDeltaTime = 1f / 60f; // Expected 60 FPS
+            
+            // Calculate speed multiplier
+            float speedMultiplier = expectedDeltaTime / deltaTime;
+            
+            // Check if speed is suspiciously high
+            if (speedMultiplier > speedHackThreshold)
+            {
+                string playerId = GetCurrentPlayerId();
+                if (!string.IsNullOrEmpty(playerId))
+                {
+                    RecordSpeedHackDetection(playerId, speedMultiplier);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Detect memory hacks by monitoring memory usage patterns
+        /// </summary>
+        private void DetectMemoryHacks()
+        {
+            long currentMemory = System.GC.GetTotalMemory(false);
+            long expectedMemory = GetExpectedMemoryUsage();
+            
+            // Calculate memory deviation
+            float memoryDeviation = Mathf.Abs(currentMemory - expectedMemory) / (float)expectedMemory;
+            
+            if (memoryDeviation > memoryHackThreshold)
+            {
+                string playerId = GetCurrentPlayerId();
+                if (!string.IsNullOrEmpty(playerId))
+                {
+                    RecordMemoryHackDetection(playerId, memoryDeviation);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Validate game values for consistency
+        /// </summary>
+        private void ValidateGameValues()
+        {
+            // Validate score values
+            ValidateScoreValues();
+            
+            // Validate resource values
+            ValidateResourceValues();
+            
+            // Validate level progression
+            ValidateLevelProgression();
+        }
+        
+        /// <summary>
+        /// Analyze player behavior for suspicious patterns
+        /// </summary>
+        private void AnalyzePlayerBehavior()
+        {
+            string playerId = GetCurrentPlayerId();
+            if (string.IsNullOrEmpty(playerId)) return;
+            
+            // Get or create behavior analysis data
+            if (!_behaviorData.ContainsKey(playerId))
+            {
+                _behaviorData[playerId] = new BehaviorAnalysis();
+            }
+            
+            var behaviorData = _behaviorData[playerId];
+            
+            // Analyze input patterns
+            AnalyzeInputPatterns(playerId, behaviorData);
+            
+            // Analyze action timing
+            AnalyzeActionTiming(playerId, behaviorData);
+            
+            // Analyze progression patterns
+            AnalyzeProgressionPatterns(playerId, behaviorData);
+            
+            // Check for suspicious activity
+            if (behaviorData.SuspiciousScore > suspiciousActivityThreshold)
+            {
+                RecordSuspiciousBehavior(playerId, behaviorData.SuspiciousScore);
+            }
+        }
+        
+        /// <summary>
+        /// Record speed hack detection
+        /// </summary>
+        private void RecordSpeedHackDetection(string playerId, float speedMultiplier)
+        {
+            if (!_speedHackData.ContainsKey(playerId))
+            {
+                _speedHackData[playerId] = new SpeedHackDetection();
+            }
+            
+            var detection = _speedHackData[playerId];
+            detection.DetectionCount++;
+            detection.LastDetectionTime = Time.time;
+            detection.MaxSpeedMultiplier = Mathf.Max(detection.MaxSpeedMultiplier, speedMultiplier);
+            
+            // Trigger security event
+            TriggerSecurityEvent(playerId, "SpeedHack", speedMultiplier);
+            
+            Logger.Warning($"Speed hack detected for player {playerId}: {speedMultiplier}x speed", "SecurityManager");
+        }
+        
+        /// <summary>
+        /// Record memory hack detection
+        /// </summary>
+        private void RecordMemoryHackDetection(string playerId, float memoryDeviation)
+        {
+            if (!_memoryHackData.ContainsKey(playerId))
+            {
+                _memoryHackData[playerId] = new MemoryHackDetection();
+            }
+            
+            var detection = _memoryHackData[playerId];
+            detection.DetectionCount++;
+            detection.LastDetectionTime = Time.time;
+            detection.MaxMemoryDeviation = Mathf.Max(detection.MaxMemoryDeviation, memoryDeviation);
+            
+            // Trigger security event
+            TriggerSecurityEvent(playerId, "MemoryHack", memoryDeviation);
+            
+            Logger.Warning($"Memory hack detected for player {playerId}: {memoryDeviation:P} deviation", "SecurityManager");
+        }
+        
+        /// <summary>
+        /// Record suspicious behavior
+        /// </summary>
+        private void RecordSuspiciousBehavior(string playerId, float suspiciousScore)
+        {
+            // Trigger security event
+            TriggerSecurityEvent(playerId, "SuspiciousBehavior", suspiciousScore);
+            
+            Logger.Warning($"Suspicious behavior detected for player {playerId}: {suspiciousScore:F2} score", "SecurityManager");
+        }
+        
+        /// <summary>
+        /// Analyze input patterns for suspicious behavior
+        /// </summary>
+        private void AnalyzeInputPatterns(string playerId, BehaviorAnalysis behaviorData)
+        {
+            // Check for inhuman input patterns
+            float inputFrequency = GetInputFrequency();
+            float expectedFrequency = GetExpectedInputFrequency();
+            
+            if (inputFrequency > expectedFrequency * 2f)
+            {
+                behaviorData.SuspiciousScore += 0.2f;
+            }
+            
+            // Check for perfect timing patterns
+            if (HasPerfectTiming())
+            {
+                behaviorData.SuspiciousScore += 0.3f;
+            }
+        }
+        
+        /// <summary>
+        /// Analyze action timing for suspicious behavior
+        /// </summary>
+        private void AnalyzeActionTiming(string playerId, BehaviorAnalysis behaviorData)
+        {
+            // Check for impossibly fast actions
+            float actionSpeed = GetActionSpeed();
+            float expectedSpeed = GetExpectedActionSpeed();
+            
+            if (actionSpeed > expectedSpeed * 1.5f)
+            {
+                behaviorData.SuspiciousScore += 0.4f;
+            }
+        }
+        
+        /// <summary>
+        /// Analyze progression patterns for suspicious behavior
+        /// </summary>
+        private void AnalyzeProgressionPatterns(string playerId, BehaviorAnalysis behaviorData)
+        {
+            // Check for impossibly fast progression
+            float progressionSpeed = GetProgressionSpeed();
+            float expectedProgression = GetExpectedProgressionSpeed();
+            
+            if (progressionSpeed > expectedProgression * 2f)
+            {
+                behaviorData.SuspiciousScore += 0.5f;
+            }
+        }
+        
+        /// <summary>
+        /// Validate score values for consistency
+        /// </summary>
+        private void ValidateScoreValues()
+        {
+            // This would validate score values against expected ranges
+            // Implementation depends on game-specific scoring system
+        }
+        
+        /// <summary>
+        /// Validate resource values for consistency
+        /// </summary>
+        private void ValidateResourceValues()
+        {
+            // This would validate resource values against expected ranges
+            // Implementation depends on game-specific resource system
+        }
+        
+        /// <summary>
+        /// Validate level progression for consistency
+        /// </summary>
+        private void ValidateLevelProgression()
+        {
+            // This would validate level progression against expected patterns
+            // Implementation depends on game-specific progression system
+        }
+        
+        /// <summary>
+        /// Get current player ID
+        /// </summary>
+        private string GetCurrentPlayerId()
+        {
+            // This would return the current player's ID
+            // Implementation depends on your player management system
+            return "player_1"; // Placeholder
+        }
+        
+        /// <summary>
+        /// Get expected memory usage
+        /// </summary>
+        private long GetExpectedMemoryUsage()
+        {
+            // This would calculate expected memory usage based on game state
+            return 100 * 1024 * 1024; // 100MB placeholder
+        }
+        
+        /// <summary>
+        /// Get input frequency
+        /// </summary>
+        private float GetInputFrequency()
+        {
+            // This would calculate current input frequency
+            return 10f; // Placeholder
+        }
+        
+        /// <summary>
+        /// Get expected input frequency
+        /// </summary>
+        private float GetExpectedInputFrequency()
+        {
+            // This would return expected input frequency for normal play
+            return 5f; // Placeholder
+        }
+        
+        /// <summary>
+        /// Check for perfect timing patterns
+        /// </summary>
+        private bool HasPerfectTiming()
+        {
+            // This would check for inhumanly perfect timing patterns
+            return false; // Placeholder
+        }
+        
+        /// <summary>
+        /// Get action speed
+        /// </summary>
+        private float GetActionSpeed()
+        {
+            // This would calculate current action speed
+            return 1f; // Placeholder
+        }
+        
+        /// <summary>
+        /// Get expected action speed
+        /// </summary>
+        private float GetExpectedActionSpeed()
+        {
+            // This would return expected action speed
+            return 1f; // Placeholder
+        }
+        
+        /// <summary>
+        /// Get progression speed
+        /// </summary>
+        private float GetProgressionSpeed()
+        {
+            // This would calculate current progression speed
+            return 1f; // Placeholder
+        }
+        
+        /// <summary>
+        /// Get expected progression speed
+        /// </summary>
+        private float GetExpectedProgressionSpeed()
+        {
+            // This would return expected progression speed
+            return 1f; // Placeholder
+        }
+        
+        /// <summary>
+        /// Trigger security event
+        /// </summary>
+        private void TriggerSecurityEvent(string playerId, string eventType, float value)
+        {
+            var securityEvent = new SecurityEvent
+            {
+                PlayerId = playerId,
+                EventType = eventType,
+                Value = value,
+                Timestamp = Time.time,
+                Severity = CalculateSeverity(value)
+            };
+            
+            _securityEvents[Guid.NewGuid().ToString()] = securityEvent;
+            
+            // Send to analytics
+            Evergreen.Game.AnalyticsAdapter.CustomEvent("security_event", new Dictionary<string, object>
+            {
+                {"player_id", playerId},
+                {"event_type", eventType},
+                {"value", value},
+                {"severity", securityEvent.Severity}
+            });
+        }
+        
+        /// <summary>
+        /// Calculate security event severity
+        /// </summary>
+        private SecuritySeverity CalculateSeverity(float value)
+        {
+            if (value > 2f) return SecuritySeverity.Critical;
+            if (value > 1.5f) return SecuritySeverity.High;
+            if (value > 1.2f) return SecuritySeverity.Medium;
+            return SecuritySeverity.Low;
+        }
+        
+        /// <summary>
+        /// Get security statistics
+        /// </summary>
+        public Dictionary<string, object> GetSecurityStatistics()
+        {
+            return new Dictionary<string, object>
+            {
+                {"speed_hack_detections", _speedHackData.Count},
+                {"memory_hack_detections", _memoryHackData.Count},
+                {"suspicious_behaviors", _behaviorData.Count},
+                {"security_events", _securityEvents.Count},
+                {"total_detections", _speedHackData.Count + _memoryHackData.Count + _behaviorData.Count}
+            };
+        }
+        
+        // Data structures for cheat detection
+        [System.Serializable]
+        public class SpeedHackDetection
+        {
+            public int DetectionCount;
+            public float LastDetectionTime;
+            public float MaxSpeedMultiplier;
+        }
+        
+        [System.Serializable]
+        public class MemoryHackDetection
+        {
+            public int DetectionCount;
+            public float LastDetectionTime;
+            public float MaxMemoryDeviation;
+        }
+        
+        [System.Serializable]
+        public class BehaviorAnalysis
+        {
+            public float SuspiciousScore;
+            public float LastAnalysisTime;
+            public int AnalysisCount;
+        }
+        
+        [System.Serializable]
+        public class ValueValidation
+        {
+            public int ValidationCount;
+            public int FailureCount;
+            public float LastValidationTime;
+        }
+        #endregion
     }
 
     /// <summary>

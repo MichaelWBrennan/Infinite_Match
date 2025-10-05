@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Evergreen.Core
 {
     /// <summary>
-    /// Generic object pool for efficient object reuse
+    /// Generic object pool for efficient object reuse with enhanced monitoring
     /// </summary>
     public class ObjectPool<T> where T : class, new()
     {
@@ -15,13 +15,18 @@ namespace Evergreen.Core
         private readonly Action<T> _onReturn;
         private readonly int _maxSize;
         private int _currentSize = 0;
+        private int _totalCreated = 0;
+        private int _totalReturned = 0;
+        private long _totalMemoryAllocated = 0;
+        private readonly string _poolName;
 
-        public ObjectPool(Func<T> createFunc = null, Action<T> onGet = null, Action<T> onReturn = null, int maxSize = 100)
+        public ObjectPool(Func<T> createFunc = null, Action<T> onGet = null, Action<T> onReturn = null, int maxSize = 100, string poolName = null)
         {
             _createFunc = createFunc ?? (() => new T());
             _onGet = onGet;
             _onReturn = onReturn;
             _maxSize = maxSize;
+            _poolName = poolName ?? typeof(T).Name;
         }
 
         public T Get()
@@ -30,15 +35,20 @@ namespace Evergreen.Core
             if (_pool.Count > 0)
             {
                 obj = _pool.Dequeue();
+                _totalReturned++;
             }
             else if (_currentSize < _maxSize)
             {
                 obj = _createFunc();
                 _currentSize++;
+                _totalCreated++;
+                _totalMemoryAllocated += EstimateMemorySize(obj);
             }
             else
             {
                 obj = _createFunc();
+                _totalCreated++;
+                _totalMemoryAllocated += EstimateMemorySize(obj);
             }
 
             _onGet?.Invoke(obj);
@@ -65,6 +75,46 @@ namespace Evergreen.Core
 
         public int Count => _pool.Count;
         public int CurrentSize => _currentSize;
+        public int TotalCreated => _totalCreated;
+        public int TotalReturned => _totalReturned;
+        public long TotalMemoryAllocated => _totalMemoryAllocated;
+        public string PoolName => _poolName;
+        
+        public float UtilizationRate => _currentSize > 0 ? (float)(_currentSize - _pool.Count) / _currentSize : 0f;
+        public float HitRate => _totalCreated > 0 ? (float)_totalReturned / _totalCreated : 0f;
+
+        private long EstimateMemorySize(T obj)
+        {
+            // Basic memory estimation based on type
+            if (obj is System.Collections.ICollection collection)
+            {
+                return collection.Count * 8; // Rough estimate
+            }
+            
+            if (obj is string str)
+            {
+                return str.Length * 2; // Unicode characters
+            }
+            
+            // Default estimation
+            return System.Runtime.InteropServices.Marshal.SizeOf(typeof(T));
+        }
+
+        public Dictionary<string, object> GetStatistics()
+        {
+            return new Dictionary<string, object>
+            {
+                {"pool_name", _poolName},
+                {"pooled_count", Count},
+                {"active_count", _currentSize - Count},
+                {"total_created", _totalCreated},
+                {"total_returned", _totalReturned},
+                {"total_memory_allocated", _totalMemoryAllocated},
+                {"utilization_rate", UtilizationRate},
+                {"hit_rate", HitRate},
+                {"max_size", _maxSize}
+            };
+        }
     }
 
     /// <summary>

@@ -24,14 +24,41 @@ namespace Evergreen.Graphics
         public int maxTextureMemoryMB = 512;
         public bool unloadUnusedTextures = true;
         public float unloadInterval = 30f;
+        
+        [Header("Streaming Settings")]
+        public bool enableProgressiveLoading = true;
+        public int streamingBatchSize = 5;
+        public float streamingDistance = 50f;
+        public bool enableDistanceBasedStreaming = true;
+        public float streamingUpdateInterval = 1f;
 
         private readonly Dictionary<string, Texture2D> _textureCache = new Dictionary<string, Texture2D>();
         private readonly Dictionary<string, Texture2D> _compressedTextureCache = new Dictionary<string, Texture2D>();
         private readonly Dictionary<string, float> _textureLastUsed = new Dictionary<string, float>();
         private readonly Dictionary<string, int> _textureReferenceCount = new Dictionary<string, int>();
+        
+        // Texture streaming
+        private readonly Dictionary<string, StreamingTextureData> _streamingTextures = new Dictionary<string, StreamingTextureData>();
+        private readonly Queue<string> _streamingQueue = new Queue<string>();
+        private readonly List<string> _streamingInProgress = new List<string>();
+        private Camera _mainCamera;
+        private float _lastStreamingUpdate = 0f;
+        private int _streamingBatchCount = 0;
 
         private float _lastUnloadTime = 0f;
         private long _currentTextureMemory = 0;
+        
+        [System.Serializable]
+        public class StreamingTextureData
+        {
+            public string texturePath;
+            public Vector3 position;
+            public float priority;
+            public bool isLoaded;
+            public bool isStreaming;
+            public float lastDistance;
+            public int mipLevel;
+        }
 
         void Awake()
         {
@@ -51,7 +78,203 @@ namespace Evergreen.Graphics
         {
             // Set texture quality based on platform
             SetTextureQualityForPlatform();
+            
+            _mainCamera = Camera.main;
+            if (_mainCamera == null)
+            {
+                _mainCamera = FindObjectOfType<Camera>();
+            }
+            
+            if (enableTextureStreaming)
+            {
+                StartCoroutine(TextureStreamingCoroutine());
+            }
+            
             Logger.Info("Optimized Texture Manager initialized", "TextureManager");
+        }
+        
+        private System.Collections.IEnumerator TextureStreamingCoroutine()
+        {
+            while (enableTextureStreaming)
+            {
+                if (Time.time - _lastStreamingUpdate > streamingUpdateInterval)
+                {
+                    UpdateTextureStreaming();
+                    _lastStreamingUpdate = Time.time;
+                }
+                
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+        
+        private void UpdateTextureStreaming()
+        {
+            if (_mainCamera == null) return;
+            
+            Vector3 cameraPos = _mainCamera.transform.position;
+            
+            // Update streaming priorities based on distance
+            foreach (var kvp in _streamingTextures)
+            {
+                var streamingData = kvp.Value;
+                float distance = Vector3.Distance(cameraPos, streamingData.position);
+                streamingData.lastDistance = distance;
+                
+                // Calculate priority based on distance and importance
+                streamingData.priority = CalculateStreamingPriority(streamingData, distance);
+            }
+            
+            // Process streaming queue
+            ProcessStreamingQueue();
+            
+            // Unload distant textures
+            if (enableDistanceBasedStreaming)
+            {
+                UnloadDistantTextures(cameraPos);
+            }
+        }
+        
+        private float CalculateStreamingPriority(StreamingTextureData data, float distance)
+        {
+            float priority = 1f / (1f + distance); // Closer = higher priority
+            
+            // Adjust based on mip level
+            priority *= (1f + data.mipLevel * 0.5f);
+            
+            // Adjust based on memory pressure
+            float memoryPressure = (float)_currentTextureMemory / (maxTextureMemoryMB * 1024 * 1024);
+            if (memoryPressure > 0.8f)
+            {
+                priority *= 0.5f; // Reduce priority when memory is high
+            }
+            
+            return priority;
+        }
+        
+        private void ProcessStreamingQueue()
+        {
+            // Sort streaming textures by priority
+            var sortedTextures = new List<KeyValuePair<string, StreamingTextureData>>(_streamingTextures);
+            sortedTextures.Sort((a, b) => b.Value.priority.CompareTo(a.Value.priority));
+            
+            // Process high priority textures first
+            int processed = 0;
+            foreach (var kvp in sortedTextures)
+            {
+                if (processed >= streamingBatchSize) break;
+                
+                var streamingData = kvp.Value;
+                if (!streamingData.isLoaded && !streamingData.isStreaming)
+                {
+                    StartCoroutine(StreamTexture(streamingData));
+                    processed++;
+                }
+            }
+        }
+        
+        private System.Collections.IEnumerator StreamTexture(StreamingTextureData data)
+        {
+            data.isStreaming = true;
+            
+            try
+            {
+                // Load texture asynchronously
+                var request = Resources.LoadAsync<Texture2D>(data.texturePath);
+                yield return request;
+                
+                if (request.asset != null)
+                {
+                    var texture = request.asset as Texture2D;
+                    if (texture != null)
+                    {
+                        // Compress texture if needed
+                        var compressedTexture = OptimizeTexture(texture, true);
+                        
+                        // Add to cache
+                        _textureCache[data.texturePath] = compressedTexture;
+                        _textureLastUsed[data.texturePath] = Time.time;
+                        _textureReferenceCount[data.texturePath] = 1;
+                        
+                        // Update memory usage
+                        _currentTextureMemory += CalculateTextureMemorySize(compressedTexture);
+                        
+                        data.isLoaded = true;
+                        data.isStreaming = false;
+                        
+                        Logger.Info($"Streamed texture: {data.texturePath}", "TextureManager");
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Logger.Error($"Failed to stream texture {data.texturePath}: {e.Message}", "TextureManager");
+                data.isStreaming = false;
+            }
+        }
+        
+        private void UnloadDistantTextures(Vector3 cameraPos)
+        {
+            var texturesToUnload = new List<string>();
+            
+            foreach (var kvp in _streamingTextures)
+            {
+                var streamingData = kvp.Value;
+                if (streamingData.isLoaded && streamingData.lastDistance > streamingDistance)
+                {
+                    texturesToUnload.Add(kvp.Key);
+                }
+            }
+            
+            foreach (var texturePath in texturesToUnload)
+            {
+                UnloadTexture(texturePath);
+            }
+        }
+        
+        public void RegisterStreamingTexture(string texturePath, Vector3 position, int mipLevel = 0)
+        {
+            if (!enableTextureStreaming) return;
+            
+            var streamingData = new StreamingTextureData
+            {
+                texturePath = texturePath,
+                position = position,
+                priority = 0f,
+                isLoaded = false,
+                isStreaming = false,
+                lastDistance = float.MaxValue,
+                mipLevel = mipLevel
+            };
+            
+            _streamingTextures[texturePath] = streamingData;
+        }
+        
+        public void UnregisterStreamingTexture(string texturePath)
+        {
+            if (_streamingTextures.ContainsKey(texturePath))
+            {
+                _streamingTextures.Remove(texturePath);
+                UnloadTexture(texturePath);
+            }
+        }
+        
+        private void UnloadTexture(string texturePath)
+        {
+            if (_textureCache.ContainsKey(texturePath))
+            {
+                var texture = _textureCache[texturePath];
+                if (texture != null)
+                {
+                    _currentTextureMemory -= CalculateTextureMemorySize(texture);
+                    DestroyImmediate(texture);
+                }
+                
+                _textureCache.Remove(texturePath);
+                _textureLastUsed.Remove(texturePath);
+                _textureReferenceCount.Remove(texturePath);
+                
+                Logger.Info($"Unloaded texture: {texturePath}", "TextureManager");
+            }
         }
 
         private void SetTextureQualityForPlatform()

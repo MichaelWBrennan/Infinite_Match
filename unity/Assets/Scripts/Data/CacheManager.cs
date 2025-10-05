@@ -6,7 +6,7 @@ using System.Collections;
 namespace Evergreen.Data
 {
     /// <summary>
-    /// Generic cache manager for efficient resource management
+    /// Generic cache manager for efficient resource management with intelligent eviction policies
     /// </summary>
     public class CacheManager<TKey, TValue> where TValue : class
     {
@@ -15,13 +15,39 @@ namespace Evergreen.Data
         private readonly float _defaultTTL;
         private readonly Func<TKey, TValue> _loader;
         private readonly Action<TValue> _disposer;
+        
+        // Eviction policies
+        private readonly EvictionPolicy _evictionPolicy;
+        private readonly LinkedList<TKey> _accessOrder = new LinkedList<TKey>();
+        private readonly Dictionary<TKey, LinkedListNode<TKey>> _accessNodes = new Dictionary<TKey, LinkedListNode<TKey>>();
+        private readonly Dictionary<TKey, int> _accessCounts = new Dictionary<TKey, int>();
+        private readonly Dictionary<TKey, float> _accessWeights = new Dictionary<TKey, float>();
+        
+        // Cache warming
+        private readonly Queue<TKey> _warmingQueue = new Queue<TKey>();
+        private readonly HashSet<TKey> _warmingInProgress = new HashSet<TKey>();
+        private readonly Dictionary<TKey, float> _warmingPriorities = new Dictionary<TKey, float>();
+        private bool _isWarming = false;
+        private float _lastWarmingTime = 0f;
+        private float _warmingInterval = 1f;
 
-        public CacheManager(int maxSize = 100, float defaultTTL = 300f, Func<TKey, TValue> loader = null, Action<TValue> disposer = null)
+        public CacheManager(int maxSize = 100, float defaultTTL = 300f, EvictionPolicy evictionPolicy = EvictionPolicy.LRU, 
+                          Func<TKey, TValue> loader = null, Action<TValue> disposer = null)
         {
             _maxSize = maxSize;
             _defaultTTL = defaultTTL;
+            _evictionPolicy = evictionPolicy;
             _loader = loader;
             _disposer = disposer;
+        }
+        
+        public enum EvictionPolicy
+        {
+            TTL,        // Time-based eviction only
+            LRU,        // Least Recently Used
+            LFU,        // Least Frequently Used
+            LRU_LFU,    // Hybrid LRU-LFU
+            Weighted    // Weighted by access frequency and recency
         }
 
         public TValue Get(TKey key)
@@ -34,11 +60,45 @@ namespace Evergreen.Data
                     return LoadAndCache(key);
                 }
                 
+                // Update access tracking for eviction policies
+                UpdateAccessTracking(key);
                 entry.LastAccessed = Time.time;
                 return entry.Value;
             }
 
             return LoadAndCache(key);
+        }
+        
+        /// <summary>
+        /// Update access tracking for eviction policies
+        /// </summary>
+        private void UpdateAccessTracking(TKey key)
+        {
+            // Update access count
+            _accessCounts[key] = _accessCounts.GetValueOrDefault(key, 0) + 1;
+            
+            // Update access order for LRU
+            if (_evictionPolicy == EvictionPolicy.LRU || _evictionPolicy == EvictionPolicy.LRU_LFU || _evictionPolicy == EvictionPolicy.Weighted)
+            {
+                if (_accessNodes.TryGetValue(key, out var node))
+                {
+                    _accessOrder.Remove(node);
+                }
+                else
+                {
+                    node = new LinkedListNode<TKey>(key);
+                    _accessNodes[key] = node;
+                }
+                _accessOrder.AddLast(node);
+            }
+            
+            // Update access weight for weighted policy
+            if (_evictionPolicy == EvictionPolicy.Weighted)
+            {
+                float recencyWeight = 1.0f / (Time.time - _cache[key].LastAccessed + 1.0f);
+                float frequencyWeight = Mathf.Log(_accessCounts[key] + 1.0f);
+                _accessWeights[key] = recencyWeight * frequencyWeight;
+            }
         }
 
         public TValue Get(TKey key, float ttl)
@@ -111,9 +171,151 @@ namespace Evergreen.Data
             if (value != null)
             {
                 Set(key, value, ttl);
+                UpdateAccessTracking(key);
             }
 
             return value;
+        }
+        
+        /// <summary>
+        /// Evict entry based on selected eviction policy
+        /// </summary>
+        private void EvictEntry()
+        {
+            TKey keyToEvict = GetKeyToEvict();
+            if (keyToEvict != null)
+            {
+                Remove(keyToEvict);
+            }
+        }
+        
+        /// <summary>
+        /// Get key to evict based on eviction policy
+        /// </summary>
+        private TKey GetKeyToEvict()
+        {
+            switch (_evictionPolicy)
+            {
+                case EvictionPolicy.TTL:
+                    return GetOldestExpiredKey();
+                    
+                case EvictionPolicy.LRU:
+                    return GetLRUKey();
+                    
+                case EvictionPolicy.LFU:
+                    return GetLFUKey();
+                    
+                case EvictionPolicy.LRU_LFU:
+                    return GetLRULFUKey();
+                    
+                case EvictionPolicy.Weighted:
+                    return GetWeightedKey();
+                    
+                default:
+                    return GetLRUKey();
+            }
+        }
+        
+        /// <summary>
+        /// Get oldest expired key (TTL policy)
+        /// </summary>
+        private TKey GetOldestExpiredKey()
+        {
+            TKey oldestKey = default(TKey);
+            float oldestTime = float.MaxValue;
+            
+            foreach (var kvp in _cache)
+            {
+                if (kvp.Value.CreatedAt < oldestTime)
+                {
+                    oldestTime = kvp.Value.CreatedAt;
+                    oldestKey = kvp.Key;
+                }
+            }
+            
+            return oldestKey;
+        }
+        
+        /// <summary>
+        /// Get least recently used key (LRU policy)
+        /// </summary>
+        private TKey GetLRUKey()
+        {
+            if (_accessOrder.Count == 0) return default(TKey);
+            return _accessOrder.First.Value;
+        }
+        
+        /// <summary>
+        /// Get least frequently used key (LFU policy)
+        /// </summary>
+        private TKey GetLFUKey()
+        {
+            TKey lfuKey = default(TKey);
+            int minCount = int.MaxValue;
+            
+            foreach (var kvp in _accessCounts)
+            {
+                if (kvp.Value < minCount)
+                {
+                    minCount = kvp.Value;
+                    lfuKey = kvp.Key;
+                }
+            }
+            
+            return lfuKey;
+        }
+        
+        /// <summary>
+        /// Get key using hybrid LRU-LFU policy
+        /// </summary>
+        private TKey GetLRULFUKey()
+        {
+            // Combine LRU and LFU scores
+            TKey bestKey = default(TKey);
+            float bestScore = float.MaxValue;
+            
+            foreach (var kvp in _cache)
+            {
+                var key = kvp.Key;
+                var entry = kvp.Value;
+                
+                // LRU score (higher is more recent)
+                float lruScore = Time.time - entry.LastAccessed;
+                
+                // LFU score (higher is more frequent)
+                float lfuScore = _accessCounts.GetValueOrDefault(key, 0);
+                
+                // Combined score (lower is better for eviction)
+                float combinedScore = lruScore / (lfuScore + 1.0f);
+                
+                if (combinedScore < bestScore)
+                {
+                    bestScore = combinedScore;
+                    bestKey = key;
+                }
+            }
+            
+            return bestKey;
+        }
+        
+        /// <summary>
+        /// Get key using weighted policy
+        /// </summary>
+        private TKey GetWeightedKey()
+        {
+            TKey worstKey = default(TKey);
+            float worstWeight = float.MaxValue;
+            
+            foreach (var kvp in _accessWeights)
+            {
+                if (kvp.Value < worstWeight)
+                {
+                    worstWeight = kvp.Value;
+                    worstKey = kvp.Key;
+                }
+            }
+            
+            return worstKey;
         }
 
         private void EvictLeastRecentlyUsed()
@@ -138,6 +340,163 @@ namespace Evergreen.Data
 
         public int Count => _cache.Count;
         public int MaxSize => _maxSize;
+        
+        #region Cache Warming
+        /// <summary>
+        /// Add key to warming queue
+        /// </summary>
+        public void AddToWarmingQueue(TKey key, float priority = 1.0f)
+        {
+            if (!_warmingInProgress.Contains(key) && !_cache.ContainsKey(key))
+            {
+                _warmingQueue.Enqueue(key);
+                _warmingPriorities[key] = priority;
+            }
+        }
+        
+        /// <summary>
+        /// Process warming queue
+        /// </summary>
+        public void ProcessWarmingQueue()
+        {
+            if (Time.time - _lastWarmingTime < _warmingInterval) return;
+            
+            _lastWarmingTime = Time.time;
+            
+            // Process up to 3 items per warming cycle
+            int processed = 0;
+            while (_warmingQueue.Count > 0 && processed < 3)
+            {
+                var key = _warmingQueue.Dequeue();
+                if (!_warmingInProgress.Contains(key))
+                {
+                    StartWarming(key);
+                    processed++;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Start warming a specific key
+        /// </summary>
+        private void StartWarming(TKey key)
+        {
+            if (_warmingInProgress.Contains(key) || _cache.ContainsKey(key)) return;
+            
+            _warmingInProgress.Add(key);
+            
+            // Start coroutine for warming
+            if (MonoBehaviour.FindObjectOfType<MonoBehaviour>() != null)
+            {
+                MonoBehaviour.FindObjectOfType<MonoBehaviour>().StartCoroutine(WarmKeyCoroutine(key));
+            }
+        }
+        
+        /// <summary>
+        /// Coroutine for warming a key
+        /// </summary>
+        private System.Collections.IEnumerator WarmKeyCoroutine(TKey key)
+        {
+            yield return null; // Wait one frame
+            
+            try
+            {
+                var value = _loader?.Invoke(key);
+                if (value != null)
+                {
+                    Set(key, value);
+                    UpdateAccessTracking(key);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Failed to warm key {key}: {e.Message}");
+            }
+            finally
+            {
+                _warmingInProgress.Remove(key);
+            }
+        }
+        
+        /// <summary>
+        /// Get warming statistics
+        /// </summary>
+        public Dictionary<string, object> GetWarmingStatistics()
+        {
+            return new Dictionary<string, object>
+            {
+                {"queue_size", _warmingQueue.Count},
+                {"warming_in_progress", _warmingInProgress.Count},
+                {"is_warming", _isWarming},
+                {"last_warming_time", _lastWarmingTime}
+            };
+        }
+        
+        /// <summary>
+        /// Clear warming queue
+        /// </summary>
+        public void ClearWarmingQueue()
+        {
+            _warmingQueue.Clear();
+            _warmingInProgress.Clear();
+            _warmingPriorities.Clear();
+        }
+        #endregion
+        
+        #region Statistics
+        /// <summary>
+        /// Get cache statistics
+        /// </summary>
+        public Dictionary<string, object> GetStatistics()
+        {
+            var stats = new Dictionary<string, object>
+            {
+                {"cache_size", _cache.Count},
+                {"max_size", _maxSize},
+                {"eviction_policy", _evictionPolicy.ToString()},
+                {"hit_rate", CalculateHitRate()},
+                {"memory_usage", CalculateMemoryUsage()}
+            };
+            
+            // Add warming statistics
+            foreach (var kvp in GetWarmingStatistics())
+            {
+                stats[$"warming_{kvp.Key}"] = kvp.Value;
+            }
+            
+            return stats;
+        }
+        
+        /// <summary>
+        /// Calculate cache hit rate
+        /// </summary>
+        private float CalculateHitRate()
+        {
+            int totalAccesses = 0;
+            int hits = 0;
+            
+            foreach (var kvp in _accessCounts)
+            {
+                totalAccesses += kvp.Value;
+                if (_cache.ContainsKey(kvp.Key))
+                {
+                    hits += kvp.Value;
+                }
+            }
+            
+            return totalAccesses > 0 ? (float)hits / totalAccesses : 0f;
+        }
+        
+        /// <summary>
+        /// Calculate memory usage (simplified)
+        /// </summary>
+        private long CalculateMemoryUsage()
+        {
+            // This is a simplified calculation
+            // In a real implementation, you would calculate actual memory usage
+            return _cache.Count * 100; // Assume 100 bytes per entry
+        }
+        #endregion
     }
 
     /// <summary>
