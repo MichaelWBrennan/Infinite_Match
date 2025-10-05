@@ -37,6 +37,7 @@ namespace Evergreen.Testing
         private Dictionary<string, GameObject> _metricItems = new Dictionary<string, GameObject>();
         private float _lastUpdateTime = 0f;
         private List<string> _alertMessages = new List<string>();
+        private UIElementPoolManager _uiPoolManager;
 
         void Start()
         {
@@ -45,6 +46,13 @@ namespace Evergreen.Testing
             if (_performanceTests == null)
             {
                 _performanceTests = gameObject.AddComponent<AdvancedPerformanceTests>();
+            }
+            
+            // Initialize UI pool manager
+            _uiPoolManager = GetComponent<UIElementPoolManager>();
+            if (_uiPoolManager == null)
+            {
+                _uiPoolManager = gameObject.AddComponent<UIElementPoolManager>();
             }
         }
 
@@ -255,9 +263,29 @@ namespace Evergreen.Testing
 
         private void CreateMetricItem(string metricName, AdvancedPerformanceTests.PerformanceMetric metric)
         {
-            if (metricItemPrefab == null)
+            if (_uiPoolManager != null)
             {
-                // Create a simple text item
+                // Use pooled UI element
+                var itemObj = _uiPoolManager.CreateTextElement(
+                    $"{metricName}: {metric.currentValue:F2}",
+                    new Vector2(0, -_metricItems.Count * 25),
+                    metricsContainer
+                );
+                
+                if (itemObj != null)
+                {
+                    var textComponent = itemObj.GetComponent<TextMeshProUGUI>();
+                    if (textComponent != null)
+                    {
+                        textComponent.fontSize = 12;
+                        textComponent.color = Color.white;
+                    }
+                    _metricItems[metricName] = itemObj;
+                }
+            }
+            else if (metricItemPrefab == null)
+            {
+                // Create a simple text item (fallback)
                 var itemObj = new GameObject($"Metric_{metricName}");
                 itemObj.transform.SetParent(metricsContainer, false);
 
@@ -274,7 +302,7 @@ namespace Evergreen.Testing
             }
             else
             {
-                // Use prefab
+                // Use prefab (fallback)
                 var itemObj = Instantiate(metricItemPrefab, metricsContainer);
                 var textComponent = itemObj.GetComponent<TextMeshProUGUI>();
                 if (textComponent != null)
@@ -400,13 +428,29 @@ namespace Evergreen.Testing
         /// </summary>
         public void ClearMetrics()
         {
-            foreach (var item in _metricItems.Values)
+            if (_uiPoolManager != null)
             {
-                if (item != null)
+                // Return all elements to pool
+                foreach (var item in _metricItems.Values)
                 {
-                    DestroyImmediate(item);
+                    if (item != null)
+                    {
+                        _uiPoolManager.ReturnTextElement(item);
+                    }
                 }
             }
+            else
+            {
+                // Fallback: destroy elements
+                foreach (var item in _metricItems.Values)
+                {
+                    if (item != null)
+                    {
+                        DestroyImmediate(item);
+                    }
+                }
+            }
+            
             _metricItems.Clear();
             _alertMessages.Clear();
         }

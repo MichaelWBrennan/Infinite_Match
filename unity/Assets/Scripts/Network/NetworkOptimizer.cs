@@ -49,6 +49,13 @@ namespace Evergreen.Network
         private int _successfulRequests = 0;
         private int _failedRequests = 0;
         private float _averageResponseTime = 0f;
+        
+        // Batching and compression
+        private System.Timers.Timer _batchTimer;
+        private bool _compressionEnabled;
+        private int _compressionLevel = 6;
+        private readonly object _batchLock = new object();
+        private readonly Dictionary<string, CachedResponse> _responseCache = new Dictionary<string, CachedResponse>();
 
         public class NetworkRequest
         {
@@ -79,6 +86,30 @@ namespace Evergreen.Network
             public bool isActive;
             public DateTime lastUsed;
             public int requestCount;
+            public System.Net.Http.HttpClient client;
+            
+            public NetworkConnection()
+            {
+                client = new System.Net.Http.HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(30);
+            }
+            
+            public async Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request)
+            {
+                return await client.SendAsync(request);
+            }
+            
+            public void Dispose()
+            {
+                client?.Dispose();
+            }
+        }
+        
+        public class CachedResponse
+        {
+            public byte[] data;
+            public DateTime timestamp;
+            public float ttl;
         }
 
         void Awake()
@@ -123,13 +154,304 @@ namespace Evergreen.Network
 
         private void InitializeNetworkOptimizer()
         {
+            // Initialize connection pool
+            InitializeConnectionPool();
+            
+            // Initialize request batching
+            InitializeRequestBatching();
+            
+            // Initialize compression
+            InitializeCompression();
+            
             Logger.Info("Network Optimizer initialized", "NetworkOptimizer");
+        }
+        
+        private void InitializeConnectionPool()
+        {
+            for (int i = 0; i < maxConnections; i++)
+            {
+                var connection = new NetworkConnection
+                {
+                    id = Guid.NewGuid().ToString(),
+                    isActive = false,
+                    lastUsed = DateTime.Now,
+                    requestCount = 0
+                };
+                _connections.Add(connection);
+            }
+            
+            Logger.Info($"Connection pool initialized with {maxConnections} connections", "NetworkOptimizer");
+        }
+        
+        private void InitializeRequestBatching()
+        {
+            _batchTimer = new System.Timers.Timer(batchTimeout * 1000);
+            _batchTimer.Elapsed += ProcessBatchRequests;
+            _batchTimer.AutoReset = true;
+            _batchTimer.Start();
+            
+            Logger.Info($"Request batching initialized with {batchTimeout}s interval", "NetworkOptimizer");
+        }
+        
+        private void InitializeCompression()
+        {
+            _compressionEnabled = enableCompression;
+            _compressionLevel = compressionLevel;
+            
+            Logger.Info($"Compression initialized - Enabled: {_compressionEnabled}, Level: {_compressionLevel}", "NetworkOptimizer");
         }
 
         #region Request Batching
+        private void ProcessBatchRequests(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            ProcessBatchedRequests();
+        }
+        
         private void ProcessBatchedRequests()
         {
             if (_requestQueue.Count == 0) return;
+            
+            lock (_batchLock)
+            {
+                var batch = new List<NetworkRequest>();
+                var batchCount = Mathf.Min(_requestQueue.Count, maxBatchSize);
+                
+                for (int i = 0; i < batchCount; i++)
+                {
+                    if (_requestQueue.Count > 0)
+                    {
+                        batch.Add(_requestQueue.Dequeue());
+                    }
+                }
+                
+                if (batch.Count > 0)
+                {
+                    ProcessBatch(batch);
+                }
+            }
+        }
+        
+        private async void ProcessBatch(List<NetworkRequest> batch)
+        {
+            var tasks = new List<Task<NetworkResponse>>();
+            
+            foreach (var request in batch)
+            {
+                tasks.Add(ProcessRequest(request));
+            }
+            
+            try
+            {
+                var responses = await Task.WhenAll(tasks);
+                
+                foreach (var response in responses)
+                {
+                    if (response.success)
+                    {
+                        _successfulRequests++;
+                    }
+                    else
+                    {
+                        _failedRequests++;
+                    }
+                }
+                
+                _totalRequests += batch.Count;
+                _lastBatchTime = Time.time;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Batch request failed: {ex.Message}", "NetworkOptimizer");
+                _failedRequests += batch.Count;
+            }
+        }
+        
+        private async Task<NetworkResponse> ProcessRequest(NetworkRequest request)
+        {
+            var startTime = Time.time;
+            var response = new NetworkResponse
+            {
+                id = request.id,
+                timestamp = DateTime.Now
+            };
+            
+            try
+            {
+                // Check cache first
+                if (enableRequestCaching)
+                {
+                    var cacheKey = GenerateCacheKey(request);
+                    if (_responseCache.TryGetValue(cacheKey, out var cachedResponse))
+                    {
+                        if (DateTime.Now - cachedResponse.timestamp < TimeSpan.FromSeconds(cachedResponse.ttl))
+                        {
+                            response.success = true;
+                            response.data = cachedResponse.data;
+                            response.responseTime = Time.time - startTime;
+                            return response;
+                        }
+                        else
+                        {
+                            _responseCache.Remove(cacheKey);
+                        }
+                    }
+                }
+                
+                // Get connection from pool
+                var connection = GetConnection();
+                if (connection == null)
+                {
+                    response.success = false;
+                    response.error = "No available connections";
+                    return response;
+                }
+                
+                // Compress data if enabled
+                var dataToSend = request.data;
+                if (_compressionEnabled && dataToSend != null)
+                {
+                    dataToSend = CompressData(dataToSend);
+                }
+                
+                // Send request
+                var httpResponse = await connection.SendAsync(CreateHttpRequest(request, dataToSend));
+                
+                response.statusCode = (int)httpResponse.StatusCode;
+                response.success = httpResponse.IsSuccessStatusCode;
+                
+                if (response.success)
+                {
+                    response.data = await httpResponse.Content.ReadAsByteArrayAsync();
+                    
+                    // Decompress if needed
+                    if (_compressionEnabled && response.data != null)
+                    {
+                        response.data = DecompressData(response.data);
+                    }
+                    
+                    // Cache response
+                    if (enableRequestCaching)
+                    {
+                        var cacheKey = GenerateCacheKey(request);
+                        _responseCache[cacheKey] = new CachedResponse
+                        {
+                            data = response.data,
+                            timestamp = DateTime.Now,
+                            ttl = cacheExpirationTime
+                        };
+                    }
+                }
+                else
+                {
+                    response.error = httpResponse.ReasonPhrase;
+                }
+                
+                response.responseTime = Time.time - startTime;
+                
+                // Return connection to pool
+                ReturnConnection(connection);
+            }
+            catch (Exception ex)
+            {
+                response.success = false;
+                response.error = ex.Message;
+                response.responseTime = Time.time - startTime;
+            }
+            
+            return response;
+        }
+        
+        private string GenerateCacheKey(NetworkRequest request)
+        {
+            return $"{request.method}_{request.url}_{System.Convert.ToBase64String(request.data ?? new byte[0])}";
+        }
+        
+        private byte[] CompressData(byte[] data)
+        {
+            using (var output = new System.IO.MemoryStream())
+            {
+                using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal))
+                {
+                    gzip.Write(data, 0, data.Length);
+                }
+                return output.ToArray();
+            }
+        }
+        
+        private byte[] DecompressData(byte[] compressedData)
+        {
+            using (var input = new System.IO.MemoryStream(compressedData))
+            using (var gzip = new System.IO.Compression.GZipStream(input, System.IO.Compression.CompressionMode.Decompress))
+            using (var output = new System.IO.MemoryStream())
+            {
+                gzip.CopyTo(output);
+                return output.ToArray();
+            }
+        }
+        
+        private System.Net.Http.HttpRequestMessage CreateHttpRequest(NetworkRequest request, byte[] data)
+        {
+            var httpRequest = new System.Net.Http.HttpRequestMessage(
+                new System.Net.Http.HttpMethod(request.method), 
+                request.url
+            );
+            
+            if (request.headers != null)
+            {
+                foreach (var header in request.headers)
+                {
+                    httpRequest.Headers.Add(header.Key, header.Value);
+                }
+            }
+            
+            if (data != null)
+            {
+                httpRequest.Content = new System.Net.Http.ByteArrayContent(data);
+            }
+            
+            return httpRequest;
+        }
+        
+        private NetworkConnection GetConnection()
+        {
+            lock (_connections)
+            {
+                var connection = _connections.Find(c => !c.isActive);
+                if (connection != null)
+                {
+                    connection.isActive = true;
+                    connection.lastUsed = DateTime.Now;
+                    connection.requestCount++;
+                    return connection;
+                }
+                
+                if (_connections.Count < maxConnections)
+                {
+                    connection = new NetworkConnection
+                    {
+                        id = Guid.NewGuid().ToString(),
+                        isActive = true,
+                        lastUsed = DateTime.Now,
+                        requestCount = 1
+                    };
+                    _connections.Add(connection);
+                    return connection;
+                }
+            }
+            
+            return null;
+        }
+        
+        private void ReturnConnection(NetworkConnection connection)
+        {
+            if (connection == null) return;
+            
+            lock (_connections)
+            {
+                connection.isActive = false;
+                connection.lastUsed = DateTime.Now;
+            }
+        }
 
             var currentTime = Time.time;
             if (currentTime - _lastBatchTime < batchTimeout && _requestQueue.Count < maxBatchSize)

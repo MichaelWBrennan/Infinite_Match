@@ -18,6 +18,16 @@ namespace Evergreen.Match3
 
         private System.Random _rng = new System.Random();
         
+        // Spatial indexing for faster lookups
+        private Dictionary<int, List<Vector2Int>> _colorIndex = new Dictionary<int, List<Vector2Int>>();
+        private Dictionary<Vector2Int, List<Vector2Int>> _neighborCache = new Dictionary<Vector2Int, List<Vector2Int>>();
+        private bool _spatialIndexDirty = true;
+        
+        // Match detection optimization
+        private bool[,] _visited;
+        private int[,] _matchIds;
+        private int _currentMatchId = 0;
+        
         // Use memory-optimized pools
         private static readonly ObjectPool<List<Vector2Int>> _vectorListPool = 
             new ObjectPool<List<Vector2Int>>(
@@ -71,12 +81,18 @@ namespace Evergreen.Match3
                 Locked = new bool[size.x, size.y];
                 Chocolate = new int[size.x, size.y];
                 
+                // Initialize spatial indexing
+                _colorIndex.Clear();
+                _neighborCache.Clear();
+                _spatialIndexDirty = true;
+                
                 for (int x = 0; x < size.x; x++)
                 for (int y = 0; y < size.y; y++)
                 {
                     Grid[x, y] = MakeNormal(_rng.Next(0, NumColors));
                 }
                 
+                BuildSpatialIndex();
                 ResolveInitial();
             }
         }
@@ -97,6 +113,79 @@ namespace Evergreen.Match3
             var tmp = Grid[a.x, a.y];
             Grid[a.x, a.y] = Grid[b.x, b.y];
             Grid[b.x, b.y] = tmp;
+            
+            // Mark spatial index as dirty
+            _spatialIndexDirty = true;
+        }
+        
+        private void BuildSpatialIndex()
+        {
+            _colorIndex.Clear();
+            _neighborCache.Clear();
+            
+            for (int x = 0; x < Size.x; x++)
+            {
+                for (int y = 0; y < Size.y; y++)
+                {
+                    var pos = new Vector2Int(x, y);
+                    if (Grid[x, y].HasValue)
+                    {
+                        var piece = Grid[x, y].Value;
+                        if (piece.Kind == PieceKind.Normal)
+                        {
+                            if (!_colorIndex.ContainsKey(piece.Color))
+                                _colorIndex[piece.Color] = new List<Vector2Int>();
+                            _colorIndex[piece.Color].Add(pos);
+                        }
+                    }
+                    
+                    // Cache neighbors for this position
+                    _neighborCache[pos] = GetNeighbors(pos);
+                }
+            }
+            
+            _spatialIndexDirty = false;
+        }
+        
+        private List<Vector2Int> GetNeighbors(Vector2Int pos)
+        {
+            var neighbors = _vectorListPool.Get();
+            
+            var directions = new Vector2Int[] 
+            {
+                Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right
+            };
+            
+            foreach (var dir in directions)
+            {
+                var neighbor = pos + dir;
+                if (InBounds(neighbor) && !IsHole(neighbor))
+                {
+                    neighbors.Add(neighbor);
+                }
+            }
+            
+            return neighbors;
+        }
+        
+        public List<Vector2Int> GetNeighborsCached(Vector2Int pos)
+        {
+            if (_spatialIndexDirty)
+            {
+                BuildSpatialIndex();
+            }
+            
+            return _neighborCache.ContainsKey(pos) ? _neighborCache[pos] : new List<Vector2Int>();
+        }
+        
+        public List<Vector2Int> GetPositionsByColor(int color)
+        {
+            if (_spatialIndexDirty)
+            {
+                BuildSpatialIndex();
+            }
+            
+            return _colorIndex.ContainsKey(color) ? _colorIndex[color] : new List<Vector2Int>();
         }
 
         public bool IsAdjacent(Vector2Int a, Vector2Int b) => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y) == 1;
@@ -109,90 +198,104 @@ namespace Evergreen.Match3
             
             try
             {
-                // Horizontal matches
-                for (int y = 0; y < Size.y; y++)
+                // Initialize match detection arrays
+                if (_visited == null || _visited.GetLength(0) != Size.x || _visited.GetLength(1) != Size.y)
                 {
-                    var run = _vectorListPool.Get();
-                    run.Add(new Vector2Int(0, y));
-                    
-                    for (int x = 1; x < Size.x + 1; x++)
-                    {
-                        bool cont = x < Size.x && SameColor(new Vector2Int(x, y), new Vector2Int(x - 1, y));
-                        if (cont) 
-                        {
-                            run.Add(new Vector2Int(x, y));
-                        }
-                        else
-                        {
-                            if (run.Count >= 3) 
-                            {
-                                var matchGroup = _vectorListPool.Get();
-                                matchGroup.AddRange(run);
-                                groups.Add(matchGroup);
-                            }
-                            else
-                            {
-                                _vectorListPool.Return(run);
-                            }
-                            
-                            run = (x < Size.x) ? _vectorListPool.Get() : null;
-                            if (run != null) run.Add(new Vector2Int(x, y));
-                        }
-                    }
-                    
-                    if (run != null)
-                    {
-                        _vectorListPool.Return(run);
-                    }
+                    _visited = new bool[Size.x, Size.y];
+                    _matchIds = new int[Size.x, Size.y];
                 }
                 
-                // Vertical matches
+                // Clear arrays
                 for (int x = 0; x < Size.x; x++)
                 {
-                    var run = _vectorListPool.Get();
-                    run.Add(new Vector2Int(x, 0));
-                    
-                    for (int y = 1; y < Size.y + 1; y++)
+                    for (int y = 0; y < Size.y; y++)
                     {
-                        bool cont = y < Size.y && SameColor(new Vector2Int(x, y), new Vector2Int(x, y - 1));
-                        if (cont) 
-                        {
-                            run.Add(new Vector2Int(x, y));
-                        }
-                        else
-                        {
-                            if (run.Count >= 3) 
-                            {
-                                var matchGroup = _vectorListPool.Get();
-                                matchGroup.AddRange(run);
-                                groups.Add(matchGroup);
-                            }
-                            else
-                            {
-                                _vectorListPool.Return(run);
-                            }
-                            
-                            run = (y < Size.y) ? _vectorListPool.Get() : null;
-                            if (run != null) run.Add(new Vector2Int(x, y));
-                        }
-                    }
-                    
-                    if (run != null)
-                    {
-                        _vectorListPool.Return(run);
+                        _visited[x, y] = false;
+                        _matchIds[x, y] = 0;
                     }
                 }
                 
-                return MergeOverlapping(groups);
+                _currentMatchId = 0;
+                
+                // Use flood-fill algorithm for more efficient match detection
+                for (int x = 0; x < Size.x; x++)
+                {
+                    for (int y = 0; y < Size.y; y++)
+                    {
+                        if (!_visited[x, y] && !IsHole(new Vector2Int(x, y)) && Grid[x, y].HasValue)
+                        {
+                            var match = FloodFillMatch(new Vector2Int(x, y));
+                            if (match.Count >= 3)
+                            {
+                                groups.Add(match);
+                            }
+                            else
+                            {
+                                _vectorListPool.Return(match);
+                            }
+                        }
+                    }
+                }
+                
+                return groups;
             }
             finally
             {
-                // Return the groups list to pool after processing
-                foreach (var group in groups)
+                // Note: We don't return groups to pool here as they're used by caller
+            }
+        }
+        
+        private List<Vector2Int> FloodFillMatch(Vector2Int start)
+        {
+            var match = _vectorListPool.Get();
+            var stack = _vectorListPool.Get();
+            
+            try
+            {
+                var startPiece = Grid[start.x, start.y].Value;
+                if (startPiece.Kind != PieceKind.Normal) return match;
+                
+                stack.Add(start);
+                _currentMatchId++;
+                
+                while (stack.Count > 0)
                 {
-                    _vectorListPool.Return(group);
+                    var current = stack[stack.Count - 1];
+                    stack.RemoveAt(stack.Count - 1);
+                    
+                    if (_visited[current.x, current.y]) continue;
+                    
+                    _visited[current.x, current.y] = true;
+                    _matchIds[current.x, current.y] = _currentMatchId;
+                    match.Add(current);
+                    
+                    // Check all 4 directions
+                    var directions = new Vector2Int[] 
+                    {
+                        Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right
+                    };
+                    
+                    foreach (var dir in directions)
+                    {
+                        var neighbor = current + dir;
+                        if (InBounds(neighbor) && !_visited[neighbor.x, neighbor.y] && 
+                            !IsHole(neighbor) && Grid[neighbor.x, neighbor.y].HasValue)
+                        {
+                            var neighborPiece = Grid[neighbor.x, neighbor.y].Value;
+                            if (neighborPiece.Kind == PieceKind.Normal && 
+                                neighborPiece.Color == startPiece.Color)
+                            {
+                                stack.Add(neighbor);
+                            }
+                        }
+                    }
                 }
-                _vectorListListPool.Return(groups);
+                
+                return match;
+            }
+            finally
+            {
+                _vectorListPool.Return(stack);
             }
         }
 
@@ -428,6 +531,9 @@ namespace Evergreen.Match3
                     writeY--;
                 }
             }
+            
+            // Rebuild spatial index after gravity
+            _spatialIndexDirty = true;
         }
 
         private bool IsSameY(List<Vector2Int> group)
