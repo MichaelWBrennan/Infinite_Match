@@ -1,5 +1,5 @@
 using UnityEngine;
-using Evergreen.Game;
+using Evergreen.Core;
 
 public class Bootstrap : MonoBehaviour
 {
@@ -7,12 +7,57 @@ public class Bootstrap : MonoBehaviour
 
     void Awake()
     {
-        if (_instance != null) { Destroy(gameObject); return; }
+        if (_instance != null) 
+        { 
+            Destroy(gameObject); 
+            return; 
+        }
+        
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        
+        // Initialize the game using the new GameManager
+        InitializeGame();
+    }
+
+    private void InitializeGame()
+    {
+        try
+        {
+            // Create GameManager if it doesn't exist
+            var gameManager = FindObjectOfType<GameManager>();
+            if (gameManager == null)
+            {
+                var go = new GameObject("GameManager");
+                gameManager = go.AddComponent<GameManager>();
+            }
+            
+            // Initialize the game
+            gameManager.InitializeGame();
+            
+            Debug.Log("Game initialization completed successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to initialize game: {e.Message}");
+            
+            // Fallback to old initialization method
+            FallbackInitialization();
+        }
+    }
+
+    private void FallbackInitialization()
+    {
+        Debug.LogWarning("Using fallback initialization method");
+        
+        // Load core systems
         Evergreen.Game.RemoteConfigService.Load();
         GameState.Load();
+        
+        // Ensure basic managers exist
         EnsureManagers();
+        
+        // Show main menu
         MainMenuUI.Show();
     }
 
