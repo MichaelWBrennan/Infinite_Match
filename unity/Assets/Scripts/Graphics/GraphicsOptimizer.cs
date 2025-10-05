@@ -60,11 +60,45 @@ namespace Evergreen.Graphics
         private Dictionary<Renderer, MaterialPropertyBlock> _materialPropertyBlocks = new Dictionary<Renderer, MaterialPropertyBlock>();
         private List<Renderer> _staticRenderers = new List<Renderer>();
         private List<Renderer> _dynamicRenderers = new List<Renderer>();
+        
+        // Dynamic LOD system
+        private Dictionary<LODGroup, LODData> _lodData = new Dictionary<LODGroup, LODData>();
+        private List<LODGroup> _activeLODGroups = new List<LODGroup>();
+        private float _currentLODBias = 1.0f;
+        private int _currentLODLevel = 0;
+        
+        // Occlusion culling
+        private Dictionary<Renderer, OcclusionData> _occlusionData = new Dictionary<Renderer, OcclusionData>();
+        private List<Renderer> _occlusionCulledRenderers = new List<Renderer>();
+        private bool _occlusionCullingActive = false;
+        private float _occlusionUpdateInterval = 0.1f;
+        private float _lastOcclusionUpdate = 0f;
 
         private float _lastMonitoringTime = 0f;
         private float _currentFrameTime = 0f;
         private int _currentFPS = 0;
         private bool _isLowPerformance = false;
+        
+        [System.Serializable]
+        public class LODData
+        {
+            public LODGroup lodGroup;
+            public float[] originalDistances;
+            public int[] originalTriangles;
+            public bool isDynamic;
+            public float lastUpdateTime;
+            public Vector3 lastPosition;
+        }
+        
+        [System.Serializable]
+        public class OcclusionData
+        {
+            public Renderer renderer;
+            public Bounds bounds;
+            public bool isOccluded;
+            public float lastCheckTime;
+            public Vector3 lastPosition;
+        }
 
         void Awake()
         {
@@ -98,6 +132,7 @@ namespace Evergreen.Graphics
 
             UpdateLODSystem();
             UpdateBatching();
+            UpdateOcclusionCulling();
         }
 
         private void InitializeGraphicsOptimizer()
@@ -237,25 +272,84 @@ namespace Evergreen.Graphics
         {
             if (!enableLODSystem || _mainCamera == null) return;
 
-            var cameraPosition = _mainCamera.transform.position;
-            foreach (var kvp in _lodGroups)
+            // Update LOD bias based on performance
+            if (enableLODBias)
             {
-                var lodGroup = kvp.Value;
+                UpdateDynamicLODBias();
+                QualitySettings.lodBias = _currentLODBias;
+            }
+            
+            // Update LOD groups based on camera distance and performance
+            UpdateLODGroups();
+        }
+        
+        private void UpdateDynamicLODBias()
+        {
+            // Adjust LOD bias based on performance
+            if (_isLowPerformance)
+            {
+                _currentLODBias = Mathf.Lerp(_currentLODBias, lodBias * 0.5f, Time.deltaTime * 2f);
+            }
+            else
+            {
+                _currentLODBias = Mathf.Lerp(_currentLODBias, lodBias, Time.deltaTime * 2f);
+            }
+            
+            // Adjust based on FPS
+            float fpsRatio = _currentFPS / (float)targetFrameRate;
+            if (fpsRatio < 0.8f)
+            {
+                _currentLODBias *= 0.8f;
+            }
+            else if (fpsRatio > 1.2f)
+            {
+                _currentLODBias *= 1.1f;
+            }
+            
+            _currentLODBias = Mathf.Clamp(_currentLODBias, 0.1f, 2.0f);
+        }
+        
+        private void UpdateLODGroups()
+        {
+            if (_mainCamera == null) return;
+            
+            Vector3 cameraPos = _mainCamera.transform.position;
+            
+            foreach (var lodGroup in _activeLODGroups)
+            {
                 if (lodGroup == null) continue;
-
-                var distance = Vector3.Distance(cameraPosition, lodGroup.transform.position);
-                var normalizedDistance = distance / cullingDistance;
                 
-                // Update LOD bias based on performance
-                if (enableLODBias && _isLowPerformance)
+                var lodData = _lodData[lodGroup];
+                if (!lodData.isDynamic) continue;
+                
+                // Check if LOD group has moved significantly
+                float distance = Vector3.Distance(cameraPos, lodGroup.transform.position);
+                if (Vector3.Distance(lodData.lastPosition, lodGroup.transform.position) > 1f || 
+                    Time.time - lodData.lastUpdateTime > 0.5f)
                 {
-                    lodGroup.size = lodBias * 0.5f; // Reduce LOD quality when performance is low
-                }
-                else
-                {
-                    lodGroup.size = lodBias;
+                    UpdateLODGroupDistances(lodGroup, lodData, distance);
+                    lodData.lastPosition = lodGroup.transform.position;
+                    lodData.lastUpdateTime = Time.time;
                 }
             }
+        }
+        
+        private void UpdateLODGroupDistances(LODGroup lodGroup, LODData lodData, float distance)
+        {
+            var lods = lodGroup.GetLODs();
+            if (lods.Length == 0) return;
+            
+            // Calculate new distances based on performance and distance
+            float performanceMultiplier = _isLowPerformance ? 0.6f : 1.0f;
+            float distanceMultiplier = Mathf.Clamp(distance / 50f, 0.5f, 2.0f);
+            
+            for (int i = 0; i < lods.Length && i < lodData.originalDistances.Length; i++)
+            {
+                float newDistance = lodData.originalDistances[i] * performanceMultiplier * distanceMultiplier;
+                lods[i].screenRelativeTransitionHeight = newDistance / 100f; // Convert to screen space
+            }
+            
+            lodGroup.SetLODs(lods);
         }
         #endregion
 
@@ -324,9 +418,113 @@ namespace Evergreen.Graphics
                 {
                     _mainCamera.cullingMask = -1; // Cull all layers
                 }
+                
+                if (enableOcclusionCulling)
+                {
+                    _mainCamera.useOcclusionCulling = true;
+                    _occlusionCullingActive = true;
+                }
+            }
+            
+            // Setup occlusion culling data
+            if (enableOcclusionCulling)
+            {
+                SetupOcclusionCulling();
             }
 
             Logger.Info("Culling system configured", "GraphicsOptimizer");
+        }
+        
+        private void SetupOcclusionCulling()
+        {
+            // Find all renderers that can be occlusion culled
+            var allRenderers = FindObjectsOfType<Renderer>();
+            
+            foreach (var renderer in allRenderers)
+            {
+                if (renderer.gameObject.isStatic && renderer.enabled)
+                {
+                    var occlusionData = new OcclusionData
+                    {
+                        renderer = renderer,
+                        bounds = renderer.bounds,
+                        isOccluded = false,
+                        lastCheckTime = 0f,
+                        lastPosition = renderer.transform.position
+                    };
+                    
+                    _occlusionData[renderer] = occlusionData;
+                }
+            }
+            
+            Logger.Info($"Occlusion culling setup for {_occlusionData.Count} renderers", "GraphicsOptimizer");
+        }
+        
+        private void UpdateOcclusionCulling()
+        {
+            if (!enableOcclusionCulling || !_occlusionCullingActive || _mainCamera == null) return;
+            
+            if (Time.time - _lastOcclusionUpdate < _occlusionUpdateInterval) return;
+            
+            _lastOcclusionUpdate = Time.time;
+            
+            // Update occlusion culling for renderers
+            foreach (var kvp in _occlusionData)
+            {
+                var occlusionData = kvp.Value;
+                var renderer = occlusionData.renderer;
+                
+                if (renderer == null || !renderer.gameObject.activeInHierarchy) continue;
+                
+                // Check if renderer has moved significantly
+                if (Vector3.Distance(occlusionData.lastPosition, renderer.transform.position) > 0.1f)
+                {
+                    occlusionData.bounds = renderer.bounds;
+                    occlusionData.lastPosition = renderer.transform.position;
+                }
+                
+                // Perform occlusion test
+                bool isOccluded = IsOccluded(renderer, _mainCamera);
+                
+                if (isOccluded != occlusionData.isOccluded)
+                {
+                    occlusionData.isOccluded = isOccluded;
+                    renderer.enabled = !isOccluded;
+                    
+                    if (isOccluded)
+                    {
+                        if (!_occlusionCulledRenderers.Contains(renderer))
+                        {
+                            _occlusionCulledRenderers.Add(renderer);
+                        }
+                    }
+                    else
+                    {
+                        _occlusionCulledRenderers.Remove(renderer);
+                    }
+                }
+                
+                occlusionData.lastCheckTime = Time.time;
+            }
+        }
+        
+        private bool IsOccluded(Renderer renderer, Camera camera)
+        {
+            // Simple occlusion test using raycasting
+            Vector3 cameraPos = camera.transform.position;
+            Vector3 rendererPos = renderer.bounds.center;
+            Vector3 direction = (rendererPos - cameraPos).normalized;
+            float distance = Vector3.Distance(cameraPos, rendererPos);
+            
+            // Cast ray from camera to renderer
+            RaycastHit hit;
+            if (Physics.Raycast(cameraPos, direction, out hit, distance))
+            {
+                // If we hit something before reaching the renderer, it's occluded
+                return hit.collider.gameObject != renderer.gameObject;
+            }
+            
+            return false;
         }
         #endregion
 
