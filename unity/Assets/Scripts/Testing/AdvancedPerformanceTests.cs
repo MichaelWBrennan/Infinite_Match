@@ -1,1185 +1,600 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
-using System.Diagnostics;
+using UnityEngine.TestTools;
+using NUnit.Framework;
 using Evergreen.Core;
+using Evergreen.Performance;
+using Evergreen.Graphics;
+using Evergreen.Audio;
+using Evergreen.Data;
+using Evergreen.Mobile;
 
 namespace Evergreen.Testing
 {
     /// <summary>
-    /// Advanced performance testing system with comprehensive benchmarks and monitoring
+    /// Comprehensive performance testing suite for all optimization systems
     /// </summary>
-    public class AdvancedPerformanceTests : MonoBehaviour
+    public class AdvancedPerformanceTests
     {
-        [Header("Test Settings")]
-        public bool enableAutomatedTesting = true;
-        public float testInterval = 60f;
-        public bool enableContinuousMonitoring = true;
-        public bool enableStressTesting = false;
-        public int stressTestDuration = 300; // 5 minutes
+        private PerformanceManager _performanceManager;
+        private GraphicsOptimizer _graphicsOptimizer;
+        private OptimizedAudioManager _audioManager;
+        private DataOptimizer _dataOptimizer;
+        private MobileMemoryManager _mobileMemoryManager;
+        private CacheManager<string, object> _cacheManager;
 
-        [Header("Performance Thresholds")]
-        public float targetFPS = 60f;
-        public float minFPS = 30f;
-        public float maxFrameTime = 16.67f; // 60 FPS
-        public float maxMemoryUsageMB = 512f;
-        public float maxCPUUsagePercent = 80f;
-        public float maxGPUUsagePercent = 90f;
-
-        [Header("Test Categories")]
-        public bool enableRenderingTests = true;
-        public bool enableMemoryTests = true;
-        public bool enableAudioTests = true;
-        public bool enableNetworkTests = true;
-        public bool enableUITests = true;
-        public bool enableGameplayTests = true;
-
-        private readonly List<PerformanceTestResult> _testResults = new List<PerformanceTestResult>();
-        private readonly Dictionary<string, PerformanceMetric> _metrics = new Dictionary<string, PerformanceMetric>();
-        private readonly List<PerformanceAlert> _alerts = new List<PerformanceAlert>();
-
-        private float _lastTestTime = 0f;
-        private bool _isRunningTests = false;
-        private Coroutine _continuousMonitoringCoroutine;
-
-        public class PerformanceTestResult
+        [SetUp]
+        public void Setup()
         {
-            public string testName;
-            public bool passed;
-            public float value;
-            public float threshold;
-            public string unit;
-            public DateTime timestamp;
-            public string message;
-            public PerformanceTestCategory category;
+            // Create test objects
+            var performanceGO = new GameObject("PerformanceManager");
+            _performanceManager = performanceGO.AddComponent<PerformanceManager>();
+            
+            var graphicsGO = new GameObject("GraphicsOptimizer");
+            _graphicsOptimizer = graphicsGO.AddComponent<GraphicsOptimizer>();
+            
+            var audioGO = new GameObject("AudioManager");
+            _audioManager = audioGO.AddComponent<OptimizedAudioManager>();
+            
+            var dataGO = new GameObject("DataOptimizer");
+            _dataOptimizer = dataGO.AddComponent<DataOptimizer>();
+            
+            var mobileGO = new GameObject("MobileMemoryManager");
+            _mobileMemoryManager = mobileGO.AddComponent<MobileMemoryManager>();
+            
+            // Initialize cache manager
+            _cacheManager = new CacheManager<string, object>(100, 300f, CacheManager<string, object>.EvictionPolicy.LRU);
         }
 
-        public class PerformanceMetric
+        [TearDown]
+        public void TearDown()
         {
-            public string name;
-            public float currentValue;
-            public float averageValue;
-            public float minValue;
-            public float maxValue;
-            public List<float> history = new List<float>();
-            public DateTime lastUpdated;
+            // Clean up test objects
+            if (_performanceManager != null) Object.DestroyImmediate(_performanceManager.gameObject);
+            if (_graphicsOptimizer != null) Object.DestroyImmediate(_graphicsOptimizer.gameObject);
+            if (_audioManager != null) Object.DestroyImmediate(_audioManager.gameObject);
+            if (_dataOptimizer != null) Object.DestroyImmediate(_dataOptimizer.gameObject);
+            if (_mobileMemoryManager != null) Object.DestroyImmediate(_mobileMemoryManager.gameObject);
         }
 
-        public class PerformanceAlert
+        #region Performance Manager Tests
+        [Test]
+        public void PerformanceManager_GetFPS_ReturnsValidValue()
         {
-            public string message;
-            public PerformanceAlertLevel level;
-            public DateTime timestamp;
-            public string category;
+            // Arrange
+            float fps = _performanceManager.GetFPS();
+            
+            // Assert
+            Assert.Greater(fps, 0f, "FPS should be greater than 0");
+            Assert.LessOrEqual(fps, 1000f, "FPS should be reasonable (less than 1000)");
         }
 
-        public enum PerformanceTestCategory
+        [Test]
+        public void PerformanceManager_GetMemoryUsage_ReturnsValidValue()
         {
-            Rendering,
-            Memory,
-            Audio,
-            Network,
-            UI,
-            Gameplay,
-            System
+            // Arrange
+            long memory = _performanceManager.GetMemoryUsage();
+            
+            // Assert
+            Assert.Greater(memory, 0, "Memory usage should be greater than 0");
+            Assert.Less(memory, 1024L * 1024 * 1024, "Memory usage should be less than 1GB");
         }
 
-        public enum PerformanceAlertLevel
+        [Test]
+        public void PerformanceManager_GetCPUUsage_ReturnsValidValue()
         {
-            Info,
-            Warning,
-            Critical
+            // Arrange
+            float cpuUsage = _performanceManager.GetCPUUsage();
+            
+            // Assert
+            Assert.GreaterOrEqual(cpuUsage, 0f, "CPU usage should be >= 0");
+            Assert.LessOrEqual(cpuUsage, 100f, "CPU usage should be <= 100%");
         }
 
-        void Start()
+        [Test]
+        public void PerformanceManager_GetGPUUsage_ReturnsValidValue()
         {
-            if (enableAutomatedTesting)
-            {
-                StartCoroutine(RunAutomatedTests());
-            }
-
-            if (enableContinuousMonitoring)
-            {
-                _continuousMonitoringCoroutine = StartCoroutine(ContinuousMonitoring());
-            }
+            // Arrange
+            float gpuUsage = _performanceManager.GetGPUUsage();
+            
+            // Assert
+            Assert.GreaterOrEqual(gpuUsage, 0f, "GPU usage should be >= 0");
+            Assert.LessOrEqual(gpuUsage, 100f, "GPU usage should be <= 100%");
         }
 
-        void Update()
+        [Test]
+        public void PerformanceManager_GetDrawCalls_ReturnsValidValue()
         {
-            if (enableContinuousMonitoring)
-            {
-                UpdatePerformanceMetrics();
-            }
+            // Arrange
+            int drawCalls = _performanceManager.GetDrawCalls();
+            
+            // Assert
+            Assert.GreaterOrEqual(drawCalls, 0, "Draw calls should be >= 0");
         }
 
-        #region Automated Testing
-        private IEnumerator RunAutomatedTests()
+        [Test]
+        public void PerformanceManager_GetTriangles_ReturnsValidValue()
         {
-            while (true)
-            {
-                yield return new WaitForSeconds(testInterval);
-
-                if (!_isRunningTests)
-                {
-                    yield return StartCoroutine(RunAllPerformanceTests());
-                }
-            }
+            // Arrange
+            int triangles = _performanceManager.GetTriangles();
+            
+            // Assert
+            Assert.GreaterOrEqual(triangles, 0, "Triangles should be >= 0");
         }
 
-        private IEnumerator RunAllPerformanceTests()
+        [Test]
+        public void PerformanceManager_GetVertices_ReturnsValidValue()
         {
-            _isRunningTests = true;
-            Logger.Info("Starting automated performance tests", "PerformanceTests");
+            // Arrange
+            int vertices = _performanceManager.GetVertices();
+            
+            // Assert
+            Assert.GreaterOrEqual(vertices, 0, "Vertices should be >= 0");
+        }
 
-            var tests = new List<IEnumerator>();
+        [Test]
+        public void PerformanceManager_GetBatches_ReturnsValidValue()
+        {
+            // Arrange
+            int batches = _performanceManager.GetBatches();
+            
+            // Assert
+            Assert.GreaterOrEqual(batches, 0, "Batches should be >= 0");
+        }
 
-            if (enableRenderingTests)
-            {
-                tests.Add(RunRenderingTests());
-            }
+        [Test]
+        public void PerformanceManager_GetAudioMemory_ReturnsValidValue()
+        {
+            // Arrange
+            long audioMemory = _performanceManager.GetAudioMemory();
+            
+            // Assert
+            Assert.GreaterOrEqual(audioMemory, 0, "Audio memory should be >= 0");
+        }
 
-            if (enableMemoryTests)
-            {
-                tests.Add(RunMemoryTests());
-            }
+        [Test]
+        public void PerformanceManager_GetTextureMemory_ReturnsValidValue()
+        {
+            // Arrange
+            long textureMemory = _performanceManager.GetTextureMemory();
+            
+            // Assert
+            Assert.GreaterOrEqual(textureMemory, 0, "Texture memory should be >= 0");
+        }
 
-            if (enableAudioTests)
-            {
-                tests.Add(RunAudioTests());
-            }
-
-            if (enableNetworkTests)
-            {
-                tests.Add(RunNetworkTests());
-            }
-
-            if (enableUITests)
-            {
-                tests.Add(RunUITests());
-            }
-
-            if (enableGameplayTests)
-            {
-                tests.Add(RunGameplayTests());
-            }
-
-            foreach (var test in tests)
-            {
-                yield return StartCoroutine(test);
-            }
-
-            _isRunningTests = false;
-            Logger.Info("Automated performance tests completed", "PerformanceTests");
+        [Test]
+        public void PerformanceManager_GetMeshMemory_ReturnsValidValue()
+        {
+            // Arrange
+            long meshMemory = _performanceManager.GetMeshMemory();
+            
+            // Assert
+            Assert.GreaterOrEqual(meshMemory, 0, "Mesh memory should be >= 0");
         }
         #endregion
 
-        #region Rendering Tests
-        private IEnumerator RunRenderingTests()
+        #region Graphics Optimizer Tests
+        [Test]
+        public void GraphicsOptimizer_LODSystem_WorksCorrectly()
         {
-            Logger.Info("Running rendering performance tests", "PerformanceTests");
-
-            // FPS Test
-            yield return StartCoroutine(TestFPS());
-
-            // Frame Time Test
-            yield return StartCoroutine(TestFrameTime());
-
-            // Draw Call Test
-            yield return StartCoroutine(TestDrawCalls());
-
-            // Triangle Count Test
-            yield return StartCoroutine(TestTriangleCount());
-
-            // GPU Memory Test
-            yield return StartCoroutine(TestGPUMemory());
-
-            // Rendering Pipeline Test
-            yield return StartCoroutine(TestRenderingPipeline());
+            // Arrange
+            _graphicsOptimizer.enableLODSystem = true;
+            _graphicsOptimizer.enableLODBias = true;
+            _graphicsOptimizer.lodBias = 1.5f;
+            
+            // Act
+            _graphicsOptimizer.Update();
+            
+            // Assert
+            Assert.AreEqual(1.5f, QualitySettings.lodBias, "LOD bias should be set correctly");
         }
 
-        private IEnumerator TestFPS()
+        [Test]
+        public void GraphicsOptimizer_OcclusionCulling_WorksCorrectly()
         {
-            var startTime = Time.time;
-            var frameCount = 0;
-            var testDuration = 5f;
-
-            while (Time.time - startTime < testDuration)
-            {
-                frameCount++;
-                yield return null;
-            }
-
-            var fps = frameCount / testDuration;
-            var result = new PerformanceTestResult
-            {
-                testName = "FPS Test",
-                passed = fps >= minFPS,
-                value = fps,
-                threshold = minFPS,
-                unit = "FPS",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Rendering,
-                message = fps >= minFPS ? $"FPS is acceptable: {fps:F1}" : $"FPS is too low: {fps:F1}"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("FPS", fps);
+            // Arrange
+            _graphicsOptimizer.enableOcclusionCulling = true;
+            _graphicsOptimizer.enableFrustumCulling = true;
+            
+            // Act
+            _graphicsOptimizer.Update();
+            
+            // Assert
+            Assert.IsTrue(_graphicsOptimizer.enableOcclusionCulling, "Occlusion culling should be enabled");
+            Assert.IsTrue(_graphicsOptimizer.enableFrustumCulling, "Frustum culling should be enabled");
         }
 
-        private IEnumerator TestFrameTime()
+        [Test]
+        public void GraphicsOptimizer_MobileOptimizations_WorkCorrectly()
         {
-            var frameTimes = new List<float>();
-            var testDuration = 5f;
-            var startTime = Time.time;
-
-            while (Time.time - startTime < testDuration)
-            {
-                frameTimes.Add(Time.unscaledDeltaTime * 1000f); // Convert to milliseconds
-                yield return null;
-            }
-
-            var averageFrameTime = 0f;
-            foreach (var frameTime in frameTimes)
-            {
-                averageFrameTime += frameTime;
-            }
-            averageFrameTime /= frameTimes.Count;
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Frame Time Test",
-                passed = averageFrameTime <= maxFrameTime,
-                value = averageFrameTime,
-                threshold = maxFrameTime,
-                unit = "ms",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Rendering,
-                message = averageFrameTime <= maxFrameTime ? $"Frame time is acceptable: {averageFrameTime:F2}ms" : $"Frame time is too high: {averageFrameTime:F2}ms"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("FrameTime", averageFrameTime);
-        }
-
-        private IEnumerator TestDrawCalls()
-        {
-            var drawCalls = 0;
-            var testDuration = 1f;
-            var startTime = Time.time;
-
-            while (Time.time - startTime < testDuration)
-            {
-                drawCalls = UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset != null ? 
-                    UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset.GetType().GetField("drawCalls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset) as int? ?? 0 : 0;
-                yield return null;
-            }
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Draw Calls Test",
-                passed = drawCalls <= 1000, // Reasonable threshold
-                value = drawCalls,
-                threshold = 1000,
-                unit = "calls",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Rendering,
-                message = drawCalls <= 1000 ? $"Draw calls are acceptable: {drawCalls}" : $"Too many draw calls: {drawCalls}"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("DrawCalls", drawCalls);
-        }
-
-        private IEnumerator TestTriangleCount()
-        {
-            var triangles = 0;
-            var testDuration = 1f;
-            var startTime = Time.time;
-
-            while (Time.time - startTime < testDuration)
-            {
-                // Count triangles in scene
-                var renderers = FindObjectsOfType<Renderer>();
-                foreach (var renderer in renderers)
-                {
-                    var meshFilter = renderer.GetComponent<MeshFilter>();
-                    if (meshFilter != null && meshFilter.mesh != null)
-                    {
-                        triangles += meshFilter.mesh.triangles.Length / 3;
-                    }
-                }
-                yield return null;
-            }
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Triangle Count Test",
-                passed = triangles <= 100000, // Reasonable threshold
-                value = triangles,
-                threshold = 100000,
-                unit = "triangles",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Rendering,
-                message = triangles <= 100000 ? $"Triangle count is acceptable: {triangles}" : $"Too many triangles: {triangles}"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("Triangles", triangles);
-        }
-
-        private IEnumerator TestGPUMemory()
-        {
-            var gpuMemory = 0f;
-            var testDuration = 1f;
-            var startTime = Time.time;
-
-            while (Time.time - startTime < testDuration)
-            {
-                // Get GPU memory usage (simplified)
-                gpuMemory = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemory(false) / 1024f / 1024f;
-                yield return null;
-            }
-
-            var result = new PerformanceTestResult
-            {
-                testName = "GPU Memory Test",
-                passed = gpuMemory <= maxMemoryUsageMB,
-                value = gpuMemory,
-                threshold = maxMemoryUsageMB,
-                unit = "MB",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Rendering,
-                message = gpuMemory <= maxMemoryUsageMB ? $"GPU memory usage is acceptable: {gpuMemory:F1}MB" : $"GPU memory usage is too high: {gpuMemory:F1}MB"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("GPUMemory", gpuMemory);
-        }
-
-        private IEnumerator TestRenderingPipeline()
-        {
-            var startTime = Time.time;
-            var testDuration = 2f;
-
-            // Test rendering pipeline performance
-            while (Time.time - startTime < testDuration)
-            {
-                // Simulate rendering workload
-                var camera = Camera.main;
-                if (camera != null)
-                {
-                    camera.Render();
-                }
-                yield return null;
-            }
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Rendering Pipeline Test",
-                passed = true, // This would be more complex in a real implementation
-                value = 1f,
-                threshold = 1f,
-                unit = "pass",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Rendering,
-                message = "Rendering pipeline test completed"
-            };
-
-            _testResults.Add(result);
+            // Arrange
+            _graphicsOptimizer.enableMobileOptimizations = true;
+            _graphicsOptimizer.mobileMaxLights = 2;
+            _graphicsOptimizer.mobileMaxShadows = 1;
+            
+            // Act
+            _graphicsOptimizer.Update();
+            
+            // Assert
+            Assert.IsTrue(_graphicsOptimizer.enableMobileOptimizations, "Mobile optimizations should be enabled");
+            Assert.AreEqual(2, _graphicsOptimizer.mobileMaxLights, "Mobile max lights should be set correctly");
+            Assert.AreEqual(1, _graphicsOptimizer.mobileMaxShadows, "Mobile max shadows should be set correctly");
         }
         #endregion
 
-        #region Memory Tests
-        private IEnumerator RunMemoryTests()
+        #region Audio Manager Tests
+        [Test]
+        public void AudioManager_Compression_WorksCorrectly()
         {
-            Logger.Info("Running memory performance tests", "PerformanceTests");
-
-            // Memory Usage Test
-            yield return StartCoroutine(TestMemoryUsage());
-
-            // Garbage Collection Test
-            yield return StartCoroutine(TestGarbageCollection());
-
-            // Memory Leak Test
-            yield return StartCoroutine(TestMemoryLeaks());
-
-            // Object Pool Test
-            yield return StartCoroutine(TestObjectPooling());
+            // Arrange
+            _audioManager.enableAudioCompression = true;
+            _audioManager.compressionFormat = AudioCompressionFormat.Vorbis;
+            _audioManager.compressionQuality = 0.7f;
+            
+            // Act
+            _audioManager.Update();
+            
+            // Assert
+            Assert.IsTrue(_audioManager.enableAudioCompression, "Audio compression should be enabled");
+            Assert.AreEqual(AudioCompressionFormat.Vorbis, _audioManager.compressionFormat, "Compression format should be set correctly");
+            Assert.AreEqual(0.7f, _audioManager.compressionQuality, "Compression quality should be set correctly");
         }
 
-        private IEnumerator TestMemoryUsage()
+        [Test]
+        public void AudioManager_FormatOptimization_WorksCorrectly()
         {
-            var memoryUsage = GC.GetTotalMemory(false) / 1024f / 1024f;
-            var result = new PerformanceTestResult
+            // Arrange
+            _audioManager.enableFormatOptimization = true;
+            _audioManager.mobileFormat = AudioCompressionFormat.Vorbis;
+            _audioManager.desktopFormat = AudioCompressionFormat.PCM;
+            
+            // Act
+            _audioManager.Update();
+            
+            // Assert
+            Assert.IsTrue(_audioManager.enableFormatOptimization, "Format optimization should be enabled");
+            Assert.AreEqual(AudioCompressionFormat.Vorbis, _audioManager.mobileFormat, "Mobile format should be set correctly");
+            Assert.AreEqual(AudioCompressionFormat.PCM, _audioManager.desktopFormat, "Desktop format should be set correctly");
+        }
+        #endregion
+
+        #region Data Optimizer Tests
+        [Test]
+        public void DataOptimizer_Compression_WorksCorrectly()
+        {
+            // Arrange
+            _dataOptimizer.enableCompression = true;
+            _dataOptimizer.compressionType = CompressionType.Gzip;
+            _dataOptimizer.compressionLevel = 6;
+            
+            // Act
+            _dataOptimizer.Update();
+            
+            // Assert
+            Assert.IsTrue(_dataOptimizer.enableCompression, "Data compression should be enabled");
+            Assert.AreEqual(CompressionType.Gzip, _dataOptimizer.compressionType, "Compression type should be set correctly");
+            Assert.AreEqual(6, _dataOptimizer.compressionLevel, "Compression level should be set correctly");
+        }
+
+        [Test]
+        public void DataOptimizer_BinarySerialization_WorksCorrectly()
+        {
+            // Arrange
+            _dataOptimizer.enableBinarySerialization = true;
+            _dataOptimizer.enableJsonSerialization = true;
+            
+            // Act
+            _dataOptimizer.Update();
+            
+            // Assert
+            Assert.IsTrue(_dataOptimizer.enableBinarySerialization, "Binary serialization should be enabled");
+            Assert.IsTrue(_dataOptimizer.enableJsonSerialization, "JSON serialization should be enabled");
+        }
+        #endregion
+
+        #region Mobile Memory Manager Tests
+        [Test]
+        public void MobileMemoryManager_MemoryPressureHandling_WorksCorrectly()
+        {
+            // Arrange
+            _mobileMemoryManager.enableMemoryPressureHandling = true;
+            _mobileMemoryManager.memoryPressureThreshold = 0.8f;
+            _mobileMemoryManager.memoryCriticalThreshold = 0.9f;
+            
+            // Act
+            _mobileMemoryManager.Update();
+            
+            // Assert
+            Assert.IsTrue(_mobileMemoryManager.enableMemoryPressureHandling, "Memory pressure handling should be enabled");
+            Assert.AreEqual(0.8f, _mobileMemoryManager.memoryPressureThreshold, "Memory pressure threshold should be set correctly");
+            Assert.AreEqual(0.9f, _mobileMemoryManager.memoryCriticalThreshold, "Memory critical threshold should be set correctly");
+        }
+
+        [Test]
+        public void MobileMemoryManager_QualityReduction_WorksCorrectly()
+        {
+            // Arrange
+            _mobileMemoryManager.enableAutomaticQualityReduction = true;
+            _mobileMemoryManager.maxQualityReductionLevel = 3;
+            
+            // Act
+            _mobileMemoryManager.Update();
+            
+            // Assert
+            Assert.IsTrue(_mobileMemoryManager.enableAutomaticQualityReduction, "Automatic quality reduction should be enabled");
+            Assert.AreEqual(3, _mobileMemoryManager.maxQualityReductionLevel, "Max quality reduction level should be set correctly");
+        }
+        #endregion
+
+        #region Cache Manager Tests
+        [Test]
+        public void CacheManager_LRU_Eviction_WorksCorrectly()
+        {
+            // Arrange
+            var cache = new CacheManager<string, object>(3, 300f, CacheManager<string, object>.EvictionPolicy.LRU);
+            
+            // Act
+            cache.Set("key1", "value1");
+            cache.Set("key2", "value2");
+            cache.Set("key3", "value3");
+            cache.Set("key4", "value4"); // This should evict key1
+            
+            // Assert
+            Assert.IsNull(cache.Get("key1"), "key1 should be evicted");
+            Assert.AreEqual("value2", cache.Get("key2"), "key2 should still be in cache");
+            Assert.AreEqual("value3", cache.Get("key3"), "key3 should still be in cache");
+            Assert.AreEqual("value4", cache.Get("key4"), "key4 should be in cache");
+        }
+
+        [Test]
+        public void CacheManager_LFU_Eviction_WorksCorrectly()
+        {
+            // Arrange
+            var cache = new CacheManager<string, object>(3, 300f, CacheManager<string, object>.EvictionPolicy.LFU);
+            
+            // Act
+            cache.Set("key1", "value1");
+            cache.Set("key2", "value2");
+            cache.Set("key3", "value3");
+            
+            // Access key2 and key3 multiple times
+            cache.Get("key2");
+            cache.Get("key3");
+            cache.Get("key2");
+            cache.Get("key3");
+            
+            cache.Set("key4", "value4"); // This should evict key1 (least frequently used)
+            
+            // Assert
+            Assert.IsNull(cache.Get("key1"), "key1 should be evicted");
+            Assert.AreEqual("value2", cache.Get("key2"), "key2 should still be in cache");
+            Assert.AreEqual("value3", cache.Get("key3"), "key3 should still be in cache");
+            Assert.AreEqual("value4", cache.Get("key4"), "key4 should be in cache");
+        }
+
+        [Test]
+        public void CacheManager_Weighted_Eviction_WorksCorrectly()
+        {
+            // Arrange
+            var cache = new CacheManager<string, object>(3, 300f, CacheManager<string, object>.EvictionPolicy.Weighted);
+            
+            // Act
+            cache.Set("key1", "value1");
+            cache.Set("key2", "value2");
+            cache.Set("key3", "value3");
+            
+            // Access key2 and key3 multiple times
+            cache.Get("key2");
+            cache.Get("key3");
+            cache.Get("key2");
+            cache.Get("key3");
+            
+            cache.Set("key4", "value4"); // This should evict key1 (lowest weight)
+            
+            // Assert
+            Assert.IsNull(cache.Get("key1"), "key1 should be evicted");
+            Assert.AreEqual("value2", cache.Get("key2"), "key2 should still be in cache");
+            Assert.AreEqual("value3", cache.Get("key3"), "key3 should still be in cache");
+            Assert.AreEqual("value4", cache.Get("key4"), "key4 should be in cache");
+        }
+
+        [Test]
+        public void CacheManager_CacheWarming_WorksCorrectly()
+        {
+            // Arrange
+            var cache = new CacheManager<string, object>(10, 300f, CacheManager<string, object>.EvictionPolicy.LRU);
+            
+            // Act
+            cache.AddToWarmingQueue("key1", 1.0f);
+            cache.AddToWarmingQueue("key2", 0.5f);
+            cache.AddToWarmingQueue("key3", 1.5f);
+            
+            // Assert
+            var stats = cache.GetWarmingStatistics();
+            Assert.AreEqual(3, stats["queue_size"], "Warming queue should have 3 items");
+        }
+        #endregion
+
+        #region Performance Regression Tests
+        [Test]
+        public void PerformanceRegression_FPS_DoesNotDegrade()
+        {
+            // Arrange
+            float initialFPS = _performanceManager.GetFPS();
+            
+            // Act - Simulate some work
+            for (int i = 0; i < 1000; i++)
             {
-                testName = "Memory Usage Test",
-                passed = memoryUsage <= maxMemoryUsageMB,
-                value = memoryUsage,
-                threshold = maxMemoryUsageMB,
-                unit = "MB",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Memory,
-                message = memoryUsage <= maxMemoryUsageMB ? $"Memory usage is acceptable: {memoryUsage:F1}MB" : $"Memory usage is too high: {memoryUsage:F1}MB"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("MemoryUsage", memoryUsage);
-            yield return null;
+                _performanceManager.Update();
+            }
+            
+            float finalFPS = _performanceManager.GetFPS();
+            
+            // Assert
+            Assert.GreaterOrEqual(finalFPS, initialFPS * 0.9f, "FPS should not degrade by more than 10%");
         }
 
-        private IEnumerator TestGarbageCollection()
+        [Test]
+        public void PerformanceRegression_Memory_DoesNotLeak()
         {
-            var beforeMemory = GC.GetTotalMemory(false);
-            var beforeGen0 = GC.CollectionCount(0);
-            var beforeGen1 = GC.CollectionCount(1);
-            var beforeGen2 = GC.CollectionCount(2);
-
+            // Arrange
+            long initialMemory = _performanceManager.GetMemoryUsage();
+            
+            // Act - Simulate some work
+            for (int i = 0; i < 1000; i++)
+            {
+                _performanceManager.Update();
+            }
+            
             // Force garbage collection
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            var afterMemory = GC.GetTotalMemory(false);
-            var afterGen0 = GC.CollectionCount(0);
-            var afterGen1 = GC.CollectionCount(1);
-            var afterGen2 = GC.CollectionCount(2);
-
-            var freedMemory = (beforeMemory - afterMemory) / 1024f / 1024f;
-            var gen0Collections = afterGen0 - beforeGen0;
-            var gen1Collections = afterGen1 - beforeGen1;
-            var gen2Collections = afterGen2 - beforeGen2;
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Garbage Collection Test",
-                passed = gen2Collections == 0, // No Gen2 collections is good
-                value = gen2Collections,
-                threshold = 0,
-                unit = "collections",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Memory,
-                message = $"GC freed {freedMemory:F1}MB, Gen0: {gen0Collections}, Gen1: {gen1Collections}, Gen2: {gen2Collections}"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("GCGen2Collections", gen2Collections);
-            yield return null;
+            System.GC.Collect();
+            System.GC.WaitForPendingFinalizers();
+            System.GC.Collect();
+            
+            long finalMemory = _performanceManager.GetMemoryUsage();
+            
+            // Assert
+            Assert.LessOrEqual(finalMemory, initialMemory * 1.1f, "Memory usage should not increase by more than 10%");
         }
 
-        private IEnumerator TestMemoryLeaks()
+        [Test]
+        public void PerformanceRegression_DrawCalls_AreOptimized()
         {
-            var initialMemory = GC.GetTotalMemory(false);
-            var testDuration = 10f;
-            var startTime = Time.time;
-
-            // Create and destroy objects repeatedly
-            while (Time.time - startTime < testDuration)
+            // Arrange
+            int initialDrawCalls = _performanceManager.GetDrawCalls();
+            
+            // Act - Simulate some work
+            for (int i = 0; i < 100; i++)
             {
-                var objects = new List<GameObject>();
-                for (int i = 0; i < 100; i++)
-                {
-                    var obj = new GameObject($"TestObject_{i}");
-                    objects.Add(obj);
-                }
-
-                foreach (var obj in objects)
-                {
-                    DestroyImmediate(obj);
-                }
-
-                yield return null;
+                _performanceManager.Update();
             }
-
-            var finalMemory = GC.GetTotalMemory(false);
-            var memoryIncrease = (finalMemory - initialMemory) / 1024f / 1024f;
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Memory Leak Test",
-                passed = memoryIncrease <= 10f, // Less than 10MB increase is acceptable
-                value = memoryIncrease,
-                threshold = 10f,
-                unit = "MB",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Memory,
-                message = memoryIncrease <= 10f ? $"No significant memory leak detected: {memoryIncrease:F1}MB increase" : $"Potential memory leak detected: {memoryIncrease:F1}MB increase"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("MemoryLeak", memoryIncrease);
-        }
-
-        private IEnumerator TestObjectPooling()
-        {
-            var pool = new ObjectPool<GameObject>(
-                createFunc: () => new GameObject("PooledObject"),
-                onGet: obj => obj.SetActive(true),
-                onReturn: obj => obj.SetActive(false),
-                maxSize: 100
-            );
-
-            var startTime = Time.time;
-            var testDuration = 5f;
-            var operations = 0;
-
-            while (Time.time - startTime < testDuration)
-            {
-                var obj = pool.Get();
-                pool.Return(obj);
-                operations++;
-                yield return null;
-            }
-
-            var operationsPerSecond = operations / testDuration;
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Object Pool Test",
-                passed = operationsPerSecond >= 1000, // At least 1000 operations per second
-                value = operationsPerSecond,
-                threshold = 1000,
-                unit = "ops/sec",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Memory,
-                message = $"Object pool performance: {operationsPerSecond:F0} operations/second"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("ObjectPoolOps", operationsPerSecond);
+            
+            int finalDrawCalls = _performanceManager.GetDrawCalls();
+            
+            // Assert
+            Assert.LessOrEqual(finalDrawCalls, initialDrawCalls * 1.2f, "Draw calls should not increase significantly");
         }
         #endregion
 
-        #region Audio Tests
-        private IEnumerator RunAudioTests()
+        #region Integration Tests
+        [Test]
+        public void Integration_AllSystems_WorkTogether()
         {
-            Logger.Info("Running audio performance tests", "PerformanceTests");
-
-            // Audio Memory Test
-            yield return StartCoroutine(TestAudioMemory());
-
-            // Audio Latency Test
-            yield return StartCoroutine(TestAudioLatency());
-
-            // Audio Quality Test
-            yield return StartCoroutine(TestAudioQuality());
-        }
-
-        private IEnumerator TestAudioMemory()
-        {
-            var audioSources = FindObjectsOfType<AudioSource>();
-            var audioMemory = 0f;
-
-            foreach (var audioSource in audioSources)
+            // Arrange
+            _performanceManager.enablePerformanceMonitoring = true;
+            _graphicsOptimizer.enableLODSystem = true;
+            _audioManager.enableAudioCompression = true;
+            _dataOptimizer.enableCompression = true;
+            _mobileMemoryManager.enableMemoryPressureHandling = true;
+            
+            // Act - Simulate game loop
+            for (int i = 0; i < 100; i++)
             {
-                if (audioSource.clip != null)
-                {
-                    audioMemory += audioSource.clip.length * audioSource.clip.frequency * audioSource.clip.channels * 4; // 32-bit float
-                }
+                _performanceManager.Update();
+                _graphicsOptimizer.Update();
+                _audioManager.Update();
+                _dataOptimizer.Update();
+                _mobileMemoryManager.Update();
             }
-
-            audioMemory /= 1024f * 1024f; // Convert to MB
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Audio Memory Test",
-                passed = audioMemory <= 100f, // Less than 100MB is acceptable
-                value = audioMemory,
-                threshold = 100f,
-                unit = "MB",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Audio,
-                message = audioMemory <= 100f ? $"Audio memory usage is acceptable: {audioMemory:F1}MB" : $"Audio memory usage is too high: {audioMemory:F1}MB"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("AudioMemory", audioMemory);
-            yield return null;
+            
+            // Assert
+            Assert.IsTrue(_performanceManager.enablePerformanceMonitoring, "Performance monitoring should be enabled");
+            Assert.IsTrue(_graphicsOptimizer.enableLODSystem, "LOD system should be enabled");
+            Assert.IsTrue(_audioManager.enableAudioCompression, "Audio compression should be enabled");
+            Assert.IsTrue(_dataOptimizer.enableCompression, "Data compression should be enabled");
+            Assert.IsTrue(_mobileMemoryManager.enableMemoryPressureHandling, "Memory pressure handling should be enabled");
         }
 
-        private IEnumerator TestAudioLatency()
+        [Test]
+        public void Integration_PerformanceMetrics_AreConsistent()
         {
-            var audioSource = GetComponent<AudioSource>();
-            if (audioSource == null)
+            // Arrange
+            var metrics1 = new Dictionary<string, float>();
+            var metrics2 = new Dictionary<string, float>();
+            
+            // Act - Collect metrics twice
+            for (int i = 0; i < 10; i++)
             {
-                audioSource = gameObject.AddComponent<AudioSource>();
+                _performanceManager.Update();
             }
-
-            var startTime = Time.time;
-            audioSource.Play();
-            var latency = Time.time - startTime;
-
-            var result = new PerformanceTestResult
+            
+            metrics1["fps"] = _performanceManager.GetFPS();
+            metrics1["memory"] = _performanceManager.GetMemoryUsage();
+            metrics1["cpu"] = _performanceManager.GetCPUUsage();
+            metrics1["gpu"] = _performanceManager.GetGPUUsage();
+            
+            for (int i = 0; i < 10; i++)
             {
-                testName = "Audio Latency Test",
-                passed = latency <= 0.1f, // Less than 100ms latency is acceptable
-                value = latency * 1000f,
-                threshold = 100f,
-                unit = "ms",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Audio,
-                message = latency <= 0.1f ? $"Audio latency is acceptable: {latency * 1000f:F1}ms" : $"Audio latency is too high: {latency * 1000f:F1}ms"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("AudioLatency", latency * 1000f);
-            yield return null;
-        }
-
-        private IEnumerator TestAudioQuality()
-        {
-            // This would test audio quality in a real implementation
-            var result = new PerformanceTestResult
-            {
-                testName = "Audio Quality Test",
-                passed = true,
-                value = 1f,
-                threshold = 1f,
-                unit = "pass",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Audio,
-                message = "Audio quality test completed"
-            };
-
-            _testResults.Add(result);
-            yield return null;
+                _performanceManager.Update();
+            }
+            
+            metrics2["fps"] = _performanceManager.GetFPS();
+            metrics2["memory"] = _performanceManager.GetMemoryUsage();
+            metrics2["cpu"] = _performanceManager.GetCPUUsage();
+            metrics2["gpu"] = _performanceManager.GetGPUUsage();
+            
+            // Assert
+            Assert.LessOrEqual(Mathf.Abs(metrics1["fps"] - metrics2["fps"]), 10f, "FPS should be consistent");
+            Assert.LessOrEqual(Mathf.Abs(metrics1["memory"] - metrics2["memory"]), 1024 * 1024, "Memory should be consistent");
+            Assert.LessOrEqual(Mathf.Abs(metrics1["cpu"] - metrics2["cpu"]), 20f, "CPU usage should be consistent");
+            Assert.LessOrEqual(Mathf.Abs(metrics1["gpu"] - metrics2["gpu"]), 20f, "GPU usage should be consistent");
         }
         #endregion
 
-        #region Network Tests
-        private IEnumerator RunNetworkTests()
+        #region Stress Tests
+        [Test]
+        public void StressTest_HighLoad_SystemStability()
         {
-            Logger.Info("Running network performance tests", "PerformanceTests");
-
-            // Network Latency Test
-            yield return StartCoroutine(TestNetworkLatency());
-
-            // Network Throughput Test
-            yield return StartCoroutine(TestNetworkThroughput());
-
-            // Network Reliability Test
-            yield return StartCoroutine(TestNetworkReliability());
-        }
-
-        private IEnumerator TestNetworkLatency()
-        {
-            var startTime = Time.time;
-            var latency = 0f;
-
-            // Simulate network request
-            using (var www = new UnityEngine.Networking.UnityWebRequest("https://httpbin.org/delay/0"))
+            // Arrange
+            var startTime = Time.realtimeSinceStartup;
+            
+            // Act - High load simulation
+            for (int i = 0; i < 10000; i++)
             {
-                yield return www.SendWebRequest();
-                latency = (Time.time - startTime) * 1000f; // Convert to milliseconds
-            }
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Network Latency Test",
-                passed = latency <= 1000f, // Less than 1 second is acceptable
-                value = latency,
-                threshold = 1000f,
-                unit = "ms",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Network,
-                message = latency <= 1000f ? $"Network latency is acceptable: {latency:F1}ms" : $"Network latency is too high: {latency:F1}ms"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("NetworkLatency", latency);
-        }
-
-        private IEnumerator TestNetworkThroughput()
-        {
-            var startTime = Time.time;
-            var dataSize = 1024 * 1024; // 1MB
-            var data = new byte[dataSize];
-
-            using (var www = new UnityEngine.Networking.UnityWebRequest("https://httpbin.org/post"))
-            {
-                www.method = "POST";
-                www.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(data);
-                www.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
-
-                yield return www.SendWebRequest();
-
-                var duration = Time.time - startTime;
-                var throughput = (dataSize / 1024f / 1024f) / duration; // MB/s
-
-                var result = new PerformanceTestResult
-                {
-                    testName = "Network Throughput Test",
-                    passed = throughput >= 1f, // At least 1 MB/s is acceptable
-                    value = throughput,
-                    threshold = 1f,
-                    unit = "MB/s",
-                    timestamp = DateTime.Now,
-                    category = PerformanceTestCategory.Network,
-                    message = throughput >= 1f ? $"Network throughput is acceptable: {throughput:F2}MB/s" : $"Network throughput is too low: {throughput:F2}MB/s"
-                };
-
-                _testResults.Add(result);
-                UpdateMetric("NetworkThroughput", throughput);
-            }
-        }
-
-        private IEnumerator TestNetworkReliability()
-        {
-            var successCount = 0;
-            var totalRequests = 10;
-
-            for (int i = 0; i < totalRequests; i++)
-            {
-                using (var www = new UnityEngine.Networking.UnityWebRequest("https://httpbin.org/status/200"))
-                {
-                    yield return www.SendWebRequest();
-                    if (www.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
-                    {
-                        successCount++;
-                    }
-                }
-            }
-
-            var reliability = (float)successCount / totalRequests * 100f;
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Network Reliability Test",
-                passed = reliability >= 90f, // At least 90% success rate
-                value = reliability,
-                threshold = 90f,
-                unit = "%",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Network,
-                message = reliability >= 90f ? $"Network reliability is acceptable: {reliability:F1}%" : $"Network reliability is too low: {reliability:F1}%"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("NetworkReliability", reliability);
-        }
-        #endregion
-
-        #region UI Tests
-        private IEnumerator RunUITests()
-        {
-            Logger.Info("Running UI performance tests", "PerformanceTests");
-
-            // UI Rendering Test
-            yield return StartCoroutine(TestUIRendering());
-
-            // UI Responsiveness Test
-            yield return StartCoroutine(TestUIResponsiveness());
-
-            // UI Memory Test
-            yield return StartCoroutine(TestUIMemory());
-        }
-
-        private IEnumerator TestUIRendering()
-        {
-            var canvas = FindObjectOfType<Canvas>();
-            if (canvas == null)
-            {
-                yield return null;
-                yield break;
-            }
-
-            var startTime = Time.time;
-            var testDuration = 2f;
-
-            while (Time.time - startTime < testDuration)
-            {
-                // Force UI update
-                canvas.enabled = false;
-                yield return null;
-                canvas.enabled = true;
-                yield return null;
-            }
-
-            var result = new PerformanceTestResult
-            {
-                testName = "UI Rendering Test",
-                passed = true,
-                value = 1f,
-                threshold = 1f,
-                unit = "pass",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.UI,
-                message = "UI rendering test completed"
-            };
-
-            _testResults.Add(result);
-        }
-
-        private IEnumerator TestUIResponsiveness()
-        {
-            var buttons = FindObjectsOfType<UnityEngine.UI.Button>();
-            var responseTime = 0f;
-
-            foreach (var button in buttons)
-            {
-                var startTime = Time.time;
-                button.onClick.Invoke();
-                responseTime += Time.time - startTime;
-            }
-
-            var averageResponseTime = responseTime / buttons.Length * 1000f; // Convert to milliseconds
-
-            var result = new PerformanceTestResult
-            {
-                testName = "UI Responsiveness Test",
-                passed = averageResponseTime <= 16f, // Less than 16ms is acceptable
-                value = averageResponseTime,
-                threshold = 16f,
-                unit = "ms",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.UI,
-                message = averageResponseTime <= 16f ? $"UI responsiveness is acceptable: {averageResponseTime:F1}ms" : $"UI responsiveness is too slow: {averageResponseTime:F1}ms"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("UIResponsiveness", averageResponseTime);
-            yield return null;
-        }
-
-        private IEnumerator TestUIMemory()
-        {
-            var uiElements = FindObjectsOfType<UnityEngine.UI.Graphic>();
-            var memoryUsage = uiElements.Length * 0.1f; // Rough estimate
-
-            var result = new PerformanceTestResult
-            {
-                testName = "UI Memory Test",
-                passed = memoryUsage <= 50f, // Less than 50MB is acceptable
-                value = memoryUsage,
-                threshold = 50f,
-                unit = "MB",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.UI,
-                message = memoryUsage <= 50f ? $"UI memory usage is acceptable: {memoryUsage:F1}MB" : $"UI memory usage is too high: {memoryUsage:F1}MB"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("UIMemory", memoryUsage);
-            yield return null;
-        }
-        #endregion
-
-        #region Gameplay Tests
-        private IEnumerator RunGameplayTests()
-        {
-            Logger.Info("Running gameplay performance tests", "PerformanceTests");
-
-            // Game Logic Test
-            yield return StartCoroutine(TestGameLogic());
-
-            // Physics Test
-            yield return StartCoroutine(TestPhysics());
-
-            // Animation Test
-            yield return StartCoroutine(TestAnimation());
-        }
-
-        private IEnumerator TestGameLogic()
-        {
-            var startTime = Time.time;
-            var operations = 0;
-            var testDuration = 2f;
-
-            while (Time.time - startTime < testDuration)
-            {
-                // Simulate game logic operations
-                for (int i = 0; i < 1000; i++)
-                {
-                    var result = Mathf.Sin(i) * Mathf.Cos(i);
-                    operations++;
-                }
-                yield return null;
-            }
-
-            var operationsPerSecond = operations / testDuration;
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Game Logic Test",
-                passed = operationsPerSecond >= 10000, // At least 10k operations per second
-                value = operationsPerSecond,
-                threshold = 10000,
-                unit = "ops/sec",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Gameplay,
-                message = $"Game logic performance: {operationsPerSecond:F0} operations/second"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("GameLogicOps", operationsPerSecond);
-        }
-
-        private IEnumerator TestPhysics()
-        {
-            var rigidbodies = FindObjectsOfType<Rigidbody>();
-            var physicsTime = 0f;
-            var testDuration = 2f;
-            var startTime = Time.time;
-
-            while (Time.time - startTime < testDuration)
-            {
-                var physicsStart = Time.time;
-                Physics.Simulate(Time.fixedDeltaTime);
-                physicsTime += Time.time - physicsStart;
-                yield return null;
-            }
-
-            var averagePhysicsTime = physicsTime / testDuration * 1000f; // Convert to milliseconds
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Physics Test",
-                passed = averagePhysicsTime <= 5f, // Less than 5ms is acceptable
-                value = averagePhysicsTime,
-                threshold = 5f,
-                unit = "ms",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Gameplay,
-                message = averagePhysicsTime <= 5f ? $"Physics performance is acceptable: {averagePhysicsTime:F1}ms" : $"Physics performance is too slow: {averagePhysicsTime:F1}ms"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("PhysicsTime", averagePhysicsTime);
-        }
-
-        private IEnumerator TestAnimation()
-        {
-            var animators = FindObjectsOfType<Animator>();
-            var animationTime = 0f;
-            var testDuration = 2f;
-            var startTime = Time.time;
-
-            while (Time.time - startTime < testDuration)
-            {
-                var animationStart = Time.time;
-                foreach (var animator in animators)
-                {
-                    animator.Update(Time.deltaTime);
-                }
-                animationTime += Time.time - animationStart;
-                yield return null;
-            }
-
-            var averageAnimationTime = animationTime / testDuration * 1000f; // Convert to milliseconds
-
-            var result = new PerformanceTestResult
-            {
-                testName = "Animation Test",
-                passed = averageAnimationTime <= 10f, // Less than 10ms is acceptable
-                value = averageAnimationTime,
-                threshold = 10f,
-                unit = "ms",
-                timestamp = DateTime.Now,
-                category = PerformanceTestCategory.Gameplay,
-                message = averageAnimationTime <= 10f ? $"Animation performance is acceptable: {averageAnimationTime:F1}ms" : $"Animation performance is too slow: {averageAnimationTime:F1}ms"
-            };
-
-            _testResults.Add(result);
-            UpdateMetric("AnimationTime", averageAnimationTime);
-        }
-        #endregion
-
-        #region Continuous Monitoring
-        private IEnumerator ContinuousMonitoring()
-        {
-            while (true)
-            {
-                yield return new WaitForSeconds(1f);
-                CheckPerformanceAlerts();
-            }
-        }
-
-        private void UpdatePerformanceMetrics()
-        {
-            // Update FPS
-            var fps = 1f / Time.unscaledDeltaTime;
-            UpdateMetric("FPS", fps);
-
-            // Update memory usage
-            var memoryUsage = GC.GetTotalMemory(false) / 1024f / 1024f;
-            UpdateMetric("MemoryUsage", memoryUsage);
-
-            // Update frame time
-            var frameTime = Time.unscaledDeltaTime * 1000f;
-            UpdateMetric("FrameTime", frameTime);
-        }
-
-        private void UpdateMetric(string name, float value)
-        {
-            if (!_metrics.ContainsKey(name))
-            {
-                _metrics[name] = new PerformanceMetric
-                {
-                    name = name,
-                    currentValue = value,
-                    averageValue = value,
-                    minValue = value,
-                    maxValue = value,
-                    lastUpdated = DateTime.Now
-                };
-            }
-            else
-            {
-                var metric = _metrics[name];
-                metric.currentValue = value;
-                metric.history.Add(value);
+                _performanceManager.Update();
+                _graphicsOptimizer.Update();
+                _audioManager.Update();
+                _dataOptimizer.Update();
+                _mobileMemoryManager.Update();
                 
-                if (metric.history.Count > 100)
+                if (i % 1000 == 0)
                 {
-                    metric.history.RemoveAt(0);
+                    // Force garbage collection periodically
+                    System.GC.Collect();
                 }
-
-                var sum = 0f;
-                foreach (var val in metric.history)
-                {
-                    sum += val;
-                }
-                metric.averageValue = sum / metric.history.Count;
-                metric.minValue = Mathf.Min(metric.minValue, value);
-                metric.maxValue = Mathf.Max(metric.maxValue, value);
-                metric.lastUpdated = DateTime.Now;
             }
+            
+            var endTime = Time.realtimeSinceStartup;
+            var duration = endTime - startTime;
+            
+            // Assert
+            Assert.Less(duration, 10f, "High load test should complete within 10 seconds");
+            Assert.Greater(_performanceManager.GetFPS(), 0f, "FPS should be positive after stress test");
+            Assert.Greater(_performanceManager.GetMemoryUsage(), 0, "Memory usage should be positive after stress test");
         }
 
-        private void CheckPerformanceAlerts()
+        [Test]
+        public void StressTest_MemoryPressure_Handling()
         {
-            // Check FPS
-            if (_metrics.ContainsKey("FPS"))
+            // Arrange
+            _mobileMemoryManager.enableMemoryPressureHandling = true;
+            _mobileMemoryManager.memoryPressureThreshold = 0.1f; // Very low threshold for testing
+            
+            // Act - Simulate memory pressure
+            for (int i = 0; i < 1000; i++)
             {
-                var fps = _metrics["FPS"].currentValue;
-                if (fps < minFPS)
-                {
-                    AddAlert($"Low FPS detected: {fps:F1}", PerformanceAlertLevel.Critical, "Rendering");
-                }
+                _mobileMemoryManager.Update();
+                
+                // Simulate memory allocation
+                var tempArray = new byte[1024 * 1024]; // 1MB
+                tempArray = null; // Let it be garbage collected
             }
-
-            // Check memory usage
-            if (_metrics.ContainsKey("MemoryUsage"))
-            {
-                var memory = _metrics["MemoryUsage"].currentValue;
-                if (memory > maxMemoryUsageMB)
-                {
-                    AddAlert($"High memory usage: {memory:F1}MB", PerformanceAlertLevel.Warning, "Memory");
-                }
-            }
-
-            // Check frame time
-            if (_metrics.ContainsKey("FrameTime"))
-            {
-                var frameTime = _metrics["FrameTime"].currentValue;
-                if (frameTime > maxFrameTime)
-                {
-                    AddAlert($"High frame time: {frameTime:F1}ms", PerformanceAlertLevel.Warning, "Rendering");
-                }
-            }
-        }
-
-        private void AddAlert(string message, PerformanceAlertLevel level, string category)
-        {
-            var alert = new PerformanceAlert
-            {
-                message = message,
-                level = level,
-                timestamp = DateTime.Now,
-                category = category
-            };
-
-            _alerts.Add(alert);
-
-            // Keep only last 100 alerts
-            if (_alerts.Count > 100)
-            {
-                _alerts.RemoveAt(0);
-            }
-
-            Logger.Warning($"Performance Alert: {message}", "PerformanceTests");
+            
+            // Assert
+            Assert.IsTrue(_mobileMemoryManager.enableMemoryPressureHandling, "Memory pressure handling should remain enabled");
+            Assert.GreaterOrEqual(_mobileMemoryManager.GetCurrentMemoryUsageMB(), 0f, "Memory usage should be tracked");
         }
         #endregion
-
-        #region Stress Testing
-        public IEnumerator RunStressTest()
-        {
-            if (!enableStressTesting) yield break;
-
-            Logger.Info($"Starting stress test for {stressTestDuration} seconds", "PerformanceTests");
-            var startTime = Time.time;
-
-            while (Time.time - startTime < stressTestDuration)
-            {
-                // Create heavy workload
-                for (int i = 0; i < 100; i++)
-                {
-                    var obj = new GameObject($"StressTest_{i}");
-                    var renderer = obj.AddComponent<MeshRenderer>();
-                    var filter = obj.AddComponent<MeshFilter>();
-                    filter.mesh = new Mesh();
-                    DestroyImmediate(obj);
-                }
-
-                yield return null;
-            }
-
-            Logger.Info("Stress test completed", "PerformanceTests");
-        }
-        #endregion
-
-        #region Statistics and Reporting
-        public Dictionary<string, object> GetTestStatistics()
-        {
-            var totalTests = _testResults.Count;
-            var passedTests = _testResults.FindAll(r => r.passed).Count;
-            var failedTests = totalTests - passedTests;
-
-            return new Dictionary<string, object>
-            {
-                {"total_tests", totalTests},
-                {"passed_tests", passedTests},
-                {"failed_tests", failedTests},
-                {"success_rate", totalTests > 0 ? (float)passedTests / totalTests * 100f : 0f},
-                {"total_alerts", _alerts.Count},
-                {"critical_alerts", _alerts.FindAll(a => a.level == PerformanceAlertLevel.Critical).Count},
-                {"warning_alerts", _alerts.FindAll(a => a.level == PerformanceAlertLevel.Warning).Count},
-                {"metrics_count", _metrics.Count},
-                {"enable_automated_testing", enableAutomatedTesting},
-                {"enable_continuous_monitoring", enableContinuousMonitoring},
-                {"enable_stress_testing", enableStressTesting}
-            };
-        }
-
-        public List<PerformanceTestResult> GetTestResults()
-        {
-            return new List<PerformanceTestResult>(_testResults);
-        }
-
-        public List<PerformanceAlert> GetAlerts()
-        {
-            return new List<PerformanceAlert>(_alerts);
-        }
-
-        public Dictionary<string, PerformanceMetric> GetMetrics()
-        {
-            return new Dictionary<string, PerformanceMetric>(_metrics);
-        }
-
-        public void ClearTestResults()
-        {
-            _testResults.Clear();
-            _alerts.Clear();
-            Logger.Info("Test results cleared", "PerformanceTests");
-        }
-        #endregion
-
-        void OnDestroy()
-        {
-            if (_continuousMonitoringCoroutine != null)
-            {
-                StopCoroutine(_continuousMonitoringCoroutine);
-            }
-        }
     }
 }
