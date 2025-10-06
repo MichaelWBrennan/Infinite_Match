@@ -4,6 +4,7 @@ using Evergreen.Performance;
 using Evergreen.Ads;
 using Evergreen.Social;
 using Evergreen.MetaGame;
+using Evergreen.Economy;
 using System.Collections.Generic;
 
 namespace Evergreen.Core
@@ -227,6 +228,13 @@ namespace Evergreen.Core
             {
                 var go = new GameObject("AdvancedCloudSaveSystem");
                 return go.AddComponent<AdvancedCloudSaveSystem>();
+            });
+            
+            // Register Economy Service
+            ServiceLocator.RegisterFactory<EconomyService>(() => 
+            {
+                var go = new GameObject("EconomyService");
+                return go.AddComponent<EconomyService>();
             });
             
             Debug.Log("Game systems initialized");
