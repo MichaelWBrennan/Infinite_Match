@@ -342,96 +342,112 @@ namespace Evergreen.Audio
             return 1f;
         }
         
-        public void PlayMusic(string clipName, bool loop = true, bool crossfade = true)
+        public void PlayMusic(string clipName, bool fadeIn = true)
         {
             if (!enableMusic || !_audioClipLookup.ContainsKey(clipName)) return;
             
             var clip = _audioClipLookup[clipName];
+            PlayMusic(clip, fadeIn);
+        }
+        
+        public void PlayMusic(AudioClip clip, bool fadeIn = true)
+        {
+            if (!enableMusic || clip == null) return;
             
-            if (crossfade && crossfadeMusic)
+            if (crossfadeMusic && _currentMusicSource.isPlaying)
             {
-                StartCoroutine(CrossfadeMusic(clip, loop));
+                StartCoroutine(CrossfadeMusic(clip, fadeIn));
             }
             else
             {
-                PlayMusicDirect(clip, loop);
-            }
-        }
-        
-        private void PlayMusicDirect(AudioClip clip, bool loop)
-        {
-            if (_currentMusicSource != null)
-            {
                 _currentMusicSource.clip = clip;
-                _currentMusicSource.loop = loop;
                 _currentMusicSource.Play();
+                
+                if (fadeIn)
+                {
+                    StartCoroutine(FadeInMusic());
+                }
+                
                 OnMusicStarted?.Invoke(clip.name);
             }
         }
         
-        private IEnumerator CrossfadeMusic(AudioClip newClip, bool loop)
+        private IEnumerator CrossfadeMusic(AudioClip newClip, bool fadeIn)
         {
             if (_musicCrossfadeCoroutine != null)
             {
                 StopCoroutine(_musicCrossfadeCoroutine);
             }
             
-            _musicCrossfadeCoroutine = StartCoroutine(CrossfadeMusicCoroutine(newClip, loop));
+            _musicCrossfadeCoroutine = StartCoroutine(CrossfadeMusicCoroutine(newClip, fadeIn));
             yield return _musicCrossfadeCoroutine;
         }
         
-        private IEnumerator CrossfadeMusicCoroutine(AudioClip newClip, bool loop)
+        private IEnumerator CrossfadeMusicCoroutine(AudioClip newClip, bool fadeIn)
         {
-            // Create next music source if needed
-            if (_nextMusicSource == null)
-            {
-                _nextMusicSource = CreateAudioSource("NextMusicSource", AudioType.Music);
-            }
-            
-            // Setup next music source
+            // Create next music source
+            _nextMusicSource = CreateAudioSource("NextMusicSource", AudioType.Music);
             _nextMusicSource.clip = newClip;
-            _nextMusicSource.loop = loop;
             _nextMusicSource.volume = 0f;
             _nextMusicSource.Play();
             
-            // Crossfade
+            // Fade out current, fade in next
             float elapsed = 0f;
             while (elapsed < crossfadeDuration)
             {
-                float t = elapsed / crossfadeDuration;
-                
-                if (_currentMusicSource != null)
-                {
-                    _currentMusicSource.volume = musicVolume * masterVolume * (1f - t);
-                }
-                
-                _nextMusicSource.volume = musicVolume * masterVolume * t;
+                float progress = elapsed / crossfadeDuration;
+                _currentMusicSource.volume = musicVolume * masterVolume * (1f - progress);
+                _nextMusicSource.volume = musicVolume * masterVolume * progress;
                 
                 elapsed += Time.deltaTime;
                 yield return null;
             }
             
-            // Complete crossfade
-            if (_currentMusicSource != null)
-            {
-                _currentMusicSource.Stop();
-                _currentMusicSource.volume = musicVolume * masterVolume;
-            }
-            
-            _nextMusicSource.volume = musicVolume * masterVolume;
-            
-            // Swap sources
-            var temp = _currentMusicSource;
+            // Clean up
+            _currentMusicSource.Stop();
+            Destroy(_currentMusicSource.gameObject);
             _currentMusicSource = _nextMusicSource;
-            _nextMusicSource = temp;
+            _nextMusicSource = null;
             
             OnMusicStarted?.Invoke(newClip.name);
             _musicCrossfadeCoroutine = null;
         }
         
+        private IEnumerator FadeInMusic()
+        {
+            if (_musicFadeCoroutine != null)
+            {
+                StopCoroutine(_musicFadeCoroutine);
+            }
+            
+            _musicFadeCoroutine = StartCoroutine(FadeInMusicCoroutine());
+            yield return _musicFadeCoroutine;
+        }
+        
+        private IEnumerator FadeInMusicCoroutine()
+        {
+            float startVolume = 0f;
+            float targetVolume = musicVolume * masterVolume;
+            
+            _currentMusicSource.volume = startVolume;
+            
+            float elapsed = 0f;
+            while (elapsed < musicFadeInDuration)
+            {
+                float progress = elapsed / musicFadeInDuration;
+                _currentMusicSource.volume = Mathf.Lerp(startVolume, targetVolume, progress);
+                
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            
+            _currentMusicSource.volume = targetVolume;
+            _musicFadeCoroutine = null;
+        }
+        
         public void StopMusic(bool fadeOut = true)
         {
-            if (_currentMusicSource == null || !_currentMusicSource.isPlaying) return;
+            if (!_currentMusicSource.isPlaying) return;
             
             if (fadeOut)
             {
@@ -446,39 +462,35 @@ namespace Evergreen.Audio
         
         private IEnumerator FadeOutMusic()
         {
-            if (_musicFadeCoroutine != null)
-            {
-                StopCoroutine(_musicFadeCoroutine);
-            }
-            
-            _musicFadeCoroutine = StartCoroutine(FadeOutMusicCoroutine());
-            yield return _musicFadeCoroutine;
-        }
-        
-        private IEnumerator FadeOutMusicCoroutine()
-        {
             float startVolume = _currentMusicSource.volume;
             float elapsed = 0f;
             
             while (elapsed < musicFadeOutDuration)
             {
-                float t = elapsed / musicFadeOutDuration;
-                _currentMusicSource.volume = startVolume * (1f - t);
+                float progress = elapsed / musicFadeOutDuration;
+                _currentMusicSource.volume = Mathf.Lerp(startVolume, 0f, progress);
+                
                 elapsed += Time.deltaTime;
                 yield return null;
             }
             
             _currentMusicSource.Stop();
-            _currentMusicSource.volume = startVolume;
+            _currentMusicSource.volume = musicVolume * masterVolume;
             OnMusicStopped?.Invoke(_currentMusicSource.clip?.name ?? "Unknown");
-            _musicFadeCoroutine = null;
         }
         
-        public void PlaySFX(string clipName, Vector3 position = default, float pitch = 1f, float volume = 1f)
+        public void PlaySFX(string clipName, Vector3 position = default, float pitch = 1f)
         {
             if (!enableSFX || !_audioClipLookup.ContainsKey(clipName)) return;
             
             var clip = _audioClipLookup[clipName];
+            PlaySFX(clip, position, pitch);
+        }
+        
+        public void PlaySFX(AudioClip clip, Vector3 position = default, float pitch = 1f)
+        {
+            if (!enableSFX || clip == null) return;
+            
             AudioSource source = null;
             
             if (enableSFXPooling && _availableSFXSources.Count > 0)
@@ -491,20 +503,12 @@ namespace Evergreen.Audio
                 source = sfxSource;
             }
             
-            if (source != null)
-            {
-                source.clip = clip;
-                source.pitch = pitch + UnityEngine.Random.Range(-sfxPitchVariation, sfxPitchVariation);
-                source.volume = sfxVolume * masterVolume * volume;
-                
-                if (position != default && enable3DAudio)
-                {
-                    source.transform.position = position;
-                }
-                
-                source.Play();
-                OnSFXPlayed?.Invoke(clipName);
-            }
+            source.clip = clip;
+            source.pitch = pitch + UnityEngine.Random.Range(-sfxPitchVariation, sfxPitchVariation);
+            source.transform.position = position;
+            source.Play();
+            
+            OnSFXPlayed?.Invoke(clip.name);
         }
         
         public void PlayVoice(string clipName, bool showSubtitles = true)
@@ -512,25 +516,29 @@ namespace Evergreen.Audio
             if (!enableVoice || !_audioClipLookup.ContainsKey(clipName)) return;
             
             var clip = _audioClipLookup[clipName];
-            
-            if (voiceSource != null)
-            {
-                voiceSource.clip = clip;
-                voiceSource.Play();
-                OnVoicePlayed?.Invoke(clipName);
-                
-                if (showSubtitles && enableVoiceSubtitles)
-                {
-                    StartCoroutine(ShowVoiceSubtitles(clipName, clip.length));
-                }
-            }
+            PlayVoice(clip, showSubtitles);
         }
         
-        private IEnumerator ShowVoiceSubtitles(string clipName, float duration)
+        public void PlayVoice(AudioClip clip, bool showSubtitles = true)
+        {
+            if (!enableVoice || clip == null) return;
+            
+            voiceSource.clip = clip;
+            voiceSource.Play();
+            
+            if (showSubtitles && enableVoiceSubtitles)
+            {
+                StartCoroutine(ShowVoiceSubtitles(clip.name));
+            }
+            
+            OnVoicePlayed?.Invoke(clip.name);
+        }
+        
+        private IEnumerator ShowVoiceSubtitles(string text)
         {
             // This would integrate with your UI system to show subtitles
-            Debug.Log($"Voice: {clipName}");
-            yield return new WaitForSeconds(duration);
+            Debug.Log($"Voice: {text}");
+            yield return new WaitForSeconds(voiceSubtitleDuration);
         }
         
         public void PlayAmbient(string clipName, bool loop = true)
@@ -538,28 +546,32 @@ namespace Evergreen.Audio
             if (!enableAmbient || !_audioClipLookup.ContainsKey(clipName)) return;
             
             var clip = _audioClipLookup[clipName];
-            
-            if (ambientSource != null)
-            {
-                ambientSource.clip = clip;
-                ambientSource.loop = loop;
-                ambientSource.Play();
-            }
+            PlayAmbient(clip, loop);
         }
         
-        public void PlayUI(string clipName, float pitch = 1f, float volume = 1f)
+        public void PlayAmbient(AudioClip clip, bool loop = true)
+        {
+            if (!enableAmbient || clip == null) return;
+            
+            ambientSource.clip = clip;
+            ambientSource.loop = loop;
+            ambientSource.Play();
+        }
+        
+        public void PlayUI(string clipName)
         {
             if (!enableUI || !_audioClipLookup.ContainsKey(clipName)) return;
             
             var clip = _audioClipLookup[clipName];
+            PlayUI(clip);
+        }
+        
+        public void PlayUI(AudioClip clip)
+        {
+            if (!enableUI || clip == null) return;
             
-            if (uiSource != null)
-            {
-                uiSource.clip = clip;
-                uiSource.pitch = pitch;
-                uiSource.volume = uiVolume * masterVolume * volume;
-                uiSource.Play();
-            }
+            uiSource.clip = clip;
+            uiSource.Play();
         }
         
         public void SetMasterVolume(float volume)
@@ -603,155 +615,274 @@ namespace Evergreen.Audio
         {
             if (musicSource != null)
                 musicSource.volume = musicVolume * masterVolume;
+                
             if (sfxSource != null)
                 sfxSource.volume = sfxVolume * masterVolume;
+                
             if (voiceSource != null)
                 voiceSource.volume = voiceVolume * masterVolume;
+                
             if (ambientSource != null)
                 ambientSource.volume = ambientVolume * masterVolume;
+                
             if (uiSource != null)
                 uiSource.volume = uiVolume * masterVolume;
         }
         
         public void MuteAll(bool mute)
         {
-            masterVolume = mute ? 0f : 1f;
-            UpdateVolumeSettings();
+            AudioListener.volume = mute ? 0f : 1f;
         }
         
         public void MuteMusic(bool mute)
         {
-            musicVolume = mute ? 0f : 0.8f;
-            UpdateVolumeSettings();
+            if (musicSource != null)
+                musicSource.mute = mute;
         }
         
         public void MuteSFX(bool mute)
         {
-            sfxVolume = mute ? 0f : 1f;
-            UpdateVolumeSettings();
+            if (sfxSource != null)
+                sfxSource.mute = mute;
         }
         
         public void MuteVoice(bool mute)
         {
-            voiceVolume = mute ? 0f : 1f;
-            UpdateVolumeSettings();
+            if (voiceSource != null)
+                voiceSource.mute = mute;
         }
         
         public void MuteAmbient(bool mute)
         {
-            ambientVolume = mute ? 0f : 0.6f;
-            UpdateVolumeSettings();
+            if (ambientSource != null)
+                ambientSource.mute = mute;
         }
         
         public void MuteUI(bool mute)
         {
-            uiVolume = mute ? 0f : 0.9f;
-            UpdateVolumeSettings();
+            if (uiSource != null)
+                uiSource.mute = mute;
         }
         
         public void PauseAll()
         {
-            if (musicSource != null && musicSource.isPlaying)
-                musicSource.Pause();
-            if (sfxSource != null && sfxSource.isPlaying)
-                sfxSource.Pause();
-            if (voiceSource != null && voiceSource.isPlaying)
-                voiceSource.Pause();
-            if (ambientSource != null && ambientSource.isPlaying)
-                ambientSource.Pause();
-            if (uiSource != null && uiSource.isPlaying)
-                uiSource.Pause();
+            AudioListener.pause = true;
         }
         
-        public void ResumeAll()
+        public void UnpauseAll()
         {
-            if (musicSource != null)
-                musicSource.UnPause();
-            if (sfxSource != null)
-                sfxSource.UnPause();
-            if (voiceSource != null)
-                voiceSource.UnPause();
-            if (ambientSource != null)
-                ambientSource.UnPause();
-            if (uiSource != null)
-                uiSource.UnPause();
+            AudioListener.pause = false;
         }
         
         public void StopAll()
         {
-            if (musicSource != null)
-                musicSource.Stop();
+            if (musicSource != null) musicSource.Stop();
+            if (sfxSource != null) sfxSource.Stop();
+            if (voiceSource != null) voiceSource.Stop();
+            if (ambientSource != null) ambientSource.Stop();
+            if (uiSource != null) uiSource.Stop();
+        }
+        
+        public void StopSFX()
+        {
+            if (sfxSource != null) sfxSource.Stop();
+            
+            // Stop all pooled SFX sources
+            foreach (var source in _sfxPool)
+            {
+                if (source != null) source.Stop();
+            }
+        }
+        
+        public void StopVoice()
+        {
+            if (voiceSource != null) voiceSource.Stop();
+        }
+        
+        public void StopAmbient()
+        {
+            if (ambientSource != null) ambientSource.Stop();
+        }
+        
+        public void StopUI()
+        {
+            if (uiSource != null) uiSource.Stop();
+        }
+        
+        public bool IsMusicPlaying()
+        {
+            return musicSource != null && musicSource.isPlaying;
+        }
+        
+        public bool IsSFXPlaying()
+        {
+            return sfxSource != null && sfxSource.isPlaying;
+        }
+        
+        public bool IsVoicePlaying()
+        {
+            return voiceSource != null && voiceSource.isPlaying;
+        }
+        
+        public bool IsAmbientPlaying()
+        {
+            return ambientSource != null && ambientSource.isPlaying;
+        }
+        
+        public bool IsUIPlaying()
+        {
+            return uiSource != null && uiSource.isPlaying;
+        }
+        
+        public float GetMusicTime()
+        {
+            return musicSource != null ? musicSource.time : 0f;
+        }
+        
+        public float GetMusicLength()
+        {
+            return musicSource != null && musicSource.clip != null ? musicSource.clip.length : 0f;
+        }
+        
+        public void SetMusicTime(float time)
+        {
+            if (musicSource != null && musicSource.clip != null)
+            {
+                musicSource.time = Mathf.Clamp(time, 0f, musicSource.clip.length);
+            }
+        }
+        
+        public void SetSFXPitch(float pitch)
+        {
             if (sfxSource != null)
-                sfxSource.Stop();
+                sfxSource.pitch = pitch;
+        }
+        
+        public void SetVoicePitch(float pitch)
+        {
             if (voiceSource != null)
-                voiceSource.Stop();
+                voiceSource.pitch = pitch;
+        }
+        
+        public void SetAmbientPitch(float pitch)
+        {
             if (ambientSource != null)
-                ambientSource.Stop();
+                ambientSource.pitch = pitch;
+        }
+        
+        public void SetUIPitch(float pitch)
+        {
             if (uiSource != null)
-                uiSource.Stop();
+                uiSource.pitch = pitch;
         }
         
-        public bool IsPlaying(string clipName)
+        public void Set3DAudioEnabled(bool enabled)
         {
-            if (!_audioClipLookup.ContainsKey(clipName)) return false;
+            enable3DAudio = enabled;
+            enableSpatialAudio = enabled;
+        }
+        
+        public void SetSpatialBlend(float blend)
+        {
+            sfxSpatialBlend = Mathf.Clamp01(blend);
             
-            var clip = _audioClipLookup[clipName];
-            
-            foreach (var source in _audioSourceLookup.Values)
+            // Update all SFX sources
+            foreach (var source in _sfxPool)
             {
-                if (source != null && source.clip == clip && source.isPlaying)
-                {
-                    return true;
-                }
+                if (source != null)
+                    source.spatialBlend = sfxSpatialBlend;
             }
-            
-            return false;
         }
         
-        public float GetClipLength(string clipName)
+        public void SetMaxDistance(float distance)
         {
-            if (!_audioClipLookup.ContainsKey(clipName)) return 0f;
-            
-            return _audioClipLookup[clipName].length;
+            max3DDistance = Mathf.Max(0f, distance);
         }
         
-        public void SetAudioClip(string category, string clipName, AudioClip clip)
+        public void SetDopplerLevel(float level)
         {
+            dopplerLevel = Mathf.Max(0f, level);
+        }
+        
+        public void SetSpread(float spread)
+        {
+            this.spread = Mathf.Clamp(spread, 0f, 360f);
+        }
+        
+        public void SetVolumeRolloff(AnimationCurve curve)
+        {
+            volumeRolloff = curve;
+        }
+        
+        public void AddAudioClip(AudioClip clip, string name = null)
+        {
+            if (clip == null) return;
+            
+            string clipName = name ?? clip.name;
             _audioClipLookup[clipName] = clip;
-            
-            switch (category.ToLower())
+        }
+        
+        public void RemoveAudioClip(string name)
+        {
+            if (_audioClipLookup.ContainsKey(name))
             {
-                case "music":
-                    if (musicTracks == null) musicTracks = new AudioClip[0];
-                    var musicList = new List<AudioClip>(musicTracks);
-                    musicList.Add(clip);
-                    musicTracks = musicList.ToArray();
-                    break;
-                case "sfx":
-                    if (sfxClips == null) sfxClips = new AudioClip[0];
-                    var sfxList = new List<AudioClip>(sfxClips);
-                    sfxList.Add(clip);
-                    sfxClips = sfxList.ToArray();
-                    break;
-                case "voice":
-                    if (voiceClips == null) voiceClips = new AudioClip[0];
-                    var voiceList = new List<AudioClip>(voiceClips);
-                    voiceList.Add(clip);
-                    voiceClips = voiceList.ToArray();
-                    break;
-                case "ambient":
-                    if (ambientClips == null) ambientClips = new AudioClip[0];
-                    var ambientList = new List<AudioClip>(ambientClips);
-                    ambientList.Add(clip);
-                    ambientClips = ambientList.ToArray();
-                    break;
-                case "ui":
-                    if (uiClips == null) uiClips = new AudioClip[0];
-                    var uiList = new List<AudioClip>(uiClips);
-                    uiList.Add(clip);
-                    uiClips = uiList.ToArray();
-                    break;
+                _audioClipLookup.Remove(name);
             }
+        }
+        
+        public AudioClip GetAudioClip(string name)
+        {
+            return _audioClipLookup.ContainsKey(name) ? _audioClipLookup[name] : null;
+        }
+        
+        public bool HasAudioClip(string name)
+        {
+            return _audioClipLookup.ContainsKey(name);
+        }
+        
+        public void ClearAllAudioClips()
+        {
+            _audioClipLookup.Clear();
+        }
+        
+        public void SaveAudioSettings()
+        {
+            // Save audio settings to PlayerPrefs
+            PlayerPrefs.SetFloat("MasterVolume", masterVolume);
+            PlayerPrefs.SetFloat("MusicVolume", musicVolume);
+            PlayerPrefs.SetFloat("SFXVolume", sfxVolume);
+            PlayerPrefs.SetFloat("VoiceVolume", voiceVolume);
+            PlayerPrefs.SetFloat("AmbientVolume", ambientVolume);
+            PlayerPrefs.SetFloat("UIVolume", uiVolume);
+            PlayerPrefs.SetInt("MusicEnabled", enableMusic ? 1 : 0);
+            PlayerPrefs.SetInt("SFXEnabled", enableSFX ? 1 : 0);
+            PlayerPrefs.SetInt("VoiceEnabled", enableVoice ? 1 : 0);
+            PlayerPrefs.SetInt("AmbientEnabled", enableAmbient ? 1 : 0);
+            PlayerPrefs.SetInt("UIEnabled", enableUI ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+        
+        public void LoadAudioSettings()
+        {
+            // Load audio settings from PlayerPrefs
+            masterVolume = PlayerPrefs.GetFloat("MasterVolume", 1f);
+            musicVolume = PlayerPrefs.GetFloat("MusicVolume", 0.8f);
+            sfxVolume = PlayerPrefs.GetFloat("SFXVolume", 1f);
+            voiceVolume = PlayerPrefs.GetFloat("VoiceVolume", 1f);
+            ambientVolume = PlayerPrefs.GetFloat("AmbientVolume", 0.6f);
+            uiVolume = PlayerPrefs.GetFloat("UIVolume", 0.9f);
+            enableMusic = PlayerPrefs.GetInt("MusicEnabled", 1) == 1;
+            enableSFX = PlayerPrefs.GetInt("SFXEnabled", 1) == 1;
+            enableVoice = PlayerPrefs.GetInt("VoiceEnabled", 1) == 1;
+            enableAmbient = PlayerPrefs.GetInt("AmbientEnabled", 1) == 1;
+            enableUI = PlayerPrefs.GetInt("UIEnabled", 1) == 1;
+            
+            UpdateVolumeSettings();
+        }
+        
+        void OnDestroy()
+        {
+            SaveAudioSettings();
         }
     }
     
