@@ -1,0 +1,34 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+
+# If you want to use a different app identifier, uncomment the following line
+# app_identifier("your.app.identifier")
+
+# If you want to use a different team, uncomment the following line
+# team_id("your.team.id")
+
+# For more information about the Appfile, see:
+#     https://docs.fastlane.tools/advanced/#appfile
+
+# Android configuration
+android_package_name("com.evergreen.match3")
+
+# iOS configuration
+ios_app_identifier("com.evergreen.match3")
+ios_team_id(ENV["APPLE_TEAM_ID"])
+
+# App Store Connect API Key (for iOS)
+# app_store_connect_api_key(
+#   key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+#   issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+#   key_filepath: ENV["APP_STORE_CONNECT_API_KEY"],
+#   duration: 1200, # optional (maximum 1200)
+#   in_house: false, # optional but may be required if using match/sigh
+# )
+
+# Google Play Console API (for Android)
+# google_play_json_key(ENV["GOOGLE_PLAY_JSON"])
+
+# It's recommended to not store the above in git. Instead, use environment variables.
+# You can also use the `--env` option when running fastlane.
+# Learn more at https://docs.fastlane.tools/advanced/#environment-variables

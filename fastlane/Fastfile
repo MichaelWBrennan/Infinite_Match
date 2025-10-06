@@ -1,0 +1,270 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:android)
+
+platform :android do
+  desc "Deploy Android app to Google Play"
+  lane :deploy do |options|
+    # Get parameters
+    track = options[:track] || "internal"
+    aab_path = options[:aab_path] || "build/Android/*.aab"
+    json_key = options[:json_key] || ENV["GOOGLE_PLAY_JSON"]
+    
+    # Validate required parameters
+    unless json_key
+      UI.user_error!("Google Play JSON key is required. Set GOOGLE_PLAY_JSON environment variable or pass json_key parameter.")
+    end
+    
+    # Find the AAB file
+    aab_files = Dir.glob(aab_path)
+    unless aab_files.any?
+      UI.user_error!("No AAB file found at #{aab_path}")
+    end
+    
+    aab_file = aab_files.first
+    UI.success("Found AAB file: #{aab_file}")
+    
+    # Upload to Google Play
+    upload_to_play_store(
+      track: track,
+      aab: aab_file,
+      json_key: json_key,
+      skip_upload_metadata: options[:skip_upload_metadata] || false,
+      skip_upload_images: options[:skip_upload_images] || false,
+      skip_upload_screenshots: options[:skip_upload_screenshots] || false,
+      skip_upload_changelogs: false,
+      release_status: "draft"
+    )
+    
+    UI.success("Successfully uploaded to Google Play #{track} track!")
+  end
+  
+  desc "Upload metadata to Google Play"
+  lane :upload_metadata do |options|
+    json_key = options[:json_key] || ENV["GOOGLE_PLAY_JSON"]
+    
+    upload_to_play_store(
+      track: "internal",
+      json_key: json_key,
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      skip_upload_changelogs: false
+    )
+    
+    UI.success("Successfully uploaded metadata to Google Play!")
+  end
+  
+  desc "Upload screenshots to Google Play"
+  lane :upload_screenshots do |options|
+    json_key = options[:json_key] || ENV["GOOGLE_PLAY_JSON"]
+    
+    upload_to_play_store(
+      track: "internal",
+      json_key: json_key,
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      skip_upload_changelogs: true
+    )
+    
+    UI.success("Successfully uploaded screenshots to Google Play!")
+  end
+end
+
+platform :ios do
+  desc "Deploy iOS app to TestFlight"
+  lane :deploy do |options|
+    # Get parameters
+    ipa_path = options[:ipa_path] || "build/iOS/*.ipa"
+    api_key = options[:api_key] || ENV["APP_STORE_CONNECT_API_KEY"]
+    
+    # Validate required parameters
+    unless api_key
+      UI.user_error!("App Store Connect API key is required. Set APP_STORE_CONNECT_API_KEY environment variable or pass api_key parameter.")
+    end
+    
+    # Find the IPA file
+    ipa_files = Dir.glob(ipa_path)
+    unless ipa_files.any?
+      UI.user_error!("No IPA file found at #{ipa_path}")
+    end
+    
+    ipa_file = ipa_files.first
+    UI.success("Found IPA file: #{ipa_file}")
+    
+    # Upload to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa_file,
+      skip_waiting_for_build_processing: true,
+      skip_metadata: options[:skip_metadata] || false,
+      skip_screenshots: options[:skip_screenshots] || false,
+      skip_binary_upload: false,
+      skip_submission: true,
+      distribute_external: false,
+      notify_external_testers: false
+    )
+    
+    UI.success("Successfully uploaded to TestFlight!")
+  end
+  
+  desc "Upload metadata to App Store Connect"
+  lane :upload_metadata do |options|
+    api_key = options[:api_key] || ENV["APP_STORE_CONNECT_API_KEY"]
+    
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      skip_metadata: false,
+      skip_screenshots: false,
+      skip_binary_upload: true,
+      skip_submission: true
+    )
+    
+    UI.success("Successfully uploaded metadata to App Store Connect!")
+  end
+  
+  desc "Upload screenshots to App Store Connect"
+  lane :upload_screenshots do |options|
+    api_key = options[:api_key] || ENV["APP_STORE_CONNECT_API_KEY"]
+    
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      skip_metadata: true,
+      skip_screenshots: false,
+      skip_binary_upload: true,
+      skip_submission: true
+    )
+    
+    UI.success("Successfully uploaded screenshots to App Store Connect!")
+  end
+  
+  desc "Submit app for review"
+  lane :submit_for_review do |options|
+    api_key = options[:api_key] || ENV["APP_STORE_CONNECT_API_KEY"]
+    
+    submit_for_review(
+      api_key: api_key,
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: true
+    )
+    
+    UI.success("Successfully submitted app for review!")
+  end
+end
+
+# Cross-platform lanes
+desc "Deploy to both platforms"
+lane :deploy_all do |options|
+  # Deploy Android
+  android_deploy(
+    track: options[:track] || "internal",
+    aab_path: options[:aab_path] || "build/Android/*.aab",
+    json_key: options[:json_key] || ENV["GOOGLE_PLAY_JSON"]
+  )
+  
+  # Deploy iOS
+  ios_deploy(
+    ipa_path: options[:ipa_path] || "build/iOS/*.ipa",
+    api_key: options[:api_key] || ENV["APP_STORE_CONNECT_API_KEY"]
+  )
+  
+  UI.success("Successfully deployed to both platforms!")
+end
+
+desc "Upload metadata to both platforms"
+lane :upload_metadata_all do |options|
+  # Upload Android metadata
+  android_upload_metadata(
+    json_key: options[:json_key] || ENV["GOOGLE_PLAY_JSON"]
+  )
+  
+  # Upload iOS metadata
+  ios_upload_metadata(
+    api_key: options[:api_key] || ENV["APP_STORE_CONNECT_API_KEY"]
+  )
+  
+  UI.success("Successfully uploaded metadata to both platforms!")
+end
+
+desc "Upload screenshots to both platforms"
+lane :upload_screenshots_all do |options|
+  # Upload Android screenshots
+  android_upload_screenshots(
+    json_key: options[:json_key] || ENV["GOOGLE_PLAY_JSON"]
+  )
+  
+  # Upload iOS screenshots
+  ios_upload_screenshots(
+    api_key: options[:api_key] || ENV["APP_STORE_CONNECT_API_KEY"]
+  )
+  
+  UI.success("Successfully uploaded screenshots to both platforms!")
+end
+
+# Utility lanes
+desc "Clean build artifacts"
+lane :clean do
+  # Clean Android build
+  sh("rm -rf build/Android")
+  
+  # Clean iOS build
+  sh("rm -rf build/iOS")
+  
+  # Clean changelog
+  sh("rm -f build/changelog.txt")
+  
+  UI.success("Build artifacts cleaned!")
+end
+
+desc "Show current version info"
+lane :version_info do
+  # Get version from Unity project
+  if File.exist?("ProjectSettings/ProjectSettings.asset")
+    version_line = File.readlines("ProjectSettings/ProjectSettings.asset").find { |line| line.include?("bundleVersion:") }
+    if version_line
+      version = version_line.split(":")[1].strip
+      UI.success("Current version: #{version}")
+    else
+      UI.error("Could not find version in ProjectSettings.asset")
+    end
+  else
+    UI.error("ProjectSettings.asset not found")
+  end
+end
+
+# Error handling
+error do |lane, exception|
+  UI.error("Error in lane #{lane}: #{exception.message}")
+  UI.error("Backtrace: #{exception.backtrace.join("\n")}")
+end
+
+# Before each lane
+before_all do |lane|
+  UI.success("Starting lane: #{lane}")
+end
+
+# After each lane
+after_all do |lane|
+  UI.success("Completed lane: #{lane}")
+end
