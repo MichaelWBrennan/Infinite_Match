@@ -3,6 +3,8 @@ using Evergreen.Game;
 using Evergreen.Performance;
 using Evergreen.Ads;
 using Evergreen.Social;
+using Evergreen.MetaGame;
+using System.Collections.Generic;
 
 namespace Evergreen.Core
 {
@@ -16,9 +18,14 @@ namespace Evergreen.Core
         [SerializeField] private bool enablePerformanceMonitoring = true;
         [SerializeField] private bool enableAnalytics = true;
         
+        [Header("Currency Settings")]
+        [SerializeField] private int startingCoins = 1000;
+        [SerializeField] private int startingGems = 50;
+        
         public static GameManager Instance { get; private set; }
         
         private bool _isInitialized = false;
+        private Dictionary<string, int> _currencies = new Dictionary<string, int>();
         
         void Awake()
         {
@@ -86,7 +93,19 @@ namespace Evergreen.Core
             // Load game state
             GameState.Load();
             
+            // Initialize currencies
+            InitializeCurrencies();
+            
             Debug.Log("Core systems initialized");
+        }
+        
+        private void InitializeCurrencies()
+        {
+            _currencies["coins"] = startingCoins;
+            _currencies["gems"] = startingGems;
+            
+            // Load saved currencies
+            LoadCurrencies();
         }
         
         private void InitializeGameSystems()
@@ -117,6 +136,55 @@ namespace Evergreen.Core
             {
                 var go = new GameObject("UnityAdsManager");
                 return go.AddComponent<UnityAdsManager>();
+            });
+            
+            // Register Energy System
+            ServiceLocator.RegisterFactory<EnergySystem>(() => 
+            {
+                var go = new GameObject("EnergySystem");
+                return go.AddComponent<EnergySystem>();
+            });
+            
+            // Register Castle Renovation System
+            ServiceLocator.RegisterFactory<CastleRenovationSystem>(() => 
+            {
+                var go = new GameObject("CastleRenovationSystem");
+                return go.AddComponent<CastleRenovationSystem>();
+            });
+            
+            // Register Character System
+            ServiceLocator.RegisterFactory<CharacterSystem>(() => 
+            {
+                var go = new GameObject("CharacterSystem");
+                return go.AddComponent<CharacterSystem>();
+            });
+            
+            // Register Enhanced Match Effects
+            ServiceLocator.RegisterFactory<EnhancedMatchEffects>(() => 
+            {
+                var go = new GameObject("EnhancedMatchEffects");
+                return go.AddComponent<EnhancedMatchEffects>();
+            });
+            
+            // Register Enhanced Audio Manager
+            ServiceLocator.RegisterFactory<EnhancedAudioManager>(() => 
+            {
+                var go = new GameObject("EnhancedAudioManager");
+                return go.AddComponent<EnhancedAudioManager>();
+            });
+            
+            // Register Enhanced UI Manager
+            ServiceLocator.RegisterFactory<EnhancedUIManager>(() => 
+            {
+                var go = new GameObject("EnhancedUIManager");
+                return go.AddComponent<EnhancedUIManager>();
+            });
+            
+            // Register Game Integration Manager
+            ServiceLocator.RegisterFactory<GameIntegrationManager>(() => 
+            {
+                var go = new GameObject("GameIntegrationManager");
+                return go.AddComponent<GameIntegrationManager>();
             });
             
             Debug.Log("Game systems initialized");
@@ -159,6 +227,73 @@ namespace Evergreen.Core
         }
         
         /// <summary>
+        /// Get currency amount
+        /// </summary>
+        public int GetCurrency(string currencyType)
+        {
+            return _currencies.ContainsKey(currencyType) ? _currencies[currencyType] : 0;
+        }
+        
+        /// <summary>
+        /// Add currency
+        /// </summary>
+        public void AddCurrency(string currencyType, int amount)
+        {
+            if (!_currencies.ContainsKey(currencyType))
+                _currencies[currencyType] = 0;
+                
+            _currencies[currencyType] += amount;
+            SaveCurrencies();
+        }
+        
+        /// <summary>
+        /// Spend currency
+        /// </summary>
+        public bool SpendCurrency(string currencyType, int amount)
+        {
+            if (!_currencies.ContainsKey(currencyType) || _currencies[currencyType] < amount)
+                return false;
+                
+            _currencies[currencyType] -= amount;
+            SaveCurrencies();
+            return true;
+        }
+        
+        /// <summary>
+        /// Set currency amount
+        /// </summary>
+        public void SetCurrency(string currencyType, int amount)
+        {
+            _currencies[currencyType] = amount;
+            SaveCurrencies();
+        }
+        
+        private void LoadCurrencies()
+        {
+            string path = Application.persistentDataPath + "/currencies.json";
+            if (System.IO.File.Exists(path))
+            {
+                string json = System.IO.File.ReadAllText(path);
+                var currencyData = JsonUtility.FromJson<CurrencyData>(json);
+                
+                _currencies["coins"] = currencyData.coins;
+                _currencies["gems"] = currencyData.gems;
+            }
+        }
+        
+        private void SaveCurrencies()
+        {
+            var currencyData = new CurrencyData
+            {
+                coins = GetCurrency("coins"),
+                gems = GetCurrency("gems")
+            };
+            
+            string json = JsonUtility.ToJson(currencyData, true);
+            System.IO.File.WriteAllText(Application.persistentDataPath + "/currencies.json", json);
+        }
+        
+        /// <summary>
         /// Shutdown all systems
         /// </summary>
         public void Shutdown()
@@ -169,6 +304,9 @@ namespace Evergreen.Core
             
             // Save game state
             GameState.Save();
+            
+            // Save currencies
+            SaveCurrencies();
             
             // Clear service locator
             ServiceLocator.Clear();
@@ -200,5 +338,12 @@ namespace Evergreen.Core
                 Shutdown();
             }
         }
+    }
+    
+    [System.Serializable]
+    public class CurrencyData
+    {
+        public int coins;
+        public int gems;
     }
 }
