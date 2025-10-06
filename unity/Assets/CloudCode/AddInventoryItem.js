@@ -1,16 +1,16 @@
 // Cloud Code function to add inventory item to player
 // This function is called from the Unity client to add inventory items
 
-const { EconomyApi } = require("@unity-services/economy-2.4");
+const { EconomyApi } = require("@unity-services/economy-2.4.0");
 
 module.exports = async ({ params, context, logger }) => {
     try {
-        const { itemId, quantity } = params;
+        const { itemId, quantity = 1 } = params;
         
-        if (!itemId || !quantity || quantity <= 0) {
+        if (!itemId || quantity <= 0) {
             return {
                 success: false,
-                errorMessage: "Invalid parameters"
+                errorMessage: "Invalid parameters: itemId and quantity are required"
             };
         }
         
@@ -24,23 +24,25 @@ module.exports = async ({ params, context, logger }) => {
             };
         }
         
-        // Add inventory item using Economy API
-        await EconomyApi.addInventoryItem({
+        // Add inventory item to player
+        const economyApi = new EconomyApi();
+        const result = await economyApi.addInventoryItem({
             playerId: playerId,
-            inventoryItemId: itemId,
+            itemId: itemId,
             quantity: quantity
         });
         
-        logger.info(`Added ${quantity} ${itemId} to player ${playerId}`);
+        logger.info(`Added ${quantity} ${itemId} to player ${playerId} inventory`);
         
         return {
             success: true,
             itemId: itemId,
-            quantity: quantity
+            quantityAdded: quantity,
+            newQuantity: result.quantity
         };
         
     } catch (error) {
-        logger.error(`AddInventoryItem error: ${error.message}`);
+        logger.error(`Error adding inventory item: ${error.message}`);
         return {
             success: false,
             errorMessage: error.message

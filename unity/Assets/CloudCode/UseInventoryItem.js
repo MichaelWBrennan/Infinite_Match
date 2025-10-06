@@ -1,16 +1,16 @@
-// Cloud Code function to use/consume inventory item
+// Cloud Code function to use/consume inventory item from player
 // This function is called from the Unity client to use inventory items
 
-const { EconomyApi } = require("@unity-services/economy-2.4");
+const { EconomyApi } = require("@unity-services/economy-2.4.0");
 
 module.exports = async ({ params, context, logger }) => {
     try {
-        const { itemId, quantity } = params;
+        const { itemId, quantity = 1 } = params;
         
-        if (!itemId || !quantity || quantity <= 0) {
+        if (!itemId || quantity <= 0) {
             return {
                 success: false,
-                errorMessage: "Invalid parameters"
+                errorMessage: "Invalid parameters: itemId and quantity are required"
             };
         }
         
@@ -24,37 +24,40 @@ module.exports = async ({ params, context, logger }) => {
             };
         }
         
-        // Get current inventory count
-        const inventory = await EconomyApi.getPlayerInventory({
+        // Check if player has enough items
+        const economyApi = new EconomyApi();
+        const currentInventory = await economyApi.getInventoryItem({
             playerId: playerId,
-            inventoryItemId: itemId
+            itemId: itemId
         });
         
-        if (inventory.count < quantity) {
+        if (!currentInventory || currentInventory.quantity < quantity) {
             return {
                 success: false,
-                errorMessage: "Insufficient inventory"
+                errorMessage: "Insufficient inventory",
+                currentQuantity: currentInventory ? currentInventory.quantity : 0,
+                requiredQuantity: quantity
             };
         }
         
-        // Use inventory item using Economy API
-        await EconomyApi.decrementInventoryItem({
+        // Use inventory item
+        const result = await economyApi.subtractInventoryItem({
             playerId: playerId,
-            inventoryItemId: itemId,
+            itemId: itemId,
             quantity: quantity
         });
         
-        logger.info(`Used ${quantity} ${itemId} from player ${playerId}`);
+        logger.info(`Used ${quantity} ${itemId} from player ${playerId} inventory`);
         
         return {
             success: true,
             itemId: itemId,
-            quantity: quantity,
-            newCount: inventory.count - quantity
+            quantityUsed: quantity,
+            newQuantity: result.quantity
         };
         
     } catch (error) {
-        logger.error(`UseInventoryItem error: ${error.message}`);
+        logger.error(`Error using inventory item: ${error.message}`);
         return {
             success: false,
             errorMessage: error.message

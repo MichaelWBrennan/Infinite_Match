@@ -1,7 +1,7 @@
-// Cloud Code function to spend currency from player balance
+// Cloud Code function to spend currency from player
 // This function is called from the Unity client to spend currency
 
-const { EconomyApi } = require("@unity-services/economy-2.4");
+const { EconomyApi } = require("@unity-services/economy-2.4.0");
 
 module.exports = async ({ params, context, logger }) => {
     try {
@@ -10,7 +10,7 @@ module.exports = async ({ params, context, logger }) => {
         if (!currencyId || !amount || amount <= 0) {
             return {
                 success: false,
-                errorMessage: "Invalid parameters"
+                errorMessage: "Invalid parameters: currencyId and amount are required"
             };
         }
         
@@ -24,21 +24,24 @@ module.exports = async ({ params, context, logger }) => {
             };
         }
         
-        // Get current balance
-        const balance = await EconomyApi.getPlayerBalance({
+        // Check if player has enough currency
+        const economyApi = new EconomyApi();
+        const currentBalance = await economyApi.getCurrencyBalance({
             playerId: playerId,
             currencyId: currencyId
         });
         
-        if (balance.balance < amount) {
+        if (currentBalance.balance < amount) {
             return {
                 success: false,
-                errorMessage: "Insufficient balance"
+                errorMessage: "Insufficient funds",
+                currentBalance: currentBalance.balance,
+                requiredAmount: amount
             };
         }
         
-        // Spend currency using Economy API
-        await EconomyApi.decrementCurrencyResource({
+        // Spend currency
+        const result = await economyApi.subtractCurrencyBalance({
             playerId: playerId,
             currencyId: currencyId,
             amount: amount
@@ -48,13 +51,13 @@ module.exports = async ({ params, context, logger }) => {
         
         return {
             success: true,
+            newBalance: result.balance,
             currencyId: currencyId,
-            amount: amount,
-            newBalance: balance.balance - amount
+            amountSpent: amount
         };
         
     } catch (error) {
-        logger.error(`SpendCurrency error: ${error.message}`);
+        logger.error(`Error spending currency: ${error.message}`);
         return {
             success: false,
             errorMessage: error.message
