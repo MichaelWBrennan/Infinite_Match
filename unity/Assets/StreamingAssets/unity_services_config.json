@@ -1,0 +1,69 @@
+{
+  "projectId": "your-unity-project-id",
+  "environmentId": "your-environment-id",
+  "services": {
+    "economy": {
+      "enabled": true,
+      "currencies": [
+        {
+          "id": "coins",
+          "name": "Coins",
+          "type": "soft_currency",
+          "initial": 1000,
+          "maximum": 999999
+        },
+        {
+          "id": "gems",
+          "name": "Gems", 
+          "type": "hard_currency",
+          "initial": 50,
+          "maximum": 99999
+        },
+        {
+          "id": "energy",
+          "name": "Energy",
+          "type": "consumable",
+          "initial": 5,
+          "maximum": 30
+        }
+      ],
+      "inventoryItems": [
+        {
+          "id": "booster_extra_moves",
+          "name": "Extra Moves",
+          "type": "booster",
+          "tradable": true,
+          "stackable": true
+        },
+        {
+          "id": "booster_color_bomb",
+          "name": "Color Bomb",
+          "type": "booster", 
+          "tradable": true,
+          "stackable": true
+        }
+      ]
+    },
+    "authentication": {
+      "enabled": true,
+      "anonymousSignIn": true
+    },
+    "cloudcode": {
+      "enabled": true,
+      "functions": [
+        "AddCurrency",
+        "SpendCurrency", 
+        "AddInventoryItem",
+        "UseInventoryItem"
+      ]
+    },
+    "analytics": {
+      "enabled": true,
+      "customEvents": [
+        "economy_purchase",
+        "economy_balance_change",
+        "economy_inventory_change"
+      ]
+    }
+  }
+}

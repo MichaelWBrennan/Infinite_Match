@@ -3,6 +3,12 @@
     "com.unity.ads": "4.4.1",
     "com.unity.textmeshpro": "3.0.6",
     "com.unity.inputsystem": "1.7.0",
-    "com.unity.purchasing": "4.10.0"
+    "com.unity.purchasing": "4.10.0",
+    "com.unity.services.economy": "2.4.0",
+    "com.unity.services.authentication": "2.2.0",
+    "com.unity.services.cloudcode": "1.2.0",
+    "com.unity.services.core": "1.8.2",
+    "com.unity.services.analytics": "4.1.0",
+    "com.unity.services.cloudsave": "3.0.0"
   }
 }

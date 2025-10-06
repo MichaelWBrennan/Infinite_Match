@@ -18,7 +18,7 @@ jobs:
   validate-economy-data:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup Unity
       uses: game-ci/unity-setup@v2
@@ -26,7 +26,7 @@ jobs:
         unity-version: '2022.3.0f1'
         
     - name: Cache Unity Library
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: unity/Library
         key: Library-${{ hashFiles('unity/Assets/**', 'unity/Packages/**') }}
@@ -96,7 +96,7 @@ jobs:
     needs: validate-economy-data
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup Unity
       uses: game-ci/unity-setup@v2
@@ -104,7 +104,7 @@ jobs:
         unity-version: '2022.3.0f1'
         
     - name: Cache Unity Library
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: unity/Library
         key: Library-${{ hashFiles('unity/Assets/**', 'unity/Packages/**') }}
@@ -150,13 +150,13 @@ jobs:
         echo "All economy assets generated successfully!"
         
     - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: unity-build
         path: unity/build
         
     - name: Upload Economy Assets
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: economy-assets
         path: |
@@ -169,10 +169,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Download Economy Assets
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: economy-assets
         
@@ -197,3 +197,9 @@ jobs:
       run: |
         echo "Economy configuration deployed successfully!"
         echo "Build artifacts available for download"
+    
+    - name: Run Auto Maintenance
+      run: |
+        echo "Running automated maintenance..."
+        cd scripts
+        python3 auto_maintenance.py
