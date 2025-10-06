@@ -26,6 +26,7 @@ namespace Evergreen.Economy
         private RewardSystem _rewardSystem;
         private ShopSystem _shopSystem;
         private EconomyAnalytics _economyAnalytics;
+        private StoreOptimizer _storeOptimizer;
         private GameManager _gameManager;
         
         // Events
@@ -132,6 +133,13 @@ namespace Evergreen.Economy
                 {
                     _economyAnalytics = gameObject.AddComponent<EconomyAnalytics>();
                 }
+            }
+            
+            // Initialize Store Optimizer
+            _storeOptimizer = GetComponent<StoreOptimizer>();
+            if (_storeOptimizer == null)
+            {
+                _storeOptimizer = gameObject.AddComponent<StoreOptimizer>();
             }
         }
         
@@ -371,7 +379,11 @@ namespace Evergreen.Economy
         /// </summary>
         public List<ShopItem> GetAvailableItems(string playerId)
         {
-            if (_shopSystem != null)
+            if (_storeOptimizer != null)
+            {
+                return _storeOptimizer.GetOptimizedItems(playerId);
+            }
+            else if (_shopSystem != null)
             {
                 return _shopSystem.GetAvailableItems(playerId);
             }

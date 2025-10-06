@@ -179,45 +179,86 @@ namespace Evergreen.Economy
             {
                 shopItems = new ShopItem[]
                 {
+                    // TIER 1 - $0.99 - Entry Point (Highest Conversion)
                     new ShopItem
                     {
-                        id = "coins_small",
-                        name = "Small Coin Pack",
-                        description = "A small pack of coins to get you started",
+                        id = "starter_pack_99",
+                        name = "Starter Pack",
+                        description = "Perfect for new players! Great value!",
                         type = ShopItemType.Currency,
                         rarity = ShopItemRarity.Common,
                         costs = new List<ShopItemCost>
                         {
-                            new ShopItemCost { currencyId = "gems", amount = 10, originalAmount = 10 }
+                            new ShopItemCost { currencyId = "gems", amount = 20, originalAmount = 20, isDiscounted = true, discountPercentage = 50f }
                         },
                         rewards = new List<ShopItemReward>
                         {
-                            new ShopItemReward { type = "currency", itemId = "coins", amount = 500 }
+                            new ShopItemReward { type = "currency", itemId = "coins", amount = 1000 },
+                            new ShopItemReward { type = "currency", itemId = "energy", amount = 5, isBonus = true }
                         },
                         conditions = new ShopItemConditions
                         {
                             minLevel = 1,
+                            maxLevel = 10,
+                            maxPurchaseCount = 1
+                        },
+                        isAvailable = true,
+                        maxPurchases = 1,
+                        categoryId = "starter",
+                        displayOrder = 1,
+                        isPopular = true,
+                        isRecommended = true
+                    },
+                    
+                    // TIER 2 - $4.99 - Sweet Spot (Best Revenue)
+                    new ShopItem
+                    {
+                        id = "value_pack_499",
+                        name = "Value Pack",
+                        description = "Most popular choice! Amazing value!",
+                        type = ShopItemType.Currency,
+                        rarity = ShopItemRarity.Uncommon,
+                        costs = new List<ShopItemCost>
+                        {
+                            new ShopItemCost { currencyId = "gems", amount = 120, originalAmount = 120 }
+                        },
+                        rewards = new List<ShopItemReward>
+                        {
+                            new ShopItemReward { type = "currency", itemId = "coins", amount = 5000 },
+                            new ShopItemReward { type = "currency", itemId = "energy", amount = 10, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 3, isBonus = true }
+                        },
+                        conditions = new ShopItemConditions
+                        {
+                            minLevel = 3,
                             maxLevel = int.MaxValue
                         },
                         isAvailable = true,
                         maxPurchases = -1,
                         categoryId = "currency",
-                        displayOrder = 1
+                        displayOrder = 2,
+                        isPopular = true,
+                        isRecommended = true
                     },
+                    
+                    // TIER 3 - $9.99 - High Value (Whale Conversion)
                     new ShopItem
                     {
-                        id = "coins_medium",
-                        name = "Medium Coin Pack",
-                        description = "A medium pack of coins for regular players",
+                        id = "premium_pack_999",
+                        name = "Premium Pack",
+                        description = "For serious players! Maximum value!",
                         type = ShopItemType.Currency,
-                        rarity = ShopItemRarity.Uncommon,
+                        rarity = ShopItemRarity.Rare,
                         costs = new List<ShopItemCost>
                         {
-                            new ShopItemCost { currencyId = "gems", amount = 25, originalAmount = 25 }
+                            new ShopItemCost { currencyId = "gems", amount = 300, originalAmount = 300 }
                         },
                         rewards = new List<ShopItemReward>
                         {
-                            new ShopItemReward { type = "currency", itemId = "coins", amount = 1500 }
+                            new ShopItemReward { type = "currency", itemId = "coins", amount = 15000 },
+                            new ShopItemReward { type = "currency", itemId = "energy", amount = 20, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 5, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "color_bomb", amount = 2, isBonus = true }
                         },
                         conditions = new ShopItemConditions
                         {
@@ -227,22 +268,30 @@ namespace Evergreen.Economy
                         isAvailable = true,
                         maxPurchases = -1,
                         categoryId = "currency",
-                        displayOrder = 2
+                        displayOrder = 3,
+                        isPopular = true,
+                        isRecommended = true
                     },
+                    
+                    // TIER 4 - $19.99 - Whale Tier (High Revenue)
                     new ShopItem
                     {
-                        id = "coins_large",
-                        name = "Large Coin Pack",
-                        description = "A large pack of coins for serious players",
+                        id = "mega_pack_1999",
+                        name = "Mega Pack",
+                        description = "Ultimate value for power players!",
                         type = ShopItemType.Currency,
-                        rarity = ShopItemRarity.Rare,
+                        rarity = ShopItemRarity.Epic,
                         costs = new List<ShopItemCost>
                         {
-                            new ShopItemCost { currencyId = "gems", amount = 50, originalAmount = 50 }
+                            new ShopItemCost { currencyId = "gems", amount = 700, originalAmount = 700 }
                         },
                         rewards = new List<ShopItemReward>
                         {
-                            new ShopItemReward { type = "currency", itemId = "coins", amount = 4000 }
+                            new ShopItemReward { type = "currency", itemId = "coins", amount = 40000 },
+                            new ShopItemReward { type = "currency", itemId = "energy", amount = 50, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 10, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "color_bomb", amount = 5, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "rainbow_blast", amount = 3, isBonus = true }
                         },
                         conditions = new ShopItemConditions
                         {
@@ -252,13 +301,17 @@ namespace Evergreen.Economy
                         isAvailable = true,
                         maxPurchases = -1,
                         categoryId = "currency",
-                        displayOrder = 3
+                        displayOrder = 4,
+                        isPopular = false,
+                        isRecommended = true
                     },
+                    
+                    // ENERGY PACKS - High Frequency Purchases
                     new ShopItem
                     {
-                        id = "energy_refill",
-                        name = "Energy Refill",
-                        description = "Instantly refill your energy",
+                        id = "energy_small",
+                        name = "Energy Boost",
+                        description = "Quick energy refill",
                         type = ShopItemType.Consumable,
                         rarity = ShopItemRarity.Common,
                         costs = new List<ShopItemCost>
@@ -275,24 +328,25 @@ namespace Evergreen.Economy
                             maxLevel = int.MaxValue
                         },
                         isAvailable = true,
-                        maxPurchases = 10,
+                        maxPurchases = 20,
                         categoryId = "consumables",
                         displayOrder = 1
                     },
+                    
                     new ShopItem
                     {
-                        id = "booster_extra_moves",
-                        name = "Extra Moves",
-                        description = "Get 3 extra moves for your next level",
-                        type = ShopItemType.Booster,
+                        id = "energy_large",
+                        name = "Energy Surge",
+                        description = "Maximum energy boost!",
+                        type = ShopItemType.Consumable,
                         rarity = ShopItemRarity.Uncommon,
                         costs = new List<ShopItemCost>
                         {
-                            new ShopItemCost { currencyId = "coins", amount = 200, originalAmount = 200 }
+                            new ShopItemCost { currencyId = "gems", amount = 15, originalAmount = 15 }
                         },
                         rewards = new List<ShopItemReward>
                         {
-                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 3 }
+                            new ShopItemReward { type = "currency", itemId = "energy", amount = 20 }
                         },
                         conditions = new ShopItemConditions
                         {
@@ -300,24 +354,57 @@ namespace Evergreen.Economy
                             maxLevel = int.MaxValue
                         },
                         isAvailable = true,
-                        maxPurchases = 5,
+                        maxPurchases = 10,
+                        categoryId = "consumables",
+                        displayOrder = 2
+                    },
+                    
+                    // BOOSTER PACKS - High Engagement
+                    new ShopItem
+                    {
+                        id = "booster_pack_small",
+                        name = "Booster Bundle",
+                        description = "Essential boosters for success!",
+                        type = ShopItemType.Booster,
+                        rarity = ShopItemRarity.Uncommon,
+                        costs = new List<ShopItemCost>
+                        {
+                            new ShopItemCost { currencyId = "coins", amount = 500, originalAmount = 500 }
+                        },
+                        rewards = new List<ShopItemReward>
+                        {
+                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 5 },
+                            new ShopItemReward { type = "booster", itemId = "color_bomb", amount = 2 },
+                            new ShopItemReward { type = "booster", itemId = "striped_candy", amount = 3 }
+                        },
+                        conditions = new ShopItemConditions
+                        {
+                            minLevel = 2,
+                            maxLevel = int.MaxValue
+                        },
+                        isAvailable = true,
+                        maxPurchases = 10,
                         categoryId = "boosters",
                         displayOrder = 1
                     },
+                    
                     new ShopItem
                     {
-                        id = "booster_color_bomb",
-                        name = "Color Bomb",
-                        description = "Start your next level with a color bomb",
+                        id = "booster_pack_large",
+                        name = "Power Pack",
+                        description = "Ultimate booster collection!",
                         type = ShopItemType.Booster,
                         rarity = ShopItemRarity.Rare,
                         costs = new List<ShopItemCost>
                         {
-                            new ShopItemCost { currencyId = "gems", amount = 15, originalAmount = 15 }
+                            new ShopItemCost { currencyId = "gems", amount = 25, originalAmount = 25 }
                         },
                         rewards = new List<ShopItemReward>
                         {
-                            new ShopItemReward { type = "booster", itemId = "color_bomb", amount = 1 }
+                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 10 },
+                            new ShopItemReward { type = "booster", itemId = "color_bomb", amount = 5 },
+                            new ShopItemReward { type = "booster", itemId = "rainbow_blast", amount = 3 },
+                            new ShopItemReward { type = "booster", itemId = "striped_candy", amount = 5 }
                         },
                         conditions = new ShopItemConditions
                         {
@@ -325,9 +412,78 @@ namespace Evergreen.Economy
                             maxLevel = int.MaxValue
                         },
                         isAvailable = true,
-                        maxPurchases = 3,
+                        maxPurchases = 5,
                         categoryId = "boosters",
                         displayOrder = 2
+                    },
+                    
+                    // COMEBACK PACK - Retention
+                    new ShopItem
+                    {
+                        id = "comeback_pack",
+                        name = "Welcome Back!",
+                        description = "We missed you! Special comeback offer!",
+                        type = ShopItemType.Special,
+                        rarity = ShopItemRarity.Epic,
+                        costs = new List<ShopItemCost>
+                        {
+                            new ShopItemCost { currencyId = "gems", amount = 50, originalAmount = 100, isDiscounted = true, discountPercentage = 50f }
+                        },
+                        rewards = new List<ShopItemReward>
+                        {
+                            new ShopItemReward { type = "currency", itemId = "coins", amount = 8000 },
+                            new ShopItemReward { type = "currency", itemId = "energy", amount = 15, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 8, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "color_bomb", amount = 3, isBonus = true }
+                        },
+                        conditions = new ShopItemConditions
+                        {
+                            minLevel = 1,
+                            maxLevel = int.MaxValue,
+                            maxPurchaseCount = 1
+                        },
+                        isAvailable = true,
+                        maxPurchases = 1,
+                        categoryId = "special",
+                        displayOrder = 1,
+                        isPopular = true,
+                        isRecommended = true
+                    },
+                    
+                    // FLASH SALE - Urgency
+                    new ShopItem
+                    {
+                        id = "flash_sale_limited",
+                        name = "Flash Sale!",
+                        description = "Limited time! 75% off everything!",
+                        type = ShopItemType.Special,
+                        rarity = ShopItemRarity.Legendary,
+                        costs = new List<ShopItemCost>
+                        {
+                            new ShopItemCost { currencyId = "gems", amount = 25, originalAmount = 100, isDiscounted = true, discountPercentage = 75f }
+                        },
+                        rewards = new List<ShopItemReward>
+                        {
+                            new ShopItemReward { type = "currency", itemId = "coins", amount = 10000 },
+                            new ShopItemReward { type = "currency", itemId = "energy", amount = 25, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "extra_moves", amount = 15, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "color_bomb", amount = 8, isBonus = true },
+                            new ShopItemReward { type = "booster", itemId = "rainbow_blast", amount = 5, isBonus = true }
+                        },
+                        conditions = new ShopItemConditions
+                        {
+                            minLevel = 1,
+                            maxLevel = int.MaxValue,
+                            maxPurchaseCount = 3
+                        },
+                        isAvailable = true,
+                        maxPurchases = 3,
+                        categoryId = "special",
+                        displayOrder = 0,
+                        isPopular = true,
+                        isRecommended = true,
+                        isLimitedTime = true,
+                        availableUntil = DateTime.Now.AddHours(6)
                     }
                 };
             }
@@ -346,10 +502,18 @@ namespace Evergreen.Economy
                 {
                     new ShopCategory
                     {
-                        id = "currency",
-                        name = "Currency",
-                        description = "Buy coins and gems",
+                        id = "starter",
+                        name = "Starter Packs",
+                        description = "Perfect for new players",
                         displayOrder = 1,
+                        isActive = true
+                    },
+                    new ShopCategory
+                    {
+                        id = "currency",
+                        name = "Value Packs",
+                        description = "Best value currency packs",
+                        displayOrder = 2,
                         isActive = true
                     },
                     new ShopCategory
@@ -357,23 +521,23 @@ namespace Evergreen.Economy
                         id = "boosters",
                         name = "Boosters",
                         description = "Power-ups for levels",
-                        displayOrder = 2,
-                        isActive = true
-                    },
-                    new ShopCategory
-                    {
-                        id = "consumables",
-                        name = "Consumables",
-                        description = "One-time use items",
                         displayOrder = 3,
                         isActive = true
                     },
                     new ShopCategory
                     {
-                        id = "decorations",
-                        name = "Decorations",
-                        description = "Customize your castle",
+                        id = "consumables",
+                        name = "Energy",
+                        description = "Energy refills and boosts",
                         displayOrder = 4,
+                        isActive = true
+                    },
+                    new ShopCategory
+                    {
+                        id = "special",
+                        name = "Special Offers",
+                        description = "Limited time deals",
+                        displayOrder = 5,
                         isActive = true
                     }
                 };
