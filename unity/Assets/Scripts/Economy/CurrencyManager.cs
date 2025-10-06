@@ -284,6 +284,28 @@ namespace Evergreen.Economy
             return false;
         }
         
+        /// <summary>
+        /// Set currency amount directly
+        /// </summary>
+        public void SetCurrency(string currencyId, int amount)
+        {
+            if (!_currencies.ContainsKey(currencyId)) return;
+            
+            var currency = _currencies[currencyId];
+            int oldAmount = _currencyBalances[currencyId];
+            int newAmount = Mathf.Clamp(amount, currency.minAmount, currency.maxAmount);
+            
+            if (newAmount != oldAmount)
+            {
+                _currencyBalances[currencyId] = newAmount;
+                
+                // Fire events
+                OnCurrencyChanged?.Invoke(currencyId, oldAmount, newAmount);
+                
+                SaveCurrencyData();
+            }
+        }
+        
         public bool SpendCurrency(string currencyId, int amount, string reason = "unknown")
         {
             if (!_currencies.ContainsKey(currencyId) || amount <= 0) return false;
