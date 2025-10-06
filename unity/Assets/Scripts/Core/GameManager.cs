@@ -187,6 +187,48 @@ namespace Evergreen.Core
                 return go.AddComponent<GameIntegrationManager>();
             });
             
+            // Register Dynamic Offer System
+            ServiceLocator.RegisterFactory<DynamicOfferSystem>(() => 
+            {
+                var go = new GameObject("DynamicOfferSystem");
+                return go.AddComponent<DynamicOfferSystem>();
+            });
+            
+            // Register Social System
+            ServiceLocator.RegisterFactory<SocialSystem>(() => 
+            {
+                var go = new GameObject("SocialSystem");
+                return go.AddComponent<SocialSystem>();
+            });
+            
+            // Register Advanced Live Ops System
+            ServiceLocator.RegisterFactory<AdvancedLiveOpsSystem>(() => 
+            {
+                var go = new GameObject("AdvancedLiveOpsSystem");
+                return go.AddComponent<AdvancedLiveOpsSystem>();
+            });
+            
+            // Register Advanced Analytics System
+            ServiceLocator.RegisterFactory<AdvancedAnalyticsSystem>(() => 
+            {
+                var go = new GameObject("AdvancedAnalyticsSystem");
+                return go.AddComponent<AdvancedAnalyticsSystem>();
+            });
+            
+            // Register AI Personalization System
+            ServiceLocator.RegisterFactory<AIPersonalizationSystem>(() => 
+            {
+                var go = new GameObject("AIPersonalizationSystem");
+                return go.AddComponent<AIPersonalizationSystem>();
+            });
+            
+            // Register Advanced Cloud Save System
+            ServiceLocator.RegisterFactory<AdvancedCloudSaveSystem>(() => 
+            {
+                var go = new GameObject("AdvancedCloudSaveSystem");
+                return go.AddComponent<AdvancedCloudSaveSystem>();
+            });
+            
             Debug.Log("Game systems initialized");
         }
         
