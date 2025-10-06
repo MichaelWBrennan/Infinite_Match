@@ -1,74 +1,87 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
 using System;
+using Evergreen.Core;
 
 namespace Evergreen.Character
 {
-    [Serializable]
-    public class CharacterData
+    [System.Serializable]
+    public class Character
     {
-        public string characterId;
+        public string id;
         public string name;
-        public CharacterType type;
+        public string description;
         public int level;
         public int experience;
-        public int experienceToNext;
-        public Dictionary<string, object> stats = new Dictionary<string, object>();
-        public Dictionary<string, object> personality = new Dictionary<string, object>();
-        public List<string> unlockedEmotions = new List<string>();
-        public string currentEmotion;
+        public int experienceToNextLevel;
+        public List<string> unlockedAbilities = new List<string>();
+        public Dictionary<string, int> stats = new Dictionary<string, int>();
         public bool isUnlocked;
-        public long lastInteraction;
+        public int unlockLevel;
+        public Sprite portrait;
+        public Sprite fullBodySprite;
+        public string voiceActor;
+        public List<string> dialogueLines = new List<string>();
     }
     
-    public enum CharacterType
+    [System.Serializable]
+    public class CharacterAbility
     {
-        Mascot,
-        Helper,
-        Villain,
-        Shopkeeper,
-        Guide
+        public string id;
+        public string name;
+        public string description;
+        public int level;
+        public int maxLevel;
+        public int cost;
+        public string currencyType;
+        public bool isUnlocked;
+        public bool isActive;
+        public float cooldown;
+        public float duration;
+        public int power;
     }
     
-    [Serializable]
+    [System.Serializable]
     public class CharacterDialogue
     {
-        public string dialogueId;
+        public string id;
         public string characterId;
-        public string emotion;
+        public string context; // "level_start", "level_complete", "level_fail", "shop", "castle", etc.
         public string text;
-        public List<string> responses = new List<string>();
-        public Dictionary<string, object> conditions = new Dictionary<string, object>();
-        public bool isRepeatable;
-        public int priority;
-    }
-    
-    [Serializable]
-    public class CharacterAnimation
-    {
-        public string animationId;
-        public string characterId;
-        public string trigger;
-        public float duration;
-        public bool loop;
-        public Dictionary<string, object> parameters = new Dictionary<string, object>();
+        public string emotion; // "happy", "sad", "excited", "worried", etc.
+        public bool isUnlocked;
+        public int unlockLevel;
     }
     
     public class CharacterSystem : MonoBehaviour
     {
-        [Header("Characters")]
-        public List<CharacterData> characters = new List<CharacterData>();
+        [Header("Character Settings")]
+        public List<Character> characters = new List<Character>();
+        public List<CharacterAbility> abilities = new List<CharacterAbility>();
         public List<CharacterDialogue> dialogues = new List<CharacterDialogue>();
-        public List<CharacterAnimation> animations = new List<CharacterAnimation>();
         
-        [Header("Settings")]
-        public float interactionCooldown = 30f; // 30 seconds between interactions
-        public int maxDialoguePerSession = 5;
+        [Header("Experience Settings")]
+        public int baseExperiencePerLevel = 100;
+        public float experienceMultiplier = 1.5f;
+        public int maxLevel = 50;
+        
+        [Header("UI References")]
+        public GameObject characterSelectPanel;
+        public GameObject characterDetailPanel;
+        public GameObject abilityTreePanel;
+        
+        private Character _currentCharacter;
+        private Dictionary<string, Character> _characterLookup = new Dictionary<string, Character>();
+        private Dictionary<string, CharacterAbility> _abilityLookup = new Dictionary<string, CharacterAbility>();
+        private Dictionary<string, List<CharacterDialogue>> _dialogueLookup = new Dictionary<string, List<CharacterDialogue>>();
+        
+        // Events
+        public System.Action<Character> OnCharacterUnlocked;
+        public System.Action<Character> OnCharacterLevelUp;
+        public System.Action<CharacterAbility> OnAbilityUnlocked;
+        public System.Action<CharacterDialogue> OnDialogueUnlocked;
         
         public static CharacterSystem Instance { get; private set; }
-        
-        private Dictionary<string, int> dialogueCounts = new Dictionary<string, int>();
-        private Dictionary<string, float> lastInteractionTimes = new Dictionary<string, float>();
         
         void Awake()
         {
@@ -76,8 +89,7 @@ namespace Evergreen.Character
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeCharacters();
-                InitializeDialogues();
+                InitializeCharacterSystem();
             }
             else
             {
@@ -87,376 +99,465 @@ namespace Evergreen.Character
         
         void Start()
         {
-            LoadCharacterData();
+            LoadCharacterProgress();
+            CreateDefaultCharacters();
+            BuildLookupTables();
         }
         
-        private void InitializeCharacters()
+        private void InitializeCharacterSystem()
         {
-            characters = new List<CharacterData>
+            // Initialize default character
+            _currentCharacter = null;
+        }
+        
+        private void CreateDefaultCharacters()
+        {
+            if (characters.Count == 0)
             {
-                new CharacterData
+                // King Robert - Main character
+                var kingRobert = new Character
                 {
-                    characterId = "mascot_sparky",
-                    name = "Sparky",
-                    type = CharacterType.Mascot,
+                    id = "king_robert",
+                    name = "King Robert",
+                    description = "The wise and noble king of the kingdom",
                     level = 1,
                     experience = 0,
-                    experienceToNext = 100,
-                    stats = new Dictionary<string, object>
-                    {
-                        {"happiness", 50},
-                        {"energy", 100},
-                        {"friendliness", 75},
-                        {"helpfulness", 80}
-                    },
-                    personality = new Dictionary<string, object>
-                    {
-                        {"cheerful", true},
-                        {"encouraging", true},
-                        {"playful", true},
-                        {"supportive", true}
-                    },
-                    unlockedEmotions = new List<string> { "happy", "excited", "encouraging" },
-                    currentEmotion = "happy",
+                    experienceToNextLevel = baseExperiencePerLevel,
                     isUnlocked = true,
-                    lastInteraction = 0
-                },
-                new CharacterData
+                    unlockLevel = 1,
+                    stats = new Dictionary<string, int>
+                    {
+                        {"power", 10},
+                        {"wisdom", 15},
+                        {"charisma", 12},
+                        {"luck", 8}
+                    },
+                    dialogueLines = new List<string>
+                    {
+                        "Welcome to my kingdom!",
+                        "Let's restore this castle to its former glory!",
+                        "Excellent work, my friend!",
+                        "We're making great progress!",
+                        "The kingdom is proud of your efforts!"
+                    }
+                };
+                characters.Add(kingRobert);
+                
+                // Queen Isabella - Unlock at level 10
+                var queenIsabella = new Character
                 {
-                    characterId = "helper_wisdom",
-                    name = "Wisdom",
-                    type = CharacterType.Helper,
+                    id = "queen_isabella",
+                    name = "Queen Isabella",
+                    description = "The graceful queen with magical abilities",
                     level = 1,
                     experience = 0,
-                    experienceToNext = 150,
-                    stats = new Dictionary<string, object>
-                    {
-                        {"wisdom", 90},
-                        {"patience", 85},
-                        {"knowledge", 95},
-                        {"guidance", 88}
-                    },
-                    personality = new Dictionary<string, object>
-                    {
-                        {"wise", true},
-                        {"patient", true},
-                        {"knowledgeable", true},
-                        {"helpful", true}
-                    },
-                    unlockedEmotions = new List<string> { "wise", "thoughtful", "encouraging" },
-                    currentEmotion = "wise",
+                    experienceToNextLevel = baseExperiencePerLevel,
                     isUnlocked = false,
-                    lastInteraction = 0
-                }
-            };
+                    unlockLevel = 10,
+                    stats = new Dictionary<string, int>
+                    {
+                        {"power", 8},
+                        {"wisdom", 18},
+                        {"charisma", 16},
+                        {"luck", 10}
+                    },
+                    dialogueLines = new List<string>
+                    {
+                        "The castle needs your help!",
+                        "Your magic is growing stronger!",
+                        "What a beautiful match!",
+                        "The kingdom is blessed to have you!",
+                        "Let's make this place magnificent!"
+                    }
+                };
+                characters.Add(queenIsabella);
+                
+                // Prince Alexander - Unlock at level 25
+                var princeAlexander = new Character
+                {
+                    id = "prince_alexander",
+                    name = "Prince Alexander",
+                    description = "The brave prince with combat skills",
+                    level = 1,
+                    experience = 0,
+                    experienceToNextLevel = baseExperiencePerLevel,
+                    isUnlocked = false,
+                    unlockLevel = 25,
+                    stats = new Dictionary<string, int>
+                    {
+                        {"power", 16},
+                        {"wisdom", 10},
+                        {"charisma", 14},
+                        {"luck", 12}
+                    },
+                    dialogueLines = new List<string>
+                    {
+                        "Ready for battle!",
+                        "That was an amazing combo!",
+                        "The kingdom needs heroes like you!",
+                        "Let's show them our strength!",
+                        "Victory is ours!"
+                    }
+                };
+                characters.Add(princeAlexander);
+            }
+            
+            CreateDefaultAbilities();
+            CreateDefaultDialogues();
         }
         
-        private void InitializeDialogues()
+        private void CreateDefaultAbilities()
         {
-            dialogues = new List<CharacterDialogue>
+            if (abilities.Count == 0)
             {
-                new CharacterDialogue
+                // King Robert's abilities
+                abilities.Add(new CharacterAbility
                 {
-                    dialogueId = "sparky_welcome",
-                    characterId = "mascot_sparky",
-                    emotion = "happy",
-                    text = "Welcome to the magical world of Evergreen! I'm Sparky, your cheerful companion!",
-                    responses = new List<string> { "Nice to meet you!", "Tell me more!", "Thanks!" },
-                    conditions = new Dictionary<string, object> { {"first_visit", true} },
-                    isRepeatable = false,
-                    priority = 10
-                },
-                new CharacterDialogue
+                    id = "royal_blessing",
+                    name = "Royal Blessing",
+                    description = "Increases coin rewards by 20%",
+                    level = 1,
+                    maxLevel = 5,
+                    cost = 100,
+                    currencyType = "coins",
+                    isUnlocked = true,
+                    isActive = true,
+                    cooldown = 0,
+                    duration = 0,
+                    power = 20
+                });
+                
+                abilities.Add(new CharacterAbility
                 {
-                    dialogueId = "sparky_encouragement",
-                    characterId = "mascot_sparky",
-                    emotion = "encouraging",
-                    text = "You're doing great! Keep matching those gems and you'll master this game in no time!",
-                    responses = new List<string> { "Thanks for the encouragement!", "I'll keep trying!", "You're the best!" },
-                    conditions = new Dictionary<string, object> { {"level_completed", true} },
-                    isRepeatable = true,
-                    priority = 5
-                },
-                new CharacterDialogue
+                    id = "kingly_wisdom",
+                    name = "Kingly Wisdom",
+                    description = "Reduces move cost by 1 for difficult levels",
+                    level = 1,
+                    maxLevel = 3,
+                    cost = 500,
+                    currencyType = "gems",
+                    isUnlocked = false,
+                    isActive = false,
+                    cooldown = 0,
+                    duration = 0,
+                    power = 1
+                });
+                
+                // Queen Isabella's abilities
+                abilities.Add(new CharacterAbility
                 {
-                    dialogueId = "sparky_celebration",
-                    characterId = "mascot_sparky",
+                    id = "magical_boost",
+                    name = "Magical Boost",
+                    description = "Creates special pieces more often",
+                    level = 1,
+                    maxLevel = 5,
+                    cost = 200,
+                    currencyType = "coins",
+                    isUnlocked = false,
+                    isActive = false,
+                    cooldown = 0,
+                    duration = 0,
+                    power = 15
+                });
+                
+                // Prince Alexander's abilities
+                abilities.Add(new CharacterAbility
+                {
+                    id = "warrior_strength",
+                    name = "Warrior Strength",
+                    description = "Increases damage to blockers",
+                    level = 1,
+                    maxLevel = 5,
+                    cost = 300,
+                    currencyType = "coins",
+                    isUnlocked = false,
+                    isActive = false,
+                    cooldown = 0,
+                    duration = 0,
+                    power = 25
+                });
+            }
+        }
+        
+        private void CreateDefaultDialogues()
+        {
+            if (dialogues.Count == 0)
+            {
+                // King Robert dialogues
+                dialogues.Add(new CharacterDialogue
+                {
+                    id = "king_level_start",
+                    characterId = "king_robert",
+                    context = "level_start",
+                    text = "Let's see what this level has in store for us!",
                     emotion = "excited",
-                    text = "Wow! That was an amazing match! You're getting better and better!",
-                    responses = new List<string> { "I'm getting the hang of it!", "Thanks Sparky!", "This is fun!" },
-                    conditions = new Dictionary<string, object> { {"special_match", true} },
-                    isRepeatable = true,
-                    priority = 7
-                },
-                new CharacterDialogue
+                    isUnlocked = true,
+                    unlockLevel = 1
+                });
+                
+                dialogues.Add(new CharacterDialogue
                 {
-                    dialogueId = "wisdom_tip",
-                    characterId = "helper_wisdom",
-                    emotion = "wise",
-                    text = "A wise player knows that patience and strategy often lead to the best results.",
-                    responses = new List<string> { "That's helpful advice", "I'll remember that", "Thank you" },
-                    conditions = new Dictionary<string, object> { {"level_failed", true} },
-                    isRepeatable = true,
-                    priority = 3
-                }
-            };
+                    id = "king_level_complete",
+                    characterId = "king_robert",
+                    context = "level_complete",
+                    text = "Magnificent work! The kingdom is proud!",
+                    emotion = "happy",
+                    isUnlocked = true,
+                    unlockLevel = 1
+                });
+                
+                dialogues.Add(new CharacterDialogue
+                {
+                    id = "king_level_fail",
+                    characterId = "king_robert",
+                    context = "level_fail",
+                    text = "Don't worry, even kings face setbacks. Try again!",
+                    emotion = "encouraging",
+                    isUnlocked = true,
+                    unlockLevel = 1
+                });
+                
+                dialogues.Add(new CharacterDialogue
+                {
+                    id = "king_shop",
+                    characterId = "king_robert",
+                    context = "shop",
+                    text = "The royal treasury has many treasures to offer!",
+                    emotion = "happy",
+                    isUnlocked = true,
+                    unlockLevel = 1
+                });
+                
+                dialogues.Add(new CharacterDialogue
+                {
+                    id = "king_castle",
+                    characterId = "king_robert",
+                    context = "castle",
+                    text = "Welcome to your kingdom! Let's make it magnificent!",
+                    emotion = "proud",
+                    isUnlocked = true,
+                    unlockLevel = 1
+                });
+            }
         }
         
-        public CharacterData GetCharacter(string characterId)
+        private void BuildLookupTables()
         {
-            return characters.Find(c => c.characterId == characterId);
-        }
-        
-        public List<CharacterDialogue> GetAvailableDialogues(string characterId)
-        {
-            var character = GetCharacter(characterId);
-            if (character == null || !character.isUnlocked) return new List<CharacterDialogue>();
+            _characterLookup.Clear();
+            _abilityLookup.Clear();
+            _dialogueLookup.Clear();
             
-            var available = new List<CharacterDialogue>();
-            var currentTime = Time.time;
-            var lastInteraction = lastInteractionTimes.GetValueOrDefault(characterId, 0f);
+            foreach (var character in characters)
+            {
+                _characterLookup[character.id] = character;
+            }
             
-            // Check cooldown
-            if (currentTime - lastInteraction < interactionCooldown) return available;
-            
-            // Check dialogue count limit
-            var dialogueCount = dialogueCounts.GetValueOrDefault(characterId, 0);
-            if (dialogueCount >= maxDialoguePerSession) return available;
+            foreach (var ability in abilities)
+            {
+                _abilityLookup[ability.id] = ability;
+            }
             
             foreach (var dialogue in dialogues)
             {
-                if (dialogue.characterId != characterId) continue;
-                if (!dialogue.isRepeatable && HasSeenDialogue(dialogue.dialogueId)) continue;
-                if (!CheckDialogueConditions(dialogue)) continue;
-                
-                available.Add(dialogue);
-            }
-            
-            // Sort by priority (higher first)
-            available.Sort((a, b) => b.priority.CompareTo(a.priority));
-            
-            return available;
-        }
-        
-        public CharacterDialogue GetRandomDialogue(string characterId)
-        {
-            var available = GetAvailableDialogues(characterId);
-            if (available.Count == 0) return null;
-            
-            // Weight by priority
-            var totalWeight = 0;
-            foreach (var dialogue in available)
-            {
-                totalWeight += dialogue.priority;
-            }
-            
-            var randomWeight = UnityEngine.Random.Range(0, totalWeight);
-            var currentWeight = 0;
-            
-            foreach (var dialogue in available)
-            {
-                currentWeight += dialogue.priority;
-                if (randomWeight < currentWeight)
+                if (!_dialogueLookup.ContainsKey(dialogue.characterId))
                 {
-                    return dialogue;
+                    _dialogueLookup[dialogue.characterId] = new List<CharacterDialogue>();
                 }
+                _dialogueLookup[dialogue.characterId].Add(dialogue);
             }
-            
-            return available[0]; // Fallback
         }
         
-        public void InteractWithCharacter(string characterId)
+        public void SetCurrentCharacter(string characterId)
         {
-            var character = GetCharacter(characterId);
-            if (character == null) return;
-            
-            var dialogue = GetRandomDialogue(characterId);
-            if (dialogue == null) return;
-            
-            // Update interaction time
-            lastInteractionTimes[characterId] = Time.time;
-            
-            // Increment dialogue count
-            dialogueCounts[characterId] = dialogueCounts.GetValueOrDefault(characterId, 0) + 1;
-            
-            // Update character experience
-            AddCharacterExperience(characterId, 10);
-            
-            // Update character emotion based on dialogue
-            character.currentEmotion = dialogue.emotion;
-            
-            // Show dialogue (this would trigger UI)
-            ShowDialogue(dialogue);
-            
-            // Analytics
-            Evergreen.Game.AnalyticsAdapter.CustomEvent("character_interaction", new Dictionary<string, object>
+            if (_characterLookup.ContainsKey(characterId))
             {
-                {"character_id", characterId},
-                {"dialogue_id", dialogue.dialogueId},
-                {"emotion", dialogue.emotion}
-            });
+                _currentCharacter = _characterLookup[characterId];
+            }
         }
         
-        public void AddCharacterExperience(string characterId, int amount)
+        public Character GetCurrentCharacter()
         {
-            var character = GetCharacter(characterId);
-            if (character == null) return;
+            return _currentCharacter;
+        }
+        
+        public void AddExperience(int amount)
+        {
+            if (_currentCharacter == null) return;
             
-            character.experience += amount;
+            _currentCharacter.experience += amount;
             
             // Check for level up
-            while (character.experience >= character.experienceToNext)
+            while (_currentCharacter.experience >= _currentCharacter.experienceToNextLevel && 
+                   _currentCharacter.level < maxLevel)
             {
-                LevelUpCharacter(character);
+                LevelUpCharacter(_currentCharacter);
             }
-            
-            SaveCharacterData();
         }
         
-        private void LevelUpCharacter(CharacterData character)
+        private void LevelUpCharacter(Character character)
         {
-            character.experience -= character.experienceToNext;
             character.level++;
-            character.experienceToNext = Mathf.RoundToInt(character.experienceToNext * 1.2f);
+            character.experience -= character.experienceToNextLevel;
+            character.experienceToNextLevel = Mathf.RoundToInt(character.experienceToNextLevel * experienceMultiplier);
             
-            // Unlock new emotions
-            UnlockNewEmotions(character);
-            
-            // Show level up notification
-            ShowLevelUpNotification(character);
-            
-            // Analytics
-            Evergreen.Game.AnalyticsAdapter.CustomEvent("character_level_up", new Dictionary<string, object>
+            // Increase stats
+            foreach (var stat in character.stats.Keys.ToArray())
             {
-                {"character_id", character.characterId},
-                {"new_level", character.level}
-            });
+                character.stats[stat] += 1;
+            }
+            
+            // Check for new abilities
+            CheckForNewAbilities(character);
+            
+            OnCharacterLevelUp?.Invoke(character);
         }
         
-        private void UnlockNewEmotions(CharacterData character)
+        private void CheckForNewAbilities(Character character)
         {
-            var newEmotions = new Dictionary<int, string[]>
+            foreach (var ability in abilities)
             {
-                { 2, new[] { "proud", "confident" } },
-                { 3, new[] { "cheerful", "energetic" } },
-                { 5, new[] { "wise", "thoughtful" } },
-                { 10, new[] { "mysterious", "intriguing" } }
-            };
-            
-            if (newEmotions.ContainsKey(character.level))
-            {
-                foreach (var emotion in newEmotions[character.level])
+                if (!ability.isUnlocked && ability.level <= character.level)
                 {
-                    if (!character.unlockedEmotions.Contains(emotion))
-                    {
-                        character.unlockedEmotions.Add(emotion);
-                    }
+                    ability.isUnlocked = true;
+                    OnAbilityUnlocked?.Invoke(ability);
                 }
             }
         }
         
-        private bool CheckDialogueConditions(CharacterDialogue dialogue)
+        public void UnlockCharacter(string characterId)
         {
-            foreach (var condition in dialogue.conditions)
+            if (_characterLookup.ContainsKey(characterId))
             {
-                switch (condition.Key)
+                var character = _characterLookup[characterId];
+                if (!character.isUnlocked)
                 {
-                    case "first_visit":
-                        if ((bool)condition.Value && !IsFirstVisit()) return false;
-                        break;
-                    case "level_completed":
-                        if ((bool)condition.Value && !WasLevelJustCompleted()) return false;
-                        break;
-                    case "special_match":
-                        if ((bool)condition.Value && !WasSpecialMatchJustMade()) return false;
-                        break;
-                    case "level_failed":
-                        if ((bool)condition.Value && !WasLevelJustFailed()) return false;
-                        break;
+                    character.isUnlocked = true;
+                    OnCharacterUnlocked?.Invoke(character);
                 }
             }
+        }
+        
+        public void UnlockAbility(string abilityId)
+        {
+            if (_abilityLookup.ContainsKey(abilityId))
+            {
+                var ability = _abilityLookup[abilityId];
+                if (!ability.isUnlocked)
+                {
+                    ability.isUnlocked = true;
+                    OnAbilityUnlocked?.Invoke(ability);
+                }
+            }
+        }
+        
+        public bool PurchaseAbility(string abilityId)
+        {
+            if (!_abilityLookup.ContainsKey(abilityId)) return false;
+            
+            var ability = _abilityLookup[abilityId];
+            if (ability.isUnlocked) return false;
+            
+            var gameManager = ServiceLocator.Get<GameManager>();
+            if (gameManager == null) return false;
+            
+            int currentAmount = gameManager.GetCurrency(ability.currencyType);
+            if (currentAmount < ability.cost) return false;
+            
+            gameManager.SpendCurrency(ability.currencyType, ability.cost);
+            ability.isUnlocked = true;
+            OnAbilityUnlocked?.Invoke(ability);
+            
             return true;
         }
         
-        private bool HasSeenDialogue(string dialogueId)
+        public string GetRandomDialogue(string characterId, string context)
         {
-            return PlayerPrefs.GetInt($"dialogue_seen_{dialogueId}", 0) == 1;
-        }
-        
-        private bool IsFirstVisit()
-        {
-            return PlayerPrefs.GetInt("first_visit", 0) == 0;
-        }
-        
-        private bool WasLevelJustCompleted()
-        {
-            // This would be set by the game when a level is completed
-            return PlayerPrefs.GetInt("level_just_completed", 0) == 1;
-        }
-        
-        private bool WasSpecialMatchJustMade()
-        {
-            // This would be set by the game when a special match is made
-            return PlayerPrefs.GetInt("special_match_just_made", 0) == 1;
-        }
-        
-        private bool WasLevelJustFailed()
-        {
-            // This would be set by the game when a level is failed
-            return PlayerPrefs.GetInt("level_just_failed", 0) == 1;
-        }
-        
-        private void ShowDialogue(CharacterDialogue dialogue)
-        {
-            // This would trigger the UI to show the dialogue
-            Debug.Log($"[{dialogue.characterId}] {dialogue.text}");
+            if (!_dialogueLookup.ContainsKey(characterId)) return "";
             
-            // Mark as seen
-            PlayerPrefs.SetInt($"dialogue_seen_{dialogue.dialogueId}", 1);
+            var availableDialogues = _dialogueLookup[characterId].FindAll(d => 
+                d.context == context && d.isUnlocked);
+            
+            if (availableDialogues.Count == 0) return "";
+            
+            var randomDialogue = availableDialogues[UnityEngine.Random.Range(0, availableDialogues.Count)];
+            return randomDialogue.text;
         }
         
-        private void ShowLevelUpNotification(CharacterData character)
+        public List<Character> GetUnlockedCharacters()
         {
-            // This would show a level up notification
-            Debug.Log($"{character.name} leveled up to level {character.level}!");
+            return characters.FindAll(c => c.isUnlocked);
         }
         
-        public void ResetDialogueCounts()
+        public List<CharacterAbility> GetCharacterAbilities(string characterId)
         {
-            dialogueCounts.Clear();
+            return abilities.FindAll(a => a.characterId == characterId);
         }
         
-        private void LoadCharacterData()
+        public List<CharacterAbility> GetUnlockedAbilities()
         {
-            var data = PlayerPrefs.GetString("CharacterData", "");
-            if (!string.IsNullOrEmpty(data))
+            return abilities.FindAll(a => a.isUnlocked);
+        }
+        
+        private void LoadCharacterProgress()
+        {
+            string path = Application.persistentDataPath + "/character_progress.json";
+            if (System.IO.File.Exists(path))
             {
-                try
+                string json = System.IO.File.ReadAllText(path);
+                var saveData = JsonUtility.FromJson<CharacterSaveData>(json);
+                
+                // Load character progress
+                foreach (var savedCharacter in saveData.characters)
                 {
-                    var characterData = JsonUtility.FromJson<CharacterData[]>(data);
-                    if (characterData != null)
+                    if (_characterLookup.ContainsKey(savedCharacter.id))
                     {
-                        characters = new List<CharacterData>(characterData);
+                        var character = _characterLookup[savedCharacter.id];
+                        character.level = savedCharacter.level;
+                        character.experience = savedCharacter.experience;
+                        character.experienceToNextLevel = savedCharacter.experienceToNextLevel;
+                        character.isUnlocked = savedCharacter.isUnlocked;
+                        character.stats = savedCharacter.stats;
                     }
                 }
-                catch (Exception e)
+                
+                // Load ability progress
+                foreach (var savedAbility in saveData.abilities)
                 {
-                    Debug.LogError($"Failed to load character data: {e.Message}");
+                    if (_abilityLookup.ContainsKey(savedAbility.id))
+                    {
+                        var ability = _abilityLookup[savedAbility.id];
+                        ability.level = savedAbility.level;
+                        ability.isUnlocked = savedAbility.isUnlocked;
+                        ability.isActive = savedAbility.isActive;
+                    }
                 }
             }
         }
         
-        private void SaveCharacterData()
+        public void SaveCharacterProgress()
         {
-            try
+            var saveData = new CharacterSaveData
             {
-                var data = JsonUtility.ToJson(characters.ToArray());
-                PlayerPrefs.SetString("CharacterData", data);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to save character data: {e.Message}");
-            }
+                characters = characters,
+                abilities = abilities,
+                currentCharacterId = _currentCharacter?.id
+            };
+            
+            string json = JsonUtility.ToJson(saveData, true);
+            System.IO.File.WriteAllText(Application.persistentDataPath + "/character_progress.json", json);
         }
+        
+        void OnDestroy()
+        {
+            SaveCharacterProgress();
+        }
+    }
+    
+    [System.Serializable]
+    public class CharacterSaveData
+    {
+        public List<Character> characters;
+        public List<CharacterAbility> abilities;
+        public string currentCharacterId;
     }
 }
