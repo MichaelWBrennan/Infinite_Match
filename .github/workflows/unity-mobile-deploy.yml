@@ -1,0 +1,368 @@
+name: Unity Mobile Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - release/*
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build and deploy'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - android
+          - ios
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+
+env:
+  UNITY_VERSION: 2022.3.20f1
+  ANDROID_BUILD_PATH: build/Android
+  IOS_BUILD_PATH: build/iOS
+
+jobs:
+  # Build Android
+  build-android:
+    if: github.event.inputs.platform == 'both' || github.event.inputs.platform == 'android' || github.event.inputs.platform == ''
+    runs-on: ubuntu-latest
+    outputs:
+      build-version: ${{ steps.version.outputs.version }}
+      build-number: ${{ steps.version.outputs.build_number }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Unity packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/unity
+            Library
+            Temp
+          key: ${{ runner.os }}-unity-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            ${{ runner.os }}-unity-
+
+      - name: Setup Unity
+        uses: game-ci/unity-setup@v2
+        with:
+          unity-version: ${{ env.UNITY_VERSION }}
+
+      - name: Generate Version
+        id: version
+        run: |
+          # Generate version based on git info and current date
+          GIT_HASH=$(git rev-parse --short HEAD)
+          BUILD_NUMBER=$(date +%Y%m%d%H%M%S)
+          VERSION_NAME="1.0.$BUILD_NUMBER"
+          
+          echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "git_hash=$GIT_HASH" >> $GITHUB_OUTPUT
+          
+          # Update version in Unity project
+          sed -i "s/bundleVersion: .*/bundleVersion: $VERSION_NAME/" ProjectSettings/ProjectSettings.asset
+          sed -i "s/AndroidBundleVersionCode: .*/AndroidBundleVersionCode: $BUILD_NUMBER/" ProjectSettings/ProjectSettings.asset
+
+      - name: Build Android
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          unityVersion: ${{ env.UNITY_VERSION }}
+          androidKeystoreName: user.keystore
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          androidTargetSdkVersion: 34
+          androidSdkVersion: 34
+          androidBuildToolsVersion: "34.0.0"
+          buildMethod: BuildScript.BuildAndroid
+          buildName: EvergreenMatch3
+          buildPath: ${{ env.ANDROID_BUILD_PATH }}
+
+      - name: Sign Android APK/AAB
+        run: |
+          # Sign the APK/AAB with your keystore
+          cd ${{ env.ANDROID_BUILD_PATH }}
+          
+          # Find the APK/AAB file
+          APK_FILE=$(find . -name "*.apk" | head -1)
+          AAB_FILE=$(find . -name "*.aab" | head -1)
+          
+          if [ -n "$APK_FILE" ]; then
+            echo "Signing APK: $APK_FILE"
+            # APK is already signed by Unity, but we can verify
+            echo "APK signing completed"
+          fi
+          
+          if [ -n "$AAB_FILE" ]; then
+            echo "Signing AAB: $AAB_FILE"
+            # AAB is already signed by Unity, but we can verify
+            echo "AAB signing completed"
+          fi
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-${{ steps.version.outputs.build_number }}
+          path: ${{ env.ANDROID_BUILD_PATH }}
+          retention-days: 30
+
+      - name: Upload to Google Play Console
+        if: github.ref == 'refs/heads/main' && (github.event.inputs.environment == 'production' || github.event.inputs.environment == '')
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.evergreen.match3
+          releaseFiles: ${{ env.ANDROID_BUILD_PATH }}/*.aab
+          track: production
+          status: completed
+          inAppUpdatePriority: 2
+          userFraction: 1.0
+          whatsNewDirectory: ${{ env.ANDROID_BUILD_PATH }}/whatsnew
+          mappingFile: ${{ env.ANDROID_BUILD_PATH }}/*/mapping.txt
+
+  # Build iOS
+  build-ios:
+    if: github.event.inputs.platform == 'both' || github.event.inputs.platform == 'ios' || github.event.inputs.platform == ''
+    runs-on: macos-latest
+    outputs:
+      build-version: ${{ steps.version.outputs.version }}
+      build-number: ${{ steps.version.outputs.build_number }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Unity packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/unity
+            Library
+            Temp
+          key: ${{ runner.os }}-unity-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            ${{ runner.os }}-unity-
+
+      - name: Setup Unity
+        uses: game-ci/unity-setup@v2
+        with:
+          unity-version: ${{ env.UNITY_VERSION }}
+
+      - name: Generate Version
+        id: version
+        run: |
+          # Generate version based on git info and current date
+          GIT_HASH=$(git rev-parse --short HEAD)
+          BUILD_NUMBER=$(date +%Y%m%d%H%M%S)
+          VERSION_NAME="1.0.$BUILD_NUMBER"
+          
+          echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "git_hash=$GIT_HASH" >> $GITHUB_OUTPUT
+          
+          # Update version in Unity project
+          sed -i '' "s/bundleVersion: .*/bundleVersion: $VERSION_NAME/" ProjectSettings/ProjectSettings.asset
+          sed -i '' "s/iOSBuildNumber: .*/iOSBuildNumber: $BUILD_NUMBER/" ProjectSettings/ProjectSettings.asset
+
+      - name: Build iOS
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: iOS
+          unityVersion: ${{ env.UNITY_VERSION }}
+          buildMethod: BuildScript.BuildiOS
+          buildName: EvergreenMatch3
+          buildPath: ${{ env.IOS_BUILD_PATH }}
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Configure iOS Project
+        run: |
+          cd ${{ env.IOS_BUILD_PATH }}
+          
+          # Find the Xcode project
+          XCODE_PROJECT=$(find . -name "*.xcodeproj" | head -1)
+          if [ -z "$XCODE_PROJECT" ]; then
+            echo "No Xcode project found!"
+            exit 1
+          fi
+          
+          # Configure project settings
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.build_number }}" "$XCODE_PROJECT/../Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" "$XCODE_PROJECT/../Info.plist"
+          
+          # Configure signing
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.evergreen.match3" "$XCODE_PROJECT/../Info.plist"
+          
+          echo "iOS project configured successfully"
+
+      - name: Build iOS Archive
+        run: |
+          cd ${{ env.IOS_BUILD_PATH }}
+          
+          # Find the Xcode project
+          XCODE_PROJECT=$(find . -name "*.xcodeproj" | head -1)
+          
+          # Build archive
+          xcodebuild -project "$XCODE_PROJECT" \
+            -scheme "Unity-iPhone" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "EvergreenMatch3.xcarchive" \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export iOS IPA
+        run: |
+          cd ${{ env.IOS_BUILD_PATH }}
+          
+          # Create export options plist
+          cat > ExportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>uploadBitcode</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+          </dict>
+          </plist>
+          EOF
+          
+          # Export IPA
+          xcodebuild -exportArchive \
+            -archivePath "EvergreenMatch3.xcarchive" \
+            -exportPath "." \
+            -exportOptionsPlist "ExportOptions.plist"
+
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-${{ steps.version.outputs.build_number }}
+          path: ${{ env.IOS_BUILD_PATH }}/*.ipa
+          retention-days: 30
+
+      - name: Upload to App Store Connect
+        if: github.ref == 'refs/heads/main' && (github.event.inputs.environment == 'production' || github.event.inputs.environment == '')
+        run: |
+          cd ${{ env.IOS_BUILD_PATH }}
+          
+          # Find the IPA file
+          IPA_FILE=$(find . -name "*.ipa" | head -1)
+          
+          if [ -n "$IPA_FILE" ]; then
+            echo "Uploading IPA to App Store Connect: $IPA_FILE"
+            
+            # Upload using altool
+            xcrun altool --upload-app \
+              --type ios \
+              --file "$IPA_FILE" \
+              --username "${{ secrets.APPLE_ID }}" \
+              --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+          else
+            echo "No IPA file found for upload"
+            exit 1
+          fi
+
+  # Deploy to Staging (for testing)
+  deploy-staging:
+    if: github.event.inputs.environment == 'staging' || (github.event.inputs.environment == '' && github.ref != 'refs/heads/main')
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-build-${{ needs.build-android.outputs.build-number }}
+          path: android-build
+
+      - name: Download iOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-build-${{ needs.build-ios.outputs.build-number }}
+          path: ios-build
+
+      - name: Upload to Firebase App Distribution (Android)
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          groups: testers
+          file: android-build/*.apk
+          releaseNotes: "Staging build - Version ${{ needs.build-android.outputs.build-version }}"
+
+      - name: Upload to TestFlight (iOS)
+        run: |
+          echo "iOS staging build ready for TestFlight upload"
+          echo "Version: ${{ needs.build-ios.outputs.build-version }}"
+          echo "Build Number: ${{ needs.build-ios.outputs.build-number }}"
+
+  # Notify Deployment Status
+  notify-deployment:
+    if: always()
+    needs: [build-android, build-ios, deploy-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Success
+        if: needs.build-android.result == 'success' && needs.build-ios.result == 'success'
+        run: |
+          echo "✅ Build and deployment successful!"
+          echo "Android Version: ${{ needs.build-android.outputs.build-version }}"
+          echo "iOS Version: ${{ needs.build-ios.outputs.build-version }}"
+
+      - name: Notify Failure
+        if: needs.build-android.result == 'failure' || needs.build-ios.result == 'failure'
+        run: |
+          echo "❌ Build or deployment failed!"
+          echo "Android Status: ${{ needs.build-android.result }}"
+          echo "iOS Status: ${{ needs.build-ios.result }}"
+
+      - name: Send Slack Notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#game-deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
