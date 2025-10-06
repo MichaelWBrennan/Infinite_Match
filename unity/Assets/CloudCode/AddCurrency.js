@@ -1,7 +1,7 @@
-// Cloud Code function to add currency to player balance
+// Cloud Code function to add currency to player
 // This function is called from the Unity client to add currency
 
-const { EconomyApi } = require("@unity-services/economy-2.4");
+const { EconomyApi } = require("@unity-services/economy-2.4.0");
 
 module.exports = async ({ params, context, logger }) => {
     try {
@@ -10,7 +10,7 @@ module.exports = async ({ params, context, logger }) => {
         if (!currencyId || !amount || amount <= 0) {
             return {
                 success: false,
-                errorMessage: "Invalid parameters"
+                errorMessage: "Invalid parameters: currencyId and amount are required"
             };
         }
         
@@ -24,8 +24,9 @@ module.exports = async ({ params, context, logger }) => {
             };
         }
         
-        // Add currency using Economy API
-        await EconomyApi.addCurrencyResource({
+        // Add currency to player balance
+        const economyApi = new EconomyApi();
+        const result = await economyApi.addCurrencyBalance({
             playerId: playerId,
             currencyId: currencyId,
             amount: amount
@@ -35,12 +36,13 @@ module.exports = async ({ params, context, logger }) => {
         
         return {
             success: true,
+            newBalance: result.balance,
             currencyId: currencyId,
-            amount: amount
+            amountAdded: amount
         };
         
     } catch (error) {
-        logger.error(`AddCurrency error: ${error.message}`);
+        logger.error(`Error adding currency: ${error.message}`);
         return {
             success: false,
             errorMessage: error.message
