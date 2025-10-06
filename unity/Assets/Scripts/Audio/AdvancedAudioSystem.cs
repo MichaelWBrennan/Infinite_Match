@@ -1,141 +1,94 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using UnityEngine.Audio;
+using System;
+using Evergreen.Core;
 
 namespace Evergreen.Audio
 {
-    /// <summary>
-    /// Advanced Audio System with 3D audio, dynamic music, and premium sound design
-    /// Implements industry-leading audio features for maximum player engagement
-    /// </summary>
     public class AdvancedAudioSystem : MonoBehaviour
     {
         [Header("Audio Sources")]
-        [SerializeField] private AudioSource musicSource;
-        [SerializeField] private AudioSource sfxSource;
-        [SerializeField] private AudioSource voiceSource;
-        [SerializeField] private AudioSource ambientSource;
-        [SerializeField] private AudioSource uiSource;
-        [SerializeField] private AudioSource[] poolSources;
-        
-        [Header("Audio Mixer")]
-        [SerializeField] private AudioMixerGroup musicMixerGroup;
-        [SerializeField] private AudioMixerGroup sfxMixerGroup;
-        [SerializeField] private AudioMixerGroup voiceMixerGroup;
-        [SerializeField] private AudioMixerGroup ambientMixerGroup;
-        [SerializeField] private AudioMixerGroup uiMixerGroup;
-        
-        [Header("Music System")]
-        [SerializeField] private AudioClip[] backgroundMusic;
-        [SerializeField] private AudioClip[] combatMusic;
-        [SerializeField] private AudioClip[] victoryMusic;
-        [SerializeField] private AudioClip[] defeatMusic;
-        [SerializeField] private bool enableDynamicMusic = true;
-        [SerializeField] private bool enableMusicFading = true;
-        [SerializeField] private float musicFadeTime = 2.0f;
-        
-        [Header("3D Audio")]
-        [SerializeField] private bool enable3DAudio = true;
-        [SerializeField] private float max3DDistance = 50.0f;
-        [SerializeField] private AnimationCurve distanceAttenuationCurve;
-        [SerializeField] private bool enableSpatialBlend = true;
-        
-        [Header("Dynamic Audio")]
-        [SerializeField] private bool enableDynamicVolume = true;
-        [SerializeField] private bool enableAudioLayers = true;
-        [SerializeField] private bool enableAudioTriggers = true;
-        [SerializeField] private bool enableAudioRandomization = true;
+        public AudioSource musicSource;
+        public AudioSource sfxSource;
+        public AudioSource voiceSource;
+        public AudioSource ambientSource;
+        public AudioSource uiSource;
         
         [Header("Audio Clips")]
-        [SerializeField] private AudioClipData[] audioClips;
-        [SerializeField] private AudioClipData[] uiClips;
-        [SerializeField] private AudioClipData[] sfxClips;
-        [SerializeField] private AudioClipData[] voiceClips;
-        [SerializeField] private AudioClipData[] ambientClips;
+        public AudioClip[] musicTracks;
+        public AudioClip[] sfxClips;
+        public AudioClip[] voiceClips;
+        public AudioClip[] ambientClips;
+        public AudioClip[] uiClips;
         
-        [Header("Quality Settings")]
-        [SerializeField] private bool enableHighQualityAudio = true;
-        [SerializeField] private bool enableMobileOptimization = false;
-        [SerializeField] private int maxConcurrentSounds = 32;
-        [SerializeField] private float audioPoolSize = 64;
+        [Header("Volume Settings")]
+        [Range(0f, 1f)] public float masterVolume = 1f;
+        [Range(0f, 1f)] public float musicVolume = 0.8f;
+        [Range(0f, 1f)] public float sfxVolume = 1f;
+        [Range(0f, 1f)] public float voiceVolume = 1f;
+        [Range(0f, 1f)] public float ambientVolume = 0.6f;
+        [Range(0f, 1f)] public float uiVolume = 0.9f;
         
-        private Dictionary<string, AudioClipData> _audioLookup = new Dictionary<string, AudioClipData>();
-        private Dictionary<string, AudioSource> _audioSourcePool = new Dictionary<string, AudioSource>();
-        private Queue<AudioSource> _availableSources = new Queue<AudioSource>();
-        private List<AudioSource> _activeSources = new List<AudioSource>();
-        private Dictionary<string, Coroutine> _activeCoroutines = new Dictionary<string, Coroutine>();
-        private Dictionary<string, float> _audioLayers = new Dictionary<string, float>();
-        private Dictionary<string, AudioTrigger> _audioTriggers = new Dictionary<string, AudioTrigger>();
+        [Header("Audio Settings")]
+        public bool enableMusic = true;
+        public bool enableSFX = true;
+        public bool enableVoice = true;
+        public bool enableAmbient = true;
+        public bool enableUI = true;
+        public bool enable3DAudio = true;
+        public bool enableSpatialAudio = true;
+        
+        [Header("Music Settings")]
+        public bool loopMusic = true;
+        public bool crossfadeMusic = true;
+        public float crossfadeDuration = 2f;
+        public bool randomizeMusic = false;
+        public float musicFadeInDuration = 1f;
+        public float musicFadeOutDuration = 1f;
+        
+        [Header("SFX Settings")]
+        public int maxSFXSources = 10;
+        public float sfxPitchVariation = 0.1f;
+        public bool enableSFXPooling = true;
+        public float sfxSpatialBlend = 0.5f;
+        
+        [Header("Voice Settings")]
+        public bool enableVoiceSubtitles = true;
+        public float voiceSubtitleDuration = 3f;
+        public bool enableVoiceLipSync = false;
+        
+        [Header("3D Audio Settings")]
+        public float max3DDistance = 50f;
+        public AnimationCurve volumeRolloff = AnimationCurve.EaseInOut(0f, 1f, 1f, 0f);
+        public float dopplerLevel = 1f;
+        public float spread = 0f;
+        
+        [Header("Audio Mixing")]
+        public AudioMixerGroup musicMixerGroup;
+        public AudioMixerGroup sfxMixerGroup;
+        public AudioMixerGroup voiceMixerGroup;
+        public AudioMixerGroup ambientMixerGroup;
+        public AudioMixerGroup uiMixerGroup;
+        
+        private Dictionary<string, AudioClip> _audioClipLookup = new Dictionary<string, AudioClip>();
+        private Dictionary<string, AudioSource> _audioSourceLookup = new Dictionary<string, AudioSource>();
+        private List<AudioSource> _sfxPool = new List<AudioSource>();
+        private Queue<AudioSource> _availableSFXSources = new Queue<AudioSource>();
+        private AudioSource _currentMusicSource;
+        private AudioSource _nextMusicSource;
+        private Coroutine _musicCrossfadeCoroutine;
+        private Coroutine _musicFadeCoroutine;
+        private Dictionary<string, Coroutine> _activeFades = new Dictionary<string, Coroutine>();
+        
+        // Events
+        public System.Action<string> OnMusicStarted;
+        public System.Action<string> OnMusicStopped;
+        public System.Action<string> OnSFXPlayed;
+        public System.Action<string> OnVoicePlayed;
+        public System.Action<float> OnVolumeChanged;
         
         public static AdvancedAudioSystem Instance { get; private set; }
-        
-        [System.Serializable]
-        public class AudioClipData
-        {
-            public string id;
-            public AudioClip clip;
-            public AudioType type;
-            public float volume = 1.0f;
-            public float pitch = 1.0f;
-            public bool loop = false;
-            public bool is3D = false;
-            public float spatialBlend = 0.0f;
-            public float minDistance = 1.0f;
-            public float maxDistance = 500.0f;
-            public AudioRolloffMode rolloffMode = AudioRolloffMode.Logarithmic;
-            public float dopplerLevel = 1.0f;
-            public bool randomizePitch = false;
-            public float pitchVariation = 0.1f;
-            public bool randomizeVolume = false;
-            public float volumeVariation = 0.1f;
-            public int priority = 128;
-            public float cooldown = 0.0f;
-            public string[] tags;
-        }
-        
-        [System.Serializable]
-        public class AudioTrigger
-        {
-            public string id;
-            public AudioClipData clipData;
-            public TriggerType triggerType;
-            public float threshold;
-            public float cooldown;
-            public bool isActive;
-            public float lastTriggerTime;
-        }
-        
-        public enum AudioType
-        {
-            Music,
-            SFX,
-            Voice,
-            Ambient,
-            UI,
-            Environmental,
-            Weapon,
-            Footstep,
-            Impact,
-            Explosion
-        }
-        
-        public enum TriggerType
-        {
-            OnEnter,
-            OnExit,
-            OnStay,
-            OnCollision,
-            OnTrigger,
-            OnDamage,
-            OnHeal,
-            OnLevelComplete,
-            OnLevelFail,
-            OnMatch,
-            OnCombo,
-            OnSpecialPiece
-        }
         
         void Awake()
         {
@@ -143,7 +96,7 @@ namespace Evergreen.Audio
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeAdvancedAudio();
+                InitializeAudioSystem();
             }
             else
             {
@@ -154,15 +107,21 @@ namespace Evergreen.Audio
         void Start()
         {
             SetupAudioSources();
-            SetupAudioMixer();
-            SetupAudioPool();
-            BuildAudioLookup();
-            SetupAudioTriggers();
-            StartCoroutine(UpdateAudioSystem());
+            InitializeAudioClips();
+            InitializeSFXPool();
+            UpdateVolumeSettings();
         }
         
-        private void InitializeAdvancedAudio()
+        void Update()
         {
+            UpdateSFXPool();
+            Update3DAudio();
+        }
+        
+        private void InitializeAudioSystem()
+        {
+            Debug.Log("Advanced Audio System initialized");
+            
             // Create audio sources if they don't exist
             if (musicSource == null)
             {
@@ -188,16 +147,6 @@ namespace Evergreen.Audio
             {
                 uiSource = CreateAudioSource("UISource", AudioType.UI);
             }
-            
-            // Setup distance attenuation curve
-            if (distanceAttenuationCurve == null || distanceAttenuationCurve.keys.Length == 0)
-            {
-                distanceAttenuationCurve = new AnimationCurve(
-                    new Keyframe(0f, 1f),
-                    new Keyframe(0.5f, 0.5f),
-                    new Keyframe(1f, 0f)
-                );
-            }
         }
         
         private AudioSource CreateAudioSource(string name, AudioType type)
@@ -205,467 +154,552 @@ namespace Evergreen.Audio
             GameObject audioObj = new GameObject(name);
             audioObj.transform.SetParent(transform);
             
-            AudioSource audioSource = audioObj.AddComponent<AudioSource>();
-            audioSource.playOnAwake = false;
-            audioSource.loop = false;
+            AudioSource source = audioObj.AddComponent<AudioSource>();
             
-            // Setup based on audio type
+            // Configure based on type
             switch (type)
             {
                 case AudioType.Music:
-                    audioSource.volume = 0.7f;
-                    audioSource.pitch = 1.0f;
-                    audioSource.loop = true;
-                    audioSource.priority = 0;
+                    source.loop = loopMusic;
+                    source.volume = musicVolume * masterVolume;
+                    source.priority = 0;
                     break;
                 case AudioType.SFX:
-                    audioSource.volume = 1.0f;
-                    audioSource.pitch = 1.0f;
-                    audioSource.priority = 64;
+                    source.loop = false;
+                    source.volume = sfxVolume * masterVolume;
+                    source.priority = 128;
                     break;
                 case AudioType.Voice:
-                    audioSource.volume = 0.8f;
-                    audioSource.pitch = 1.0f;
-                    audioSource.priority = 32;
+                    source.loop = false;
+                    source.volume = voiceVolume * masterVolume;
+                    source.priority = 64;
                     break;
                 case AudioType.Ambient:
-                    audioSource.volume = 0.5f;
-                    audioSource.pitch = 1.0f;
-                    audioSource.loop = true;
-                    audioSource.priority = 96;
+                    source.loop = true;
+                    source.volume = ambientVolume * masterVolume;
+                    source.priority = 32;
                     break;
                 case AudioType.UI:
-                    audioSource.volume = 0.6f;
-                    audioSource.pitch = 1.0f;
-                    audioSource.priority = 16;
+                    source.loop = false;
+                    source.volume = uiVolume * masterVolume;
+                    source.priority = 96;
                     break;
             }
             
-            return audioSource;
+            // Configure 3D audio
+            if (enable3DAudio && type != AudioType.Music)
+            {
+                source.spatialBlend = sfxSpatialBlend;
+                source.rolloffMode = AudioRolloffMode.Custom;
+                source.maxDistance = max3DDistance;
+                source.dopplerLevel = dopplerLevel;
+                source.spread = spread;
+            }
+            else
+            {
+                source.spatialBlend = 0f; // 2D audio
+            }
+            
+            // Set mixer group
+            AudioMixerGroup mixerGroup = GetMixerGroup(type);
+            if (mixerGroup != null)
+            {
+                source.outputAudioMixerGroup = mixerGroup;
+            }
+            
+            _audioSourceLookup[name] = source;
+            return source;
+        }
+        
+        private AudioMixerGroup GetMixerGroup(AudioType type)
+        {
+            switch (type)
+            {
+                case AudioType.Music:
+                    return musicMixerGroup;
+                case AudioType.SFX:
+                    return sfxMixerGroup;
+                case AudioType.Voice:
+                    return voiceMixerGroup;
+                case AudioType.Ambient:
+                    return ambientMixerGroup;
+                case AudioType.UI:
+                    return uiMixerGroup;
+                default:
+                    return null;
+            }
         }
         
         private void SetupAudioSources()
         {
-            // Setup music source
-            if (musicSource != null)
-            {
-                musicSource.outputAudioMixerGroup = musicMixerGroup;
-                musicSource.spatialBlend = 0.0f; // 2D audio
-            }
-            
-            // Setup SFX source
-            if (sfxSource != null)
-            {
-                sfxSource.outputAudioMixerGroup = sfxMixerGroup;
-                sfxSource.spatialBlend = enable3DAudio ? 1.0f : 0.0f;
-            }
-            
-            // Setup voice source
-            if (voiceSource != null)
-            {
-                voiceSource.outputAudioMixerGroup = voiceMixerGroup;
-                voiceSource.spatialBlend = 0.0f; // 2D audio
-            }
-            
-            // Setup ambient source
-            if (ambientSource != null)
-            {
-                ambientSource.outputAudioMixerGroup = ambientMixerGroup;
-                ambientSource.spatialBlend = enable3DAudio ? 1.0f : 0.0f;
-            }
-            
-            // Setup UI source
-            if (uiSource != null)
-            {
-                uiSource.outputAudioMixerGroup = uiMixerGroup;
-                uiSource.spatialBlend = 0.0f; // 2D audio
-            }
+            _currentMusicSource = musicSource;
+            _nextMusicSource = null;
         }
         
-        private void SetupAudioMixer()
+        private void InitializeAudioClips()
         {
-            // Create audio mixer groups if they don't exist
-            if (musicMixerGroup == null)
+            // Initialize music clips
+            foreach (var clip in musicTracks)
             {
-                // In a real implementation, you would load these from an AudioMixer asset
-                Debug.LogWarning("AudioMixerGroup not assigned. Please assign in inspector.");
-            }
-        }
-        
-        private void SetupAudioPool()
-        {
-            // Create audio source pool
-            for (int i = 0; i < audioPoolSize; i++)
-            {
-                AudioSource pooledSource = CreateAudioSource($"PooledSource_{i}", AudioType.SFX);
-                pooledSource.gameObject.SetActive(false);
-                _availableSources.Enqueue(pooledSource);
-            }
-        }
-        
-        private void BuildAudioLookup()
-        {
-            _audioLookup.Clear();
-            
-            // Add all audio clips to lookup
-            AddAudioClipsToLookup(audioClips);
-            AddAudioClipsToLookup(uiClips);
-            AddAudioClipsToLookup(sfxClips);
-            AddAudioClipsToLookup(voiceClips);
-            AddAudioClipsToLookup(ambientClips);
-        }
-        
-        private void AddAudioClipsToLookup(AudioClipData[] clips)
-        {
-            if (clips == null) return;
-            
-            foreach (var clipData in clips)
-            {
-                if (clipData != null && !string.IsNullOrEmpty(clipData.id))
+                if (clip != null)
                 {
-                    _audioLookup[clipData.id] = clipData;
+                    _audioClipLookup[clip.name] = clip;
+                }
+            }
+            
+            // Initialize SFX clips
+            foreach (var clip in sfxClips)
+            {
+                if (clip != null)
+                {
+                    _audioClipLookup[clip.name] = clip;
+                }
+            }
+            
+            // Initialize voice clips
+            foreach (var clip in voiceClips)
+            {
+                if (clip != null)
+                {
+                    _audioClipLookup[clip.name] = clip;
+                }
+            }
+            
+            // Initialize ambient clips
+            foreach (var clip in ambientClips)
+            {
+                if (clip != null)
+                {
+                    _audioClipLookup[clip.name] = clip;
+                }
+            }
+            
+            // Initialize UI clips
+            foreach (var clip in uiClips)
+            {
+                if (clip != null)
+                {
+                    _audioClipLookup[clip.name] = clip;
                 }
             }
         }
         
-        private void SetupAudioTriggers()
+        private void InitializeSFXPool()
         {
-            // Setup audio triggers for dynamic audio
-            if (enableAudioTriggers)
+            if (!enableSFXPooling) return;
+            
+            for (int i = 0; i < maxSFXSources; i++)
             {
-                // Example triggers - in a real implementation, these would be configured
-                _audioTriggers["LevelComplete"] = new AudioTrigger
-                {
-                    id = "LevelComplete",
-                    triggerType = TriggerType.OnLevelComplete,
-                    threshold = 1.0f,
-                    cooldown = 0.0f,
-                    isActive = true
-                };
-                
-                _audioTriggers["LevelFail"] = new AudioTrigger
-                {
-                    id = "LevelFail",
-                    triggerType = TriggerType.OnLevelFail,
-                    threshold = 1.0f,
-                    cooldown = 0.0f,
-                    isActive = true
-                };
-                
-                _audioTriggers["Match"] = new AudioTrigger
-                {
-                    id = "Match",
-                    triggerType = TriggerType.OnMatch,
-                    threshold = 1.0f,
-                    cooldown = 0.1f,
-                    isActive = true
-                };
-                
-                _audioTriggers["Combo"] = new AudioTrigger
-                {
-                    id = "Combo",
-                    triggerType = TriggerType.OnCombo,
-                    threshold = 1.0f,
-                    cooldown = 0.2f,
-                    isActive = true
-                };
+                var sfxSource = CreateAudioSource($"SFXPool_{i}", AudioType.SFX);
+                sfxSource.gameObject.SetActive(false);
+                _sfxPool.Add(sfxSource);
+                _availableSFXSources.Enqueue(sfxSource);
             }
         }
         
-        /// <summary>
-        /// Play audio by ID with advanced features
-        /// </summary>
-        public void PlayAudio(string audioId, Vector3 position = default, bool use3D = false, float volume = -1f, float pitch = -1f)
+        private void UpdateSFXPool()
         {
-            if (!_audioLookup.ContainsKey(audioId))
-            {
-                Debug.LogWarning($"Audio clip '{audioId}' not found in lookup table.");
-                return;
-            }
+            if (!enableSFXPooling) return;
             
-            AudioClipData clipData = _audioLookup[audioId];
-            
-            // Check cooldown
-            if (clipData.cooldown > 0f)
+            // Check for finished SFX sources and return them to pool
+            for (int i = _sfxPool.Count - 1; i >= 0; i--)
             {
-                string cooldownKey = $"cooldown_{audioId}";
-                if (_activeCoroutines.ContainsKey(cooldownKey))
+                var source = _sfxPool[i];
+                if (source != null && !source.isPlaying && source.gameObject.activeInHierarchy)
                 {
-                    return; // Still on cooldown
+                    source.gameObject.SetActive(false);
+                    _availableSFXSources.Enqueue(source);
                 }
-                
-                _activeCoroutines[cooldownKey] = StartCoroutine(CooldownCoroutine(cooldownKey, clipData.cooldown));
-            }
-            
-            // Get audio source
-            AudioSource source = GetAudioSource(clipData.type, use3D || clipData.is3D);
-            
-            if (source == null)
-            {
-                Debug.LogWarning($"No available audio source for type: {clipData.type}");
-                return;
-            }
-            
-            // Setup audio source
-            SetupAudioSource(source, clipData, position, volume, pitch);
-            
-            // Play audio
-            source.Play();
-            
-            // Add to active sources
-            if (!_activeSources.Contains(source))
-            {
-                _activeSources.Add(source);
             }
         }
         
-        private AudioSource GetAudioSource(AudioType type, bool use3D)
+        private void Update3DAudio()
         {
-            // Try to get appropriate source based on type
-            AudioSource source = null;
+            if (!enable3DAudio || !enableSpatialAudio) return;
             
-            switch (type)
+            // Update 3D audio settings for all sources
+            foreach (var source in _audioSourceLookup.Values)
             {
-                case AudioType.Music:
-                    source = musicSource;
-                    break;
-                case AudioType.SFX:
-                    source = sfxSource;
-                    break;
-                case AudioType.Voice:
-                    source = voiceSource;
-                    break;
-                case AudioType.Ambient:
-                    source = ambientSource;
-                    break;
-                case AudioType.UI:
-                    source = uiSource;
-                    break;
-                default:
-                    // Use pooled source for other types
-                    if (_availableSources.Count > 0)
-                    {
-                        source = _availableSources.Dequeue();
-                        source.gameObject.SetActive(true);
-                    }
-                    break;
-            }
-            
-            // If no specific source or need 3D audio, use pooled source
-            if (source == null || (use3D && source.spatialBlend == 0f))
-            {
-                if (_availableSources.Count > 0)
+                if (source != null && source.spatialBlend > 0f)
                 {
-                    source = _availableSources.Dequeue();
-                    source.gameObject.SetActive(true);
+                    // Update volume based on distance and rolloff curve
+                    float distance = Vector3.Distance(transform.position, source.transform.position);
+                    float normalizedDistance = Mathf.Clamp01(distance / max3DDistance);
+                    float volumeMultiplier = volumeRolloff.Evaluate(normalizedDistance);
+                    
+                    source.volume = GetBaseVolume(source) * volumeMultiplier * masterVolume;
                 }
-            }
-            
-            return source;
-        }
-        
-        private void SetupAudioSource(AudioSource source, AudioClipData clipData, Vector3 position, float volume, float pitch)
-        {
-            // Set clip
-            source.clip = clipData.clip;
-            
-            // Set volume
-            float finalVolume = volume >= 0 ? volume : clipData.volume;
-            if (clipData.randomizeVolume)
-            {
-                finalVolume += Random.Range(-clipData.volumeVariation, clipData.volumeVariation);
-            }
-            source.volume = Mathf.Clamp01(finalVolume);
-            
-            // Set pitch
-            float finalPitch = pitch >= 0 ? pitch : clipData.pitch;
-            if (clipData.randomizePitch)
-            {
-                finalPitch += Random.Range(-clipData.pitchVariation, clipData.pitchVariation);
-            }
-            source.pitch = Mathf.Clamp(finalPitch, 0.1f, 3.0f);
-            
-            // Set loop
-            source.loop = clipData.loop;
-            
-            // Set priority
-            source.priority = clipData.priority;
-            
-            // Set 3D audio properties
-            if (clipData.is3D || source.spatialBlend > 0f)
-            {
-                source.spatialBlend = clipData.spatialBlend;
-                source.minDistance = clipData.minDistance;
-                source.maxDistance = clipData.maxDistance;
-                source.rolloffMode = clipData.rolloffMode;
-                source.dopplerLevel = clipData.dopplerLevel;
-                
-                // Set position
-                source.transform.position = position;
-            }
-            
-            // Set output mixer group
-            switch (clipData.type)
-            {
-                case AudioType.Music:
-                    source.outputAudioMixerGroup = musicMixerGroup;
-                    break;
-                case AudioType.SFX:
-                    source.outputAudioMixerGroup = sfxMixerGroup;
-                    break;
-                case AudioType.Voice:
-                    source.outputAudioMixerGroup = voiceMixerGroup;
-                    break;
-                case AudioType.Ambient:
-                    source.outputAudioMixerGroup = ambientMixerGroup;
-                    break;
-                case AudioType.UI:
-                    source.outputAudioMixerGroup = uiMixerGroup;
-                    break;
             }
         }
         
-        /// <summary>
-        /// Play music with dynamic features
-        /// </summary>
-        public void PlayMusic(string musicId, bool fadeIn = true, float fadeTime = -1f)
+        private float GetBaseVolume(AudioSource source)
         {
-            if (!_audioLookup.ContainsKey(musicId))
-            {
-                Debug.LogWarning($"Music clip '{musicId}' not found in lookup table.");
-                return;
-            }
+            if (source == musicSource) return musicVolume;
+            if (source == sfxSource) return sfxVolume;
+            if (source == voiceSource) return voiceVolume;
+            if (source == ambientSource) return ambientVolume;
+            if (source == uiSource) return uiVolume;
+            return 1f;
+        }
+        
+        public void PlayMusic(string clipName, bool loop = true, bool crossfade = true)
+        {
+            if (!enableMusic || !_audioClipLookup.ContainsKey(clipName)) return;
             
-            AudioClipData clipData = _audioLookup[musicId];
+            var clip = _audioClipLookup[clipName];
             
-            if (musicSource == null)
+            if (crossfade && crossfadeMusic)
             {
-                Debug.LogWarning("Music source not available.");
-                return;
-            }
-            
-            // Stop current music
-            if (musicSource.isPlaying)
-            {
-                if (fadeIn && enableMusicFading)
-                {
-                    StartCoroutine(FadeOutMusic(fadeTime > 0 ? fadeTime : musicFadeTime, () => {
-                        PlayMusicImmediate(clipData, fadeIn, fadeTime);
-                    }));
-                }
-                else
-                {
-                    musicSource.Stop();
-                    PlayMusicImmediate(clipData, fadeIn, fadeTime);
-                }
+                StartCoroutine(CrossfadeMusic(clip, loop));
             }
             else
             {
-                PlayMusicImmediate(clipData, fadeIn, fadeTime);
+                PlayMusicDirect(clip, loop);
             }
         }
         
-        private void PlayMusicImmediate(AudioClipData clipData, bool fadeIn, float fadeTime)
+        private void PlayMusicDirect(AudioClip clip, bool loop)
         {
-            musicSource.clip = clipData.clip;
-            musicSource.volume = fadeIn ? 0f : clipData.volume;
-            musicSource.loop = clipData.loop;
-            musicSource.Play();
-            
-            if (fadeIn && enableMusicFading)
+            if (_currentMusicSource != null)
             {
-                StartCoroutine(FadeInMusic(fadeTime > 0 ? fadeTime : musicFadeTime, clipData.volume));
+                _currentMusicSource.clip = clip;
+                _currentMusicSource.loop = loop;
+                _currentMusicSource.Play();
+                OnMusicStarted?.Invoke(clip.name);
             }
         }
         
-        /// <summary>
-        /// Play 3D audio at specific position
-        /// </summary>
-        public void Play3DAudio(string audioId, Vector3 position, float volume = -1f, float pitch = -1f)
+        private IEnumerator CrossfadeMusic(AudioClip newClip, bool loop)
         {
-            PlayAudio(audioId, position, true, volume, pitch);
-        }
-        
-        /// <summary>
-        /// Play UI sound
-        /// </summary>
-        public void PlayUISound(string audioId, float volume = -1f, float pitch = -1f)
-        {
-            PlayAudio(audioId, Vector3.zero, false, volume, pitch);
-        }
-        
-        /// <summary>
-        /// Play voice line
-        /// </summary>
-        public void PlayVoice(string audioId, float volume = -1f, float pitch = -1f)
-        {
-            PlayAudio(audioId, Vector3.zero, false, volume, pitch);
-        }
-        
-        /// <summary>
-        /// Play ambient sound
-        /// </summary>
-        public void PlayAmbient(string audioId, Vector3 position = default, bool loop = true, float volume = -1f)
-        {
-            if (!_audioLookup.ContainsKey(audioId))
+            if (_musicCrossfadeCoroutine != null)
             {
-                Debug.LogWarning($"Ambient clip '{audioId}' not found in lookup table.");
-                return;
+                StopCoroutine(_musicCrossfadeCoroutine);
             }
             
-            AudioClipData clipData = _audioLookup[audioId];
-            clipData.loop = loop;
-            
-            PlayAudio(audioId, position, clipData.is3D, volume);
+            _musicCrossfadeCoroutine = StartCoroutine(CrossfadeMusicCoroutine(newClip, loop));
+            yield return _musicCrossfadeCoroutine;
         }
         
-        /// <summary>
-        /// Stop audio by ID
-        /// </summary>
-        public void StopAudio(string audioId)
+        private IEnumerator CrossfadeMusicCoroutine(AudioClip newClip, bool loop)
         {
-            // Find and stop audio source playing this clip
-            foreach (var source in _activeSources)
+            // Create next music source if needed
+            if (_nextMusicSource == null)
             {
-                if (source != null && source.clip != null && _audioLookup.ContainsKey(audioId))
+                _nextMusicSource = CreateAudioSource("NextMusicSource", AudioType.Music);
+            }
+            
+            // Setup next music source
+            _nextMusicSource.clip = newClip;
+            _nextMusicSource.loop = loop;
+            _nextMusicSource.volume = 0f;
+            _nextMusicSource.Play();
+            
+            // Crossfade
+            float elapsed = 0f;
+            while (elapsed < crossfadeDuration)
+            {
+                float t = elapsed / crossfadeDuration;
+                
+                if (_currentMusicSource != null)
                 {
-                    if (source.clip == _audioLookup[audioId].clip)
-                    {
-                        source.Stop();
-                        ReturnAudioSourceToPool(source);
-                        break;
-                    }
+                    _currentMusicSource.volume = musicVolume * masterVolume * (1f - t);
+                }
+                
+                _nextMusicSource.volume = musicVolume * masterVolume * t;
+                
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            
+            // Complete crossfade
+            if (_currentMusicSource != null)
+            {
+                _currentMusicSource.Stop();
+                _currentMusicSource.volume = musicVolume * masterVolume;
+            }
+            
+            _nextMusicSource.volume = musicVolume * masterVolume;
+            
+            // Swap sources
+            var temp = _currentMusicSource;
+            _currentMusicSource = _nextMusicSource;
+            _nextMusicSource = temp;
+            
+            OnMusicStarted?.Invoke(newClip.name);
+            _musicCrossfadeCoroutine = null;
+        }
+        
+        public void StopMusic(bool fadeOut = true)
+        {
+            if (_currentMusicSource == null || !_currentMusicSource.isPlaying) return;
+            
+            if (fadeOut)
+            {
+                StartCoroutine(FadeOutMusic());
+            }
+            else
+            {
+                _currentMusicSource.Stop();
+                OnMusicStopped?.Invoke(_currentMusicSource.clip?.name ?? "Unknown");
+            }
+        }
+        
+        private IEnumerator FadeOutMusic()
+        {
+            if (_musicFadeCoroutine != null)
+            {
+                StopCoroutine(_musicFadeCoroutine);
+            }
+            
+            _musicFadeCoroutine = StartCoroutine(FadeOutMusicCoroutine());
+            yield return _musicFadeCoroutine;
+        }
+        
+        private IEnumerator FadeOutMusicCoroutine()
+        {
+            float startVolume = _currentMusicSource.volume;
+            float elapsed = 0f;
+            
+            while (elapsed < musicFadeOutDuration)
+            {
+                float t = elapsed / musicFadeOutDuration;
+                _currentMusicSource.volume = startVolume * (1f - t);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            
+            _currentMusicSource.Stop();
+            _currentMusicSource.volume = startVolume;
+            OnMusicStopped?.Invoke(_currentMusicSource.clip?.name ?? "Unknown");
+            _musicFadeCoroutine = null;
+        }
+        
+        public void PlaySFX(string clipName, Vector3 position = default, float pitch = 1f, float volume = 1f)
+        {
+            if (!enableSFX || !_audioClipLookup.ContainsKey(clipName)) return;
+            
+            var clip = _audioClipLookup[clipName];
+            AudioSource source = null;
+            
+            if (enableSFXPooling && _availableSFXSources.Count > 0)
+            {
+                source = _availableSFXSources.Dequeue();
+                source.gameObject.SetActive(true);
+            }
+            else
+            {
+                source = sfxSource;
+            }
+            
+            if (source != null)
+            {
+                source.clip = clip;
+                source.pitch = pitch + UnityEngine.Random.Range(-sfxPitchVariation, sfxPitchVariation);
+                source.volume = sfxVolume * masterVolume * volume;
+                
+                if (position != default && enable3DAudio)
+                {
+                    source.transform.position = position;
+                }
+                
+                source.Play();
+                OnSFXPlayed?.Invoke(clipName);
+            }
+        }
+        
+        public void PlayVoice(string clipName, bool showSubtitles = true)
+        {
+            if (!enableVoice || !_audioClipLookup.ContainsKey(clipName)) return;
+            
+            var clip = _audioClipLookup[clipName];
+            
+            if (voiceSource != null)
+            {
+                voiceSource.clip = clip;
+                voiceSource.Play();
+                OnVoicePlayed?.Invoke(clipName);
+                
+                if (showSubtitles && enableVoiceSubtitles)
+                {
+                    StartCoroutine(ShowVoiceSubtitles(clipName, clip.length));
                 }
             }
         }
         
-        /// <summary>
-        /// Stop all audio of specific type
-        /// </summary>
-        public void StopAudioType(AudioType type)
+        private IEnumerator ShowVoiceSubtitles(string clipName, float duration)
         {
-            foreach (var source in _activeSources)
+            // This would integrate with your UI system to show subtitles
+            Debug.Log($"Voice: {clipName}");
+            yield return new WaitForSeconds(duration);
+        }
+        
+        public void PlayAmbient(string clipName, bool loop = true)
+        {
+            if (!enableAmbient || !_audioClipLookup.ContainsKey(clipName)) return;
+            
+            var clip = _audioClipLookup[clipName];
+            
+            if (ambientSource != null)
             {
-                if (source != null && source.isPlaying)
-                {
-                    // Check if this source is playing audio of the specified type
-                    if (IsSourcePlayingType(source, type))
-                    {
-                        source.Stop();
-                        ReturnAudioSourceToPool(source);
-                    }
-                }
+                ambientSource.clip = clip;
+                ambientSource.loop = loop;
+                ambientSource.Play();
             }
         }
         
-        private bool IsSourcePlayingType(AudioSource source, AudioType type)
+        public void PlayUI(string clipName, float pitch = 1f, float volume = 1f)
         {
-            if (source.clip == null) return false;
+            if (!enableUI || !_audioClipLookup.ContainsKey(clipName)) return;
             
-            // Check if the clip matches the type
-            foreach (var clipData in _audioLookup.Values)
+            var clip = _audioClipLookup[clipName];
+            
+            if (uiSource != null)
             {
-                if (clipData.clip == source.clip && clipData.type == type)
+                uiSource.clip = clip;
+                uiSource.pitch = pitch;
+                uiSource.volume = uiVolume * masterVolume * volume;
+                uiSource.Play();
+            }
+        }
+        
+        public void SetMasterVolume(float volume)
+        {
+            masterVolume = Mathf.Clamp01(volume);
+            UpdateVolumeSettings();
+            OnVolumeChanged?.Invoke(masterVolume);
+        }
+        
+        public void SetMusicVolume(float volume)
+        {
+            musicVolume = Mathf.Clamp01(volume);
+            UpdateVolumeSettings();
+        }
+        
+        public void SetSFXVolume(float volume)
+        {
+            sfxVolume = Mathf.Clamp01(volume);
+            UpdateVolumeSettings();
+        }
+        
+        public void SetVoiceVolume(float volume)
+        {
+            voiceVolume = Mathf.Clamp01(volume);
+            UpdateVolumeSettings();
+        }
+        
+        public void SetAmbientVolume(float volume)
+        {
+            ambientVolume = Mathf.Clamp01(volume);
+            UpdateVolumeSettings();
+        }
+        
+        public void SetUIVolume(float volume)
+        {
+            uiVolume = Mathf.Clamp01(volume);
+            UpdateVolumeSettings();
+        }
+        
+        private void UpdateVolumeSettings()
+        {
+            if (musicSource != null)
+                musicSource.volume = musicVolume * masterVolume;
+            if (sfxSource != null)
+                sfxSource.volume = sfxVolume * masterVolume;
+            if (voiceSource != null)
+                voiceSource.volume = voiceVolume * masterVolume;
+            if (ambientSource != null)
+                ambientSource.volume = ambientVolume * masterVolume;
+            if (uiSource != null)
+                uiSource.volume = uiVolume * masterVolume;
+        }
+        
+        public void MuteAll(bool mute)
+        {
+            masterVolume = mute ? 0f : 1f;
+            UpdateVolumeSettings();
+        }
+        
+        public void MuteMusic(bool mute)
+        {
+            musicVolume = mute ? 0f : 0.8f;
+            UpdateVolumeSettings();
+        }
+        
+        public void MuteSFX(bool mute)
+        {
+            sfxVolume = mute ? 0f : 1f;
+            UpdateVolumeSettings();
+        }
+        
+        public void MuteVoice(bool mute)
+        {
+            voiceVolume = mute ? 0f : 1f;
+            UpdateVolumeSettings();
+        }
+        
+        public void MuteAmbient(bool mute)
+        {
+            ambientVolume = mute ? 0f : 0.6f;
+            UpdateVolumeSettings();
+        }
+        
+        public void MuteUI(bool mute)
+        {
+            uiVolume = mute ? 0f : 0.9f;
+            UpdateVolumeSettings();
+        }
+        
+        public void PauseAll()
+        {
+            if (musicSource != null && musicSource.isPlaying)
+                musicSource.Pause();
+            if (sfxSource != null && sfxSource.isPlaying)
+                sfxSource.Pause();
+            if (voiceSource != null && voiceSource.isPlaying)
+                voiceSource.Pause();
+            if (ambientSource != null && ambientSource.isPlaying)
+                ambientSource.Pause();
+            if (uiSource != null && uiSource.isPlaying)
+                uiSource.Pause();
+        }
+        
+        public void ResumeAll()
+        {
+            if (musicSource != null)
+                musicSource.UnPause();
+            if (sfxSource != null)
+                sfxSource.UnPause();
+            if (voiceSource != null)
+                voiceSource.UnPause();
+            if (ambientSource != null)
+                ambientSource.UnPause();
+            if (uiSource != null)
+                uiSource.UnPause();
+        }
+        
+        public void StopAll()
+        {
+            if (musicSource != null)
+                musicSource.Stop();
+            if (sfxSource != null)
+                sfxSource.Stop();
+            if (voiceSource != null)
+                voiceSource.Stop();
+            if (ambientSource != null)
+                ambientSource.Stop();
+            if (uiSource != null)
+                uiSource.Stop();
+        }
+        
+        public bool IsPlaying(string clipName)
+        {
+            if (!_audioClipLookup.ContainsKey(clipName)) return false;
+            
+            var clip = _audioClipLookup[clipName];
+            
+            foreach (var source in _audioSourceLookup.Values)
+            {
+                if (source != null && source.clip == clip && source.isPlaying)
                 {
                     return true;
                 }
@@ -674,316 +708,59 @@ namespace Evergreen.Audio
             return false;
         }
         
-        /// <summary>
-        /// Stop all audio
-        /// </summary>
-        public void StopAllAudio()
+        public float GetClipLength(string clipName)
         {
-            // Stop all active sources
-            foreach (var source in _activeSources)
-            {
-                if (source != null)
-                {
-                    source.Stop();
-                }
-            }
+            if (!_audioClipLookup.ContainsKey(clipName)) return 0f;
             
-            // Return all sources to pool
-            foreach (var source in _activeSources)
-            {
-                ReturnAudioSourceToPool(source);
-            }
-            
-            _activeSources.Clear();
+            return _audioClipLookup[clipName].length;
         }
         
-        private void ReturnAudioSourceToPool(AudioSource source)
+        public void SetAudioClip(string category, string clipName, AudioClip clip)
         {
-            if (source == null) return;
+            _audioClipLookup[clipName] = clip;
             
-            // Don't return main sources to pool
-            if (source == musicSource || source == sfxSource || source == voiceSource || 
-                source == ambientSource || source == uiSource)
+            switch (category.ToLower())
             {
-                return;
-            }
-            
-            // Return to pool
-            source.Stop();
-            source.clip = null;
-            source.gameObject.SetActive(false);
-            
-            if (!_availableSources.Contains(source))
-            {
-                _availableSources.Enqueue(source);
-            }
-            
-            if (_activeSources.Contains(source))
-            {
-                _activeSources.Remove(source);
-            }
-        }
-        
-        /// <summary>
-        /// Set volume for audio type
-        /// </summary>
-        public void SetVolume(AudioType type, float volume)
-        {
-            volume = Mathf.Clamp01(volume);
-            
-            switch (type)
-            {
-                case AudioType.Music:
-                    if (musicSource != null) musicSource.volume = volume;
+                case "music":
+                    if (musicTracks == null) musicTracks = new AudioClip[0];
+                    var musicList = new List<AudioClip>(musicTracks);
+                    musicList.Add(clip);
+                    musicTracks = musicList.ToArray();
                     break;
-                case AudioType.SFX:
-                    if (sfxSource != null) sfxSource.volume = volume;
+                case "sfx":
+                    if (sfxClips == null) sfxClips = new AudioClip[0];
+                    var sfxList = new List<AudioClip>(sfxClips);
+                    sfxList.Add(clip);
+                    sfxClips = sfxList.ToArray();
                     break;
-                case AudioType.Voice:
-                    if (voiceSource != null) voiceSource.volume = volume;
+                case "voice":
+                    if (voiceClips == null) voiceClips = new AudioClip[0];
+                    var voiceList = new List<AudioClip>(voiceClips);
+                    voiceList.Add(clip);
+                    voiceClips = voiceList.ToArray();
                     break;
-                case AudioType.Ambient:
-                    if (ambientSource != null) ambientSource.volume = volume;
+                case "ambient":
+                    if (ambientClips == null) ambientClips = new AudioClip[0];
+                    var ambientList = new List<AudioClip>(ambientClips);
+                    ambientList.Add(clip);
+                    ambientClips = ambientList.ToArray();
                     break;
-                case AudioType.UI:
-                    if (uiSource != null) uiSource.volume = volume;
+                case "ui":
+                    if (uiClips == null) uiClips = new AudioClip[0];
+                    var uiList = new List<AudioClip>(uiClips);
+                    uiList.Add(clip);
+                    uiClips = uiList.ToArray();
                     break;
             }
         }
-        
-        /// <summary>
-        /// Get volume for audio type
-        /// </summary>
-        public float GetVolume(AudioType type)
-        {
-            switch (type)
-            {
-                case AudioType.Music:
-                    return musicSource != null ? musicSource.volume : 0f;
-                case AudioType.SFX:
-                    return sfxSource != null ? sfxSource.volume : 0f;
-                case AudioType.Voice:
-                    return voiceSource != null ? voiceSource.volume : 0f;
-                case AudioType.Ambient:
-                    return ambientSource != null ? ambientSource.volume : 0f;
-                case AudioType.UI:
-                    return uiSource != null ? uiSource.volume : 0f;
-                default:
-                    return 0f;
-            }
-        }
-        
-        /// <summary>
-        /// Set master volume
-        /// </summary>
-        public void SetMasterVolume(float volume)
-        {
-            volume = Mathf.Clamp01(volume);
-            AudioListener.volume = volume;
-        }
-        
-        /// <summary>
-        /// Get master volume
-        /// </summary>
-        public float GetMasterVolume()
-        {
-            return AudioListener.volume;
-        }
-        
-        /// <summary>
-        /// Pause all audio
-        /// </summary>
-        public void PauseAllAudio()
-        {
-            foreach (var source in _activeSources)
-            {
-                if (source != null && source.isPlaying)
-                {
-                    source.Pause();
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Resume all audio
-        /// </summary>
-        public void ResumeAllAudio()
-        {
-            foreach (var source in _activeSources)
-            {
-                if (source != null)
-                {
-                    source.UnPause();
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Add audio clip to system
-        /// </summary>
-        public void AddAudioClip(AudioClipData clipData)
-        {
-            if (clipData != null && !string.IsNullOrEmpty(clipData.id))
-            {
-                _audioLookup[clipData.id] = clipData;
-            }
-        }
-        
-        /// <summary>
-        /// Remove audio clip from system
-        /// </summary>
-        public void RemoveAudioClip(string audioId)
-        {
-            if (_audioLookup.ContainsKey(audioId))
-            {
-                _audioLookup.Remove(audioId);
-            }
-        }
-        
-        /// <summary>
-        /// Check if audio clip exists
-        /// </summary>
-        public bool HasAudioClip(string audioId)
-        {
-            return _audioLookup.ContainsKey(audioId);
-        }
-        
-        /// <summary>
-        /// Get audio clip data
-        /// </summary>
-        public AudioClipData GetAudioClipData(string audioId)
-        {
-            return _audioLookup.ContainsKey(audioId) ? _audioLookup[audioId] : null;
-        }
-        
-        private IEnumerator FadeInMusic(float duration, float targetVolume)
-        {
-            float startVolume = musicSource.volume;
-            float elapsed = 0f;
-            
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                musicSource.volume = Mathf.Lerp(startVolume, targetVolume, elapsed / duration);
-                yield return null;
-            }
-            
-            musicSource.volume = targetVolume;
-        }
-        
-        private IEnumerator FadeOutMusic(float duration, System.Action onComplete = null)
-        {
-            float startVolume = musicSource.volume;
-            float elapsed = 0f;
-            
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                musicSource.volume = Mathf.Lerp(startVolume, 0f, elapsed / duration);
-                yield return null;
-            }
-            
-            musicSource.volume = 0f;
-            musicSource.Stop();
-            onComplete?.Invoke();
-        }
-        
-        private IEnumerator CooldownCoroutine(string cooldownKey, float duration)
-        {
-            yield return new WaitForSeconds(duration);
-            
-            if (_activeCoroutines.ContainsKey(cooldownKey))
-            {
-                _activeCoroutines.Remove(cooldownKey);
-            }
-        }
-        
-        private IEnumerator UpdateAudioSystem()
-        {
-            while (true)
-            {
-                // Clean up finished audio sources
-                for (int i = _activeSources.Count - 1; i >= 0; i--)
-                {
-                    AudioSource source = _activeSources[i];
-                    if (source == null || !source.isPlaying)
-                    {
-                        ReturnAudioSourceToPool(source);
-                    }
-                }
-                
-                // Update audio layers
-                if (enableAudioLayers)
-                {
-                    UpdateAudioLayers();
-                }
-                
-                // Update audio triggers
-                if (enableAudioTriggers)
-                {
-                    UpdateAudioTriggers();
-                }
-                
-                yield return new WaitForSeconds(0.1f);
-            }
-        }
-        
-        private void UpdateAudioLayers()
-        {
-            // Update audio layer volumes based on game state
-            // This is where you would implement dynamic audio layering
-            // For example, increasing music volume during intense moments
-        }
-        
-        private void UpdateAudioTriggers()
-        {
-            // Update audio triggers based on game events
-            // This is where you would implement dynamic audio triggering
-            // For example, playing different music based on player health
-        }
-        
-        /// <summary>
-        /// Set high quality audio
-        /// </summary>
-        public void SetHighQualityAudio(bool enabled)
-        {
-            enableHighQualityAudio = enabled;
-            
-            // Update audio settings based on quality
-            if (enabled)
-            {
-                AudioSettings.SetDSPBufferSize(1024, 4);
-            }
-            else
-            {
-                AudioSettings.SetDSPBufferSize(512, 2);
-            }
-        }
-        
-        /// <summary>
-        /// Set mobile optimization
-        /// </summary>
-        public void SetMobileOptimization(bool enabled)
-        {
-            enableMobileOptimization = enabled;
-            
-            if (enabled)
-            {
-                SetHighQualityAudio(false);
-                maxConcurrentSounds = 16;
-                audioPoolSize = 32;
-            }
-            else
-            {
-                SetHighQualityAudio(true);
-                maxConcurrentSounds = 32;
-                audioPoolSize = 64;
-            }
-        }
-        
-        void OnDestroy()
-        {
-            StopAllAudio();
-        }
+    }
+    
+    public enum AudioType
+    {
+        Music,
+        SFX,
+        Voice,
+        Ambient,
+        UI
     }
 }
