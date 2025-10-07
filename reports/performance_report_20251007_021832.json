@@ -1,0 +1,40 @@
+{
+  "report_date": "2025-10-07T02:18:32.862683",
+  "system_metrics": {
+    "timestamp": "2025-10-07T02:18:28.859831",
+    "cpu_percent": 0.0,
+    "memory_percent": 3.4,
+    "disk_percent": 5.3,
+    "load_average": [
+      0.0615234375,
+      2.94580078125,
+      7.55419921875
+    ],
+    "process_count": 7
+  },
+  "build_metrics": {
+    "timestamp": "2025-10-07T02:18:29.860952",
+    "build_start_time": 1759803509.8609731,
+    "build_duration": 2.000366449356079,
+    "build_success": true,
+    "build_size": 913,
+    "memory_peak": 3.4,
+    "cpu_peak": 0.6
+  },
+  "test_metrics": {
+    "timestamp": "2025-10-07T02:18:31.862080",
+    "test_start_time": 1759803511.8621078,
+    "test_duration": 1.0001819133758545,
+    "tests_run": 112,
+    "tests_passed": 105,
+    "tests_failed": 7,
+    "coverage_percentage": 83.75534719317372,
+    "memory_usage": 3.4
+  },
+  "alerts": [],
+  "performance_score": 98.125,
+  "recommendations": [
+    "Optimize build size - consider asset compression or removal of unused assets",
+    "Fix failing tests to improve code quality"
+  ]
+}
