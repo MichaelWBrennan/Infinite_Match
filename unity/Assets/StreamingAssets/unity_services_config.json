@@ -1,6 +1,6 @@
 {
-  "projectId": "your-unity-project-id",
-  "environmentId": "your-environment-id",
+  "projectId": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environmentId": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
   "services": {
     "economy": {
       "enabled": true,
