@@ -1,0 +1,21 @@
+id,name,cost_currency,cost_amount,rewards
+coins_small,Small Coin Pack,gems,20,coins:1000
+coins_medium,Medium Coin Pack,gems,120,coins:5000
+coins_large,Large Coin Pack,gems,300,coins:15000
+coins_mega,Mega Coin Pack,gems,700,coins:40000
+coins_ultimate,Ultimate Coin Pack,gems,2000,coins:100000
+energy_small,Energy Boost,gems,5,energy:5
+energy_large,Energy Surge,gems,15,energy:20
+booster_extra_moves,Extra Moves,coins,200,booster_extra_moves:3
+booster_color_bomb,Color Bomb,gems,15,booster_color_bomb:1
+booster_rainbow_blast,Rainbow Blast,gems,25,booster_rainbow_blast:1
+booster_striped_candy,Striped Candy,coins,100,booster_striped_candy:1
+pack_starter,Starter Pack,gems,20,pack_starter:1
+pack_value,Value Pack,gems,120,pack_value:1
+pack_premium,Premium Pack,gems,300,pack_premium:1
+pack_mega,Mega Pack,gems,700,pack_mega:1
+pack_ultimate,Ultimate Pack,gems,2000,pack_ultimate:1
+pack_booster_small,Booster Bundle,coins,500,pack_booster_small:1
+pack_booster_large,Power Pack,gems,25,pack_booster_large:1
+pack_comeback,Welcome Back!,gems,50,pack_comeback:1
+pack_flash_sale,Flash Sale!,gems,25,pack_flash_sale:1

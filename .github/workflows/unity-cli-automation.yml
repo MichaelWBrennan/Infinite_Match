@@ -83,65 +83,25 @@ jobs:
           echo "Creating cloud code backup..."
           unity cloud-code functions list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format json > backups/cloud-code/cloud_code_backup.json || echo "No cloud code found"
 
-      - name: Prepare Economy Data
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Convert Economy CSV
         run: |
-          echo "Preparing economy data for deployment..."
-          # Create economy directory if it doesn't exist
-          mkdir -p economy
+          echo "Converting existing economy CSV to Unity CLI format..."
+          python3 scripts/convert_economy_csv.py
           
-          # Copy economy CSV if it exists
-          if [ -f "unity/Assets/StreamingAssets/economy_items.csv" ]; then
-            cp unity/Assets/StreamingAssets/economy_items.csv economy/economy_items.csv
-            echo "Copied economy_items.csv"
-          fi
-          
-          # Create sample economy files if they don't exist
-          if [ ! -f "economy/currencies.csv" ]; then
-            cat > economy/currencies.csv << EOF
-          id,name,type,initial,maximum
-          coins,Coins,soft_currency,1000,999999
-          gems,Gems,hard_currency,50,99999
-          energy,Energy,consumable,5,30
-          EOF
-            echo "Created sample currencies.csv"
-          fi
-          
-          if [ ! -f "economy/inventory.csv" ]; then
-            cat > economy/inventory.csv << EOF
-          id,name,type,tradable,stackable
-          booster_extra_moves,Extra Moves,booster,true,true
-          booster_color_bomb,Color Bomb,booster,true,true
-          booster_rainbow_blast,Rainbow Blast,booster,true,true
-          booster_striped_candy,Striped Candy,booster,true,true
-          pack_starter,Starter Pack,pack,false,false
-          pack_value,Value Pack,pack,false,false
-          pack_premium,Premium Pack,pack,false,false
-          pack_mega,Mega Pack,pack,false,false
-          pack_ultimate,Ultimate Pack,pack,false,false
-          EOF
-            echo "Created sample inventory.csv"
-          fi
-          
-          if [ ! -f "economy/catalog.csv" ]; then
-            cat > economy/catalog.csv << EOF
-          id,name,cost_currency,cost_amount,rewards
-          coins_small,Small Coin Pack,gems,20,coins:1000
-          coins_medium,Medium Coin Pack,gems,120,coins:5000
-          coins_large,Large Coin Pack,gems,300,coins:15000
-          energy_small,Energy Boost,gems,5,energy:5
-          energy_large,Energy Surge,gems,15,energy:20
-          booster_extra_moves,Extra Moves,coins,200,booster_extra_moves:3
-          booster_color_bomb,Color Bomb,gems,15,booster_color_bomb:1
-          booster_rainbow_blast,Rainbow Blast,gems,25,booster_rainbow_blast:1
-          booster_striped_candy,Striped Candy,coins,100,booster_striped_candy:1
-          pack_starter,Starter Pack,gems,20,pack_starter:1
-          pack_value,Value Pack,gems,120,pack_value:1
-          pack_premium,Premium Pack,gems,300,pack_premium:1
-          pack_mega,Mega Pack,gems,700,pack_mega:1
-          pack_ultimate,Ultimate Pack,gems,2000,pack_ultimate:1
-          EOF
-            echo "Created sample catalog.csv"
-          fi
+          # Verify conversion
+          echo "Verifying converted files..."
+          ls -la economy/
+          echo "Currencies:"
+          head -5 economy/currencies.csv
+          echo "Inventory:"
+          head -5 economy/inventory.csv
+          echo "Catalog:"
+          head -5 economy/catalog.csv
 
       - name: Prepare Remote Config Data
         run: |

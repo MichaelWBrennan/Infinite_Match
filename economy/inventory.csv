@@ -1,0 +1,14 @@
+id,name,type,tradable,stackable
+booster_extra_moves,Extra Moves,booster,True,True
+booster_color_bomb,Color Bomb,booster,True,True
+booster_rainbow_blast,Rainbow Blast,booster,True,True
+booster_striped_candy,Striped Candy,booster,True,True
+pack_starter,Starter Pack,pack,False,False
+pack_value,Value Pack,pack,False,False
+pack_premium,Premium Pack,pack,False,False
+pack_mega,Mega Pack,pack,False,False
+pack_ultimate,Ultimate Pack,pack,False,False
+pack_booster_small,Booster Bundle,pack,False,False
+pack_booster_large,Power Pack,pack,False,False
+pack_comeback,Welcome Back!,pack,False,False
+pack_flash_sale,Flash Sale!,pack,False,False
