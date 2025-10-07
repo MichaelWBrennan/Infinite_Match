@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-10-07T03:23:48.331346",
+  "overall_health": "healthy",
+  "checks": {
+    "economy_data": {
+      "csv_exists": true,
+      "json_exists": false,
+      "csv_valid": true,
+      "json_valid": false,
+      "item_count": 20
+    },
+    "unity_services": {
+      "config_exists": true,
+      "config_valid": true,
+      "project_id_configured": true,
+      "environment_id_configured": true
+    },
+    "github_workflows": {
+      "workflows_exist": true,
+      "workflow_count": 8,
+      "recent_failures": 0
+    },
+    "scripts": {
+      "scripts_exist": true,
+      "script_count": 9,
+      "executable_scripts": 6
+    },
+    "dependencies": {
+      "python_available": true,
+      "node_available": true,
+      "git_available": true,
+      "unity_available": true
+    },
+    "activity": {
+      "recent_commits": 140,
+      "recent_builds": 0,
+      "last_activity": null
+    }
+  },
+  "health_score": 0.7500000000000001,
+  "recommendations": []
+}
