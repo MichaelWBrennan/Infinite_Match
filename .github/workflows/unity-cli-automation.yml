@@ -1,0 +1,387 @@
+name: Unity Full Automation with Rollback
+
+on:
+  push:
+    paths:
+      - "economy/**.csv"
+      - "remote-config/**.json"
+      - "cloud-code/**.js"
+      - "unity/Assets/StreamingAssets/economy_items.csv"
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if no changes detected'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
+  UNITY_ENV_ID: ${{ secrets.UNITY_ENV_ID }}
+  UNITY_CLIENT_ID: ${{ secrets.UNITY_CLIENT_ID }}
+  UNITY_CLIENT_SECRET: ${{ secrets.UNITY_CLIENT_SECRET }}
+
+jobs:
+  unity-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Unity CLI
+        run: |
+          echo "Installing Unity CLI..."
+          npm install -g @unity-services/cli@latest
+          unity --version
+
+      - name: Unity CLI Login
+        run: |
+          echo "Logging into Unity CLI..."
+          unity login --client-id $UNITY_CLIENT_ID --client-secret $UNITY_CLIENT_SECRET
+          unity projects list
+
+      - name: Verify Unity Project Access
+        run: |
+          echo "Verifying project access..."
+          unity projects get $UNITY_PROJECT_ID
+          unity environments list --project-id $UNITY_PROJECT_ID
+
+      - name: Create Backup Directory
+        run: |
+          mkdir -p backups/economy
+          mkdir -p backups/remote-config
+          mkdir -p backups/cloud-code
+          mkdir -p deployment-reports
+
+      - name: Backup Current Economy Configuration
+        run: |
+          echo "Creating economy backup..."
+          # Backup currencies
+          unity economy currencies list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format json > backups/economy/currencies_backup.json || echo "No currencies found"
+          
+          # Backup inventory items
+          unity economy inventory-items list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format json > backups/economy/inventory_backup.json || echo "No inventory items found"
+          
+          # Backup catalog items
+          unity economy catalog-items list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format json > backups/economy/catalog_backup.json || echo "No catalog items found"
+
+      - name: Backup Current Remote Config
+        run: |
+          echo "Creating remote config backup..."
+          unity remote-config export --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format json > backups/remote-config/remote_config_backup.json || echo "No remote config found"
+
+      - name: Backup Current Cloud Code
+        run: |
+          echo "Creating cloud code backup..."
+          unity cloud-code functions list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format json > backups/cloud-code/cloud_code_backup.json || echo "No cloud code found"
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Convert Economy CSV
+        run: |
+          echo "Converting existing economy CSV to Unity CLI format..."
+          python3 scripts/convert_economy_csv.py
+          
+          # Verify conversion
+          echo "Verifying converted files..."
+          ls -la economy/
+          echo "Currencies:"
+          head -5 economy/currencies.csv
+          echo "Inventory:"
+          head -5 economy/inventory.csv
+          echo "Catalog:"
+          head -5 economy/catalog.csv
+
+      - name: Prepare Remote Config Data
+        run: |
+          echo "Preparing remote config data..."
+          mkdir -p remote-config
+          
+          if [ ! -f "remote-config/game_config.json" ]; then
+            cat > remote-config/game_config.json << EOF
+          {
+            "game_settings": {
+              "max_level": 100,
+              "energy_refill_time": 300,
+              "daily_reward_coins": 100,
+              "daily_reward_gems": 5
+            },
+            "economy_settings": {
+              "coin_multiplier": 1.0,
+              "gem_multiplier": 1.0,
+              "sale_discount": 0.5
+            },
+            "feature_flags": {
+              "new_levels_enabled": true,
+              "daily_challenges_enabled": true,
+              "social_features_enabled": false
+            }
+          }
+          EOF
+            echo "Created sample game_config.json"
+          fi
+
+      - name: Prepare Cloud Code
+        run: |
+          echo "Preparing cloud code..."
+          mkdir -p cloud-code
+          
+          if [ ! -f "cloud-code/AddCurrency.js" ]; then
+            cat > cloud-code/AddCurrency.js << 'EOF'
+          // AddCurrency Cloud Code Function
+          const { EconomyApi } = require("@unity-services/economy-1.0");
+          
+          module.exports = async ({ params, context, logger }) => {
+            try {
+              const { currencyId, amount } = params;
+              
+              if (!currencyId || !amount) {
+                throw new Error("Missing required parameters: currencyId, amount");
+              }
+              
+              if (amount <= 0) {
+                throw new Error("Amount must be positive");
+              }
+              
+              // Add currency to player
+              await EconomyApi.addCurrency({
+                currencyId: currencyId,
+                amount: amount
+              });
+              
+              logger.info(`Added ${amount} ${currencyId} to player`);
+              
+              return {
+                success: true,
+                currencyId: currencyId,
+                amount: amount
+              };
+            } catch (error) {
+              logger.error(`AddCurrency failed: ${error.message}`);
+              throw error;
+            }
+          };
+          EOF
+            echo "Created AddCurrency.js"
+          fi
+          
+          if [ ! -f "cloud-code/SpendCurrency.js" ]; then
+            cat > cloud-code/SpendCurrency.js << 'EOF'
+          // SpendCurrency Cloud Code Function
+          const { EconomyApi } = require("@unity-services/economy-1.0");
+          
+          module.exports = async ({ params, context, logger }) => {
+            try {
+              const { currencyId, amount } = params;
+              
+              if (!currencyId || !amount) {
+                throw new Error("Missing required parameters: currencyId, amount");
+              }
+              
+              if (amount <= 0) {
+                throw new Error("Amount must be positive");
+              }
+              
+              // Check if player has enough currency
+              const balance = await EconomyApi.getCurrencyBalance({
+                currencyId: currencyId
+              });
+              
+              if (balance.amount < amount) {
+                throw new Error("Insufficient funds");
+              }
+              
+              // Spend currency
+              await EconomyApi.spendCurrency({
+                currencyId: currencyId,
+                amount: amount
+              });
+              
+              logger.info(`Spent ${amount} ${currencyId} from player`);
+              
+              return {
+                success: true,
+                currencyId: currencyId,
+                amount: amount,
+                newBalance: balance.amount - amount
+              };
+            } catch (error) {
+              logger.error(`SpendCurrency failed: ${error.message}`);
+              throw error;
+            }
+          };
+          EOF
+            echo "Created SpendCurrency.js"
+          fi
+
+      - name: Deploy Economy Configuration
+        run: |
+          echo "Deploying economy configuration..."
+          set -e
+          
+          # Deploy currencies
+          if [ -f "economy/currencies.csv" ]; then
+            echo "Deploying currencies..."
+            unity economy currencies import economy/currencies.csv --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID
+          fi
+          
+          # Deploy inventory items
+          if [ -f "economy/inventory.csv" ]; then
+            echo "Deploying inventory items..."
+            unity economy inventory-items import economy/inventory.csv --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID
+          fi
+          
+          # Deploy catalog items
+          if [ -f "economy/catalog.csv" ]; then
+            echo "Deploying catalog items..."
+            unity economy catalog-items import economy/catalog.csv --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID
+          fi
+
+      - name: Deploy Remote Config
+        run: |
+          echo "Deploying remote config..."
+          set -e
+          
+          for file in remote-config/*.json; do
+            if [ -f "$file" ]; then
+              echo "Deploying $file..."
+              unity remote-config import "$file" --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID
+            fi
+          done
+
+      - name: Deploy Cloud Code
+        run: |
+          echo "Deploying cloud code..."
+          set -e
+          
+          for file in cloud-code/*.js; do
+            if [ -f "$file" ]; then
+              echo "Deploying $file..."
+              unity cloud-code functions deploy "$file" --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID
+            fi
+          done
+
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment..."
+          
+          # Verify economy
+          echo "Economy currencies:"
+          unity economy currencies list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format table || echo "No currencies found"
+          
+          echo "Economy inventory items:"
+          unity economy inventory-items list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format table || echo "No inventory items found"
+          
+          echo "Economy catalog items:"
+          unity economy catalog-items list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format table || echo "No catalog items found"
+          
+          # Verify remote config
+          echo "Remote config:"
+          unity remote-config export --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format json | head -20 || echo "No remote config found"
+          
+          # Verify cloud code
+          echo "Cloud code functions:"
+          unity cloud-code functions list --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID --format table || echo "No cloud code found"
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Rolling back to previous backups..."
+          set -e
+          
+          # Rollback economy
+          if [ -f "backups/economy/currencies_backup.json" ]; then
+            echo "Rolling back currencies..."
+            unity economy currencies import backups/economy/currencies_backup.json --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID || echo "Currency rollback failed"
+          fi
+          
+          if [ -f "backups/economy/inventory_backup.json" ]; then
+            echo "Rolling back inventory items..."
+            unity economy inventory-items import backups/economy/inventory_backup.json --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID || echo "Inventory rollback failed"
+          fi
+          
+          if [ -f "backups/economy/catalog_backup.json" ]; then
+            echo "Rolling back catalog items..."
+            unity economy catalog-items import backups/economy/catalog_backup.json --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID || echo "Catalog rollback failed"
+          fi
+          
+          # Rollback remote config
+          if [ -f "backups/remote-config/remote_config_backup.json" ]; then
+            echo "Rolling back remote config..."
+            unity remote-config import backups/remote-config/remote_config_backup.json --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID || echo "Remote config rollback failed"
+          fi
+          
+          echo "Rollback complete."
+
+      - name: Generate Deployment Report
+        run: |
+          echo "Generating deployment report..."
+          cat > deployment-reports/report.txt << EOF
+          Unity CLI Automation Deployment Report
+          =====================================
+          
+          Deployment Timestamp: $(date)
+          Deployment Status: ${{ job.status }}
+          Project ID: $UNITY_PROJECT_ID
+          Environment ID: $UNITY_ENV_ID
+          
+          Files Processed:
+          $(ls -la economy/*.csv 2>/dev/null || echo "No economy files")
+          $(ls -la remote-config/*.json 2>/dev/null || echo "No remote config files")
+          $(ls -la cloud-code/*.js 2>/dev/null || echo "No cloud code files")
+          
+          Backup Files Created:
+          $(ls -la backups/economy/ 2>/dev/null || echo "No economy backups")
+          $(ls -la backups/remote-config/ 2>/dev/null || echo "No remote config backups")
+          $(ls -la backups/cloud-code/ 2>/dev/null || echo "No cloud code backups")
+          
+          Unity CLI Version:
+          $(unity --version 2>/dev/null || echo "Unity CLI not available")
+          EOF
+          
+          echo "Deployment report generated:"
+          cat deployment-reports/report.txt
+
+      - name: Upload Deployment Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-deployment-report-${{ github.run_number }}
+          path: |
+            deployment-reports/report.txt
+            backups/
+          retention-days: 30
+
+      - name: Upload Economy Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: economy-data-${{ github.run_number }}
+          path: |
+            economy/
+          retention-days: 30
+
+      - name: Upload Remote Config Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-config-data-${{ github.run_number }}
+          path: |
+            remote-config/
+          retention-days: 30
+
+      - name: Upload Cloud Code
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-code-${{ github.run_number }}
+          path: |
+            cloud-code/
+          retention-days: 30
