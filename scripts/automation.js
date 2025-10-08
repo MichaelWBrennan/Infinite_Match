@@ -4,12 +4,12 @@
  * Replaces all redundant automation scripts with a single, efficient solution
  */
 
-import { Logger } from 'src/core/logger/index.js';
-import EconomyService from 'src/services/economy/index.js';
-import UnityService from 'src/services/unity/index.js';
+import { Logger } from '../src/core/logger/index.js';
+import EconomyService from '../src/services/economy/index.js';
+import UnityService from '../src/services/unity/index.js';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { AppConfig } from 'src/core/config/index.js';
+import { AppConfig } from '../src/core/config/index.js';
 
 const logger = new Logger('Automation');
 

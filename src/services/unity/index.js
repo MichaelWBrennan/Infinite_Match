@@ -3,8 +3,8 @@
  * Centralized Unity Cloud Services API client
  */
 
-import { AppConfig } from 'core/config/index.js';
-import { Logger } from 'core/logger/index.js';
+import { AppConfig } from '../../core/config/index.js';
+import { Logger } from '../../core/logger/index.js';
 
 const logger = new Logger('UnityService');
 

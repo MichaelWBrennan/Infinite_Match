@@ -4,9 +4,9 @@
  * Deploys economy data to Unity Services
  */
 
-import { Logger } from 'src/core/logger/index.js';
-import EconomyService from 'src/services/economy/index.js';
-import UnityService from 'src/services/unity/index.js';
+import { Logger } from '../src/core/logger/index.js';
+import EconomyService from '../src/services/economy/index.js';
+import UnityService from '../src/services/unity/index.js';
 
 const logger = new Logger('EconomyDeploy');
 
