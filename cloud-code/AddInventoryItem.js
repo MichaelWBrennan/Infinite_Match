@@ -1,10 +1,12 @@
 // Unity Cloud Code function to add inventory item to player
 
+const { validateParams, commonValidators } = require('./validationUtils');
+
 /**
  * Add inventory item to player
  * @param {Object} params - Function parameters
  * @param {string} params.itemId - Item ID to add
- * @param {number} params.amount - Amount to add
+ * @param {number} params.quantity - Quantity to add (defaults to 1)
  * @param {Object} context - Unity context
  * @param {Object} logger - Logger instance
  * @returns {Promise<Object>} Result object
@@ -14,10 +16,13 @@ module.exports = async ({ params, context, logger }) => {
     const { itemId, quantity = 1 } = params;
 
     // Validate parameters
-    if (!itemId || quantity <= 0) {
-      throw new Error(
-        'Invalid parameters: itemId is required and quantity must be positive'
-      );
+    const validation = validateParams(params, ['itemId'], {
+      itemId: commonValidators.itemId,
+      quantity: commonValidators.quantity
+    });
+
+    if (!validation.isValid) {
+      throw new Error(`Invalid parameters: ${validation.errors.join(', ')}`);
     }
 
     // Get player inventory

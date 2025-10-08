@@ -1,5 +1,7 @@
 // Unity Cloud Code function to add currency to player
 
+const { validateParams, commonValidators } = require('./validationUtils');
+
 /**
  * Add currency to player inventory
  * @param {Object} params - Function parameters
@@ -14,8 +16,13 @@ module.exports = async ({ params, context, logger }) => {
     const { currencyId, amount } = params;
 
     // Validate parameters
-    if (!currencyId || !amount || amount <= 0) {
-      throw new Error('Invalid parameters: currencyId and amount are required');
+    const validation = validateParams(params, ['currencyId', 'amount'], {
+      currencyId: commonValidators.currencyId,
+      amount: commonValidators.amount
+    });
+
+    if (!validation.isValid) {
+      throw new Error(`Invalid parameters: ${validation.errors.join(', ')}`);
     }
 
     // Get player inventory

@@ -17,6 +17,16 @@ const logger = new Logger('EconomyRoutes');
 const economyService = new EconomyService();
 const unityService = new UnityService();
 
+// Helper function for consistent error handling
+const handleRouteError = (res, error, operation, requestId) => {
+  logger.error(`Failed to ${operation}`, { error: error.message });
+  res.status(500).json({
+    success: false,
+    error: `Failed to ${operation}`,
+    requestId,
+  });
+};
+
 // Validation middleware
 const validateEconomyData = [
   body('type').isIn(['currency', 'inventory', 'catalog']).withMessage('Invalid economy data type'),
@@ -34,12 +44,7 @@ router.get('/data', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to load economy data', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load economy data',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'load economy data', req.requestId);
   }
 });
 
@@ -54,12 +59,7 @@ router.get('/report', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to generate economy report', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to generate economy report',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'generate economy report', req.requestId);
   }
 });
 
@@ -113,12 +113,7 @@ router.post('/deploy', security.sessionValidation, validateEconomyData, async (r
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Economy deployment failed', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Economy deployment failed',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'deploy economy data', req.requestId);
   }
 });
 
@@ -133,12 +128,7 @@ router.get('/currencies', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to get currencies', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get currencies',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'get currencies', req.requestId);
   }
 });
 
@@ -153,12 +143,7 @@ router.get('/inventory', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to get inventory items', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get inventory items',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'get inventory items', req.requestId);
   }
 });
 
@@ -173,12 +158,7 @@ router.get('/catalog', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to get catalog items', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get catalog items',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'get catalog items', req.requestId);
   }
 });
 
@@ -200,12 +180,7 @@ router.post('/currencies', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to create currency', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create currency',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'create currency', req.requestId);
   }
 });
 
@@ -227,12 +202,7 @@ router.post('/inventory', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to create inventory item', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create inventory item',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'create inventory item', req.requestId);
   }
 });
 
@@ -254,12 +224,7 @@ router.post('/catalog', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    logger.error('Failed to create catalog item', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create catalog item',
-      requestId: req.requestId,
-    });
+    handleRouteError(res, error, 'create catalog item', req.requestId);
   }
 });
 

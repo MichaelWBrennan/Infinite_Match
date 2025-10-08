@@ -97,28 +97,45 @@ class EconomyService {
   }
 
   /**
+   * Validate economy data with common fields
+   */
+  validateEconomyData(data, type, requiredFields, fieldMappings) {
+    const validItems = [];
+
+    for (const item of data) {
+      if (this.hasRequiredFields(item, requiredFields)) {
+        const validatedItem = { id: item.id, name: item.name, type: item.type };
+        
+        // Apply field mappings with defaults
+        for (const [field, mapping] of Object.entries(fieldMappings)) {
+          if (mapping.transform) {
+            validatedItem[field] = mapping.transform(item[mapping.source || field]);
+          } else {
+            validatedItem[field] = item[field] || mapping.default;
+          }
+        }
+        
+        validItems.push(validatedItem);
+      } else {
+        logger.warn(`Invalid ${type} data`, { item });
+      }
+    }
+
+    return validItems;
+  }
+
+  /**
    * Validate currency data
    */
   validateCurrencies(currencies) {
     const requiredFields = ['id', 'name', 'type'];
-    const validCurrencies = [];
+    const fieldMappings = {
+      description: { default: '' },
+      isTradable: { default: false },
+      isConsumable: { default: false },
+    };
 
-    for (const currency of currencies) {
-      if (this.hasRequiredFields(currency, requiredFields)) {
-        validCurrencies.push({
-          id: currency.id,
-          name: currency.name,
-          type: currency.type,
-          description: currency.description || '',
-          isTradable: currency.isTradable || false,
-          isConsumable: currency.isConsumable || false,
-        });
-      } else {
-        logger.warn('Invalid currency data', { currency });
-      }
-    }
-
-    return validCurrencies;
+    return this.validateEconomyData(currencies, 'currency', requiredFields, fieldMappings);
   }
 
   /**
@@ -126,28 +143,17 @@ class EconomyService {
    */
   validateInventory(inventory) {
     const requiredFields = ['id', 'name', 'type'];
-    const validItems = [];
+    const fieldMappings = {
+      description: { default: '' },
+      rarity: { default: 'common' },
+      category: { default: 'general' },
+      isTradable: { default: false },
+      isConsumable: { default: false },
+      maxStackSize: { default: 1 },
+      iconPath: { default: '' },
+    };
 
-    for (const item of inventory) {
-      if (this.hasRequiredFields(item, requiredFields)) {
-        validItems.push({
-          id: item.id,
-          name: item.name,
-          type: item.type,
-          description: item.description || '',
-          rarity: item.rarity || 'common',
-          category: item.category || 'general',
-          isTradable: item.isTradable || false,
-          isConsumable: item.isConsumable || false,
-          maxStackSize: item.maxStackSize || 1,
-          iconPath: item.iconPath || '',
-        });
-      } else {
-        logger.warn('Invalid inventory item data', { item });
-      }
-    }
-
-    return validItems;
+    return this.validateEconomyData(inventory, 'inventory', requiredFields, fieldMappings);
   }
 
   /**
@@ -155,31 +161,20 @@ class EconomyService {
    */
   validateCatalog(catalog) {
     const requiredFields = ['id', 'name', 'type', 'cost'];
-    const validItems = [];
+    const fieldMappings = {
+      description: { default: '' },
+      cost: { transform: (value) => this.parseValue(value) },
+      currency: { default: 'gems' },
+      category: { default: 'general' },
+      rarity: { default: 'common' },
+      isActive: { transform: (value) => value !== false },
+      isLimitedTime: { default: false },
+      startDate: { default: null },
+      endDate: { default: null },
+      iconPath: { default: '' },
+    };
 
-    for (const item of catalog) {
-      if (this.hasRequiredFields(item, requiredFields)) {
-        validItems.push({
-          id: item.id,
-          name: item.name,
-          type: item.type,
-          description: item.description || '',
-          cost: this.parseValue(item.cost),
-          currency: item.currency || 'gems',
-          category: item.category || 'general',
-          rarity: item.rarity || 'common',
-          isActive: item.isActive !== false,
-          isLimitedTime: item.isLimitedTime || false,
-          startDate: item.startDate || null,
-          endDate: item.endDate || null,
-          iconPath: item.iconPath || '',
-        });
-      } else {
-        logger.warn('Invalid catalog item data', { item });
-      }
-    }
-
-    return validItems;
+    return this.validateEconomyData(catalog, 'catalog', requiredFields, fieldMappings);
   }
 
   /**

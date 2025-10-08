@@ -152,13 +152,19 @@ namespace Evergreen.UI
             _isTransitioning = false;
         }
         
-        private IEnumerator FadeOutPanel(GameObject panel)
+        private CanvasGroup GetOrAddCanvasGroup(GameObject panel)
         {
             var canvasGroup = panel.GetComponent<CanvasGroup>();
             if (canvasGroup == null)
             {
                 canvasGroup = panel.AddComponent<CanvasGroup>();
             }
+            return canvasGroup;
+        }
+        
+        private IEnumerator FadeOutPanel(GameObject panel)
+        {
+            var canvasGroup = GetOrAddCanvasGroup(panel);
             
             float elapsed = 0f;
             float startAlpha = canvasGroup.alpha;
@@ -176,12 +182,7 @@ namespace Evergreen.UI
         
         private IEnumerator FadeInPanel(GameObject panel)
         {
-            var canvasGroup = panel.GetComponent<CanvasGroup>();
-            if (canvasGroup == null)
-            {
-                canvasGroup = panel.AddComponent<CanvasGroup>();
-            }
-            
+            var canvasGroup = GetOrAddCanvasGroup(panel);
             canvasGroup.alpha = 0f;
             
             float elapsed = 0f;
@@ -287,24 +288,23 @@ namespace Evergreen.UI
             ShowNotification(message);
         }
         
+        private AudioSource GetAudioSource()
+        {
+            return GetComponent<AudioSource>();
+        }
+        
         public void PlayButtonClickSound()
         {
             // Play button click sound
-            var audioSource = GetComponent<AudioSource>();
-            if (audioSource != null)
-            {
-                audioSource.Play();
-            }
+            var audioSource = GetAudioSource();
+            audioSource?.Play();
         }
         
         public void PlayButtonHoverSound()
         {
             // Play button hover sound
-            var audioSource = GetComponent<AudioSource>();
-            if (audioSource != null)
-            {
-                audioSource.Play();
-            }
+            var audioSource = GetAudioSource();
+            audioSource?.Play();
         }
         
         public void SetUIScale(float scale)
@@ -318,7 +318,7 @@ namespace Evergreen.UI
         
         public void SetUIVolume(float volume)
         {
-            var audioSource = GetComponent<AudioSource>();
+            var audioSource = GetAudioSource();
             if (audioSource != null)
             {
                 audioSource.volume = volume;

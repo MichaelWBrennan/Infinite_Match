@@ -51,9 +51,17 @@ public static class TeamChatUIFactory
         // Wire logic
         UnityEngine.Events.UnityAction send = () => { if (!string.IsNullOrWhiteSpace(input.text)) { TeamChat.Instance?.Send(input.text); AddLine(content.transform, templateGo, input.text); input.text = string.Empty; } };
         btn.onClick.AddListener(send);
-        if (TeamChat.Instance!=null) TeamChat.Instance.OnMessage += (m)=> AddLine(content.transform, templateGo, $"[{m.From}] {m.Text}");
-        // Fill existing
-        if (TeamChat.Instance!=null) foreach (var m in TeamChat.Instance.Messages) AddLine(content.transform, templateGo, $"[{m.From}] {m.Text}");
+        
+        // Setup TeamChat if available
+        if (TeamChat.Instance != null) 
+        {
+            TeamChat.Instance.OnMessage += (m) => AddLine(content.transform, templateGo, $"[{m.From}] {m.Text}");
+            // Fill existing messages
+            foreach (var m in TeamChat.Instance.Messages) 
+            {
+                AddLine(content.transform, templateGo, $"[{m.From}] {m.Text}");
+            }
+        }
     }
 
     private static T CreateUI<T, U>(GameObject parent, string name) where T: Component where U: Component
