@@ -96,9 +96,44 @@ jobs:
             remote-config/
           retention-days: 30
 
+  # Match-3 Game Specific Automation
+  match3-automation:
+    needs: [validate-setup, unity-cloud-console]
+    if: always() && needs.validate-setup.outputs.validation-passed == '0'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install selenium requests pyyaml openai
+
+      - name: Run Match-3 Complete Automation
+        run: |
+          python3 scripts/unity/match3_complete_automation.py
+
+      - name: Upload Match-3 automation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: match3-automation
+          path: |
+            unity/Assets/Animations/
+            unity/Assets/Audio/
+            unity/Assets/UI/
+            unity/Assets/Physics/
+            unity/Assets/Prefabs/
+            MATCH3_AUTOMATION_REPORT.json
+          retention-days: 30
+
   # Build all platforms
   build-all:
-    needs: [validate-setup, unity-cloud-console]
+    needs: [validate-setup, unity-cloud-console, match3-automation]
     if: always() && needs.validate-setup.outputs.validation-passed == '0'
     runs-on: ubuntu-latest
     strategy:
