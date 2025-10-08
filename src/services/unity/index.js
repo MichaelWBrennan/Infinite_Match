@@ -168,85 +168,87 @@ class UnityService {
 
   /**
    * Economy Service Methods
-   * Note: These methods simulate Cloud Code deployment
-   * In a real implementation, you would deploy Cloud Code functions to Unity
+   * Uses Unity Cloud Services API with fallback to browser automation
    */
   async createCurrency(currencyData) {
-    if (this.accessToken === 'cloud-code-mode') {
-      logger.info(
-        'Cloud Code mode: Currency would be created via Cloud Code function',
-        {
-          currencyId: currencyData.id,
-          currencyName: currencyData.name,
-        }
-      );
-      // Simulate successful creation
-      return {
-        id: currencyData.id,
-        name: currencyData.name,
-        type: currencyData.type,
-        status: 'created',
-        method: 'cloud-code',
-      };
+    try {
+      // Try Unity Cloud Services API first
+      if (this.accessToken && this.accessToken !== 'cloud-code-mode') {
+        const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies`;
+        const result = await this.makeRequest(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(currencyData),
+        });
+        logger.info(`Currency created via API: ${currencyData.id}`);
+        return result;
+      }
+    } catch (error) {
+      logger.warn(`API creation failed for currency ${currencyData.id}, trying browser automation: ${error.message}`);
     }
 
-    const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies`;
-    return this.makeRequest(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(currencyData),
-    });
+    // Fallback to browser automation
+    try {
+      const result = await this.createCurrencyViaBrowser(currencyData);
+      logger.info(`Currency created via browser automation: ${currencyData.id}`);
+      return result;
+    } catch (error) {
+      logger.error(`Failed to create currency ${currencyData.id}: ${error.message}`);
+      throw error;
+    }
   }
 
   async createInventoryItem(itemData) {
-    if (this.accessToken === 'cloud-code-mode') {
-      logger.info(
-        'Cloud Code mode: Inventory item would be created via Cloud Code function',
-        {
-          itemId: itemData.id,
-          itemName: itemData.name,
-        }
-      );
-      // Simulate successful creation
-      return {
-        id: itemData.id,
-        name: itemData.name,
-        type: itemData.type,
-        status: 'created',
-        method: 'cloud-code',
-      };
+    try {
+      // Try Unity Cloud Services API first
+      if (this.accessToken && this.accessToken !== 'cloud-code-mode') {
+        const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory-items`;
+        const result = await this.makeRequest(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(itemData),
+        });
+        logger.info(`Inventory item created via API: ${itemData.id}`);
+        return result;
+      }
+    } catch (error) {
+      logger.warn(`API creation failed for inventory item ${itemData.id}, trying browser automation: ${error.message}`);
     }
 
-    const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory-items`;
-    return this.makeRequest(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(itemData),
-    });
+    // Fallback to browser automation
+    try {
+      const result = await this.createInventoryItemViaBrowser(itemData);
+      logger.info(`Inventory item created via browser automation: ${itemData.id}`);
+      return result;
+    } catch (error) {
+      logger.error(`Failed to create inventory item ${itemData.id}: ${error.message}`);
+      throw error;
+    }
   }
 
   async createCatalogItem(catalogData) {
-    if (this.accessToken === 'cloud-code-mode') {
-      logger.info(
-        'Cloud Code mode: Catalog item would be created via Cloud Code function',
-        {
-          itemId: catalogData.id,
-          itemName: catalogData.name,
-        }
-      );
-      // Simulate successful creation
-      return {
-        id: catalogData.id,
-        name: catalogData.name,
-        type: catalogData.type,
-        status: 'created',
-        method: 'cloud-code',
-      };
+    try {
+      // Try Unity Cloud Services API first
+      if (this.accessToken && this.accessToken !== 'cloud-code-mode') {
+        const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/catalog-items`;
+        const result = await this.makeRequest(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(catalogData),
+        });
+        logger.info(`Catalog item created via API: ${catalogData.id}`);
+        return result;
+      }
+    } catch (error) {
+      logger.warn(`API creation failed for catalog item ${catalogData.id}, trying browser automation: ${error.message}`);
     }
 
-    const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/catalog-items`;
-    return this.makeRequest(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(catalogData),
-    });
+    // Fallback to browser automation
+    try {
+      const result = await this.createCatalogItemViaBrowser(catalogData);
+      logger.info(`Catalog item created via browser automation: ${catalogData.id}`);
+      return result;
+    } catch (error) {
+      logger.error(`Failed to create catalog item ${catalogData.id}: ${error.message}`);
+      throw error;
+    }
   }
 
   async getCurrencies() {
@@ -371,6 +373,133 @@ class UnityService {
       return results;
     } catch (error) {
       logger.error('Economy data deployment failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Browser Automation Methods
+   * Fallback when Unity Cloud Services API is not available
+   */
+  async createCurrencyViaBrowser(currencyData) {
+    const { spawn } = await import('child_process');
+    const { promisify } = await import('util');
+    const exec = promisify((await import('child_process')).exec);
+
+    try {
+      // Use Python browser automation script
+      const scriptPath = './scripts/unity/unity_browser_automation.py';
+      const command = `python3 ${scriptPath} --action=create_currency --data='${JSON.stringify(currencyData)}'`;
+      
+      const { stdout, stderr } = await exec(command);
+      
+      if (stderr) {
+        logger.warn(`Browser automation stderr: ${stderr}`);
+      }
+
+      const result = JSON.parse(stdout);
+      return {
+        id: currencyData.id,
+        name: currencyData.name,
+        type: currencyData.type,
+        status: 'created',
+        method: 'browser-automation',
+        ...result
+      };
+    } catch (error) {
+      logger.error(`Browser automation failed for currency ${currencyData.id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async createInventoryItemViaBrowser(itemData) {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    try {
+      const scriptPath = './scripts/unity/unity_browser_automation.py';
+      const command = `python3 ${scriptPath} --action=create_inventory_item --data='${JSON.stringify(itemData)}'`;
+      
+      const { stdout, stderr } = await execAsync(command);
+      
+      if (stderr) {
+        logger.warn(`Browser automation stderr: ${stderr}`);
+      }
+
+      const result = JSON.parse(stdout);
+      return {
+        id: itemData.id,
+        name: itemData.name,
+        type: itemData.type,
+        status: 'created',
+        method: 'browser-automation',
+        ...result
+      };
+    } catch (error) {
+      logger.error(`Browser automation failed for inventory item ${itemData.id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async createCatalogItemViaBrowser(catalogData) {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    try {
+      const scriptPath = './scripts/unity/unity_browser_automation.py';
+      const command = `python3 ${scriptPath} --action=create_catalog_item --data='${JSON.stringify(catalogData)}'`;
+      
+      const { stdout, stderr } = await execAsync(command);
+      
+      if (stderr) {
+        logger.warn(`Browser automation stderr: ${stderr}`);
+      }
+
+      const result = JSON.parse(stdout);
+      return {
+        id: catalogData.id,
+        name: catalogData.name,
+        type: catalogData.type,
+        status: 'created',
+        method: 'browser-automation',
+        ...result
+      };
+    } catch (error) {
+      logger.error(`Browser automation failed for catalog item ${catalogData.id}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Unity CLI Integration
+   * Alternative method using Unity CLI if available
+   */
+  async deployViaUnityCLI() {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    try {
+      logger.info('Attempting Unity CLI deployment...');
+      
+      // Check if Unity CLI is available
+      try {
+        await execAsync('unity --version');
+      } catch (error) {
+        logger.info('Unity CLI not found, installing...');
+        await execAsync('npm install -g @unity-services/cli@latest');
+      }
+
+      // Deploy using Unity CLI
+      const command = `unity services deploy --project-id=${this.projectId} --environment-id=${this.environmentId}`;
+      const { stdout, stderr } = await execAsync(command);
+      
+      logger.info('Unity CLI deployment completed', { stdout, stderr });
+      return { success: true, method: 'unity-cli', output: stdout };
+    } catch (error) {
+      logger.error(`Unity CLI deployment failed: ${error.message}`);
       throw error;
     }
   }
