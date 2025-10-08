@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * Health Check Script
- * Monitors system health and reports status
+ * Refactored Health Check Script
+ * Uses the new service container architecture
  */
 
-import { Logger } from '../src/core/logger/index.js';
 import { registerServices, getService } from '../src/core/services/ServiceRegistry.js';
+import { Logger } from '../src/core/logger/index.js';
 
-const logger = new Logger('HealthCheck');
+const logger = new Logger('RefactoredHealthCheck');
 
-class HealthChecker {
+class RefactoredHealthCheck {
   constructor() {
-    // Register services
+    // Register all services
     registerServices();
     
     this.economyService = getService('economyService');
@@ -74,7 +74,7 @@ class HealthChecker {
   }
 
   async runHealthCheck() {
-    logger.info('Starting health check...');
+    logger.info('Starting refactored health check...');
 
     const checks = {
       economy: await this.checkEconomyService(),
@@ -84,9 +84,7 @@ class HealthChecker {
 
     const overallStatus = Object.values(checks).every(
       (check) => check.status === 'healthy'
-    )
-      ? 'healthy'
-      : 'unhealthy';
+    ) ? 'healthy' : 'unhealthy';
 
     const healthReport = {
       timestamp: new Date().toISOString(),
@@ -106,9 +104,13 @@ class HealthChecker {
   }
 }
 
-// Run health check
-const checker = new HealthChecker();
-checker.runHealthCheck().catch((error) => {
-  logger.error('Health check failed', { error: error.message });
-  process.exit(1);
-});
+// Run health check if this script is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const checker = new RefactoredHealthCheck();
+  checker.runHealthCheck().catch((error) => {
+    logger.error('Health check failed', { error: error.message });
+    process.exit(1);
+  });
+}
+
+export default RefactoredHealthCheck;

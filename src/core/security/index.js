@@ -14,8 +14,8 @@ import { body, validationResult } from 'express-validator';
 import hpp from 'hpp';
 import xss from 'xss';
 import mongoSanitize from 'express-mongo-sanitize';
-import { AppConfig } from 'config/index.js';
-import { securityLogger } from 'logger/index.js';
+import { AppConfig } from '../config/index.js';
+import { securityLogger } from '../logger/index.js';
 
 // In-memory stores for security tracking
 const loginAttempts = new Map();
@@ -29,15 +29,15 @@ const activeSessions = new Map();
 export const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      defaultSrc: ['\'self\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\''],
+      scriptSrc: ['\'self\''],
+      imgSrc: ['\'self\'', 'data:', 'https:'],
+      connectSrc: ['\'self\''],
+      fontSrc: ['\'self\''],
+      objectSrc: ['\'none\''],
+      mediaSrc: ['\'self\''],
+      frameSrc: ['\'none\''],
     },
   },
   crossOriginEmbedderPolicy: false,

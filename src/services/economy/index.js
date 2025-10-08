@@ -3,32 +3,48 @@
  * Handles game economy data management and validation
  */
 
-import { Logger } from 'core/logger/index.js';
-import { readFile, writeFile } from 'fs/promises';
+import { Logger } from '../../core/logger/index.js';
+import { writeFile, readFile } from 'fs/promises';
 import { join } from 'path';
-import { AppConfig } from 'core/config/index.js';
+import { AppConfig } from '../../core/config/index.js';
+import { ServiceError } from '../../core/errors/ErrorHandler.js';
 
 const logger = new Logger('EconomyService');
 
 class EconomyService {
-  constructor() {
-    this.dataPath = join(AppConfig.paths.config, 'economy');
-    this.cache = new Map();
+  constructor(dataLoader, validator, cacheManager) {
+    this.dataPath = AppConfig.paths.config; // Direct path to economy directory
+    this.dataLoader = dataLoader;
+    this.validator = validator;
+    this.cacheManager = cacheManager;
   }
 
   /**
    * Load economy data from CSV files
    */
   async loadEconomyData() {
-    try {
-      const currencies = await this.loadCSVData('currencies.csv');
-      const inventory = await this.loadCSVData('inventory.csv');
-      const catalog = await this.loadCSVData('catalog.csv');
+    const cacheKey = 'economy_data';
+    
+    // Check cache first
+    const cached = this.cacheManager.get(cacheKey);
+    if (cached) {
+      logger.debug('Returning cached economy data');
+      return cached;
+    }
 
+    try {
+      const filePaths = [
+        join(this.dataPath, 'currencies.csv'),
+        join(this.dataPath, 'inventory.csv'),
+        join(this.dataPath, 'catalog.csv'),
+      ];
+
+      const files = await this.dataLoader.loadFiles(filePaths);
+      
       const economyData = {
-        currencies: this.validateCurrencies(currencies),
-        inventory: this.validateInventory(inventory),
-        catalog: this.validateCatalog(catalog),
+        currencies: this.validator.validateCurrencies(files.currencies || []),
+        inventory: this.validator.validateInventory(files.inventory || []),
+        catalog: this.validator.validateCatalog(files.catalog || []),
         timestamp: new Date().toISOString(),
       };
 
@@ -38,10 +54,13 @@ class EconomyService {
         catalog: economyData.catalog.length,
       });
 
+      // Cache the result
+      this.cacheManager.set(cacheKey, economyData, 300000); // 5 minutes
+
       return economyData;
     } catch (error) {
       logger.error('Failed to load economy data', { error: error.message });
-      throw error;
+      throw new ServiceError(`Failed to load economy data: ${error.message}`, 'EconomyService');
     }
   }
 
@@ -135,6 +154,8 @@ class EconomyService {
     const requiredFields = ['id', 'name', 'type'];
     const fieldMappings = {
       description: { default: '' },
+      initial: { source: 'initial', default: 0 },
+      maximum: { source: 'maximum', default: 999999 },
       isTradable: { default: false },
       isConsumable: { default: false },
     };
@@ -156,9 +177,9 @@ class EconomyService {
       description: { default: '' },
       rarity: { default: 'common' },
       category: { default: 'general' },
-      isTradable: { default: false },
+      isTradable: { source: 'tradable', transform: (val) => val === 'True' || val === true },
       isConsumable: { default: false },
-      maxStackSize: { default: 1 },
+      maxStackSize: { source: 'stackable', transform: (val) => val === 'True' || val === true ? 999 : 1 },
       iconPath: { default: '' },
     };
 
@@ -174,11 +195,13 @@ class EconomyService {
    * Validate catalog data
    */
   validateCatalog(catalog) {
-    const requiredFields = ['id', 'name', 'type', 'cost'];
+    const requiredFields = ['id', 'name', 'cost_currency', 'cost_amount'];
     const fieldMappings = {
       description: { default: '' },
-      cost: { transform: (value) => this.parseValue(value) },
-      currency: { default: 'gems' },
+      type: { default: 'item' },
+      cost: { source: 'cost_amount', transform: (val) => parseInt(val) || 0 },
+      currency: { source: 'cost_currency', default: 'coins' },
+      rewards: { source: 'rewards', default: '' },
       category: { default: 'general' },
       rarity: { default: 'common' },
       isActive: { transform: (value) => value !== false },
@@ -201,7 +224,7 @@ class EconomyService {
    */
   hasRequiredFields(obj, requiredFields) {
     return requiredFields.every(
-      (field) => obj.hasOwnProperty(field) && obj[field] !== ''
+      (field) => Object.prototype.hasOwnProperty.call(obj, field) && obj[field] !== ''
     );
   }
 
@@ -287,4 +310,5 @@ class EconomyService {
   }
 }
 
-export default EconomyService;
+// Re-export the new EconomyService
+export { default } from './EconomyService.js';

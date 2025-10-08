@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-10-08T16:17:53.895Z",
+  "status": "partial",
+  "results": {
+    "economy": {
+      "success": true,
+      "currencies": 3,
+      "inventory": 4,
+      "catalog": 4
+    },
+    "unity": {
+      "success": true,
+      "currencies": 3,
+      "inventory": 4,
+      "catalog": 4,
+      "errors": 0
+    },
+    "cloudCode": {
+      "success": true,
+      "deployed": 0,
+      "errors": []
+    },
+    "remoteConfig": {
+      "success": false,
+      "errors": [
+        "ENOENT: no such file or directory, open '/workspace/src/core/config/config/remote/game_config.json'"
+      ]
+    }
+  },
+  "summary": {
+    "totalSteps": 4,
+    "successfulSteps": 3,
+    "failedSteps": 1
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-10-08T16:35:40.051Z",
+  "status": "partial",
+  "results": {
+    "economy": {
+      "success": false,
+      "errors": [
+        "this.economyService.saveToJSON is not a function"
+      ]
+    },
+    "unity": {
+      "success": true,
+      "currencies": 3,
+      "inventory": 13,
+      "catalog": 20,
+      "errors": 0
+    },
+    "cloudCode": {
+      "success": true,
+      "deployed": 0,
+      "errors": []
+    },
+    "remoteConfig": {
+      "success": false,
+      "errors": [
+        "ENOENT: no such file or directory, open '/workspace/economy/remote/game_config.json'"
+      ]
+    }
+  },
+  "summary": {
+    "totalSteps": 4,
+    "successfulSteps": 2,
+    "failedSteps": 2
+  }
+}

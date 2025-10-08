@@ -89,7 +89,7 @@ export const AppConfig = {
   paths: {
     root: join(__dirname, '..'),
     assets: join(__dirname, 'assets'),
-    config: join(__dirname, 'config'),
+    config: join(__dirname, '..', '..', '..', 'economy'), // Point to /workspace/economy
     logs: join(__dirname, 'logs'),
     temp: join(__dirname, 'temp'),
   },

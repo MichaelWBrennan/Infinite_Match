@@ -5,8 +5,8 @@
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from 'core/security/index.js';
-import { Logger } from 'core/logger/index.js';
+import security from '../core/security/index.js';
+import { Logger } from '../core/logger/index.js';
 
 const router = express.Router();
 const logger = new Logger('GameRoutes');

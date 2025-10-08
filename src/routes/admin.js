@@ -4,10 +4,10 @@
  */
 
 import express from 'express';
-import security from 'core/security/index.js';
-import { Logger } from 'core/logger/index.js';
-import EconomyService from 'services/economy/index.js';
-import UnityService from 'services/unity/index.js';
+import security from '../core/security/index.js';
+import { Logger } from '../core/logger/index.js';
+import EconomyService from '../services/economy/index.js';
+import UnityService from '../services/unity/index.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');

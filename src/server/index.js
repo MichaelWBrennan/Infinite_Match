@@ -9,26 +9,26 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { v4 as uuidv4 } from 'uuid';
 
 // Core modules
-import { AppConfig } from 'core/config/index.js';
-import { Logger } from 'core/logger/index.js';
-import security from 'core/security/index.js';
-
-// Services
-import UnityService from 'services/unity/index.js';
-import EconomyService from 'services/economy/index.js';
+import { AppConfig } from '../core/config/index.js';
+import { Logger } from '../core/logger/index.js';
+import security from '../core/security/index.js';
+import { registerServices, getService } from '../core/services/ServiceRegistry.js';
 
 // Routes
-import authRoutes from 'routes/auth.js';
-import economyRoutes from 'routes/economy.js';
-import gameRoutes from 'routes/game.js';
-import adminRoutes from 'routes/admin.js';
+import authRoutes from '../routes/auth.js';
+import economyRoutes from '../routes/economy.js';
+import gameRoutes from '../routes/game.js';
+import adminRoutes from '../routes/admin.js';
 
 const logger = new Logger('Server');
 const app = express();
 
+// Register services
+registerServices();
+
 // Initialize services
-const unityService = new UnityService();
-const economyService = new EconomyService();
+const unityService = getService('unityService');
+const economyService = getService('economyService');
 
 // Middleware stack
 app.use(security.helmetConfig);
