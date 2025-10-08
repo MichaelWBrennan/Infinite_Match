@@ -1,14 +1,24 @@
 # Evergreen Match-3 Unity Game
 
-A comprehensive Match-3 puzzle game built with Unity, featuring automated deployment, CI/CD, and industry-standard architecture.
+A comprehensive Match-3 puzzle game built with Unity, featuring **complete headless development**, automated deployment, CI/CD, and industry-standard architecture. **Zero Unity Editor interaction required** - everything runs in CI/CD!
+
+## 🎯 Key Features
+
+- **🚀 Zero Unity Editor Development** - Complete headless Unity development
+- **🔄 Full CI/CD Pipeline** - Automated testing, building, and deployment
+- **🌐 Multi-Platform Builds** - Windows, Linux, WebGL, Android, iOS
+- **☁️ Unity Services Integration** - Economy, Cloud Code, Remote Config
+- **🛒 Storefront Automation** - Google Play, App Store, Steam, Itch.io
+- **🤖 Auto-Fix & Auto-Commit** - Automatic code style fixes
+- **📊 Comprehensive Monitoring** - Health checks and analytics
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
-- Unity 2022.3+
-- Python 3.8+
+- Node.js 22+ 
+- Unity 2022.3+ (for local development only)
+- Python 3.13+
 - Git
 
 ### Installation
@@ -34,6 +44,23 @@ A comprehensive Match-3 puzzle game built with Unity, featuring automated deploy
    ```bash
    npm run dev
    ```
+
+### Headless Development (Recommended)
+
+This project is configured for **completely headless Unity development**:
+
+1. **Add Unity Secrets** to GitHub (Settings → Secrets and variables → Actions):
+   ```
+   UNITY_EMAIL=your-unity-email@example.com
+   UNITY_PASSWORD=your-unity-password
+   UNITY_LICENSE=your-unity-license-string
+   UNITY_PROJECT_ID=your-unity-project-id
+   UNITY_ENV_ID=your-unity-environment-id
+   ```
+
+2. **Push to main branch** - builds run automatically in GitHub Actions
+3. **Download builds** from the Actions tab artifacts section
+4. **No Unity Editor required!** 🎉
 
 ## 📁 Project Structure
 
@@ -65,6 +92,19 @@ A comprehensive Match-3 puzzle game built with Unity, featuring automated deploy
 
 ## 🛠️ Development
 
+### Headless Development Workflow
+
+This project supports **complete headless Unity development**:
+
+1. **Write code** in your favorite editor (VS Code, Vim, etc.)
+2. **Add assets** to the appropriate Unity folders
+3. **Write tests** for new functionality
+4. **Commit and push** to trigger automatic builds
+5. **Download builds** from GitHub Actions artifacts
+6. **Test locally** with downloaded builds
+
+**Zero Unity Editor interaction required!** 🎉
+
 ### Available Scripts
 
 - `npm start` - Start production server
@@ -75,6 +115,7 @@ A comprehensive Match-3 puzzle game built with Unity, featuring automated deploy
 - `npm run health` - Run health check
 - `npm run economy:deploy` - Deploy economy data
 - `npm run unity:deploy` - Deploy Unity Services
+- `npm run automation` - Run complete automation pipeline
 
 ### API Endpoints
 
