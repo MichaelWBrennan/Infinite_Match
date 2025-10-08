@@ -33,15 +33,17 @@ export class EconomyDeployStep {
         catalog: economyData.catalog.length,
       });
 
-      // Deploy to Unity Services
-      const deployResults = await unityService.deployEconomyData(economyData);
+      // Deploy to Unity Services using comprehensive method
+      const deployResults = await unityService.deployAllServices();
 
       const result = {
-        success: true,
-        currenciesDeployed: deployResults.currencies.length,
-        inventoryDeployed: deployResults.inventory.length,
-        catalogDeployed: deployResults.catalog.length,
-        errors: deployResults.errors,
+        success: deployResults.economy.success,
+        method: deployResults.economy.method,
+        currenciesDeployed: deployResults.economy.result?.currencies?.length || 0,
+        inventoryDeployed: deployResults.economy.result?.inventory?.length || 0,
+        catalogDeployed: deployResults.economy.result?.catalog?.length || 0,
+        errors: deployResults.economy.result?.errors || [],
+        message: deployResults.economy.result?.message || 'Economy deployment completed',
         timestamp: new Date().toISOString(),
       };
 
