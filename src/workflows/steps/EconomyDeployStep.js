@@ -39,11 +39,14 @@ export class EconomyDeployStep {
       const result = {
         success: deployResults.economy.success,
         method: deployResults.economy.method,
-        currenciesDeployed: deployResults.economy.result?.currencies?.length || 0,
+        currenciesDeployed:
+          deployResults.economy.result?.currencies?.length || 0,
         inventoryDeployed: deployResults.economy.result?.inventory?.length || 0,
         catalogDeployed: deployResults.economy.result?.catalog?.length || 0,
         errors: deployResults.economy.result?.errors || [],
-        message: deployResults.economy.result?.message || 'Economy deployment completed',
+        message:
+          deployResults.economy.result?.message ||
+          'Economy deployment completed',
         timestamp: new Date().toISOString(),
       };
 

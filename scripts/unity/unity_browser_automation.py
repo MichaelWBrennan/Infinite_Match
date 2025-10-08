@@ -14,28 +14,33 @@ from pathlib import Path
 
 try:
     from selenium import webdriver
+    from selenium.common.exceptions import NoSuchElementException, TimeoutException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.keys import Keys
-    from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
 except ImportError:
     print("Installing required packages...")
     os.system("pip install selenium webdriver-manager")
     from selenium import webdriver
+    from selenium.common.exceptions import NoSuchElementException, TimeoutException
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.keys import Keys
-    from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
+
 
 class UnityBrowserAutomation:
     def __init__(self):
         # Use environment variables or defaults for personal license
-        self.project_id = os.getenv("UNITY_PROJECT_ID", "0dd5a03e-7f23-49c4-964e-7919c48c0574")
-        self.environment_id = os.getenv("UNITY_ENV_ID", "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d")
+        self.project_id = os.getenv(
+            "UNITY_PROJECT_ID", "0dd5a03e-7f23-49c4-964e-7919c48c0574"
+        )
+        self.environment_id = os.getenv(
+            "UNITY_ENV_ID", "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d"
+        )
         self.unity_email = os.getenv("UNITY_EMAIL")
         self.unity_password = os.getenv("UNITY_PASSWORD")
         self.driver = None
@@ -70,7 +75,7 @@ class UnityBrowserAutomation:
         """Login to Unity Dashboard or handle personal license"""
         try:
             print("🔐 Checking Unity Dashboard access...")
-            
+
             # Navigate to Unity Dashboard
             self.driver.get(self.base_url)
             time.sleep(3)
@@ -82,7 +87,9 @@ class UnityBrowserAutomation:
 
             # For personal license, we might not have access to Unity Cloud Services
             if self.is_personal_license:
-                print("⚠️ Personal Unity license detected - Unity Cloud Services may not be available")
+                print(
+                    "⚠️ Personal Unity license detected - Unity Cloud Services may not be available"
+                )
                 print("   This is normal for personal licenses")
                 return True
 
@@ -112,7 +119,9 @@ class UnityBrowserAutomation:
             password_field.clear()
             password_field.send_keys(self.unity_password)
 
-            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            login_button = self.driver.find_element(
+                By.XPATH, "//button[@type='submit']"
+            )
             login_button.click()
 
             # Wait for dashboard to load
@@ -134,15 +143,20 @@ class UnityBrowserAutomation:
         """Create currency in Unity Dashboard or simulate for personal license"""
         try:
             print(f"💰 Creating currency: {currency_data['id']}")
-            
+
             if self.is_personal_license:
                 print("⚠️ Personal license - simulating currency creation")
                 print(f"   Currency: {currency_data['name']} ({currency_data['id']})")
                 print(f"   Type: {currency_data['type']}")
                 print(f"   Initial: {currency_data.get('initial', 'N/A')}")
                 print(f"   Maximum: {currency_data.get('maximum', 'N/A')}")
-                return {"success": True, "id": currency_data["id"], "name": currency_data["name"], "method": "simulation"}
-            
+                return {
+                    "success": True,
+                    "id": currency_data["id"],
+                    "name": currency_data["name"],
+                    "method": "simulation",
+                }
+
             # Navigate to Economy > Currencies
             economy_url = f"{self.base_url}/economy/currencies"
             self.driver.get(economy_url)
@@ -151,7 +165,12 @@ class UnityBrowserAutomation:
             # Look for create currency button
             try:
                 create_btn = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Create') or contains(text(), 'Add')]"))
+                    EC.element_to_be_clickable(
+                        (
+                            By.XPATH,
+                            "//button[contains(text(), 'Create') or contains(text(), 'Add')]",
+                        )
+                    )
                 )
                 create_btn.click()
                 time.sleep(2)
@@ -170,7 +189,9 @@ class UnityBrowserAutomation:
                 # Select currency type
                 type_dropdown = self.driver.find_element(By.NAME, "currencyType")
                 type_dropdown.click()
-                type_option = self.driver.find_element(By.XPATH, f"//option[@value='{currency_data['type']}']")
+                type_option = self.driver.find_element(
+                    By.XPATH, f"//option[@value='{currency_data['type']}']"
+                )
                 type_option.click()
 
                 # Set initial amount
@@ -186,15 +207,25 @@ class UnityBrowserAutomation:
                     max_field.send_keys(str(currency_data["maximum"]))
 
                 # Save currency
-                save_btn = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Save') or contains(text(), 'Create')]")
+                save_btn = self.driver.find_element(
+                    By.XPATH,
+                    "//button[contains(text(), 'Save') or contains(text(), 'Create')]",
+                )
                 save_btn.click()
                 time.sleep(2)
 
                 print(f"✅ Created currency: {currency_data['name']}")
-                return {"success": True, "id": currency_data["id"], "name": currency_data["name"], "method": "browser"}
+                return {
+                    "success": True,
+                    "id": currency_data["id"],
+                    "name": currency_data["name"],
+                    "method": "browser",
+                }
 
             except TimeoutException:
-                print(f"⚠️ Could not find create currency form for {currency_data['id']}")
+                print(
+                    f"⚠️ Could not find create currency form for {currency_data['id']}"
+                )
                 return {"success": False, "error": "Form not found"}
 
         except Exception as e:
@@ -205,15 +236,20 @@ class UnityBrowserAutomation:
         """Create inventory item in Unity Dashboard or simulate for personal license"""
         try:
             print(f"📦 Creating inventory item: {item_data['id']}")
-            
+
             if self.is_personal_license:
                 print("⚠️ Personal license - simulating inventory item creation")
                 print(f"   Item: {item_data['name']} ({item_data['id']})")
                 print(f"   Type: {item_data['type']}")
                 print(f"   Tradable: {item_data.get('tradable', 'N/A')}")
                 print(f"   Stackable: {item_data.get('stackable', 'N/A')}")
-                return {"success": True, "id": item_data["id"], "name": item_data["name"], "method": "simulation"}
-            
+                return {
+                    "success": True,
+                    "id": item_data["id"],
+                    "name": item_data["name"],
+                    "method": "simulation",
+                }
+
             # Navigate to Economy > Inventory
             inventory_url = f"{self.base_url}/economy/inventory"
             self.driver.get(inventory_url)
@@ -222,7 +258,12 @@ class UnityBrowserAutomation:
             # Look for create item button
             try:
                 create_btn = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Create') or contains(text(), 'Add')]"))
+                    EC.element_to_be_clickable(
+                        (
+                            By.XPATH,
+                            "//button[contains(text(), 'Create') or contains(text(), 'Add')]",
+                        )
+                    )
                 )
                 create_btn.click()
                 time.sleep(2)
@@ -241,16 +282,26 @@ class UnityBrowserAutomation:
                 # Select item type
                 type_dropdown = self.driver.find_element(By.NAME, "itemType")
                 type_dropdown.click()
-                type_option = self.driver.find_element(By.XPATH, f"//option[@value='{item_data['type']}']")
+                type_option = self.driver.find_element(
+                    By.XPATH, f"//option[@value='{item_data['type']}']"
+                )
                 type_option.click()
 
                 # Save item
-                save_btn = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Save') or contains(text(), 'Create')]")
+                save_btn = self.driver.find_element(
+                    By.XPATH,
+                    "//button[contains(text(), 'Save') or contains(text(), 'Create')]",
+                )
                 save_btn.click()
                 time.sleep(2)
 
                 print(f"✅ Created inventory item: {item_data['name']}")
-                return {"success": True, "id": item_data["id"], "name": item_data["name"], "method": "browser"}
+                return {
+                    "success": True,
+                    "id": item_data["id"],
+                    "name": item_data["name"],
+                    "method": "browser",
+                }
 
             except TimeoutException:
                 print(f"⚠️ Could not find create item form for {item_data['id']}")
@@ -264,14 +315,21 @@ class UnityBrowserAutomation:
         """Create catalog item in Unity Dashboard or simulate for personal license"""
         try:
             print(f"💳 Creating catalog item: {catalog_data['id']}")
-            
+
             if self.is_personal_license:
                 print("⚠️ Personal license - simulating catalog item creation")
                 print(f"   Item: {catalog_data['name']} ({catalog_data['id']})")
-                print(f"   Cost: {catalog_data.get('cost_amount', 'N/A')} {catalog_data.get('cost_currency', 'N/A')}")
+                print(
+                    f"   Cost: {catalog_data.get('cost_amount', 'N/A')} {catalog_data.get('cost_currency', 'N/A')}"
+                )
                 print(f"   Rewards: {catalog_data.get('rewards', 'N/A')}")
-                return {"success": True, "id": catalog_data["id"], "name": catalog_data["name"], "method": "simulation"}
-            
+                return {
+                    "success": True,
+                    "id": catalog_data["id"],
+                    "name": catalog_data["name"],
+                    "method": "simulation",
+                }
+
             # Navigate to Economy > Catalog
             catalog_url = f"{self.base_url}/economy/catalog"
             self.driver.get(catalog_url)
@@ -280,7 +338,12 @@ class UnityBrowserAutomation:
             # Look for create item button
             try:
                 create_btn = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Create') or contains(text(), 'Add')]"))
+                    EC.element_to_be_clickable(
+                        (
+                            By.XPATH,
+                            "//button[contains(text(), 'Create') or contains(text(), 'Add')]",
+                        )
+                    )
                 )
                 create_btn.click()
                 time.sleep(2)
@@ -298,7 +361,9 @@ class UnityBrowserAutomation:
 
                 # Set cost
                 if "cost_currency" in catalog_data and "cost_amount" in catalog_data:
-                    cost_currency_field = self.driver.find_element(By.NAME, "costCurrency")
+                    cost_currency_field = self.driver.find_element(
+                        By.NAME, "costCurrency"
+                    )
                     cost_currency_field.clear()
                     cost_currency_field.send_keys(catalog_data["cost_currency"])
 
@@ -313,12 +378,20 @@ class UnityBrowserAutomation:
                     rewards_field.send_keys(catalog_data["rewards"])
 
                 # Save item
-                save_btn = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Save') or contains(text(), 'Create')]")
+                save_btn = self.driver.find_element(
+                    By.XPATH,
+                    "//button[contains(text(), 'Save') or contains(text(), 'Create')]",
+                )
                 save_btn.click()
                 time.sleep(2)
 
                 print(f"✅ Created catalog item: {catalog_data['name']}")
-                return {"success": True, "id": catalog_data["id"], "name": catalog_data["name"], "method": "browser"}
+                return {
+                    "success": True,
+                    "id": catalog_data["id"],
+                    "name": catalog_data["name"],
+                    "method": "browser",
+                }
 
             except TimeoutException:
                 print(f"⚠️ Could not find create catalog form for {catalog_data['id']}")
@@ -354,24 +427,28 @@ class UnityBrowserAutomation:
             if self.driver:
                 self.driver.quit()
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Unity Cloud Services Browser Automation")
+    parser = argparse.ArgumentParser(
+        description="Unity Cloud Services Browser Automation"
+    )
     parser.add_argument("--action", required=True, help="Action to perform")
     parser.add_argument("--data", required=True, help="JSON data for the action")
-    
+
     args = parser.parse_args()
-    
+
     try:
         data = json.loads(args.data)
     except json.JSONDecodeError as e:
         print(f"❌ Invalid JSON data: {e}")
         sys.exit(1)
-    
+
     automation = UnityBrowserAutomation()
     result = automation.run_action(args.action, data)
-    
+
     # Output result as JSON for the calling script
     print(json.dumps(result))
+
 
 if __name__ == "__main__":
     main()

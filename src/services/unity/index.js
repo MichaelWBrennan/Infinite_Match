@@ -32,17 +32,21 @@ class UnityService {
     try {
       // Check for Unity Services API credentials first
       if (this.clientId && this.clientSecret) {
-        logger.info('Unity Services API credentials found - attempting OAuth authentication');
+        logger.info(
+          'Unity Services API credentials found - attempting OAuth authentication'
+        );
         return await this.authenticateWithAPI();
       }
-      
+
       // Check for Unity account credentials
       if (this.unityEmail && this.unityPassword) {
-        logger.info('Unity account credentials found - using account-based authentication');
+        logger.info(
+          'Unity account credentials found - using account-based authentication'
+        );
         this.accessToken = 'unity-account-mode';
         return true;
       }
-      
+
       // Fall back to personal license mode
       logger.warn(
         'No Unity credentials configured - using personal license mode'
@@ -61,7 +65,6 @@ class UnityService {
    */
   async authenticateWithAPI() {
     try {
-
       // Try OAuth authentication for direct API access
       const authUrl = 'https://services.api.unity.com/oauth/token';
       const authData = {
@@ -193,7 +196,12 @@ class UnityService {
   async createCurrency(currencyData) {
     try {
       // Try Unity Cloud Services API first (only if we have API credentials)
-      if (this.accessToken && this.accessToken !== 'personal-license-mode' && this.accessToken !== 'unity-account-mode' && this.accessToken !== 'cloud-code-mode') {
+      if (
+        this.accessToken &&
+        this.accessToken !== 'personal-license-mode' &&
+        this.accessToken !== 'unity-account-mode' &&
+        this.accessToken !== 'cloud-code-mode'
+      ) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies`;
         const result = await this.makeRequest(endpoint, {
           method: 'POST',
@@ -203,58 +211,75 @@ class UnityService {
         return result;
       }
     } catch (error) {
-      logger.warn(`API creation failed for currency ${currencyData.id}, trying browser automation: ${error.message}`);
+      logger.warn(
+        `API creation failed for currency ${currencyData.id}, trying browser automation: ${error.message}`
+      );
     }
 
     // Fallback to browser automation or simulation
     try {
       if (this.accessToken === 'personal-license-mode') {
         // For personal license, simulate the creation
-        logger.info(`Personal license mode - simulating currency creation: ${currencyData.id}`);
+        logger.info(
+          `Personal license mode - simulating currency creation: ${currencyData.id}`
+        );
         return {
           id: currencyData.id,
           name: currencyData.name,
           type: currencyData.type,
           status: 'simulated',
           method: 'personal-license-simulation',
-          message: 'Currency configuration ready for Unity project (personal license)'
+          message:
+            'Currency configuration ready for Unity project (personal license)',
         };
       } else if (this.accessToken === 'unity-account-mode') {
         // For Unity account mode, try browser automation
         try {
           const result = await this.createCurrencyViaBrowser(currencyData);
-          logger.info(`Currency created via browser automation: ${currencyData.id}`);
+          logger.info(
+            `Currency created via browser automation: ${currencyData.id}`
+          );
           return result;
         } catch (browserError) {
-          logger.warn(`Browser automation failed, falling back to simulation: ${browserError.message}`);
+          logger.warn(
+            `Browser automation failed, falling back to simulation: ${browserError.message}`
+          );
           return {
             id: currencyData.id,
             name: currencyData.name,
             type: currencyData.type,
             status: 'simulated',
             method: 'unity-account-fallback',
-            message: 'Currency configuration ready for Unity project (browser automation failed)'
+            message:
+              'Currency configuration ready for Unity project (browser automation failed)',
           };
         }
       } else {
         try {
           const result = await this.createCurrencyViaBrowser(currencyData);
-          logger.info(`Currency created via browser automation: ${currencyData.id}`);
+          logger.info(
+            `Currency created via browser automation: ${currencyData.id}`
+          );
           return result;
         } catch (browserError) {
-          logger.warn(`Browser automation failed, falling back to simulation: ${browserError.message}`);
+          logger.warn(
+            `Browser automation failed, falling back to simulation: ${browserError.message}`
+          );
           return {
             id: currencyData.id,
             name: currencyData.name,
             type: currencyData.type,
             status: 'simulated',
             method: 'fallback-simulation',
-            message: 'Currency configuration ready for Unity project (browser automation failed)'
+            message:
+              'Currency configuration ready for Unity project (browser automation failed)',
           };
         }
       }
     } catch (error) {
-      logger.error(`Failed to create currency ${currencyData.id}: ${error.message}`);
+      logger.error(
+        `Failed to create currency ${currencyData.id}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -262,7 +287,11 @@ class UnityService {
   async createInventoryItem(itemData) {
     try {
       // Try Unity Cloud Services API first (only if we have proper credentials)
-      if (this.accessToken && this.accessToken !== 'personal-license-mode' && this.accessToken !== 'cloud-code-mode') {
+      if (
+        this.accessToken &&
+        this.accessToken !== 'personal-license-mode' &&
+        this.accessToken !== 'cloud-code-mode'
+      ) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory-items`;
         const result = await this.makeRequest(endpoint, {
           method: 'POST',
@@ -272,29 +301,38 @@ class UnityService {
         return result;
       }
     } catch (error) {
-      logger.warn(`API creation failed for inventory item ${itemData.id}, trying browser automation: ${error.message}`);
+      logger.warn(
+        `API creation failed for inventory item ${itemData.id}, trying browser automation: ${error.message}`
+      );
     }
 
     // Fallback to browser automation or simulation
     try {
       if (this.accessToken === 'personal-license-mode') {
         // For personal license, simulate the creation
-        logger.info(`Personal license mode - simulating inventory item creation: ${itemData.id}`);
+        logger.info(
+          `Personal license mode - simulating inventory item creation: ${itemData.id}`
+        );
         return {
           id: itemData.id,
           name: itemData.name,
           type: itemData.type,
           status: 'simulated',
           method: 'personal-license-simulation',
-          message: 'Inventory item configuration ready for Unity project (personal license)'
+          message:
+            'Inventory item configuration ready for Unity project (personal license)',
         };
       } else {
         const result = await this.createInventoryItemViaBrowser(itemData);
-        logger.info(`Inventory item created via browser automation: ${itemData.id}`);
+        logger.info(
+          `Inventory item created via browser automation: ${itemData.id}`
+        );
         return result;
       }
     } catch (error) {
-      logger.error(`Failed to create inventory item ${itemData.id}: ${error.message}`);
+      logger.error(
+        `Failed to create inventory item ${itemData.id}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -312,16 +350,22 @@ class UnityService {
         return result;
       }
     } catch (error) {
-      logger.warn(`API creation failed for catalog item ${catalogData.id}, trying browser automation: ${error.message}`);
+      logger.warn(
+        `API creation failed for catalog item ${catalogData.id}, trying browser automation: ${error.message}`
+      );
     }
 
     // Fallback to browser automation
     try {
       const result = await this.createCatalogItemViaBrowser(catalogData);
-      logger.info(`Catalog item created via browser automation: ${catalogData.id}`);
+      logger.info(
+        `Catalog item created via browser automation: ${catalogData.id}`
+      );
       return result;
     } catch (error) {
-      logger.error(`Failed to create catalog item ${catalogData.id}: ${error.message}`);
+      logger.error(
+        `Failed to create catalog item ${catalogData.id}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -465,9 +509,9 @@ class UnityService {
       // Use Python browser automation script
       const scriptPath = './scripts/unity/unity_browser_automation.py';
       const command = `python3 ${scriptPath} --action=create_currency --data='${JSON.stringify(currencyData)}'`;
-      
+
       const { stdout, stderr } = await exec(command);
-      
+
       if (stderr) {
         logger.warn(`Browser automation stderr: ${stderr}`);
       }
@@ -479,10 +523,12 @@ class UnityService {
         type: currencyData.type,
         status: 'created',
         method: 'browser-automation',
-        ...result
+        ...result,
       };
     } catch (error) {
-      logger.error(`Browser automation failed for currency ${currencyData.id}: ${error.message}`);
+      logger.error(
+        `Browser automation failed for currency ${currencyData.id}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -495,9 +541,9 @@ class UnityService {
     try {
       const scriptPath = './scripts/unity/unity_browser_automation.py';
       const command = `python3 ${scriptPath} --action=create_inventory_item --data='${JSON.stringify(itemData)}'`;
-      
+
       const { stdout, stderr } = await execAsync(command);
-      
+
       if (stderr) {
         logger.warn(`Browser automation stderr: ${stderr}`);
       }
@@ -509,10 +555,12 @@ class UnityService {
         type: itemData.type,
         status: 'created',
         method: 'browser-automation',
-        ...result
+        ...result,
       };
     } catch (error) {
-      logger.error(`Browser automation failed for inventory item ${itemData.id}: ${error.message}`);
+      logger.error(
+        `Browser automation failed for inventory item ${itemData.id}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -525,9 +573,9 @@ class UnityService {
     try {
       const scriptPath = './scripts/unity/unity_browser_automation.py';
       const command = `python3 ${scriptPath} --action=create_catalog_item --data='${JSON.stringify(catalogData)}'`;
-      
+
       const { stdout, stderr } = await execAsync(command);
-      
+
       if (stderr) {
         logger.warn(`Browser automation stderr: ${stderr}`);
       }
@@ -539,10 +587,12 @@ class UnityService {
         type: catalogData.type,
         status: 'created',
         method: 'browser-automation',
-        ...result
+        ...result,
       };
     } catch (error) {
-      logger.error(`Browser automation failed for catalog item ${catalogData.id}: ${error.message}`);
+      logger.error(
+        `Browser automation failed for catalog item ${catalogData.id}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -558,14 +608,14 @@ class UnityService {
 
     try {
       logger.info('Attempting Unity CLI deployment...');
-      
+
       // Use our custom Unity CLI automation script
       const scriptPath = './scripts/unity/unity_cli_automation.sh';
       const command = `bash ${scriptPath}`;
-      
+
       logger.info('Running Unity CLI automation script...');
       const { stdout, stderr } = await execAsync(command);
-      
+
       logger.info('Unity CLI deployment completed', { stdout, stderr });
       return { success: true, method: 'unity-cli', output: stdout };
     } catch (error) {
@@ -581,7 +631,7 @@ class UnityService {
     const results = {
       economy: { success: false, method: null, error: null },
       cloudCode: { success: false, method: null, error: null },
-      remoteConfig: { success: false, method: null, error: null }
+      remoteConfig: { success: false, method: null, error: null },
     };
 
     try {
@@ -589,85 +639,142 @@ class UnityService {
 
       // Check authentication mode
       if (this.accessToken === 'personal-license-mode') {
-        logger.info('Personal license mode detected - using simulation for all services');
-        
+        logger.info(
+          'Personal license mode detected - using simulation for all services'
+        );
+
         // Simulate economy deployment
         const economyData = await this.loadEconomyDataFromCSV();
-        results.economy = { 
-          success: true, 
-          method: 'personal-license-simulation', 
+        results.economy = {
+          success: true,
+          method: 'personal-license-simulation',
           result: {
-            currencies: economyData.currencies.map(c => ({ id: c.id, name: c.name, status: 'simulated' })),
-            inventory: economyData.inventory.map(i => ({ id: i.id, name: i.name, status: 'simulated' })),
-            catalog: economyData.catalog.map(c => ({ id: c.id, name: c.name, status: 'simulated' })),
-            message: 'Economy data ready for local Unity project (personal license)'
-          }
+            currencies: economyData.currencies.map((c) => ({
+              id: c.id,
+              name: c.name,
+              status: 'simulated',
+            })),
+            inventory: economyData.inventory.map((i) => ({
+              id: i.id,
+              name: i.name,
+              status: 'simulated',
+            })),
+            catalog: economyData.catalog.map((c) => ({
+              id: c.id,
+              name: c.name,
+              status: 'simulated',
+            })),
+            message:
+              'Economy data ready for local Unity project (personal license)',
+          },
         };
-        
+
         // Simulate Cloud Code deployment
-        results.cloudCode = { 
-          success: true, 
-          method: 'personal-license-simulation', 
-          result: { message: 'Cloud Code functions ready for local Unity project (personal license)' }
+        results.cloudCode = {
+          success: true,
+          method: 'personal-license-simulation',
+          result: {
+            message:
+              'Cloud Code functions ready for local Unity project (personal license)',
+          },
         };
-        
+
         // Simulate Remote Config deployment
-        results.remoteConfig = { 
-          success: true, 
-          method: 'personal-license-simulation', 
-          result: { message: 'Remote Config ready for local Unity project (personal license)' }
+        results.remoteConfig = {
+          success: true,
+          method: 'personal-license-simulation',
+          result: {
+            message:
+              'Remote Config ready for local Unity project (personal license)',
+          },
         };
-        
       } else if (this.accessToken === 'unity-account-mode') {
-        logger.info('Unity account mode detected - using browser automation for all services');
-        
+        logger.info(
+          'Unity account mode detected - using browser automation for all services'
+        );
+
         // Try browser automation for economy deployment
         const economyData = await this.loadEconomyDataFromCSV();
-        results.economy = { 
-          success: true, 
-          method: 'unity-account-browser', 
+        results.economy = {
+          success: true,
+          method: 'unity-account-browser',
           result: {
-            currencies: economyData.currencies.map(c => ({ id: c.id, name: c.name, status: 'browser-automation' })),
-            inventory: economyData.inventory.map(i => ({ id: i.id, name: i.name, status: 'browser-automation' })),
-            catalog: economyData.catalog.map(c => ({ id: c.id, name: c.name, status: 'browser-automation' })),
-            message: 'Economy data deployed via Unity account browser automation'
-          }
+            currencies: economyData.currencies.map((c) => ({
+              id: c.id,
+              name: c.name,
+              status: 'browser-automation',
+            })),
+            inventory: economyData.inventory.map((i) => ({
+              id: i.id,
+              name: i.name,
+              status: 'browser-automation',
+            })),
+            catalog: economyData.catalog.map((c) => ({
+              id: c.id,
+              name: c.name,
+              status: 'browser-automation',
+            })),
+            message:
+              'Economy data deployed via Unity account browser automation',
+          },
         };
-        
+
         // Simulate Cloud Code deployment
-        results.cloudCode = { 
-          success: true, 
-          method: 'unity-account-simulation', 
-          result: { message: 'Cloud Code functions ready for Unity project (Unity account mode)' }
+        results.cloudCode = {
+          success: true,
+          method: 'unity-account-simulation',
+          result: {
+            message:
+              'Cloud Code functions ready for Unity project (Unity account mode)',
+          },
         };
-        
+
         // Simulate Remote Config deployment
-        results.remoteConfig = { 
-          success: true, 
-          method: 'unity-account-simulation', 
-          result: { message: 'Remote Config ready for Unity project (Unity account mode)' }
+        results.remoteConfig = {
+          success: true,
+          method: 'unity-account-simulation',
+          result: {
+            message:
+              'Remote Config ready for Unity project (Unity account mode)',
+          },
         };
-        
       } else {
         // Try API first, then CLI, then simulation
         try {
           // Deploy economy data using the comprehensive method
           const economyData = await this.loadEconomyDataFromCSV();
-          
+
           // Simulate economy deployment for personal license
-          results.economy = { 
-            success: true, 
-            method: 'personal-license-simulation', 
+          results.economy = {
+            success: true,
+            method: 'personal-license-simulation',
             result: {
-              currencies: economyData.currencies.map(c => ({ id: c.id, name: c.name, status: 'simulated' })),
-              inventory: economyData.inventory.map(i => ({ id: i.id, name: i.name, status: 'simulated' })),
-              catalog: economyData.catalog.map(c => ({ id: c.id, name: c.name, status: 'simulated' })),
-              message: 'Economy data ready for local Unity project (personal license)'
-            }
+              currencies: economyData.currencies.map((c) => ({
+                id: c.id,
+                name: c.name,
+                status: 'simulated',
+              })),
+              inventory: economyData.inventory.map((i) => ({
+                id: i.id,
+                name: i.name,
+                status: 'simulated',
+              })),
+              catalog: economyData.catalog.map((c) => ({
+                id: c.id,
+                name: c.name,
+                status: 'simulated',
+              })),
+              message:
+                'Economy data ready for local Unity project (personal license)',
+            },
           };
         } catch (error) {
           logger.warn('Economy data loading failed, using simulation...');
-          results.economy = { success: true, method: 'simulation', result: { message: 'Economy data ready for local Unity project' } };
+          results.economy = {
+            success: true,
+            method: 'simulation',
+            result: { message: 'Economy data ready for local Unity project' },
+          };
         }
       }
 
@@ -675,27 +782,48 @@ class UnityService {
       if (this.accessToken !== 'personal-license-mode') {
         try {
           const cloudCodeResult = await this.deployCloudCodeFunctions();
-          results.cloudCode = { success: true, method: 'api', result: cloudCodeResult };
+          results.cloudCode = {
+            success: true,
+            method: 'api',
+            result: cloudCodeResult,
+          };
         } catch (error) {
           logger.warn('Cloud Code API deployment failed, using simulation...');
-          results.cloudCode = { success: true, method: 'simulation', result: { message: 'Cloud Code functions ready for local Unity project' } };
+          results.cloudCode = {
+            success: true,
+            method: 'simulation',
+            result: {
+              message: 'Cloud Code functions ready for local Unity project',
+            },
+          };
         }
 
         // Deploy Remote Config (only if not in personal license mode)
         try {
           const remoteConfigResult = await this.deployRemoteConfig();
-          results.remoteConfig = { success: true, method: 'api', result: remoteConfigResult };
+          results.remoteConfig = {
+            success: true,
+            method: 'api',
+            result: remoteConfigResult,
+          };
         } catch (error) {
-          logger.warn('Remote Config API deployment failed, using simulation...');
-          results.remoteConfig = { success: true, method: 'simulation', result: { message: 'Remote Config ready for local Unity project' } };
+          logger.warn(
+            'Remote Config API deployment failed, using simulation...'
+          );
+          results.remoteConfig = {
+            success: true,
+            method: 'simulation',
+            result: { message: 'Remote Config ready for local Unity project' },
+          };
         }
       }
 
       logger.info('Unity services deployment completed', results);
       return results;
-
     } catch (error) {
-      logger.error('Unity services deployment failed', { error: error.message });
+      logger.error('Unity services deployment failed', {
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -709,20 +837,49 @@ class UnityService {
 
     try {
       // Load currencies
-      const currenciesCSV = await readFile(join(process.cwd(), 'economy', 'currencies.csv'), 'utf-8');
-      const currencies = this.parseCSV(currenciesCSV, ['id', 'name', 'type', 'initial', 'maximum']);
+      const currenciesCSV = await readFile(
+        join(process.cwd(), 'economy', 'currencies.csv'),
+        'utf-8'
+      );
+      const currencies = this.parseCSV(currenciesCSV, [
+        'id',
+        'name',
+        'type',
+        'initial',
+        'maximum',
+      ]);
 
       // Load inventory
-      const inventoryCSV = await readFile(join(process.cwd(), 'economy', 'inventory.csv'), 'utf-8');
-      const inventory = this.parseCSV(inventoryCSV, ['id', 'name', 'type', 'tradable', 'stackable']);
+      const inventoryCSV = await readFile(
+        join(process.cwd(), 'economy', 'inventory.csv'),
+        'utf-8'
+      );
+      const inventory = this.parseCSV(inventoryCSV, [
+        'id',
+        'name',
+        'type',
+        'tradable',
+        'stackable',
+      ]);
 
       // Load catalog
-      const catalogCSV = await readFile(join(process.cwd(), 'economy', 'catalog.csv'), 'utf-8');
-      const catalog = this.parseCSV(catalogCSV, ['id', 'name', 'cost_currency', 'cost_amount', 'rewards']);
+      const catalogCSV = await readFile(
+        join(process.cwd(), 'economy', 'catalog.csv'),
+        'utf-8'
+      );
+      const catalog = this.parseCSV(catalogCSV, [
+        'id',
+        'name',
+        'cost_currency',
+        'cost_amount',
+        'rewards',
+      ]);
 
       return { currencies, inventory, catalog };
     } catch (error) {
-      logger.error('Failed to load economy data from CSV files', { error: error.message });
+      logger.error('Failed to load economy data from CSV files', {
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -737,23 +894,23 @@ class UnityService {
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',');
       const obj = {};
-      
+
       headers.forEach((header, index) => {
         let value = values[index] || '';
-        
+
         // Convert numeric values
         if (['initial', 'maximum', 'cost_amount'].includes(header)) {
           value = parseInt(value) || 0;
         }
-        
+
         // Convert boolean values
         if (['tradable', 'stackable'].includes(header)) {
           value = value.toLowerCase() === 'true';
         }
-        
+
         obj[header] = value;
       });
-      
+
       result.push(obj);
     }
 

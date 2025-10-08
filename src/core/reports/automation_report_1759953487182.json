@@ -2,11 +2,7 @@
   "timestamp": "2025-10-08T19:58:07.181Z",
   "workflow": {
     "status": "completed",
-    "steps": [
-      "healthCheck",
-      "economyDeploy",
-      "reportGeneration"
-    ]
+    "steps": ["healthCheck", "economyDeploy", "reportGeneration"]
   },
   "health": {
     "status": "healthy",
