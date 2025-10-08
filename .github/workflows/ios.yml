@@ -9,7 +9,22 @@ jobs:
   build-ios:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/unity
+            Library
+            Temp
+          key: ${{ runner.os }}-unity-ios-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+          restore-keys: |
+            ${{ runner.os }}-unity-ios-
+
       - name: Unity - iOS Build
         uses: game-ci/unity-builder@v4
         env:
@@ -20,9 +35,12 @@ jobs:
           targetPlatform: iOS
           projectPath: unity
           allowDirtyBuild: true
+
       - name: Upload iOS Xcode project
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ios-xcode
-          path: build/iOS/**
+          path: build/iOS
+          retention-days: 30
       # Optional signing/build steps can follow using your Apple certificates

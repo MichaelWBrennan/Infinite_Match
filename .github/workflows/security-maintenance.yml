@@ -42,10 +42,16 @@ jobs:
         npm audit --audit-level moderate
         npm run security || echo "Security scan completed"
 
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript
+        queries: security-and-quality
+
     - name: Run CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
-        languages: javascript
+        upload: true
 
   dependency-update:
     name: Dependency Update
@@ -69,6 +75,20 @@ jobs:
         npm outdated || echo "Dependency check completed"
         echo "## 📦 Dependency Status" >> $GITHUB_STEP_SUMMARY
         echo "Check the logs above for outdated packages" >> $GITHUB_STEP_SUMMARY
+
+    - name: Generate dependency report
+      run: |
+        npm audit --json > dependency-audit.json || echo "Audit completed with warnings"
+        echo "## 🔍 Security Audit Results" >> $GITHUB_STEP_SUMMARY
+        echo "Security audit completed. Check artifacts for detailed report." >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload dependency audit
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: dependency-audit
+        path: dependency-audit.json
+        retention-days: 30
 
   cleanup:
     name: Cleanup
