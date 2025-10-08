@@ -11,6 +11,8 @@ import yaml
 import subprocess
 from pathlib import Path
 import requests
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utilities'))
+from file_validator import file_validator
 
 class ZeroUnityEditorValidator:
     def __init__(self):
@@ -131,44 +133,34 @@ class ZeroUnityEditorValidator:
                 "Unity Cloud Console automation script missing"
             )
         
-        # Check Cloud Code functions
-        cloudcode_dir = self.repo_root / "cloud-code"
-        if cloudcode_dir.exists():
-            cloudcode_files = list(cloudcode_dir.glob("*.js"))
-            if cloudcode_files:
-                self.validation_results["unity_cloud_console"]["status"] = "success"
-                self.validation_results["unity_cloud_console"]["details"].append(
-                    f"Cloud Code functions present: {len(cloudcode_files)} files"
-                )
-            else:
-                self.validation_results["unity_cloud_console"]["status"] = "warning"
-                self.validation_results["unity_cloud_console"]["details"].append(
-                    "Cloud Code directory exists but no functions found"
-                )
+        # Check Cloud Code functions using centralized validator
+        cloud_code_files = file_validator.validate_cloud_code_files()
+        existing_files = [name for name, exists in cloud_code_files.items() if exists]
+        
+        if existing_files:
+            self.validation_results["unity_cloud_console"]["status"] = "success"
+            self.validation_results["unity_cloud_console"]["details"].append(
+                f"Cloud Code functions present: {len(existing_files)} files"
+            )
         else:
             self.validation_results["unity_cloud_console"]["status"] = "error"
             self.validation_results["unity_cloud_console"]["details"].append(
-                "Cloud Code directory missing"
+                "Cloud Code functions missing"
             )
         
-        # Check Remote Config
-        remoteconfig_dir = self.repo_root / "remote-config"
-        if remoteconfig_dir.exists():
-            config_files = list(remoteconfig_dir.glob("*.json"))
-            if config_files:
-                self.validation_results["unity_cloud_console"]["status"] = "success"
-                self.validation_results["unity_cloud_console"]["details"].append(
-                    f"Remote Config files present: {len(config_files)} files"
-                )
-            else:
-                self.validation_results["unity_cloud_console"]["status"] = "warning"
-                self.validation_results["unity_cloud_console"]["details"].append(
-                    "Remote Config directory exists but no config files found"
-                )
+        # Check Remote Config using centralized validator
+        remote_config_files = file_validator.validate_remote_config_files()
+        existing_configs = [name for name, exists in remote_config_files.items() if exists]
+        
+        if existing_configs:
+            self.validation_results["unity_cloud_console"]["status"] = "success"
+            self.validation_results["unity_cloud_console"]["details"].append(
+                f"Remote Config files present: {len(existing_configs)} files"
+            )
         else:
             self.validation_results["unity_cloud_console"]["status"] = "error"
             self.validation_results["unity_cloud_console"]["details"].append(
-                "Remote Config directory missing"
+                "Remote Config files missing"
             )
     
     def validate_storefront_automation(self):
@@ -239,24 +231,19 @@ class ZeroUnityEditorValidator:
         """Validate CI/CD pipeline"""
         print("🔄 Validating CI/CD Pipeline...")
         
-        # Check GitHub Actions workflows
-        workflows_dir = self.repo_root / ".github" / "workflows"
-        if workflows_dir.exists():
-            workflow_files = list(workflows_dir.glob("*.yml"))
-            if workflow_files:
-                self.validation_results["ci_cd_pipeline"]["status"] = "success"
-                self.validation_results["ci_cd_pipeline"]["details"].append(
-                    f"GitHub Actions workflows present: {len(workflow_files)} files"
-                )
-            else:
-                self.validation_results["ci_cd_pipeline"]["status"] = "error"
-                self.validation_results["ci_cd_pipeline"]["details"].append(
-                    "No GitHub Actions workflows found"
-                )
+        # Check GitHub Actions workflows using centralized validator
+        workflow_files = file_validator.validate_github_workflows()
+        existing_workflows = [name for name, exists in workflow_files.items() if exists]
+        
+        if existing_workflows:
+            self.validation_results["ci_cd_pipeline"]["status"] = "success"
+            self.validation_results["ci_cd_pipeline"]["details"].append(
+                f"GitHub Actions workflows present: {len(existing_workflows)} files"
+            )
         else:
             self.validation_results["ci_cd_pipeline"]["status"] = "error"
             self.validation_results["ci_cd_pipeline"]["details"].append(
-                "GitHub Actions workflows directory missing"
+                "No GitHub Actions workflows found"
             )
         
         # Check zero Unity Editor workflow

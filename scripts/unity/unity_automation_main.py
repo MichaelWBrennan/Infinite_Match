@@ -11,6 +11,9 @@ import os
 import requests
 import yaml
 from datetime import datetime
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utilities'))
+from file_validator import file_validator
 
 class Unity100PercentWorking:
     def __init__(self):
@@ -180,8 +183,11 @@ class UnityMockAPIAutomation:
         inventory = []
         catalog = []
         
+        # Load economy data using centralized validator
+        economy_files = file_validator.validate_economy_files()
+        
         # Load currencies
-        if os.path.exists('economy/currencies.csv'):
+        if economy_files['currencies.csv']:
             with open('economy/currencies.csv', 'r') as f:
                 lines = f.readlines()
                 headers = lines[0].strip().split(',')
@@ -191,7 +197,7 @@ class UnityMockAPIAutomation:
                     currencies.append(currency)
         
         # Load inventory
-        if os.path.exists('economy/inventory.csv'):
+        if economy_files['inventory.csv']:
             with open('economy/inventory.csv', 'r') as f:
                 lines = f.readlines()
                 headers = lines[0].strip().split(',')
@@ -201,7 +207,7 @@ class UnityMockAPIAutomation:
                     inventory.append(item)
         
         # Load catalog
-        if os.path.exists('economy/catalog.csv'):
+        if economy_files['catalog.csv']:
             with open('economy/catalog.csv', 'r') as f:
                 lines = f.readlines()
                 headers = lines[0].strip().split(',')
@@ -466,8 +472,11 @@ class UnityAIWorkingAutomation:
         """Run complete AI automation"""
         print("🚀 Starting Unity AI 100% Working Automation...")
         
-        # Analyze existing economy data
-        if os.path.exists('economy/currencies.csv'):
+        # Analyze existing economy data using centralized validator
+        economy_files = file_validator.validate_economy_files()
+        cloud_code_files = file_validator.validate_cloud_code_files()
+        
+        if economy_files['currencies.csv']:
             with open('economy/currencies.csv', 'r') as f:
                 currencies = f.read()
             
@@ -477,8 +486,8 @@ class UnityAIWorkingAutomation:
         requirements = "Match-3 puzzle game with energy system, boosters, and currency packs"
         new_items = self.generate_economy_items(requirements)
         
-        # Optimize Cloud Code
-        if os.path.exists('cloud-code/AddCurrency.js'):
+        # Optimize Cloud Code using centralized validator
+        if cloud_code_files['AddCurrency.js']:
             with open('cloud-code/AddCurrency.js', 'r') as f:
                 code = f.read()
             
