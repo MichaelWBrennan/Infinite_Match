@@ -170,9 +170,8 @@ All configuration is handled automatically through GitHub Secrets:
 - `UNITY_ENV_ID` 
 - `UNITY_CLIENT_ID`
 - `UNITY_CLIENT_SECRET`
-- `UNITY_LICENSE`
-- `UNITY_EMAIL`
-- `UNITY_PASSWORD`
+- `UNITY_EMAIL` (your Unity account email)
+- `UNITY_PASSWORD` (your Unity account password)
 
 ### Workflow Settings
 - **Auto-merge**: Enabled by default

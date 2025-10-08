@@ -78,7 +78,6 @@ This project is configured for **completely headless Unity development**:
    ```
    UNITY_EMAIL=your-unity-email@example.com
    UNITY_PASSWORD=your-unity-password
-   UNITY_LICENSE=your-unity-license-string
    UNITY_PROJECT_ID=your-unity-project-id
    UNITY_ENV_ID=your-unity-environment-id
    UNITY_CLIENT_ID=your-unity-client-id
@@ -385,7 +384,6 @@ UNITY_CLIENT_ID=your-unity-client-id
 UNITY_CLIENT_SECRET=your-unity-client-secret
 UNITY_EMAIL=your-unity-email
 UNITY_PASSWORD=your-unity-password
-UNITY_LICENSE=your-unity-license
 
 # Database
 DATABASE_URL=your-database-url
