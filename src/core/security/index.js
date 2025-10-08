@@ -1,3 +1,8 @@
+/**
+ * Centralized Security Module
+ * Industry-standard security utilities and middleware
+ */
+
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -9,46 +14,8 @@ import { body, validationResult } from 'express-validator';
 import hpp from 'hpp';
 import xss from 'xss';
 import mongoSanitize from 'express-mongo-sanitize';
-import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
-
-// Security configuration
-const SECURITY_CONFIG = {
-  JWT_SECRET: process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex'),
-  JWT_EXPIRES_IN: '24h',
-  BCRYPT_ROUNDS: 12,
-  MAX_LOGIN_ATTEMPTS: 5,
-  LOCKOUT_TIME: 15 * 60 * 1000, // 15 minutes
-  RATE_LIMIT_WINDOW: 15 * 60 * 1000, // 15 minutes
-  RATE_LIMIT_MAX: 100, // requests per window
-  SLOW_DOWN_DELAY: 500, // ms delay after 1 request per second
-  ENCRYPTION_ALGORITHM: 'aes-256-gcm',
-  ENCRYPTION_KEY:
-    process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex'),
-  IV_LENGTH: 16,
-  TAG_LENGTH: 16,
-};
-
-// Security logging
-const securityLogger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  transports: [
-    new DailyRotateFile({
-      filename: 'logs/security-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
-    }),
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    }),
-  ],
-});
+import { AppConfig } from '../config/index.js';
+import { securityLogger } from '../logger/index.js';
 
 // In-memory stores for security tracking
 const loginAttempts = new Map();
@@ -57,7 +24,7 @@ const securityEvents = new Map();
 const activeSessions = new Map();
 
 /**
- * Enhanced Helmet configuration for maximum security
+ * Enhanced Helmet configuration
  */
 export const helmetConfig = helmet({
   contentSecurityPolicy: {
@@ -82,39 +49,32 @@ export const helmetConfig = helmet({
 });
 
 /**
- * CORS configuration with security restrictions
+ * CORS configuration
  */
 export const corsConfig = cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, etc.)
+  origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'https://yourdomain.com',
-      // Add your production domains
-    ];
-
-    if (allowedOrigins.includes(origin)) {
+    
+    if (AppConfig.server.cors.origin.includes(origin)) {
       callback(null, true);
     } else {
       securityLogger.warn(`CORS blocked request from origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,
+  credentials: AppConfig.server.cors.credentials,
   optionsSuccessStatus: 200,
 });
 
 /**
- * Rate limiting with different tiers
+ * Rate limiting configurations
  */
 export const generalRateLimit = rateLimit({
-  windowMs: SECURITY_CONFIG.RATE_LIMIT_WINDOW,
-  max: SECURITY_CONFIG.RATE_LIMIT_MAX,
+  windowMs: AppConfig.security.rateLimit.windowMs,
+  max: AppConfig.security.rateLimit.max,
   message: {
     error: 'Too many requests from this IP, please try again later.',
-    retryAfter: Math.ceil(SECURITY_CONFIG.RATE_LIMIT_WINDOW / 1000),
+    retryAfter: Math.ceil(AppConfig.security.rateLimit.windowMs / 1000),
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -122,7 +82,7 @@ export const generalRateLimit = rateLimit({
     securityLogger.warn(`Rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       error: 'Too many requests from this IP, please try again later.',
-      retryAfter: Math.ceil(SECURITY_CONFIG.RATE_LIMIT_WINDOW / 1000),
+      retryAfter: Math.ceil(AppConfig.security.rateLimit.windowMs / 1000),
     });
   },
 });
@@ -150,12 +110,12 @@ export const authRateLimit = rateLimit({
 });
 
 /**
- * Slow down middleware to prevent rapid requests
+ * Slow down middleware
  */
 export const slowDownConfig = slowDown({
   windowMs: 1000, // 1 second
   delayAfter: 1, // allow 1 request per second
-  delayMs: SECURITY_CONFIG.SLOW_DOWN_DELAY,
+  delayMs: 500,
   maxDelayMs: 20000, // max 20 seconds delay
   skipSuccessfulRequests: false,
   skipFailedRequests: false,
@@ -165,23 +125,12 @@ export const slowDownConfig = slowDown({
  * Input validation and sanitization
  */
 export const inputValidation = [
-  // Sanitize data
   mongoSanitize(),
-
-  // Prevent parameter pollution
   hpp(),
-
-  // XSS protection
   (req, res, next) => {
-    if (req.body) {
-      req.body = sanitizeObject(req.body);
-    }
-    if (req.query) {
-      req.query = sanitizeObject(req.query);
-    }
-    if (req.params) {
-      req.params = sanitizeObject(req.params);
-    }
+    if (req.body) req.body = sanitizeObject(req.body);
+    if (req.query) req.query = sanitizeObject(req.query);
+    if (req.params) req.params = sanitizeObject(req.params);
     next();
   },
 ];
@@ -190,19 +139,12 @@ export const inputValidation = [
  * Security headers middleware
  */
 export const securityHeaders = (req, res, next) => {
-  // Remove X-Powered-By header
   res.removeHeader('X-Powered-By');
-
-  // Add custom security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader(
-    'Permissions-Policy',
-    'geolocation=(), microphone=(), camera=()'
-  );
-
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   next();
 };
 
@@ -212,21 +154,18 @@ export const securityHeaders = (req, res, next) => {
 export const requestLogger = (req, res, next) => {
   const start = Date.now();
   const requestId = crypto.randomUUID();
-
+  
   req.requestId = requestId;
   req.startTime = start;
-
-  // Log request
+  
   securityLogger.info('Request started', {
     requestId,
     method: req.method,
     url: req.url,
     ip: req.ip,
     userAgent: req.get('User-Agent'),
-    timestamp: new Date().toISOString(),
   });
-
-  // Log response
+  
   res.on('finish', () => {
     const duration = Date.now() - start;
     securityLogger.info('Request completed', {
@@ -238,7 +177,7 @@ export const requestLogger = (req, res, next) => {
       ip: req.ip,
     });
   });
-
+  
   next();
 };
 
@@ -247,25 +186,22 @@ export const requestLogger = (req, res, next) => {
  */
 export const ipReputationCheck = (req, res, next) => {
   const clientIP = req.ip;
-
-  // Check if IP is in suspicious list
+  
   if (suspiciousIPs.has(clientIP)) {
     const suspiciousData = suspiciousIPs.get(clientIP);
     const timeSinceLastSuspicious = Date.now() - suspiciousData.lastSeen;
-
+    
     if (timeSinceLastSuspicious < 24 * 60 * 60 * 1000) {
-      // 24 hours
       securityLogger.warn(`Blocked request from suspicious IP: ${clientIP}`);
       return res.status(403).json({
         error: 'Access denied due to suspicious activity',
         requestId: req.requestId,
       });
     } else {
-      // Remove from suspicious list after 24 hours
       suspiciousIPs.delete(clientIP);
     }
   }
-
+  
   next();
 };
 
@@ -274,31 +210,28 @@ export const ipReputationCheck = (req, res, next) => {
  */
 export const sessionValidation = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-
+  
   if (!token) {
     return res.status(401).json({
       error: 'No authentication token provided',
       requestId: req.requestId,
     });
   }
-
+  
   try {
-    const decoded = jwt.verify(token, SECURITY_CONFIG.JWT_SECRET);
-
-    // Check if session is still active
+    const decoded = jwt.verify(token, AppConfig.security.jwt.secret);
+    
     if (!activeSessions.has(decoded.sessionId)) {
       return res.status(401).json({
         error: 'Session expired or invalid',
         requestId: req.requestId,
       });
     }
-
+    
     req.user = decoded;
     next();
   } catch (error) {
-    securityLogger.warn(`Invalid token from IP: ${req.ip}`, {
-      error: error.message,
-    });
+    securityLogger.warn(`Invalid token from IP: ${req.ip}`, { error: error.message });
     return res.status(401).json({
       error: 'Invalid authentication token',
       requestId: req.requestId,
@@ -307,96 +240,10 @@ export const sessionValidation = (req, res, next) => {
 };
 
 /**
- * Anti-cheat validation middleware
- */
-export const antiCheatValidation = (req, res, next) => {
-  const { gameData, playerId } = req.body;
-
-  if (!gameData || !playerId) {
-    return next();
-  }
-
-  // Validate game data integrity
-  if (!validateGameDataIntegrity(gameData)) {
-    securityLogger.warn(`Suspicious game data from player: ${playerId}`, {
-      playerId,
-      gameData,
-      ip: req.ip,
-      requestId: req.requestId,
-    });
-
-    // Mark IP as suspicious
-    markIPSuspicious(req.ip, 'Invalid game data');
-
-    return res.status(400).json({
-      error: 'Invalid game data detected',
-      requestId: req.requestId,
-    });
-  }
-
-  // Check for impossible values
-  if (hasImpossibleValues(gameData)) {
-    securityLogger.warn(`Impossible values detected from player: ${playerId}`, {
-      playerId,
-      gameData,
-      ip: req.ip,
-      requestId: req.requestId,
-    });
-
-    return res.status(400).json({
-      error: 'Impossible game values detected',
-      requestId: req.requestId,
-    });
-  }
-
-  next();
-};
-
-/**
- * Data encryption utilities
- */
-export const encryptData = (data) => {
-  const iv = crypto.randomBytes(SECURITY_CONFIG.IV_LENGTH);
-  const cipher = crypto.createCipher(
-    SECURITY_CONFIG.ENCRYPTION_ALGORITHM,
-    SECURITY_CONFIG.ENCRYPTION_KEY
-  );
-
-  let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-
-  const tag = cipher.getAuthTag();
-
-  return {
-    encrypted,
-    iv: iv.toString('hex'),
-    tag: tag.toString('hex'),
-  };
-};
-
-export const decryptData = (encryptedData) => {
-  try {
-    const decipher = crypto.createDecipher(
-      SECURITY_CONFIG.ENCRYPTION_ALGORITHM,
-      SECURITY_CONFIG.ENCRYPTION_KEY
-    );
-    decipher.setAuthTag(Buffer.from(encryptedData.tag, 'hex'));
-
-    let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-
-    return JSON.parse(decrypted);
-  } catch (error) {
-    securityLogger.error('Failed to decrypt data', { error: error.message });
-    throw new Error('Decryption failed');
-  }
-};
-
-/**
- * Password hashing
+ * Password utilities
  */
 export const hashPassword = async (password) => {
-  return await bcrypt.hash(password, SECURITY_CONFIG.BCRYPT_ROUNDS);
+  return await bcrypt.hash(password, AppConfig.security.bcrypt.rounds);
 };
 
 export const comparePassword = async (password, hash) => {
@@ -404,11 +251,11 @@ export const comparePassword = async (password, hash) => {
 };
 
 /**
- * JWT token generation
+ * JWT utilities
  */
 export const generateToken = (payload) => {
-  return jwt.sign(payload, SECURITY_CONFIG.JWT_SECRET, {
-    expiresIn: SECURITY_CONFIG.JWT_EXPIRES_IN,
+  return jwt.sign(payload, AppConfig.security.jwt.secret, {
+    expiresIn: AppConfig.security.jwt.expiresIn,
   });
 };
 
@@ -424,7 +271,7 @@ export const createSession = (userId, sessionData = {}) => {
     lastActivity: Date.now(),
     ...sessionData,
   };
-
+  
   activeSessions.set(sessionId, session);
   return sessionId;
 };
@@ -432,8 +279,7 @@ export const createSession = (userId, sessionData = {}) => {
 export const validateSession = (sessionId) => {
   const session = activeSessions.get(sessionId);
   if (!session) return false;
-
-  // Update last activity
+  
   session.lastActivity = Date.now();
   return session;
 };
@@ -453,77 +299,35 @@ export const logSecurityEvent = (eventType, details) => {
     details,
     timestamp: Date.now(),
   };
-
+  
   securityEvents.set(eventId, event);
   securityLogger.info('Security event', event);
-
+  
   return eventId;
 };
 
-/**
- * Mark IP as suspicious
- */
 export const markIPSuspicious = (ip, reason) => {
   suspiciousIPs.set(ip, {
     reason,
     lastSeen: Date.now(),
     count: (suspiciousIPs.get(ip)?.count || 0) + 1,
   });
-
+  
   logSecurityEvent('suspicious_ip', { ip, reason });
 };
 
 /**
- * Validate game data integrity
- */
-const validateGameDataIntegrity = (gameData) => {
-  // Check for required fields
-  const requiredFields = ['timestamp', 'playerId', 'action'];
-  for (const field of requiredFields) {
-    if (!gameData[field]) {
-      return false;
-    }
-  }
-
-  // Check timestamp is recent (within last 5 minutes)
-  const dataTime = new Date(gameData.timestamp).getTime();
-  const now = Date.now();
-  if (now - dataTime > 5 * 60 * 1000) {
-    return false;
-  }
-
-  return true;
-};
-
-/**
- * Check for impossible values
- */
-const hasImpossibleValues = (gameData) => {
-  // Check for negative values where they shouldn't be
-  if (gameData.score && gameData.score < 0) return true;
-  if (gameData.coins && gameData.coins < 0) return true;
-  if (gameData.gems && gameData.gems < 0) return true;
-
-  // Check for impossibly high values
-  if (gameData.score && gameData.score > 10000000) return true;
-  if (gameData.coins && gameData.coins > 1000000) return true;
-  if (gameData.gems && gameData.gems > 100000) return true;
-
-  return false;
-};
-
-/**
- * Sanitize object recursively
+ * Data sanitization
  */
 const sanitizeObject = (obj) => {
   if (typeof obj === 'string') {
     return xss(obj);
   }
-
+  
   if (Array.isArray(obj)) {
     return obj.map(sanitizeObject);
   }
-
+  
   if (obj && typeof obj === 'object') {
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
@@ -531,7 +335,7 @@ const sanitizeObject = (obj) => {
     }
     return sanitized;
   }
-
+  
   return obj;
 };
 
@@ -541,25 +345,24 @@ const sanitizeObject = (obj) => {
 export const cleanupOldData = () => {
   const now = Date.now();
   const oneDay = 24 * 60 * 60 * 1000;
-
+  
   // Clean up old security events
   for (const [eventId, event] of securityEvents.entries()) {
     if (now - event.timestamp > oneDay) {
       securityEvents.delete(eventId);
     }
   }
-
+  
   // Clean up old suspicious IPs
   for (const [ip, data] of suspiciousIPs.entries()) {
     if (now - data.lastSeen > oneDay) {
       suspiciousIPs.delete(ip);
     }
   }
-
+  
   // Clean up inactive sessions
   for (const [sessionId, session] of activeSessions.entries()) {
     if (now - session.lastActivity > 24 * 60 * 60 * 1000) {
-      // 24 hours
       activeSessions.delete(sessionId);
     }
   }
@@ -580,9 +383,6 @@ export default {
   requestLogger,
   ipReputationCheck,
   sessionValidation,
-  antiCheatValidation,
-  encryptData,
-  decryptData,
   hashPassword,
   comparePassword,
   generateToken,

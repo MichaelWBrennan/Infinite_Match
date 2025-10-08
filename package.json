@@ -1,6 +1,57 @@
 {
-  "author": "Your Team",
+  "name": "evergreen-match3-unity",
+  "version": "1.0.0",
   "description": "Evergreen Match-3 Unity Game with comprehensive automation and CI/CD",
+  "type": "module",
+  "main": "src/server/index.js",
+  "scripts": {
+    "start": "node src/server/index.js",
+    "dev": "nodemon src/server/index.js",
+    "test": "jest",
+    "lint": "eslint src/ --ext .js,.ts",
+    "lint:fix": "eslint src/ --ext .js,.ts --fix",
+    "format": "prettier --write \"src/**/*.{js,ts,json}\"",
+    "format:check": "prettier --check \"src/**/*.{js,ts,json}\"",
+    "build": "echo 'No build step required for Node.js'",
+    "health": "node scripts/health-check.js",
+    "economy:deploy": "node scripts/economy-deploy.js",
+    "unity:deploy": "node scripts/unity-deploy.js",
+    "automation": "node scripts/automation.js",
+    "deploy:all": "npm run health && npm run economy:deploy && npm run unity:deploy && npm run automation"
+  },
+  "keywords": [
+    "unity",
+    "match3",
+    "mobile-game",
+    "automation",
+    "ci-cd",
+    "nodejs",
+    "express"
+  ],
+  "author": "Your Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "express-slow-down": "^2.0.1",
+    "express-validator": "^7.0.1",
+    "hpp": "^0.2.3",
+    "express-mongo-sanitize": "^2.2.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "xss": "^1.0.14",
+    "dotenv": "^16.3.1"
+  },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
     "@types/node": "^20.0.0",
@@ -9,52 +60,13 @@
     "eslint": "^9.37.0",
     "eslint-formatter-compact": "^8.40.0",
     "prettier": "^3.6.2",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.1.4"
   },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
-  "keywords": [
-    "unity",
-    "match3",
-    "mobile-game",
-    "automation",
-    "ci-cd"
-  ],
-  "license": "MIT",
-  "name": "evergreen-match3-unity",
-  "private": true,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-org/evergreen-match3-unity.git"
-  },
-  "scripts": {
-    "check:all": "bash scripts/run-all-checks.sh",
-    "check:json": "find . -name \"*.json\" -not -path \"./node_modules/*\" -not -path \"./server/node_modules/*\" -exec python3 -m json.tool {} \\;",
-    "check:python": "python3 -m py_compile scripts/**/*.py",
-    "dev": "cd server && npm run dev",
-    "fix:all": "bash scripts/auto-fix-all.sh",
-    "fix:js": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/ --fix && npx prettier --write \"**/*.{js,ts,json}\" --ignore-path .gitignore",
-    "fix:json": "find . -name \"*.json\" -not -path \"./node_modules/*\" -not -path \"./server/node_modules/*\" -exec python3 -c \"import json; data=json.load(open('{}')); json.dump(data, open('{}', 'w'), indent=2, sort_keys=True)\" \\;",
-    "fix:python": "find scripts -name \"*.py\" -exec autopep8 --in-place --aggressive --aggressive {} \\; && isort scripts/ && black scripts/",
-    "format": "npx prettier --write \"**/*.{js,ts,json}\" --ignore-path .gitignore",
-    "format:check": "npx prettier --check \"**/*.{js,ts,json}\" --ignore-path .gitignore",
-    "install:all": "npm install && cd server && npm install",
-    "lint": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/",
-    "lint:fix": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/ --fix",
-    "scripts:ai": "cd scripts/unity && python unity_ai_automation.py",
-    "scripts:maintenance": "cd scripts/maintenance && python health_check.py",
-    "scripts:setup": "cd scripts/setup && python one_click_unity_setup.py",
-    "scripts:unity": "cd scripts/unity && python unity_automation_main.py",
-    "start": "cd server && npm start",
-    "test": "cd server && npm test",
-    "test:all": "npm test && cd server && npm test"
-  },
-  "type": "module",
-  "version": "1.0.0",
   "workspaces": [
-    "server",
+    "src",
     "scripts"
   ]
 }
