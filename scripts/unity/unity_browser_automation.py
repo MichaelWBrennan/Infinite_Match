@@ -86,33 +86,48 @@ class UnityBrowserAutomation:
                 print("   This is normal for personal licenses")
                 return True
 
-            # Look for login form
-            try:
-                email_field = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.NAME, "email"))
-                )
-                email_field.send_keys(self.unity_email or "your-email@example.com")
+            # Try to login with Unity account credentials
+            if self.unity_email and self.unity_password:
+                print(f"🔑 Attempting to login with Unity account: {self.unity_email}")
+                return self.perform_unity_login()
 
-                password_field = self.driver.find_element(By.NAME, "password")
-                password_field.send_keys(self.unity_password or "your-password")
-
-                login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
-                login_button.click()
-
-                # Wait for dashboard to load
-                WebDriverWait(self.driver, 15).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "dashboard"))
-                )
-
-                print("✅ Successfully logged into Unity Dashboard")
-                return True
-
-            except TimeoutException:
-                print("⚠️ Login form not found, might already be logged in")
-                return True
+            print("⚠️ No Unity credentials provided, proceeding without login")
+            return True
 
         except Exception as e:
             print(f"❌ Unity Dashboard access failed: {e}")
+            return False
+
+    def perform_unity_login(self):
+        """Perform actual Unity account login"""
+        try:
+            # Look for login form
+            email_field = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.NAME, "email"))
+            )
+            email_field.clear()
+            email_field.send_keys(self.unity_email)
+
+            password_field = self.driver.find_element(By.NAME, "password")
+            password_field.clear()
+            password_field.send_keys(self.unity_password)
+
+            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            login_button.click()
+
+            # Wait for dashboard to load
+            WebDriverWait(self.driver, 15).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "dashboard"))
+            )
+
+            print("✅ Successfully logged into Unity Dashboard")
+            return True
+
+        except TimeoutException:
+            print("⚠️ Login form not found or login failed")
+            return False
+        except Exception as e:
+            print(f"❌ Unity login failed: {e}")
             return False
 
     def create_currency(self, currency_data):
