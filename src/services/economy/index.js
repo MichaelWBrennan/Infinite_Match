@@ -12,7 +12,7 @@ const logger = new Logger('EconomyService');
 
 class EconomyService {
   constructor() {
-    this.dataPath = join(AppConfig.paths.config, 'economy');
+    this.dataPath = AppConfig.paths.config; // Direct path to economy directory
     this.cache = new Map();
   }
 
@@ -135,6 +135,8 @@ class EconomyService {
     const requiredFields = ['id', 'name', 'type'];
     const fieldMappings = {
       description: { default: '' },
+      initial: { source: 'initial', default: 0 },
+      maximum: { source: 'maximum', default: 999999 },
       isTradable: { default: false },
       isConsumable: { default: false },
     };
@@ -156,9 +158,9 @@ class EconomyService {
       description: { default: '' },
       rarity: { default: 'common' },
       category: { default: 'general' },
-      isTradable: { default: false },
+      isTradable: { source: 'tradable', transform: (val) => val === 'True' || val === true },
       isConsumable: { default: false },
-      maxStackSize: { default: 1 },
+      maxStackSize: { source: 'stackable', transform: (val) => val === 'True' || val === true ? 999 : 1 },
       iconPath: { default: '' },
     };
 
@@ -174,11 +176,13 @@ class EconomyService {
    * Validate catalog data
    */
   validateCatalog(catalog) {
-    const requiredFields = ['id', 'name', 'type', 'cost'];
+    const requiredFields = ['id', 'name', 'cost_currency', 'cost_amount'];
     const fieldMappings = {
       description: { default: '' },
-      cost: { transform: (value) => this.parseValue(value) },
-      currency: { default: 'gems' },
+      type: { default: 'item' },
+      cost: { source: 'cost_amount', transform: (val) => parseInt(val) || 0 },
+      currency: { source: 'cost_currency', default: 'coins' },
+      rewards: { source: 'rewards', default: '' },
       category: { default: 'general' },
       rarity: { default: 'common' },
       isActive: { transform: (value) => value !== false },
