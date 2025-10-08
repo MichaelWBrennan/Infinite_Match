@@ -60,10 +60,10 @@ class DeploymentDashboard {
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
-          healthy: Math.random() > 0.1, // 90% chance of being healthy
-          uptime: (99.5 + Math.random() * 0.5).toFixed(2),
-          responseTime: Math.floor(50 + Math.random() * 150),
-          lastDeploy: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString()
+          healthy: crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) > 0.1, // 90% chance of being healthy
+          uptime: (99.5 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 0.5).toFixed(2),
+          responseTime: Math.floor(50 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 150),
+          lastDeploy: new Date(Date.now() - crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 24 * 60 * 60 * 1000).toISOString()
         });
       }, 100);
     });
@@ -90,10 +90,10 @@ class DeploymentDashboard {
     console.log('');
     console.log('📈 Performance Metrics');
     console.log('-'.repeat(30));
-    console.log(`Average Response Time: ${Math.floor(100 + Math.random() * 100)}ms`);
-    console.log(`Error Rate: ${(Math.random() * 0.5).toFixed(3)}%`);
-    console.log(`Active Users: ${Math.floor(1000 + Math.random() * 5000)}`);
-    console.log(`Memory Usage: ${Math.floor(200 + Math.random() * 300)}MB`);
+    console.log(`Average Response Time: ${Math.floor(100 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 100)}ms`);
+    console.log(`Error Rate: ${(crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 0.5).toFixed(3)}%`);
+    console.log(`Active Users: ${Math.floor(1000 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 5000)}`);
+    console.log(`Memory Usage: ${Math.floor(200 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 300)}MB`);
     console.log('');
 
     console.log('🎯 Recent Deployments');

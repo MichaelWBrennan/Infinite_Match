@@ -6,7 +6,7 @@ namespace Evergreen.LiveOps
     {
         public static Dictionary<string, object> LoadRotation()
         {
-            var path = Path.Combine(Application.dataPath, "../config/rotation.json");
+            var path = Path.Combine(Application.dataPath, "config/rotation.json");
             if (!File.Exists(path)) return new Dictionary<string, object>();
             var txt = File.ReadAllText(path);
             return MiniJSON.Json.Deserialize(txt) as Dictionary<string, object>;

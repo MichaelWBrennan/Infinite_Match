@@ -418,7 +418,7 @@ namespace Evergreen.Weather
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeWeatherSystem();
+                InitializeWeathersystemSafe();
             }
             else
             {
@@ -442,10 +442,10 @@ namespace Evergreen.Weather
             SetupWeatherParticleManager();
             SetupWeatherLightingManager();
             SetupWeatherInfluenceManager();
-            StartCoroutine(UpdateWeatherSystem());
+            StartCoroutine(UpdateWeathersystemSafe());
         }
         
-        private void InitializeWeatherSystem()
+        private void InitializeWeathersystemSafe()
         {
             // Initialize weather system components
             InitializeWeatherConditions();
@@ -923,7 +923,7 @@ namespace Evergreen.Weather
             _weatherInfluenceManager.isEnabled = true;
         }
         
-        private IEnumerator UpdateWeatherSystem()
+        private IEnumerator UpdateWeathersystemSafe()
         {
             while (true)
             {

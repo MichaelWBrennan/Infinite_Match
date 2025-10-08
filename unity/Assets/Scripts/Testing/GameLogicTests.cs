@@ -178,7 +178,7 @@ namespace Evergreen.Testing
             results.Add(TestCurrencyOperations());
             
             // Test 3: Energy system
-            results.Add(TestEnergySystem());
+            results.Add(TestEnergysystemSafe());
             
             return results;
         }
@@ -234,7 +234,7 @@ namespace Evergreen.Testing
             }
         }
 
-        private TestResult TestEnergySystem()
+        private TestResult TestEnergysystemSafe()
         {
             try
             {

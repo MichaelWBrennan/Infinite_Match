@@ -100,7 +100,7 @@ namespace Evergreen.Security
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeSecuritySystem();
+                InitializeSecuritysystemSafe();
             }
             else
             {
@@ -110,10 +110,10 @@ namespace Evergreen.Security
         
         void Start()
         {
-            StartSecuritySystem();
+            StartSecuritysystemSafe();
         }
         
-        private void InitializeSecuritySystem()
+        private void InitializeSecuritysystemSafe()
         {
             Debug.Log("Advanced Security System initialized");
             
@@ -244,7 +244,7 @@ namespace Evergreen.Security
             // This would load fraud detection configuration
         }
         
-        private void StartSecuritySystem()
+        private void StartSecuritysystemSafe()
         {
             if (!enableSecurity) return;
             

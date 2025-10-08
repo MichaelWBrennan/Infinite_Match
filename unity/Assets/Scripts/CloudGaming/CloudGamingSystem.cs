@@ -394,7 +394,7 @@ namespace Evergreen.CloudGaming
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeCloudGamingSystem();
+                InitializeCloudGamingsystemSafe();
             }
             else
             {
@@ -409,10 +409,10 @@ namespace Evergreen.CloudGaming
             SetupStreamingEngine();
             SetupOptimizers();
             SetupDeviceDetection();
-            StartCoroutine(UpdateCloudGamingSystem());
+            StartCoroutine(UpdateCloudGamingsystemSafe());
         }
         
-        private void InitializeCloudGamingSystem()
+        private void InitializeCloudGamingsystemSafe()
         {
             // Initialize cloud gaming system components
             InitializeCloudProviders();
@@ -795,7 +795,7 @@ namespace Evergreen.CloudGaming
             }
         }
         
-        private IEnumerator UpdateCloudGamingSystem()
+        private IEnumerator UpdateCloudGamingsystemSafe()
         {
             while (true)
             {

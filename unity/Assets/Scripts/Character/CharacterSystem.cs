@@ -89,7 +89,7 @@ namespace Evergreen.Character
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeCharacterSystem();
+                InitializeCharactersystemSafe();
             }
             else
             {
@@ -104,7 +104,7 @@ namespace Evergreen.Character
             BuildLookupTables();
         }
         
-        private void InitializeCharacterSystem()
+        private void InitializeCharactersystemSafe()
         {
             // Initialize default character
             _currentCharacter = null;

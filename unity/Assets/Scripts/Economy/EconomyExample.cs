@@ -56,10 +56,10 @@ namespace Evergreen.Economy
             ExampleBasicCurrencyOperations();
             
             // Example 2: Reward system
-            ExampleRewardSystem();
+            ExampleRewardsystemSafe();
             
             // Example 3: Shop system
-            ExampleShopSystem();
+            ExampleShopsystemSafe();
             
             // Example 4: Economy analytics
             ExampleEconomyAnalytics();
@@ -90,7 +90,7 @@ namespace Evergreen.Economy
             Debug.Log($"Can afford 25 gems: {canAfford}");
         }
         
-        private void ExampleRewardSystem()
+        private void ExampleRewardsystemSafe()
         {
             Debug.Log("--- Reward System ---");
             
@@ -118,7 +118,7 @@ namespace Evergreen.Economy
             Debug.Log($"Player has {rewards.Count} unclaimed rewards");
         }
         
-        private void ExampleShopSystem()
+        private void ExampleShopsystemSafe()
         {
             Debug.Log("--- Shop System ---");
             

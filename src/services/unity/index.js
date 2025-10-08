@@ -3,8 +3,8 @@
  * Centralized Unity Cloud Services API client
  */
 
-import { AppConfig } from '../../core/config/index.js';
-import { Logger } from '../../core/logger/index.js';
+import { AppConfig } from 'core/config/index.js';
+import { Logger } from 'core/logger/index.js';
 
 const logger = new Logger('UnityService');
 
@@ -45,7 +45,7 @@ class UnityService {
 
       const data = await response.json();
       this.accessToken = data.access_token;
-      
+
       logger.info('Unity authentication successful');
       return true;
     } catch (error) {
@@ -68,7 +68,7 @@ class UnityService {
 
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
-      'Authorization': `Bearer ${this.accessToken}`,
+      Authorization: `Bearer ${this.accessToken}`,
       'Content-Type': 'application/json',
       ...options.headers,
     };
@@ -87,22 +87,24 @@ class UnityService {
           if (!reAuthenticated) {
             throw new Error('Failed to re-authenticate with Unity Services');
           }
-          
+
           // Retry with new token
           const retryHeaders = {
             ...headers,
-            'Authorization': `Bearer ${this.accessToken}`,
+            Authorization: `Bearer ${this.accessToken}`,
           };
-          
+
           const retryResponse = await fetch(url, {
             ...options,
             headers: retryHeaders,
           });
-          
+
           if (!retryResponse.ok) {
-            throw new Error(`API request failed after re-authentication: ${retryResponse.status}`);
+            throw new Error(
+              `API request failed after re-authentication: ${retryResponse.status}`
+            );
           }
-          
+
           return await retryResponse.json();
         }
         throw new Error(`API request failed: ${response.status}`);
@@ -110,9 +112,9 @@ class UnityService {
 
       return await response.json();
     } catch (error) {
-      logger.error('Unity API request failed', { 
-        endpoint, 
-        error: error.message 
+      logger.error('Unity API request failed', {
+        endpoint,
+        error: error.message,
       });
       throw error;
     }
@@ -212,8 +214,14 @@ class UnityService {
             results.currencies.push(result);
             logger.info(`Created currency: ${currency.id}`);
           } catch (error) {
-            results.errors.push({ type: 'currency', id: currency.id, error: error.message });
-            logger.error(`Failed to create currency: ${currency.id}`, { error: error.message });
+            results.errors.push({
+              type: 'currency',
+              id: currency.id,
+              error: error.message,
+            });
+            logger.error(`Failed to create currency: ${currency.id}`, {
+              error: error.message,
+            });
           }
         }
       }
@@ -226,8 +234,14 @@ class UnityService {
             results.inventory.push(result);
             logger.info(`Created inventory item: ${item.id}`);
           } catch (error) {
-            results.errors.push({ type: 'inventory', id: item.id, error: error.message });
-            logger.error(`Failed to create inventory item: ${item.id}`, { error: error.message });
+            results.errors.push({
+              type: 'inventory',
+              id: item.id,
+              error: error.message,
+            });
+            logger.error(`Failed to create inventory item: ${item.id}`, {
+              error: error.message,
+            });
           }
         }
       }
@@ -240,8 +254,14 @@ class UnityService {
             results.catalog.push(result);
             logger.info(`Created catalog item: ${item.id}`);
           } catch (error) {
-            results.errors.push({ type: 'catalog', id: item.id, error: error.message });
-            logger.error(`Failed to create catalog item: ${item.id}`, { error: error.message });
+            results.errors.push({
+              type: 'catalog',
+              id: item.id,
+              error: error.message,
+            });
+            logger.error(`Failed to create catalog item: ${item.id}`, {
+              error: error.message,
+            });
           }
         }
       }

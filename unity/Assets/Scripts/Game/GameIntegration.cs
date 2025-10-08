@@ -72,22 +72,22 @@ namespace Evergreen.Game
         private void ConnectSystems()
         {
             // Connect achievement system to game events
-            ConnectAchievementSystem();
+            ConnectAchievementsystemSafe();
             
             // Connect event system to game progress
-            ConnectEventSystem();
+            ConnectEventsystemSafe();
             
             // Connect character system to game interactions
-            ConnectCharacterSystem();
+            ConnectCharactersystemSafe();
             
             // Connect decoration system to rewards
-            ConnectDecorationSystem();
+            ConnectDecorationsystemSafe();
             
             // Connect leaderboard system to scoring
-            ConnectLeaderboardSystem();
+            ConnectLeaderboardsystemSafe();
         }
         
-        private void ConnectAchievementSystem()
+        private void ConnectAchievementsystemSafe()
         {
             // Connect to level completion
             // This would be called when a level is completed
@@ -98,28 +98,28 @@ namespace Evergreen.Game
             // AchievementSystem.Instance.UpdateProgress("matches_made", matchCount);
         }
         
-        private void ConnectEventSystem()
+        private void ConnectEventsystemSafe()
         {
             // Connect to level completion for event progress
             // This would be called when a level is completed
             // EventSystem.Instance.UpdateEventProgress("daily_challenge", "levels_completed", 1);
         }
         
-        private void ConnectCharacterSystem()
+        private void ConnectCharactersystemSafe()
         {
             // Connect to level completion for character interactions
             // This would be called when a level is completed
             // CharacterSystem.Instance.AddCharacterExperience("mascot_sparky", 10);
         }
         
-        private void ConnectDecorationSystem()
+        private void ConnectDecorationsystemSafe()
         {
             // Connect to level completion for decoration rewards
             // This would be called when a level is completed
             // DecorationSystem.Instance.EarnRewards(coins, gems);
         }
         
-        private void ConnectLeaderboardSystem()
+        private void ConnectLeaderboardsystemSafe()
         {
             // Connect to level completion for leaderboard updates
             // This would be called when a level is completed
@@ -135,12 +135,12 @@ namespace Evergreen.Game
         private void UpdateGameSystems()
         {
             // Update all systems every second
-            UpdateEnergySystem();
-            UpdateEventSystem();
-            UpdateCharacterSystem();
+            UpdateEnergysystemSafe();
+            UpdateEventsystemSafe();
+            UpdateCharactersystemSafe();
         }
         
-        private void UpdateEnergySystem()
+        private void UpdateEnergysystemSafe()
         {
             // Update energy regeneration
             GameState.TickEnergyRefill();
@@ -152,13 +152,13 @@ namespace Evergreen.Game
             }
         }
         
-        private void UpdateEventSystem()
+        private void UpdateEventsystemSafe()
         {
             // Event system updates are handled internally
             // This is just a placeholder for any additional updates needed
         }
         
-        private void UpdateCharacterSystem()
+        private void UpdateCharactersystemSafe()
         {
             // Character system updates are handled internally
             // This is just a placeholder for any additional updates needed

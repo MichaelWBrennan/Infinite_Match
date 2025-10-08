@@ -19,16 +19,16 @@ namespace Evergreen.Testing
             _mockServices[typeof(GameManager)] = new MockGameManager();
             
             // Mock Audio System
-            _mockServices[typeof(AdvancedAudioSystem)] = new MockAudioSystem();
+            _mockServices[typeof(AdvancedAudioSystem)] = new MockAudiosystemSafe();
             
             // Mock UI System
-            _mockServices[typeof(AdvancedUISystem)] = new MockUISystem();
+            _mockServices[typeof(AdvancedUISystem)] = new MockUIsystemSafe();
             
             // Mock Analytics System
-            _mockServices[typeof(AdvancedAnalyticsSystem)] = new MockAnalyticsSystem();
+            _mockServices[typeof(AdvancedAnalyticsSystem)] = new MockAnalyticssystemSafe();
             
             // Mock Performance System
-            _mockServices[typeof(AdvancedPerformanceSystem)] = new MockPerformanceSystem();
+            _mockServices[typeof(AdvancedPerformanceSystem)] = new MockPerformancesystemSafe();
             
             // Mock Event Bus
             _mockServices[typeof(AdvancedEventBus)] = new MockEventBus();

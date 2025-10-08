@@ -4,10 +4,10 @@
  */
 
 import express from 'express';
-import security from '../core/security/index.js';
-import { Logger } from '../core/logger/index.js';
-import EconomyService from '../services/economy/index.js';
-import UnityService from '../services/unity/index.js';
+import security from 'core/security/index.js';
+import { Logger } from 'core/logger/index.js';
+import EconomyService from 'services/economy/index.js';
+import UnityService from 'services/unity/index.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
@@ -67,7 +67,7 @@ router.get('/health', async (req, res) => {
 router.get('/economy/stats', async (req, res) => {
   try {
     const report = await economyService.generateReport();
-    
+
     res.json({
       success: true,
       stats: report.summary,
@@ -87,7 +87,7 @@ router.get('/economy/stats', async (req, res) => {
 router.get('/security/events', async (req, res) => {
   try {
     const { limit = 100, type } = req.query;
-    
+
     // TODO: Implement actual security events retrieval
     const events = [
       {
@@ -120,7 +120,7 @@ router.get('/security/events', async (req, res) => {
 router.get('/unity/status', async (req, res) => {
   try {
     const isAuthenticated = await unityService.authenticate();
-    
+
     res.json({
       success: true,
       status: {
@@ -145,7 +145,7 @@ router.post('/unity/deploy', async (req, res) => {
   try {
     const economyData = await economyService.loadEconomyData();
     const result = await unityService.deployEconomyData(economyData);
-    
+
     security.logSecurityEvent('admin_economy_deploy', {
       adminId: req.headers['x-admin-id'] || 'unknown',
       ip: req.ip,
@@ -170,7 +170,7 @@ router.post('/unity/deploy', async (req, res) => {
 router.get('/logs', async (req, res) => {
   try {
     const { level = 'info', limit = 100 } = req.query;
-    
+
     // TODO: Implement actual log retrieval
     const logs = [
       {
@@ -200,7 +200,7 @@ router.get('/logs', async (req, res) => {
 router.post('/cache/clear', async (req, res) => {
   try {
     economyService.clearExpiredCache();
-    
+
     res.json({
       success: true,
       message: 'Cache cleared successfully',

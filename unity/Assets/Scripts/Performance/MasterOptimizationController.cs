@@ -158,22 +158,22 @@ namespace Evergreen.Performance
             Logger.Info("Initializing all optimization systems...", "MasterOptimizer");
 
             // Initialize Match Detection System
-            yield return StartCoroutine(InitializeMatchDetectionSystem());
+            yield return StartCoroutine(InitializeMatchDetectionsystemSafe());
 
             // Initialize Texture Atlas System
-            yield return StartCoroutine(InitializeTextureAtlasSystem());
+            yield return StartCoroutine(InitializeTextureAtlassystemSafe());
 
             // Initialize Predictive Cache System
-            yield return StartCoroutine(InitializePredictiveCacheSystem());
+            yield return StartCoroutine(InitializePredictiveCachesystemSafe());
 
             // Initialize Frame Pacing System
-            yield return StartCoroutine(InitializeFramePacingSystem());
+            yield return StartCoroutine(InitializeFramePacingsystemSafe());
 
             // Initialize Mobile Optimization System
-            yield return StartCoroutine(InitializeMobileOptimizationSystem());
+            yield return StartCoroutine(InitializeMobileOptimizationsystemSafe());
 
             // Initialize AI Validation System
-            yield return StartCoroutine(InitializeAIValidationSystem());
+            yield return StartCoroutine(InitializeAIValidationsystemSafe());
 
             // Generate initial optimization report
             GenerateOptimizationReport();
@@ -181,7 +181,7 @@ namespace Evergreen.Performance
             Logger.Info("All optimization systems initialized successfully", "MasterOptimizer");
         }
 
-        private IEnumerator InitializeMatchDetectionSystem()
+        private IEnumerator InitializeMatchDetectionsystemSafe()
         {
             _matchDetector = FindObjectOfType<OptimizedMatchDetector>();
             if (_matchDetector == null)
@@ -203,7 +203,7 @@ namespace Evergreen.Performance
             yield return null;
         }
 
-        private IEnumerator InitializeTextureAtlasSystem()
+        private IEnumerator InitializeTextureAtlassystemSafe()
         {
             _atlasManager = FindObjectOfType<TextureAtlasManager>();
             if (_atlasManager == null)
@@ -225,7 +225,7 @@ namespace Evergreen.Performance
             yield return null;
         }
 
-        private IEnumerator InitializePredictiveCacheSystem()
+        private IEnumerator InitializePredictiveCachesystemSafe()
         {
             _cacheManager = FindObjectOfType<PredictiveCacheManager>();
             if (_cacheManager == null)
@@ -247,7 +247,7 @@ namespace Evergreen.Performance
             yield return null;
         }
 
-        private IEnumerator InitializeFramePacingSystem()
+        private IEnumerator InitializeFramePacingsystemSafe()
         {
             _framePacingManager = FindObjectOfType<FramePacingManager>();
             if (_framePacingManager == null)
@@ -269,7 +269,7 @@ namespace Evergreen.Performance
             yield return null;
         }
 
-        private IEnumerator InitializeMobileOptimizationSystem()
+        private IEnumerator InitializeMobileOptimizationsystemSafe()
         {
             _mobileOptimizer = FindObjectOfType<AdvancedMobileOptimizer>();
             if (_mobileOptimizer == null)
@@ -291,7 +291,7 @@ namespace Evergreen.Performance
             yield return null;
         }
 
-        private IEnumerator InitializeAIValidationSystem()
+        private IEnumerator InitializeAIValidationsystemSafe()
         {
             _levelValidator = FindObjectOfType<LevelValidationAI>();
             if (_levelValidator == null)
@@ -668,7 +668,7 @@ namespace Evergreen.Performance
         #endregion
 
         #region Public API
-        public void EnableSystem(string systemName, bool enable)
+        public void EnablesystemSafe(string systemName, bool enable)
         {
             if (_optimizationSystems.ContainsKey(systemName))
             {

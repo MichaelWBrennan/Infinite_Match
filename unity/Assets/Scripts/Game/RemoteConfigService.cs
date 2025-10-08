@@ -7,7 +7,7 @@ namespace Evergreen.Game
         private static Dictionary<string, object> _cache;
         public static void Load()
         {
-            var path = Path.Combine(Application.dataPath, "../config/remote_overrides.json");
+            var path = Path.Combine(Application.dataPath, "config/remote_overrides.json");
             if (File.Exists(path))
             {
                 var txt = File.ReadAllText(path);

@@ -42,7 +42,7 @@ namespace Evergreen.Game
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeEnergySystem();
+                InitializeEnergysystemSafe();
             }
             else
             {
@@ -65,7 +65,7 @@ namespace Evergreen.Game
             }
         }
         
-        private void InitializeEnergySystem()
+        private void InitializeEnergysystemSafe()
         {
             if (energyData.currentEnergy == 0)
             {

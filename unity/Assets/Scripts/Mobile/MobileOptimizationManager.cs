@@ -137,7 +137,7 @@ namespace Evergreen.Mobile
                 hasGPS = SystemInfo.supportsLocationService,
                 hasCamera = SystemInfo.supportsCamera,
                 hasMicrophone = SystemInfo.supportsMicrophone,
-                operatingSystem = GetOperatingSystem(),
+                operatingSystem = GetOperatingsystemSafe(),
                 operatingSystemVersion = SystemInfo.operatingSystem
             };
 
@@ -145,7 +145,7 @@ namespace Evergreen.Mobile
             return deviceInfo;
         }
 
-        private OperatingSystem GetOperatingSystem()
+        private OperatingSystem GetOperatingsystemSafe()
         {
             if (Application.platform == RuntimePlatform.Android)
                 return OperatingSystem.Android;

@@ -125,7 +125,7 @@ namespace Evergreen.Social
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeSocialSystem();
+                InitializeSocialsystemSafe();
             }
             else
             {
@@ -135,10 +135,10 @@ namespace Evergreen.Social
         
         void Start()
         {
-            StartSocialSystem();
+            StartSocialsystemSafe();
         }
         
-        private void InitializeSocialSystem()
+        private void InitializeSocialsystemSafe()
         {
             Debug.Log("Advanced Social System initialized");
             
@@ -329,7 +329,7 @@ namespace Evergreen.Social
             // This would implement data loading logic
         }
         
-        private void StartSocialSystem()
+        private void StartSocialsystemSafe()
         {
             if (!enableSocialFeatures) return;
             

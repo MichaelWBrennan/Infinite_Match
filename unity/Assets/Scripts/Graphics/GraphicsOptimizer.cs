@@ -117,7 +117,7 @@ namespace Evergreen.Graphics
         void Start()
         {
             SetupGraphicsPipeline();
-            SetupLODSystem();
+            SetupLODsystemSafe();
             SetupBatching();
             SetupCulling();
             ApplyMobileOptimizations();
@@ -130,7 +130,7 @@ namespace Evergreen.Graphics
                 MonitorPerformance();
             }
 
-            UpdateLODSystem();
+            UpdateLODsystemSafe();
             UpdateBatching();
             UpdateOcclusionCulling();
         }
@@ -184,7 +184,7 @@ namespace Evergreen.Graphics
         #endregion
 
         #region LOD System
-        private void SetupLODSystem()
+        private void SetupLODsystemSafe()
         {
             if (!enableLODSystem) return;
 
@@ -268,7 +268,7 @@ namespace Evergreen.Graphics
             return simplifiedMesh;
         }
 
-        private void UpdateLODSystem()
+        private void UpdateLODsystemSafe()
         {
             if (!enableLODSystem || _mainCamera == null) return;
 

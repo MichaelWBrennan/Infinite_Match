@@ -101,7 +101,7 @@ namespace Evergreen.Cloud
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeCloudSystem();
+                InitializeCloudsystemSafe();
             }
             else
             {
@@ -111,10 +111,10 @@ namespace Evergreen.Cloud
         
         void Start()
         {
-            StartCloudSystem();
+            StartCloudsystemSafe();
         }
         
-        private void InitializeCloudSystem()
+        private void InitializeCloudsystemSafe()
         {
             Debug.Log("Advanced Cloud System initialized");
             
@@ -128,10 +128,10 @@ namespace Evergreen.Cloud
             InitializeSyncOperations();
             
             // Initialize backup system
-            InitializeBackupSystem();
+            InitializeBackupsystemSafe();
             
             // Initialize recovery system
-            InitializeRecoverySystem();
+            InitializeRecoverysystemSafe();
             
             // Initialize metrics
             InitializeMetrics();
@@ -216,13 +216,13 @@ namespace Evergreen.Cloud
             // This would set up sync operations for different data types
         }
         
-        private void InitializeBackupSystem()
+        private void InitializeBackupsystemSafe()
         {
             // Initialize backup system
             // This would set up backup configurations and schedules
         }
         
-        private void InitializeRecoverySystem()
+        private void InitializeRecoverysystemSafe()
         {
             // Initialize recovery system
             // This would set up data recovery mechanisms
@@ -289,7 +289,7 @@ namespace Evergreen.Cloud
             OnConnectionStatusChanged?.Invoke(_isOnline);
         }
         
-        private void StartCloudSystem()
+        private void StartCloudsystemSafe()
         {
             if (!enableCloudSync) return;
             

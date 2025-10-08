@@ -298,7 +298,7 @@ namespace Evergreen.Accessibility
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeAccessibilitySystem();
+                InitializeAccessibilitysystemSafe();
             }
             else
             {
@@ -312,10 +312,10 @@ namespace Evergreen.Accessibility
             SetupAccessibilityProfiles();
             SetupAccessibilityTests();
             SetupAccessibilityReports();
-            StartCoroutine(UpdateAccessibilitySystem());
+            StartCoroutine(UpdateAccessibilitysystemSafe());
         }
         
-        private void InitializeAccessibilitySystem()
+        private void InitializeAccessibilitysystemSafe()
         {
             // Initialize accessibility system components
             InitializeAccessibilityFeatures();
@@ -781,7 +781,7 @@ namespace Evergreen.Accessibility
             // This would integrate with your reporting system
         }
         
-        private IEnumerator UpdateAccessibilitySystem()
+        private IEnumerator UpdateAccessibilitysystemSafe()
         {
             while (true)
             {

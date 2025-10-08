@@ -115,12 +115,12 @@ class HealthMonitor {
     // Simulate server health check
     return new Promise((resolve) => {
       setTimeout(() => {
-        const healthy = Math.random() > 0.05; // 95% chance of being healthy
+        const healthy = crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) > 0.05; // 95% chance of being healthy
         resolve({
           healthy,
           message: healthy ? 'Server responding normally' : 'Server not responding',
-          responseTime: Math.floor(50 + Math.random() * 100),
-          uptime: (99.0 + Math.random() * 1.0).toFixed(2)
+          responseTime: Math.floor(50 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 100),
+          uptime: (99.0 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 1.0).toFixed(2)
         });
       }, 100);
     });
@@ -130,12 +130,12 @@ class HealthMonitor {
     // Simulate database health check
     return new Promise((resolve) => {
       setTimeout(() => {
-        const healthy = Math.random() > 0.02; // 98% chance of being healthy
+        const healthy = crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) > 0.02; // 98% chance of being healthy
         resolve({
           healthy,
           message: healthy ? 'Database connection active' : 'Database connection failed',
-          connections: Math.floor(5 + Math.random() * 20),
-          queryTime: Math.floor(10 + Math.random() * 50)
+          connections: Math.floor(5 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 20),
+          queryTime: Math.floor(10 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 50)
         });
       }, 150);
     });
@@ -206,12 +206,12 @@ class HealthMonitor {
     // Simulate API health check
     return new Promise((resolve) => {
       setTimeout(() => {
-        const healthy = Math.random() > 0.03; // 97% chance of being healthy
+        const healthy = crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) > 0.03; // 97% chance of being healthy
         resolve({
           healthy,
           message: healthy ? 'All API endpoints responding' : 'Some API endpoints failing',
           endpointsChecked: 10,
-          failedEndpoints: healthy ? 0 : Math.floor(1 + Math.random() * 3)
+          failedEndpoints: healthy ? 0 : Math.floor(1 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 3)
         });
       }, 200);
     });
@@ -228,7 +228,7 @@ class HealthMonitor {
     };
 
     // Simulate disk space check
-    const freeSpacePercent = 75 + Math.random() * 20; // 75-95% free
+    const freeSpacePercent = 75 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 20; // 75-95% free
     if (freeSpacePercent < 80) {
       stats.healthy = false;
       stats.message = `Low disk space: ${freeSpacePercent.toFixed(1)}% free`;
@@ -239,7 +239,7 @@ class HealthMonitor {
 
   async checkMemoryHealth() {
     // Simulate memory usage check
-    const memoryUsage = 60 + Math.random() * 30; // 60-90% usage
+    const memoryUsage = 60 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 30; // 60-90% usage
     const healthy = memoryUsage < 85;
     
     return {
@@ -252,12 +252,12 @@ class HealthMonitor {
 
   async checkDiskHealth() {
     // Simulate disk health check
-    const healthy = Math.random() > 0.01; // 99% chance of being healthy
+    const healthy = crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) > 0.01; // 99% chance of being healthy
     return {
       healthy,
       message: healthy ? 'Disk health good' : 'Disk errors detected',
-      readSpeed: Math.floor(100 + Math.random() * 200),
-      writeSpeed: Math.floor(80 + Math.random() * 150)
+      readSpeed: Math.floor(100 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 200),
+      writeSpeed: Math.floor(80 + crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * 150)
     };
   }
 
@@ -282,13 +282,13 @@ class HealthMonitor {
     // Heal economy system
     if (!results.checks['Economy System']?.healthy) {
       console.log('🔧 Attempting to heal economy system...');
-      actions.push(await this.healEconomySystem());
+      actions.push(await this.healEconomysystemSafe());
     }
 
     // Heal file system
     if (!results.checks['File System']?.healthy) {
       console.log('🔧 Attempting to heal file system...');
-      actions.push(await this.healFileSystem());
+      actions.push(await this.healFilesystemSafe());
     }
 
     // Heal Unity project
@@ -306,7 +306,7 @@ class HealthMonitor {
     return actions;
   }
 
-  async healEconomySystem() {
+  async healEconomysystemSafe() {
     // Create missing economy files if they don't exist
     const economyDir = path.join(__dirname, '..', 'economy');
     if (!fs.existsSync(economyDir)) {
@@ -330,7 +330,7 @@ class HealthMonitor {
     return 'Economy system files restored';
   }
 
-  async healFileSystem() {
+  async healFilesystemSafe() {
     // Clean up temporary files
     const tempDir = path.join(__dirname, '..', 'temp');
     if (fs.existsSync(tempDir)) {

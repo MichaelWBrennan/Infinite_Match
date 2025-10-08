@@ -466,7 +466,7 @@ namespace Evergreen.Blockchain
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeBlockchainSystem();
+                InitializeBlockchainsystemSafe();
             }
             else
             {
@@ -483,10 +483,10 @@ namespace Evergreen.Blockchain
             SetupDeFiProtocols();
             SetupDAOs();
             SetupManagers();
-            StartCoroutine(UpdateBlockchainSystem());
+            StartCoroutine(UpdateBlockchainsystemSafe());
         }
         
-        private void InitializeBlockchainSystem()
+        private void InitializeBlockchainsystemSafe()
         {
             // Initialize blockchain system components
             InitializeBlockchainNetworks();
@@ -775,7 +775,7 @@ namespace Evergreen.Blockchain
             _blockchainManager.isInitialized = true;
         }
         
-        private IEnumerator UpdateBlockchainSystem()
+        private IEnumerator UpdateBlockchainsystemSafe()
         {
             while (true)
             {

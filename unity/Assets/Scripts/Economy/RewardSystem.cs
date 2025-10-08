@@ -189,7 +189,7 @@ namespace Evergreen.Economy
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeRewardSystem();
+                InitializeRewardsystemSafe();
             }
             else
             {
@@ -203,10 +203,10 @@ namespace Evergreen.Economy
             SetupDefaultRewards();
             SetupDefaultAchievements();
             SetupDefaultDailyRewards();
-            StartCoroutine(UpdateRewardSystem());
+            StartCoroutine(UpdateRewardsystemSafe());
         }
         
-        private void InitializeRewardSystem()
+        private void InitializeRewardsystemSafe()
         {
             Debug.Log("Reward System initialized");
         }
@@ -785,7 +785,7 @@ namespace Evergreen.Economy
             return achievements;
         }
         
-        private System.Collections.IEnumerator UpdateRewardSystem()
+        private System.Collections.IEnumerator UpdateRewardsystemSafe()
         {
             while (true)
             {

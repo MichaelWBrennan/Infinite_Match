@@ -146,7 +146,7 @@ namespace Evergreen.CloudSave
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeCloudSaveSystem();
+                InitializeCloudSavesystemSafe();
             }
             else
             {
@@ -161,7 +161,7 @@ namespace Evergreen.CloudSave
             StartCoroutine(ProcessPendingOperations());
         }
         
-        private void InitializeCloudSaveSystem()
+        private void InitializeCloudSavesystemSafe()
         {
             if (!config.enableCloudSave) return;
             

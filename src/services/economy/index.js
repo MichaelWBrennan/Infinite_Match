@@ -3,10 +3,10 @@
  * Handles game economy data management and validation
  */
 
-import { Logger } from '../../core/logger/index.js';
+import { Logger } from 'core/logger/index.js';
 import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
-import { AppConfig } from '../../core/config/index.js';
+import { AppConfig } from 'core/config/index.js';
 
 const logger = new Logger('EconomyService');
 
@@ -53,16 +53,16 @@ class EconomyService {
       const filePath = join(this.dataPath, filename);
       const content = await readFile(filePath, 'utf-8');
       const lines = content.trim().split('\n');
-      
+
       if (lines.length < 2) {
         return [];
       }
 
-      const headers = lines[0].split(',').map(h => h.trim());
+      const headers = lines[0].split(',').map((h) => h.trim());
       const data = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = lines[i].split(',').map((v) => v.trim());
         if (values.length === headers.length) {
           const item = {};
           headers.forEach((header, index) => {
@@ -74,7 +74,9 @@ class EconomyService {
 
       return data;
     } catch (error) {
-      logger.error(`Failed to load CSV data from ${filename}`, { error: error.message });
+      logger.error(`Failed to load CSV data from ${filename}`, {
+        error: error.message,
+      });
       return [];
     }
   }
@@ -87,11 +89,11 @@ class EconomyService {
     if (!isNaN(value) && value !== '') {
       return Number(value);
     }
-    
+
     // Try to parse as boolean
     if (value.toLowerCase() === 'true') return true;
     if (value.toLowerCase() === 'false') return false;
-    
+
     // Return as string
     return value;
   }
@@ -105,16 +107,18 @@ class EconomyService {
     for (const item of data) {
       if (this.hasRequiredFields(item, requiredFields)) {
         const validatedItem = { id: item.id, name: item.name, type: item.type };
-        
+
         // Apply field mappings with defaults
         for (const [field, mapping] of Object.entries(fieldMappings)) {
           if (mapping.transform) {
-            validatedItem[field] = mapping.transform(item[mapping.source || field]);
+            validatedItem[field] = mapping.transform(
+              item[mapping.source || field]
+            );
           } else {
             validatedItem[field] = item[field] || mapping.default;
           }
         }
-        
+
         validItems.push(validatedItem);
       } else {
         logger.warn(`Invalid ${type} data`, { item });
@@ -135,7 +139,12 @@ class EconomyService {
       isConsumable: { default: false },
     };
 
-    return this.validateEconomyData(currencies, 'currency', requiredFields, fieldMappings);
+    return this.validateEconomyData(
+      currencies,
+      'currency',
+      requiredFields,
+      fieldMappings
+    );
   }
 
   /**
@@ -153,7 +162,12 @@ class EconomyService {
       iconPath: { default: '' },
     };
 
-    return this.validateEconomyData(inventory, 'inventory', requiredFields, fieldMappings);
+    return this.validateEconomyData(
+      inventory,
+      'inventory',
+      requiredFields,
+      fieldMappings
+    );
   }
 
   /**
@@ -174,14 +188,21 @@ class EconomyService {
       iconPath: { default: '' },
     };
 
-    return this.validateEconomyData(catalog, 'catalog', requiredFields, fieldMappings);
+    return this.validateEconomyData(
+      catalog,
+      'catalog',
+      requiredFields,
+      fieldMappings
+    );
   }
 
   /**
    * Check if object has required fields
    */
   hasRequiredFields(obj, requiredFields) {
-    return requiredFields.every(field => obj.hasOwnProperty(field) && obj[field] !== '');
+    return requiredFields.every(
+      (field) => obj.hasOwnProperty(field) && obj[field] !== ''
+    );
   }
 
   /**
@@ -190,7 +211,7 @@ class EconomyService {
   async generateReport() {
     try {
       const economyData = await this.loadEconomyData();
-      
+
       const report = {
         timestamp: new Date().toISOString(),
         summary: {
@@ -211,7 +232,9 @@ class EconomyService {
       logger.info('Economy report generated', { summary: report.summary });
       return report;
     } catch (error) {
-      logger.error('Failed to generate economy report', { error: error.message });
+      logger.error('Failed to generate economy report', {
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -225,7 +248,9 @@ class EconomyService {
       await writeFile(filePath, JSON.stringify(economyData, null, 2));
       logger.info(`Economy data saved to ${filename}`);
     } catch (error) {
-      logger.error(`Failed to save economy data to ${filename}`, { error: error.message });
+      logger.error(`Failed to save economy data to ${filename}`, {
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -240,7 +265,8 @@ class EconomyService {
   /**
    * Set cached economy data
    */
-  setCachedData(key, data, ttl = 300000) { // 5 minutes default TTL
+  setCachedData(key, data, ttl = 300000) {
+    // 5 minutes default TTL
     this.cache.set(key, {
       data,
       timestamp: Date.now(),

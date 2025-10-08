@@ -82,7 +82,7 @@ namespace Evergreen.Graphics
             InitializeProceduralGeneration();
             SetupParticlePhysics();
             SetupCinematicCamera();
-            SetupWeatherSystem();
+            SetupWeathersystemSafe();
         }
         
         void Update()
@@ -223,7 +223,7 @@ namespace Evergreen.Graphics
             cinematicController.Initialize(cameraEasing, cameraTransitionSpeed);
         }
         
-        private void SetupWeatherSystem()
+        private void SetupWeathersystemSafe()
         {
             if (!enableWeatherEffects) return;
             

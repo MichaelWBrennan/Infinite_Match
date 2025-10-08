@@ -163,7 +163,7 @@ namespace Evergreen.Monetization
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeOfferSystem();
+                InitializeOffersystemSafe();
             }
             else
             {
@@ -180,7 +180,7 @@ namespace Evergreen.Monetization
             BuildLookupTables();
         }
         
-        private void InitializeOfferSystem()
+        private void InitializeOffersystemSafe()
         {
             // Initialize offer system
             Debug.Log("Dynamic Offer System initialized");
