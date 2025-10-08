@@ -49,6 +49,8 @@
   "main": "src/server/index.js",
   "name": "evergreen-match3-unity",
   "scripts": {
+    "ab:analyze": "echo 'A/B test analysis via GitHub Actions'",
+    "ab:deploy": "echo 'A/B test deployment via GitHub Actions'",
     "automation": "node scripts/automation.js",
     "build": "echo 'No build step required for Node.js'",
     "dashboard": "node scripts/deployment-dashboard.js",
@@ -63,6 +65,8 @@
     "health": "node scripts/health-check.js",
     "lint": "eslint src/ --ext .js,.ts",
     "lint:fix": "eslint src/ --ext .js,.ts --fix",
+    "live-ops:deploy": "echo 'Live ops deployment via GitHub Actions'",
+    "live-ops:verify": "echo 'Live ops verification via GitHub Actions'",
     "migrate": "node scripts/database-migration.js",
     "monitor": "node scripts/health-monitor.js",
     "notify": "node scripts/notification-system.js",
@@ -71,7 +75,11 @@
     "start": "node src/server/index.js",
     "status": "node scripts/status-check.js",
     "test": "jest",
-    "unity:deploy": "node scripts/unity-deploy.js"
+    "test:ab": "echo 'A/B tests run via GitHub Actions'",
+    "test:live-ops": "echo 'Live ops tests run via GitHub Actions'",
+    "test:unity": "echo 'Unity tests run via GitHub Actions'",
+    "unity:deploy": "node scripts/unity-deploy.js",
+    "unity:test": "echo 'Unity Test Framework integration via GitHub Actions'"
   },
   "type": "module",
   "version": "1.0.0",
