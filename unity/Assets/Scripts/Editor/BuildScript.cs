@@ -2,147 +2,137 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using System.IO;
-using System.Linq;
+using System;
 
 namespace Evergreen.Editor
 {
     /// <summary>
-    /// Unity Build Script for CI/CD automation
-    /// Handles Android and iOS builds with comprehensive configuration
+    /// Unity build script for headless builds via GitHub Actions
+    /// This script handles building for all supported platforms
     /// </summary>
     public static class BuildScript
     {
-        // Build configuration
-        private static readonly string[] Scenes = FindEnabledEditorScenes();
+        private static readonly string[] Scenes = {
+            "Assets/Scenes/Bootstrap.unity",
+            "Assets/Scenes/MainMenu.unity",
+            "Assets/Scenes/Gameplay.unity"
+        };
+
         private static readonly string BuildPath = "build";
-        private static readonly string AndroidBuildPath = Path.Combine(BuildPath, "Android");
-        private static readonly string iOSBuildPath = Path.Combine(BuildPath, "iOS");
-        
-        // Version information
-        private static string Version => PlayerSettings.bundleVersion;
-        private static int BuildNumber => GetBuildNumber();
-        
-        /// <summary>
-        /// Build Android APK/AAB
-        /// </summary>
-        [MenuItem("Build/Android APK")]
-        public static void BuildAndroidAPK()
+        private static readonly string ProductName = "EvergreenPuzzler";
+        private static readonly string CompanyName = "Evergreen";
+
+        [MenuItem("Build/Build All Platforms")]
+        public static void BuildAllPlatforms()
         {
-            BuildAndroid(BuildTarget.Android, AndroidBuildPath, ".apk");
-        }
-        
-        /// <summary>
-        /// Build Android AAB (Google Play)
-        /// </summary>
-        [MenuItem("Build/Android AAB")]
-        public static void BuildAndroidAAB()
-        {
-            BuildAndroid(BuildTarget.Android, AndroidBuildPath, ".aab");
-        }
-        
-        /// <summary>
-        /// Build iOS
-        /// </summary>
-        [MenuItem("Build/iOS")]
-        public static void BuildiOS()
-        {
-            BuildiOS(iOSBuildPath);
-        }
-        
-        /// <summary>
-        /// Build All Platforms
-        /// </summary>
-        [MenuItem("Build/All Platforms")]
-        public static void BuildAll()
-        {
-            BuildAndroidAPK();
-            BuildAndroidAAB();
+            Debug.Log("Starting build for all platforms...");
+            
+            // Set common build settings
+            SetCommonBuildSettings();
+            
+            // Build each platform
+            BuildWindows();
+            BuildLinux();
+            BuildWebGL();
+            BuildAndroid();
             BuildiOS();
+            
+            Debug.Log("All platform builds completed!");
         }
-        
-        /// <summary>
-        /// CI/CD Android Build
-        /// </summary>
-        public static void BuildAndroid()
+
+        [MenuItem("Build/Build Windows")]
+        public static void BuildWindows()
         {
-            Debug.Log("Starting Android build for CI/CD...");
+            Debug.Log("Building for Windows...");
             
-            // Configure Android settings
-            ConfigureAndroidSettings();
+            SetCommonBuildSettings();
+            SetWindowsSettings();
             
-            // Build AAB for Google Play
-            BuildAndroid(BuildTarget.Android, AndroidBuildPath, ".aab");
-            
-            Debug.Log("Android build completed successfully!");
-        }
-        
-        /// <summary>
-        /// CI/CD iOS Build
-        /// </summary>
-        public static void BuildiOS()
-        {
-            Debug.Log("Starting iOS build for CI/CD...");
-            
-            // Configure iOS settings
-            ConfigureiOSSettings();
-            
-            // Build iOS
-            BuildiOS(iOSBuildPath);
-            
-            Debug.Log("iOS build completed successfully!");
-        }
-        
-        private static void BuildAndroid(BuildTarget target, string buildPath, string extension)
-        {
-            Debug.Log($"Building Android {extension}...");
-            
-            // Create build directory
-            if (Directory.Exists(buildPath))
-            {
-                Directory.Delete(buildPath, true);
-            }
-            Directory.CreateDirectory(buildPath);
-            
-            // Configure build settings
-            EditorUserBuildSettings.buildAppBundle = extension == ".aab";
-            EditorUserBuildSettings.androidBuildSystem = AndroidBuildSystem.Gradle;
-            
-            // Set build options
+            string buildPath = Path.Combine(BuildPath, "Windows", $"{ProductName}.exe");
             BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
             {
                 scenes = Scenes,
-                locationPathName = Path.Combine(buildPath, $"EvergreenMatch3{extension}"),
-                target = target,
+                locationPathName = buildPath,
+                target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None
             };
-            
-            // Build
+
             BuildReport report = BuildPipeline.BuildPlayer(buildPlayerOptions);
-            BuildSummary summary = report.summary;
-            
-            if (summary.result == BuildResult.Succeeded)
-            {
-                Debug.Log($"Android build succeeded: {summary.totalSize} bytes");
-            }
-            else
-            {
-                Debug.LogError($"Android build failed: {summary.result}");
-                EditorApplication.Exit(1);
-            }
+            HandleBuildResult(report, "Windows");
         }
-        
-        private static void BuildiOS(string buildPath)
+
+        [MenuItem("Build/Build Linux")]
+        public static void BuildLinux()
         {
-            Debug.Log("Building iOS...");
+            Debug.Log("Building for Linux...");
             
-            // Create build directory
-            if (Directory.Exists(buildPath))
+            SetCommonBuildSettings();
+            SetLinuxSettings();
+            
+            string buildPath = Path.Combine(BuildPath, "Linux", $"{ProductName}.x86_64");
+            BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
             {
-                Directory.Delete(buildPath, true);
-            }
-            Directory.CreateDirectory(buildPath);
+                scenes = Scenes,
+                locationPathName = buildPath,
+                target = BuildTarget.StandaloneLinux64,
+                options = BuildOptions.None
+            };
+
+            BuildReport report = BuildPipeline.BuildPlayer(buildPlayerOptions);
+            HandleBuildResult(report, "Linux");
+        }
+
+        [MenuItem("Build/Build WebGL")]
+        public static void BuildWebGL()
+        {
+            Debug.Log("Building for WebGL...");
             
-            // Set build options
+            SetCommonBuildSettings();
+            SetWebGLSettings();
+            
+            string buildPath = Path.Combine(BuildPath, "WebGL");
+            BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
+            {
+                scenes = Scenes,
+                locationPathName = buildPath,
+                target = BuildTarget.WebGL,
+                options = BuildOptions.None
+            };
+
+            BuildReport report = BuildPipeline.BuildPlayer(buildPlayerOptions);
+            HandleBuildResult(report, "WebGL");
+        }
+
+        [MenuItem("Build/Build Android")]
+        public static void BuildAndroid()
+        {
+            Debug.Log("Building for Android...");
+            
+            SetCommonBuildSettings();
+            SetAndroidSettings();
+            
+            string buildPath = Path.Combine(BuildPath, "Android", $"{ProductName}.apk");
+            BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
+            {
+                scenes = Scenes,
+                locationPathName = buildPath,
+                target = BuildTarget.Android,
+                options = BuildOptions.None
+            };
+
+            BuildReport report = BuildPipeline.BuildPlayer(buildPlayerOptions);
+            HandleBuildResult(report, "Android");
+        }
+
+        [MenuItem("Build/Build iOS")]
+        public static void BuildiOS()
+        {
+            Debug.Log("Building for iOS...");
+            
+            SetCommonBuildSettings();
+            SetiOSSettings();
+            
+            string buildPath = Path.Combine(BuildPath, "iOS");
             BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
             {
                 scenes = Scenes,
@@ -150,98 +140,183 @@ namespace Evergreen.Editor
                 target = BuildTarget.iOS,
                 options = BuildOptions.None
             };
-            
-            // Build
+
             BuildReport report = BuildPipeline.BuildPlayer(buildPlayerOptions);
-            BuildSummary summary = report.summary;
-            
-            if (summary.result == BuildResult.Succeeded)
-            {
-                Debug.Log($"iOS build succeeded: {summary.totalSize} bytes");
-            }
-            else
-            {
-                Debug.LogError($"iOS build failed: {summary.result}");
-                EditorApplication.Exit(1);
-            }
+            HandleBuildResult(report, "iOS");
         }
-        
-        private static void ConfigureAndroidSettings()
+
+        private static void SetCommonBuildSettings()
         {
-            Debug.Log("Configuring Android settings...");
+            // Set common player settings
+            PlayerSettings.companyName = CompanyName;
+            PlayerSettings.productName = ProductName;
+            PlayerSettings.bundleVersion = GetVersion();
+            PlayerSettings.Android.bundleVersionCode = GetBuildNumber();
+            PlayerSettings.iOS.buildNumber = GetBuildNumber().ToString();
             
-            // Set Android settings
-            PlayerSettings.Android.bundleVersionCode = BuildNumber;
-            PlayerSettings.bundleVersion = Version;
+            // Set common build settings
+            EditorUserBuildSettings.development = IsDevelopmentBuild();
+            EditorUserBuildSettings.allowDebugging = IsDevelopmentBuild();
+            EditorUserBuildSettings.connectProfiler = IsDevelopmentBuild();
+            
+            Debug.Log($"Build Settings - Version: {GetVersion()}, Build: {GetBuildNumber()}, Development: {IsDevelopmentBuild()}");
+        }
+
+        private static void SetWindowsSettings()
+        {
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.Mono);
+            PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.Standalone, ApiCompatibilityLevel.NET_Standard_2_1);
+            PlayerSettings.stripEngineCode = !IsDevelopmentBuild();
+        }
+
+        private static void SetLinuxSettings()
+        {
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.Mono);
+            PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.Standalone, ApiCompatibilityLevel.NET_Standard_2_1);
+            PlayerSettings.stripEngineCode = !IsDevelopmentBuild();
+        }
+
+        private static void SetWebGLSettings()
+        {
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.WebGL, ScriptingImplementation.IL2CPP);
+            PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.WebGL, ApiCompatibilityLevel.NET_Standard_2_1);
+            PlayerSettings.stripEngineCode = !IsDevelopmentBuild();
+            
+            // WebGL specific settings
+            PlayerSettings.WebGL.dataCaching = true;
+            PlayerSettings.WebGL.memorySize = 256;
+            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
+            PlayerSettings.WebGL.nameFilesAsHashes = true;
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+        }
+
+        private static void SetAndroidSettings()
+        {
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.Android, ApiCompatibilityLevel.NET_Standard_2_1);
+            PlayerSettings.stripEngineCode = !IsDevelopmentBuild();
+            
+            // Android specific settings
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel21;
-            
-            // Configure graphics
-            PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new UnityEngine.Rendering.GraphicsDeviceType[] 
-            {
-                UnityEngine.Rendering.GraphicsDeviceType.Vulkan,
-                UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3
-            });
-            
-            // Configure scripting backend
-            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
-            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
-            
-            // Configure compression
-            PlayerSettings.Android.compressionOption = MobileTextureSubtarget.ASTC;
-            PlayerSettings.Android.preferredInstallLocation = AndroidPreferredInstallLocation.Auto;
-            
-            // Configure keystore
+            PlayerSettings.Android.bundleVersionCode = GetBuildNumber();
             PlayerSettings.Android.keystoreName = "user.keystore";
             PlayerSettings.Android.keyaliasName = "user";
             
-            Debug.Log("Android settings configured successfully");
+            // Set package name
+            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.evergreen.match3");
         }
-        
-        private static void ConfigureiOSSettings()
+
+        private static void SetiOSSettings()
         {
-            Debug.Log("Configuring iOS settings...");
-            
-            // Set iOS settings
-            PlayerSettings.iOS.buildNumber = BuildNumber.ToString();
-            PlayerSettings.bundleVersion = Version;
-            PlayerSettings.iOS.targetOSVersionString = "12.0";
-            
-            // Configure graphics
-            PlayerSettings.SetGraphicsAPIs(BuildTarget.iOS, new UnityEngine.Rendering.GraphicsDeviceType[] 
-            {
-                UnityEngine.Rendering.GraphicsDeviceType.Metal
-            });
-            
-            // Configure scripting backend
             PlayerSettings.SetScriptingBackend(BuildTargetGroup.iOS, ScriptingImplementation.IL2CPP);
-            PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
+            PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.iOS, ApiCompatibilityLevel.NET_Standard_2_1);
+            PlayerSettings.stripEngineCode = !IsDevelopmentBuild();
             
-            // Configure compression
-            PlayerSettings.iOS.compressionOption = MobileTextureSubtarget.ASTC;
-            
-            Debug.Log("iOS settings configured successfully");
+            // iOS specific settings
+            PlayerSettings.iOS.buildNumber = GetBuildNumber().ToString();
+            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.iOS, "com.evergreen.match3");
+            PlayerSettings.iOS.targetOSVersionString = "12.0";
+            PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
         }
-        
-        private static string[] FindEnabledEditorScenes()
+
+        private static void HandleBuildResult(BuildReport report, string platform)
         {
-            return EditorBuildSettings.scenes
-                .Where(scene => scene.enabled)
-                .Select(scene => scene.path)
-                .ToArray();
-        }
-        
-        private static int GetBuildNumber()
-        {
-            // Get build number from environment variable or generate one
-            string buildNumberStr = System.Environment.GetEnvironmentVariable("BUILD_NUMBER");
-            if (int.TryParse(buildNumberStr, out int buildNumber))
+            if (report.summary.result == BuildResult.Succeeded)
             {
-                return buildNumber;
+                Debug.Log($"✅ {platform} build succeeded!");
+                Debug.Log($"Build size: {report.summary.totalSize / (1024 * 1024)} MB");
+                Debug.Log($"Build time: {report.summary.totalTime.TotalMinutes:F2} minutes");
+            }
+            else
+            {
+                Debug.LogError($"❌ {platform} build failed!");
+                Debug.LogError($"Build result: {report.summary.result}");
+                
+                // Log build errors
+                foreach (var step in report.steps)
+                {
+                    foreach (var message in step.messages)
+                    {
+                        if (message.type == LogType.Error || message.type == LogType.Exception)
+                        {
+                            Debug.LogError($"[{platform}] {message.content}");
+                        }
+                    }
+                }
+                
+                // Exit with error code for CI
+                EditorApplication.Exit(1);
+            }
+        }
+
+        private static string GetVersion()
+        {
+            // Try to get version from environment variable (CI)
+            string version = Environment.GetEnvironmentVariable("VERSION");
+            if (!string.IsNullOrEmpty(version))
+            {
+                return version;
             }
             
-            // Generate build number based on current time
-            return int.Parse(System.DateTime.Now.ToString("yyyyMMddHHmm"));
+            // Fallback to current version in project settings
+            return PlayerSettings.bundleVersion;
+        }
+
+        private static int GetBuildNumber()
+        {
+            // Try to get build number from environment variable (CI)
+            string buildNumber = Environment.GetEnvironmentVariable("BUILD_NUMBER");
+            if (!string.IsNullOrEmpty(buildNumber) && int.TryParse(buildNumber, out int result))
+            {
+                return result;
+            }
+            
+            // Fallback to current build number
+            return PlayerSettings.Android.bundleVersionCode;
+        }
+
+        private static bool IsDevelopmentBuild()
+        {
+            // Check environment variable for build type
+            string buildType = Environment.GetEnvironmentVariable("BUILD_TYPE");
+            return buildType == "development";
+        }
+
+        // Command line entry points for CI
+        [MenuItem("Build/CI Build Windows")]
+        public static void CIBuildWindows()
+        {
+            Debug.Log("CI Build Windows started...");
+            BuildWindows();
+        }
+
+        [MenuItem("Build/CI Build Linux")]
+        public static void CIBuildLinux()
+        {
+            Debug.Log("CI Build Linux started...");
+            BuildLinux();
+        }
+
+        [MenuItem("Build/CI Build WebGL")]
+        public static void CIBuildWebGL()
+        {
+            Debug.Log("CI Build WebGL started...");
+            BuildWebGL();
+        }
+
+        [MenuItem("Build/CI Build Android")]
+        public static void CIBuildAndroid()
+        {
+            Debug.Log("CI Build Android started...");
+            BuildAndroid();
+        }
+
+        [MenuItem("Build/CI Build iOS")]
+        public static void CIBuildiOS()
+        {
+            Debug.Log("CI Build iOS started...");
+            BuildiOS();
         }
     }
 }
