@@ -43,21 +43,21 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests selenium flask pyyaml
+          pip install requests selenium flask pyyaml openai
           npm install -g @unity-services/cli@latest
 
       - name: Run Unity CLI 100% Working Automation
         run: |
-          chmod +x scripts/unity_cli_100_percent_working.sh
-          ./scripts/unity_cli_100_percent_working.sh
+          chmod +x scripts/unity/unity_cli_100_percent_working.sh
+          ./scripts/unity/unity_cli_100_percent_working.sh
 
       - name: Run Unity Mock API 100% Automation
         run: |
-          python3 scripts/unity_mock_api_100_percent.py
+          python3 scripts/unity/unity_mock_api_100_percent.py
 
       - name: Run Unity AI 100% Working Automation
         run: |
-          python3 scripts/unity_ai_100_percent_working.py
+          python3 scripts/unity/unity_ai_100_percent_working.py
 
       - name: Verify 100% Working Automation
         run: |

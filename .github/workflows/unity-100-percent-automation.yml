@@ -57,20 +57,20 @@ jobs:
 
       - name: Run Unity CLI 100% Automation
         run: |
-          chmod +x scripts/unity_cli_100_percent.sh
-          ./scripts/unity_cli_100_percent.sh
+          chmod +x scripts/unity/unity_cli_100_percent.sh
+          ./scripts/unity/unity_cli_100_percent.sh
 
       - name: Run Unity API 100% Automation
         run: |
-          python3 scripts/unity_api_100_percent.py
+          python3 scripts/unity/unity_api_100_percent.py
 
       - name: Run Unity AI 100% Automation
         run: |
-          python3 scripts/unity_ai_100_percent.py
+          python3 scripts/unity/unity_ai_100_percent.py
 
       - name: Setup Unity Webhook Automation
         run: |
-          python3 scripts/unity_webhook_100_percent.py &
+          python3 scripts/unity/unity_webhook_100_percent.py &
           sleep 10
           pkill -f unity_webhook_100_percent.py
 
