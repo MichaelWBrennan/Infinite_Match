@@ -4,31 +4,47 @@
  */
 
 import { Logger } from '../../core/logger/index.js';
-import { readFile, writeFile } from 'fs/promises';
+import { writeFile, readFile } from 'fs/promises';
 import { join } from 'path';
 import { AppConfig } from '../../core/config/index.js';
+import { ServiceError } from '../../core/errors/ErrorHandler.js';
 
 const logger = new Logger('EconomyService');
 
 class EconomyService {
-  constructor() {
+  constructor(dataLoader, validator, cacheManager) {
     this.dataPath = AppConfig.paths.config; // Direct path to economy directory
-    this.cache = new Map();
+    this.dataLoader = dataLoader;
+    this.validator = validator;
+    this.cacheManager = cacheManager;
   }
 
   /**
    * Load economy data from CSV files
    */
   async loadEconomyData() {
-    try {
-      const currencies = await this.loadCSVData('currencies.csv');
-      const inventory = await this.loadCSVData('inventory.csv');
-      const catalog = await this.loadCSVData('catalog.csv');
+    const cacheKey = 'economy_data';
+    
+    // Check cache first
+    const cached = this.cacheManager.get(cacheKey);
+    if (cached) {
+      logger.debug('Returning cached economy data');
+      return cached;
+    }
 
+    try {
+      const filePaths = [
+        join(this.dataPath, 'currencies.csv'),
+        join(this.dataPath, 'inventory.csv'),
+        join(this.dataPath, 'catalog.csv'),
+      ];
+
+      const files = await this.dataLoader.loadFiles(filePaths);
+      
       const economyData = {
-        currencies: this.validateCurrencies(currencies),
-        inventory: this.validateInventory(inventory),
-        catalog: this.validateCatalog(catalog),
+        currencies: this.validator.validateCurrencies(files.currencies || []),
+        inventory: this.validator.validateInventory(files.inventory || []),
+        catalog: this.validator.validateCatalog(files.catalog || []),
         timestamp: new Date().toISOString(),
       };
 
@@ -38,10 +54,13 @@ class EconomyService {
         catalog: economyData.catalog.length,
       });
 
+      // Cache the result
+      this.cacheManager.set(cacheKey, economyData, 300000); // 5 minutes
+
       return economyData;
     } catch (error) {
       logger.error('Failed to load economy data', { error: error.message });
-      throw error;
+      throw new ServiceError(`Failed to load economy data: ${error.message}`, 'EconomyService');
     }
   }
 
@@ -205,7 +224,7 @@ class EconomyService {
    */
   hasRequiredFields(obj, requiredFields) {
     return requiredFields.every(
-      (field) => obj.hasOwnProperty(field) && obj[field] !== ''
+      (field) => Object.prototype.hasOwnProperty.call(obj, field) && obj[field] !== ''
     );
   }
 
@@ -291,4 +310,5 @@ class EconomyService {
   }
 }
 
-export default EconomyService;
+// Re-export the new EconomyService
+export { default } from './EconomyService.js';

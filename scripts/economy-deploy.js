@@ -5,15 +5,17 @@
  */
 
 import { Logger } from '../src/core/logger/index.js';
-import EconomyService from '../src/services/economy/index.js';
-import UnityService from '../src/services/unity/index.js';
+import { registerServices, getService } from '../src/core/services/ServiceRegistry.js';
 
 const logger = new Logger('EconomyDeploy');
 
 class EconomyDeployer {
   constructor() {
-    this.economyService = new EconomyService();
-    this.unityService = new UnityService();
+    // Register services
+    registerServices();
+    
+    this.economyService = getService('economyService');
+    this.unityService = getService('unityService');
   }
 
   async deploy() {

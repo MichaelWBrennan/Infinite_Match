@@ -6,16 +6,21 @@
 import { AppConfig } from '../../core/config/index.js';
 import { Logger } from '../../core/logger/index.js';
 
+// Polyfill for fetch and URLSearchParams in Node.js
+const fetch = globalThis.fetch || require('node-fetch');
+const URLSearchParams = globalThis.URLSearchParams || require('url').URLSearchParams;
+
 const logger = new Logger('UnityService');
 
 class UnityService {
-  constructor() {
+  constructor(cacheManager) {
     this.projectId = AppConfig.unity.projectId;
     this.environmentId = AppConfig.unity.environmentId;
     this.clientId = AppConfig.unity.clientId;
     this.clientSecret = AppConfig.unity.clientSecret;
     this.baseUrl = 'https://services.api.unity.com';
     this.accessToken = null;
+    this.cacheManager = cacheManager;
   }
 
   /**
@@ -35,7 +40,7 @@ class UnityService {
       }
 
       // Try OAuth authentication for direct API access
-      const authUrl = `https://services.api.unity.com/oauth/token`;
+      const authUrl = 'https://services.api.unity.com/oauth/token';
       const authData = {
         grant_type: 'client_credentials',
         client_id: this.clientId,
