@@ -11,6 +11,6 @@
   "dda_max_soften_steps": 3,
   "dda_moves_bonus_per_step": 3,
   "dda_reduce_colors_per_step": 0,
-  "pity_prelevel_booster_chance_pct": 30
-  , "backend_base_url": "http://localhost:3030"
+  "pity_prelevel_booster_chance_pct": 30,
+  "backend_base_url": "http://localhost:3030"
 }

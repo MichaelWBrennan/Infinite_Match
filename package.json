@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Evergreen Match-3 Unity Game with comprehensive automation and CI/CD",
   "private": true,
+  "type": "module",
   "workspaces": [
     "server",
     "scripts"
@@ -12,13 +13,27 @@
     "dev": "cd server && npm run dev",
     "start": "cd server && npm start",
     "test": "cd server && npm test",
+    "test:all": "npm test && cd server && npm test",
+    "lint": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/",
+    "lint:fix": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/ --fix",
+    "format": "npx prettier --write \"**/*.{js,ts,json}\" --ignore-path .gitignore",
+    "format:check": "npx prettier --check \"**/*.{js,ts,json}\" --ignore-path .gitignore",
+    "check:all": "bash scripts/run-all-checks.sh",
+    "check:python": "python3 -m py_compile scripts/**/*.py",
+    "check:json": "find . -name \"*.json\" -not -path \"./node_modules/*\" -not -path \"./server/node_modules/*\" -exec python3 -m json.tool {} \\;",
     "scripts:unity": "cd scripts/unity && python unity_automation_main.py",
     "scripts:ai": "cd scripts/unity && python unity_ai_automation.py",
     "scripts:maintenance": "cd scripts/maintenance && python health_check.py",
     "scripts:setup": "cd scripts/setup && python one_click_unity_setup.py"
   },
   "devDependencies": {
+    "@eslint/js": "^9.37.0",
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "eslint": "^9.37.0",
+    "eslint-formatter-compact": "^8.40.0",
+    "prettier": "^3.6.2",
     "typescript": "^5.0.0"
   },
   "engines": {
