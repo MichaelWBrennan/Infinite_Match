@@ -1,11 +1,26 @@
 {
-  "id": 1,
-  "size": [8, 8],
-  "num_colors": 5,
-  "move_limit": 20,
   "goals": [
-    { "type": "collect_color", "color": 0, "amount": 30 },
-    { "type": "collect_color", "color": 1, "amount": 30 }
+    {
+      "amount": 30,
+      "color": 0,
+      "type": "collect_color"
+    },
+    {
+      "amount": 30,
+      "color": 1,
+      "type": "collect_color"
+    }
   ],
-  "score_stars": [500, 1500, 3000]
+  "id": 1,
+  "move_limit": 20,
+  "num_colors": 5,
+  "score_stars": [
+    500,
+    1500,
+    3000
+  ],
+  "size": [
+    8,
+    8
+  ]
 }

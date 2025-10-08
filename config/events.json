@@ -1,8 +1,24 @@
 {
   "events": [
-    { "name": "halloween", "start": "10-15", "end": "11-02" },
-    { "name": "christmas", "start": "12-01", "end": "01-05" },
-    { "name": "valentines", "start": "02-07", "end": "02-15" },
-    { "name": "st_patrick", "start": "03-15", "end": "03-21" }
+    {
+      "end": "11-02",
+      "name": "halloween",
+      "start": "10-15"
+    },
+    {
+      "end": "01-05",
+      "name": "christmas",
+      "start": "12-01"
+    },
+    {
+      "end": "02-15",
+      "name": "valentines",
+      "start": "02-07"
+    },
+    {
+      "end": "03-21",
+      "name": "st_patrick",
+      "start": "03-15"
+    }
   ]
 }

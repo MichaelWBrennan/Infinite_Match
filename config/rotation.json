@@ -1,10 +1,15 @@
 {
-  "holiday_themes": ["halloween", "christmas", "valentines", "st_patrick"],
   "daily_event_sets": {
+    "christmas": 200,
     "default": 834,
     "halloween": 200,
-    "christmas": 200,
-    "valentines": 200,
-    "st_patrick": 200
-  }
+    "st_patrick": 200,
+    "valentines": 200
+  },
+  "holiday_themes": [
+    "halloween",
+    "christmas",
+    "valentines",
+    "st_patrick"
+  ]
 }

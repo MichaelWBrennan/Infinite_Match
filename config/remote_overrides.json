@@ -1,16 +1,16 @@
 {
-  "store_review_url": "https://example.com/store",
-  "interstitial_on_gameover_pct": 66,
-  "rv_prelevel_booster_enabled": 1,
+  "backend_base_url": "http://localhost:3030",
   "best_value_sku": "gems_huge",
-  "most_popular_sku": "gems_medium",
-  "enable_receipt_validation": 0,
-  "receipt_validation_url": "",
   "booster_confirm_enabled": 1,
   "dda_fails_soften_threshold": 2,
   "dda_max_soften_steps": 3,
   "dda_moves_bonus_per_step": 3,
   "dda_reduce_colors_per_step": 0,
-  "pity_prelevel_booster_chance_pct": 30
-  , "backend_base_url": "http://localhost:3030"
+  "enable_receipt_validation": 0,
+  "interstitial_on_gameover_pct": 66,
+  "most_popular_sku": "gems_medium",
+  "pity_prelevel_booster_chance_pct": 30,
+  "receipt_validation_url": "",
+  "rv_prelevel_booster_enabled": 1,
+  "store_review_url": "https://example.com/store"
 }
