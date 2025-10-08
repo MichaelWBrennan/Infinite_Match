@@ -9,7 +9,22 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/unity
+            Library
+            Temp
+          key: ${{ runner.os }}-unity-android-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+          restore-keys: |
+            ${{ runner.os }}-unity-android-
+
       - name: Unity - Android Build
         uses: game-ci/unity-builder@v4
         env:
@@ -26,8 +41,11 @@ jobs:
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+
       - name: Upload Android build artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: android-build
-          path: build/Android/**
+          path: build/Android
+          retention-days: 30
