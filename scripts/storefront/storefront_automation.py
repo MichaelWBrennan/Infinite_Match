@@ -53,7 +53,7 @@ class StorefrontAutomation:
 
                 changelog = "# Changelog\n\n"
                 changelog += f"## Version {self.get_version()}\n"
-                changelog += f"**Build Date:** {
+                changelog += f"** Build Date: ** {
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
                 for commit in commits:

@@ -197,9 +197,9 @@ Total items: {len(config['services']['economy']['inventoryItems']) + len(config[
 """
 
         for currency in config["services"]["economy"]["currencies"]:
-            instructions += f"   - {
-                currency['name']} ({
-                currency['id']}): {
+            instructions += f" - {
+                currency['name']}({
+                    currency['id']}): {
                 currency['type']}\n"
 
         instructions += f"""
@@ -214,9 +214,9 @@ Total items: {len(config['services']['economy']['inventoryItems']) + len(config[
 """
 
         for purchase in config["services"]["economy"]["virtualPurchases"]:
-            instructions += f"   - {
-                purchase['name']} ({
-                purchase['id']}): {
+            instructions += f" - {
+                purchase['name']}({
+                    purchase['id']}): {
                 purchase['cost']['amount']} {
                 purchase['cost']['currency']}\n"
 

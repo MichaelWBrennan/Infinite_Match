@@ -42,9 +42,9 @@ class UnityDashboardAutomation:
         """Login to Unity Dashboard"""
         try:
             # Navigate to Unity Dashboard
-            dashboard_url = f"https://dashboard.unity3d.com/organizations/{
-                self.project_id}/projects/{
-                self.project_id}/environments/{
+            dashboard_url = f"https: // dashboard.unity3d.com / organizations / {
+                self.project_id} / projects / {
+                self.project_id} / environments / {
                 self.environment_id}"
             self.driver.get(dashboard_url)
 
@@ -64,10 +64,10 @@ class UnityDashboardAutomation:
         """Create currencies in Unity Dashboard"""
         try:
             # Navigate to Economy > Currencies
-            economy_url = f"https://dashboard.unity3d.com/organizations/{
-                self.project_id}/projects/{
-                self.project_id}/environments/{
-                self.environment_id}/economy/currencies"
+            economy_url = f"https: // dashboard.unity3d.com / organizations / {
+                self.project_id} / projects / {
+                self.project_id} / environments / {
+                self.environment_id} / economy / currencies"
             self.driver.get(economy_url)
 
             currencies = [

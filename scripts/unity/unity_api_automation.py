@@ -67,9 +67,9 @@ class UnityAPIAutomation:
         """Create inventory item via API"""
         try:
             url = f"{
-                self.base_url}/economy/v1/projects/{
-                self.project_id}/environments/{
-                self.environment_id}/inventory-items"
+                self.base_url} / economy / v1 / projects / {
+                self.project_id} / environments / {
+                self.environment_id} / inventory - items"
             headers = {
                 "Authorization": f"Bearer {self.access_token}",
                 "Content-Type": "application/json",

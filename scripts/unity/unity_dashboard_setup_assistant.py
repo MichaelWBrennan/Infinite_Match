@@ -66,9 +66,9 @@ class UnityDashboardSetupAssistant:
 
     def open_dashboard_section(self, section, url_suffix=""):
         """Open Unity Dashboard section"""
-        base_url = f"https://dashboard.unity3d.com/organizations/{
-            self.project_id}/projects/{
-            self.project_id}/environments/{
+        base_url = f"https: // dashboard.unity3d.com / organizations / {
+            self.project_id} / projects / {
+            self.project_id} / environments / {
             self.environment_id}"
         full_url = f"{base_url}/{url_suffix}"
 

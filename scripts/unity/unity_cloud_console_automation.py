@@ -58,9 +58,9 @@ class UnityCloudConsoleAutomation:
             print("🔐 Logging into Unity Dashboard...")
 
             # Navigate to Unity Dashboard
-            dashboard_url = f"https://dashboard.unity3d.com/organizations/{
-                self.project_id}/projects/{
-                self.project_id}/environments/{
+            dashboard_url = f"https: // dashboard.unity3d.com / organizations / {
+                self.project_id} / projects / {
+                self.project_id} / environments / {
                 self.environment_id}"
             driver.get(dashboard_url)
 
@@ -98,10 +98,10 @@ class UnityCloudConsoleAutomation:
             print("💰 Configuring Economy Currencies...")
 
             # Navigate to Economy > Currencies
-            economy_url = f"https://dashboard.unity3d.com/organizations/{
-                self.project_id}/projects/{
-                self.project_id}/environments/{
-                self.environment_id}/economy/currencies"
+            economy_url = f"https: // dashboard.unity3d.com / organizations / {
+                self.project_id} / projects / {
+                self.project_id} / environments / {
+                self.environment_id} / economy / currencies"
             driver.get(economy_url)
 
             # Wait for page to load
@@ -192,10 +192,10 @@ class UnityCloudConsoleAutomation:
             print("📦 Configuring Economy Inventory Items...")
 
             # Navigate to Economy > Inventory
-            inventory_url = f"https://dashboard.unity3d.com/organizations/{
-                self.project_id}/projects/{
-                self.project_id}/environments/{
-                self.environment_id}/economy/inventory"
+            inventory_url = f"https: // dashboard.unity3d.com / organizations / {
+                self.project_id} / projects / {
+                self.project_id} / environments / {
+                self.environment_id} / economy / inventory"
             driver.get(inventory_url)
 
             # Wait for page to load
@@ -269,10 +269,10 @@ class UnityCloudConsoleAutomation:
             print("☁️ Deploying Cloud Code Functions...")
 
             # Navigate to Cloud Code
-            cloudcode_url = f"https://dashboard.unity3d.com/organizations/{
-                self.project_id}/projects/{
-                self.project_id}/environments/{
-                self.environment_id}/cloud-code"
+            cloudcode_url = f"https: // dashboard.unity3d.com / organizations / {
+                self.project_id} / projects / {
+                self.project_id} / environments / {
+                self.environment_id} / cloud - code"
             driver.get(cloudcode_url)
 
             # Wait for page to load
@@ -330,10 +330,10 @@ class UnityCloudConsoleAutomation:
             print("⚙️ Configuring Remote Config...")
 
             # Navigate to Remote Config
-            remoteconfig_url = f"https://dashboard.unity3d.com/organizations/{
-                self.project_id}/projects/{
-                self.project_id}/environments/{
-                self.environment_id}/remote-config"
+            remoteconfig_url = f"https: // dashboard.unity3d.com / organizations / {
+                self.project_id} / projects / {
+                self.project_id} / environments / {
+                self.environment_id} / remote - config"
             driver.get(remoteconfig_url)
 
             # Wait for page to load

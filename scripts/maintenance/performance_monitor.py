@@ -126,24 +126,24 @@ class PerformanceMonitor:
         if metrics.get("cpu_percent", 0) > self.thresholds["cpu_usage"]:
             alerts.append(
                 f"High CPU usage: {
-                    metrics['cpu_percent']:.1f}% (threshold: {
-                    self.thresholds['cpu_usage']}%)"
+                    metrics['cpu_percent']: .1f} % (threshold: {
+                        self.thresholds['cpu_usage']} % )"
             )
 
         # Check memory usage
         if metrics.get("memory_percent", 0) > self.thresholds["memory_usage"]:
             alerts.append(
                 f"High memory usage: {
-                    metrics['memory_percent']:.1f}% (threshold: {
-                    self.thresholds['memory_usage']}%)"
+                    metrics['memory_percent']: .1f} % (threshold: {
+                        self.thresholds['memory_usage']} % )"
             )
 
         # Check disk usage
         if metrics.get("disk_percent", 0) > self.thresholds["disk_usage"]:
             alerts.append(
                 f"High disk usage: {
-                    metrics['disk_percent']:.1f}% (threshold: {
-                    self.thresholds['disk_usage']}%)"
+                    metrics['disk_percent']: .1f} % (threshold: {
+                        self.thresholds['disk_usage']} % )"
             )
 
         return alerts
@@ -320,7 +320,7 @@ def main():
 
     print(
         f"Performance monitoring completed. Score: {
-            report['performance_score']:.1f}/100"
+            report['performance_score']: .1f} / 100"
     )
 
     return report["performance_score"] > 70
