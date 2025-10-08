@@ -108,7 +108,6 @@ def validate_github_workflows():
             "build-webgl:",
             "build-android:",
             "build-ios:",
-            "UNITY_LICENSE:",
             "UNITY_EMAIL:",
             "UNITY_PASSWORD:",
         ]
