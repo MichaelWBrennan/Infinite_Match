@@ -24,7 +24,7 @@ class EconomyService {
    */
   async loadEconomyData() {
     const cacheKey = 'economy_data';
-    
+
     // Check cache first
     const cached = this.cacheManager.get(cacheKey);
     if (cached) {
@@ -40,7 +40,7 @@ class EconomyService {
       ];
 
       const files = await this.dataLoader.loadFiles(filePaths);
-      
+
       const economyData = {
         currencies: this.validator.validateCurrencies(files.currencies || []),
         inventory: this.validator.validateInventory(files.inventory || []),
@@ -60,7 +60,10 @@ class EconomyService {
       return economyData;
     } catch (error) {
       logger.error('Failed to load economy data', { error: error.message });
-      throw new ServiceError(`Failed to load economy data: ${error.message}`, 'EconomyService');
+      throw new ServiceError(
+        `Failed to load economy data: ${error.message}`,
+        'EconomyService'
+      );
     }
   }
 
@@ -177,9 +180,15 @@ class EconomyService {
       description: { default: '' },
       rarity: { default: 'common' },
       category: { default: 'general' },
-      isTradable: { source: 'tradable', transform: (val) => val === 'True' || val === true },
+      isTradable: {
+        source: 'tradable',
+        transform: (val) => val === 'True' || val === true,
+      },
       isConsumable: { default: false },
-      maxStackSize: { source: 'stackable', transform: (val) => val === 'True' || val === true ? 999 : 1 },
+      maxStackSize: {
+        source: 'stackable',
+        transform: (val) => (val === 'True' || val === true ? 999 : 1),
+      },
       iconPath: { default: '' },
     };
 
@@ -224,7 +233,8 @@ class EconomyService {
    */
   hasRequiredFields(obj, requiredFields) {
     return requiredFields.every(
-      (field) => Object.prototype.hasOwnProperty.call(obj, field) && obj[field] !== ''
+      (field) =>
+        Object.prototype.hasOwnProperty.call(obj, field) && obj[field] !== ''
     );
   }
 

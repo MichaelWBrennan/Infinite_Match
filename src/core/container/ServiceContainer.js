@@ -48,7 +48,9 @@ export class ServiceContainer {
 
     const service = this.services.get(name);
     if (!service) {
-      throw new Error(`Service '${name}' not found. Available services: ${Array.from(this.services.keys()).join(', ')}`);
+      throw new Error(
+        `Service '${name}' not found. Available services: ${Array.from(this.services.keys()).join(', ')}`
+      );
     }
 
     if (service.singleton) {
@@ -58,7 +60,9 @@ export class ServiceContainer {
           this.singletons.set(name, instance);
           logger.debug(`Created singleton instance: ${name}`);
         } catch (error) {
-          logger.error(`Failed to create singleton ${name}`, { error: error.message });
+          logger.error(`Failed to create singleton ${name}`, {
+            error: error.message,
+          });
           throw error;
         }
       }
@@ -68,7 +72,9 @@ export class ServiceContainer {
     try {
       return service.factory(this);
     } catch (error) {
-      logger.error(`Failed to create service ${name}`, { error: error.message });
+      logger.error(`Failed to create service ${name}`, {
+        error: error.message,
+      });
       throw error;
     }
   }

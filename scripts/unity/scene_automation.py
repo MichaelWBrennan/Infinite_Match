@@ -8,24 +8,26 @@ import json
 import os
 import subprocess
 from pathlib import Path
+
 import yaml
+
 
 class SceneAutomation:
     def __init__(self):
         self.repo_root = Path(__file__).parent.parent.parent
         self.unity_assets = self.repo_root / "unity" / "Assets"
         self.scenes_dir = self.unity_assets / "Scenes"
-        
+
     def print_header(self, title):
         """Print formatted header"""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print(f"🎬 {title}")
-        print("="*80)
-    
+        print("=" * 80)
+
     def setup_scene_lighting(self):
         """Setup scene lighting configuration"""
         print("💡 Setting up scene lighting...")
-        
+
         # Create lighting configuration
         lighting_config = {
             "lighting_settings": {
@@ -33,7 +35,7 @@ class SceneAutomation:
                     "environment_mode": "Skybox",
                     "environment_lighting_mode": "Baked",
                     "environment_lighting_intensity": 1.0,
-                    "environment_lighting_color": [1.0, 1.0, 1.0, 1.0]
+                    "environment_lighting_color": [1.0, 1.0, 1.0, 1.0],
                 },
                 "lightmap_settings": {
                     "enable_baked_lightmaps": True,
@@ -41,18 +43,18 @@ class SceneAutomation:
                     "bake_resolution": 40,
                     "lightmap_parameters": "Default-Medium",
                     "lightmaps_bake_mode": "Mixed",
-                    "bake_backend": "ProgressiveCPU"
+                    "bake_backend": "ProgressiveCPU",
                 },
                 "reflection_probes": {
                     "enable_reflection_probes": True,
                     "reflection_compression": "Compressed",
                     "reflection_bounces": 1,
-                    "reflection_intensity": 1.0
+                    "reflection_intensity": 1.0,
                 },
                 "light_probes": {
                     "enable_light_probes": True,
-                    "light_probe_sample_count_multiplier": 4
-                }
+                    "light_probe_sample_count_multiplier": 4,
+                },
             },
             "scene_lighting": {
                 "main_light": {
@@ -60,29 +62,29 @@ class SceneAutomation:
                     "color": [1.0, 0.95, 0.8, 1.0],
                     "intensity": 1.0,
                     "shadows": "Soft",
-                    "shadow_resolution": "High"
+                    "shadow_resolution": "High",
                 },
                 "ambient_light": {
                     "skybox_color": [0.5, 0.7, 1.0, 1.0],
                     "ambient_mode": "Skybox",
-                    "ambient_intensity": 1.0
-                }
-            }
+                    "ambient_intensity": 1.0,
+                },
+            },
         }
-        
+
         # Save lighting configuration
         lighting_file = self.scenes_dir / "LightingConfig.json"
-        
-        with open(lighting_file, 'w') as f:
+
+        with open(lighting_file, "w") as f:
             json.dump(lighting_config, f, indent=2)
-        
+
         print(f"✅ Scene lighting configured: {lighting_file}")
         return True
-    
+
     def setup_scene_physics(self):
         """Setup scene physics configuration"""
         print("⚡ Setting up scene physics...")
-        
+
         # Create physics configuration
         physics_config = {
             "physics_settings": {
@@ -92,13 +94,13 @@ class SceneAutomation:
                     "static_friction": 0.6,
                     "bounciness": 0.0,
                     "friction_combine": "Average",
-                    "bounce_combine": "Average"
+                    "bounce_combine": "Average",
                 },
                 "collision_detection": {
                     "default_collision_detection": "Discrete",
                     "default_solver_iterations": 6,
-                    "default_solver_velocity_iterations": 1
-                }
+                    "default_solver_velocity_iterations": 1,
+                },
             },
             "collision_layers": {
                 "Default": 0,
@@ -110,53 +112,50 @@ class SceneAutomation:
                 "Enemy": 9,
                 "Pickup": 10,
                 "Ground": 11,
-                "Wall": 12
+                "Wall": 12,
             },
             "physics_materials": {
                 "default_physics_material": {
                     "dynamic_friction": 0.6,
                     "static_friction": 0.6,
-                    "bounciness": 0.0
+                    "bounciness": 0.0,
                 },
                 "ice_physics_material": {
                     "dynamic_friction": 0.1,
                     "static_friction": 0.1,
-                    "bounciness": 0.0
+                    "bounciness": 0.0,
                 },
                 "bouncy_physics_material": {
                     "dynamic_friction": 0.6,
                     "static_friction": 0.6,
-                    "bounciness": 0.8
-                }
-            }
+                    "bounciness": 0.8,
+                },
+            },
         }
-        
+
         # Save physics configuration
         physics_file = self.scenes_dir / "PhysicsConfig.json"
-        
-        with open(physics_file, 'w') as f:
+
+        with open(physics_file, "w") as f:
             json.dump(physics_config, f, indent=2)
-        
+
         print(f"✅ Scene physics configured: {physics_file}")
         return True
-    
+
     def setup_scene_audio(self):
         """Setup scene audio configuration"""
         print("🔊 Setting up scene audio...")
-        
+
         # Create audio configuration
         audio_config = {
             "audio_settings": {
-                "audio_listener": {
-                    "volume": 1.0,
-                    "paused": False
-                },
+                "audio_listener": {"volume": 1.0, "paused": False},
                 "audio_mixer": {
                     "master_volume": 1.0,
                     "music_volume": 0.8,
                     "sfx_volume": 1.0,
-                    "voice_volume": 1.0
-                }
+                    "voice_volume": 1.0,
+                },
             },
             "audio_sources": {
                 "background_music": {
@@ -165,7 +164,7 @@ class SceneAutomation:
                     "pitch": 1.0,
                     "loop": True,
                     "play_on_awake": True,
-                    "spatial_blend": 0.0
+                    "spatial_blend": 0.0,
                 },
                 "ambient_sounds": {
                     "clip": "Audio/Ambient/ambient_sounds",
@@ -173,30 +172,30 @@ class SceneAutomation:
                     "pitch": 1.0,
                     "loop": True,
                     "play_on_awake": True,
-                    "spatial_blend": 0.0
-                }
+                    "spatial_blend": 0.0,
+                },
             },
             "spatial_audio": {
                 "enable_3d_sound": True,
                 "doppler_factor": 1.0,
                 "speed_of_sound": 343.0,
-                "rolloff_mode": "Logarithmic"
-            }
+                "rolloff_mode": "Logarithmic",
+            },
         }
-        
+
         # Save audio configuration
         audio_file = self.scenes_dir / "AudioConfig.json"
-        
-        with open(audio_file, 'w') as f:
+
+        with open(audio_file, "w") as f:
             json.dump(audio_config, f, indent=2)
-        
+
         print(f"✅ Scene audio configured: {audio_file}")
         return True
-    
+
     def setup_scene_ui(self):
         """Setup scene UI configuration"""
         print("🖥️ Setting up scene UI...")
-        
+
         # Create UI configuration
         ui_config = {
             "ui_settings": {
@@ -204,93 +203,93 @@ class SceneAutomation:
                     "ui_scale_mode": "ScaleWithScreenSize",
                     "reference_resolution": [1920, 1080],
                     "screen_match_mode": "MatchWidthOrHeight",
-                    "match_width_or_height": 0.5
+                    "match_width_or_height": 0.5,
                 },
                 "graphic_raycaster": {
                     "ignore_reversed_graphics": True,
-                    "blocking_objects": "TwoD"
-                }
+                    "blocking_objects": "TwoD",
+                },
             },
             "ui_elements": {
                 "main_menu": {
                     "canvas": "MainMenuCanvas",
                     "sorting_order": 0,
-                    "render_mode": "ScreenSpaceOverlay"
+                    "render_mode": "ScreenSpaceOverlay",
                 },
                 "gameplay_ui": {
                     "canvas": "GameplayCanvas",
                     "sorting_order": 1,
-                    "render_mode": "ScreenSpaceOverlay"
+                    "render_mode": "ScreenSpaceOverlay",
                 },
                 "pause_menu": {
                     "canvas": "PauseMenuCanvas",
                     "sorting_order": 2,
-                    "render_mode": "ScreenSpaceOverlay"
-                }
+                    "render_mode": "ScreenSpaceOverlay",
+                },
             },
             "responsive_ui": {
                 "enable_responsive": True,
                 "breakpoints": {
                     "mobile": [720, 1280],
                     "tablet": [1024, 768],
-                    "desktop": [1920, 1080]
-                }
-            }
+                    "desktop": [1920, 1080],
+                },
+            },
         }
-        
+
         # Save UI configuration
         ui_file = self.scenes_dir / "UIConfig.json"
-        
-        with open(ui_file, 'w') as f:
+
+        with open(ui_file, "w") as f:
             json.dump(ui_config, f, indent=2)
-        
+
         print(f"✅ Scene UI configured: {ui_file}")
         return True
-    
+
     def setup_scene_optimization(self):
         """Setup scene optimization settings"""
         print("🚀 Setting up scene optimization...")
-        
+
         # Create optimization configuration
         optimization_config = {
             "occlusion_culling": {
                 "enable_occlusion_culling": True,
                 "occlusion_culling_data": "OcclusionCullingData.asset",
                 "smallest_occluder": 5.0,
-                "smallest_hole": 0.25
+                "smallest_hole": 0.25,
             },
             "lod_settings": {
                 "enable_lod_bias": True,
                 "lod_bias": 1.0,
                 "maximum_lod_level": 0,
-                "lod_cross_fade_animation_mode": "None"
+                "lod_cross_fade_animation_mode": "None",
             },
             "batching": {
                 "enable_static_batching": True,
                 "enable_dynamic_batching": True,
-                "enable_gpu_instancing": True
+                "enable_gpu_instancing": True,
             },
             "culling": {
                 "enable_frustum_culling": True,
                 "enable_occlusion_culling": True,
-                "culling_mask": "Everything"
-            }
+                "culling_mask": "Everything",
+            },
         }
-        
+
         # Save optimization configuration
         optimization_file = self.scenes_dir / "OptimizationConfig.json"
-        
-        with open(optimization_file, 'w') as f:
+
+        with open(optimization_file, "w") as f:
             json.dump(optimization_config, f, indent=2)
-        
+
         print(f"✅ Scene optimization configured: {optimization_file}")
         return True
-    
+
     def create_scene_automation_script(self):
         """Create Unity Editor script for scene automation"""
         print("📝 Creating scene automation script...")
-        
-        script_content = '''
+
+        script_content = """
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.SceneManagement;
@@ -308,59 +307,59 @@ namespace Evergreen.Editor
         {
             GetWindow<SceneAutomation>("Scene Automation");
         }
-        
+
         private void OnGUI()
         {
             GUILayout.Label("Scene Automation", EditorStyles.boldLabel);
             GUILayout.Space(10);
-            
+
             if (GUILayout.Button("💡 Setup Lighting", GUILayout.Height(30)))
             {
                 SetupLighting();
             }
-            
+
             if (GUILayout.Button("⚡ Setup Physics", GUILayout.Height(30)))
             {
                 SetupPhysics();
             }
-            
+
             if (GUILayout.Button("🔊 Setup Audio", GUILayout.Height(30)))
             {
                 SetupAudio();
             }
-            
+
             if (GUILayout.Button("🖥️ Setup UI", GUILayout.Height(30)))
             {
                 SetupUI();
             }
-            
+
             if (GUILayout.Button("🚀 Optimize Scene", GUILayout.Height(30)))
             {
                 OptimizeScene();
             }
-            
+
             if (GUILayout.Button("🎯 Run Full Automation", GUILayout.Height(40)))
             {
                 RunFullAutomation();
             }
         }
-        
+
         private static void SetupLighting()
         {
             try
             {
                 Debug.Log("💡 Setting up scene lighting...");
-                
+
                 // Load lighting configuration
                 string configPath = "Assets/Scenes/LightingConfig.json";
                 if (File.Exists(configPath))
                 {
                     string json = File.ReadAllText(configPath);
                     var config = JsonUtility.FromJson<LightingConfig>(json);
-                    
+
                     // Apply lighting settings
                     ApplyLightingSettings(config);
-                    
+
                     Debug.Log("✅ Scene lighting setup completed!");
                 }
                 else
@@ -373,13 +372,13 @@ namespace Evergreen.Editor
                 Debug.LogError($"❌ Lighting setup failed: {e.Message}");
             }
         }
-        
+
         private static void ApplyLightingSettings(LightingConfig config)
         {
             // Apply lighting settings
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
             RenderSettings.ambientIntensity = config.lighting_settings.environment_lighting.environment_lighting_intensity;
-            
+
             // Setup main light
             var mainLight = FindObjectOfType<Light>();
             if (mainLight != null)
@@ -394,26 +393,26 @@ namespace Evergreen.Editor
                 mainLight.intensity = config.scene_lighting.main_light.intensity;
                 mainLight.shadows = LightShadows.Soft;
             }
-            
+
             Debug.Log("💡 Lighting settings applied");
         }
-        
+
         private static void SetupPhysics()
         {
             try
             {
                 Debug.Log("⚡ Setting up scene physics...");
-                
+
                 // Load physics configuration
                 string configPath = "Assets/Scenes/PhysicsConfig.json";
                 if (File.Exists(configPath))
                 {
                     string json = File.ReadAllText(configPath);
                     var config = JsonUtility.FromJson<PhysicsConfig>(json);
-                    
+
                     // Apply physics settings
                     ApplyPhysicsSettings(config);
-                    
+
                     Debug.Log("✅ Scene physics setup completed!");
                 }
                 else
@@ -426,7 +425,7 @@ namespace Evergreen.Editor
                 Debug.LogError($"❌ Physics setup failed: {e.Message}");
             }
         }
-        
+
         private static void ApplyPhysicsSettings(PhysicsConfig config)
         {
             // Apply physics settings
@@ -435,26 +434,26 @@ namespace Evergreen.Editor
                 config.physics_settings.gravity[1],
                 config.physics_settings.gravity[2]
             );
-            
+
             Debug.Log("⚡ Physics settings applied");
         }
-        
+
         private static void SetupAudio()
         {
             try
             {
                 Debug.Log("🔊 Setting up scene audio...");
-                
+
                 // Load audio configuration
                 string configPath = "Assets/Scenes/AudioConfig.json";
                 if (File.Exists(configPath))
                 {
                     string json = File.ReadAllText(configPath);
                     var config = JsonUtility.FromJson<AudioConfig>(json);
-                    
+
                     // Apply audio settings
                     ApplyAudioSettings(config);
-                    
+
                     Debug.Log("✅ Scene audio setup completed!");
                 }
                 else
@@ -467,7 +466,7 @@ namespace Evergreen.Editor
                 Debug.LogError($"❌ Audio setup failed: {e.Message}");
             }
         }
-        
+
         private static void ApplyAudioSettings(AudioConfig config)
         {
             // Apply audio settings
@@ -476,26 +475,26 @@ namespace Evergreen.Editor
             {
                 audioListener.volume = config.audio_settings.audio_listener.volume;
             }
-            
+
             Debug.Log("🔊 Audio settings applied");
         }
-        
+
         private static void SetupUI()
         {
             try
             {
                 Debug.Log("🖥️ Setting up scene UI...");
-                
+
                 // Load UI configuration
                 string configPath = "Assets/Scenes/UIConfig.json";
                 if (File.Exists(configPath))
                 {
                     string json = File.ReadAllText(configPath);
                     var config = JsonUtility.FromJson<UIConfig>(json);
-                    
+
                     // Apply UI settings
                     ApplyUISettings(config);
-                    
+
                     Debug.Log("✅ Scene UI setup completed!");
                 }
                 else
@@ -508,7 +507,7 @@ namespace Evergreen.Editor
                 Debug.LogError($"❌ UI setup failed: {e.Message}");
             }
         }
-        
+
         private static void ApplyUISettings(UIConfig config)
         {
             // Apply UI settings
@@ -525,26 +524,26 @@ namespace Evergreen.Editor
                     );
                 }
             }
-            
+
             Debug.Log("🖥️ UI settings applied");
         }
-        
+
         private static void OptimizeScene()
         {
             try
             {
                 Debug.Log("🚀 Optimizing scene...");
-                
+
                 // Load optimization configuration
                 string configPath = "Assets/Scenes/OptimizationConfig.json";
                 if (File.Exists(configPath))
                 {
                     string json = File.ReadAllText(configPath);
                     var config = JsonUtility.FromJson<OptimizationConfig>(json);
-                    
+
                     // Apply optimization settings
                     ApplyOptimizationSettings(config);
-                    
+
                     Debug.Log("✅ Scene optimization completed!");
                 }
                 else
@@ -557,7 +556,7 @@ namespace Evergreen.Editor
                 Debug.LogError($"❌ Scene optimization failed: {e.Message}");
             }
         }
-        
+
         private static void ApplyOptimizationSettings(OptimizationConfig config)
         {
             // Apply optimization settings
@@ -565,32 +564,32 @@ namespace Evergreen.Editor
             {
                 Debug.Log("🚀 Occlusion culling enabled");
             }
-            
+
             if (config.lod_settings.enable_lod_bias)
             {
                 QualitySettings.lodBias = config.lod_settings.lod_bias;
             }
-            
+
             if (config.batching.enable_static_batching)
             {
                 Debug.Log("🚀 Static batching enabled");
             }
-            
+
             Debug.Log("🚀 Optimization settings applied");
         }
-        
+
         private static void RunFullAutomation()
         {
             try
             {
                 Debug.Log("🎯 Running full scene automation...");
-                
+
                 SetupLighting();
                 SetupPhysics();
                 SetupAudio();
                 SetupUI();
                 OptimizeScene();
-                
+
                 Debug.Log("🎉 Full scene automation completed!");
             }
             catch (System.Exception e)
@@ -599,7 +598,7 @@ namespace Evergreen.Editor
             }
         }
     }
-    
+
     // Data structures for JSON deserialization
     [System.Serializable]
     public class LightingConfig
@@ -607,7 +606,7 @@ namespace Evergreen.Editor
         public LightingSettings lighting_settings;
         public SceneLighting scene_lighting;
     }
-    
+
     [System.Serializable]
     public class LightingSettings
     {
@@ -616,7 +615,7 @@ namespace Evergreen.Editor
         public ReflectionProbes reflection_probes;
         public LightProbes light_probes;
     }
-    
+
     [System.Serializable]
     public class EnvironmentLighting
     {
@@ -625,7 +624,7 @@ namespace Evergreen.Editor
         public float environment_lighting_intensity;
         public float[] environment_lighting_color;
     }
-    
+
     [System.Serializable]
     public class LightmapSettings
     {
@@ -636,7 +635,7 @@ namespace Evergreen.Editor
         public string lightmaps_bake_mode;
         public string bake_backend;
     }
-    
+
     [System.Serializable]
     public class ReflectionProbes
     {
@@ -645,21 +644,21 @@ namespace Evergreen.Editor
         public int reflection_bounces;
         public float reflection_intensity;
     }
-    
+
     [System.Serializable]
     public class LightProbes
     {
         public bool enable_light_probes;
         public int light_probe_sample_count_multiplier;
     }
-    
+
     [System.Serializable]
     public class SceneLighting
     {
         public MainLight main_light;
         public AmbientLight ambient_light;
     }
-    
+
     [System.Serializable]
     public class MainLight
     {
@@ -669,7 +668,7 @@ namespace Evergreen.Editor
         public string shadows;
         public string shadow_resolution;
     }
-    
+
     [System.Serializable]
     public class AmbientLight
     {
@@ -677,7 +676,7 @@ namespace Evergreen.Editor
         public string ambient_mode;
         public float ambient_intensity;
     }
-    
+
     [System.Serializable]
     public class PhysicsConfig
     {
@@ -685,7 +684,7 @@ namespace Evergreen.Editor
         public Dictionary<string, int> collision_layers;
         public Dictionary<string, PhysicsMaterial> physics_materials;
     }
-    
+
     [System.Serializable]
     public class PhysicsSettings
     {
@@ -693,7 +692,7 @@ namespace Evergreen.Editor
         public PhysicsMaterial default_material;
         public CollisionDetection collision_detection;
     }
-    
+
     [System.Serializable]
     public class PhysicsMaterial
     {
@@ -703,7 +702,7 @@ namespace Evergreen.Editor
         public string friction_combine;
         public string bounce_combine;
     }
-    
+
     [System.Serializable]
     public class CollisionDetection
     {
@@ -711,7 +710,7 @@ namespace Evergreen.Editor
         public int default_solver_iterations;
         public int default_solver_velocity_iterations;
     }
-    
+
     [System.Serializable]
     public class AudioConfig
     {
@@ -719,21 +718,21 @@ namespace Evergreen.Editor
         public Dictionary<string, AudioSource> audio_sources;
         public SpatialAudio spatial_audio;
     }
-    
+
     [System.Serializable]
     public class AudioSettings
     {
         public AudioListener audio_listener;
         public AudioMixer audio_mixer;
     }
-    
+
     [System.Serializable]
     public class AudioListener
     {
         public float volume;
         public bool paused;
     }
-    
+
     [System.Serializable]
     public class AudioMixer
     {
@@ -742,7 +741,7 @@ namespace Evergreen.Editor
         public float sfx_volume;
         public float voice_volume;
     }
-    
+
     [System.Serializable]
     public class AudioSource
     {
@@ -753,7 +752,7 @@ namespace Evergreen.Editor
         public bool play_on_awake;
         public float spatial_blend;
     }
-    
+
     [System.Serializable]
     public class SpatialAudio
     {
@@ -762,7 +761,7 @@ namespace Evergreen.Editor
         public float speed_of_sound;
         public string rolloff_mode;
     }
-    
+
     [System.Serializable]
     public class UIConfig
     {
@@ -770,14 +769,14 @@ namespace Evergreen.Editor
         public Dictionary<string, UIElement> ui_elements;
         public ResponsiveUI responsive_ui;
     }
-    
+
     [System.Serializable]
     public class UISettings
     {
         public CanvasScaler canvas_scaler;
         public GraphicRaycaster graphic_raycaster;
     }
-    
+
     [System.Serializable]
     public class CanvasScaler
     {
@@ -786,14 +785,14 @@ namespace Evergreen.Editor
         public string screen_match_mode;
         public float match_width_or_height;
     }
-    
+
     [System.Serializable]
     public class GraphicRaycaster
     {
         public bool ignore_reversed_graphics;
         public string blocking_objects;
     }
-    
+
     [System.Serializable]
     public class UIElement
     {
@@ -801,14 +800,14 @@ namespace Evergreen.Editor
         public int sorting_order;
         public string render_mode;
     }
-    
+
     [System.Serializable]
     public class ResponsiveUI
     {
         public bool enable_responsive;
         public Dictionary<string, int[]> breakpoints;
     }
-    
+
     [System.Serializable]
     public class OptimizationConfig
     {
@@ -817,7 +816,7 @@ namespace Evergreen.Editor
         public Batching batching;
         public Culling culling;
     }
-    
+
     [System.Serializable]
     public class OcclusionCulling
     {
@@ -826,7 +825,7 @@ namespace Evergreen.Editor
         public float smallest_occluder;
         public float smallest_hole;
     }
-    
+
     [System.Serializable]
     public class LODSettings
     {
@@ -835,7 +834,7 @@ namespace Evergreen.Editor
         public int maximum_lod_level;
         public string lod_cross_fade_animation_mode;
     }
-    
+
     [System.Serializable]
     public class Batching
     {
@@ -843,7 +842,7 @@ namespace Evergreen.Editor
         public bool enable_dynamic_batching;
         public bool enable_gpu_instancing;
     }
-    
+
     [System.Serializable]
     public class Culling
     {
@@ -852,31 +851,31 @@ namespace Evergreen.Editor
         public string culling_mask;
     }
 }
-'''
-        
+"""
+
         # Save Unity Editor script
         script_path = self.unity_assets / "Editor" / "SceneAutomation.cs"
         script_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(script_path, 'w') as f:
+
+        with open(script_path, "w") as f:
             f.write(script_content)
-        
+
         print(f"✅ Scene automation script created: {script_path}")
         return True
-    
+
     def run_full_automation(self):
         """Run complete scene automation"""
         self.print_header("Scene Full Automation")
-        
+
         print("🎯 This will automate the complete Unity scene setup")
         print("   - Scene lighting configuration")
         print("   - Physics settings setup")
         print("   - Audio system configuration")
         print("   - UI system setup")
         print("   - Scene optimization")
-        
+
         success = True
-        
+
         # Run all automation steps
         success &= self.setup_scene_lighting()
         success &= self.setup_scene_physics()
@@ -884,7 +883,7 @@ namespace Evergreen.Editor
         success &= self.setup_scene_ui()
         success &= self.setup_scene_optimization()
         success &= self.create_scene_automation_script()
-        
+
         if success:
             print("\n🎉 Scene automation completed successfully!")
             print("✅ Scene lighting configured")
@@ -895,8 +894,9 @@ namespace Evergreen.Editor
             print("✅ Unity Editor automation script created")
         else:
             print("\n⚠️ Some scene automation steps failed")
-        
+
         return success
+
 
 if __name__ == "__main__":
     automation = SceneAutomation()

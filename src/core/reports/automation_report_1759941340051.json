@@ -4,9 +4,7 @@
   "results": {
     "economy": {
       "success": false,
-      "errors": [
-        "this.economyService.saveToJSON is not a function"
-      ]
+      "errors": ["this.economyService.saveToJSON is not a function"]
     },
     "unity": {
       "success": true,

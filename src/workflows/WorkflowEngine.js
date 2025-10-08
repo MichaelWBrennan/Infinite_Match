@@ -27,7 +27,7 @@ export class WorkflowStep {
     try {
       const result = await this.executeWithTimeout(state);
       const duration = Date.now() - startTime;
-      
+
       logger.info(`Step completed: ${this.name} (${duration}ms)`);
       return {
         success: true,
@@ -38,8 +38,8 @@ export class WorkflowStep {
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorInfo = ErrorHandler.handle(error, { step: this.name });
-      
-      logger.error(`Step failed: ${this.name}`, { 
+
+      logger.error(`Step failed: ${this.name}`, {
         error: errorInfo.message,
         duration,
       });
@@ -56,15 +56,19 @@ export class WorkflowStep {
   async executeWithTimeout(state) {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error(`Step ${this.name} timed out after ${this.options.timeout}ms`));
+        reject(
+          new Error(
+            `Step ${this.name} timed out after ${this.options.timeout}ms`
+          )
+        );
       }, this.options.timeout);
 
       this.executeFn(state)
-        .then(result => {
+        .then((result) => {
           clearTimeout(timeout);
           resolve(result);
         })
-        .catch(error => {
+        .catch((error) => {
           clearTimeout(timeout);
           reject(error);
         });
@@ -89,7 +93,7 @@ export class WorkflowEngine {
     if (typeof step === 'object' && !(step instanceof WorkflowStep)) {
       step = new WorkflowStep(step.name, step.execute, step.options);
     }
-    
+
     this.steps.push(step);
     logger.debug(`Added step: ${step.name}`);
     return this;
@@ -127,7 +131,7 @@ export class WorkflowEngine {
 
     this.isRunning = true;
     this.results = [];
-    
+
     // Set initial state
     for (const [key, value] of Object.entries(initialState)) {
       this.setState(key, value);
@@ -143,14 +147,14 @@ export class WorkflowEngine {
       for (let i = 0; i < this.steps.length; i++) {
         const step = this.steps[i];
         const stepResult = await step.execute(this.state);
-        
+
         this.results.push(stepResult);
-        
+
         if (stepResult.success) {
           successCount++;
         } else {
           failureCount++;
-          
+
           if (!step.options.continueOnError) {
             logger.error(`Workflow stopped due to step failure: ${step.name}`);
             break;
@@ -172,14 +176,13 @@ export class WorkflowEngine {
 
       logger.info('Workflow completed', summary);
       return summary;
-
     } catch (error) {
       const totalDuration = Date.now() - startTime;
-      logger.error('Workflow execution failed', { 
+      logger.error('Workflow execution failed', {
         error: error.message,
         duration: totalDuration,
       });
-      
+
       return {
         success: false,
         error: error.message,
@@ -199,19 +202,28 @@ export class WorkflowEngine {
    * @returns {Object} Workflow statistics
    */
   getStats() {
-    const totalDuration = this.results.reduce((sum, result) => sum + result.duration, 0);
-    const successRate = this.results.length > 0 
-      ? (this.results.filter(r => r.success).length / this.results.length * 100).toFixed(2)
-      : 0;
+    const totalDuration = this.results.reduce(
+      (sum, result) => sum + result.duration,
+      0
+    );
+    const successRate =
+      this.results.length > 0
+        ? (
+            (this.results.filter((r) => r.success).length /
+              this.results.length) *
+            100
+          ).toFixed(2)
+        : 0;
 
     return {
       totalSteps: this.steps.length,
       executedSteps: this.results.length,
       successRate: `${successRate}%`,
       totalDuration: `${totalDuration}ms`,
-      averageStepDuration: this.results.length > 0 
-        ? `${Math.round(totalDuration / this.results.length)}ms`
-        : '0ms',
+      averageStepDuration:
+        this.results.length > 0
+          ? `${Math.round(totalDuration / this.results.length)}ms`
+          : '0ms',
     };
   }
 
@@ -232,7 +244,7 @@ export class WorkflowEngine {
    * @returns {WorkflowStep|undefined} Step instance
    */
   getStep(name) {
-    return this.steps.find(step => step.name === name);
+    return this.steps.find((step) => step.name === name);
   }
 
   /**
@@ -241,7 +253,7 @@ export class WorkflowEngine {
    * @returns {boolean} True if step was removed
    */
   removeStep(name) {
-    const index = this.steps.findIndex(step => step.name === name);
+    const index = this.steps.findIndex((step) => step.name === name);
     if (index !== -1) {
       this.steps.splice(index, 1);
       logger.debug(`Removed step: ${name}`);

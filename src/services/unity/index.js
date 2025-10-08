@@ -8,7 +8,8 @@ import { Logger } from '../../core/logger/index.js';
 
 // Polyfill for fetch and URLSearchParams in Node.js
 const fetch = globalThis.fetch || require('node-fetch');
-const URLSearchParams = globalThis.URLSearchParams || require('url').URLSearchParams;
+const URLSearchParams =
+  globalThis.URLSearchParams || require('url').URLSearchParams;
 
 const logger = new Logger('UnityService');
 
@@ -32,7 +33,9 @@ class UnityService {
     try {
       // Check if we have the required credentials
       if (!this.clientId || !this.clientSecret) {
-        logger.warn('Unity OAuth credentials not configured - using Cloud Code mode');
+        logger.warn(
+          'Unity OAuth credentials not configured - using Cloud Code mode'
+        );
         // For Cloud Code, we don't need authentication
         // The functions are deployed directly to Unity's servers
         this.accessToken = 'cloud-code-mode';
@@ -65,11 +68,14 @@ class UnityService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.warn('Unity OAuth authentication failed, falling back to Cloud Code mode', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-        });
+        logger.warn(
+          'Unity OAuth authentication failed, falling back to Cloud Code mode',
+          {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText,
+          }
+        );
         // Fall back to Cloud Code mode
         this.accessToken = 'cloud-code-mode';
         return true;
@@ -85,7 +91,9 @@ class UnityService {
       });
       return true;
     } catch (error) {
-      logger.warn('Unity OAuth authentication failed, using Cloud Code mode', { error: error.message });
+      logger.warn('Unity OAuth authentication failed, using Cloud Code mode', {
+        error: error.message,
+      });
       // Fall back to Cloud Code mode
       this.accessToken = 'cloud-code-mode';
       return true;
@@ -165,10 +173,13 @@ class UnityService {
    */
   async createCurrency(currencyData) {
     if (this.accessToken === 'cloud-code-mode') {
-      logger.info('Cloud Code mode: Currency would be created via Cloud Code function', {
-        currencyId: currencyData.id,
-        currencyName: currencyData.name,
-      });
+      logger.info(
+        'Cloud Code mode: Currency would be created via Cloud Code function',
+        {
+          currencyId: currencyData.id,
+          currencyName: currencyData.name,
+        }
+      );
       // Simulate successful creation
       return {
         id: currencyData.id,
@@ -188,10 +199,13 @@ class UnityService {
 
   async createInventoryItem(itemData) {
     if (this.accessToken === 'cloud-code-mode') {
-      logger.info('Cloud Code mode: Inventory item would be created via Cloud Code function', {
-        itemId: itemData.id,
-        itemName: itemData.name,
-      });
+      logger.info(
+        'Cloud Code mode: Inventory item would be created via Cloud Code function',
+        {
+          itemId: itemData.id,
+          itemName: itemData.name,
+        }
+      );
       // Simulate successful creation
       return {
         id: itemData.id,
@@ -211,10 +225,13 @@ class UnityService {
 
   async createCatalogItem(catalogData) {
     if (this.accessToken === 'cloud-code-mode') {
-      logger.info('Cloud Code mode: Catalog item would be created via Cloud Code function', {
-        itemId: catalogData.id,
-        itemName: catalogData.name,
-      });
+      logger.info(
+        'Cloud Code mode: Catalog item would be created via Cloud Code function',
+        {
+          itemId: catalogData.id,
+          itemName: catalogData.name,
+        }
+      );
       // Simulate successful creation
       return {
         id: catalogData.id,

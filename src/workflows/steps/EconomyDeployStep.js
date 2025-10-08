@@ -56,7 +56,6 @@ export class EconomyDeployStep {
       });
 
       return result;
-
     } catch (error) {
       logger.error('Economy deployment failed', { error: error.message });
       throw error;

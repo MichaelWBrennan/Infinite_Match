@@ -44,12 +44,15 @@ export class DataLoader {
     try {
       logger.debug(`Loading file: ${filePath}`);
       const content = await readFile(filePath, 'utf8');
-      
+
       const extension = this.getFileExtension(filePath);
       const parser = this.parsers.get(extension);
-      
+
       if (!parser) {
-        throw new ValidationError(`No parser found for file type: ${extension}`, 'fileType');
+        throw new ValidationError(
+          `No parser found for file type: ${extension}`,
+          'fileType'
+        );
       }
 
       const data = await parser(content, options);
@@ -69,7 +72,7 @@ export class DataLoader {
    */
   async loadFiles(filePaths, options = {}) {
     const results = {};
-    
+
     try {
       const promises = filePaths.map(async (filePath) => {
         const data = await this.loadFile(filePath, options);
@@ -77,7 +80,7 @@ export class DataLoader {
       });
 
       const loadedFiles = await Promise.all(promises);
-      
+
       for (const { filePath, data } of loadedFiles) {
         const fileName = this.getFileName(filePath);
         results[fileName] = data;
@@ -137,7 +140,10 @@ export class DataLoader {
       const data = JSON.parse(content);
       return Array.isArray(data) ? data : [data];
     } catch (error) {
-      throw new ValidationError(`Invalid JSON format: ${error.message}`, 'jsonFormat');
+      throw new ValidationError(
+        `Invalid JSON format: ${error.message}`,
+        'jsonFormat'
+      );
     }
   }
 
@@ -154,7 +160,7 @@ export class DataLoader {
 
     while (i < line.length) {
       const char = line[i];
-      
+
       if (char === '"') {
         if (inQuotes && line[i + 1] === '"') {
           current += '"';
@@ -170,7 +176,7 @@ export class DataLoader {
       }
       i++;
     }
-    
+
     values.push(current.trim());
     return values;
   }
@@ -185,13 +191,13 @@ export class DataLoader {
     if (value === 'true') return true;
     if (value === 'false') return false;
     if (value === 'null') return null;
-    
+
     // Try to parse as number
     const num = Number(value);
     if (!isNaN(num) && isFinite(num)) {
       return num;
     }
-    
+
     return value;
   }
 

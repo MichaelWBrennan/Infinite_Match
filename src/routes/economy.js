@@ -86,21 +86,21 @@ router.post(
       // Prepare economy data based on type
       let economyData = {};
       switch (type) {
-      case 'currency':
-        economyData.currencies = data;
-        break;
-      case 'inventory':
-        economyData.inventory = data;
-        break;
-      case 'catalog':
-        economyData.catalog = data;
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid economy data type',
-          requestId: req.requestId,
-        });
+        case 'currency':
+          economyData.currencies = data;
+          break;
+        case 'inventory':
+          economyData.inventory = data;
+          break;
+        case 'catalog':
+          economyData.catalog = data;
+          break;
+        default:
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid economy data type',
+            requestId: req.requestId,
+          });
       }
 
       // Deploy to Unity Services

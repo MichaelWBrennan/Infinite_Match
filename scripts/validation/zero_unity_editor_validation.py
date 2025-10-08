@@ -4,15 +4,18 @@ Zero Unity Editor Validation Script
 Comprehensive validation for complete headless Unity development
 """
 
-import os
-import sys
 import json
-import yaml
+import os
 import subprocess
+import sys
 from pathlib import Path
+
 import requests
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utilities'))
+import yaml
 from file_validator import file_validator
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utilities"))
+
 
 class ZeroUnityEditorValidator:
     def __init__(self):
@@ -23,32 +26,32 @@ class ZeroUnityEditorValidator:
             "storefront_automation": {"status": "pending", "details": []},
             "ci_cd_pipeline": {"status": "pending", "details": []},
             "webhook_integration": {"status": "pending", "details": []},
-            "health_monitoring": {"status": "pending", "details": []}
+            "health_monitoring": {"status": "pending", "details": []},
         }
-        
+
     def print_header(self, title):
         """Print formatted header"""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print(f"🔍 {title}")
-        print("="*80)
-    
+        print("=" * 80)
+
     def validate_unity_editor_requirements(self):
         """Validate Unity Editor is not required"""
         print("🎮 Validating Unity Editor Requirements...")
-        
+
         # Check if Unity Editor is installed
         unity_editor_paths = [
             "/Applications/Unity/Hub/Editor",
             "C:/Program Files/Unity/Hub/Editor",
-            "/opt/Unity/Editor"
+            "/opt/Unity/Editor",
         ]
-        
+
         unity_editor_found = False
         for path in unity_editor_paths:
             if os.path.exists(path):
                 unity_editor_found = True
                 break
-        
+
         if unity_editor_found:
             self.validation_results["unity_editor"]["status"] = "warning"
             self.validation_results["unity_editor"]["details"].append(
@@ -59,9 +62,16 @@ class ZeroUnityEditorValidator:
             self.validation_results["unity_editor"]["details"].append(
                 "Unity Editor not found - perfect for headless operation"
             )
-        
+
         # Check headless build scripts
-        build_script = self.repo_root / "unity" / "Assets" / "Scripts" / "Editor" / "BuildScript.cs"
+        build_script = (
+            self.repo_root
+            / "unity"
+            / "Assets"
+            / "Scripts"
+            / "Editor"
+            / "BuildScript.cs"
+        )
         if build_script.exists():
             self.validation_results["unity_editor"]["status"] = "success"
             self.validation_results["unity_editor"]["details"].append(
@@ -72,10 +82,12 @@ class ZeroUnityEditorValidator:
             self.validation_results["unity_editor"]["details"].append(
                 "Headless build scripts missing"
             )
-        
+
         # Check Unity CLI availability
         try:
-            result = subprocess.run(['unity', '--version'], capture_output=True, text=True)
+            result = subprocess.run(
+                ["unity", "--version"], capture_output=True, text=True
+            )
             if result.returncode == 0:
                 self.validation_results["unity_editor"]["status"] = "success"
                 self.validation_results["unity_editor"]["details"].append(
@@ -91,24 +103,24 @@ class ZeroUnityEditorValidator:
             self.validation_results["unity_editor"]["details"].append(
                 "Unity CLI not found in PATH"
             )
-    
+
     def validate_unity_cloud_console_integration(self):
         """Validate Unity Cloud Console integration"""
         print("☁️ Validating Unity Cloud Console Integration...")
-        
+
         # Check Unity Cloud credentials
         required_env_vars = [
-            'UNITY_PROJECT_ID',
-            'UNITY_ENV_ID',
-            'UNITY_EMAIL',
-            'UNITY_PASSWORD'
+            "UNITY_PROJECT_ID",
+            "UNITY_ENV_ID",
+            "UNITY_EMAIL",
+            "UNITY_PASSWORD",
         ]
-        
+
         missing_vars = []
         for var in required_env_vars:
             if not os.getenv(var):
                 missing_vars.append(var)
-        
+
         if missing_vars:
             self.validation_results["unity_cloud_console"]["status"] = "error"
             self.validation_results["unity_cloud_console"]["details"].append(
@@ -119,9 +131,11 @@ class ZeroUnityEditorValidator:
             self.validation_results["unity_cloud_console"]["details"].append(
                 "Unity Cloud credentials configured"
             )
-        
+
         # Check Unity Cloud automation scripts
-        cloud_automation_script = self.repo_root / "scripts" / "unity" / "unity_cloud_console_automation.py"
+        cloud_automation_script = (
+            self.repo_root / "scripts" / "unity" / "unity_cloud_console_automation.py"
+        )
         if cloud_automation_script.exists():
             self.validation_results["unity_cloud_console"]["status"] = "success"
             self.validation_results["unity_cloud_console"]["details"].append(
@@ -132,11 +146,11 @@ class ZeroUnityEditorValidator:
             self.validation_results["unity_cloud_console"]["details"].append(
                 "Unity Cloud Console automation script missing"
             )
-        
+
         # Check Cloud Code functions using centralized validator
         cloud_code_files = file_validator.validate_cloud_code_files()
         existing_files = [name for name, exists in cloud_code_files.items() if exists]
-        
+
         if existing_files:
             self.validation_results["unity_cloud_console"]["status"] = "success"
             self.validation_results["unity_cloud_console"]["details"].append(
@@ -147,11 +161,13 @@ class ZeroUnityEditorValidator:
             self.validation_results["unity_cloud_console"]["details"].append(
                 "Cloud Code functions missing"
             )
-        
+
         # Check Remote Config using centralized validator
         remote_config_files = file_validator.validate_remote_config_files()
-        existing_configs = [name for name, exists in remote_config_files.items() if exists]
-        
+        existing_configs = [
+            name for name, exists in remote_config_files.items() if exists
+        ]
+
         if existing_configs:
             self.validation_results["unity_cloud_console"]["status"] = "success"
             self.validation_results["unity_cloud_console"]["details"].append(
@@ -162,13 +178,15 @@ class ZeroUnityEditorValidator:
             self.validation_results["unity_cloud_console"]["details"].append(
                 "Remote Config files missing"
             )
-    
+
     def validate_storefront_automation(self):
         """Validate storefront automation"""
         print("🛒 Validating Storefront Automation...")
-        
+
         # Check storefront automation script
-        storefront_script = self.repo_root / "scripts" / "storefront" / "storefront_automation.py"
+        storefront_script = (
+            self.repo_root / "scripts" / "storefront" / "storefront_automation.py"
+        )
         if storefront_script.exists():
             self.validation_results["storefront_automation"]["status"] = "success"
             self.validation_results["storefront_automation"]["details"].append(
@@ -179,7 +197,7 @@ class ZeroUnityEditorValidator:
             self.validation_results["storefront_automation"]["details"].append(
                 "Storefront automation script missing"
             )
-        
+
         # Check Fastlane configuration
         fastlane_file = self.repo_root / "deployment" / "fastlane" / "Fastfile"
         if fastlane_file.exists():
@@ -192,15 +210,15 @@ class ZeroUnityEditorValidator:
             self.validation_results["storefront_automation"]["details"].append(
                 "Fastlane configuration missing"
             )
-        
+
         # Check storefront credentials
         storefront_credentials = {
-            'Google Play': ['GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'],
-            'App Store': ['APP_STORE_CONNECT_API_KEY'],
-            'Steam': ['STEAM_USERNAME', 'STEAM_PASSWORD'],
-            'Itch.io': ['ITCH_USERNAME', 'ITCH_GAME', 'BUTLER_API_KEY']
+            "Google Play": ["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"],
+            "App Store": ["APP_STORE_CONNECT_API_KEY"],
+            "Steam": ["STEAM_USERNAME", "STEAM_PASSWORD"],
+            "Itch.io": ["ITCH_USERNAME", "ITCH_GAME", "BUTLER_API_KEY"],
         }
-        
+
         for store, vars in storefront_credentials.items():
             missing_vars = [var for var in vars if not os.getenv(var)]
             if missing_vars:
@@ -213,7 +231,7 @@ class ZeroUnityEditorValidator:
                 self.validation_results["storefront_automation"]["details"].append(
                     f"{store} credentials configured"
                 )
-        
+
         # Check metadata directory
         metadata_dir = self.repo_root / "metadata"
         if metadata_dir.exists():
@@ -226,15 +244,15 @@ class ZeroUnityEditorValidator:
             self.validation_results["storefront_automation"]["details"].append(
                 "Metadata directory missing"
             )
-    
+
     def validate_ci_cd_pipeline(self):
         """Validate CI/CD pipeline"""
         print("🔄 Validating CI/CD Pipeline...")
-        
+
         # Check GitHub Actions workflows using centralized validator
         workflow_files = file_validator.validate_github_workflows()
         existing_workflows = [name for name, exists in workflow_files.items() if exists]
-        
+
         if existing_workflows:
             self.validation_results["ci_cd_pipeline"]["status"] = "success"
             self.validation_results["ci_cd_pipeline"]["details"].append(
@@ -245,9 +263,11 @@ class ZeroUnityEditorValidator:
             self.validation_results["ci_cd_pipeline"]["details"].append(
                 "No GitHub Actions workflows found"
             )
-        
+
         # Check zero Unity Editor workflow
-        zero_unity_workflow = self.repo_root / ".github" / "workflows" / "zero-unity-editor.yml"
+        zero_unity_workflow = (
+            self.repo_root / ".github" / "workflows" / "zero-unity-editor.yml"
+        )
         if zero_unity_workflow.exists():
             self.validation_results["ci_cd_pipeline"]["status"] = "success"
             self.validation_results["ci_cd_pipeline"]["details"].append(
@@ -258,14 +278,14 @@ class ZeroUnityEditorValidator:
             self.validation_results["ci_cd_pipeline"]["details"].append(
                 "Zero Unity Editor workflow missing"
             )
-        
+
         # Check build scripts
         build_scripts = [
             "unity/Assets/Scripts/Editor/BuildScript.cs",
             "scripts/unity/unity_cloud_console_automation.py",
-            "scripts/storefront/storefront_automation.py"
+            "scripts/storefront/storefront_automation.py",
         ]
-        
+
         for script in build_scripts:
             script_path = self.repo_root / script
             if script_path.exists():
@@ -278,11 +298,11 @@ class ZeroUnityEditorValidator:
                 self.validation_results["ci_cd_pipeline"]["details"].append(
                     f"Build script missing: {script}"
                 )
-    
+
     def validate_webhook_integration(self):
         """Validate webhook integration"""
         print("🔗 Validating Webhook Integration...")
-        
+
         # Check webhook server
         webhook_server = self.repo_root / "scripts" / "webhooks" / "webhook_server.py"
         if webhook_server.exists():
@@ -295,15 +315,15 @@ class ZeroUnityEditorValidator:
             self.validation_results["webhook_integration"]["details"].append(
                 "Webhook server script missing"
             )
-        
+
         # Check webhook endpoints
         webhook_endpoints = [
             "/webhook/unity-cloud",
             "/webhook/storefront",
             "/webhook/build",
-            "/health"
+            "/health",
         ]
-        
+
         # Test webhook server if running
         try:
             response = requests.get("http://localhost:5000/health", timeout=5)
@@ -322,13 +342,15 @@ class ZeroUnityEditorValidator:
             self.validation_results["webhook_integration"]["details"].append(
                 "Webhook server is not running (this is normal if not started)"
             )
-    
+
     def validate_health_monitoring(self):
         """Validate health monitoring"""
         print("🏥 Validating Health Monitoring...")
-        
+
         # Check health check script
-        health_check_script = self.repo_root / "scripts" / "maintenance" / "health_check.py"
+        health_check_script = (
+            self.repo_root / "scripts" / "maintenance" / "health_check.py"
+        )
         if health_check_script.exists():
             self.validation_results["health_monitoring"]["status"] = "success"
             self.validation_results["health_monitoring"]["details"].append(
@@ -339,7 +361,7 @@ class ZeroUnityEditorValidator:
             self.validation_results["health_monitoring"]["details"].append(
                 "Health check script missing"
             )
-        
+
         # Check logs directory
         logs_dir = self.repo_root / "logs"
         if logs_dir.exists():
@@ -352,7 +374,7 @@ class ZeroUnityEditorValidator:
             self.validation_results["health_monitoring"]["details"].append(
                 "Logs directory missing"
             )
-        
+
         # Check monitoring configuration
         monitoring_dir = self.repo_root / "monitoring"
         if monitoring_dir.exists():
@@ -365,37 +387,55 @@ class ZeroUnityEditorValidator:
             self.validation_results["health_monitoring"]["details"].append(
                 "Monitoring directory missing"
             )
-    
+
     def generate_validation_report(self):
         """Generate comprehensive validation report"""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("📊 VALIDATION REPORT")
-        print("="*80)
-        
+        print("=" * 80)
+
         total_checks = len(self.validation_results)
-        passed_checks = sum(1 for result in self.validation_results.values() if result["status"] == "success")
-        warning_checks = sum(1 for result in self.validation_results.values() if result["status"] == "warning")
-        error_checks = sum(1 for result in self.validation_results.values() if result["status"] == "error")
-        
+        passed_checks = sum(
+            1
+            for result in self.validation_results.values()
+            if result["status"] == "success"
+        )
+        warning_checks = sum(
+            1
+            for result in self.validation_results.values()
+            if result["status"] == "warning"
+        )
+        error_checks = sum(
+            1
+            for result in self.validation_results.values()
+            if result["status"] == "error"
+        )
+
         print(f"Total Checks: {total_checks}")
         print(f"✅ Passed: {passed_checks}")
         print(f"⚠️ Warnings: {warning_checks}")
         print(f"❌ Errors: {error_checks}")
         print()
-        
+
         for category, result in self.validation_results.items():
             status_icon = {
                 "success": "✅",
                 "warning": "⚠️",
                 "error": "❌",
-                "pending": "⏳"
+                "pending": "⏳",
             }.get(result["status"], "❓")
-            
-            print(f"{status_icon} {category.replace('_', ' ').title()}: {result['status']}")
+
+            print(
+                f"{status_icon} {
+                    category.replace(
+                        '_',
+                        ' ').title()}: {
+                    result['status']}"
+            )
             for detail in result["details"]:
                 print(f"   • {detail}")
             print()
-        
+
         # Overall assessment
         if error_checks == 0 and warning_checks == 0:
             print("🎉 EXCELLENT! Zero Unity Editor setup is fully validated!")
@@ -409,11 +449,11 @@ class ZeroUnityEditorValidator:
             print("❌ ISSUES FOUND! Zero Unity Editor setup needs attention")
             print("🔧 Please fix the errors above before proceeding")
             return False
-    
+
     def run_full_validation(self):
         """Run complete validation"""
         self.print_header("Zero Unity Editor Validation")
-        
+
         print("🎯 This will validate your complete headless Unity setup")
         print("   - Unity Editor requirements")
         print("   - Unity Cloud Console integration")
@@ -421,7 +461,7 @@ class ZeroUnityEditorValidator:
         print("   - CI/CD pipeline")
         print("   - Webhook integration")
         print("   - Health monitoring")
-        
+
         # Run all validations
         self.validate_unity_editor_requirements()
         self.validate_unity_cloud_console_integration()
@@ -429,9 +469,10 @@ class ZeroUnityEditorValidator:
         self.validate_ci_cd_pipeline()
         self.validate_webhook_integration()
         self.validate_health_monitoring()
-        
+
         # Generate report
         return self.generate_validation_report()
+
 
 if __name__ == "__main__":
     validator = ZeroUnityEditorValidator()

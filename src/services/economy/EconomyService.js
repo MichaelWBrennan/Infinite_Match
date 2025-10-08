@@ -24,7 +24,7 @@ class EconomyService {
    */
   async loadEconomyData() {
     const cacheKey = 'economy_data';
-    
+
     // Check cache first
     const cached = this.cacheManager.get(cacheKey);
     if (cached) {
@@ -40,7 +40,7 @@ class EconomyService {
       ];
 
       const files = await this.dataLoader.loadFiles(filePaths);
-      
+
       const economyData = {
         currencies: this.validator.validateCurrencies(files.currencies || []),
         inventory: this.validator.validateInventory(files.inventory || []),
@@ -60,7 +60,10 @@ class EconomyService {
       return economyData;
     } catch (error) {
       logger.error('Failed to load economy data', { error: error.message });
-      throw new ServiceError(`Failed to load economy data: ${error.message}`, 'EconomyService');
+      throw new ServiceError(
+        `Failed to load economy data: ${error.message}`,
+        'EconomyService'
+      );
     }
   }
 
@@ -70,7 +73,7 @@ class EconomyService {
   async generateReport() {
     try {
       const data = await this.loadEconomyData();
-      
+
       const report = {
         timestamp: new Date().toISOString(),
         summary: {
@@ -78,21 +81,21 @@ class EconomyService {
           totalInventoryItems: data.inventory.length,
           totalCatalogItems: data.catalog.length,
         },
-        currencies: data.currencies.map(c => ({
+        currencies: data.currencies.map((c) => ({
           id: c.id,
           name: c.name,
           type: c.type,
           initial: c.initial || 0,
           maximum: c.maximum || 999999,
         })),
-        inventory: data.inventory.map(i => ({
+        inventory: data.inventory.map((i) => ({
           id: i.id,
           name: i.name,
           type: i.type,
           rarity: i.rarity || 'common',
           tradable: i.isTradable || false,
         })),
-        catalog: data.catalog.map(c => ({
+        catalog: data.catalog.map((c) => ({
           id: c.id,
           name: c.name,
           cost: c.cost || 0,
@@ -104,8 +107,13 @@ class EconomyService {
       logger.info('Economy report generated', report.summary);
       return report;
     } catch (error) {
-      logger.error('Failed to generate economy report', { error: error.message });
-      throw new ServiceError(`Failed to generate economy report: ${error.message}`, 'EconomyService');
+      logger.error('Failed to generate economy report', {
+        error: error.message,
+      });
+      throw new ServiceError(
+        `Failed to generate economy report: ${error.message}`,
+        'EconomyService'
+      );
     }
   }
 
@@ -119,7 +127,10 @@ class EconomyService {
       logger.info(`Economy data saved to ${filePath}`);
     } catch (error) {
       logger.error('Failed to save economy data', { error: error.message });
-      throw new ServiceError(`Failed to save economy data: ${error.message}`, 'EconomyService');
+      throw new ServiceError(
+        `Failed to save economy data: ${error.message}`,
+        'EconomyService'
+      );
     }
   }
 

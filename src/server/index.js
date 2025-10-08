@@ -12,7 +12,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { AppConfig } from '../core/config/index.js';
 import { Logger } from '../core/logger/index.js';
 import security from '../core/security/index.js';
-import { registerServices, getService } from '../core/services/ServiceRegistry.js';
+import {
+  registerServices,
+  getService,
+} from '../core/services/ServiceRegistry.js';
 
 // Routes
 import authRoutes from '../routes/auth.js';

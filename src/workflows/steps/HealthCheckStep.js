@@ -65,7 +65,9 @@ export class HealthCheckStep {
 
       const overallStatus = Object.values(healthStatus).every(
         (check) => check.status === 'healthy'
-      ) ? 'healthy' : 'unhealthy';
+      )
+        ? 'healthy'
+        : 'unhealthy';
 
       const result = {
         status: overallStatus,
@@ -83,7 +85,6 @@ export class HealthCheckStep {
 
       logger.info('Health check completed successfully');
       return result;
-
     } catch (error) {
       logger.error('Health check failed', { error: error.message });
       throw error;

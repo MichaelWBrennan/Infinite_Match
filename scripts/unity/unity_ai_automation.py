@@ -5,66 +5,69 @@ Uses local AI optimization without external API calls
 """
 
 import json
-import time
 import os
 import random
-from datetime import datetime
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utilities'))
+import time
+from datetime import datetime
+
 from file_validator import file_validator
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utilities"))
+
 
 class UnityAIWorkingAutomation:
     def __init__(self):
         self.project_id = "0dd5a03e-7f23-49c4-964e-7919c48c0574"
         self.environment_id = "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d"
-        
+
     def analyze_economy_data(self, csv_data):
         """Analyze economy data using local algorithms"""
         print("🤖 Analyzing economy data with AI algorithms...")
         time.sleep(1)
-        
+
         # Simulate AI analysis
         analysis = {
             "pricing_optimization": [
                 "Small coin pack: Optimal price point at 20 gems",
                 "Medium coin pack: Consider reducing to 100 gems for better conversion",
-                "Large coin pack: Current pricing is well-balanced"
+                "Large coin pack: Current pricing is well-balanced",
             ],
             "balance_recommendations": [
                 "Add more mid-tier currency packs",
                 "Consider energy refill timers",
-                "Implement daily reward system"
+                "Implement daily reward system",
             ],
             "missing_items": [
                 "Starter pack for new players",
                 "Subscription-based premium currency",
-                "Limited-time event items"
+                "Limited-time event items",
             ],
             "revenue_optimization": [
                 "Implement dynamic pricing based on player behavior",
                 "Add seasonal promotions",
-                "Create bundle packages for better value perception"
+                "Create bundle packages for better value perception",
             ],
             "retention_improvements": [
                 "Daily login rewards",
                 "Progressive difficulty scaling",
-                "Social features integration"
-            ]
+                "Social features integration",
+            ],
         }
-        
+
         print("📊 AI Analysis Results:")
         for category, recommendations in analysis.items():
             print(f"\n{category.replace('_', ' ').title()}:")
             for rec in recommendations:
                 print(f"   • {rec}")
-        
+
         return analysis
-    
+
     def generate_economy_items(self, requirements):
         """Generate new economy items using local algorithms"""
         print("🤖 Generating new economy items with AI...")
         time.sleep(1)
-        
+
         # Simulate AI generation
         new_items = [
             {
@@ -80,7 +83,7 @@ class UnityAIWorkingAutomation:
                 "is_purchasable": True,
                 "is_consumable": False,
                 "is_tradeable": True,
-                "icon_path": "UI/Currency/Coins"
+                "icon_path": "UI/Currency/Coins",
             },
             {
                 "id": "energy_daily",
@@ -95,7 +98,7 @@ class UnityAIWorkingAutomation:
                 "is_purchasable": False,
                 "is_consumable": True,
                 "is_tradeable": False,
-                "icon_path": "UI/Currency/Energy"
+                "icon_path": "UI/Currency/Energy",
             },
             {
                 "id": "pack_holiday",
@@ -110,21 +113,21 @@ class UnityAIWorkingAutomation:
                 "is_purchasable": True,
                 "is_consumable": False,
                 "is_tradeable": False,
-                "icon_path": "UI/Packs/HolidaySpecial"
-            }
+                "icon_path": "UI/Packs/HolidaySpecial",
+            },
         ]
-        
+
         print("🆕 AI Generated Economy Items:")
         for item in new_items:
             print(f"   • {item['name']} ({item['id']}) - {item['description']}")
-        
+
         return new_items
-    
+
     def optimize_cloud_code(self, code):
         """Optimize Cloud Code using local algorithms"""
         print("🤖 Optimizing Cloud Code with AI...")
         time.sleep(1)
-        
+
         # Simulate AI optimization
         optimizations = [
             "Added comprehensive error handling",
@@ -134,20 +137,20 @@ class UnityAIWorkingAutomation:
             "Added rate limiting",
             "Implemented caching",
             "Added security checks",
-            "Optimized memory usage"
+            "Optimized memory usage",
         ]
-        
+
         print("⚡ AI Cloud Code Optimizations:")
         for opt in optimizations:
             print(f"   • {opt}")
-        
+
         return optimizations
-    
+
     def generate_remote_config(self, game_settings):
         """Generate optimal Remote Config using local algorithms"""
         print("🤖 Generating Remote Config with AI...")
         time.sleep(1)
-        
+
         # Simulate AI config generation
         config = {
             "game_settings": {
@@ -155,81 +158,84 @@ class UnityAIWorkingAutomation:
                 "energy_refill_time": 300,
                 "daily_reward_coins": 100,
                 "daily_reward_gems": 5,
-                "ai_optimized": True
+                "ai_optimized": True,
             },
             "economy_settings": {
                 "coin_multiplier": 1.0,
                 "gem_multiplier": 1.0,
                 "sale_discount": 0.5,
-                "ai_dynamic_pricing": True
+                "ai_dynamic_pricing": True,
             },
             "feature_flags": {
                 "new_levels_enabled": True,
                 "daily_challenges_enabled": True,
                 "social_features_enabled": False,
-                "ai_personalization": True
+                "ai_personalization": True,
             },
             "ai_optimizations": {
                 "auto_balance": True,
                 "dynamic_difficulty": True,
                 "personalized_rewards": True,
-                "smart_promotions": True
-            }
+                "smart_promotions": True,
+            },
         }
-        
+
         print("⚙️ AI Generated Remote Config:")
         for category, settings in config.items():
             print(f"\n{category.replace('_', ' ').title()}:")
             for key, value in settings.items():
                 print(f"   {key}: {value}")
-        
+
         return config
-    
+
     def run_ai_automation(self):
         """Run complete AI automation"""
         print("🚀 Starting Unity AI 100% Working Automation...")
-        
+
         # Analyze existing economy data using centralized validator
         economy_files = file_validator.validate_economy_files()
         cloud_code_files = file_validator.validate_cloud_code_files()
-        
-        if economy_files['currencies.csv']:
-            with open('economy/currencies.csv', 'r') as f:
+
+        if economy_files["currencies.csv"]:
+            with open("economy/currencies.csv", "r") as f:
                 currencies = f.read()
-            
+
             analysis = self.analyze_economy_data(currencies)
-        
+
         # Generate new economy items
-        requirements = "Match-3 puzzle game with energy system, boosters, and currency packs"
+        requirements = (
+            "Match-3 puzzle game with energy system, boosters, and currency packs"
+        )
         new_items = self.generate_economy_items(requirements)
-        
+
         # Optimize Cloud Code using centralized validator
-        if cloud_code_files['AddCurrency.js']:
-            with open('cloud-code/AddCurrency.js', 'r') as f:
+        if cloud_code_files["AddCurrency.js"]:
+            with open("cloud-code/AddCurrency.js", "r") as f:
                 code = f.read()
-            
+
             optimizations = self.optimize_cloud_code(code)
-        
+
         # Generate Remote Config
         game_settings = "Match-3 puzzle game with economy system"
         config = self.generate_remote_config(game_settings)
-        
+
         # Save AI optimizations
         ai_report = {
             "timestamp": datetime.now().isoformat(),
-            "analysis": analysis if 'analysis' in locals() else {},
+            "analysis": analysis if "analysis" in locals() else {},
             "new_items": new_items,
-            "optimizations": optimizations if 'optimizations' in locals() else [],
-            "config": config
+            "optimizations": optimizations if "optimizations" in locals() else [],
+            "config": config,
         }
-        
-        with open('ai_optimization_report.json', 'w') as f:
+
+        with open("ai_optimization_report.json", "w") as f:
             json.dump(ai_report, f, indent=2)
-        
+
         print("\n🎉 AI automation completed successfully!")
         print("✅ 100% AI optimization achieved!")
         print("📊 AI optimization report saved: ai_optimization_report.json")
         return True
+
 
 if __name__ == "__main__":
     automation = UnityAIWorkingAutomation()

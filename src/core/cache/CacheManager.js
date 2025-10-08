@@ -25,7 +25,8 @@ export class CacheManager {
    * @param {*} value - Value to cache
    * @param {number} ttlMs - Time to live in milliseconds
    */
-  set(key, value, ttlMs = 300000) { // Default 5 minutes
+  set(key, value, ttlMs = 300000) {
+    // Default 5 minutes
     this.cache.set(key, value);
     this.ttl.set(key, Date.now() + ttlMs);
     this.stats.sets++;
@@ -108,9 +109,13 @@ export class CacheManager {
    * @returns {Object} Cache statistics
    */
   getStats() {
-    const hitRate = this.stats.hits + this.stats.misses > 0 
-      ? (this.stats.hits / (this.stats.hits + this.stats.misses) * 100).toFixed(2)
-      : 0;
+    const hitRate =
+      this.stats.hits + this.stats.misses > 0
+        ? (
+            (this.stats.hits / (this.stats.hits + this.stats.misses)) *
+            100
+          ).toFixed(2)
+        : 0;
 
     return {
       ...this.stats,
@@ -151,13 +156,15 @@ export class CacheManager {
    */
   async getOrSet(key, factory, ttlMs = 300000) {
     let value = this.get(key);
-    
+
     if (value === null) {
       try {
         value = await factory();
         this.set(key, value, ttlMs);
       } catch (error) {
-        logger.error(`Failed to generate value for key ${key}`, { error: error.message });
+        logger.error(`Failed to generate value for key ${key}`, {
+          error: error.message,
+        });
         throw error;
       }
     }

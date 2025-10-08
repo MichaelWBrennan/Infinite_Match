@@ -21,15 +21,22 @@ export function registerServices() {
   container.register('cacheManager', () => new CacheManager(), true);
 
   // Register business services
-  container.register('economyService', (c) => new EconomyService(
-    c.get('dataLoader'),
-    c.get('economyValidator'),
-    c.get('cacheManager')
-  ), true);
+  container.register(
+    'economyService',
+    (c) =>
+      new EconomyService(
+        c.get('dataLoader'),
+        c.get('economyValidator'),
+        c.get('cacheManager')
+      ),
+    true
+  );
 
-  container.register('unityService', (c) => new UnityService(
-    c.get('cacheManager')
-  ), true);
+  container.register(
+    'unityService',
+    (c) => new UnityService(c.get('cacheManager')),
+    true
+  );
 
   // Register configuration
   container.registerInstance('config', AppConfig);
