@@ -44,14 +44,13 @@ export const AppConfig = {
     },
   },
 
-  // Unity Services Configuration
+  // Unity Services Configuration (Disabled - Using Local Fallback)
   unity: {
-    projectId:
-      process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574',
-    environmentId:
-      process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d',
-    clientId: process.env.UNITY_CLIENT_ID || '',
-    clientSecret: process.env.UNITY_CLIENT_SECRET || '',
+    enabled: false, // Disabled Unity Services - using local fallback
+    projectId: 'local-project',
+    environmentId: 'local-environment',
+    clientId: '',
+    clientSecret: '',
   },
 
   // Database Configuration

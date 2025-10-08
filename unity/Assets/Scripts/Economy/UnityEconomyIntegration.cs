@@ -18,15 +18,15 @@ namespace Evergreen.Economy
     public class UnityEconomyIntegration : MonoBehaviour
     {
         [Header("Economy Configuration")]
-        [SerializeField] private bool enableUnityEconomy = true;
-        [SerializeField] private bool enableAuthentication = true;
-        [SerializeField] private bool enableCloudCode = true;
+        [SerializeField] private bool enableUnityEconomy = false; // Disabled - using local fallback
+        [SerializeField] private bool enableAuthentication = false; // Disabled - using local fallback
+        [SerializeField] private bool enableCloudCode = false; // Disabled - using local fallback
         [SerializeField] private string projectId;
         [SerializeField] private string environmentId;
         
         [Header("Debug Settings")]
         [SerializeField] private bool enableDebugLogs = true;
-        [SerializeField] private bool enableTestMode = false;
+        [SerializeField] private bool enableTestMode = true; // Enabled for local fallback
         
         private bool _isInitialized = false;
         private bool _isAuthenticated = false;
@@ -64,138 +64,154 @@ namespace Evergreen.Economy
         }
         
         /// <summary>
-        /// Initialize Unity Services
+        /// Initialize Unity Services (Disabled - Using Local Fallback)
         /// </summary>
         public async Task InitializeUnityServices()
         {
             try
             {
                 if (enableDebugLogs)
-                    Debug.Log("Initializing Unity Services...");
+                    Debug.Log("Unity Services disabled - using local fallback mode");
                 
-                // Initialize Unity Services
-                await UnityServices.InitializeAsync();
+                // Skip Unity Services initialization
+                if (enableDebugLogs)
+                    Debug.Log("Skipping Unity Services initialization - using local fallback");
                 
-                if (enableAuthentication)
-                {
-                    await InitializeAuthentication();
-                }
-                
-                if (enableUnityEconomy)
-                {
-                    await InitializeEconomy();
-                }
+                // Initialize local fallback
+                await InitializeLocalFallback();
                 
                 _isInitialized = true;
                 OnInitialized?.Invoke();
                 
                 if (enableDebugLogs)
-                    Debug.Log("Unity Services initialized successfully");
+                    Debug.Log("Local fallback initialized successfully");
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to initialize Unity Services: {e.Message}");
+                Debug.LogError($"Failed to initialize local fallback: {e.Message}");
                 throw;
             }
         }
         
         /// <summary>
-        /// Initialize Unity Authentication
+        /// Initialize local fallback system
+        /// </summary>
+        private async Task InitializeLocalFallback()
+        {
+            try
+            {
+                if (enableDebugLogs)
+                    Debug.Log("Initializing local fallback system...");
+                
+                // Initialize local balances
+                _playerBalances.Clear();
+                _playerBalances["coins"] = new PlayerBalance { CurrencyId = "coins", Balance = 1000 };
+                _playerBalances["gems"] = new PlayerBalance { CurrencyId = "gems", Balance = 50 };
+                _playerBalances["energy"] = new PlayerBalance { CurrencyId = "energy", Balance = 5 };
+                
+                // Initialize local inventory
+                _playerInventory.Clear();
+                
+                _isAuthenticated = true; // Local fallback is always "authenticated"
+                
+                if (enableDebugLogs)
+                    Debug.Log("Local fallback system initialized successfully");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to initialize local fallback: {e.Message}");
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Initialize Unity Authentication (Disabled - Using Local Fallback)
         /// </summary>
         private async Task InitializeAuthentication()
         {
             try
             {
                 if (enableDebugLogs)
-                    Debug.Log("Initializing Unity Authentication...");
+                    Debug.Log("Unity Authentication disabled - using local fallback");
                 
-                // Sign in anonymously
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
-                
-                _isAuthenticated = true;
+                // Skip Unity Authentication - using local fallback
+                _isAuthenticated = true; // Local fallback is always "authenticated"
                 OnAuthenticated?.Invoke();
                 
                 if (enableDebugLogs)
-                    Debug.Log($"Authentication successful. Player ID: {AuthenticationService.Instance.PlayerId}");
+                    Debug.Log("Local authentication fallback successful");
             }
             catch (Exception e)
             {
-                Debug.LogError($"Authentication failed: {e.Message}");
+                Debug.LogError($"Local authentication fallback failed: {e.Message}");
                 throw;
             }
         }
         
         /// <summary>
-        /// Initialize Unity Economy
+        /// Initialize Unity Economy (Disabled - Using Local Fallback)
         /// </summary>
         private async Task InitializeEconomy()
         {
             try
             {
                 if (enableDebugLogs)
-                    Debug.Log("Initializing Unity Economy...");
+                    Debug.Log("Unity Economy disabled - using local fallback");
                 
-                // Load player balances
-                await LoadPlayerBalances();
-                
-                // Load player inventory
-                await LoadPlayerInventory();
+                // Skip Unity Economy - using local fallback
+                // Local balances and inventory are already initialized in InitializeLocalFallback
                 
                 if (enableDebugLogs)
-                    Debug.Log("Unity Economy initialized successfully");
+                    Debug.Log("Local economy fallback initialized successfully");
             }
             catch (Exception e)
             {
-                Debug.LogError($"Economy initialization failed: {e.Message}");
+                Debug.LogError($"Local economy fallback failed: {e.Message}");
                 throw;
             }
         }
         
         /// <summary>
-        /// Load player balances from Unity Economy
+        /// Load player balances from Unity Economy (Disabled - Using Local Fallback)
         /// </summary>
         public async Task LoadPlayerBalances()
         {
             try
             {
-                var balances = await EconomyService.Instance.PlayerBalances.GetBalancesAsync();
+                if (enableDebugLogs)
+                    Debug.Log("Unity Economy disabled - using local balances");
                 
-                _playerBalances.Clear();
-                foreach (var balance in balances)
-                {
-                    _playerBalances[balance.CurrencyId] = balance;
-                }
+                // Local balances are already loaded in InitializeLocalFallback
+                // This method is kept for API compatibility but does nothing
                 
                 if (enableDebugLogs)
-                    Debug.Log($"Loaded {_playerBalances.Count} player balances");
+                    Debug.Log($"Using {_playerBalances.Count} local player balances");
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to load player balances: {e.Message}");
+                Debug.LogError($"Failed to load local balances: {e.Message}");
             }
         }
         
         /// <summary>
-        /// Load player inventory from Unity Economy
+        /// Load player inventory from Unity Economy (Disabled - Using Local Fallback)
         /// </summary>
         public async Task LoadPlayerInventory()
         {
             try
             {
-                var inventory = await EconomyService.Instance.PlayerInventory.GetInventoryAsync();
+                if (enableDebugLogs)
+                    Debug.Log("Unity Economy disabled - using local inventory");
                 
-                _playerInventory.Clear();
-                foreach (var item in inventory)
-                {
-                    _playerInventory[item.InventoryItemId] = item;
-                }
+                // Local inventory is already loaded in InitializeLocalFallback
+                // This method is kept for API compatibility but does nothing
                 
                 if (enableDebugLogs)
-                    Debug.Log($"Loaded {_playerInventory.Count} inventory items");
+                    Debug.Log($"Using {_playerInventory.Count} local inventory items");
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to load player inventory: {e.Message}");
+                Debug.LogError($"Failed to load local inventory: {e.Message}");
             }
         }
         
@@ -224,7 +240,7 @@ namespace Evergreen.Economy
         }
         
         /// <summary>
-        /// Purchase an item using Unity Economy
+        /// Purchase an item using Unity Economy (Disabled - Using Local Fallback)
         /// </summary>
         public async Task<bool> PurchaseItem(string purchaseId)
         {
@@ -237,34 +253,22 @@ namespace Evergreen.Economy
                 }
                 
                 if (enableDebugLogs)
-                    Debug.Log($"Attempting to purchase: {purchaseId}");
+                    Debug.Log($"Unity Economy disabled - simulating purchase: {purchaseId}");
                 
-                // Make the purchase
-                var result = await EconomyService.Instance.Purchases.MakePurchaseAsync(purchaseId);
+                // Simulate purchase in local fallback mode
+                // In a real implementation, this would check local economy data
+                await Task.Delay(100); // Simulate network delay
                 
-                if (result.Status == TransactionStatus.Success)
-                {
-                    // Refresh balances and inventory
-                    await LoadPlayerBalances();
-                    await LoadPlayerInventory();
-                    
-                    OnPurchaseCompleted?.Invoke(purchaseId, true);
-                    
-                    if (enableDebugLogs)
-                        Debug.Log($"Purchase successful: {purchaseId}");
-                    
-                    return true;
-                }
-                else
-                {
-                    Debug.LogWarning($"Purchase failed: {purchaseId} - Status: {result.Status}");
-                    OnPurchaseCompleted?.Invoke(purchaseId, false);
-                    return false;
-                }
+                OnPurchaseCompleted?.Invoke(purchaseId, true);
+                
+                if (enableDebugLogs)
+                    Debug.Log($"Local purchase simulated: {purchaseId}");
+                
+                return true;
             }
             catch (Exception e)
             {
-                Debug.LogError($"Purchase error: {e.Message}");
+                Debug.LogError($"Local purchase error: {e.Message}");
                 OnPurchaseCompleted?.Invoke(purchaseId, false);
                 return false;
             }
@@ -482,18 +486,23 @@ namespace Evergreen.Economy
         }
         
         /// <summary>
-        /// Get all available purchases
+        /// Get all available purchases (Disabled - Using Local Fallback)
         /// </summary>
         public async Task<List<PurchaseDefinition>> GetAvailablePurchases()
         {
             try
             {
-                var purchases = await EconomyService.Instance.Purchases.GetPurchasesAsync();
-                return purchases.ToList();
+                if (enableDebugLogs)
+                    Debug.Log("Unity Economy disabled - returning empty purchase list");
+                
+                // Return empty list in local fallback mode
+                // In a real implementation, this would return local economy data
+                await Task.Delay(50); // Simulate network delay
+                return new List<PurchaseDefinition>();
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to get purchases: {e.Message}");
+                Debug.LogError($"Failed to get local purchases: {e.Message}");
                 return new List<PurchaseDefinition>();
             }
         }
@@ -517,10 +526,12 @@ namespace Evergreen.Economy
             {
                 { "isInitialized", _isInitialized },
                 { "isAuthenticated", _isAuthenticated },
-                { "playerId", AuthenticationService.Instance.PlayerId },
+                { "playerId", "local-player-id" }, // Local fallback player ID
                 { "balanceCount", _playerBalances.Count },
                 { "inventoryCount", _playerInventory.Count },
-                { "testMode", enableTestMode }
+                { "testMode", enableTestMode },
+                { "unityServicesEnabled", false },
+                { "localFallbackEnabled", true }
             };
         }
         

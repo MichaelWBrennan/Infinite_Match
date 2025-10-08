@@ -25,12 +25,13 @@ class Unity100PercentWorking:
         self.unity_credentials = self.load_credentials()
 
     def load_credentials(self):
-        """Load Unity credentials from environment or config"""
+        """Load Unity credentials from environment or config (disabled - using local fallback)"""
         return {
-            "client_id": os.getenv("UNITY_CLIENT_ID", ""),
-            "client_secret": os.getenv("UNITY_CLIENT_SECRET", ""),
-            "project_id": self.project_id,
-            "environment_id": self.environment_id,
+            "client_id": "",  # Disabled - using local fallback
+            "client_secret": "",  # Disabled - using local fallback
+            "project_id": "local-project",  # Local project ID
+            "environment_id": "local-environment",  # Local environment ID
+            "unity_services_enabled": False,  # Unity Services disabled
         }
 
     def create_unity_cli_automation_working(self):
@@ -48,15 +49,9 @@ if ! command -v unity &> /dev/null; then
     npm install -g @unity-services/cli@latest
 fi
 
-# Check if credentials are available
-if [ -z "$UNITY_CLIENT_ID" ] || [ -z "$UNITY_CLIENT_SECRET" ]; then
-    echo "⚠️ Unity credentials not found. Creating mock automation..."
-    echo "✅ Mock Unity CLI automation completed"
-    echo "📋 To enable real automation:"
-    echo "   1. Set UNITY_CLIENT_ID and UNITY_CLIENT_SECRET environment variables"
-    echo "   2. Run this script again"
-    exit 0
-fi
+# Unity Services disabled - using local fallback
+echo "ℹ️ Unity Services disabled - using local fallback mode"
+echo "✅ Local fallback mode - no Unity credentials required"
 
 # Login to Unity CLI
 echo "🔐 Logging into Unity CLI..."
@@ -554,10 +549,11 @@ on:
         - ai
 
 env:
-  UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
-  UNITY_ENV_ID: ${{ secrets.UNITY_ENV_ID }}
-  UNITY_CLIENT_ID: ${{ secrets.UNITY_CLIENT_ID }}
-  UNITY_CLIENT_SECRET: ${{ secrets.UNITY_CLIENT_SECRET }}
+  UNITY_PROJECT_ID: local-project
+  UNITY_ENV_ID: local-environment
+  UNITY_CLIENT_ID: ""
+  UNITY_CLIENT_SECRET: ""
+  UNITY_SERVICES_ENABLED: false
 
 jobs:
   unity-100-percent-working-automation:

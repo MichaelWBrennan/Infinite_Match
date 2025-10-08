@@ -1,0 +1,294 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2024-01-01T00:00:00Z",
+  "unityServicesEnabled": false,
+  "localFallbackEnabled": true,
+  "items": [
+    {
+      "id": "coins",
+      "name": "Coins",
+      "type": "currency",
+      "category": "soft_currency",
+      "costGems": 0,
+      "costCoins": 0,
+      "quantity": 1000,
+      "initial": 1000,
+      "maximum": 999999,
+      "description": "Soft currency for purchasing items",
+      "rarity": "common",
+      "isPurchasable": false,
+      "isConsumable": true,
+      "isTradeable": true,
+      "iconPath": "UI/Currency/Coins"
+    },
+    {
+      "id": "gems",
+      "name": "Gems",
+      "type": "currency",
+      "category": "hard_currency",
+      "costGems": 0,
+      "costCoins": 0,
+      "quantity": 50,
+      "initial": 50,
+      "maximum": 99999,
+      "description": "Premium currency for special purchases",
+      "rarity": "rare",
+      "isPurchasable": false,
+      "isConsumable": true,
+      "isTradeable": false,
+      "iconPath": "UI/Currency/Gems"
+    },
+    {
+      "id": "energy",
+      "name": "Energy",
+      "type": "currency",
+      "category": "consumable",
+      "costGems": 0,
+      "costCoins": 0,
+      "quantity": 5,
+      "initial": 5,
+      "maximum": 30,
+      "description": "Energy points for playing levels",
+      "rarity": "common",
+      "isPurchasable": false,
+      "isConsumable": true,
+      "isTradeable": false,
+      "iconPath": "UI/Currency/Energy"
+    },
+    {
+      "id": "booster_extra_moves",
+      "name": "Extra Moves",
+      "type": "booster",
+      "category": "power_up",
+      "costGems": 3,
+      "costCoins": 200,
+      "quantity": 1,
+      "description": "Adds 5 extra moves to the current level",
+      "rarity": "common",
+      "isPurchasable": true,
+      "isConsumable": true,
+      "isTradeable": true,
+      "iconPath": "UI/Boosters/ExtraMoves"
+    },
+    {
+      "id": "booster_color_bomb",
+      "name": "Color Bomb",
+      "type": "booster",
+      "category": "power_up",
+      "costGems": 1,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "Creates a color bomb that clears all pieces of one color",
+      "rarity": "rare",
+      "isPurchasable": true,
+      "isConsumable": true,
+      "isTradeable": true,
+      "iconPath": "UI/Boosters/ColorBomb"
+    },
+    {
+      "id": "booster_rainbow_blast",
+      "name": "Rainbow Blast",
+      "type": "booster",
+      "category": "power_up",
+      "costGems": 1,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "Creates a rainbow blast that clears a large area",
+      "rarity": "rare",
+      "isPurchasable": true,
+      "isConsumable": true,
+      "isTradeable": true,
+      "iconPath": "UI/Boosters/RainbowBlast"
+    },
+    {
+      "id": "booster_striped_candy",
+      "name": "Striped Candy",
+      "type": "booster",
+      "category": "power_up",
+      "costGems": 1,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "Creates a striped candy that clears a row or column",
+      "rarity": "common",
+      "isPurchasable": true,
+      "isConsumable": true,
+      "isTradeable": true,
+      "iconPath": "UI/Boosters/StripedCandy"
+    },
+    {
+      "id": "pack_starter",
+      "name": "Starter Pack",
+      "type": "pack",
+      "category": "bundle",
+      "costGems": 20,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "Perfect for new players! Great value!",
+      "rarity": "common",
+      "isPurchasable": true,
+      "isConsumable": false,
+      "isTradeable": false,
+      "iconPath": "UI/Packs/StarterPack"
+    },
+    {
+      "id": "pack_value",
+      "name": "Value Pack",
+      "type": "pack",
+      "category": "bundle",
+      "costGems": 120,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "Great value for money!",
+      "rarity": "uncommon",
+      "isPurchasable": true,
+      "isConsumable": false,
+      "isTradeable": false,
+      "iconPath": "UI/Packs/ValuePack"
+    },
+    {
+      "id": "pack_premium",
+      "name": "Premium Pack",
+      "type": "pack",
+      "category": "bundle",
+      "costGems": 300,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "Premium pack with exclusive items!",
+      "rarity": "rare",
+      "isPurchasable": true,
+      "isConsumable": false,
+      "isTradeable": false,
+      "iconPath": "UI/Packs/PremiumPack"
+    },
+    {
+      "id": "pack_mega",
+      "name": "Mega Pack",
+      "type": "pack",
+      "category": "bundle",
+      "costGems": 700,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "Mega pack with amazing value!",
+      "rarity": "epic",
+      "isPurchasable": true,
+      "isConsumable": false,
+      "isTradeable": false,
+      "iconPath": "UI/Packs/MegaPack"
+    },
+    {
+      "id": "pack_ultimate",
+      "name": "Ultimate Pack",
+      "type": "pack",
+      "category": "bundle",
+      "costGems": 2000,
+      "costCoins": 0,
+      "quantity": 1,
+      "description": "The ultimate pack with everything!",
+      "rarity": "legendary",
+      "isPurchasable": true,
+      "isConsumable": false,
+      "isTradeable": false,
+      "iconPath": "UI/Packs/UltimatePack"
+    }
+  ],
+  "virtualPurchases": [
+    {
+      "id": "coins_small",
+      "name": "Small Coin Pack",
+      "cost": {
+        "amount": 20,
+        "currency": "gems"
+      },
+      "rewards": [
+        {
+          "amount": 1000,
+          "currency": "coins"
+        }
+      ]
+    },
+    {
+      "id": "coins_medium",
+      "name": "Medium Coin Pack",
+      "cost": {
+        "amount": 120,
+        "currency": "gems"
+      },
+      "rewards": [
+        {
+          "amount": 5000,
+          "currency": "coins"
+        }
+      ]
+    },
+    {
+      "id": "coins_large",
+      "name": "Large Coin Pack",
+      "cost": {
+        "amount": 300,
+        "currency": "gems"
+      },
+      "rewards": [
+        {
+          "amount": 15000,
+          "currency": "coins"
+        }
+      ]
+    },
+    {
+      "id": "coins_mega",
+      "name": "Mega Coin Pack",
+      "cost": {
+        "amount": 700,
+        "currency": "gems"
+      },
+      "rewards": [
+        {
+          "amount": 40000,
+          "currency": "coins"
+        }
+      ]
+    },
+    {
+      "id": "coins_ultimate",
+      "name": "Ultimate Coin Pack",
+      "cost": {
+        "amount": 2000,
+        "currency": "gems"
+      },
+      "rewards": [
+        {
+          "amount": 100000,
+          "currency": "coins"
+        }
+      ]
+    },
+    {
+      "id": "energy_small",
+      "name": "Energy Boost",
+      "cost": {
+        "amount": 5,
+        "currency": "gems"
+      },
+      "rewards": [
+        {
+          "amount": 5,
+          "currency": "energy"
+        }
+      ]
+    },
+    {
+      "id": "energy_large",
+      "name": "Energy Surge",
+      "cost": {
+        "amount": 15,
+        "currency": "gems"
+      },
+      "rewards": [
+        {
+          "amount": 20,
+          "currency": "energy"
+        }
+      ]
+    }
+  ]
+}

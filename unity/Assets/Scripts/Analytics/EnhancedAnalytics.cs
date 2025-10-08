@@ -12,10 +12,10 @@ namespace Evergreen.Analytics
         public float batchInterval = 30f; // Send events in batches every 30 seconds
         
         [Header("Providers")]
-        public bool useFirebase = true;
-        public bool useGameAnalytics = true;
-        public bool useUnityAnalytics = true;
-        public bool useCustomAnalytics = true;
+        public bool useFirebase = false; // Disabled - using local fallback
+        public bool useGameAnalytics = false; // Disabled - using local fallback
+        public bool useUnityAnalytics = false; // Disabled - using local fallback
+        public bool useCustomAnalytics = true; // Using local analytics
         
         public static EnhancedAnalytics Instance { get; private set; }
         

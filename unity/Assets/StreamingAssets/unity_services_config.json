@@ -1,7 +1,8 @@
 {
-  "environmentId": "your-environment-id",
+  "environmentId": "local-environment",
   "generatedAt": "2024-01-01T00:00:00Z",
-  "projectId": "your-unity-project-id",
+  "projectId": "local-project",
+  "unityServicesEnabled": false,
   "services": {
     "analytics": {
       "customEvents": [

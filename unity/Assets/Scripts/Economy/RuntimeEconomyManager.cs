@@ -13,7 +13,7 @@ namespace Evergreen.Economy
     public class RuntimeEconomyManager : MonoBehaviour
     {
         [Header("Economy Settings")]
-        [SerializeField] private bool enableUnityEconomy = true;
+        [SerializeField] private bool enableUnityEconomy = false; // Disabled - using local fallback
         [SerializeField] private bool enableLocalFallback = true;
         [SerializeField] private bool enableDebugLogs = true;
         
