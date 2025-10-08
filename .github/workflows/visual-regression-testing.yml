@@ -1,0 +1,340 @@
+name: Visual Regression Testing
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    - cron: '0 4 * * 1'  # Weekly on Monday at 4 AM UTC
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of visual test'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - desktop
+        - mobile
+        - tablet
+        - accessibility
+
+env:
+  NODE_VERSION: '22'
+  CHROME_VERSION: 'latest'
+  FIREFOX_VERSION: 'latest'
+  SAFARI_VERSION: 'latest'
+
+jobs:
+  visual-test-desktop:
+    name: Visual Test - Desktop
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'desktop' || github.event.inputs.test_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright
+      run: npx playwright install --with-deps
+
+    - name: Start application
+      run: |
+        npm start &
+        sleep 10
+        echo "Application started"
+
+    - name: Create visual test script
+      run: |
+        cat > visual-test.js << 'EOF'
+        const { test, expect } = require('@playwright/test');
+
+        test.describe('Visual Regression Tests', () => {
+          test('Homepage visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('homepage.png');
+          });
+
+          test('Economy page visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/currencies');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('economy-currencies.png');
+          });
+
+          test('Inventory page visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/inventory');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('economy-inventory.png');
+          });
+
+          test('Catalog page visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/catalog');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('economy-catalog.png');
+          });
+        });
+        EOF
+
+    - name: Run visual tests
+      run: npx playwright test visual-test.js --reporter=html
+
+    - name: Upload visual test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: visual-test-desktop-results
+        path: playwright-report
+        retention-days: 30
+
+  visual-test-mobile:
+    name: Visual Test - Mobile
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'mobile' || github.event.inputs.test_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright
+      run: npx playwright install --with-deps
+
+    - name: Start application
+      run: |
+        npm start &
+        sleep 10
+        echo "Application started"
+
+    - name: Create mobile visual test script
+      run: |
+        cat > mobile-visual-test.js << 'EOF'
+        const { test, expect } = require('@playwright/test');
+
+        test.describe('Mobile Visual Regression Tests', () => {
+          test.use({ viewport: { width: 375, height: 667 } });
+
+          test('Mobile homepage visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('mobile-homepage.png');
+          });
+
+          test('Mobile economy page visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/currencies');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('mobile-economy-currencies.png');
+          });
+        });
+        EOF
+
+    - name: Run mobile visual tests
+      run: npx playwright test mobile-visual-test.js --reporter=html
+
+    - name: Upload mobile visual test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: visual-test-mobile-results
+        path: playwright-report
+        retention-days: 30
+
+  visual-test-tablet:
+    name: Visual Test - Tablet
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'tablet' || github.event.inputs.test_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright
+      run: npx playwright install --with-deps
+
+    - name: Start application
+      run: |
+        npm start &
+        sleep 10
+        echo "Application started"
+
+    - name: Create tablet visual test script
+      run: |
+        cat > tablet-visual-test.js << 'EOF'
+        const { test, expect } = require('@playwright/test');
+
+        test.describe('Tablet Visual Regression Tests', () => {
+          test.use({ viewport: { width: 768, height: 1024 } });
+
+          test('Tablet homepage visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('tablet-homepage.png');
+          });
+
+          test('Tablet economy page visual test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/currencies');
+            await page.waitForLoadState('networkidle');
+            await expect(page).toHaveScreenshot('tablet-economy-currencies.png');
+          });
+        });
+        EOF
+
+    - name: Run tablet visual tests
+      run: npx playwright test tablet-visual-test.js --reporter=html
+
+    - name: Upload tablet visual test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: visual-test-tablet-results
+        path: playwright-report
+        retention-days: 30
+
+  accessibility-test:
+    name: Accessibility Test
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'accessibility' || github.event.inputs.test_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright and axe-core
+      run: |
+        npx playwright install --with-deps
+        npm install --save-dev @axe-core/playwright
+
+    - name: Start application
+      run: |
+        npm start &
+        sleep 10
+        echo "Application started"
+
+    - name: Create accessibility test script
+      run: |
+        cat > accessibility-test.js << 'EOF'
+        const { test, expect } = require('@playwright/test');
+        const AxeBuilder = require('@axe-core/playwright').default;
+
+        test.describe('Accessibility Tests', () => {
+          test('Homepage accessibility test', async ({ page }) => {
+            await page.goto('http://localhost:3000');
+            await page.waitForLoadState('networkidle');
+            
+            const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+            expect(accessibilityScanResults.violations).toEqual([]);
+          });
+
+          test('Economy page accessibility test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/currencies');
+            await page.waitForLoadState('networkidle');
+            
+            const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+            expect(accessibilityScanResults.violations).toEqual([]);
+          });
+
+          test('Inventory page accessibility test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/inventory');
+            await page.waitForLoadState('networkidle');
+            
+            const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+            expect(accessibilityScanResults.violations).toEqual([]);
+          });
+
+          test('Catalog page accessibility test', async ({ page }) => {
+            await page.goto('http://localhost:3000/api/economy/catalog');
+            await page.waitForLoadState('networkidle');
+            
+            const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+            expect(accessibilityScanResults.violations).toEqual([]);
+          });
+        });
+        EOF
+
+    - name: Run accessibility tests
+      run: npx playwright test accessibility-test.js --reporter=html
+
+    - name: Upload accessibility test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: accessibility-test-results
+        path: playwright-report
+        retention-days: 30
+
+  visual-comparison:
+    name: Visual Comparison
+    runs-on: ubuntu-latest
+    needs: [visual-test-desktop, visual-test-mobile, visual-test-tablet, accessibility-test]
+    if: always()
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download all visual test results
+      uses: actions/download-artifact@v4
+      with:
+        path: visual-test-results
+
+    - name: Generate visual regression report
+      run: |
+        echo "# Visual Regression Test Results" > visual-regression-report.md
+        echo "" >> visual-regression-report.md
+        echo "## Test Summary" >> visual-regression-report.md
+        echo "- Desktop Test: ${{ needs.visual-test-desktop.result }}" >> visual-regression-report.md
+        echo "- Mobile Test: ${{ needs.visual-test-mobile.result }}" >> visual-regression-report.md
+        echo "- Tablet Test: ${{ needs.visual-test-tablet.result }}" >> visual-regression-report.md
+        echo "- Accessibility Test: ${{ needs.accessibility-test.result }}" >> visual-regression-report.md
+        echo "" >> visual-regression-report.md
+        echo "## Screenshots" >> visual-regression-report.md
+        echo "Check the artifacts section for detailed screenshots and reports." >> visual-regression-report.md
+
+    - name: Upload visual regression report
+      uses: actions/upload-artifact@v4
+      with:
+        name: visual-regression-report
+        path: visual-regression-report.md
+        retention-days: 30
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('visual-regression-report.md', 'utf8');
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
