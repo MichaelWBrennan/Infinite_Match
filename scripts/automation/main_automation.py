@@ -15,6 +15,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import yaml
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utilities'))
+from file_validator import file_validator
 
 class Unity100PercentAutomation:
     def __init__(self):
@@ -98,9 +101,18 @@ fi
 
 # Deploy Remote Config
 echo "⚙️ Deploying Remote Config..."
-if [ -f "remote-config/game_config.json" ]; then
-    unity remote-config import remote-config/game_config.json --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID
-fi
+# Check remote config files using centralized validator
+python3 -c "
+import sys, os
+sys.path.append('scripts/utilities')
+from file_validator import file_validator
+remote_config = file_validator.validate_remote_config_files()
+if remote_config['game_config.json']:
+    print('Deploying remote-config/game_config.json...')
+    os.system('unity remote-config import remote-config/game_config.json --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID')
+else:
+    print('⚠️ remote-config/game_config.json not found')
+"
 
 # Deploy Cloud Code
 echo "☁️ Deploying Cloud Code..."
@@ -258,15 +270,24 @@ class UnityAPIAutomation:
         if not self.authenticate():
             return False
         
-        # Load economy data
-        with open('economy/currencies.csv', 'r') as f:
-            currencies = self.parse_csv(f)
+        # Load economy data using centralized validator
+        economy_files = file_validator.validate_economy_files()
         
-        with open('economy/inventory.csv', 'r') as f:
-            inventory = self.parse_csv(f)
+        currencies = []
+        inventory = []
+        catalog = []
         
-        with open('economy/catalog.csv', 'r') as f:
-            catalog = self.parse_csv(f)
+        if economy_files['currencies.csv']:
+            with open('economy/currencies.csv', 'r') as f:
+                currencies = self.parse_csv(f)
+        
+        if economy_files['inventory.csv']:
+            with open('economy/inventory.csv', 'r') as f:
+                inventory = self.parse_csv(f)
+        
+        if economy_files['catalog.csv']:
+            with open('economy/catalog.csv', 'r') as f:
+                catalog = self.parse_csv(f)
         
         # Create currencies
         for currency in currencies:
@@ -588,14 +609,18 @@ class UnityAIAutomation:
         """Run complete AI automation"""
         print("🤖 Starting Unity AI 100% Automation...")
         
-        # Analyze existing economy data
-        with open('economy/currencies.csv', 'r') as f:
-            currencies = f.read()
+        # Analyze existing economy data using centralized validator
+        economy_files = file_validator.validate_economy_files()
+        cloud_code_files = file_validator.validate_cloud_code_files()
         
-        analysis = self.analyze_economy_data(currencies)
-        if analysis:
-            print("📊 AI Economy Analysis:")
-            print(analysis)
+        if economy_files['currencies.csv']:
+            with open('economy/currencies.csv', 'r') as f:
+                currencies = f.read()
+            
+            analysis = self.analyze_economy_data(currencies)
+            if analysis:
+                print("📊 AI Economy Analysis:")
+                print(analysis)
         
         # Generate new economy items
         requirements = "Match-3 puzzle game with energy system, boosters, and currency packs"
@@ -604,14 +629,15 @@ class UnityAIAutomation:
             print("🆕 AI Generated Economy Items:")
             print(new_items)
         
-        # Optimize Cloud Code
-        with open('cloud-code/AddCurrency.js', 'r') as f:
-            code = f.read()
-        
-        optimized_code = self.optimize_cloud_code(code)
-        if optimized_code:
-            print("⚡ AI Optimized Cloud Code:")
-            print(optimized_code)
+        # Optimize Cloud Code using centralized validator
+        if cloud_code_files['AddCurrency.js']:
+            with open('cloud-code/AddCurrency.js', 'r') as f:
+                code = f.read()
+            
+            optimized_code = self.optimize_cloud_code(code)
+            if optimized_code:
+                print("⚡ AI Optimized Cloud Code:")
+                print(optimized_code)
         
         print("🎉 AI automation completed!")
         return True
@@ -906,8 +932,9 @@ namespace Evergreen.Editor
         {
             Debug.Log("⚙️ Running Remote Config 100% Automation...");
             
-            // Deploy Remote Config
-            if (File.Exists("remote-config/game_config.json"))
+            // Deploy Remote Config using centralized validator
+            var remoteConfigFiles = FileValidator.ValidateRemoteConfigFiles();
+            if (remoteConfigFiles["game_config.json"])
             {
                 Debug.Log("Deploying Remote Config...");
                 // Deploy via API

@@ -9,6 +9,9 @@ import time
 import os
 import random
 from datetime import datetime
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utilities'))
+from file_validator import file_validator
 
 class UnityAIWorkingAutomation:
     def __init__(self):
@@ -186,8 +189,11 @@ class UnityAIWorkingAutomation:
         """Run complete AI automation"""
         print("🚀 Starting Unity AI 100% Working Automation...")
         
-        # Analyze existing economy data
-        if os.path.exists('economy/currencies.csv'):
+        # Analyze existing economy data using centralized validator
+        economy_files = file_validator.validate_economy_files()
+        cloud_code_files = file_validator.validate_cloud_code_files()
+        
+        if economy_files['currencies.csv']:
             with open('economy/currencies.csv', 'r') as f:
                 currencies = f.read()
             
@@ -197,8 +203,8 @@ class UnityAIWorkingAutomation:
         requirements = "Match-3 puzzle game with energy system, boosters, and currency packs"
         new_items = self.generate_economy_items(requirements)
         
-        # Optimize Cloud Code
-        if os.path.exists('cloud-code/AddCurrency.js'):
+        # Optimize Cloud Code using centralized validator
+        if cloud_code_files['AddCurrency.js']:
             with open('cloud-code/AddCurrency.js', 'r') as f:
                 code = f.read()
             

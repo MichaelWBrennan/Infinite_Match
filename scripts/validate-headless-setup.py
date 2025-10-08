@@ -9,6 +9,8 @@ import sys
 import json
 import yaml
 from pathlib import Path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utilities'))
+from file_validator import file_validator
 
 def check_file_exists(file_path, description):
     """Check if a file exists and report status"""
@@ -29,18 +31,28 @@ def check_directory_exists(dir_path, description):
         return False
 
 def validate_unity_project():
-    """Validate Unity project structure"""
+    """Validate Unity project structure using centralized validator"""
     print("🔍 Validating Unity project structure...")
     
+    # Use centralized validator for Unity scripts
+    unity_scripts = file_validator.validate_unity_scripts()
+    
+    all_good = True
+    
+    # Check Unity scripts using centralized validator
+    for script_name, exists in unity_scripts.items():
+        if exists:
+            print(f"✅ {script_name}: Found")
+        else:
+            print(f"❌ {script_name}: Missing")
+            all_good = False
+    
+    # Check other Unity-specific files
     unity_root = Path("unity")
-    required_files = [
+    other_files = [
         (unity_root / "ProjectSettings" / "ProjectSettings.asset", "Unity Project Settings"),
         (unity_root / "Packages" / "manifest.json", "Unity Package Manifest"),
         (unity_root / "Assets" / "Scenes" / "Bootstrap.unity", "Bootstrap Scene"),
-        (unity_root / "Assets" / "Scripts" / "App" / "BootstrapHeadless.cs", "Headless Bootstrap Script"),
-        (unity_root / "Assets" / "Scripts" / "Core" / "GameManager.cs", "Game Manager Script"),
-        (unity_root / "Assets" / "Scripts" / "Editor" / "BuildScript.cs", "Build Script"),
-        (unity_root / "Assets" / "Scripts" / "Testing" / "HeadlessTests.cs", "Headless Tests"),
     ]
     
     required_dirs = [
@@ -52,9 +64,7 @@ def validate_unity_project():
         (unity_root / "Assets" / "Scripts" / "Testing", "Testing Scripts Directory"),
     ]
     
-    all_good = True
-    
-    for file_path, description in required_files:
+    for file_path, description in other_files:
         if not check_file_exists(file_path, description):
             all_good = False
     
@@ -65,16 +75,21 @@ def validate_unity_project():
     return all_good
 
 def validate_github_workflows():
-    """Validate GitHub Actions workflows"""
+    """Validate GitHub Actions workflows using centralized validator"""
     print("\n🔍 Validating GitHub Actions workflows...")
     
-    workflow_file = Path(".github/workflows/unity-build.yml")
-    if not check_file_exists(workflow_file, "Unity Build Workflow"):
+    # Use centralized validator for GitHub workflows
+    workflow_files = file_validator.validate_github_workflows()
+    
+    if not workflow_files['unity-build.yml']:
+        print("❌ Unity Build Workflow: Missing")
         return False
+    
+    print("✅ Unity Build Workflow: Found")
     
     # Check if workflow has required sections
     try:
-        with open(workflow_file, 'r') as f:
+        with open(".github/workflows/unity-build.yml", 'r') as f:
             content = f.read()
             
         required_sections = [
