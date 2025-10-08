@@ -4,7 +4,7 @@
  */
 
 import request from 'supertest';
-import app from 'server/index.js';
+import app from '../server/index.js';
 
 describe('Server', () => {
   describe('GET /health', () => {
