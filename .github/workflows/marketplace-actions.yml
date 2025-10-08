@@ -1,0 +1,373 @@
+name: Marketplace Actions
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly on Monday at 9 AM UTC
+  workflow_dispatch:
+    inputs:
+      action-type:
+        description: 'Type of marketplace action'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - code-quality
+        - security
+        - performance
+        - deployment
+        - monitoring
+
+env:
+  NODE_VERSION: '22'
+  UNITY_VERSION: '2022.3.20f1'
+
+jobs:
+  code-quality-actions:
+    name: Code Quality - Marketplace Actions
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action_type == 'all' || github.event.inputs.action_type == 'code-quality' || github.event.inputs.action_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run ESLint with marketplace action
+      uses: github/super-linter@v4
+      env:
+        DEFAULT_BRANCH: main
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VALIDATE_JAVASCRIPT_ES: true
+        VALIDATE_TYPESCRIPT_ES: true
+        VALIDATE_JSON: true
+        VALIDATE_YAML: true
+        VALIDATE_MARKDOWN: true
+
+    - name: Run Prettier with marketplace action
+      uses: creyD/prettier_action@v4
+      with:
+        prettier_options: --write **/*.{js,ts,json,md,yml,yaml}
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript, python
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+    - name: Run SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+    - name: Upload code quality results
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-quality-results
+        path: |
+          sonarcloud-report
+          codeql-results
+        retention-days: 30
+
+  security-actions:
+    name: Security - Marketplace Actions
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action_type == 'all' || github.event.inputs.action_type == 'security' || github.event.inputs.action_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run Snyk security scan
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+
+    - name: Run OWASP ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.7.0
+      with:
+        target: 'http://localhost:3000'
+        rules_file_name: '.zap/rules.tsv'
+        cmd_options: '-a'
+
+    - name: Run TruffleHog secret scanner
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results
+        path: |
+          trivy-results.sarif
+          snyk-results.json
+          zap-results.json
+          trufflehog-results.json
+        retention-days: 30
+
+  performance-actions:
+    name: Performance - Marketplace Actions
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action_type == 'all' || github.event.inputs.action_type == 'performance' || github.event.inputs.action_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Start application
+      run: |
+        npm start &
+        sleep 10
+        echo "Application started"
+
+    - name: Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v10
+      with:
+        configPath: '.lighthouserc.json'
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+
+    - name: Run WebPageTest
+      uses: treosh/webpagetest-action@v1
+      with:
+        apiKey: ${{ secrets.WEBPAGETEST_API_KEY }}
+        url: 'http://localhost:3000'
+        location: 'Dulles:Chrome'
+        runs: 3
+
+    - name: Run GTmetrix
+      uses: treosh/gtmetrix-action@v1
+      with:
+        apiKey: ${{ secrets.GTMETRIX_API_KEY }}
+        url: 'http://localhost:3000'
+        location: 'Vancouver, Canada'
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-results
+        path: |
+          lighthouse-results
+          webpagetest-results
+          gtmetrix-results
+        retention-days: 30
+
+  deployment-actions:
+    name: Deployment - Marketplace Actions
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action_type == 'all' || github.event.inputs.action_type == 'deployment' || github.event.inputs.action_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.ORG_ID }}
+        vercel-project-id: ${{ secrets.PROJECT_ID }}
+        vercel-args: '--prod'
+
+    - name: Deploy to Netlify
+      uses: nwtgck/actions-netlify@v2.0
+      with:
+        publish-dir: './build'
+        production-branch: main
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        deploy-message: "Deploy from GitHub Actions"
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+    - name: Deploy to AWS S3
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy to S3
+      uses: aws-actions/aws-s3-sync@master
+      with:
+        source: './build'
+        destination: 's3://your-bucket-name'
+        delete: true
+
+    - name: Upload deployment results
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-results
+        path: build
+        retention-days: 30
+
+  monitoring-actions:
+    name: Monitoring - Marketplace Actions
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action_type == 'all' || github.event.inputs.action_type == 'monitoring' || github.event.inputs.action_type == ''
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Start application
+      run: |
+        npm start &
+        sleep 10
+        echo "Application started"
+
+    - name: Run Uptime Robot monitoring
+      uses: uptimerobot/uptimerobot-action@v1
+      with:
+        api-key: ${{ secrets.UPTIMEROBOT_API_KEY }}
+        monitor-friendly-name: 'Evergreen Match-3 API'
+        monitor-url: 'http://localhost:3000/api/health'
+        monitor-type: 'http'
+        monitor-keyword: 'healthy'
+
+    - name: Run StatusCake monitoring
+      uses: statuscake/statuscake-action@v1
+      with:
+        api-key: ${{ secrets.STATUSCAKE_API_KEY }}
+        website-name: 'Evergreen Match-3'
+        website-url: 'http://localhost:3000'
+        check-rate: 300
+        contact-group: 'default'
+
+    - name: Run Pingdom monitoring
+      uses: pingdom/pingdom-action@v1
+      with:
+        api-key: ${{ secrets.PINGDOM_API_KEY }}
+        check-name: 'Evergreen Match-3 API'
+        check-url: 'http://localhost:3000/api/health'
+        check-type: 'http'
+
+    - name: Run New Relic monitoring
+      uses: newrelic/deploy-action@v1
+      with:
+        api-key: ${{ secrets.NEW_RELIC_API_KEY }}
+        application-id: ${{ secrets.NEW_RELIC_APP_ID }}
+        deployment-revision: ${{ github.sha }}
+        deployment-description: 'Deployment from GitHub Actions'
+
+    - name: Upload monitoring results
+      uses: actions/upload-artifact@v4
+      with:
+        name: monitoring-results
+        path: monitoring-reports
+        retention-days: 30
+
+  marketplace-summary:
+    name: Marketplace Actions Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality-actions, security-actions, performance-actions, deployment-actions, monitoring-actions]
+    if: always()
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Generate marketplace actions report
+      run: |
+        echo "# Marketplace Actions Report" > marketplace-actions-report.md
+        echo "" >> marketplace-actions-report.md
+        echo "## Action Status" >> marketplace-actions-report.md
+        echo "- Code Quality Actions: ${{ needs.code-quality-actions.result }}" >> marketplace-actions-report.md
+        echo "- Security Actions: ${{ needs.security-actions.result }}" >> marketplace-actions-report.md
+        echo "- Performance Actions: ${{ needs.performance-actions.result }}" >> marketplace-actions-report.md
+        echo "- Deployment Actions: ${{ needs.deployment-actions.result }}" >> marketplace-actions-report.md
+        echo "- Monitoring Actions: ${{ needs.monitoring-actions.result }}" >> marketplace-actions-report.md
+        echo "" >> marketplace-actions-report.md
+        echo "## Marketplace Actions Used" >> marketplace-actions-report.md
+        echo "- GitHub Super Linter" >> marketplace-actions-report.md
+        echo "- Prettier Action" >> marketplace-actions-report.md
+        echo "- CodeQL Analysis" >> marketplace-actions-report.md
+        echo "- SonarCloud Scan" >> marketplace-actions-report.md
+        echo "- Trivy Vulnerability Scanner" >> marketplace-actions-report.md
+        echo "- Snyk Security Scan" >> marketplace-actions-report.md
+        echo "- OWASP ZAP Baseline Scan" >> marketplace-actions-report.md
+        echo "- TruffleHog Secret Scanner" >> marketplace-actions-report.md
+        echo "- Lighthouse CI" >> marketplace-actions-report.md
+        echo "- WebPageTest" >> marketplace-actions-report.md
+        echo "- GTmetrix" >> marketplace-actions-report.md
+        echo "- Vercel Deploy" >> marketplace-actions-report.md
+        echo "- Netlify Deploy" >> marketplace-actions-report.md
+        echo "- AWS S3 Sync" >> marketplace-actions-report.md
+        echo "- Uptime Robot" >> marketplace-actions-report.md
+        echo "- StatusCake" >> marketplace-actions-report.md
+        echo "- Pingdom" >> marketplace-actions-report.md
+        echo "- New Relic" >> marketplace-actions-report.md
+
+    - name: Upload marketplace actions report
+      uses: actions/upload-artifact@v4
+      with:
+        name: marketplace-actions-report
+        path: marketplace-actions-report.md
+        retention-days: 30

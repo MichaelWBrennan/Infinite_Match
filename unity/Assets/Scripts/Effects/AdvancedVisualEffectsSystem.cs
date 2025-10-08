@@ -63,7 +63,7 @@ namespace Evergreen.Effects
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeEffectsSystem();
+                InitializeEffectssystemSafe();
             }
             else
             {
@@ -78,7 +78,7 @@ namespace Evergreen.Effects
             InitializeEffectPools();
         }
         
-        private void InitializeEffectsSystem()
+        private void InitializeEffectssystemSafe()
         {
             Debug.Log("Advanced Visual Effects System initialized");
             

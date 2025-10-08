@@ -46,15 +46,18 @@ export const AppConfig = {
 
   // Unity Services Configuration
   unity: {
-    projectId: process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574',
-    environmentId: process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d',
+    projectId:
+      process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574',
+    environmentId:
+      process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d',
     clientId: process.env.UNITY_CLIENT_ID || '',
     clientSecret: process.env.UNITY_CLIENT_SECRET || '',
   },
 
   // Database Configuration
   database: {
-    url: process.env.DATABASE_URL || 'mongodb://localhost:27017/evergreen-match3',
+    url:
+      process.env.DATABASE_URL || 'mongodb://localhost:27017/evergreen-match3',
     options: {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -67,7 +70,7 @@ export const AppConfig = {
     format: process.env.LOG_FORMAT || 'json',
     file: {
       enabled: process.env.LOG_FILE_ENABLED === 'true',
-      path: process.env.LOG_FILE_PATH || join(__dirname, '../../logs'),
+      path: process.env.LOG_FILE_PATH || join(__dirname, 'logs'),
       maxSize: process.env.LOG_MAX_SIZE || '20m',
       maxFiles: process.env.LOG_MAX_FILES || '14d',
     },
@@ -84,11 +87,11 @@ export const AppConfig = {
 
   // File Paths
   paths: {
-    root: join(__dirname, '../..'),
-    assets: join(__dirname, '../../assets'),
-    config: join(__dirname, '../../config'),
-    logs: join(__dirname, '../../logs'),
-    temp: join(__dirname, '../../temp'),
+    root: join(__dirname, '..'),
+    assets: join(__dirname, 'assets'),
+    config: join(__dirname, 'config'),
+    logs: join(__dirname, 'logs'),
+    temp: join(__dirname, 'temp'),
   },
 };
 

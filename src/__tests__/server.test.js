@@ -4,14 +4,12 @@
  */
 
 import request from 'supertest';
-import app from '../server/index.js';
+import app from 'server/index.js';
 
 describe('Server', () => {
   describe('GET /health', () => {
     it('should return health status', async () => {
-      const response = await request(app)
-        .get('/health')
-        .expect(200);
+      const response = await request(app).get('/health').expect(200);
 
       expect(response.body).toHaveProperty('status', 'healthy');
       expect(response.body).toHaveProperty('timestamp');
@@ -48,10 +46,7 @@ describe('Server', () => {
 
   describe('POST /api/segments', () => {
     it('should return 401 without authentication', async () => {
-      await request(app)
-        .post('/api/segments')
-        .send({})
-        .expect(401);
+      await request(app).post('/api/segments').send({}).expect(401);
     });
   });
 

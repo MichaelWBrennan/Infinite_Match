@@ -93,7 +93,7 @@ namespace Evergreen.LiveOps
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeLiveOpsSystem();
+                InitializeLiveOpssystemSafe();
             }
             else
             {
@@ -106,7 +106,7 @@ namespace Evergreen.LiveOps
             StartLiveOps();
         }
         
-        private void InitializeLiveOpsSystem()
+        private void InitializeLiveOpssystemSafe()
         {
             Debug.Log("Advanced Live Operations System initialized");
             

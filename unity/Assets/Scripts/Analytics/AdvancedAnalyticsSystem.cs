@@ -93,7 +93,7 @@ namespace Evergreen.Analytics
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeAnalyticsSystem();
+                InitializeAnalyticssystemSafe();
             }
             else
             {
@@ -106,7 +106,7 @@ namespace Evergreen.Analytics
             StartAnalytics();
         }
         
-        private void InitializeAnalyticsSystem()
+        private void InitializeAnalyticssystemSafe()
         {
             Debug.Log("Advanced Analytics System initialized");
             

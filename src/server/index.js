@@ -9,19 +9,19 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { v4 as uuidv4 } from 'uuid';
 
 // Core modules
-import { AppConfig } from '../core/config/index.js';
-import { Logger } from '../core/logger/index.js';
-import security from '../core/security/index.js';
+import { AppConfig } from 'core/config/index.js';
+import { Logger } from 'core/logger/index.js';
+import security from 'core/security/index.js';
 
 // Services
-import UnityService from '../services/unity/index.js';
-import EconomyService from '../services/economy/index.js';
+import UnityService from 'services/unity/index.js';
+import EconomyService from 'services/economy/index.js';
 
 // Routes
-import authRoutes from '../routes/auth.js';
-import economyRoutes from '../routes/economy.js';
-import gameRoutes from '../routes/game.js';
-import adminRoutes from '../routes/admin.js';
+import authRoutes from 'routes/auth.js';
+import economyRoutes from 'routes/economy.js';
+import gameRoutes from 'routes/game.js';
+import adminRoutes from 'routes/admin.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -86,7 +86,7 @@ app.use('/api/admin', adminRoutes);
 app.post('/api/verify_receipt', security.authRateLimit, async (req, res) => {
   try {
     const { sku, receipt } = req.body;
-    
+
     if (!sku || !receipt) {
       return res.status(400).json({
         valid: false,
@@ -97,7 +97,7 @@ app.post('/api/verify_receipt', security.authRateLimit, async (req, res) => {
 
     // TODO: Implement actual receipt verification with Apple/Google
     const isValid = String(receipt).length > 20;
-    
+
     res.json({
       valid: isValid,
       sku,
@@ -119,11 +119,11 @@ app.post('/api/segments', security.sessionValidation, async (req, res) => {
   try {
     const profile = req.body;
     const playerId = req.user.playerId;
-    
+
     // Check cache first
     const cacheKey = `segments_${JSON.stringify(profile)}`;
     const cached = economyService.getCachedData(cacheKey);
-    
+
     if (cached) {
       return res.json({
         ...cached.data,
@@ -134,21 +134,24 @@ app.post('/api/segments', security.sessionValidation, async (req, res) => {
 
     // Generate segments based on profile
     const overrides = {};
-    
+
     if (profile.payer === 'nonpayer' && profile.skill === 'newbie') {
       overrides.best_value_sku = 'starter_pack_small';
     }
-    
+
     if (profile.region === 'IN') {
       overrides.most_popular_sku = 'gems_medium';
     }
-    
+
     if (profile.level && profile.level < 10) {
       overrides.tutorial_offers = true;
     }
-    
-    if (profile.last_play && 
-        Date.now() - new Date(profile.last_play).getTime() > 7 * 24 * 60 * 60 * 1000) {
+
+    if (
+      profile.last_play &&
+      Date.now() - new Date(profile.last_play).getTime() >
+        7 * 24 * 60 * 60 * 1000
+    ) {
       overrides.comeback_offers = true;
     }
 
@@ -160,7 +163,7 @@ app.post('/api/segments', security.sessionValidation, async (req, res) => {
 
     // Cache the result
     economyService.setCachedData(cacheKey, result);
-    
+
     res.json(result);
   } catch (error) {
     logger.error('Segments generation failed', { error: error.message });
@@ -175,7 +178,7 @@ app.post('/api/segments', security.sessionValidation, async (req, res) => {
 app.post('/api/promo', security.strictRateLimit, async (req, res) => {
   try {
     const { code, playerId } = req.body;
-    
+
     if (!code || !playerId) {
       return res.status(400).json({
         ok: false,
@@ -186,7 +189,7 @@ app.post('/api/promo', security.strictRateLimit, async (req, res) => {
 
     const validCodes = ['WELCOME', 'FREE100', 'STARTER', 'COMEBACK'];
     const isValid = validCodes.includes(String(code).toUpperCase());
-    
+
     if (isValid) {
       const rewards = {
         WELCOME: { coins: 1000, gems: 50 },
@@ -194,13 +197,13 @@ app.post('/api/promo', security.strictRateLimit, async (req, res) => {
         STARTER: { coins: 500, gems: 25 },
         COMEBACK: { coins: 2000, gems: 100 },
       };
-      
+
       security.logSecurityEvent('promo_code_used', {
         playerId,
         code: String(code).toUpperCase(),
         ip: req.ip,
       });
-      
+
       res.json({
         ok: true,
         code: String(code).toUpperCase(),
@@ -213,7 +216,7 @@ app.post('/api/promo', security.strictRateLimit, async (req, res) => {
         code: String(code).toUpperCase(),
         ip: req.ip,
       });
-      
+
       res.status(404).json({
         ok: false,
         error: 'Invalid promo code',
@@ -232,12 +235,12 @@ app.post('/api/promo', security.strictRateLimit, async (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  logger.error('Unhandled error', { 
-    error: err.message, 
+  logger.error('Unhandled error', {
+    error: err.message,
     stack: err.stack,
     requestId: req.requestId,
   });
-  
+
   res.status(500).json({
     error: 'Internal server error',
     requestId: req.requestId,
@@ -258,10 +261,12 @@ const startServer = async () => {
   try {
     // Initialize Unity service
     await unityService.authenticate();
-    
+
     // Start server
     app.listen(AppConfig.server.port, AppConfig.server.host, () => {
-      logger.info(`Server started on ${AppConfig.server.host}:${AppConfig.server.port}`);
+      logger.info(
+        `Server started on ${AppConfig.server.host}:${AppConfig.server.port}`
+      );
       logger.info(`Environment: ${AppConfig.server.environment}`);
       logger.info('Security features enabled:');
       logger.info('  - Rate limiting & DDoS protection');

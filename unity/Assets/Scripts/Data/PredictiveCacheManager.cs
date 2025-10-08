@@ -117,7 +117,7 @@ namespace Evergreen.Data
 
         void Start()
         {
-            StartCoroutine(InitializePredictionSystem());
+            StartCoroutine(InitializePredictionsystemSafe());
             if (enablePredictiveLoading)
             {
                 _preloadCoroutine = StartCoroutine(PredictivePreloading());
@@ -411,7 +411,7 @@ namespace Evergreen.Data
         #endregion
 
         #region Predictive Loading
-        private IEnumerator InitializePredictionSystem()
+        private IEnumerator InitializePredictionsystemSafe()
         {
             yield return new WaitForSeconds(1f); // Wait for game to initialize
             

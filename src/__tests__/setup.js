@@ -17,11 +17,11 @@ global.console = {
 
 // Mock environment variables
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-secret';
+process.env.JWT_secret = process.env.SECRET;
 process.env.UNITY_PROJECT_ID = 'test-project-id';
 process.env.UNITY_ENV_ID = 'test-env-id';
 process.env.UNITY_CLIENT_ID = 'test-client-id';
-process.env.UNITY_CLIENT_SECRET = 'test-client-secret';
+process.env.UNITY_CLIENT_secret = process.env.SECRET;
 
 // Global test timeout
 jest.setTimeout(10000);

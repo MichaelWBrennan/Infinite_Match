@@ -270,7 +270,7 @@ namespace Evergreen.AI
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeAISystem();
+                InitializeAIsystemSafe();
             }
             else
             {
@@ -286,10 +286,10 @@ namespace Evergreen.AI
             SetupContentRecommendation();
             SetupOfferOptimization();
             SetupDifficultyAdjustment();
-            StartCoroutine(UpdateAISystem());
+            StartCoroutine(UpdateAIsystemSafe());
         }
         
-        private void InitializeAISystem()
+        private void InitializeAIsystemSafe()
         {
             // Initialize AI models
             InitializeAIModels();
@@ -555,7 +555,7 @@ namespace Evergreen.AI
             StartCoroutine(AdjustDifficulty());
         }
         
-        private IEnumerator UpdateAISystem()
+        private IEnumerator UpdateAIsystemSafe()
         {
             while (true)
             {

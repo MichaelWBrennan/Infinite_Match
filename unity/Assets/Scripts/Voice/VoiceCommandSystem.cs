@@ -382,7 +382,7 @@ namespace Evergreen.Voice
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeVoiceCommandSystem();
+                InitializeVoiceCommandsystemSafe();
             }
             else
             {
@@ -402,10 +402,10 @@ namespace Evergreen.Voice
             SetupVoiceSynthesizer();
             SetupVoiceTranslator();
             SetupVoiceContextManager();
-            StartCoroutine(UpdateVoiceCommandSystem());
+            StartCoroutine(UpdateVoiceCommandsystemSafe());
         }
         
-        private void InitializeVoiceCommandSystem()
+        private void InitializeVoiceCommandsystemSafe()
         {
             // Initialize voice command system components
             InitializeVoiceCommands();
@@ -765,7 +765,7 @@ namespace Evergreen.Voice
             _voiceContextManager.isEnabled = true;
         }
         
-        private IEnumerator UpdateVoiceCommandSystem()
+        private IEnumerator UpdateVoiceCommandsystemSafe()
         {
             while (true)
             {

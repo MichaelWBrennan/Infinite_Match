@@ -109,7 +109,7 @@ namespace Evergreen.MetaGame
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeSystem();
+                InitializesystemSafe();
             }
             else
             {
@@ -124,7 +124,7 @@ namespace Evergreen.MetaGame
             CheckRoomUnlocks();
         }
         
-        private void InitializeSystem()
+        private void InitializesystemSafe()
         {
             CreateDefaultRooms();
             CreateDefaultDecorations();

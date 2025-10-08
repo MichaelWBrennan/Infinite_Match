@@ -490,7 +490,7 @@ namespace Evergreen.Physics
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializePhysicsSystem();
+                InitializePhysicssystemSafe();
             }
             else
             {
@@ -508,10 +508,10 @@ namespace Evergreen.Physics
             SetupPhysicsForceField();
             SetupPhysicsEffectManager();
             SetupPhysicsInteractionManager();
-            StartCoroutine(UpdatePhysicsSystem());
+            StartCoroutine(UpdatePhysicssystemSafe());
         }
         
-        private void InitializePhysicsSystem()
+        private void InitializePhysicssystemSafe()
         {
             // Initialize physics system components
             InitializePhysicsEngine();
@@ -707,7 +707,7 @@ namespace Evergreen.Physics
             _physicsInteractionManager.isEnabled = true;
         }
         
-        private IEnumerator UpdatePhysicsSystem()
+        private IEnumerator UpdatePhysicssystemSafe()
         {
             while (true)
             {

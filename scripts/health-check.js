@@ -4,9 +4,9 @@
  * Monitors system health and reports status
  */
 
-import { Logger } from '../src/core/logger/index.js';
-import EconomyService from '../src/services/economy/index.js';
-import UnityService from '../src/services/unity/index.js';
+import { Logger } from 'src/core/logger/index.js';
+import EconomyService from 'src/services/economy/index.js';
+import UnityService from 'src/services/unity/index.js';
 
 const logger = new Logger('HealthCheck');
 
@@ -52,7 +52,7 @@ class HealthChecker {
     try {
       const memoryUsage = process.memoryUsage();
       const uptime = process.uptime();
-      
+
       return {
         status: 'healthy',
         memory: {
@@ -73,15 +73,17 @@ class HealthChecker {
 
   async runHealthCheck() {
     logger.info('Starting health check...');
-    
+
     const checks = {
       economy: await this.checkEconomyService(),
       unity: await this.checkUnityService(),
       system: await this.checkSystemResources(),
     };
 
-    const overallStatus = Object.values(checks).every(check => check.status === 'healthy') 
-      ? 'healthy' 
+    const overallStatus = Object.values(checks).every(
+      (check) => check.status === 'healthy'
+    )
+      ? 'healthy'
       : 'unhealthy';
 
     const healthReport = {
@@ -91,7 +93,7 @@ class HealthChecker {
     };
 
     logger.info('Health check completed', { status: overallStatus });
-    
+
     if (overallStatus === 'unhealthy') {
       logger.warn('System health issues detected', { checks });
       process.exit(1);
@@ -104,7 +106,7 @@ class HealthChecker {
 
 // Run health check
 const checker = new HealthChecker();
-checker.runHealthCheck().catch(error => {
+checker.runHealthCheck().catch((error) => {
   logger.error('Health check failed', { error: error.message });
   process.exit(1);
 });

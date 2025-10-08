@@ -323,7 +323,7 @@ namespace Evergreen.Platform
                 this.compressionRatio = 1f;
             }
 
-            public UltraPlatformSystem GetSystem()
+            public UltraPlatformSystem GetsystemSafe()
             {
                 if (availableSystems.Count > 0)
                 {
@@ -336,7 +336,7 @@ namespace Evergreen.Platform
 
                 if (currentSystems < maxSystems)
                 {
-                    var system = CreateNewSystem();
+                    var system = CreateNewsystemSafe();
                     if (system != null)
                     {
                         activeSystems.Add(system);
@@ -349,7 +349,7 @@ namespace Evergreen.Platform
                 return null;
             }
 
-            public void ReturnSystem(UltraPlatformSystem system)
+            public void ReturnsystemSafe(UltraPlatformSystem system)
             {
                 if (system != null && activeSystems.Contains(system))
                 {
@@ -361,9 +361,9 @@ namespace Evergreen.Platform
                 }
             }
 
-            private UltraPlatformSystem CreateNewSystem()
+            private UltraPlatformSystem CreateNewsystemSafe()
             {
-                return new UltraPlatformSystem();
+                return new UltraPlatformsystemSafe();
             }
         }
 
@@ -1224,20 +1224,20 @@ namespace Evergreen.Platform
             }
         }
 
-        public UltraPlatformSystem RentUltraSystem(string poolName)
+        public UltraPlatformSystem RentUltrasystemSafe(string poolName)
         {
             if (_ultraSystemPools.TryGetValue(poolName, out var pool))
             {
-                return pool.GetSystem();
+                return pool.GetsystemSafe();
             }
             return null;
         }
 
-        public void ReturnUltraSystem(string poolName, UltraPlatformSystem system)
+        public void ReturnUltrasystemSafe(string poolName, UltraPlatformSystem system)
         {
             if (_ultraSystemPools.TryGetValue(poolName, out var pool))
             {
-                pool.ReturnSystem(system);
+                pool.ReturnsystemSafe(system);
             }
         }
 

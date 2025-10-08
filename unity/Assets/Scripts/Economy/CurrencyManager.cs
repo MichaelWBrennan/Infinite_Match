@@ -93,7 +93,7 @@ namespace Evergreen.Economy
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeCurrencySystem();
+                InitializeCurrencysystemSafe();
             }
             else
             {
@@ -106,10 +106,10 @@ namespace Evergreen.Economy
             LoadCurrencyData();
             SetupDefaultCurrencies();
             SetupExchangeRates();
-            StartCoroutine(UpdateCurrencySystem());
+            StartCoroutine(UpdateCurrencysystemSafe());
         }
         
-        private void InitializeCurrencySystem()
+        private void InitializeCurrencysystemSafe()
         {
             Debug.Log("Currency Manager initialized");
         }
@@ -448,7 +448,7 @@ namespace Evergreen.Economy
             history.lastUpdated = DateTime.Now;
         }
         
-        private System.Collections.IEnumerator UpdateCurrencySystem()
+        private System.Collections.IEnumerator UpdateCurrencysystemSafe()
         {
             while (true)
             {

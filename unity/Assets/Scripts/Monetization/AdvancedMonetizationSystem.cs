@@ -382,7 +382,7 @@ namespace Evergreen.Monetization
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeMonetizationSystem();
+                InitializeMonetizationsystemSafe();
             }
             else
             {
@@ -392,16 +392,16 @@ namespace Evergreen.Monetization
         
         void Start()
         {
-            SetupCurrencySystem();
-            SetupOfferSystem();
+            SetupCurrencysystemSafe();
+            SetupOffersystemSafe();
             SetupPlayerSegmentation();
             SetupABTesting();
             SetupPricingStrategies();
             SetupRevenueOptimization();
-            StartCoroutine(UpdateMonetizationSystem());
+            StartCoroutine(UpdateMonetizationsystemSafe());
         }
         
-        private void InitializeMonetizationSystem()
+        private void InitializeMonetizationsystemSafe()
         {
             // Initialize currencies
             InitializeCurrencies();
@@ -632,7 +632,7 @@ namespace Evergreen.Monetization
             };
         }
         
-        private void SetupCurrencySystem()
+        private void SetupCurrencysystemSafe()
         {
             // Setup currency exchange rates
             if (enableCurrencyConversion)
@@ -659,7 +659,7 @@ namespace Evergreen.Monetization
             // This would integrate with your currency system
         }
         
-        private void SetupOfferSystem()
+        private void SetupOffersystemSafe()
         {
             // Setup offer targeting and personalization
             if (enablePersonalizedOffers)
@@ -715,11 +715,11 @@ namespace Evergreen.Monetization
             // Setup player segmentation for targeted offers
             if (enablePlayerSegmentation)
             {
-                SetupPlayerSegmentationSystem();
+                SetupPlayerSegmentationsystemSafe();
             }
         }
         
-        private void SetupPlayerSegmentationSystem()
+        private void SetupPlayerSegmentationsystemSafe()
         {
             // Setup player segmentation system
             // This would integrate with your analytics system
@@ -730,11 +730,11 @@ namespace Evergreen.Monetization
             // Setup A/B testing system
             if (enableA_BTesting)
             {
-                SetupABTestingSystem();
+                SetupABTestingsystemSafe();
             }
         }
         
-        private void SetupABTestingSystem()
+        private void SetupABTestingsystemSafe()
         {
             // Setup A/B testing system
             // This would integrate with your analytics system
@@ -814,7 +814,7 @@ namespace Evergreen.Monetization
             // This would integrate with your ARPU system
         }
         
-        private IEnumerator UpdateMonetizationSystem()
+        private IEnumerator UpdateMonetizationsystemSafe()
         {
             while (true)
             {

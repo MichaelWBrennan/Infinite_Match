@@ -194,49 +194,49 @@ namespace Evergreen.Effects
             // Create match effect
             if (matchEffect == null)
             {
-                matchEffect = CreateParticleSystem("MatchEffect", new Vector3(0, 0, 0));
+                matchEffect = CreateParticlesystemSafe("MatchEffect", new Vector3(0, 0, 0));
                 SetupMatchEffect();
             }
             
             // Create combo effect
             if (comboEffect == null)
             {
-                comboEffect = CreateParticleSystem("ComboEffect", new Vector3(0, 0, 0));
+                comboEffect = CreateParticlesystemSafe("ComboEffect", new Vector3(0, 0, 0));
                 SetupComboEffect();
             }
             
             // Create level complete effect
             if (levelCompleteEffect == null)
             {
-                levelCompleteEffect = CreateParticleSystem("LevelCompleteEffect", new Vector3(0, 0, 0));
+                levelCompleteEffect = CreateParticlesystemSafe("LevelCompleteEffect", new Vector3(0, 0, 0));
                 SetupLevelCompleteEffect();
             }
             
             // Create coin collect effect
             if (coinCollectEffect == null)
             {
-                coinCollectEffect = CreateParticleSystem("CoinCollectEffect", new Vector3(0, 0, 0));
+                coinCollectEffect = CreateParticlesystemSafe("CoinCollectEffect", new Vector3(0, 0, 0));
                 SetupCoinCollectEffect();
             }
             
             // Create gem collect effect
             if (gemCollectEffect == null)
             {
-                gemCollectEffect = CreateParticleSystem("GemCollectEffect", new Vector3(0, 0, 0));
+                gemCollectEffect = CreateParticlesystemSafe("GemCollectEffect", new Vector3(0, 0, 0));
                 SetupGemCollectEffect();
             }
             
             // Create special piece effect
             if (specialPieceEffect == null)
             {
-                specialPieceEffect = CreateParticleSystem("SpecialPieceEffect", new Vector3(0, 0, 0));
+                specialPieceEffect = CreateParticlesystemSafe("SpecialPieceEffect", new Vector3(0, 0, 0));
                 SetupSpecialPieceEffect();
             }
             
             // Create screen transition effect
             if (screenTransitionEffect == null)
             {
-                screenTransitionEffect = CreateParticleSystem("ScreenTransitionEffect", new Vector3(0, 0, 0));
+                screenTransitionEffect = CreateParticlesystemSafe("ScreenTransitionEffect", new Vector3(0, 0, 0));
                 SetupScreenTransitionEffect();
             }
             
@@ -250,7 +250,7 @@ namespace Evergreen.Effects
             _particleSystems["ScreenTransitionEffect"] = screenTransitionEffect;
         }
         
-        private ParticleSystem CreateParticleSystem(string name, Vector3 position)
+        private ParticleSystem CreateParticlesystemSafe(string name, Vector3 position)
         {
             GameObject particleObj = new GameObject(name);
             particleObj.transform.SetParent(transform);

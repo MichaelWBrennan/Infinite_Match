@@ -152,7 +152,7 @@ namespace Evergreen.Economy
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeShopSystem();
+                InitializeShopsystemSafe();
             }
             else
             {
@@ -165,10 +165,10 @@ namespace Evergreen.Economy
             LoadShopData();
             SetupDefaultItems();
             SetupDefaultCategories();
-            StartCoroutine(UpdateShopSystem());
+            StartCoroutine(UpdateShopsystemSafe());
         }
         
-        private void InitializeShopSystem()
+        private void InitializeShopsystemSafe()
         {
             Debug.Log("Shop System initialized");
         }
@@ -808,7 +808,7 @@ namespace Evergreen.Economy
             OnLimitedTimeOfferStarted?.Invoke(offer);
         }
         
-        private System.Collections.IEnumerator UpdateShopSystem()
+        private System.Collections.IEnumerator UpdateShopsystemSafe()
         {
             while (true)
             {

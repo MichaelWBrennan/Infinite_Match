@@ -4,9 +4,9 @@
  * Deploys economy data to Unity Services
  */
 
-import { Logger } from '../src/core/logger/index.js';
-import EconomyService from '../src/services/economy/index.js';
-import UnityService from '../src/services/unity/index.js';
+import { Logger } from 'src/core/logger/index.js';
+import EconomyService from 'src/services/economy/index.js';
+import UnityService from 'src/services/unity/index.js';
 
 const logger = new Logger('EconomyDeploy');
 
@@ -19,7 +19,7 @@ class EconomyDeployer {
   async deploy() {
     try {
       logger.info('Starting economy deployment...');
-      
+
       // Load economy data
       const economyData = await this.economyService.loadEconomyData();
       logger.info('Economy data loaded', {
@@ -30,7 +30,7 @@ class EconomyDeployer {
 
       // Deploy to Unity Services
       const result = await this.unityService.deployEconomyData(economyData);
-      
+
       logger.info('Economy deployment completed', {
         currenciesDeployed: result.currencies.length,
         inventoryDeployed: result.inventory.length,
@@ -39,7 +39,9 @@ class EconomyDeployer {
       });
 
       if (result.errors.length > 0) {
-        logger.warn('Deployment completed with errors', { errors: result.errors });
+        logger.warn('Deployment completed with errors', {
+          errors: result.errors,
+        });
       }
 
       return result;
@@ -52,12 +54,13 @@ class EconomyDeployer {
 
 // Run deployment
 const deployer = new EconomyDeployer();
-deployer.deploy()
+deployer
+  .deploy()
   .then(() => {
     logger.info('Economy deployment script completed successfully');
     process.exit(0);
   })
-  .catch(error => {
+  .catch((error) => {
     logger.error('Economy deployment script failed', { error: error.message });
     process.exit(1);
   });

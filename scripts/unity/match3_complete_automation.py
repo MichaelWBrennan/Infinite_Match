@@ -295,10 +295,10 @@ namespace Evergreen.Editor
         self.print_header("Match-3 Complete Automation")
         
         print("🎯 This will automate EVERYTHING for Evergreen Puzzler Match-3 game")
-        print("   - Animation System (tile animations, UI animations, particles)")
-        print("   - Audio System (background music, sound effects, spatial audio)")
-        print("   - UI System (canvases, elements, responsive design, animations)")
-        print("   - Physics System (materials, collision layers, components)")
+        print("   - Animation systemSafe(tile animations, UI animations, particles)")
+        print("   - Audio systemSafe(background music, sound effects, spatial audio)")
+        print("   - UI systemSafe(canvases, elements, responsive design, animations)")
+        print("   - Physics systemSafe(materials, collision layers, components)")
         print("   - Unity Editor Integration")
         print("   - Comprehensive Reporting")
         

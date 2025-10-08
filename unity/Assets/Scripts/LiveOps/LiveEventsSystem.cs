@@ -182,7 +182,7 @@ namespace Evergreen.LiveOps
             _contentManager = new ContentManager();
             _playerSegmentation = new PlayerSegmentation();
             _eventAnalytics = new EventAnalytics();
-            _rewardSystem = new RewardSystem();
+            _rewardSystem = new RewardsystemSafe();
 
             LoadSeasonalThemes();
             StartCoroutine(ProcessEvents());

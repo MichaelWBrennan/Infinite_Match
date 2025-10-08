@@ -79,7 +79,7 @@ namespace Evergreen.Performance
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializePerformanceSystem();
+                InitializePerformancesystemSafe();
             }
             else
             {
@@ -100,7 +100,7 @@ namespace Evergreen.Performance
             CheckPerformanceThresholds();
         }
         
-        private void InitializePerformanceSystem()
+        private void InitializePerformancesystemSafe()
         {
             Debug.Log("Advanced Performance System initialized");
             

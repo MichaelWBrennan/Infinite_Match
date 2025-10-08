@@ -289,26 +289,26 @@ namespace Evergreen.Network
             // Initialize compression system
             if (enableCompression)
             {
-                InitializeCompressionSystem();
+                InitializeCompressionsystemSafe();
             }
 
             // Initialize batching system
             if (enableBatching)
             {
-                InitializeBatchingSystem();
+                InitializeBatchingsystemSafe();
             }
 
             // Initialize prediction system
             if (enablePrediction)
             {
-                InitializePredictionSystem();
+                InitializePredictionsystemSafe();
             }
 
             Logger.Info("Network Optimizer initialized with 100% optimization coverage", "NetworkOptimizer");
         }
 
         #region Compression System
-        private void InitializeCompressionSystem()
+        private void InitializeCompressionsystemSafe()
         {
             // Initialize compressors
             CreateCompressor("GZip", CompressionType.GZip, 6);
@@ -504,7 +504,7 @@ namespace Evergreen.Network
         #endregion
 
         #region Batching System
-        private void InitializeBatchingSystem()
+        private void InitializeBatchingsystemSafe()
         {
             // Initialize batch queues
             CreateBatchQueue("Data", 100, 0.1f);
@@ -682,7 +682,7 @@ namespace Evergreen.Network
         #endregion
 
         #region Prediction System
-        private void InitializePredictionSystem()
+        private void InitializePredictionsystemSafe()
         {
             // Initialize prediction buffers
             CreatePredictionBuffer("PlayerMovement", 10, 0.2f);

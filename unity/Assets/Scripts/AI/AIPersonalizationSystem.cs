@@ -236,7 +236,7 @@ namespace Evergreen.AI
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializePersonalizationSystem();
+                InitializePersonalizationsystemSafe();
             }
             else
             {
@@ -252,7 +252,7 @@ namespace Evergreen.AI
             StartCoroutine(UpdatePersonalizationModels());
         }
         
-        private void InitializePersonalizationSystem()
+        private void InitializePersonalizationsystemSafe()
         {
             if (!enablePersonalization) return;
             

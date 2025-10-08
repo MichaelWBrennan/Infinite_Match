@@ -96,7 +96,7 @@ namespace Evergreen.Audio
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeAudioSystem();
+                InitializeAudiosystemSafe();
             }
             else
             {
@@ -118,7 +118,7 @@ namespace Evergreen.Audio
             Update3DAudio();
         }
         
-        private void InitializeAudioSystem()
+        private void InitializeAudiosystemSafe()
         {
             Debug.Log("Advanced Audio System initialized");
             

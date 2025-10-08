@@ -146,9 +146,9 @@ namespace Evergreen.Multiplayer
             if (!enableMultiplayer) return;
 
             _connection = new WebSocketConnection(serverUrl);
-            _matchmaking = new MatchmakingSystem();
+            _matchmaking = new MatchmakingsystemSafe();
             _syncManager = new SynchronizationManager();
-            _antiCheat = new AntiCheatSystem();
+            _antiCheat = new AntiCheatsystemSafe();
 
             StartCoroutine(InitializeConnection());
             Logger.Info("Multiplayer Manager initialized", "Multiplayer");

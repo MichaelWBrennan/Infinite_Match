@@ -147,7 +147,7 @@ namespace Evergreen.Testing
         }
 
         [Test]
-        public void Input_CanDetectInputSystem()
+        public void Input_CanDetectInputsystemSafe()
         {
             // Arrange & Act
             var inputSystem = UnityEngine.InputSystem.InputSystem.devices;

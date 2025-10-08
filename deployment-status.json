@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-10-08T12:58:32.802Z",
+  "project": "Evergreen Match-3 Unity Game",
+  "version": "1.0.0",
+  "environments": {
+    "staging": {
+      "healthy": true,
+      "uptime": "99.69",
+      "responseTime": 188,
+      "lastDeploy": "2025-10-07T14:39:46.148Z"
+    },
+    "production": {
+      "healthy": true,
+      "uptime": "99.82",
+      "responseTime": 123,
+      "lastDeploy": "2025-10-07T17:33:47.297Z"
+    }
+  },
+  "overallHealth": "healthy",
+  "recommendations": [
+    "System is running smoothly",
+    "No immediate action required",
+    "Continue monitoring for any issues"
+  ]
+}

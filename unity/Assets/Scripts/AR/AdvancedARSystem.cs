@@ -339,7 +339,7 @@ namespace Evergreen.AR
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeARSystem();
+                InitializeARsystemSafe();
             }
             else
             {
@@ -353,10 +353,10 @@ namespace Evergreen.AR
             SetupARFeatures();
             SetupARGameplay();
             SetupARQuality();
-            StartCoroutine(UpdateARSystem());
+            StartCoroutine(UpdateARsystemSafe());
         }
         
-        private void InitializeARSystem()
+        private void InitializeARsystemSafe()
         {
             // Initialize AR system components
             InitializeARComponents();
@@ -882,7 +882,7 @@ namespace Evergreen.AR
             }
         }
         
-        private IEnumerator UpdateARSystem()
+        private IEnumerator UpdateARsystemSafe()
         {
             while (true)
             {

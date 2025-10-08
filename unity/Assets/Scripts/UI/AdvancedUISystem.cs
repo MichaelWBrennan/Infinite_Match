@@ -81,7 +81,7 @@ namespace Evergreen.UI
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeUISystem();
+                InitializeUIsystemSafe();
             }
             else
             {
@@ -93,7 +93,7 @@ namespace Evergreen.UI
         {
             SetupResponsiveDesign();
             InitializeScreens();
-            SetupButtonSystem();
+            SetupButtonsystemSafe();
             StartCoroutine(ProcessNotificationQueue());
         }
         
@@ -103,7 +103,7 @@ namespace Evergreen.UI
             UpdateButtonStates();
         }
         
-        private void InitializeUISystem()
+        private void InitializeUIsystemSafe()
         {
             Debug.Log("Advanced UI System initialized");
             
@@ -174,7 +174,7 @@ namespace Evergreen.UI
             }
         }
         
-        private void SetupButtonSystem()
+        private void SetupButtonsystemSafe()
         {
             var buttons = FindObjectsOfType<Button>();
             foreach (var button in buttons)

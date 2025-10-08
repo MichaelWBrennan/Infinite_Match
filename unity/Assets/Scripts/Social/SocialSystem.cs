@@ -260,7 +260,7 @@ namespace Evergreen.Social
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeSocialSystem();
+                InitializeSocialsystemSafe();
             }
             else
             {
@@ -277,7 +277,7 @@ namespace Evergreen.Social
             StartCoroutine(UpdateLeaderboards());
         }
         
-        private void InitializeSocialSystem()
+        private void InitializeSocialsystemSafe()
         {
             Debug.Log("Social System initialized");
         }

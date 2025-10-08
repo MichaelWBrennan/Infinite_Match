@@ -14,8 +14,8 @@ import { body, validationResult } from 'express-validator';
 import hpp from 'hpp';
 import xss from 'xss';
 import mongoSanitize from 'express-mongo-sanitize';
-import { AppConfig } from '../config/index.js';
-import { securityLogger } from '../logger/index.js';
+import { AppConfig } from 'config/index.js';
+import { securityLogger } from 'logger/index.js';
 
 // In-memory stores for security tracking
 const loginAttempts = new Map();
@@ -54,7 +54,7 @@ export const helmetConfig = helmet({
 export const corsConfig = cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    
+
     if (AppConfig.server.cors.origin.includes(origin)) {
       callback(null, true);
     } else {
@@ -144,7 +144,10 @@ export const securityHeaders = (req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader(
+    'Permissions-Policy',
+    'geolocation=(), microphone=(), camera=()'
+  );
   next();
 };
 
@@ -154,10 +157,10 @@ export const securityHeaders = (req, res, next) => {
 export const requestLogger = (req, res, next) => {
   const start = Date.now();
   const requestId = crypto.randomUUID();
-  
+
   req.requestId = requestId;
   req.startTime = start;
-  
+
   securityLogger.info('Request started', {
     requestId,
     method: req.method,
@@ -165,7 +168,7 @@ export const requestLogger = (req, res, next) => {
     ip: req.ip,
     userAgent: req.get('User-Agent'),
   });
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     securityLogger.info('Request completed', {
@@ -177,7 +180,7 @@ export const requestLogger = (req, res, next) => {
       ip: req.ip,
     });
   });
-  
+
   next();
 };
 
@@ -186,11 +189,11 @@ export const requestLogger = (req, res, next) => {
  */
 export const ipReputationCheck = (req, res, next) => {
   const clientIP = req.ip;
-  
+
   if (suspiciousIPs.has(clientIP)) {
     const suspiciousData = suspiciousIPs.get(clientIP);
     const timeSinceLastSuspicious = Date.now() - suspiciousData.lastSeen;
-    
+
     if (timeSinceLastSuspicious < 24 * 60 * 60 * 1000) {
       securityLogger.warn(`Blocked request from suspicious IP: ${clientIP}`);
       return res.status(403).json({
@@ -201,7 +204,7 @@ export const ipReputationCheck = (req, res, next) => {
       suspiciousIPs.delete(clientIP);
     }
   }
-  
+
   next();
 };
 
@@ -210,28 +213,30 @@ export const ipReputationCheck = (req, res, next) => {
  */
 export const sessionValidation = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (!token) {
     return res.status(401).json({
       error: 'No authentication token provided',
       requestId: req.requestId,
     });
   }
-  
+
   try {
     const decoded = jwt.verify(token, AppConfig.security.jwt.secret);
-    
+
     if (!activeSessions.has(decoded.sessionId)) {
       return res.status(401).json({
         error: 'Session expired or invalid',
         requestId: req.requestId,
       });
     }
-    
+
     req.user = decoded;
     next();
   } catch (error) {
-    securityLogger.warn(`Invalid token from IP: ${req.ip}`, { error: error.message });
+    securityLogger.warn(`Invalid token from IP: ${req.ip}`, {
+      error: error.message,
+    });
     return res.status(401).json({
       error: 'Invalid authentication token',
       requestId: req.requestId,
@@ -271,7 +276,7 @@ export const createSession = (userId, sessionData = {}) => {
     lastActivity: Date.now(),
     ...sessionData,
   };
-  
+
   activeSessions.set(sessionId, session);
   return sessionId;
 };
@@ -279,7 +284,7 @@ export const createSession = (userId, sessionData = {}) => {
 export const validateSession = (sessionId) => {
   const session = activeSessions.get(sessionId);
   if (!session) return false;
-  
+
   session.lastActivity = Date.now();
   return session;
 };
@@ -299,10 +304,10 @@ export const logSecurityEvent = (eventType, details) => {
     details,
     timestamp: Date.now(),
   };
-  
+
   securityEvents.set(eventId, event);
   securityLogger.info('Security event', event);
-  
+
   return eventId;
 };
 
@@ -312,7 +317,7 @@ export const markIPSuspicious = (ip, reason) => {
     lastSeen: Date.now(),
     count: (suspiciousIPs.get(ip)?.count || 0) + 1,
   });
-  
+
   logSecurityEvent('suspicious_ip', { ip, reason });
 };
 
@@ -323,11 +328,11 @@ const sanitizeObject = (obj) => {
   if (typeof obj === 'string') {
     return xss(obj);
   }
-  
+
   if (Array.isArray(obj)) {
     return obj.map(sanitizeObject);
   }
-  
+
   if (obj && typeof obj === 'object') {
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
@@ -335,7 +340,7 @@ const sanitizeObject = (obj) => {
     }
     return sanitized;
   }
-  
+
   return obj;
 };
 
@@ -345,21 +350,21 @@ const sanitizeObject = (obj) => {
 export const cleanupOldData = () => {
   const now = Date.now();
   const oneDay = 24 * 60 * 60 * 1000;
-  
+
   // Clean up old security events
   for (const [eventId, event] of securityEvents.entries()) {
     if (now - event.timestamp > oneDay) {
       securityEvents.delete(eventId);
     }
   }
-  
+
   // Clean up old suspicious IPs
   for (const [ip, data] of suspiciousIPs.entries()) {
     if (now - data.lastSeen > oneDay) {
       suspiciousIPs.delete(ip);
     }
   }
-  
+
   // Clean up inactive sessions
   for (const [sessionId, session] of activeSessions.entries()) {
     if (now - session.lastActivity > 24 * 60 * 60 * 1000) {

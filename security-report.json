@@ -1,0 +1,1122 @@
+{
+  "criticalIssues": 51,
+  "highIssues": 17,
+  "lowIssues": 0,
+  "mediumIssues": 10,
+  "summary": {
+    "recommendations": [
+      "Address critical vulnerabilities immediately",
+      "Review and fix high-severity issues",
+      "Plan to address medium-severity issues",
+      "Implement regular security scanning",
+      "Keep dependencies updated",
+      "Use secure coding practices"
+    ],
+    "riskScore": 100,
+    "scanDuration": "0s",
+    "totalFiles": 71
+  },
+  "timestamp": "2025-10-08T13:17:36.535Z",
+  "totalScans": 0,
+  "vulnerabilities": [
+    {
+      "description": "Command injection vulnerability",
+      "file": "scripts/automation/main_automation.py",
+      "fixable": true,
+      "line": 112,
+      "matches": [
+        "system("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "scripts/automation.js",
+      "fixable": true,
+      "line": 7,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Insecure random number generation",
+      "file": "scripts/deployment-dashboard.js",
+      "fixable": true,
+      "line": 63,
+      "matches": [
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random("
+      ],
+      "severity": "medium",
+      "type": "insecureRandom"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "scripts/economy-deploy.js",
+      "fixable": true,
+      "line": 7,
+      "matches": [
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Weak cryptographic algorithm",
+      "file": "scripts/error-recovery.js",
+      "fixable": true,
+      "line": 126,
+      "matches": [
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des("
+      ],
+      "severity": "medium",
+      "type": "weakCrypto"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "scripts/error-recovery.js",
+      "fixable": true,
+      "line": 447,
+      "matches": [
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "scripts/health-check.js",
+      "fixable": true,
+      "line": 7,
+      "matches": [
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Insecure random number generation",
+      "file": "scripts/health-monitor.js",
+      "fixable": true,
+      "line": 118,
+      "matches": [
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random("
+      ],
+      "severity": "medium",
+      "type": "insecureRandom"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "scripts/health-monitor.js",
+      "fixable": true,
+      "line": 285,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "scripts/notification-system.js",
+      "fixable": true,
+      "line": 521,
+      "matches": [
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Insecure random number generation",
+      "file": "scripts/performance-monitor.js",
+      "fixable": true,
+      "line": 90,
+      "matches": [
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random(",
+        "Math.random("
+      ],
+      "severity": "medium",
+      "type": "insecureRandom"
+    },
+    {
+      "description": "Insecure random number generation",
+      "file": "scripts/security-scanner.js",
+      "fixable": true,
+      "line": 448,
+      "matches": [
+        "Math.random("
+      ],
+      "severity": "medium",
+      "type": "insecureRandom"
+    },
+    {
+      "description": "Weak cryptographic algorithm",
+      "file": "scripts/security-scanner.js",
+      "fixable": true,
+      "line": 548,
+      "matches": [
+        "des(",
+        "des("
+      ],
+      "severity": "medium",
+      "type": "weakCrypto"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "scripts/unity/match3_complete_automation.py",
+      "fixable": true,
+      "line": 298,
+      "matches": [
+        "System (",
+        "System (",
+        "System (",
+        "System ("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "scripts/unity-deploy.js",
+      "fixable": true,
+      "line": 7,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Weak cryptographic algorithm",
+      "file": "scripts/utilities/dashboard_form_filler.py",
+      "fixable": true,
+      "line": 39,
+      "matches": [
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des(",
+        "des("
+      ],
+      "severity": "medium",
+      "type": "weakCrypto"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/__tests__/server.test.js",
+      "fixable": true,
+      "line": 7,
+      "matches": [
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Hardcoded secrets detected",
+      "file": "src/__tests__/setup.js",
+      "fixable": true,
+      "line": 20,
+      "matches": [
+        "SECRET = 'test-secret'",
+        "SECRET = 'test-client-secret'"
+      ],
+      "severity": "critical",
+      "type": "hardcodedSecrets"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/core/config/index.js",
+      "fixable": true,
+      "line": 70,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/core/logger/index.js",
+      "fixable": true,
+      "line": 8,
+      "matches": [
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Weak cryptographic algorithm",
+      "file": "src/core/security/index.js",
+      "fixable": true,
+      "line": 58,
+      "matches": [
+        "des("
+      ],
+      "severity": "medium",
+      "type": "weakCrypto"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/core/security/index.js",
+      "fixable": true,
+      "line": 17,
+      "matches": [
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/routes/admin.js",
+      "fixable": true,
+      "line": 7,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/routes/auth.js",
+      "fixable": true,
+      "line": 8,
+      "matches": [
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/routes/economy.js",
+      "fixable": true,
+      "line": 8,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/routes/game.js",
+      "fixable": true,
+      "line": 8,
+      "matches": [
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Weak cryptographic algorithm",
+      "file": "src/server/index.js",
+      "fixable": true,
+      "line": 188,
+      "matches": [
+        "des("
+      ],
+      "severity": "medium",
+      "type": "weakCrypto"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/server/index.js",
+      "fixable": true,
+      "line": 12,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/services/economy/index.js",
+      "fixable": true,
+      "line": 6,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "src/services/unity/index.js",
+      "fixable": true,
+      "line": 6,
+      "matches": [
+        "../",
+        "../",
+        "../",
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Weak cryptographic algorithm",
+      "file": "unity/Assets/Scripts/AI/AIOptimizer.cs",
+      "fixable": true,
+      "line": 627,
+      "matches": [
+        "des(",
+        "des(",
+        "des("
+      ],
+      "severity": "medium",
+      "type": "weakCrypto"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/AI/AIPersonalizationSystem.cs",
+      "fixable": true,
+      "line": 239,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/AI/AdvancedAISystem.cs",
+      "fixable": true,
+      "line": 273,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/AR/AdvancedARSystem.cs",
+      "fixable": true,
+      "line": 342,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Accessibility/AdvancedAccessibilitySystem.cs",
+      "fixable": true,
+      "line": 301,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Analytics/AdvancedAnalyticsSystem.cs",
+      "fixable": true,
+      "line": 96,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Audio/AdvancedAudioSystem.cs",
+      "fixable": true,
+      "line": 99,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Blockchain/BlockchainSystem.cs",
+      "fixable": true,
+      "line": 469,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Character/CharacterSystem.cs",
+      "fixable": true,
+      "line": 92,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Cloud/AdvancedCloudSystem.cs",
+      "fixable": true,
+      "line": 104,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/CloudGaming/CloudGamingSystem.cs",
+      "fixable": true,
+      "line": 397,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/CloudSave/AdvancedCloudSaveSystem.cs",
+      "fixable": true,
+      "line": 149,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Hardcoded secrets detected",
+      "file": "unity/Assets/Scripts/CloudSave/CloudSaveManager.cs",
+      "fixable": true,
+      "line": 156,
+      "matches": [
+        "apiKey = \"your-api-key\""
+      ],
+      "severity": "critical",
+      "type": "hardcodedSecrets"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Data/PredictiveCacheManager.cs",
+      "fixable": true,
+      "line": 120,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Economy/CurrencyManager.cs",
+      "fixable": true,
+      "line": 96,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Economy/EconomyExample.cs",
+      "fixable": true,
+      "line": 59,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Economy/RewardSystem.cs",
+      "fixable": true,
+      "line": 192,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Economy/ShopSystem.cs",
+      "fixable": true,
+      "line": 155,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Effects/AdvancedVisualEffectsSystem.cs",
+      "fixable": true,
+      "line": 66,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Effects/CinematicEffectsManager.cs",
+      "fixable": true,
+      "line": 197,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Game/EnergySystem.cs",
+      "fixable": true,
+      "line": 45,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Game/GameIntegration.cs",
+      "fixable": true,
+      "line": 75,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "unity/Assets/Scripts/Game/RemoteConfigService.cs",
+      "fixable": true,
+      "line": 10,
+      "matches": [
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Graphics/GraphicsOptimizer.cs",
+      "fixable": true,
+      "line": 120,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Graphics/NextGenGraphics.cs",
+      "fixable": true,
+      "line": 85,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/LiveOps/AdvancedLiveOpsSystem.cs",
+      "fixable": true,
+      "line": 96,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Path traversal vulnerability",
+      "file": "unity/Assets/Scripts/LiveOps/EventRotation.cs",
+      "fixable": true,
+      "line": 9,
+      "matches": [
+        "../"
+      ],
+      "severity": "high",
+      "type": "pathTraversal"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/LiveOps/LiveEventsSystem.cs",
+      "fixable": true,
+      "line": 185,
+      "matches": [
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Marketing/AdvancedMarketingSystem.cs",
+      "fixable": true,
+      "line": 119,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/MetaGame/CastleRenovationSystem.cs",
+      "fixable": true,
+      "line": 112,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Mobile/MobileOptimizationManager.cs",
+      "fixable": true,
+      "line": 140,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Monetization/AdvancedMonetizationSystem.cs",
+      "fixable": true,
+      "line": 385,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Monetization/DynamicOfferSystem.cs",
+      "fixable": true,
+      "line": 166,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Multiplayer/MultiplayerManager.cs",
+      "fixable": true,
+      "line": 149,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Network/NetworkOptimizer.cs",
+      "fixable": true,
+      "line": 292,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Performance/AdvancedPerformanceSystem.cs",
+      "fixable": true,
+      "line": 82,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Performance/MasterOptimizationController.cs",
+      "fixable": true,
+      "line": 161,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Physics/AdvancedPhysicsSystem.cs",
+      "fixable": true,
+      "line": 493,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Platform/UltraPlatformOptimizer.cs",
+      "fixable": true,
+      "line": 326,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Security/AdvancedSecuritySystem.cs",
+      "fixable": true,
+      "line": 103,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Social/AdvancedSocialSystem.cs",
+      "fixable": true,
+      "line": 128,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Social/SocialSystem.cs",
+      "fixable": true,
+      "line": 263,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Testing/GameLogicTests.cs",
+      "fixable": true,
+      "line": 181,
+      "matches": [
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Testing/HeadlessTests.cs",
+      "fixable": true,
+      "line": 150,
+      "matches": [
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Testing/MockDataProvider.cs",
+      "fixable": true,
+      "line": 22,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/UI/AdvancedUISystem.cs",
+      "fixable": true,
+      "line": 84,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Voice/VoiceCommandSystem.cs",
+      "fixable": true,
+      "line": 385,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    },
+    {
+      "description": "Command injection vulnerability",
+      "file": "unity/Assets/Scripts/Weather/AdvancedWeatherSystem.cs",
+      "fixable": true,
+      "line": 421,
+      "matches": [
+        "System(",
+        "System(",
+        "System(",
+        "System("
+      ],
+      "severity": "critical",
+      "type": "commandInjection"
+    }
+  ],
+  "vulnerabilitiesFixed": 0,
+  "vulnerabilitiesFound": 78
+}

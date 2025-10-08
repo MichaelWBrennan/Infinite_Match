@@ -116,7 +116,7 @@ namespace Evergreen.Marketing
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeMarketingSystem();
+                InitializeMarketingsystemSafe();
             }
             else
             {
@@ -126,10 +126,10 @@ namespace Evergreen.Marketing
         
         void Start()
         {
-            StartMarketingSystem();
+            StartMarketingsystemSafe();
         }
         
-        private void InitializeMarketingSystem()
+        private void InitializeMarketingsystemSafe()
         {
             Debug.Log("Advanced Marketing System initialized");
             
@@ -473,7 +473,7 @@ namespace Evergreen.Marketing
             };
         }
         
-        private void StartMarketingSystem()
+        private void StartMarketingsystemSafe()
         {
             if (!enableMarketing) return;
             
