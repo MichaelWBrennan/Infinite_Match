@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-10-08T12:58:33.181Z",
+  "overall": "healthy",
+  "checks": {
+    "Server Health": {
+      "healthy": true,
+      "message": "Server responding normally",
+      "responseTime": 99,
+      "uptime": "99.79"
+    },
+    "Database Connection": {
+      "healthy": true,
+      "message": "Database connection active",
+      "connections": 9,
+      "queryTime": 45
+    },
+    "Economy System": {
+      "healthy": true,
+      "message": "Economy system operational",
+      "filesChecked": 3,
+      "missingFiles": 0
+    },
+    "Unity Services": {
+      "healthy": true,
+      "message": "Unity project structure intact",
+      "directoriesChecked": 3,
+      "missingDirectories": 0
+    },
+    "API Endpoints": {
+      "healthy": true,
+      "message": "All API endpoints responding",
+      "endpointsChecked": 10,
+      "failedEndpoints": 0
+    },
+    "File System": {
+      "healthy": true,
+      "message": "File system healthy",
+      "freeSpace": "2.5GB",
+      "usedSpace": "7.5GB",
+      "totalSpace": "10GB"
+    },
+    "Memory Usage": {
+      "healthy": true,
+      "message": "Memory usage normal",
+      "usage": "76.6%",
+      "available": "23.4%"
+    },
+    "Disk Space": {
+      "healthy": true,
+      "message": "Disk health good",
+      "readSpeed": 113,
+      "writeSpeed": 202
+    }
+  },
+  "alerts": [],
+  "actions": []
+}

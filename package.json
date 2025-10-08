@@ -17,7 +17,11 @@
     "economy:deploy": "node scripts/economy-deploy.js",
     "unity:deploy": "node scripts/unity-deploy.js",
     "automation": "node scripts/automation.js",
-    "deploy:all": "npm run health && npm run economy:deploy && npm run unity:deploy && npm run automation"
+    "dashboard": "node scripts/deployment-dashboard.js",
+    "monitor": "node scripts/health-monitor.js",
+    "status": "node scripts/status-check.js",
+    "deploy:all": "npm run health && npm run economy:deploy && npm run unity:deploy && npm run automation",
+    "full-status": "npm run status && npm run dashboard && npm run monitor"
   },
   "keywords": [
     "unity",
