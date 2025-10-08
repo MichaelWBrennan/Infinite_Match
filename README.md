@@ -1,123 +1,174 @@
-# Evergreen Match-3 (Unity)
+# Evergreen Match-3 Unity Game
 
-This repository now targets Unity for all platforms. Godot content has been removed.
+A comprehensive Match-3 puzzle game built with Unity, featuring automated deployment, CI/CD, and industry-standard architecture.
 
-## Quick start
-- Unity 2022.3 LTS recommended.
-- Open the `unity` folder as the project in Unity Hub.
-- Press Play; the Bootstrap scene will show the Main Menu UI.
-- Levels are JSON under `unity/Assets/StreamingAssets/levels/`.
+## 🚀 Quick Start
 
-## CI/CD
-- Android and iOS export workflows use `game-ci/unity-builder`.
-- Automated builds and deployments to Google Play and TestFlight.
-- Fastlane integration for store metadata and screenshots.
-- Provide UNITY_LICENSE and Android/iOS signing secrets in GitHub.
+### Prerequisites
 
-## Deployment
+- Node.js 18+ 
+- Unity 2022.3+
+- Python 3.8+
+- Git
 
-### GitHub Secrets Required
+### Installation
 
-Add the following secrets to your GitHub repository settings:
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd evergreen-match3-unity
+   ```
 
-#### Unity License
-- `UNITY_LICENSE` - Your Unity license (base64 encoded)
-- `UNITY_EMAIL` - Your Unity account email
-- `UNITY_PASSWORD` - Your Unity account password
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-#### Android Signing
-- `ANDROID_KEYSTORE_BASE64` - Your Android keystore file (base64 encoded)
-- `ANDROID_KEYSTORE_PASS` - Your keystore password
-- `ANDROID_KEYALIAS_NAME` - Your key alias name
-- `ANDROID_KEYALIAS_PASS` - Your key alias password
+3. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-#### Google Play Console
-- `GOOGLE_PLAY_JSON` - Your Google Play Console service account JSON key
+4. **Start the server**
+   ```bash
+   npm run dev
+   ```
 
-#### iOS Signing
-- `APPLE_TEAM_ID` - Your Apple Developer Team ID
-- `APP_STORE_CONNECT_API_KEY` - Your App Store Connect API key (base64 encoded)
-- `APP_STORE_CONNECT_ISSUER_ID` - Your App Store Connect issuer ID
-- `APP_STORE_CONNECT_KEY_ID` - Your App Store Connect key ID
+## 📁 Project Structure
 
-#### Optional
-- `SLACK_WEBHOOK_URL` - Slack webhook URL for deployment notifications
-
-### Workflow Triggers
-
-The CI/CD pipeline is triggered by:
-- **Push to `main` branch** - Automatic build and deployment
-- **Pull Request to `main`** - Build only (no deployment)
-- **Manual trigger** - Use the "Actions" tab to run manually with custom options
-
-### Build Artifacts
-
-- **Android**: AAB files uploaded to Google Play Internal track
-- **iOS**: IPA files uploaded to TestFlight
-- **Metadata**: Automatically uploaded from `fastlane/metadata/` directory
-- **Screenshots**: Automatically uploaded from `fastlane/screenshots/` directory
-- **Changelog**: Generated from latest commit message
-
-### Fastlane Integration
-
-The project includes Fastlane configuration for automated store uploads:
-
-- **Android**: Uploads to Google Play Console with metadata and screenshots
-- **iOS**: Uploads to TestFlight with metadata and screenshots
-- **Metadata**: Store descriptions, titles, and changelogs
-- **Screenshots**: App store screenshots for different device sizes
-
-### Manual Fastlane Commands
-
-You can run Fastlane commands locally:
-
-```bash
-# Deploy Android to Google Play
-fastlane android deploy track:internal
-
-# Deploy iOS to TestFlight
-fastlane ios deploy
-
-# Upload metadata only
-fastlane upload_metadata_all
-
-# Upload screenshots only
-fastlane upload_screenshots_all
-
-# Deploy to both platforms
-fastlane deploy_all
+```
+├── src/                          # Source code
+│   ├── core/                     # Core modules
+│   │   ├── config/              # Configuration management
+│   │   ├── logger/              # Logging system
+│   │   └── security/            # Security utilities
+│   ├── services/                # Business logic services
+│   │   ├── unity/               # Unity Services integration
+│   │   └── economy/             # Economy data management
+│   ├── routes/                  # API routes
+│   │   ├── auth.js              # Authentication routes
+│   │   ├── economy.js           # Economy routes
+│   │   ├── game.js              # Game routes
+│   │   └── admin.js             # Admin routes
+│   └── server/                  # Server application
+├── scripts/                     # Utility scripts
+│   ├── health-check.js          # System health monitoring
+│   ├── economy-deploy.js        # Economy deployment
+│   └── unity-deploy.js          # Unity Services deployment
+├── config/                      # Configuration files
+│   ├── economy/                 # Economy data (CSV)
+│   └── remote/                  # Remote configuration
+├── unity/                       # Unity project
+└── docs/                        # Documentation
 ```
 
-### Customization
+## 🛠️ Development
 
-The workflow is modular and can be easily extended:
+### Available Scripts
 
-- **Tracks**: Add new deployment tracks (alpha, beta, production)
-- **Platforms**: Add new platforms or modify existing ones
-- **Metadata**: Update store descriptions in `fastlane/metadata/`
-- **Screenshots**: Add screenshots to `fastlane/screenshots/`
-- **Notifications**: Add Slack, Discord, or email notifications
+- `npm start` - Start production server
+- `npm run dev` - Start development server with hot reload
+- `npm test` - Run tests
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run health` - Run health check
+- `npm run economy:deploy` - Deploy economy data
+- `npm run unity:deploy` - Deploy Unity Services
 
-## Features
-- Match-3 engine (C#) with LevelManager reading JSON configs.
-- Ads/IAP managers (UnityAdsManager, IAPManager stubs) under `unity/Assets/Scripts`.
+### API Endpoints
 
-## Project Structure
+#### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/profile` - Get user profile
 
-The project has been refactored for better organization and maintainability:
+#### Economy
+- `GET /api/economy/data` - Get economy data
+- `GET /api/economy/report` - Get economy report
+- `POST /api/economy/deploy` - Deploy economy data
 
-- **`/scripts/`** - Organized automation and utility scripts
-- **`/docs/`** - Comprehensive documentation with guides, reports, and features
-- **`/config/`** - Consolidated configuration files
-- **`/unity/`** - Unity project with optimized structure
-- **`/server/`** - Backend server with Node.js
+#### Game
+- `POST /api/game/submit_data` - Submit game data
+- `GET /api/game/progress` - Get player progress
+- `GET /api/game/leaderboard` - Get leaderboard
 
-See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed structure overview.
+#### Admin
+- `GET /api/admin/health` - System health
+- `GET /api/admin/economy/stats` - Economy statistics
+- `POST /api/admin/unity/deploy` - Deploy to Unity
 
-## Documentation
+## 🔧 Configuration
 
-- **Architecture**: See `/docs/architecture.md` for system overview
-- **Setup Guides**: See `/docs/setup/` for installation instructions
-- **Features**: See `/docs/features/` for feature documentation
-- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
-- **Coding Standards**: See [CODING_STANDARDS.md](CODING_STANDARDS.md) for code guidelines
+### Environment Variables
+
+See `.env.example` for all available configuration options.
+
+### Unity Services
+
+1. Create a Unity project
+2. Enable Unity Services (Economy, Cloud Code, Remote Config)
+3. Get your Project ID and Environment ID
+4. Create OAuth credentials
+5. Update `.env` with your credentials
+
+## 🚀 Deployment
+
+### Automated Deployment
+
+The project includes automated deployment scripts:
+
+```bash
+# Deploy economy data
+npm run economy:deploy
+
+# Deploy all Unity Services
+npm run unity:deploy
+
+# Check system health
+npm run health
+```
+
+### CI/CD
+
+GitHub Actions workflows are configured for:
+- Automated testing
+- Code quality checks
+- Unity Services deployment
+- Health monitoring
+
+## 🔒 Security
+
+- Rate limiting and DDoS protection
+- Input sanitization and validation
+- JWT-based authentication
+- Session management
+- Security logging and monitoring
+- CORS configuration
+
+## 📊 Monitoring
+
+- Health check endpoints
+- Comprehensive logging
+- Performance monitoring
+- Security event tracking
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For support and questions:
+- Check the documentation in `/docs`
+- Open an issue on GitHub
+- Contact the development team
