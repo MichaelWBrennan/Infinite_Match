@@ -1,41 +1,41 @@
 {
-  "game_settings": {
-    "max_level": 100,
-    "energy_refill_time": 300,
-    "daily_reward_coins": 100,
-    "daily_reward_gems": 5,
-    "max_energy": 30,
-    "energy_refill_cost_gems": 5
+  "analytics_events": {
+    "booster_used": true,
+    "currency_awarded": true,
+    "economy_balance_change": true,
+    "economy_inventory_change": true,
+    "economy_purchase": true,
+    "level_completed": true,
+    "pack_opened": true,
+    "streak_achieved": true
   },
   "economy_settings": {
     "coin_multiplier": 1.0,
+    "daily_bonus_multiplier": 1.2,
     "gem_multiplier": 1.0,
     "sale_discount": 0.5,
-    "daily_bonus_multiplier": 1.2,
     "streak_bonus_multiplier": 1.5
   },
   "feature_flags": {
-    "new_levels_enabled": true,
-    "daily_challenges_enabled": true,
-    "social_features_enabled": false,
     "ads_enabled": true,
+    "daily_challenges_enabled": true,
+    "economy_enabled": true,
     "iap_enabled": true,
-    "economy_enabled": true
+    "new_levels_enabled": true,
+    "social_features_enabled": false
+  },
+  "game_settings": {
+    "daily_reward_coins": 100,
+    "daily_reward_gems": 5,
+    "energy_refill_cost_gems": 5,
+    "energy_refill_time": 300,
+    "max_energy": 30,
+    "max_level": 100
   },
   "ui_settings": {
     "show_currency_balance": true,
-    "show_energy_timer": true,
     "show_daily_rewards": true,
+    "show_energy_timer": true,
     "show_shop_notifications": true
-  },
-  "analytics_events": {
-    "economy_purchase": true,
-    "economy_balance_change": true,
-    "economy_inventory_change": true,
-    "level_completed": true,
-    "streak_achieved": true,
-    "currency_awarded": true,
-    "booster_used": true,
-    "pack_opened": true
   }
 }

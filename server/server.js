@@ -724,13 +724,13 @@ setInterval(
 const port = process.env.PORT || 3030;
 app.listen(port, () => {
   console.log(`🚀 Enhanced Secure Backend listening on port ${port}`);
-  console.log(`🔒 Security features enabled:`);
-  console.log(`   - Anti-cheat validation`);
-  console.log(`   - Rate limiting & DDoS protection`);
-  console.log(`   - Input sanitization & validation`);
-  console.log(`   - Session management`);
-  console.log(`   - Security logging`);
-  console.log(`   - IP reputation tracking`);
+  console.log('🔒 Security features enabled:');
+  console.log('   - Anti-cheat validation');
+  console.log('   - Rate limiting & DDoS protection');
+  console.log('   - Input sanitization & validation');
+  console.log('   - Session management');
+  console.log('   - Security logging');
+  console.log('   - IP reputation tracking');
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Memory usage: ${JSON.stringify(process.memoryUsage())}`);
 });

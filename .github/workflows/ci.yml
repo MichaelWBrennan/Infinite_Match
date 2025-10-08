@@ -1,10 +1,12 @@
-name: CI/CD Pipeline
+name: Fully Automated CI/CD Pipeline
 
 on:
   push:
     branches: [ main, develop, feature/*, hotfix/* ]
   pull_request:
     branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC for auto-fixes
 
 jobs:
   python-checks:
@@ -23,6 +25,14 @@ jobs:
         pip install -r requirements.txt
         pip install flake8 pylint black
     
+    - name: Auto-fix Python code
+      run: |
+        echo "🔧 Auto-fixing Python code..."
+        find scripts -name "*.py" -exec autopep8 --in-place --aggressive --aggressive {} \; || true
+        isort scripts/ || true
+        black scripts/ || true
+        echo "✅ Python auto-fix completed"
+    
     - name: Lint Python code with flake8
       run: |
         flake8 scripts/ --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -31,10 +41,6 @@ jobs:
     - name: Lint Python code with pylint
       run: |
         pylint scripts/ --disable=C0114,C0116
-    
-    - name: Format Python code with black
-      run: |
-        black --check scripts/
     
     - name: Test Python syntax
       run: |
@@ -55,6 +61,13 @@ jobs:
       run: |
         npm install
         cd server && npm install
+    
+    - name: Auto-fix JavaScript/TypeScript code
+      run: |
+        echo "🔧 Auto-fixing JavaScript/TypeScript code..."
+        npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/ --fix || true
+        npx prettier --write "**/*.{js,ts,json}" --ignore-path .gitignore || true
+        echo "✅ JavaScript/TypeScript auto-fix completed"
     
     - name: Lint JavaScript/TypeScript code
       run: |

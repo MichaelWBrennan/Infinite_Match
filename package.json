@@ -1,31 +1,6 @@
 {
-  "name": "evergreen-match3-unity",
-  "version": "1.0.0",
+  "author": "Your Team",
   "description": "Evergreen Match-3 Unity Game with comprehensive automation and CI/CD",
-  "private": true,
-  "type": "module",
-  "workspaces": [
-    "server",
-    "scripts"
-  ],
-  "scripts": {
-    "install:all": "npm install && cd server && npm install",
-    "dev": "cd server && npm run dev",
-    "start": "cd server && npm start",
-    "test": "cd server && npm test",
-    "test:all": "npm test && cd server && npm test",
-    "lint": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/",
-    "lint:fix": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/ --fix",
-    "format": "npx prettier --write \"**/*.{js,ts,json}\" --ignore-path .gitignore",
-    "format:check": "npx prettier --check \"**/*.{js,ts,json}\" --ignore-path .gitignore",
-    "check:all": "bash scripts/run-all-checks.sh",
-    "check:python": "python3 -m py_compile scripts/**/*.py",
-    "check:json": "find . -name \"*.json\" -not -path \"./node_modules/*\" -not -path \"./server/node_modules/*\" -exec python3 -m json.tool {} \\;",
-    "scripts:unity": "cd scripts/unity && python unity_automation_main.py",
-    "scripts:ai": "cd scripts/unity && python unity_ai_automation.py",
-    "scripts:maintenance": "cd scripts/maintenance && python health_check.py",
-    "scripts:setup": "cd scripts/setup && python one_click_unity_setup.py"
-  },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
     "@types/node": "^20.0.0",
@@ -40,10 +15,6 @@
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-org/evergreen-match3-unity.git"
-  },
   "keywords": [
     "unity",
     "match3",
@@ -51,6 +22,39 @@
     "automation",
     "ci-cd"
   ],
-  "author": "Your Team",
-  "license": "MIT"
+  "license": "MIT",
+  "name": "evergreen-match3-unity",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/evergreen-match3-unity.git"
+  },
+  "scripts": {
+    "check:all": "bash scripts/run-all-checks.sh",
+    "check:json": "find . -name \"*.json\" -not -path \"./node_modules/*\" -not -path \"./server/node_modules/*\" -exec python3 -m json.tool {} \\;",
+    "check:python": "python3 -m py_compile scripts/**/*.py",
+    "dev": "cd server && npm run dev",
+    "fix:all": "bash scripts/auto-fix-all.sh",
+    "fix:js": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/ --fix && npx prettier --write \"**/*.{js,ts,json}\" --ignore-path .gitignore",
+    "fix:json": "find . -name \"*.json\" -not -path \"./node_modules/*\" -not -path \"./server/node_modules/*\" -exec python3 -c \"import json; data=json.load(open('{}')); json.dump(data, open('{}', 'w'), indent=2, sort_keys=True)\" \\;",
+    "fix:python": "find scripts -name \"*.py\" -exec autopep8 --in-place --aggressive --aggressive {} \\; && isort scripts/ && black scripts/",
+    "format": "npx prettier --write \"**/*.{js,ts,json}\" --ignore-path .gitignore",
+    "format:check": "npx prettier --check \"**/*.{js,ts,json}\" --ignore-path .gitignore",
+    "install:all": "npm install && cd server && npm install",
+    "lint": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/",
+    "lint:fix": "npx eslint . --ext .js,.ts --ignore-pattern node_modules/ --ignore-pattern server/node_modules/ --fix",
+    "scripts:ai": "cd scripts/unity && python unity_ai_automation.py",
+    "scripts:maintenance": "cd scripts/maintenance && python health_check.py",
+    "scripts:setup": "cd scripts/setup && python one_click_unity_setup.py",
+    "scripts:unity": "cd scripts/unity && python unity_automation_main.py",
+    "start": "cd server && npm start",
+    "test": "cd server && npm test",
+    "test:all": "npm test && cd server && npm test"
+  },
+  "type": "module",
+  "version": "1.0.0",
+  "workspaces": [
+    "server",
+    "scripts"
+  ]
 }
