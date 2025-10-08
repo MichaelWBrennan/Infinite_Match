@@ -83,11 +83,8 @@ class UnityDeployer {
     try {
       logger.info('Starting Unity Services deployment...');
 
-      const results = {
-        economy: await this.deployEconomy(),
-        cloudCode: await this.deployCloudCode(),
-        remoteConfig: await this.deployRemoteConfig(),
-      };
+      // Use the comprehensive deployment method with fallbacks
+      const results = await this.unityService.deployAllServices();
 
       logger.info('Unity Services deployment completed', { results });
 
