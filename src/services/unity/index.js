@@ -58,6 +58,7 @@ class UnityService {
    * Make authenticated request to Unity API
    */
   async makeRequest(endpoint, options = {}) {
+    // Ensure we have a valid access token
     if (!this.accessToken) {
       const authenticated = await this.authenticate();
       if (!authenticated) {
@@ -80,9 +81,29 @@ class UnityService {
 
       if (!response.ok) {
         if (response.status === 401) {
-          // Token expired, re-authenticate
+          // Token expired, re-authenticate and retry once
           this.accessToken = null;
-          return this.makeRequest(endpoint, options);
+          const reAuthenticated = await this.authenticate();
+          if (!reAuthenticated) {
+            throw new Error('Failed to re-authenticate with Unity Services');
+          }
+          
+          // Retry with new token
+          const retryHeaders = {
+            ...headers,
+            'Authorization': `Bearer ${this.accessToken}`,
+          };
+          
+          const retryResponse = await fetch(url, {
+            ...options,
+            headers: retryHeaders,
+          });
+          
+          if (!retryResponse.ok) {
+            throw new Error(`API request failed after re-authentication: ${retryResponse.status}`);
+          }
+          
+          return await retryResponse.json();
         }
         throw new Error(`API request failed: ${response.status}`);
       }
