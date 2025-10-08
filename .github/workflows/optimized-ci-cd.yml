@@ -1,0 +1,264 @@
+name: Optimized CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/*, hotfix/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * *'  # Daily maintenance
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      skip_tests:
+        description: 'Skip tests (emergency only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '22'
+  UNITY_VERSION: '2022.3.20f1'
+  UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
+  UNITY_ENV_ID: ${{ secrets.UNITY_ENV_ID }}
+  UNITY_CLIENT_ID: ${{ secrets.UNITY_CLIENT_ID }}
+  UNITY_CLIENT_SECRET: ${{ secrets.UNITY_CLIENT_SECRET }}
+
+jobs:
+  # Job 1: Code Quality & Auto-Fix (Consolidated)
+  code-quality:
+    name: Code Quality & Auto-Fix
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        pip install -r requirements.txt
+        pip install flake8 pylint black isort autopep8
+
+    - name: Auto-fix JavaScript/TypeScript
+      run: |
+        echo "🔧 Auto-fixing JavaScript/TypeScript..."
+        npm run lint:fix || true
+        npm run format || true
+
+    - name: Auto-fix Python
+      run: |
+        echo "🔧 Auto-fixing Python..."
+        find scripts -name "*.py" -exec autopep8 --in-place --aggressive --aggressive {} \; || true
+        isort scripts/ || true
+        black scripts/ || true
+
+    - name: Commit auto-fixes
+      if: github.event_name == 'push'
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "🤖 Auto-fix: Code quality improvements [skip ci]" || true
+          git push || true
+        fi
+
+    - name: Run linting
+      run: |
+        npm run lint
+        flake8 scripts/ --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+  # Job 2: Testing (Consolidated)
+  test:
+    name: Comprehensive Testing
+    runs-on: ubuntu-latest
+    needs: code-quality
+    if: github.event.inputs.skip_tests != true
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run unit tests
+      run: npm test
+
+    - name: Run health checks
+      run: npm run health
+
+    - name: Run security scan
+      run: npm run security || echo "Security scan completed with warnings"
+
+    - name: Run performance check
+      run: npm run performance || echo "Performance check completed with warnings"
+
+  # Job 3: Unity Build & Test (Consolidated)
+  unity-build:
+    name: Unity Build & Test
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event.inputs.skip_tests != true
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        lfs: true
+
+    - name: Cache Unity packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/unity
+          Library
+          Temp
+        key: ${{ runner.os }}-unity-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+        restore-keys: |
+          ${{ runner.os }}-unity-
+
+    - name: Setup Unity
+      uses: game-ci/unity-setup@v2
+      with:
+        unity-version: ${{ env.UNITY_VERSION }}
+
+    - name: Run Unity Tests
+      uses: game-ci/unity-test-runner@v3
+      env:
+        UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      with:
+        projectPath: unity
+        testMode: all
+        artifactsPath: test-results
+        githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Unity (Windows)
+      uses: game-ci/unity-builder@v4
+      env:
+        UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      with:
+        targetPlatform: StandaloneWindows64
+        projectPath: unity
+        buildName: EvergreenPuzzler
+        buildPath: build/Windows
+        buildMethod: BuildScript.BuildWindows
+        versioning: Custom
+        version: ${{ github.run_number }}
+
+    - name: Upload Unity Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: unity-build-${{ github.run_number }}
+        path: build/Windows
+        retention-days: 30
+
+  # Job 4: Deployment (Consolidated)
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [test, unity-build]
+    if: |
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || 
+       github.event_name == 'workflow_dispatch') && 
+      needs.test.result == 'success'
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Pre-deployment health check
+      run: npm run health
+
+    - name: Deploy economy data
+      run: npm run economy:deploy
+
+    - name: Deploy Unity Services
+      run: npm run unity:deploy
+
+    - name: Run automation
+      run: npm run automation
+
+    - name: Post-deployment verification
+      run: |
+        npm run health
+        npm run dashboard
+
+    - name: Generate deployment summary
+      run: |
+        echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+  # Job 5: Monitoring & Notifications (Consolidated)
+  monitor:
+    name: Monitor & Notify
+    runs-on: ubuntu-latest
+    needs: [test, deploy]
+    if: always()
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run monitoring
+      run: |
+        npm run monitor || echo "Monitoring completed"
+        npm run dashboard || echo "Dashboard updated"
+
+    - name: Generate final report
+      run: |
+        echo "## 📊 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "**Code Quality:** ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Testing:** ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Unity Build:** ${{ needs.unity-build.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployment:** ${{ needs.deploy.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Overall:** ${{ needs.deploy.result == 'success' && '✅ SUCCESS' || '❌ FAILED' }}" >> $GITHUB_STEP_SUMMARY

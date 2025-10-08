@@ -178,30 +178,30 @@ export class EconomyValidator {
    */
   validateFieldType(field, value, expectedType, index) {
     switch (expectedType) {
-      case 'string': {
-        return String(value);
+    case 'string': {
+      return String(value);
+    }
+    
+    case 'number': {
+      const num = Number(value);
+      if (isNaN(num)) {
+        throw new ValidationError(`Invalid number for field '${field}' at index ${index}: ${value}`, field);
       }
-      
-      case 'number': {
-        const num = Number(value);
-        if (isNaN(num)) {
-          throw new ValidationError(`Invalid number for field '${field}' at index ${index}: ${value}`, field);
-        }
-        return num;
+      return num;
+    }
+    
+    case 'boolean': {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const lower = value.toLowerCase();
+        if (lower === 'true') return true;
+        if (lower === 'false') return false;
       }
-      
-      case 'boolean': {
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'string') {
-          const lower = value.toLowerCase();
-          if (lower === 'true') return true;
-          if (lower === 'false') return false;
-        }
-        throw new ValidationError(`Invalid boolean for field '${field}' at index ${index}: ${value}`, field);
-      }
-      
-      default:
-        return value;
+      throw new ValidationError(`Invalid boolean for field '${field}' at index ${index}: ${value}`, field);
+    }
+    
+    default:
+      return value;
     }
   }
 
