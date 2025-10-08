@@ -1,0 +1,141 @@
+{
+  "currencies": [
+    {
+      "id": "coins",
+      "name": "Coins",
+      "type": "currency",
+      "description": "Basic game currency",
+      "isTradable": false,
+      "isConsumable": false
+    },
+    {
+      "id": "gems",
+      "name": "Gems",
+      "type": "currency",
+      "description": "Premium currency",
+      "isTradable": false,
+      "isConsumable": false
+    },
+    {
+      "id": "tickets",
+      "name": "Tickets",
+      "type": "currency",
+      "description": "Special event currency",
+      "isTradable": false,
+      "isConsumable": false
+    }
+  ],
+  "inventory": [
+    {
+      "id": "power_boost",
+      "name": "Power Boost",
+      "type": "consumable",
+      "description": "Increases match power",
+      "rarity": "common",
+      "category": "general",
+      "isTradable": false,
+      "isConsumable": false,
+      "maxStackSize": 1,
+      "iconPath": ""
+    },
+    {
+      "id": "extra_moves",
+      "name": "Extra Moves",
+      "type": "consumable",
+      "description": "Grants 5 additional moves",
+      "rarity": "common",
+      "category": "general",
+      "isTradable": false,
+      "isConsumable": false,
+      "maxStackSize": 1,
+      "iconPath": ""
+    },
+    {
+      "id": "bomb",
+      "name": "Color Bomb",
+      "type": "consumable",
+      "description": "Clears all of one color",
+      "rarity": "rare",
+      "category": "general",
+      "isTradable": false,
+      "isConsumable": false,
+      "maxStackSize": 1,
+      "iconPath": ""
+    },
+    {
+      "id": "rainbow",
+      "name": "Rainbow Blast",
+      "type": "consumable",
+      "description": "Clears entire row and column",
+      "rarity": "epic",
+      "category": "general",
+      "isTradable": false,
+      "isConsumable": false,
+      "maxStackSize": 1,
+      "iconPath": ""
+    }
+  ],
+  "catalog": [
+    {
+      "id": "power_boost_pack",
+      "name": "Power Boost Pack",
+      "type": "bundle",
+      "description": "5 Power Boosts",
+      "cost": 100,
+      "currency": "gems",
+      "category": "general",
+      "rarity": "common",
+      "isActive": true,
+      "isLimitedTime": false,
+      "startDate": null,
+      "endDate": null,
+      "iconPath": ""
+    },
+    {
+      "id": "gem_pack_small",
+      "name": "Small Gem Pack",
+      "type": "bundle",
+      "description": "10 Gems",
+      "cost": 500,
+      "currency": "gems",
+      "category": "general",
+      "rarity": "common",
+      "isActive": true,
+      "isLimitedTime": false,
+      "startDate": null,
+      "endDate": null,
+      "iconPath": ""
+    },
+    {
+      "id": "gem_pack_large",
+      "name": "Large Gem Pack",
+      "type": "bundle",
+      "description": "50 Gems",
+      "cost": 2000,
+      "currency": "gems",
+      "category": "general",
+      "rarity": "common",
+      "isActive": true,
+      "isLimitedTime": false,
+      "startDate": null,
+      "endDate": null,
+      "iconPath": ""
+    },
+    {
+      "id": "premium_pack",
+      "name": "Premium Pack",
+      "type": "bundle",
+      "description": "5 of each consumable",
+      "cost": 10,
+      "currency": "gems",
+      "category": "general",
+      "rarity": "common",
+      "isActive": true,
+      "isLimitedTime": false,
+      "startDate": null,
+      "endDate": null,
+      "iconPath": ""
+    }
+  ],
+  "timestamp": "2025-10-08T16:17:53.882Z"
+}
