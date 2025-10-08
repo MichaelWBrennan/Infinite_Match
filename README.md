@@ -102,5 +102,22 @@ The workflow is modular and can be easily extended:
 - Match-3 engine (C#) with LevelManager reading JSON configs.
 - Ads/IAP managers (UnityAdsManager, IAPManager stubs) under `unity/Assets/Scripts`.
 
-## Docs
-See `/docs` for architecture, economy, live ops, and roadmap.
+## Project Structure
+
+The project has been refactored for better organization and maintainability:
+
+- **`/scripts/`** - Organized automation and utility scripts
+- **`/docs/`** - Comprehensive documentation with guides, reports, and features
+- **`/config/`** - Consolidated configuration files
+- **`/unity/`** - Unity project with optimized structure
+- **`/server/`** - Backend server with Node.js
+
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed structure overview.
+
+## Documentation
+
+- **Architecture**: See `/docs/architecture.md` for system overview
+- **Setup Guides**: See `/docs/setup/` for installation instructions
+- **Features**: See `/docs/features/` for feature documentation
+- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
+- **Coding Standards**: See [CODING_STANDARDS.md](CODING_STANDARDS.md) for code guidelines

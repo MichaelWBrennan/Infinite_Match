@@ -1,0 +1,41 @@
+{
+  "name": "evergreen-match3-unity",
+  "version": "1.0.0",
+  "description": "Evergreen Match-3 Unity Game with comprehensive automation and CI/CD",
+  "private": true,
+  "workspaces": [
+    "server",
+    "scripts"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd server && npm install",
+    "dev": "cd server && npm run dev",
+    "start": "cd server && npm start",
+    "test": "cd server && npm test",
+    "scripts:unity": "cd scripts/unity && python unity_automation_main.py",
+    "scripts:ai": "cd scripts/unity && python unity_ai_automation.py",
+    "scripts:maintenance": "cd scripts/maintenance && python health_check.py",
+    "scripts:setup": "cd scripts/setup && python one_click_unity_setup.py"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/evergreen-match3-unity.git"
+  },
+  "keywords": [
+    "unity",
+    "match3",
+    "mobile-game",
+    "automation",
+    "ci-cd"
+  ],
+  "author": "Your Team",
+  "license": "MIT"
+}
