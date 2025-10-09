@@ -1,60 +1,33 @@
-// Unity Cloud Code function to add currency to player
+// AddCurrency Cloud Code Function
+const { EconomyApi } = require("@unity-services/economy-1.0");
 
-const { validateParams, commonValidators } = require('./validationUtils');
-
-/**
- * Add currency to player inventory
- * @param {Object} params - Function parameters
- * @param {string} params.currencyId - Currency ID to add
- * @param {number} params.amount - Amount to add
- * @param {Object} context - Unity context
- * @param {Object} logger - Logger instance
- * @returns {Promise<Object>} Result object
- */
 module.exports = async ({ params, context, logger }) => {
   try {
     const { currencyId, amount } = params;
 
-    // Validate parameters
-    const validation = validateParams(params, ['currencyId', 'amount'], {
-      currencyId: commonValidators.currencyId,
-      amount: commonValidators.amount
+    if (!currencyId || !amount) {
+      throw new Error("Missing required parameters: currencyId, amount");
+    }
+
+    if (amount <= 0) {
+      throw new Error("Amount must be positive");
+    }
+
+    // Add currency to player
+    await EconomyApi.addCurrency({
+      currencyId: currencyId,
+      amount: amount
     });
 
-    if (!validation.isValid) {
-      throw new Error(`Invalid parameters: ${validation.errors.join(', ')}`);
-    }
-
-    // Get player inventory
-    const inventory = await context.services.inventory.getInventoryItems();
-
-    // Find existing currency
-    const existingCurrency = inventory.find((item) => item.id === currencyId);
-
-    if (existingCurrency) {
-      // Update existing currency
-      await context.services.inventory.updateInventoryItem({
-        id: currencyId,
-        amount: existingCurrency.amount + amount,
-      });
-    } else {
-      // Add new currency
-      await context.services.inventory.addInventoryItem({
-        id: currencyId,
-        amount: amount,
-      });
-    }
-
-    logger.info(`Added ${amount} of currency ${currencyId}`);
+    logger.info(`Added ${amount} ${currencyId} to player`);
 
     return {
       success: true,
-      currencyId,
-      amount,
-      newTotal: existingCurrency ? existingCurrency.amount + amount : amount,
+      currencyId: currencyId,
+      amount: amount
     };
   } catch (error) {
-    logger.error('Error adding currency:', error);
+    logger.error(`AddCurrency failed: ${error.message}`);
     throw error;
   }
 };

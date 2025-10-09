@@ -2,4 +2,3 @@ id,name,type,initial,maximum
 coins,Coins,soft_currency,1000,999999
 gems,Gems,hard_currency,50,99999
 energy,Energy,consumable,5,30
-tickets,Event Tickets,special_currency,0,100

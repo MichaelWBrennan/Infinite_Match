@@ -1,65 +1,43 @@
-// Unity Cloud Code function to spend currency from player
+// SpendCurrency Cloud Code Function
+const { EconomyApi } = require("@unity-services/economy-1.0");
 
-const { validateParams, commonValidators } = require('./validationUtils');
-
-/**
- * Spend currency from player inventory
- * @param {Object} params - Function parameters
- * @param {string} params.currencyId - Currency ID to spend
- * @param {number} params.amount - Amount to spend
- * @param {Object} context - Unity context
- * @param {Object} logger - Logger instance
- * @returns {Promise<Object>} Result object
- */
 module.exports = async ({ params, context, logger }) => {
   try {
     const { currencyId, amount } = params;
 
-    // Validate parameters
-    const validation = validateParams(params, ['currencyId', 'amount'], {
-      currencyId: commonValidators.currencyId,
-      amount: commonValidators.amount
+    if (!currencyId || !amount) {
+      throw new Error("Missing required parameters: currencyId, amount");
+    }
+
+    if (amount <= 0) {
+      throw new Error("Amount must be positive");
+    }
+
+    // Check if player has enough currency
+    const balance = await EconomyApi.getCurrencyBalance({
+      currencyId: currencyId
     });
 
-    if (!validation.isValid) {
-      throw new Error(`Invalid parameters: ${validation.errors.join(', ')}`);
+    if (balance.amount < amount) {
+      throw new Error("Insufficient funds");
     }
 
-    // Get player inventory
-    const inventory = await context.services.inventory.getInventoryItems();
-
-    // Find existing currency
-    const existingCurrency = inventory.find((item) => item.id === currencyId);
-
-    if (!existingCurrency) {
-      throw new Error(`Currency ${currencyId} not found in inventory`);
-    }
-
-    if (existingCurrency.amount < amount) {
-      throw new Error(
-        `Insufficient currency. Required: ${amount}, Available: ${existingCurrency.amount}`
-      );
-    }
-
-    // Update currency amount
-    const newAmount = existingCurrency.amount - amount;
-    await context.services.inventory.updateInventoryItem({
-      id: currencyId,
-      amount: newAmount,
+    // Spend currency
+    await EconomyApi.spendCurrency({
+      currencyId: currencyId,
+      amount: amount
     });
 
-    logger.info(
-      `Spent ${amount} of currency ${currencyId}. Remaining: ${newAmount}`
-    );
+    logger.info(`Spent ${amount} ${currencyId} from player`);
 
     return {
       success: true,
-      currencyId,
-      amount,
-      newTotal: newAmount,
+      currencyId: currencyId,
+      amount: amount,
+      newBalance: balance.amount - amount
     };
   } catch (error) {
-    logger.error('Error spending currency:', error);
+    logger.error(`SpendCurrency failed: ${error.message}`);
     throw error;
   }
 };

@@ -1,51 +1,41 @@
 {
+  "game_settings": {
+    "max_level": 100,
+    "energy_refill_time": 300,
+    "daily_reward_coins": 100,
+    "daily_reward_gems": 5,
+    "max_energy": 30,
+    "energy_refill_cost_gems": 5
+  },
   "economy_settings": {
-    "booster_prices": {
-      "bomb": 15,
-      "extra_moves": 10,
-      "lightning": 25,
-      "rainbow": 20
-    },
-    "currency_pack_prices": [
-      0.99,
-      4.99,
-      9.99,
-      19.99,
-      39.99
-    ],
-    "currency_pack_sizes": [
-      100,
-      500,
-      1000,
-      2500,
-      5000
-    ]
+    "coin_multiplier": 1.0,
+    "gem_multiplier": 1.0,
+    "sale_discount": 0.5,
+    "daily_bonus_multiplier": 1.2,
+    "streak_bonus_multiplier": 1.5
   },
   "feature_flags": {
-    "daily_challenges_enabled": true,
     "new_levels_enabled": true,
+    "daily_challenges_enabled": true,
     "social_features_enabled": false,
-    "tournament_mode_enabled": false
-  },
-  "game_settings": {
     "ads_enabled": true,
-    "daily_bonus_enabled": true,
-    "energy_recharge_rate": 300,
     "iap_enabled": true,
-    "lives_recharge_rate": 1800,
-    "max_energy": 100,
-    "max_lives": 5
+    "economy_enabled": true
   },
-  "performance_settings": {
-    "max_particles": 1000,
-    "memory_limit_mb": 512,
-    "quality_level": "high",
-    "target_fps": 60
+  "ui_settings": {
+    "show_currency_balance": true,
+    "show_energy_timer": true,
+    "show_daily_rewards": true,
+    "show_shop_notifications": true
   },
-  "seasonal_events": {
-    "christmas_theme_enabled": false,
-    "halloween_theme_enabled": false,
-    "st_patrick_theme_enabled": false,
-    "valentines_theme_enabled": false
+  "analytics_events": {
+    "economy_purchase": true,
+    "economy_balance_change": true,
+    "economy_inventory_change": true,
+    "level_completed": true,
+    "streak_achieved": true,
+    "currency_awarded": true,
+    "booster_used": true,
+    "pack_opened": true
   }
 }
