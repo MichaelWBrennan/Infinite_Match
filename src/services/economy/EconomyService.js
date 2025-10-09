@@ -3,11 +3,11 @@
  * Handles game economy data management and validation
  */
 
-import { Logger } from 'core/logger/index.js';
+import { Logger } from '../../core/logger/index.js';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
-import { AppConfig } from 'core/config/index.js';
-import { ServiceError } from 'core/errors/ErrorHandler.js';
+import { AppConfig } from '../../core/config/index.js';
+import { ServiceError } from '../../core/errors/ErrorHandler.js';
 
 const logger = new Logger('EconomyService');
 

@@ -3,7 +3,7 @@
  * Centralized service management and dependency resolution
  */
 
-import { Logger } from 'logger/index.js';
+import { Logger } from '../logger/index.js';
 
 const logger = new Logger('ServiceContainer');
 

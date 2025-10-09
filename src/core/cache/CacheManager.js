@@ -3,7 +3,7 @@
  * Provides in-memory caching with TTL support
  */
 
-import { Logger } from 'logger/index.js';
+import { Logger } from '../logger/index.js';
 
 const logger = new Logger('CacheManager');
 

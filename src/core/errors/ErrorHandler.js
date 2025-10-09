@@ -3,7 +3,7 @@
  * Provides consistent error handling across the application
  */
 
-import { Logger } from 'logger/index.js';
+import { Logger } from '../logger/index.js';
 
 const logger = new Logger('ErrorHandler');
 

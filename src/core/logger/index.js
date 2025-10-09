@@ -5,7 +5,7 @@
 
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { AppConfig } from 'config/index.js';
+import { AppConfig } from '../config/index.js';
 const { combine, timestamp, errors, json, printf, colorize } = winston.format;
 
 // Custom format for console output

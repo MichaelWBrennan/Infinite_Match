@@ -3,8 +3,8 @@
  * Centralized Unity Cloud Services API client
  */
 
-import { AppConfig } from 'core/config/index.js';
-import { Logger } from 'core/logger/index.js';
+import { AppConfig } from '../../core/config/index.js';
+import { Logger } from '../../core/logger/index.js';
 
 // Polyfill for fetch and URLSearchParams in Node.js
 const fetch = globalThis.fetch || require('node-fetch');
@@ -43,7 +43,7 @@ class UnityService {
         logger.info(
           'Unity account credentials found - using account-based authentication'
         );
-        this.accesstoken = process.env.TOKEN;
+        this.accessToken = 'unity-account-mode';
         return true;
       }
 
@@ -51,11 +51,11 @@ class UnityService {
       logger.warn(
         'No Unity credentials configured - using personal license mode'
       );
-      this.accesstoken = process.env.TOKEN;
+      this.accessToken = 'personal-license-mode';
       return true;
     } catch (error) {
       logger.error(`Unity authentication failed: ${error.message}`);
-      this.accesstoken = process.env.TOKEN;
+      this.accessToken = 'personal-license-mode';
       return true;
     }
   }
@@ -100,7 +100,7 @@ class UnityService {
           }
         );
         // Fall back to Cloud Code mode
-        this.accesstoken = process.env.TOKEN;
+        this.accessToken = 'cloud-code-mode';
         return true;
       }
 
@@ -118,7 +118,7 @@ class UnityService {
         error: error.message,
       });
       // Fall back to Cloud Code mode
-      this.accesstoken = process.env.TOKEN;
+      this.accessToken = 'cloud-code-mode';
       return true;
     }
   }
@@ -191,17 +191,12 @@ class UnityService {
 
   /**
    * Economy Service Methods
-   * Uses Unity Cloud Services API with fallback to browser automation
+   * Uses Unity Cloud Services API with fallback to simulation
    */
   async createCurrency(currencyData) {
     try {
       // Try Unity Cloud Services API first (only if we have API credentials)
-      if (
-        this.accessToken &&
-        this.accessToken !== 'personal-license-mode' &&
-        this.accessToken !== 'unity-account-mode' &&
-        this.accessToken !== 'cloud-code-mode'
-      ) {
+      if (this.clientId && this.clientSecret) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies`;
         const result = await this.makeRequest(endpoint, {
           method: 'POST',
@@ -212,86 +207,28 @@ class UnityService {
       }
     } catch (error) {
       logger.warn(
-        `API creation failed for currency ${currencyData.id}, trying browser automation: ${error.message}`
+        `API creation failed for currency ${currencyData.id}, falling back to simulation: ${error.message}`
       );
-    }
-
-    // Fallback to browser automation or simulation
-    try {
-      if (this.accessToken === 'personal-license-mode') {
-        // For personal license, simulate the creation
-        logger.info(
-          `Personal license mode - simulating currency creation: ${currencyData.id}`
-        );
-        return {
-          id: currencyData.id,
-          name: currencyData.name,
-          type: currencyData.type,
-          status: 'simulated',
-          method: 'personal-license-simulation',
-          message:
-            'Currency configuration ready for Unity project (personal license)',
-        };
-      } else if (this.accessToken === 'unity-account-mode') {
-        // For Unity account mode, try browser automation
-        try {
-          const result = await this.createCurrencyViaBrowser(currencyData);
-          logger.info(
-            `Currency created via browser automation: ${currencyData.id}`
-          );
-          return result;
-        } catch (browserError) {
-          logger.warn(
-            `Browser automation failed, falling back to simulation: ${browserError.message}`
-          );
-          return {
-            id: currencyData.id,
-            name: currencyData.name,
-            type: currencyData.type,
-            status: 'simulated',
-            method: 'unity-account-fallback',
-            message:
-              'Currency configuration ready for Unity project (browser automation failed)',
-          };
-        }
-      } else {
-        try {
-          const result = await this.createCurrencyViaBrowser(currencyData);
-          logger.info(
-            `Currency created via browser automation: ${currencyData.id}`
-          );
-          return result;
-        } catch (browserError) {
-          logger.warn(
-            `Browser automation failed, falling back to simulation: ${browserError.message}`
-          );
-          return {
-            id: currencyData.id,
-            name: currencyData.name,
-            type: currencyData.type,
-            status: 'simulated',
-            method: 'fallback-simulation',
-            message:
-              'Currency configuration ready for Unity project (browser automation failed)',
-          };
-        }
-      }
-    } catch (error) {
-      logger.error(
-        `Failed to create currency ${currencyData.id}: ${error.message}`
+      
+      // Fallback to simulation
+      logger.info(
+        `Simulating currency creation: ${currencyData.id}`
       );
-      throw error;
+      return {
+        id: currencyData.id,
+        name: currencyData.name,
+        type: currencyData.type,
+        status: 'simulated',
+        method: 'api-fallback-simulation',
+        message: 'Currency configuration ready for Unity project (API unavailable)',
+      };
     }
   }
 
   async createInventoryItem(itemData) {
     try {
       // Try Unity Cloud Services API first (only if we have proper credentials)
-      if (
-        this.accessToken &&
-        this.accessToken !== 'personal-license-mode' &&
-        this.accessToken !== 'cloud-code-mode'
-      ) {
+      if (this.clientId && this.clientSecret) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory-items`;
         const result = await this.makeRequest(endpoint, {
           method: 'POST',
@@ -302,38 +239,21 @@ class UnityService {
       }
     } catch (error) {
       logger.warn(
-        `API creation failed for inventory item ${itemData.id}, trying browser automation: ${error.message}`
+        `API creation failed for inventory item ${itemData.id}, falling back to simulation: ${error.message}`
       );
-    }
-
-    // Fallback to browser automation or simulation
-    try {
-      if (this.accessToken === 'personal-license-mode') {
-        // For personal license, simulate the creation
-        logger.info(
-          `Personal license mode - simulating inventory item creation: ${itemData.id}`
-        );
-        return {
-          id: itemData.id,
-          name: itemData.name,
-          type: itemData.type,
-          status: 'simulated',
-          method: 'personal-license-simulation',
-          message:
-            'Inventory item configuration ready for Unity project (personal license)',
-        };
-      } else {
-        const result = await this.createInventoryItemViaBrowser(itemData);
-        logger.info(
-          `Inventory item created via browser automation: ${itemData.id}`
-        );
-        return result;
-      }
-    } catch (error) {
-      logger.error(
-        `Failed to create inventory item ${itemData.id}: ${error.message}`
+      
+      // Fallback to simulation
+      logger.info(
+        `Simulating inventory item creation: ${itemData.id}`
       );
-      throw error;
+      return {
+        id: itemData.id,
+        name: itemData.name,
+        type: itemData.type,
+        status: 'simulated',
+        method: 'api-fallback-simulation',
+        message: 'Inventory item configuration ready for Unity project (API unavailable)',
+      };
     }
   }
 
@@ -351,22 +271,21 @@ class UnityService {
       }
     } catch (error) {
       logger.warn(
-        `API creation failed for catalog item ${catalogData.id}, trying browser automation: ${error.message}`
+        `API creation failed for catalog item ${catalogData.id}, falling back to simulation: ${error.message}`
       );
-    }
-
-    // Fallback to browser automation
-    try {
-      const result = await this.createCatalogItemViaBrowser(catalogData);
+      
+      // Fallback to simulation
       logger.info(
-        `Catalog item created via browser automation: ${catalogData.id}`
+        `Simulating catalog item creation: ${catalogData.id}`
       );
-      return result;
-    } catch (error) {
-      logger.error(
-        `Failed to create catalog item ${catalogData.id}: ${error.message}`
-      );
-      throw error;
+      return {
+        id: catalogData.id,
+        name: catalogData.name,
+        type: catalogData.type,
+        status: 'simulated',
+        method: 'api-fallback-simulation',
+        message: 'Catalog item configuration ready for Unity project (API unavailable)',
+      };
     }
   }
 
@@ -496,133 +415,7 @@ class UnityService {
     }
   }
 
-  /**
-   * Browser Automation Methods
-   * Fallback when Unity Cloud Services API is not available
-   */
-  async createCurrencyViaBrowser(currencyData) {
-    // const { spawn } = await import('child_process');
-    const { promisify } = await import('util');
-    const exec = promisify((await import('child_process')).exec);
 
-    try {
-      // Use Python browser automation script
-      const scriptPath = './scripts/unity/unity_browser_automation.py';
-      const command = `python3 ${scriptPath} --action=create_currency --data='${JSON.stringify(currencyData)}'`;
-
-      const { stdout, stderr } = await exec(command);
-
-      if (stderr) {
-        logger.warn(`Browser automation stderr: ${stderr}`);
-      }
-
-      const result = JSON.parse(stdout);
-      return {
-        id: currencyData.id,
-        name: currencyData.name,
-        type: currencyData.type,
-        status: 'created',
-        method: 'browser-automation',
-        ...result,
-      };
-    } catch (error) {
-      logger.error(
-        `Browser automation failed for currency ${currencyData.id}: ${error.message}`
-      );
-      throw error;
-    }
-  }
-
-  async createInventoryItemViaBrowser(itemData) {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const execAsync = promisify(exec);
-
-    try {
-      const scriptPath = './scripts/unity/unity_browser_automation.py';
-      const command = `python3 ${scriptPath} --action=create_inventory_item --data='${JSON.stringify(itemData)}'`;
-
-      const { stdout, stderr } = await execAsync(command);
-
-      if (stderr) {
-        logger.warn(`Browser automation stderr: ${stderr}`);
-      }
-
-      const result = JSON.parse(stdout);
-      return {
-        id: itemData.id,
-        name: itemData.name,
-        type: itemData.type,
-        status: 'created',
-        method: 'browser-automation',
-        ...result,
-      };
-    } catch (error) {
-      logger.error(
-        `Browser automation failed for inventory item ${itemData.id}: ${error.message}`
-      );
-      throw error;
-    }
-  }
-
-  async createCatalogItemViaBrowser(catalogData) {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const execAsync = promisify(exec);
-
-    try {
-      const scriptPath = './scripts/unity/unity_browser_automation.py';
-      const command = `python3 ${scriptPath} --action=create_catalog_item --data='${JSON.stringify(catalogData)}'`;
-
-      const { stdout, stderr } = await execAsync(command);
-
-      if (stderr) {
-        logger.warn(`Browser automation stderr: ${stderr}`);
-      }
-
-      const result = JSON.parse(stdout);
-      return {
-        id: catalogData.id,
-        name: catalogData.name,
-        type: catalogData.type,
-        status: 'created',
-        method: 'browser-automation',
-        ...result,
-      };
-    } catch (error) {
-      logger.error(
-        `Browser automation failed for catalog item ${catalogData.id}: ${error.message}`
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Unity CLI Integration
-   * Alternative method using Unity CLI if available
-   */
-  async deployViaUnityCLI() {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const execAsync = promisify(exec);
-
-    try {
-      logger.info('Attempting Unity CLI deployment...');
-
-      // Use our custom Unity CLI automation script
-      const scriptPath = './scripts/unity/unity_cli_automation.sh';
-      const command = `bash ${scriptPath}`;
-
-      logger.info('Running Unity CLI automation script...');
-      const { stdout, stderr } = await execAsync(command);
-
-      logger.info('Unity CLI deployment completed', { stdout, stderr });
-      return { success: true, method: 'unity-cli', output: stdout };
-    } catch (error) {
-      logger.error(`Unity CLI deployment failed: ${error.message}`);
-      throw error;
-    }
-  }
 
   /**
    * Deploy all Unity services with fallback methods
@@ -690,32 +483,32 @@ class UnityService {
         };
       } else if (this.accessToken === 'unity-account-mode') {
         logger.info(
-          'Unity account mode detected - using browser automation for all services'
+          'Unity account mode detected - using simulation for all services'
         );
 
-        // Try browser automation for economy deployment
+        // Simulate economy deployment
         const economyData = await this.loadEconomyDataFromCSV();
         results.economy = {
           success: true,
-          method: 'unity-account-browser',
+          method: 'unity-account-simulation',
           result: {
             currencies: economyData.currencies.map((c) => ({
               id: c.id,
               name: c.name,
-              status: 'browser-automation',
+              status: 'simulated',
             })),
             inventory: economyData.inventory.map((i) => ({
               id: i.id,
               name: i.name,
-              status: 'browser-automation',
+              status: 'simulated',
             })),
             catalog: economyData.catalog.map((c) => ({
               id: c.id,
               name: c.name,
-              status: 'browser-automation',
+              status: 'simulated',
             })),
             message:
-              'Economy data deployed via Unity account browser automation',
+              'Economy data ready for Unity project (Unity account mode)',
           },
         };
 

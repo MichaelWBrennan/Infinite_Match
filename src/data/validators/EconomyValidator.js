@@ -3,8 +3,8 @@
  * Validates economy-related data structures
  */
 
-import { Logger } from 'core/logger/index.js';
-import { ValidationError } from 'core/errors/ErrorHandler.js';
+import { Logger } from '../../core/logger/index.js';
+import { ValidationError } from '../../core/errors/ErrorHandler.js';
 
 const logger = new Logger('EconomyValidator');
 
