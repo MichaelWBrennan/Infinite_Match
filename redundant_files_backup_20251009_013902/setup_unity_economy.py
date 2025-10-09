@@ -13,7 +13,7 @@ from pathlib import Path
 
 class UnityEconomySetup:
     def __init__(self):
-        self.repo_root = Path(__file__).parent.parent
+        self.repo_root = Path(__file__).parent.parent.parent
         self.csv_path = (
             self.repo_root
             / "unity"

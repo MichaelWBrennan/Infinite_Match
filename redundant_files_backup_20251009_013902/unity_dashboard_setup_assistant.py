@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Unity Dashboard Setup Assistant
-Consolidates Unity setup functionality from multiple scripts
-Replaces: unity_dashboard_setup_assistant.py, one_click_unity_setup.py
+Automates the manual Unity Dashboard setup process with step-by-step guidance
 """
 
 import csv
@@ -11,7 +10,6 @@ import os
 import sys
 import time
 import webbrowser
-import subprocess
 from pathlib import Path
 
 
@@ -349,58 +347,7 @@ class UnityDashboardSetupAssistant:
 
         print("\n🎮 Your Unity Cloud integration is now complete!")
 
-    def run_automation_scripts(self):
-        """Run automation scripts (from one_click_unity_setup.py)"""
-        self.print_header("Running Automation Scripts")
-
-        scripts = ["convert_economy_csv.py", "health_check.py", "auto_maintenance.py"]
-
-        for script in scripts:
-            if script == "convert_economy_csv.py":
-                script_path = self.repo_root / "scripts" / "utilities" / script
-            else:
-                script_path = self.repo_root / "scripts" / script
-            
-            if script_path.exists():
-                print(f"🔄 Running {script}...")
-                try:
-                    result = subprocess.run(
-                        [sys.executable, str(script_path)],
-                        capture_output=True,
-                        text=True,
-                        cwd=self.repo_root,
-                    )
-                    if result.returncode == 0:
-                        print(f"   ✅ {script} completed successfully")
-                    else:
-                        print(f"   ⚠️  {script} completed with warnings")
-                        print(f"   Output: {result.stdout}")
-                except Exception as e:
-                    print(f"   ❌ {script} failed: {e}")
-            else:
-                print(f"   ⚠️  {script} not found, skipping...")
-
-    def run_complete_setup(self):
-        """Run complete setup with automation (consolidated functionality)"""
-        self.print_header("Complete Unity Cloud Setup")
-        
-        print("🎯 Running complete Unity Cloud Services setup...")
-        print("   This includes CSV processing, configuration, and dashboard setup.")
-        
-        # Run automation scripts first
-        self.run_automation_scripts()
-        
-        # Then run manual setup
-        self.run_setup()
-        
-        return True
-
 
 if __name__ == "__main__":
     assistant = UnityDashboardSetupAssistant()
-    
-    # Check if user wants complete setup or just manual setup
-    if len(sys.argv) > 1 and sys.argv[1] == "--complete":
-        assistant.run_complete_setup()
-    else:
-        assistant.run_setup()
+    assistant.run_setup()

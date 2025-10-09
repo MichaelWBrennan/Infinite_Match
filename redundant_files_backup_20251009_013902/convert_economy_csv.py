@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Unified Economy CSV Processor
-Consolidates CSV conversion, Unity Services config generation, and dashboard instructions
-Replaces: convert_economy_csv.py, csv_to_dashboard_importer.py, setup_unity_economy.py
+Convert existing economy CSV to Unity CLI format
+Transforms economy_items.csv into separate currencies, inventory, and catalog files
 """
 
 import csv
@@ -23,15 +22,6 @@ class EconomyCSVConverter:
             / "economy_items.csv"
         )
         self.output_dir = self.repo_root / "economy"
-        self.config_path = (
-            self.repo_root
-            / "unity"
-            / "Assets"
-            / "StreamingAssets"
-            / "unity_services_config.json"
-        )
-        self.project_id = "0dd5a03e-7f23-49c4-964e-7919c48c0574"
-        self.environment_id = "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d"
 
     def load_economy_data(self):
         """Load economy data from CSV"""
@@ -459,109 +449,14 @@ All economy data has been successfully converted to Unity CLI format.
         print(f"Created conversion report: {report_file}")
         return report_file
 
-    def generate_unity_services_config(self, items):
-        """Generate Unity Services configuration (from setup_unity_economy.py)"""
-        print("🔧 Generating Unity Services configuration...")
-        
-        config = {
-            "projectId": self.project_id,
-            "environmentId": self.environment_id,
-            "licenseType": "personal",
-            "cloudServicesAvailable": True,
-            "economy": {
-                "currencies": [
-                    {"id": "coins", "name": "Coins", "type": "soft_currency", "initial": 1000, "maximum": 999999},
-                    {"id": "gems", "name": "Gems", "type": "hard_currency", "initial": 50, "maximum": 99999},
-                    {"id": "energy", "name": "Energy", "type": "consumable", "initial": 5, "maximum": 30}
-                ],
-                "inventory": [
-                    {
-                        "id": item["id"],
-                        "name": item["name"],
-                        "type": item["type"],
-                        "tradable": item["is_tradeable"] == "true",
-                        "stackable": item["is_consumable"] == "true"
-                    }
-                    for item in items if item["type"] in ["booster", "pack"]
-                ],
-                "catalog": [
-                    {
-                        "id": item["id"],
-                        "name": item["name"],
-                        "cost_currency": "gems" if int(item["cost_gems"]) > 0 else "coins",
-                        "cost_amount": int(item["cost_gems"]) if int(item["cost_gems"]) > 0 else int(item["cost_coins"]),
-                        "rewards": f"{item['id']}:{item['quantity']}" if item["type"] in ["booster", "pack"] else f"coins:{item['quantity']}"
-                    }
-                    for item in items if item["is_purchasable"] == "true"
-                ]
-            }
-        }
-        
-        with open(self.config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2)
-        
-        print(f"✅ Unity Services configuration saved to: {self.config_path}")
-        return True
-
-    def generate_dashboard_instructions(self, items):
-        """Generate Unity Dashboard setup instructions (from csv_to_dashboard_importer.py)"""
-        print("📋 Generating Unity Dashboard instructions...")
-        
-        instructions = f"""# Unity Dashboard Setup Instructions
-
-## Project Information
-- **Project ID**: {self.project_id}
-- **Environment ID**: {self.environment_id}
-- **Total Items**: {len(items)}
-
-## Step 1: Access Unity Dashboard
-1. Go to: https://dashboard.unity3d.com
-2. Navigate to your project
-3. Go to Economy section
-
-## Step 2: Create Currencies (3 items)
-1. Go to Economy → Currencies
-2. Create: coins, gems, energy
-
-## Step 3: Create Inventory Items ({len([i for i in items if i['type'] in ['booster', 'pack']])} items)
-1. Go to Economy → Inventory Items
-2. Create all boosters and packs from your CSV
-
-## Step 4: Create Virtual Purchases ({len([i for i in items if i['is_purchasable'] == 'true'])} items)
-1. Go to Economy → Virtual Purchases
-2. Create all purchasable items from your CSV
-
-## Step 5: Deploy Cloud Code Functions
-1. Go to Cloud Code → Functions
-2. Deploy functions from cloud-code/ folder
-
-## ✅ Setup Complete!
-Your Unity Cloud Economy Service is now fully configured!
-"""
-        
-        instructions_file = self.repo_root / "UNITY_DASHBOARD_SETUP_INSTRUCTIONS.md"
-        with open(instructions_file, "w", encoding="utf-8") as f:
-            f.write(instructions)
-        
-        print(f"✅ Instructions saved to: {instructions_file}")
-        return True
-
     def run_conversion(self):
-        """Run the complete conversion process with all functionality"""
-        print("=" * 80)
-        print("🚀 Unified Economy CSV Processor")
-        print("=" * 80)
+        """Run the complete conversion process"""
+        print("🔄 Starting economy CSV conversion...")
 
         # Load source data
         items = self.load_economy_data()
         if not items:
             return False
-
-        print(f"\n📊 Processing {len(items)} items:")
-        print(f"   - Currency items: {len([i for i in items if i['type'] == 'currency'])}")
-        print(f"   - Booster items: {len([i for i in items if i['type'] == 'booster'])}")
-        print(f"   - Pack items: {len([i for i in items if i['type'] == 'pack'])}")
-        print(f"   - Purchasable items: {len([i for i in items if i['is_purchasable'] == 'true'])}")
 
         # Create output directory
         self.output_dir.mkdir(exist_ok=True)
@@ -575,24 +470,18 @@ Your Unity Cloud Economy Service is now fully configured!
         config_file = self.create_remote_config()
         cloud_code_dir = self.create_cloud_code_functions()
 
-        # Generate Unity Services config and dashboard instructions
-        self.generate_unity_services_config(items)
-        self.generate_dashboard_instructions(items)
-
         # Generate report
         report_file = self.create_conversion_report(
             items, currencies_file, inventory_file, catalog_file
         )
 
-        print("\n🎉 Unified processing completed successfully!")
+        print("\n✅ Conversion completed successfully!")
         print(f"📁 Output directory: {self.output_dir}")
         print(f"📄 Currencies: {currencies_file}")
         print(f"📦 Inventory: {inventory_file}")
         print(f"🛒 Catalog: {catalog_file}")
         print(f"⚙️  Remote Config: {config_file}")
         print(f"☁️  Cloud Code: {cloud_code_dir}")
-        print(f"🔧 Unity Services Config: {self.config_path}")
-        print(f"📋 Dashboard Instructions: UNITY_DASHBOARD_SETUP_INSTRUCTIONS.md")
         print(f"📊 Report: {report_file}")
 
         return True
