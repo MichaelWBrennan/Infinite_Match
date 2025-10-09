@@ -1,0 +1,354 @@
+{
+  "main_menu": {
+    "elements": [
+      {
+        "name": "TitleText",
+        "type": "Text",
+        "text": "Evergreen Puzzler",
+        "font_size": 72,
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "position": [
+          0,
+          200,
+          0
+        ],
+        "size": [
+          600,
+          100
+        ]
+      },
+      {
+        "name": "PlayButton",
+        "type": "Button",
+        "text": "Play",
+        "font_size": 36,
+        "color": [
+          0.2,
+          0.8,
+          0.2,
+          1.0
+        ],
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "size": [
+          200,
+          80
+        ]
+      },
+      {
+        "name": "SettingsButton",
+        "type": "Button",
+        "text": "Settings",
+        "font_size": 36,
+        "color": [
+          0.2,
+          0.6,
+          0.8,
+          1.0
+        ],
+        "position": [
+          0,
+          -100,
+          0
+        ],
+        "size": [
+          200,
+          80
+        ]
+      },
+      {
+        "name": "QuitButton",
+        "type": "Button",
+        "text": "Quit",
+        "font_size": 36,
+        "color": [
+          0.8,
+          0.2,
+          0.2,
+          1.0
+        ],
+        "position": [
+          0,
+          -200,
+          0
+        ],
+        "size": [
+          200,
+          80
+        ]
+      }
+    ]
+  },
+  "gameplay_ui": {
+    "elements": [
+      {
+        "name": "ScoreText",
+        "type": "Text",
+        "text": "Score: 0",
+        "font_size": 48,
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "position": [
+          -400,
+          400,
+          0
+        ],
+        "size": [
+          300,
+          60
+        ]
+      },
+      {
+        "name": "MovesText",
+        "type": "Text",
+        "text": "Moves: 20",
+        "font_size": 36,
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "position": [
+          400,
+          400,
+          0
+        ],
+        "size": [
+          250,
+          50
+        ]
+      },
+      {
+        "name": "LevelText",
+        "type": "Text",
+        "text": "Level 1",
+        "font_size": 42,
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "position": [
+          0,
+          400,
+          0
+        ],
+        "size": [
+          200,
+          60
+        ]
+      },
+      {
+        "name": "PauseButton",
+        "type": "Button",
+        "text": "Pause",
+        "font_size": 24,
+        "color": [
+          0.8,
+          0.8,
+          0.2,
+          1.0
+        ],
+        "position": [
+          450,
+          450,
+          0
+        ],
+        "size": [
+          100,
+          50
+        ]
+      }
+    ]
+  },
+  "game_over_ui": {
+    "elements": [
+      {
+        "name": "GameOverText",
+        "type": "Text",
+        "text": "Game Over",
+        "font_size": 64,
+        "color": [
+          1.0,
+          0.2,
+          0.2,
+          1.0
+        ],
+        "position": [
+          0,
+          100,
+          0
+        ],
+        "size": [
+          400,
+          80
+        ]
+      },
+      {
+        "name": "FinalScoreText",
+        "type": "Text",
+        "text": "Final Score: 0",
+        "font_size": 36,
+        "color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "size": [
+          300,
+          50
+        ]
+      },
+      {
+        "name": "RestartButton",
+        "type": "Button",
+        "text": "Restart",
+        "font_size": 36,
+        "color": [
+          0.2,
+          0.8,
+          0.2,
+          1.0
+        ],
+        "position": [
+          0,
+          -100,
+          0
+        ],
+        "size": [
+          200,
+          80
+        ]
+      },
+      {
+        "name": "MainMenuButton",
+        "type": "Button",
+        "text": "Main Menu",
+        "font_size": 36,
+        "color": [
+          0.2,
+          0.6,
+          0.8,
+          1.0
+        ],
+        "position": [
+          0,
+          -200,
+          0
+        ],
+        "size": [
+          200,
+          80
+        ]
+      }
+    ]
+  },
+  "level_complete_ui": {
+    "elements": [
+      {
+        "name": "LevelCompleteText",
+        "type": "Text",
+        "text": "Level Complete!",
+        "font_size": 64,
+        "color": [
+          0.2,
+          1.0,
+          0.2,
+          1.0
+        ],
+        "position": [
+          0,
+          100,
+          0
+        ],
+        "size": [
+          500,
+          80
+        ]
+      },
+      {
+        "name": "StarsText",
+        "type": "Text",
+        "text": "\u2b50\u2b50\u2b50",
+        "font_size": 48,
+        "color": [
+          1.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "size": [
+          300,
+          60
+        ]
+      },
+      {
+        "name": "NextLevelButton",
+        "type": "Button",
+        "text": "Next Level",
+        "font_size": 36,
+        "color": [
+          0.2,
+          0.8,
+          0.2,
+          1.0
+        ],
+        "position": [
+          0,
+          -100,
+          0
+        ],
+        "size": [
+          200,
+          80
+        ]
+      },
+      {
+        "name": "MainMenuButton",
+        "type": "Button",
+        "text": "Main Menu",
+        "font_size": 36,
+        "color": [
+          0.2,
+          0.6,
+          0.8,
+          1.0
+        ],
+        "position": [
+          0,
+          -200,
+          0
+        ],
+        "size": [
+          200,
+          80
+        ]
+      }
+    ]
+  }
+}
