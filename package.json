@@ -84,6 +84,7 @@
     "test:unity": "echo 'Unity tests run via GitHub Actions'",
     "unity:deploy": "node scripts/unity-deploy.js",
     "unity:api-deploy": "node scripts/unity/unity-cloud-api-deploy.js",
+    "unity:secrets": "node scripts/unity/fetch-unity-secrets.js",
     "unity:test": "echo 'Unity Test Framework integration via GitHub Actions'"
   },
   "type": "module",

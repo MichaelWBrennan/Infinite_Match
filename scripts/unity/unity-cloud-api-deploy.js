@@ -20,6 +20,39 @@ class UnityCloudAPIDeployer {
     this.accessToken = null;
   }
 
+  async loadSecretsFromCursor() {
+    try {
+      // Try to load secrets from Cursor if available
+      if (typeof cursor !== 'undefined' && cursor.getSecret) {
+        logger.info('Loading secrets from Cursor...');
+        
+        const secrets = [
+          'UNITY_PROJECT_ID',
+          'UNITY_ENV_ID', 
+          'UNITY_CLIENT_ID',
+          'UNITY_CLIENT_SECRET'
+        ];
+
+        for (const secret of secrets) {
+          try {
+            const value = await cursor.getSecret(secret);
+            if (value) {
+              if (secret === 'UNITY_PROJECT_ID') this.projectId = value;
+              if (secret === 'UNITY_ENV_ID') this.environmentId = value;
+              if (secret === 'UNITY_CLIENT_ID') this.clientId = value;
+              if (secret === 'UNITY_CLIENT_SECRET') this.clientSecret = value;
+              logger.info(`Loaded secret: ${secret}`);
+            }
+          } catch (err) {
+            logger.warn(`Failed to load secret ${secret}:`, err.message);
+          }
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to load secrets from Cursor:', error.message);
+    }
+  }
+
   async authenticate() {
     if (!this.clientId || !this.clientSecret) {
       throw new Error('UNITY_CLIENT_ID and UNITY_CLIENT_SECRET environment variables are required');
@@ -213,6 +246,9 @@ class UnityCloudAPIDeployer {
   async deployAll() {
     try {
       logger.info('Starting Unity Cloud Services API deployment...');
+
+      // Try to load secrets from Cursor first
+      await this.loadSecretsFromCursor();
 
       // Authenticate first
       await this.authenticate();
