@@ -1,0 +1,46 @@
+{
+  "m_AddressableAssetSettingsVersion": "1.0.0",
+  "m_ConfigFolder": "Assets/AddressableAssetsData",
+  "m_ActiveProfileId": "00000000000000000000000000000000",
+  "m_AddressableAssetEntries": [],
+  "m_AddressableAssetGroupSettings": {
+    "Default Local Group": {
+      "m_Name": "Default Local Group",
+      "m_ReadOnly": false,
+      "m_SerializedGuid": "00000000000000000000000000000000",
+      "m_SerializedVersion": "1.0.0",
+      "m_Comment": "",
+      "m_InitializationObjects": [],
+      "m_EntryData": []
+    },
+    "UI Group": {
+      "m_Name": "UI Group",
+      "m_ReadOnly": false,
+      "m_SerializedGuid": "11111111111111111111111111111111",
+      "m_SerializedVersion": "1.0.0",
+      "m_Comment": "UI Assets",
+      "m_InitializationObjects": [],
+      "m_EntryData": []
+    },
+    "Audio Group": {
+      "m_Name": "Audio Group",
+      "m_ReadOnly": false,
+      "m_SerializedGuid": "22222222222222222222222222222222",
+      "m_SerializedVersion": "1.0.0",
+      "m_Comment": "Audio Assets",
+      "m_InitializationObjects": [],
+      "m_EntryData": []
+    },
+    "Graphics Group": {
+      "m_Name": "Graphics Group",
+      "m_ReadOnly": false,
+      "m_SerializedGuid": "33333333333333333333333333333333",
+      "m_SerializedVersion": "1.0.0",
+      "m_Comment": "Graphics Assets",
+      "m_InitializationObjects": [],
+      "m_EntryData": []
+    }
+  },
+  "m_AddressableAssetEntryData": [],
+  "m_AddressableAssetEntryDataVersion": "1.0.0"
+}

@@ -1,0 +1,24 @@
+{
+  "occlusion_culling": {
+    "enable_occlusion_culling": true,
+    "occlusion_culling_data": "OcclusionCullingData.asset",
+    "smallest_occluder": 5.0,
+    "smallest_hole": 0.25
+  },
+  "lod_settings": {
+    "enable_lod_bias": true,
+    "lod_bias": 1.0,
+    "maximum_lod_level": 0,
+    "lod_cross_fade_animation_mode": "None"
+  },
+  "batching": {
+    "enable_static_batching": true,
+    "enable_dynamic_batching": true,
+    "enable_gpu_instancing": true
+  },
+  "culling": {
+    "enable_frustum_culling": true,
+    "enable_occlusion_culling": true,
+    "culling_mask": "Everything"
+  }
+}

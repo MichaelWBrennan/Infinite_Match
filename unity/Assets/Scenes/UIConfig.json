@@ -1,0 +1,51 @@
+{
+  "ui_settings": {
+    "canvas_scaler": {
+      "ui_scale_mode": "ScaleWithScreenSize",
+      "reference_resolution": [
+        1920,
+        1080
+      ],
+      "screen_match_mode": "MatchWidthOrHeight",
+      "match_width_or_height": 0.5
+    },
+    "graphic_raycaster": {
+      "ignore_reversed_graphics": true,
+      "blocking_objects": "TwoD"
+    }
+  },
+  "ui_elements": {
+    "main_menu": {
+      "canvas": "MainMenuCanvas",
+      "sorting_order": 0,
+      "render_mode": "ScreenSpaceOverlay"
+    },
+    "gameplay_ui": {
+      "canvas": "GameplayCanvas",
+      "sorting_order": 1,
+      "render_mode": "ScreenSpaceOverlay"
+    },
+    "pause_menu": {
+      "canvas": "PauseMenuCanvas",
+      "sorting_order": 2,
+      "render_mode": "ScreenSpaceOverlay"
+    }
+  },
+  "responsive_ui": {
+    "enable_responsive": true,
+    "breakpoints": {
+      "mobile": [
+        720,
+        1280
+      ],
+      "tablet": [
+        1024,
+        768
+      ],
+      "desktop": [
+        1920,
+        1080
+      ]
+    }
+  }
+}
