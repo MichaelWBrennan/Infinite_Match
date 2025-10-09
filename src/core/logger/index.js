@@ -5,10 +5,7 @@
 
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { AppConfig } from '../config/index.js';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
+import { AppConfig } from 'config/index.js';
 const { combine, timestamp, errors, json, printf, colorize } = winston.format;
 
 // Custom format for console output
@@ -71,13 +68,13 @@ const securityLogger = winston.createLogger({
     }),
     ...(AppConfig.logging.file.enabled
       ? [
-          new DailyRotateFile({
-            filename: `${AppConfig.logging.file.path}/security-%DATE%.log`,
-            datePattern: 'YYYY-MM-DD',
-            maxSize: AppConfig.logging.file.maxSize,
-            maxFiles: AppConfig.logging.file.maxFiles,
-          }),
-        ]
+        new DailyRotateFile({
+          filename: `${AppConfig.logging.file.path}/security-%DATE%.log`,
+          datePattern: 'YYYY-MM-DD',
+          maxSize: AppConfig.logging.file.maxSize,
+          maxFiles: AppConfig.logging.file.maxFiles,
+        }),
+      ]
       : []),
   ],
   exitOnError: false,
@@ -90,13 +87,13 @@ const requestLogger = winston.createLogger({
   transports: [
     ...(AppConfig.logging.file.enabled
       ? [
-          new DailyRotateFile({
-            filename: `${AppConfig.logging.file.path}/requests-%DATE%.log`,
-            datePattern: 'YYYY-MM-DD',
-            maxSize: AppConfig.logging.file.maxSize,
-            maxFiles: AppConfig.logging.file.maxFiles,
-          }),
-        ]
+        new DailyRotateFile({
+          filename: `${AppConfig.logging.file.path}/requests-%DATE%.log`,
+          datePattern: 'YYYY-MM-DD',
+          maxSize: AppConfig.logging.file.maxSize,
+          maxFiles: AppConfig.logging.file.maxFiles,
+        }),
+      ]
       : []),
   ],
   exitOnError: false,

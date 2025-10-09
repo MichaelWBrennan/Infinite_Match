@@ -5,23 +5,29 @@
 
 import express from 'express';
 import compression from 'compression';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import { v4 as uuidv4 } from 'uuid';
 
 // Core modules
-import { AppConfig } from '../core/config/index.js';
-import { Logger } from '../core/logger/index.js';
-import security from '../core/security/index.js';
+import { AppConfig } from 'core/config/index.js';
+import { Logger } from 'core/logger/index.js';
+import security from 'core/security/index.js';
 import {
   registerServices,
   getService,
-} from '../core/services/ServiceRegistry.js';
+} from 'core/services/ServiceRegistry.js';
+import {
+  asyncHandler,
+  responseFormatter,
+  performanceMonitor,
+  errorHandler,
+} from 'core/middleware/index.js';
+import { HTTP_STATUS, CACHE_KEYS, PROMO_CODES, PROMO_REWARDS } from 'core/constants/index.js';
 
 // Routes
-import authRoutes from '../routes/auth.js';
-import economyRoutes from '../routes/economy.js';
-import gameRoutes from '../routes/game.js';
-import adminRoutes from '../routes/admin.js';
+import authRoutes from 'routes/auth.js';
+import economyRoutes from 'routes/economy.js';
+import gameRoutes from 'routes/game.js';
+import adminRoutes from 'routes/admin.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -58,15 +64,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Response time middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    logger.request(req, res, duration);
-  });
-  next();
-});
+// Performance monitoring
+app.use(performanceMonitor);
+
+// Response formatter
+app.use(responseFormatter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -86,176 +88,124 @@ app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Receipt verification endpoint
-app.post('/api/verify_receipt', security.authRateLimit, async (req, res) => {
-  try {
-    const { sku, receipt } = req.body;
+app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {
+  const { sku, receipt } = req.body;
 
-    if (!sku || !receipt) {
-      return res.status(400).json({
-        valid: false,
-        error: 'Missing required fields: sku, receipt',
-        requestId: req.requestId,
-      });
-    }
-
-    // TODO: Implement actual receipt verification with Apple/Google
-    const isValid = String(receipt).length > 20;
-
-    res.json({
-      valid: isValid,
-      sku,
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId,
-    });
-  } catch (error) {
-    logger.error('Receipt verification failed', { error: error.message });
-    res.status(500).json({
+  if (!sku || !receipt) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
       valid: false,
-      error: 'Internal server error',
-      requestId: req.requestId,
+      error: 'Missing required fields: sku, receipt',
     });
   }
-});
+
+  // TODO: Implement actual receipt verification with Apple/Google
+  const isValid = String(receipt).length > 20;
+
+  res.json({
+    valid: isValid,
+    sku,
+    timestamp: new Date().toISOString(),
+  });
+}));
 
 // Segments endpoint
-app.post('/api/segments', security.sessionValidation, async (req, res) => {
-  try {
-    const profile = req.body;
-    const playerId = req.user.playerId;
+app.post('/api/segments', security.sessionValidation, asyncHandler(async (req, res) => {
+  const profile = req.body;
+  // const playerId = req.user.playerId;
 
-    // Check cache first
-    const cacheKey = `segments_${JSON.stringify(profile)}`;
-    const cached = economyService.getCachedData(cacheKey);
+  // Check cache first
+  const cacheKey = `${CACHE_KEYS.SEGMENTS}_${JSON.stringify(profile)}`;
+  const cached = economyService.getCachedData(cacheKey);
 
-    if (cached) {
-      return res.json({
-        ...cached.data,
-        cached: true,
-        requestId: req.requestId,
-      });
-    }
-
-    // Generate segments based on profile
-    const overrides = {};
-
-    if (profile.payer === 'nonpayer' && profile.skill === 'newbie') {
-      overrides.best_value_sku = 'starter_pack_small';
-    }
-
-    if (profile.region === 'IN') {
-      overrides.most_popular_sku = 'gems_medium';
-    }
-
-    if (profile.level && profile.level < 10) {
-      overrides.tutorial_offers = true;
-    }
-
-    if (
-      profile.last_play &&
-      Date.now() - new Date(profile.last_play).getTime() >
-        7 * 24 * 60 * 60 * 1000
-    ) {
-      overrides.comeback_offers = true;
-    }
-
-    const result = {
-      ...overrides,
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId,
-    };
-
-    // Cache the result
-    economyService.setCachedData(cacheKey, result);
-
-    res.json(result);
-  } catch (error) {
-    logger.error('Segments generation failed', { error: error.message });
-    res.status(500).json({
-      error: 'Internal server error',
-      requestId: req.requestId,
+  if (cached) {
+    return res.json({
+      ...cached.data,
+      cached: true,
     });
   }
-});
+
+  // Generate segments based on profile
+  const overrides = {};
+
+  if (profile.payer === 'nonpayer' && profile.skill === 'newbie') {
+    overrides.best_value_sku = 'starter_pack_small';
+  }
+
+  if (profile.region === 'IN') {
+    overrides.most_popular_sku = 'gems_medium';
+  }
+
+  if (profile.level && profile.level < 10) {
+    overrides.tutorial_offers = true;
+  }
+
+  if (
+    profile.last_play &&
+    Date.now() - new Date(profile.last_play).getTime() >
+      7 * 24 * 60 * 60 * 1000
+  ) {
+    overrides.comeback_offers = true;
+  }
+
+  const result = {
+    ...overrides,
+    timestamp: new Date().toISOString(),
+  };
+
+  // Cache the result
+  economyService.setCachedData(cacheKey, result);
+
+  res.json(result);
+}));
 
 // Promo codes endpoint
-app.post('/api/promo', security.strictRateLimit, async (req, res) => {
-  try {
-    const { code, playerId } = req.body;
+app.post('/api/promo', security.strictRateLimit, asyncHandler(async (req, res) => {
+  const { code, playerId } = req.body;
 
-    if (!code || !playerId) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Missing required fields: code, playerId',
-        requestId: req.requestId,
-      });
-    }
-
-    const validCodes = ['WELCOME', 'FREE100', 'STARTER', 'COMEBACK'];
-    const isValid = validCodes.includes(String(code).toUpperCase());
-
-    if (isValid) {
-      const rewards = {
-        WELCOME: { coins: 1000, gems: 50 },
-        FREE100: { coins: 100, gems: 10 },
-        STARTER: { coins: 500, gems: 25 },
-        COMEBACK: { coins: 2000, gems: 100 },
-      };
-
-      security.logSecurityEvent('promo_code_used', {
-        playerId,
-        code: String(code).toUpperCase(),
-        ip: req.ip,
-      });
-
-      res.json({
-        ok: true,
-        code: String(code).toUpperCase(),
-        reward: rewards[String(code).toUpperCase()],
-        requestId: req.requestId,
-      });
-    } else {
-      security.logSecurityEvent('invalid_promo_code', {
-        playerId,
-        code: String(code).toUpperCase(),
-        ip: req.ip,
-      });
-
-      res.status(404).json({
-        ok: false,
-        error: 'Invalid promo code',
-        requestId: req.requestId,
-      });
-    }
-  } catch (error) {
-    logger.error('Promo code validation failed', { error: error.message });
-    res.status(500).json({
+  if (!code || !playerId) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
       ok: false,
-      error: 'Internal server error',
-      requestId: req.requestId,
+      error: 'Missing required fields: code, playerId',
     });
   }
-});
+
+  const validCodes = Object.values(PROMO_CODES);
+  const isValid = validCodes.includes(String(code).toUpperCase());
+
+  if (isValid) {
+    security.logSecurityEvent('promo_code_used', {
+      playerId,
+      code: String(code).toUpperCase(),
+      ip: req.ip,
+    });
+
+    res.json({
+      ok: true,
+      code: String(code).toUpperCase(),
+      reward: PROMO_REWARDS[String(code).toUpperCase()],
+    });
+  } else {
+    security.logSecurityEvent('invalid_promo_code', {
+      playerId,
+      code: String(code).toUpperCase(),
+      ip: req.ip,
+    });
+
+    res.status(HTTP_STATUS.NOT_FOUND).json({
+      ok: false,
+      error: 'Invalid promo code',
+    });
+  }
+}));
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  logger.error('Unhandled error', {
-    error: err.message,
-    stack: err.stack,
-    requestId: req.requestId,
-  });
-
-  res.status(500).json({
-    error: 'Internal server error',
-    requestId: req.requestId,
-  });
-});
+app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({
+  res.status(HTTP_STATUS.NOT_FOUND).json({
     error: 'Not found',
     path: req.path,
-    requestId: req.requestId,
   });
 });
 

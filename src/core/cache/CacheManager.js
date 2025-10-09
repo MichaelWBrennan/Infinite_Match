@@ -3,7 +3,7 @@
  * Provides in-memory caching with TTL support
  */
 
-import { Logger } from '../logger/index.js';
+import { Logger } from 'logger/index.js';
 
 const logger = new Logger('CacheManager');
 
@@ -112,9 +112,9 @@ export class CacheManager {
     const hitRate =
       this.stats.hits + this.stats.misses > 0
         ? (
-            (this.stats.hits / (this.stats.hits + this.stats.misses)) *
+          (this.stats.hits / (this.stats.hits + this.stats.misses)) *
             100
-          ).toFixed(2)
+        ).toFixed(2)
         : 0;
 
     return {

@@ -3,10 +3,10 @@
  * Generates comprehensive reports
  */
 
-import { Logger } from '../../core/logger/index.js';
+import { Logger } from 'core/logger/index.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { getService } from '../../core/services/ServiceRegistry.js';
+import { getService } from 'core/services/ServiceRegistry.js';
 
 const logger = new Logger('ReportGenerationStep');
 
@@ -25,7 +25,7 @@ export class ReportGenerationStep {
       // Get data from state
       const healthStatus = state.get('healthStatus');
       const deployResults = state.get('deployResults');
-      const economyData = state.get('economyData');
+      // const economyData = state.get('economyData');
 
       // Generate economy report
       const economyReport = await economyService.generateReport();

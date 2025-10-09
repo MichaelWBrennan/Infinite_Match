@@ -5,8 +5,8 @@
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from '../core/security/index.js';
-import { Logger } from '../core/logger/index.js';
+import security from 'core/security/index.js';
+import { Logger } from 'core/logger/index.js';
 
 const router = express.Router();
 const logger = new Logger('GameRoutes');
@@ -160,7 +160,7 @@ router.get('/leaderboard', security.sessionValidation, async (req, res) => {
 // Get achievements
 router.get('/achievements', security.sessionValidation, async (req, res) => {
   try {
-    const playerId = req.user.playerId;
+    // const playerId = req.user.playerId;
 
     // TODO: Implement actual achievements retrieval
     const achievements = [

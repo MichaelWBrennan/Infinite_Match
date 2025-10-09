@@ -4,9 +4,8 @@
  */
 
 import { readFile } from 'fs/promises';
-import { join } from 'path';
-import { Logger } from '../core/logger/index.js';
-import { ValidationError } from '../core/errors/ErrorHandler.js';
+import { Logger } from 'core/logger/index.js';
+import { ValidationError } from 'core/errors/ErrorHandler.js';
 
 const logger = new Logger('DataLoader');
 
@@ -100,7 +99,7 @@ export class DataLoader {
    * @param {Object} options - Parsing options
    * @returns {Array} Parsed data
    */
-  parseCSV(content, options = {}) {
+  parseCSV(content) {
     const lines = content.trim().split('\n');
     if (lines.length < 2) {
       return [];
@@ -135,7 +134,7 @@ export class DataLoader {
    * @param {Object} options - Parsing options
    * @returns {Array} Parsed data
    */
-  parseJSON(content, options = {}) {
+  parseJSON(content) {
     try {
       const data = JSON.parse(content);
       return Array.isArray(data) ? data : [data];

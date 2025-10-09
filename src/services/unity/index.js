@@ -3,8 +3,8 @@
  * Centralized Unity Cloud Services API client
  */
 
-import { AppConfig } from '../../core/config/index.js';
-import { Logger } from '../../core/logger/index.js';
+import { AppConfig } from 'core/config/index.js';
+import { Logger } from 'core/logger/index.js';
 
 // Polyfill for fetch and URLSearchParams in Node.js
 const fetch = globalThis.fetch || require('node-fetch');
@@ -43,7 +43,7 @@ class UnityService {
         logger.info(
           'Unity account credentials found - using account-based authentication'
         );
-        this.accessToken = 'unity-account-mode';
+        this.accesstoken = process.env.TOKEN;
         return true;
       }
 
@@ -51,11 +51,11 @@ class UnityService {
       logger.warn(
         'No Unity credentials configured - using personal license mode'
       );
-      this.accessToken = 'personal-license-mode';
+      this.accesstoken = process.env.TOKEN;
       return true;
     } catch (error) {
       logger.error(`Unity authentication failed: ${error.message}`);
-      this.accessToken = 'personal-license-mode';
+      this.accesstoken = process.env.TOKEN;
       return true;
     }
   }
@@ -100,7 +100,7 @@ class UnityService {
           }
         );
         // Fall back to Cloud Code mode
-        this.accessToken = 'cloud-code-mode';
+        this.accesstoken = process.env.TOKEN;
         return true;
       }
 
@@ -118,7 +118,7 @@ class UnityService {
         error: error.message,
       });
       // Fall back to Cloud Code mode
-      this.accessToken = 'cloud-code-mode';
+      this.accesstoken = process.env.TOKEN;
       return true;
     }
   }
@@ -501,7 +501,7 @@ class UnityService {
    * Fallback when Unity Cloud Services API is not available
    */
   async createCurrencyViaBrowser(currencyData) {
-    const { spawn } = await import('child_process');
+    // const { spawn } = await import('child_process');
     const { promisify } = await import('util');
     const exec = promisify((await import('child_process')).exec);
 
@@ -768,7 +768,7 @@ class UnityService {
                 'Economy data ready for local Unity project (personal license)',
             },
           };
-        } catch (error) {
+        } catch {
           logger.warn('Economy data loading failed, using simulation...');
           results.economy = {
             success: true,
@@ -787,7 +787,7 @@ class UnityService {
             method: 'api',
             result: cloudCodeResult,
           };
-        } catch (error) {
+        } catch {
           logger.warn('Cloud Code API deployment failed, using simulation...');
           results.cloudCode = {
             success: true,
@@ -806,7 +806,7 @@ class UnityService {
             method: 'api',
             result: remoteConfigResult,
           };
-        } catch (error) {
+        } catch {
           logger.warn(
             'Remote Config API deployment failed, using simulation...'
           );

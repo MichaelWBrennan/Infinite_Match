@@ -3,13 +3,13 @@
  * Registers all services with the container
  */
 
-import { container } from '../container/ServiceContainer.js';
-import { AppConfig } from '../config/index.js';
-import DataLoader from '../../data/DataLoader.js';
-import EconomyValidator from '../../data/validators/EconomyValidator.js';
-import CacheManager from '../cache/CacheManager.js';
-import EconomyService from '../../services/economy/EconomyService.js';
-import UnityService from '../../services/unity/index.js';
+import { container } from 'container/ServiceContainer.js';
+import { AppConfig } from 'config/index.js';
+import DataLoader from 'data/DataLoader.js';
+import EconomyValidator from 'data/validators/EconomyValidator.js';
+import CacheManager from 'cache/CacheManager.js';
+import EconomyService from 'services/economy/EconomyService.js';
+import UnityService from 'services/unity/index.js';
 
 /**
  * Register all services with the container
