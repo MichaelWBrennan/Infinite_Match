@@ -1,0 +1,43 @@
+{
+  "performance_settings": {
+    "enable_physics_2d": true,
+    "enable_physics_3d": false,
+    "enable_continuous_collision_detection": false,
+    "enable_queries_hit_triggers": true,
+    "enable_queries_start_in_colliders": false
+  },
+  "collision_detection": {
+    "default_collision_detection": "Discrete",
+    "default_solver_iterations": 6,
+    "default_solver_velocity_iterations": 1,
+    "bounce_threshold": 2.0,
+    "sleep_threshold": 0.005,
+    "max_angular_velocity": 7.0
+  },
+  "memory_management": {
+    "enable_physics_pooling": true,
+    "max_rigidbody_pool_size": 100,
+    "max_collider_pool_size": 200,
+    "physics_garbage_collection_interval": 30.0
+  },
+  "quality_settings": {
+    "low": {
+      "solver_iterations": 4,
+      "solver_velocity_iterations": 1,
+      "bounce_threshold": 3.0,
+      "sleep_threshold": 0.01
+    },
+    "medium": {
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "bounce_threshold": 2.0,
+      "sleep_threshold": 0.005
+    },
+    "high": {
+      "solver_iterations": 8,
+      "solver_velocity_iterations": 2,
+      "bounce_threshold": 1.0,
+      "sleep_threshold": 0.001
+    }
+  }
+}

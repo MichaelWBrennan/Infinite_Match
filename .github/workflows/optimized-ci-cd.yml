@@ -206,12 +206,30 @@ jobs:
       run: npm run health
 
     - name: Deploy economy data
+      env:
+        UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
+        UNITY_ENV_ID: ${{ secrets.UNITY_ENV_ID }}
+        UNITY_CLIENT_ID: ${{ secrets.UNITY_CLIENT_ID }}
+        UNITY_CLIENT_SECRET: ${{ secrets.UNITY_CLIENT_SECRET }}
+        UNITY_API_TOKEN: ${{ secrets.UNITY_API_TOKEN }}
       run: npm run economy:deploy
 
     - name: Deploy Unity Services
+      env:
+        UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
+        UNITY_ENV_ID: ${{ secrets.UNITY_ENV_ID }}
+        UNITY_CLIENT_ID: ${{ secrets.UNITY_CLIENT_ID }}
+        UNITY_CLIENT_SECRET: ${{ secrets.UNITY_CLIENT_SECRET }}
+        UNITY_API_TOKEN: ${{ secrets.UNITY_API_TOKEN }}
       run: npm run unity:deploy
 
     - name: Run automation
+      env:
+        UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
+        UNITY_ENV_ID: ${{ secrets.UNITY_ENV_ID }}
+        UNITY_CLIENT_ID: ${{ secrets.UNITY_CLIENT_ID }}
+        UNITY_CLIENT_SECRET: ${{ secrets.UNITY_CLIENT_SECRET }}
+        UNITY_API_TOKEN: ${{ secrets.UNITY_API_TOKEN }}
       run: npm run automation
 
     - name: Post-deployment verification

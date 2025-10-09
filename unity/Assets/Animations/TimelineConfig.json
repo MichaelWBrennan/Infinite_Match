@@ -1,0 +1,60 @@
+{
+  "level_intro": {
+    "duration": 3.0,
+    "tracks": [
+      {
+        "name": "Camera Track",
+        "type": "Cinemachine",
+        "clips": [
+          {
+            "start_time": 0.0,
+            "duration": 2.0,
+            "action": "zoom_in",
+            "target": "board_center"
+          }
+        ]
+      },
+      {
+        "name": "UI Track",
+        "type": "UI",
+        "clips": [
+          {
+            "start_time": 0.5,
+            "duration": 1.0,
+            "action": "fade_in",
+            "target": "level_info"
+          }
+        ]
+      }
+    ]
+  },
+  "level_complete": {
+    "duration": 4.0,
+    "tracks": [
+      {
+        "name": "Particle Track",
+        "type": "ParticleSystem",
+        "clips": [
+          {
+            "start_time": 0.0,
+            "duration": 2.0,
+            "action": "play",
+            "target": "celebration_particles"
+          }
+        ]
+      },
+      {
+        "name": "UI Track",
+        "type": "UI",
+        "clips": [
+          {
+            "start_time": 1.0,
+            "duration": 2.0,
+            "action": "slide_in",
+            "target": "level_complete_panel"
+          }
+        ]
+      }
+    ]
+  }
+}
