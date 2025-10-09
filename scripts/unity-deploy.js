@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Unity Services Deployment Script
- * Deploys all Unity Cloud Services configurations
+ * Deploys all Unity Cloud Services configurations using real Unity Cloud API
  */
 
 import { Logger } from '../src/core/logger/index.js';
@@ -45,11 +45,15 @@ class UnityDeployer {
     try {
       logger.info('Deploying Cloud Code functions...');
 
-      // TODO: Implement Cloud Code deployment
-      // This would read Cloud Code files and deploy them
-      logger.info('Cloud Code deployment completed (simulated)');
+      // Deploy Cloud Code functions using real Unity Cloud API
+      const result = await this.unityService.deployCloudCodeFunctions();
+      
+      logger.info('Cloud Code deployment completed', {
+        deployed: result.deployed,
+        errors: result.errors.length
+      });
 
-      return { deployed: 0, errors: [] };
+      return result;
     } catch (error) {
       logger.error('Cloud Code deployment failed', { error: error.message });
       throw error;
