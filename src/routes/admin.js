@@ -4,10 +4,10 @@
  */
 
 import express from 'express';
-import security from '../core/security/index.js';
-import { Logger } from '../core/logger/index.js';
-import EconomyService from '../services/economy/index.js';
-import UnityService from '../services/unity/index.js';
+import security from 'core/security/index.js';
+import { Logger } from 'core/logger/index.js';
+import EconomyService from 'services/economy/index.js';
+import UnityService from 'services/unity/index.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
@@ -86,7 +86,7 @@ router.get('/economy/stats', async (req, res) => {
 // Get security events
 router.get('/security/events', async (req, res) => {
   try {
-    const { limit = 100, type } = req.query;
+    const { limit = 100 } = req.query;
 
     // TODO: Implement actual security events retrieval
     const events = [
@@ -169,7 +169,7 @@ router.post('/unity/deploy', async (req, res) => {
 // Get system logs
 router.get('/logs', async (req, res) => {
   try {
-    const { level = 'info', limit = 100 } = req.query;
+    const { limit = 100 } = req.query;
 
     // TODO: Implement actual log retrieval
     const logs = [

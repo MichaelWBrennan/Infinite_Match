@@ -3,8 +3,8 @@
  * Validates economy-related data structures
  */
 
-import { Logger } from '../../core/logger/index.js';
-import { ValidationError } from '../../core/errors/ErrorHandler.js';
+import { Logger } from 'core/logger/index.js';
+import { ValidationError } from 'core/errors/ErrorHandler.js';
 
 const logger = new Logger('EconomyValidator');
 
@@ -216,36 +216,36 @@ export class EconomyValidator {
    */
   validateFieldType(field, value, expectedType, index) {
     switch (expectedType) {
-      case 'string': {
-        return String(value);
-      }
+    case 'string': {
+      return String(value);
+    }
 
-      case 'number': {
-        const num = Number(value);
-        if (isNaN(num)) {
-          throw new ValidationError(
-            `Invalid number for field '${field}' at index ${index}: ${value}`,
-            field
-          );
-        }
-        return num;
-      }
-
-      case 'boolean': {
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'string') {
-          const lower = value.toLowerCase();
-          if (lower === 'true') return true;
-          if (lower === 'false') return false;
-        }
+    case 'number': {
+      const num = Number(value);
+      if (isNaN(num)) {
         throw new ValidationError(
-          `Invalid boolean for field '${field}' at index ${index}: ${value}`,
+          `Invalid number for field '${field}' at index ${index}: ${value}`,
           field
         );
       }
+      return num;
+    }
 
-      default:
-        return value;
+    case 'boolean': {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const lower = value.toLowerCase();
+        if (lower === 'true') return true;
+        if (lower === 'false') return false;
+      }
+      throw new ValidationError(
+        `Invalid boolean for field '${field}' at index ${index}: ${value}`,
+        field
+      );
+    }
+
+    default:
+      return value;
     }
   }
 
@@ -261,27 +261,27 @@ export class EconomyValidator {
 
     // Apply specific mappings based on data type
     switch (dataType) {
-      case 'currency':
-        mappedItem.isTradable = mappedItem.isTradable || false;
-        mappedItem.isConsumable = mappedItem.isConsumable || false;
-        break;
+    case 'currency':
+      mappedItem.isTradable = mappedItem.isTradable || false;
+      mappedItem.isConsumable = mappedItem.isConsumable || false;
+      break;
 
-      case 'inventory':
-        mappedItem.isTradable = this.parseBoolean(mappedItem.tradable) || false;
-        mappedItem.isConsumable = mappedItem.isConsumable || false;
-        mappedItem.maxStackSize = this.parseBoolean(mappedItem.stackable)
-          ? 999
-          : 1;
-        mappedItem.rarity = mappedItem.rarity || 'common';
-        mappedItem.category = mappedItem.category || 'general';
-        break;
+    case 'inventory':
+      mappedItem.isTradable = this.parseBoolean(mappedItem.tradable) || false;
+      mappedItem.isConsumable = mappedItem.isConsumable || false;
+      mappedItem.maxStackSize = this.parseBoolean(mappedItem.stackable)
+        ? 999
+        : 1;
+      mappedItem.rarity = mappedItem.rarity || 'common';
+      mappedItem.category = mappedItem.category || 'general';
+      break;
 
-      case 'catalog':
-        mappedItem.cost = mappedItem.cost_amount || 0;
-        mappedItem.currency = mappedItem.cost_currency || 'coins';
-        mappedItem.type = mappedItem.type || 'item';
-        mappedItem.isActive = mappedItem.isActive !== false;
-        break;
+    case 'catalog':
+      mappedItem.cost = mappedItem.cost_amount || 0;
+      mappedItem.currency = mappedItem.cost_currency || 'coins';
+      mappedItem.type = mappedItem.type || 'item';
+      mappedItem.isActive = mappedItem.isActive !== false;
+      break;
     }
 
     return mappedItem;

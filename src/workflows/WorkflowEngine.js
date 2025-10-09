@@ -3,8 +3,8 @@
  * Manages execution of workflow steps with state management
  */
 
-import { Logger } from '../core/logger/index.js';
-import { ErrorHandler } from '../core/errors/ErrorHandler.js';
+import { Logger } from 'core/logger/index.js';
+import { ErrorHandler } from 'core/errors/ErrorHandler.js';
 
 const logger = new Logger('WorkflowEngine');
 
@@ -209,10 +209,10 @@ export class WorkflowEngine {
     const successRate =
       this.results.length > 0
         ? (
-            (this.results.filter((r) => r.success).length /
+          (this.results.filter((r) => r.success).length /
               this.results.length) *
             100
-          ).toFixed(2)
+        ).toFixed(2)
         : 0;
 
     return {

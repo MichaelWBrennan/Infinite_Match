@@ -5,8 +5,10 @@
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from '../core/security/index.js';
-import { Logger } from '../core/logger/index.js';
+import security from 'core/security/index.js';
+import { Logger } from 'core/logger/index.js';
+import { asyncHandler } from 'core/middleware/index.js';
+import { ValidationError } from 'core/errors/ErrorHandler.js';
 
 const router = express.Router();
 const logger = new Logger('AuthRoutes');
@@ -32,46 +34,34 @@ router.post(
   '/login',
   security.authRateLimit,
   validateLogin,
-  async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          errors: errors.array(),
-          requestId: req.requestId,
-        });
-      }
-
-      const { playerId, password, deviceInfo } = req.body;
-
-      // TODO: Implement actual user authentication
-      // For now, we'll create a session for any valid playerId
-      const sessionId = security.createSession(playerId, { deviceInfo });
-      const token = security.generateToken({ playerId, sessionId });
-
-      security.logSecurityEvent('player_login', {
-        playerId,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        deviceInfo,
-      });
-
-      res.json({
-        success: true,
-        token,
-        sessionId,
-        requestId: req.requestId,
-      });
-    } catch (error) {
-      logger.error('Login failed', { error: error.message });
-      res.status(500).json({
-        success: false,
-        error: 'Login failed',
-        requestId: req.requestId,
+  asyncHandler(async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new ValidationError('Validation failed', 'login_validation', {
+        errors: errors.array(),
       });
     }
-  }
+
+    const { playerId, deviceInfo } = req.body;
+
+    // TODO: Implement actual user authentication
+    // For now, we'll create a session for any valid playerId
+    const sessionId = security.createSession(playerId, { deviceInfo });
+    const token = security.generateToken({ playerId, sessionId });
+
+    security.logSecurityEvent('player_login', {
+      playerId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      deviceInfo,
+    });
+
+    res.json({
+      success: true,
+      token,
+      sessionId,
+    });
+  })
 );
 
 // Register endpoint
@@ -90,7 +80,7 @@ router.post(
         });
       }
 
-      const { playerId, password, email, deviceInfo } = req.body;
+      const { playerId, email, deviceInfo } = req.body;
 
       // TODO: Implement actual user registration
       // For now, we'll create a session for any valid registration
