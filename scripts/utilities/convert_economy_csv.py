@@ -462,7 +462,7 @@ All economy data has been successfully converted to Unity CLI format.
     def generate_unity_services_config(self, items):
         """Generate Unity Services configuration (from setup_unity_economy.py)"""
         print("🔧 Generating Unity Services configuration...")
-        
+
         config = {
             "projectId": self.project_id,
             "environmentId": self.environment_id,
@@ -470,9 +470,27 @@ All economy data has been successfully converted to Unity CLI format.
             "cloudServicesAvailable": True,
             "economy": {
                 "currencies": [
-                    {"id": "coins", "name": "Coins", "type": "soft_currency", "initial": 1000, "maximum": 999999},
-                    {"id": "gems", "name": "Gems", "type": "hard_currency", "initial": 50, "maximum": 99999},
-                    {"id": "energy", "name": "Energy", "type": "consumable", "initial": 5, "maximum": 30}
+                    {
+                        "id": "coins",
+                        "name": "Coins",
+                        "type": "soft_currency",
+                        "initial": 1000,
+                        "maximum": 999999,
+                    },
+                    {
+                        "id": "gems",
+                        "name": "Gems",
+                        "type": "hard_currency",
+                        "initial": 50,
+                        "maximum": 99999,
+                    },
+                    {
+                        "id": "energy",
+                        "name": "Energy",
+                        "type": "consumable",
+                        "initial": 5,
+                        "maximum": 30,
+                    },
                 ],
                 "inventory": [
                     {
@@ -480,33 +498,45 @@ All economy data has been successfully converted to Unity CLI format.
                         "name": item["name"],
                         "type": item["type"],
                         "tradable": item["is_tradeable"] == "true",
-                        "stackable": item["is_consumable"] == "true"
+                        "stackable": item["is_consumable"] == "true",
                     }
-                    for item in items if item["type"] in ["booster", "pack"]
+                    for item in items
+                    if item["type"] in ["booster", "pack"]
                 ],
                 "catalog": [
                     {
                         "id": item["id"],
                         "name": item["name"],
-                        "cost_currency": "gems" if int(item["cost_gems"]) > 0 else "coins",
-                        "cost_amount": int(item["cost_gems"]) if int(item["cost_gems"]) > 0 else int(item["cost_coins"]),
-                        "rewards": f"{item['id']}:{item['quantity']}" if item["type"] in ["booster", "pack"] else f"coins:{item['quantity']}"
+                        "cost_currency": (
+                            "gems" if int(item["cost_gems"]) > 0 else "coins"
+                        ),
+                        "cost_amount": (
+                            int(item["cost_gems"])
+                            if int(item["cost_gems"]) > 0
+                            else int(item["cost_coins"])
+                        ),
+                        "rewards": (
+                            f"{item['id']}:{item['quantity']}"
+                            if item["type"] in ["booster", "pack"]
+                            else f"coins:{item['quantity']}"
+                        ),
                     }
-                    for item in items if item["is_purchasable"] == "true"
-                ]
-            }
+                    for item in items
+                    if item["is_purchasable"] == "true"
+                ],
+            },
         }
-        
+
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
-        
+
         print(f"✅ Unity Services configuration saved to: {self.config_path}")
         return True
 
     def generate_dashboard_instructions(self, items):
         """Generate Unity Dashboard setup instructions (from csv_to_dashboard_importer.py)"""
         print("📋 Generating Unity Dashboard instructions...")
-        
+
         instructions = f"""# Unity Dashboard Setup Instructions
 
 ## Project Information
@@ -538,11 +568,11 @@ All economy data has been successfully converted to Unity CLI format.
 ## ✅ Setup Complete!
 Your Unity Cloud Economy Service is now fully configured!
 """
-        
+
         instructions_file = self.repo_root / "UNITY_DASHBOARD_SETUP_INSTRUCTIONS.md"
         with open(instructions_file, "w", encoding="utf-8") as f:
             f.write(instructions)
-        
+
         print(f"✅ Instructions saved to: {instructions_file}")
         return True
 
@@ -558,10 +588,16 @@ Your Unity Cloud Economy Service is now fully configured!
             return False
 
         print(f"\n📊 Processing {len(items)} items:")
-        print(f"   - Currency items: {len([i for i in items if i['type'] == 'currency'])}")
-        print(f"   - Booster items: {len([i for i in items if i['type'] == 'booster'])}")
+        print(
+            f"   - Currency items: {len([i for i in items if i['type'] == 'currency'])}"
+        )
+        print(
+            f"   - Booster items: {len([i for i in items if i['type'] == 'booster'])}"
+        )
         print(f"   - Pack items: {len([i for i in items if i['type'] == 'pack'])}")
-        print(f"   - Purchasable items: {len([i for i in items if i['is_purchasable'] == 'true'])}")
+        print(
+            f"   - Purchasable items: {len([i for i in items if i['is_purchasable'] == 'true'])}"
+        )
 
         # Create output directory
         self.output_dir.mkdir(exist_ok=True)
