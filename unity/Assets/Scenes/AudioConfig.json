@@ -1,0 +1,38 @@
+{
+  "audio_settings": {
+    "audio_listener": {
+      "volume": 1.0,
+      "paused": false
+    },
+    "audio_mixer": {
+      "master_volume": 1.0,
+      "music_volume": 0.8,
+      "sfx_volume": 1.0,
+      "voice_volume": 1.0
+    }
+  },
+  "audio_sources": {
+    "background_music": {
+      "clip": "Audio/Music/background_music",
+      "volume": 0.8,
+      "pitch": 1.0,
+      "loop": true,
+      "play_on_awake": true,
+      "spatial_blend": 0.0
+    },
+    "ambient_sounds": {
+      "clip": "Audio/Ambient/ambient_sounds",
+      "volume": 0.6,
+      "pitch": 1.0,
+      "loop": true,
+      "play_on_awake": true,
+      "spatial_blend": 0.0
+    }
+  },
+  "spatial_audio": {
+    "enable_3d_sound": true,
+    "doppler_factor": 1.0,
+    "speed_of_sound": 343.0,
+    "rolloff_mode": "Logarithmic"
+  }
+}

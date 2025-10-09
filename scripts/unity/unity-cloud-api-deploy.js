@@ -12,10 +12,10 @@ const logger = new Logger('UnityCloudAPI');
 
 class UnityCloudAPIDeployer {
   constructor() {
-    this.projectId = process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574';
-    this.environmentId = process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d';
-    this.clientId = process.env.UNITY_CLIENT_ID;
-    this.clientSecret = process.env.UNITY_CLIENT_SECRET;
+    this.projectId = null;
+    this.environmentId = null;
+    this.clientId = null;
+    this.clientSecret = null;
     this.baseUrl = 'https://services.api.unity.com';
     this.accessToken = null;
   }
@@ -47,9 +47,21 @@ class UnityCloudAPIDeployer {
             logger.warn(`Failed to load secret ${secret}:`, err.message);
           }
         }
+      } else {
+        // Fallback to environment variables
+        this.projectId = process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574';
+        this.environmentId = process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d';
+        this.clientId = process.env.UNITY_CLIENT_ID;
+        this.clientSecret = process.env.UNITY_CLIENT_SECRET;
+        logger.info('Loaded secrets from environment variables');
       }
     } catch (error) {
       logger.warn('Failed to load secrets from Cursor:', error.message);
+      // Fallback to environment variables
+      this.projectId = process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574';
+      this.environmentId = process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d';
+      this.clientId = process.env.UNITY_CLIENT_ID;
+      this.clientSecret = process.env.UNITY_CLIENT_SECRET;
     }
   }
 
@@ -247,7 +259,7 @@ class UnityCloudAPIDeployer {
     try {
       logger.info('Starting Unity Cloud Services API deployment...');
 
-      // Try to load secrets from Cursor first
+      // Load secrets from Cursor or environment
       await this.loadSecretsFromCursor();
 
       // Authenticate first

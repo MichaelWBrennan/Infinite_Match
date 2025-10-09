@@ -1,0 +1,50 @@
+{
+  "physics_settings": {
+    "gravity": [
+      0,
+      -9.81,
+      0
+    ],
+    "default_material": {
+      "dynamic_friction": 0.6,
+      "static_friction": 0.6,
+      "bounciness": 0.0,
+      "friction_combine": "Average",
+      "bounce_combine": "Average"
+    },
+    "collision_detection": {
+      "default_collision_detection": "Discrete",
+      "default_solver_iterations": 6,
+      "default_solver_velocity_iterations": 1
+    }
+  },
+  "collision_layers": {
+    "Default": 0,
+    "TransparentFX": 1,
+    "Ignore Raycast": 2,
+    "Water": 4,
+    "UI": 5,
+    "Player": 8,
+    "Enemy": 9,
+    "Pickup": 10,
+    "Ground": 11,
+    "Wall": 12
+  },
+  "physics_materials": {
+    "default_physics_material": {
+      "dynamic_friction": 0.6,
+      "static_friction": 0.6,
+      "bounciness": 0.0
+    },
+    "ice_physics_material": {
+      "dynamic_friction": 0.1,
+      "static_friction": 0.1,
+      "bounciness": 0.0
+    },
+    "bouncy_physics_material": {
+      "dynamic_friction": 0.6,
+      "static_friction": 0.6,
+      "bounciness": 0.8
+    }
+  }
+}
