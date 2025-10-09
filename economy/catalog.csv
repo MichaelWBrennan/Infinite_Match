@@ -19,3 +19,5 @@ pack_booster_small,Booster Bundle,coins,500,pack_booster_small:1
 pack_booster_large,Power Pack,gems,25,pack_booster_large:1
 pack_comeback,Welcome Back!,gems,50,pack_comeback:1
 pack_flash_sale,Flash Sale!,gems,25,pack_flash_sale:1
+event_ticket_small,Event Ticket Pack,gems,10,event_ticket:5
+event_ticket_large,Event Ticket Bundle,gems,25,event_ticket:15

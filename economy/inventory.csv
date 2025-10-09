@@ -12,3 +12,4 @@ pack_booster_small,Booster Bundle,pack,False,False
 pack_booster_large,Power Pack,pack,False,False
 pack_comeback,Welcome Back!,pack,False,False
 pack_flash_sale,Flash Sale!,pack,False,False
+event_ticket,Event Ticket,special,True,True
