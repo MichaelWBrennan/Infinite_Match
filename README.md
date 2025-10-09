@@ -1,162 +1,123 @@
-# 🎮 Evergreen Match-3 Unity Game
+# Evergreen Puzzler - Match-3 Unity Game
 
-A comprehensive Match-3 puzzle game built with Unity, featuring **100% automated development**, complete headless Unity workflows, and enterprise-grade architecture. **Zero Unity Editor interaction required** - everything runs automatically in CI/CD!
+[![CI/CD](https://github.com/MichaelWBrennan/MobileGameSDK/workflows/Optimized%20CI/CD%20Pipeline/badge.svg)](https://github.com/MichaelWBrennan/MobileGameSDK/actions)
+[![Unity](https://img.shields.io/badge/Unity-2022.3.21f1-blue.svg)](https://unity3d.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## 🚀 Key Features
+A comprehensive Match-3 puzzle game built with Unity, featuring advanced automation, CI/CD pipelines, and cloud services integration.
 
-- **🤖 Complete Automation** - Headless Unity development, full CI/CD pipeline, auto-fix & auto-commit
-- **🌐 Multi-Platform** - Android, iOS, Windows, Linux, macOS, WebGL
-- **☁️ Unity Services** - Economy system, Cloud Code, Remote Config, Analytics
-- **🛒 Storefront Automation** - Google Play, App Store, Steam, Itch.io
-- **🔒 Enterprise Security** - Anti-cheat system, JWT authentication, security middleware
+## 🎮 Features
+
+- **Match-3 Gameplay**: Classic puzzle mechanics with modern enhancements
+- **Economy System**: Currencies, inventory, and virtual purchases
+- **Cloud Services**: Unity Cloud integration for analytics and remote config
+- **Automation**: Comprehensive CI/CD and deployment automation
+- **Multi-platform**: Support for Windows, iOS, Android, and WebGL
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 22+
-- Python 3.13+
-- Unity 2022.3+ (for local development only)
-- Git
+
+- Unity 2022.3.21f1 or later
+- Node.js 18+ (for automation scripts)
+- Python 3.9+ (for utility scripts)
 
 ### Installation
-```bash
-git clone <repository-url>
-cd evergreen-match3-unity
-npm install
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your configuration
-npm run dev
-```
 
-### Headless Development (Recommended)
-1. Add Unity Secrets to GitHub (Settings → Secrets and variables → Actions)
-2. Push to main branch - builds run automatically in GitHub Actions
-3. Download builds from the Actions tab artifacts section
-4. **No Unity Editor required!** 🎉
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/MichaelWBrennan/MobileGameSDK.git
+   cd MobileGameSDK
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   pip install -r requirements.txt
+   ```
+
+3. **Open in Unity**
+   - Open Unity Hub
+   - Add project from `unity/` directory
+   - Open the project
+
+### Development
+
+```bash
+# Run health checks
+npm run health
+
+# Run automation
+npm run automation
+
+# Deploy economy data
+npm run economy:deploy
+
+# Deploy Unity services
+npm run unity:deploy
+```
 
 ## 📁 Project Structure
 
 ```
-├── src/                    # Source code (core, services, routes)
-├── scripts/               # Automation and utility scripts
+├── assets/                 # Game assets
+├── cloud-code/            # Unity Cloud Code functions
 ├── config/                # Configuration files
-├── unity/                 # Unity project
-├── assets/                # Game assets
+├── docs/                  # Documentation
 ├── economy/               # Economy data (CSV files)
-├── .github/workflows/     # GitHub Actions workflows
-└── docs/                  # Documentation
+├── scripts/               # Automation and utility scripts
+├── src/                   # Server-side code
+├── unity/                 # Unity project
+└── .github/workflows/     # CI/CD pipelines
 ```
-
-## 🛠️ Development
-
-### Available Scripts
-- `npm run dev` - Start development server
-- `npm test` - Run tests
-- `npm run health` - System health check
-- `npm run deploy:all` - Deploy everything
-- `npm run automation` - Run complete automation pipeline
-
-### Headless Workflow
-1. Write code in your favorite editor
-2. Add assets to Unity folders
-3. Commit and push to trigger automatic builds
-4. Download builds from GitHub Actions
-5. Test locally with downloaded builds
-
-## 🔌 API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-- `GET /api/auth/profile` - Get user profile
-
-### Economy System
-- `GET /api/economy/data` - Get economy data
-- `POST /api/economy/purchase` - Purchase item
-- `POST /api/economy/deploy` - Deploy economy data
-
-### Game Data
-- `POST /api/game/submit_data` - Submit game data
-- `GET /api/game/progress` - Get player progress
-- `POST /api/game/save` - Save game state
-
-### Admin & Monitoring
-- `GET /api/admin/health` - System health
-- `GET /api/admin/performance` - Performance metrics
-- `GET /api/admin/logs` - System logs
-
-## 🎮 Game Features
-
-- **Core Gameplay** - Tile management, scoring system, level progression, power-ups
-- **Audio System** - Background music, sound effects, spatial audio
-- **UI System** - Responsive design, smooth animations, accessibility
-- **Physics System** - Realistic physics, collision detection, particle effects
-
-## 🔒 Security
-
-- **Anti-Cheat System** - Speed hack detection, memory monitoring, behavior analysis
-- **Data Security** - AES-256-GCM encryption, input sanitization, network security
-- **Session Management** - JWT tokens, session validation, auto-logout
-
-## 📊 Monitoring
-
-- **Health Monitoring** - System status, performance metrics, error tracking
-- **Game Analytics** - Player behavior, economy analytics, performance analytics
-- **Security Monitoring** - Threat detection, violation tracking, risk assessment
-
-## 🚀 Deployment
-
-### Automated Deployment
-```bash
-npm run economy:deploy    # Deploy economy data
-npm run unity:deploy      # Deploy Unity Services
-npm run deploy:all        # Deploy everything
-npm run health           # Check system health
-```
-
-### CI/CD Pipeline
-- Automated testing, code quality, security scanning
-- Unity Services deployment (Economy, Cloud Code, Remote Config)
-- Multi-platform builds (Windows, Linux, WebGL, Android, iOS)
-- Storefront deployment (Google Play, App Store, Steam, Itch.io)
 
 ## 🔧 Configuration
 
-See `.env.example` for all configuration options including:
-- Server configuration (PORT, JWT_SECRET, etc.)
-- Unity Services (Project ID, Environment ID, OAuth credentials)
-- Database (DATABASE_URL, REDIS_URL)
-- Security (Rate limiting, CORS, etc.)
-- Monitoring (Health checks, performance monitoring)
+### Unity Cloud Services
+
+Set up your Unity Cloud credentials in GitHub Secrets:
+
+- `UNITY_PROJECT_ID`
+- `UNITY_ENV_ID`
+- `UNITY_CLIENT_ID`
+- `UNITY_CLIENT_SECRET`
+
+### Environment Variables
+
+```bash
+export UNITY_PROJECT_ID="your-project-id"
+export UNITY_ENV_ID="your-environment-id"
+export UNITY_CLIENT_ID="your-client-id"
+export UNITY_CLIENT_SECRET="your-client-secret"
+```
+
+## 📚 Documentation
+
+- [Architecture](docs/architecture.md)
+- [Economy System](docs/economy.md)
+- [CI/CD Pipeline](docs/CI_CD.md)
+- [Setup Guide](docs/setup/)
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Install dependencies: `npm install && pip install -r requirements.txt`
-4. Make changes following coding standards
-5. Run tests: `npm test && npm run lint && npm run format`
-6. Submit a pull request
+2. Create a feature branch
+3. Make your changes
+4. Run tests and checks
+5. Submit a pull request
 
-## 📚 Documentation
-
-- `/docs/guides/` - How-to guides and tutorials
-- `/docs/setup/` - Setup and installation instructions
-- `/docs/features/` - Feature documentation
-- `CODING_STANDARDS.md` - Coding standards and best practices
-
-## 🆘 Support
-
-- **Health Check** - `npm run health`
-- **Dashboard** - `npm run dashboard`
-- **Security** - `npm run security`
-- **Issues** - Open an issue on GitHub
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- [Issues](https://github.com/MichaelWBrennan/MobileGameSDK/issues)
+- [Discussions](https://github.com/MichaelWBrennan/MobileGameSDK/discussions)
+- [Unity Documentation](https://docs.unity3d.com/)
 
 ---
 
-**🎮 Ready to build amazing Match-3 games? Just push your code and watch the magic happen! 🚀**
+**Built with ❤️ using Unity, Node.js, and modern development practices.**
