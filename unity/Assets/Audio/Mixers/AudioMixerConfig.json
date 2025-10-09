@@ -1,0 +1,61 @@
+{
+  "master_mixer": {
+    "name": "MasterMixer",
+    "volume": 1.0,
+    "groups": {
+      "master": {
+        "volume": 1.0,
+        "pitch": 1.0,
+        "effects": []
+      },
+      "music": {
+        "volume": 0.8,
+        "pitch": 1.0,
+        "effects": [
+          {
+            "type": "LowPassFilter",
+            "cutoff_frequency": 22000,
+            "resonance": 1.0
+          }
+        ]
+      },
+      "sfx": {
+        "volume": 1.0,
+        "pitch": 1.0,
+        "effects": [
+          {
+            "type": "Compressor",
+            "threshold": -20,
+            "ratio": 4.0,
+            "attack": 0.1,
+            "release": 0.1
+          }
+        ]
+      },
+      "ui": {
+        "volume": 0.9,
+        "pitch": 1.0,
+        "effects": [
+          {
+            "type": "HighPassFilter",
+            "cutoff_frequency": 80,
+            "resonance": 1.0
+          }
+        ]
+      },
+      "voice": {
+        "volume": 1.0,
+        "pitch": 1.0,
+        "effects": [
+          {
+            "type": "Echo",
+            "delay": 0.1,
+            "decay_ratio": 0.3,
+            "dry_mix": 0.8,
+            "wet_mix": 0.2
+          }
+        ]
+      }
+    }
+  }
+}

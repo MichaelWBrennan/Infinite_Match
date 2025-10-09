@@ -1,0 +1,41 @@
+{
+  "projectId": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environmentId": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "licenseType": "personal",
+  "cloudServicesAvailable": false,
+  "economy": {
+    "currencies": [
+      {"id": "coins", "name": "Coins", "type": "soft_currency", "initial": 1000, "maximum": 999999},
+      {"id": "gems", "name": "Gems", "type": "hard_currency", "initial": 50, "maximum": 99999},
+      {"id": "energy", "name": "Energy", "type": "consumable", "initial": 5, "maximum": 30}
+    ],
+    "inventory": [
+      {"id": "booster_extra_moves", "name": "Extra Moves", "type": "booster", "tradable": true, "stackable": true},
+      {"id": "booster_color_bomb", "name": "Color Bomb", "type": "booster", "tradable": true, "stackable": true},
+      {"id": "booster_rainbow_blast", "name": "Rainbow Blast", "type": "booster", "tradable": true, "stackable": true},
+      {"id": "booster_striped_candy", "name": "Striped Candy", "type": "booster", "tradable": true, "stackable": true}
+    ],
+    "catalog": [
+      {"id": "coins_small", "name": "Small Coin Pack", "cost_currency": "gems", "cost_amount": 20, "rewards": "coins:1000"},
+      {"id": "coins_medium", "name": "Medium Coin Pack", "cost_currency": "gems", "cost_amount": 120, "rewards": "coins:5000"},
+      {"id": "coins_large", "name": "Large Coin Pack", "cost_currency": "gems", "cost_amount": 300, "rewards": "coins:15000"}
+    ]
+  },
+  "cloudCode": {
+    "functions": [
+      "AddCurrency",
+      "SpendCurrency", 
+      "AddInventoryItem",
+      "UseInventoryItem"
+    ]
+  },
+  "remoteConfig": {
+    "game_settings": {
+      "ads_enabled": true,
+      "daily_bonus_enabled": true,
+      "energy_recharge_rate": 300,
+      "max_energy": 100,
+      "max_lives": 5
+    }
+  }
+}

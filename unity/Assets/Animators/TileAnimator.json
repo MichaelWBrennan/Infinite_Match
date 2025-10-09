@@ -1,0 +1,61 @@
+{
+  "name": "TileAnimator",
+  "layers": [
+    {
+      "name": "Base Layer",
+      "weight": 1.0,
+      "blending_mode": "Override",
+      "states": [
+        {
+          "name": "Idle",
+          "is_default": true,
+          "motion": "Idle",
+          "transitions": [
+            {
+              "destination": "Spawn",
+              "has_exit_time": false,
+              "has_fixed_duration": true,
+              "duration": 0.25
+            }
+          ]
+        },
+        {
+          "name": "Spawn",
+          "motion": "Spawn",
+          "transitions": [
+            {
+              "destination": "Idle",
+              "has_exit_time": true,
+              "has_fixed_duration": true,
+              "duration": 0.25
+            }
+          ]
+        },
+        {
+          "name": "Match",
+          "motion": "Match",
+          "transitions": [
+            {
+              "destination": "Fall",
+              "has_exit_time": true,
+              "has_fixed_duration": true,
+              "duration": 0.5
+            }
+          ]
+        },
+        {
+          "name": "Fall",
+          "motion": "Fall",
+          "transitions": [
+            {
+              "destination": "Idle",
+              "has_exit_time": true,
+              "has_fixed_duration": true,
+              "duration": 0.4
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

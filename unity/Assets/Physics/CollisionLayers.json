@@ -1,0 +1,55 @@
+{
+  "layers": {
+    "Default": 0,
+    "TransparentFX": 1,
+    "Ignore Raycast": 2,
+    "Water": 4,
+    "UI": 5,
+    "Tile": 8,
+    "Board": 9,
+    "Wall": 10,
+    "PowerUp": 11,
+    "Particle": 12,
+    "Background": 13,
+    "Foreground": 14
+  },
+  "layer_collisions": {
+    "Tile": [
+      "Board",
+      "Wall",
+      "PowerUp"
+    ],
+    "Board": [
+      "Tile",
+      "Wall"
+    ],
+    "Wall": [
+      "Tile",
+      "Board"
+    ],
+    "PowerUp": [
+      "Tile"
+    ],
+    "Particle": [
+      "Default"
+    ],
+    "Background": [],
+    "Foreground": [
+      "UI"
+    ]
+  },
+  "physics_settings": {
+    "gravity": [
+      0,
+      -9.81,
+      0
+    ],
+    "default_material": "TileMaterial",
+    "bounce_threshold": 2.0,
+    "sleep_threshold": 0.005,
+    "default_solver_iterations": 6,
+    "default_solver_velocity_iterations": 1,
+    "queries_hit_triggers": true,
+    "queries_start_in_colliders": false
+  }
+}
