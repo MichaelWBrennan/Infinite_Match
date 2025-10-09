@@ -1,380 +1,78 @@
-using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System;
+using UnityEngine;
+using Evergreen.Core;
+using Evergreen.Analytics;
 
 namespace Evergreen.Monetization
 {
     /// <summary>
-    /// Advanced Monetization System with pricing optimization and revenue maximization
-    /// Implements industry-leading monetization strategies for maximum ROI
+    /// Advanced monetization system with dynamic pricing, subscriptions, and psychological triggers
+    /// Designed for maximum revenue generation and player retention
     /// </summary>
     public class AdvancedMonetizationSystem : MonoBehaviour
     {
-        [Header("Pricing Strategy")]
-        [SerializeField] private bool enableDynamicPricing = true;
-        [SerializeField] private bool enableA_BTesting = true;
-        [SerializeField] private bool enablePlayerSegmentation = true;
-        [SerializeField] private bool enableRegionalPricing = true;
-        [SerializeField] private bool enableTimeBasedPricing = true;
+        [Header("Dynamic Pricing")]
+        public bool enableDynamicPricing = true;
+        public float basePriceMultiplier = 1.0f;
+        public float highSpenderMultiplier = 1.3f;
+        public float priceSensitiveMultiplier = 0.7f;
+        public float urgencyMultiplier = 1.5f;
         
-        [Header("Offer Management")]
-        [SerializeField] private bool enablePersonalizedOffers = true;
-        [SerializeField] private bool enableRetentionOffers = true;
-        [SerializeField] private bool enableUpsellOffers = true;
-        [SerializeField] private bool enableCrossSellOffers = true;
-        [SerializeField] private bool enableLimitedTimeOffers = true;
+        [Header("Subscription System")]
+        public bool enableSubscriptions = true;
+        public float subscriptionPrice = 9.99f;
+        public int subscriptionDuration = 30; // days
+        public float subscriptionRewardMultiplier = 2.0f;
         
-        [Header("Revenue Optimization")]
-        [SerializeField] private bool enableRevenueMaximization = true;
-        [SerializeField] private bool enableLTVOptimization = true;
-        [SerializeField] private bool enableARPUOptimization = true;
-        [SerializeField] private bool enableConversionOptimization = true;
-        [SerializeField] private bool enableRetentionOptimization = true;
+        [Header("Battle Pass System")]
+        public bool enableBattlePass = true;
+        public int battlePassLevels = 50;
+        public float xpPerLevel = 1000f;
+        public float battlePassPrice = 4.99f;
+        public int daysRemaining = 14;
         
-        [Header("Analytics Integration")]
-        [SerializeField] private bool enableRevenueAnalytics = true;
-        [SerializeField] private bool enablePlayerBehaviorAnalytics = true;
-        [SerializeField] private bool enableOfferPerformanceAnalytics = true;
-        [SerializeField] private bool enableABTestAnalytics = true;
+        [Header("Impulse Purchase Triggers")]
+        public bool enableImpulsePurchases = true;
+        public float impulseChance = 0.15f;
+        public float impulseDiscount = 0.5f;
+        public float impulseDuration = 300f; // 5 minutes
         
-        [Header("Currency System")]
-        [SerializeField] private CurrencyData[] currencies;
-        [SerializeField] private ExchangeRate[] exchangeRates;
-        [SerializeField] private bool enableCurrencyConversion = true;
-        [SerializeField] private bool enableCurrencySinks = true;
+        [Header("VIP System")]
+        public bool enableVIPSystem = true;
+        public int[] vipThresholds = { 100, 500, 1000, 2500, 5000 }; // USD spent
+        public string[] vipTiers = { "Bronze", "Silver", "Gold", "Platinum", "Diamond" };
+        public float[] vipMultipliers = { 1.0f, 1.1f, 1.2f, 1.3f, 1.5f };
         
-        [Header("Pricing Configuration")]
-        [SerializeField] private PricingTier[] pricingTiers;
-        [SerializeField] private RegionalPricing[] regionalPricing;
-        [SerializeField] private TimeBasedPricing[] timeBasedPricing;
-        [SerializeField] private PlayerSegmentPricing[] segmentPricing;
+        [Header("Limited Time Offers")]
+        public bool enableLimitedOffers = true;
+        public float offerChance = 0.2f;
+        public float offerDiscount = 0.6f;
+        public float offerDuration = 1800f; // 30 minutes
         
-        private Dictionary<string, CurrencyData> _currencies = new Dictionary<string, CurrencyData>();
-        private Dictionary<string, OfferData> _offers = new Dictionary<string, OfferData>();
-        private Dictionary<string, PlayerSegment> _playerSegments = new Dictionary<string, PlayerSegment>();
-        private Dictionary<string, ABTest> _abTests = new Dictionary<string, ABTest>();
-        private Dictionary<string, PricingStrategy> _pricingStrategies = new Dictionary<string, PricingStrategy>();
-        private Dictionary<string, RevenueData> _revenueData = new Dictionary<string, RevenueData>();
+        private Dictionary<string, PlayerMonetizationProfile> _playerProfiles = new Dictionary<string, PlayerMonetizationProfile>();
+        private Dictionary<string, DynamicPrice> _dynamicPrices = new Dictionary<string, DynamicPrice>();
+        private Dictionary<string, Subscription> _subscriptions = new Dictionary<string, Subscription>();
+        private Dictionary<string, BattlePass> _battlePasses = new Dictionary<string, BattlePass>();
+        private Dictionary<string, ImpulseOffer> _impulseOffers = new Dictionary<string, ImpulseOffer>();
+        private Dictionary<string, LimitedOffer> _limitedOffers = new Dictionary<string, LimitedOffer>();
+        private Dictionary<string, VIPStatus> _vipStatuses = new Dictionary<string, VIPStatus>();
+        
+        private Coroutine _pricingUpdateCoroutine;
+        private Coroutine _offerGenerationCoroutine;
+        private Coroutine _subscriptionCheckCoroutine;
+        
+        // Events
+        public System.Action<DynamicPrice> OnPriceUpdated;
+        public System.Action<Subscription> OnSubscriptionStarted;
+        public System.Action<BattlePass> OnBattlePassPurchased;
+        public System.Action<ImpulseOffer> OnImpulseOfferCreated;
+        public System.Action<LimitedOffer> OnLimitedOfferCreated;
+        public System.Action<VIPStatus> OnVIPStatusUpdated;
         
         public static AdvancedMonetizationSystem Instance { get; private set; }
-        
-        [System.Serializable]
-        public class CurrencyData
-        {
-            public string id;
-            public string name;
-            public string symbol;
-            public float exchangeRate;
-            public bool isPrimary;
-            public bool isHardCurrency;
-            public int decimalPlaces;
-            public string iconPath;
-        }
-        
-        [System.Serializable]
-        public class ExchangeRate
-        {
-            public string fromCurrency;
-            public string toCurrency;
-            public float rate;
-            public DateTime lastUpdated;
-        }
-        
-        [System.Serializable]
-        public class OfferData
-        {
-            public string id;
-            public string name;
-            public string description;
-            public OfferType type;
-            public OfferTrigger trigger;
-            public List<OfferReward> rewards;
-            public PricingData pricing;
-            public OfferConditions conditions;
-            public OfferTargeting targeting;
-            public OfferAnalytics analytics;
-            public bool isActive;
-            public DateTime startTime;
-            public DateTime endTime;
-            public int maxPurchases;
-            public int currentPurchases;
-            public float conversionRate;
-            public float revenue;
-            public float ltv;
-        }
-        
-        [System.Serializable]
-        public class PlayerSegment
-        {
-            public string id;
-            public string name;
-            public string description;
-            public SegmentCriteria criteria;
-            public PricingMultiplier pricingMultiplier;
-            public OfferPreferences offerPreferences;
-            public float ltv;
-            public float arpu;
-            public float retention;
-            public int playerCount;
-            public DateTime lastUpdated;
-        }
-        
-        [System.Serializable]
-        public class ABTest
-        {
-            public string id;
-            public string name;
-            public string description;
-            public ABTestVariant[] variants;
-            public string targetMetric;
-            public float confidenceLevel;
-            public int minSampleSize;
-            public int currentSampleSize;
-            public bool isActive;
-            public DateTime startTime;
-            public DateTime endTime;
-            public ABTestResults results;
-        }
-        
-        [System.Serializable]
-        public class PricingStrategy
-        {
-            public string id;
-            public string name;
-            public PricingStrategyType type;
-            public PricingParameters parameters;
-            public float effectiveness;
-            public float revenue;
-            public int usageCount;
-            public DateTime lastUsed;
-        }
-        
-        [System.Serializable]
-        public class RevenueData
-        {
-            public string id;
-            public string name;
-            public float revenue;
-            public float ltv;
-            public float arpu;
-            public float conversionRate;
-            public float retention;
-            public int playerCount;
-            public DateTime timestamp;
-        }
-        
-        [System.Serializable]
-        public class PricingTier
-        {
-            public string id;
-            public string name;
-            public float basePrice;
-            public float minPrice;
-            public float maxPrice;
-            public PricingTierType type;
-            public string[] applicableCurrencies;
-        }
-        
-        [System.Serializable]
-        public class RegionalPricing
-        {
-            public string region;
-            public string currency;
-            public float multiplier;
-            public bool isActive;
-        }
-        
-        [System.Serializable]
-        public class TimeBasedPricing
-        {
-            public string id;
-            public string name;
-            public TimeOfDay startTime;
-            public TimeOfDay endTime;
-            public DayOfWeek[] applicableDays;
-            public float multiplier;
-            public bool isActive;
-        }
-        
-        [System.Serializable]
-        public class PlayerSegmentPricing
-        {
-            public string segmentId;
-            public string offerId;
-            public float multiplier;
-            public bool isActive;
-        }
-        
-        [System.Serializable]
-        public class OfferReward
-        {
-            public string currencyId;
-            public int amount;
-            public float value;
-        }
-        
-        [System.Serializable]
-        public class PricingData
-        {
-            public string currencyId;
-            public float basePrice;
-            public float currentPrice;
-            public float minPrice;
-            public float maxPrice;
-            public float discount;
-            public bool isDiscounted;
-        }
-        
-        [System.Serializable]
-        public class OfferConditions
-        {
-            public int minLevel;
-            public int maxLevel;
-            public int minPlayTime;
-            public int maxPlayTime;
-            public string[] requiredCurrencies;
-            public int[] requiredAmounts;
-            public bool requirePurchase;
-            public bool requireAdView;
-        }
-        
-        [System.Serializable]
-        public class OfferTargeting
-        {
-            public string[] playerSegments;
-            public string[] regions;
-            public string[] platforms;
-            public string[] devices;
-            public bool isPersonalized;
-        }
-        
-        [System.Serializable]
-        public class OfferAnalytics
-        {
-            public int views;
-            public int clicks;
-            public int purchases;
-            public float conversionRate;
-            public float revenue;
-            public float ltv;
-            public DateTime lastUpdated;
-        }
-        
-        [System.Serializable]
-        public class SegmentCriteria
-        {
-            public int minLevel;
-            public int maxLevel;
-            public float minLTV;
-            public float maxLTV;
-            public float minARPU;
-            public float maxARPU;
-            public int minPlayTime;
-            public int maxPlayTime;
-            public string[] regions;
-            public string[] platforms;
-        }
-        
-        [System.Serializable]
-        public class PricingMultiplier
-        {
-            public float baseMultiplier;
-            public float minMultiplier;
-            public float maxMultiplier;
-            public float adjustmentRate;
-        }
-        
-        [System.Serializable]
-        public class OfferPreferences
-        {
-            public string[] preferredOfferTypes;
-            public string[] preferredCurrencies;
-            public float preferredDiscount;
-            public int preferredFrequency;
-        }
-        
-        [System.Serializable]
-        public class ABTestVariant
-        {
-            public string id;
-            public string name;
-            public PricingData pricing;
-            public OfferData offer;
-            public int playerCount;
-            public float conversionRate;
-            public float revenue;
-        }
-        
-        [System.Serializable]
-        public class ABTestResults
-        {
-            public string winningVariant;
-            public float confidence;
-            public float lift;
-            public bool isSignificant;
-            public DateTime completionTime;
-        }
-        
-        [System.Serializable]
-        public class PricingParameters
-        {
-            public float basePrice;
-            public float elasticity;
-            public float demandCurve;
-            public float competitionFactor;
-            public float seasonalityFactor;
-        }
-        
-        public enum OfferType
-        {
-            Starter,
-            Comeback,
-            Flash,
-            Energy,
-            Booster,
-            Currency,
-            Subscription,
-            BattlePass,
-            LimitedTime,
-            Personalized
-        }
-        
-        public enum OfferTrigger
-        {
-            OnStart,
-            OnLevelComplete,
-            OnLevelFail,
-            OnPurchase,
-            OnAdView,
-            OnTime,
-            OnEvent,
-            OnRetention,
-            OnUpsell,
-            OnCrossSell
-        }
-        
-        public enum PricingTierType
-        {
-            Basic,
-            Standard,
-            Premium,
-            Luxury,
-            Custom
-        }
-        
-        public enum PricingStrategyType
-        {
-            Fixed,
-            Dynamic,
-            Personalized,
-            Regional,
-            TimeBased,
-            SegmentBased,
-            A_BTested,
-            ML_Optimized
-        }
         
         void Awake()
         {
@@ -382,7 +80,7 @@ namespace Evergreen.Monetization
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeMonetizationsystemSafe();
+                InitializeMonetizationSystem();
             }
             else
             {
@@ -392,671 +90,874 @@ namespace Evergreen.Monetization
         
         void Start()
         {
-            SetupCurrencysystemSafe();
-            SetupOffersystemSafe();
-            SetupPlayerSegmentation();
-            SetupABTesting();
-            SetupPricingStrategies();
-            SetupRevenueOptimization();
-            StartCoroutine(UpdateMonetizationsystemSafe());
+            StartMonetizationSystems();
         }
         
-        private void InitializeMonetizationsystemSafe()
+        private void InitializeMonetizationSystem()
         {
-            // Initialize currencies
-            InitializeCurrencies();
+            Debug.Log("Advanced Monetization System initialized - Maximum revenue mode activated!");
             
-            // Initialize offers
-            InitializeOffers();
+            // Initialize dynamic pricing
+            InitializeDynamicPricing();
             
-            // Initialize player segments
-            InitializePlayerSegments();
+            // Initialize subscriptions
+            InitializeSubscriptions();
             
-            // Initialize A/B tests
-            InitializeABTests();
+            // Initialize battle pass
+            InitializeBattlePass();
             
-            // Initialize pricing strategies
-            InitializePricingStrategies();
+            // Initialize VIP system
+            InitializeVIPSystem();
+            
+            // Load player profiles
+            LoadPlayerProfiles();
         }
         
-        private void InitializeCurrencies()
+        private void InitializeDynamicPricing()
         {
-            // Add default currencies
-            _currencies["coins"] = new CurrencyData
+            // Initialize dynamic pricing for all shop items
+            var shopSystem = ShopSystem.Instance;
+            if (shopSystem != null)
             {
-                id = "coins",
-                name = "Coins",
-                symbol = "C",
-                exchangeRate = 1.0f,
-                isPrimary = true,
-                isHardCurrency = false,
-                decimalPlaces = 0,
-                iconPath = "UI/Currency/Coins"
-            };
-            
-            _currencies["gems"] = new CurrencyData
-            {
-                id = "gems",
-                name = "Gems",
-                symbol = "G",
-                exchangeRate = 0.01f,
-                isPrimary = false,
-                isHardCurrency = true,
-                decimalPlaces = 0,
-                iconPath = "UI/Currency/Gems"
-            };
-            
-            _currencies["energy"] = new CurrencyData
-            {
-                id = "energy",
-                name = "Energy",
-                symbol = "E",
-                exchangeRate = 0.1f,
-                isPrimary = false,
-                isHardCurrency = false,
-                decimalPlaces = 0,
-                iconPath = "UI/Currency/Energy"
-            };
-        }
-        
-        private void InitializeOffers()
-        {
-            // Add default offers
-            _offers["starter_pack"] = new OfferData
-            {
-                id = "starter_pack",
-                name = "Starter Pack",
-                description = "Perfect for new players!",
-                type = OfferType.Starter,
-                trigger = OfferTrigger.OnStart,
-                rewards = new List<OfferReward>
+                var items = shopSystem.GetAvailableItems("default");
+                foreach (var item in items)
                 {
-                    new OfferReward { currencyId = "coins", amount = 1000, value = 1.0f },
-                    new OfferReward { currencyId = "gems", amount = 50, value = 5.0f }
-                },
-                pricing = new PricingData
-                {
-                    currencyId = "gems",
-                    basePrice = 99,
-                    currentPrice = 99,
-                    minPrice = 49,
-                    maxPrice = 199
-                },
-                conditions = new OfferConditions
-                {
-                    minLevel = 1,
-                    maxLevel = 10,
-                    minPlayTime = 0,
-                    maxPlayTime = 3600
-                },
-                targeting = new OfferTargeting
-                {
-                    playerSegments = new string[] { "new_player" },
-                    regions = new string[] { "global" },
-                    platforms = new string[] { "mobile" },
-                    devices = new string[] { "all" },
-                    isPersonalized = true
-                },
-                analytics = new OfferAnalytics(),
-                isActive = true,
-                startTime = DateTime.Now,
-                endTime = DateTime.Now.AddDays(7),
-                maxPurchases = 1,
-                currentPurchases = 0
-            };
-        }
-        
-        private void InitializePlayerSegments()
-        {
-            // Add default player segments
-            _playerSegments["new_player"] = new PlayerSegment
-            {
-                id = "new_player",
-                name = "New Player",
-                description = "Players who just started playing",
-                criteria = new SegmentCriteria
-                {
-                    minLevel = 1,
-                    maxLevel = 10,
-                    minLTV = 0f,
-                    maxLTV = 10f,
-                    minARPU = 0f,
-                    maxARPU = 1f,
-                    minPlayTime = 0,
-                    maxPlayTime = 3600
-                },
-                pricingMultiplier = new PricingMultiplier
-                {
-                    baseMultiplier = 1.0f,
-                    minMultiplier = 0.5f,
-                    maxMultiplier = 1.5f,
-                    adjustmentRate = 0.1f
-                },
-                offerPreferences = new OfferPreferences
-                {
-                    preferredOfferTypes = new string[] { "Starter", "Comeback" },
-                    preferredCurrencies = new string[] { "coins", "gems" },
-                    preferredDiscount = 0.5f,
-                    preferredFrequency = 1
-                },
-                ltv = 5.0f,
-                arpu = 0.5f,
-                retention = 0.3f,
-                playerCount = 0,
-                lastUpdated = DateTime.Now
-            };
-        }
-        
-        private void InitializeABTests()
-        {
-            // Add default A/B tests
-            _abTests["pricing_test"] = new ABTest
-            {
-                id = "pricing_test",
-                name = "Pricing Test",
-                description = "Test different pricing strategies",
-                variants = new ABTestVariant[]
-                {
-                    new ABTestVariant
+                    _dynamicPrices[item.id] = new DynamicPrice
                     {
-                        id = "control",
-                        name = "Control",
-                        pricing = new PricingData
-                        {
-                            currencyId = "gems",
-                            basePrice = 99,
-                            currentPrice = 99
-                        }
-                    },
-                    new ABTestVariant
-                    {
-                        id = "variant_a",
-                        name = "Variant A",
-                        pricing = new PricingData
-                        {
-                            currencyId = "gems",
-                            basePrice = 99,
-                            currentPrice = 79
-                        }
-                    }
+                        itemId = item.id,
+                        basePrice = item.costs[0].amount,
+                        currentPrice = item.costs[0].amount,
+                        minPrice = Mathf.RoundToInt(item.costs[0].amount * 0.5f),
+                        maxPrice = Mathf.RoundToInt(item.costs[0].amount * 2.0f),
+                        lastUpdated = DateTime.Now
+                    };
+                }
+            }
+        }
+        
+        private void InitializeSubscriptions()
+        {
+            // Initialize subscription templates
+            _subscriptions["premium"] = new Subscription
+            {
+                id = "premium",
+                name = "Premium Subscription",
+                price = subscriptionPrice,
+                duration = subscriptionDuration,
+                benefits = new List<string>
+                {
+                    "2x XP and coins",
+                    "Exclusive items",
+                    "Priority support",
+                    "No ads",
+                    "Daily bonus"
                 },
-                targetMetric = "conversion_rate",
-                confidenceLevel = 0.95f,
-                minSampleSize = 1000,
-                currentSampleSize = 0,
+                isActive = false
+            };
+        }
+        
+        private void InitializeBattlePass()
+        {
+            // Initialize battle pass
+            _battlePasses["season_1"] = new BattlePass
+            {
+                id = "season_1",
+                name = "Season 1 Battle Pass",
+                price = battlePassPrice,
+                levels = battlePassLevels,
+                xpPerLevel = xpPerLevel,
+                daysRemaining = daysRemaining,
                 isActive = true,
-                startTime = DateTime.Now,
-                endTime = DateTime.Now.AddDays(14)
+                rewards = GenerateBattlePassRewards()
             };
         }
         
-        private void InitializePricingStrategies()
+        private void InitializeVIPSystem()
         {
-            // Add default pricing strategies
-            _pricingStrategies["fixed_pricing"] = new PricingStrategy
+            // Initialize VIP tiers
+            for (int i = 0; i < vipTiers.Length; i++)
             {
-                id = "fixed_pricing",
-                name = "Fixed Pricing",
-                type = PricingStrategyType.Fixed,
-                parameters = new PricingParameters
+                _vipStatuses[vipTiers[i].ToLower()] = new VIPStatus
                 {
-                    basePrice = 99f,
-                    elasticity = 0f,
-                    demandCurve = 0f,
-                    competitionFactor = 0f,
-                    seasonalityFactor = 0f
-                },
-                effectiveness = 0.7f,
-                revenue = 0f,
-                usageCount = 0,
-                lastUsed = DateTime.Now
-            };
+                    tier = vipTiers[i],
+                    threshold = vipThresholds[i],
+                    multiplier = vipMultipliers[i],
+                    benefits = GenerateVIPBenefits(vipTiers[i])
+                };
+            }
+        }
+        
+        private List<BattlePassReward> GenerateBattlePassRewards()
+        {
+            var rewards = new List<BattlePassReward>();
             
-            _pricingStrategies["dynamic_pricing"] = new PricingStrategy
+            for (int i = 1; i <= battlePassLevels; i++)
             {
-                id = "dynamic_pricing",
-                name = "Dynamic Pricing",
-                type = PricingStrategyType.Dynamic,
-                parameters = new PricingParameters
+                var reward = new BattlePassReward
                 {
-                    basePrice = 99f,
-                    elasticity = -1.5f,
-                    demandCurve = 0.8f,
-                    competitionFactor = 0.3f,
-                    seasonalityFactor = 0.2f
-                },
-                effectiveness = 0.9f,
-                revenue = 0f,
-                usageCount = 0,
-                lastUsed = DateTime.Now
-            };
-        }
-        
-        private void SetupCurrencysystemSafe()
-        {
-            // Setup currency exchange rates
-            if (enableCurrencyConversion)
-            {
-                SetupExchangeRates();
+                    level = i,
+                    isFree = i % 3 == 0, // Every 3rd level is free
+                    rewards = GenerateLevelRewards(i)
+                };
+                rewards.Add(reward);
             }
             
-            // Setup currency sinks
-            if (enableCurrencySinks)
+            return rewards;
+        }
+        
+        private List<string> GenerateLevelRewards(int level)
+        {
+            var rewards = new List<string>();
+            
+            if (level % 5 == 0)
             {
-                SetupCurrencySinks();
+                rewards.Add("coins:" + (level * 100));
+                rewards.Add("gems:" + (level * 5));
             }
-        }
-        
-        private void SetupExchangeRates()
-        {
-            // Setup exchange rates between currencies
-            // This would integrate with your currency system
-        }
-        
-        private void SetupCurrencySinks()
-        {
-            // Setup currency sinks to prevent inflation
-            // This would integrate with your currency system
-        }
-        
-        private void SetupOffersystemSafe()
-        {
-            // Setup offer targeting and personalization
-            if (enablePersonalizedOffers)
+            else if (level % 3 == 0)
             {
-                SetupOfferPersonalization();
+                rewards.Add("energy:" + 5);
+                rewards.Add("booster_extra_moves:" + 2);
+            }
+            else
+            {
+                rewards.Add("coins:" + (level * 50));
             }
             
-            // Setup retention offers
-            if (enableRetentionOffers)
+            return rewards;
+        }
+        
+        private List<string> GenerateVIPBenefits(string tier)
+        {
+            var benefits = new List<string>();
+            
+            switch (tier.ToLower())
             {
-                SetupRetentionOffers();
+                case "bronze":
+                    benefits.AddRange(new[] { "5% bonus coins", "Priority support" });
+                    break;
+                case "silver":
+                    benefits.AddRange(new[] { "10% bonus coins", "Exclusive items", "Priority support" });
+                    break;
+                case "gold":
+                    benefits.AddRange(new[] { "15% bonus coins", "Exclusive items", "Priority support", "No ads" });
+                    break;
+                case "platinum":
+                    benefits.AddRange(new[] { "20% bonus coins", "Exclusive items", "Priority support", "No ads", "Daily bonus" });
+                    break;
+                case "diamond":
+                    benefits.AddRange(new[] { "25% bonus coins", "Exclusive items", "Priority support", "No ads", "Daily bonus", "VIP events" });
+                    break;
             }
             
-            // Setup upsell offers
-            if (enableUpsellOffers)
-            {
-                SetupUpsellOffers();
-            }
-            
-            // Setup cross-sell offers
-            if (enableCrossSellOffers)
-            {
-                SetupCrossSellOffers();
-            }
+            return benefits;
         }
         
-        private void SetupOfferPersonalization()
+        private void StartMonetizationSystems()
         {
-            // Setup offer personalization based on player behavior
-            // This would integrate with your AI personalization system
-        }
-        
-        private void SetupRetentionOffers()
-        {
-            // Setup offers to improve player retention
-            // This would integrate with your retention system
-        }
-        
-        private void SetupUpsellOffers()
-        {
-            // Setup offers to increase player spending
-            // This would integrate with your upsell system
-        }
-        
-        private void SetupCrossSellOffers()
-        {
-            // Setup offers to sell related products
-            // This would integrate with your cross-sell system
-        }
-        
-        private void SetupPlayerSegmentation()
-        {
-            // Setup player segmentation for targeted offers
-            if (enablePlayerSegmentation)
-            {
-                SetupPlayerSegmentationsystemSafe();
-            }
-        }
-        
-        private void SetupPlayerSegmentationsystemSafe()
-        {
-            // Setup player segmentation system
-            // This would integrate with your analytics system
-        }
-        
-        private void SetupABTesting()
-        {
-            // Setup A/B testing system
-            if (enableA_BTesting)
-            {
-                SetupABTestingsystemSafe();
-            }
-        }
-        
-        private void SetupABTestingsystemSafe()
-        {
-            // Setup A/B testing system
-            // This would integrate with your analytics system
-        }
-        
-        private void SetupPricingStrategies()
-        {
-            // Setup pricing strategies
             if (enableDynamicPricing)
             {
-                SetupDynamicPricing();
+                _pricingUpdateCoroutine = StartCoroutine(PricingUpdateCoroutine());
             }
             
-            if (enableRegionalPricing)
+            if (enableImpulsePurchases || enableLimitedOffers)
             {
-                SetupRegionalPricing();
+                _offerGenerationCoroutine = StartCoroutine(OfferGenerationCoroutine());
             }
             
-            if (enableTimeBasedPricing)
+            if (enableSubscriptions)
             {
-                SetupTimeBasedPricing();
+                _subscriptionCheckCoroutine = StartCoroutine(SubscriptionCheckCoroutine());
             }
         }
         
-        private void SetupDynamicPricing()
-        {
-            // Setup dynamic pricing based on demand and competition
-            // This would integrate with your pricing system
-        }
-        
-        private void SetupRegionalPricing()
-        {
-            // Setup regional pricing based on local markets
-            // This would integrate with your regional system
-        }
-        
-        private void SetupTimeBasedPricing()
-        {
-            // Setup time-based pricing for different times of day
-            // This would integrate with your time system
-        }
-        
-        private void SetupRevenueOptimization()
-        {
-            // Setup revenue optimization
-            if (enableRevenueMaximization)
-            {
-                SetupRevenueMaximization();
-            }
-            
-            if (enableLTVOptimization)
-            {
-                SetupLTVOptimization();
-            }
-            
-            if (enableARPUOptimization)
-            {
-                SetupARPUOptimization();
-            }
-        }
-        
-        private void SetupRevenueMaximization()
-        {
-            // Setup revenue maximization strategies
-            // This would integrate with your revenue system
-        }
-        
-        private void SetupLTVOptimization()
-        {
-            // Setup LTV optimization strategies
-            // This would integrate with your LTV system
-        }
-        
-        private void SetupARPUOptimization()
-        {
-            // Setup ARPU optimization strategies
-            // This would integrate with your ARPU system
-        }
-        
-        private IEnumerator UpdateMonetizationsystemSafe()
+        #region Dynamic Pricing
+        private IEnumerator PricingUpdateCoroutine()
         {
             while (true)
             {
-                // Update pricing strategies
-                UpdatePricingStrategies();
-                
-                // Update player segments
-                UpdatePlayerSegments();
-                
-                // Update A/B tests
-                UpdateABTests();
-                
-                // Update revenue data
-                UpdateRevenueData();
-                
-                // Optimize offers
-                OptimizeOffers();
-                
                 yield return new WaitForSeconds(60f); // Update every minute
+                
+                UpdateDynamicPricing();
             }
         }
         
-        private void UpdatePricingStrategies()
+        private void UpdateDynamicPricing()
         {
-            // Update pricing strategies based on performance
-            foreach (var strategy in _pricingStrategies.Values)
+            foreach (var kvp in _dynamicPrices)
             {
-                // Update strategy effectiveness based on recent performance
-                // This would integrate with your analytics system
-            }
-        }
-        
-        private void UpdatePlayerSegments()
-        {
-            // Update player segments based on current behavior
-            foreach (var segment in _playerSegments.Values)
-            {
-                // Update segment metrics
-                // This would integrate with your analytics system
-            }
-        }
-        
-        private void UpdateABTests()
-        {
-            // Update A/B tests and check for completion
-            foreach (var test in _abTests.Values)
-            {
-                if (test.isActive && DateTime.Now >= test.endTime)
+                var price = kvp.Value;
+                var newPrice = CalculateDynamicPrice(price);
+                
+                if (newPrice != price.currentPrice)
                 {
-                    CompleteABTest(test);
+                    price.currentPrice = newPrice;
+                    price.lastUpdated = DateTime.Now;
+                    OnPriceUpdated?.Invoke(price);
                 }
             }
         }
         
-        private void CompleteABTest(ABTest test)
+        private int CalculateDynamicPrice(DynamicPrice price)
         {
-            // Complete A/B test and determine winner
-            // This would integrate with your analytics system
-            test.isActive = false;
-            test.results = new ABTestResults
+            float multiplier = basePriceMultiplier;
+            
+            // Apply time-based pricing
+            var timeSinceUpdate = DateTime.Now - price.lastUpdated;
+            if (timeSinceUpdate.TotalHours > 24)
             {
-                completionTime = DateTime.Now
+                multiplier *= 0.9f; // Slight discount for old prices
+            }
+            
+            // Apply demand-based pricing
+            var demand = CalculateDemand(price.itemId);
+            if (demand > 0.8f)
+            {
+                multiplier *= 1.2f; // Increase price for high demand
+            }
+            else if (demand < 0.3f)
+            {
+                multiplier *= 0.8f; // Decrease price for low demand
+            }
+            
+            int newPrice = Mathf.RoundToInt(price.basePrice * multiplier);
+            return Mathf.Clamp(newPrice, price.minPrice, price.maxPrice);
+        }
+        
+        private float CalculateDemand(string itemId)
+        {
+            // Calculate demand based on recent purchases
+            // This would implement demand calculation logic
+            return UnityEngine.Random.Range(0.3f, 0.9f);
+        }
+        
+        public int GetDynamicPrice(string itemId, string playerId)
+        {
+            if (!_dynamicPrices.ContainsKey(itemId))
+                return 0;
+                
+            var price = _dynamicPrices[itemId];
+            var profile = GetPlayerProfile(playerId);
+            
+            // Apply player-specific pricing
+            float playerMultiplier = 1.0f;
+            
+            if (profile.isHighSpender)
+            {
+                playerMultiplier *= highSpenderMultiplier;
+            }
+            else if (profile.isPriceSensitive)
+            {
+                playerMultiplier *= priceSensitiveMultiplier;
+            }
+            
+            if (profile.hasUrgency)
+            {
+                playerMultiplier *= urgencyMultiplier;
+            }
+            
+            return Mathf.RoundToInt(price.currentPrice * playerMultiplier);
+        }
+        #endregion
+        
+        #region Subscription System
+        private IEnumerator SubscriptionCheckCoroutine()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(3600f); // Check every hour
+                
+                CheckSubscriptions();
+            }
+        }
+        
+        private void CheckSubscriptions()
+        {
+            foreach (var subscription in _subscriptions.Values)
+            {
+                if (subscription.isActive && subscription.expiryDate <= DateTime.Now)
+                {
+                    subscription.isActive = false;
+                    // Notify player of expiry
+                    NotifySubscriptionExpiry(subscription);
+                }
+            }
+        }
+        
+        public bool StartSubscription(string playerId, string subscriptionId)
+        {
+            if (!_subscriptions.ContainsKey(subscriptionId))
+                return false;
+                
+            var subscription = _subscriptions[subscriptionId];
+            var profile = GetPlayerProfile(playerId);
+            
+            subscription.playerId = playerId;
+            subscription.startDate = DateTime.Now;
+            subscription.expiryDate = DateTime.Now.AddDays(subscription.duration);
+            subscription.isActive = true;
+            
+            profile.hasActiveSubscription = true;
+            profile.subscriptionTier = subscriptionId;
+            
+            OnSubscriptionStarted?.Invoke(subscription);
+            
+            // Apply subscription benefits
+            ApplySubscriptionBenefits(playerId, subscription);
+            
+            return true;
+        }
+        
+        private void ApplySubscriptionBenefits(string playerId, Subscription subscription)
+        {
+            // Apply subscription benefits to player
+            var gameManager = GameManager.Instance;
+            if (gameManager != null)
+            {
+                // Apply 2x XP and coins multiplier
+                // This would integrate with your existing systems
+            }
+        }
+        
+        private void NotifySubscriptionExpiry(Subscription subscription)
+        {
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
+            {
+                uiSystem.ShowNotification($"Your {subscription.name} has expired! Renew now for continued benefits!", 
+                    NotificationType.Warning, 10f);
+            }
+        }
+        #endregion
+        
+        #region Battle Pass System
+        public bool PurchaseBattlePass(string playerId, string battlePassId)
+        {
+            if (!_battlePasses.ContainsKey(battlePassId))
+                return false;
+                
+            var battlePass = _battlePasses[battlePassId];
+            var profile = GetPlayerProfile(playerId);
+            
+            if (profile.hasBattlePass)
+                return false; // Already has battle pass
+                
+            battlePass.playerId = playerId;
+            battlePass.purchaseDate = DateTime.Now;
+            battlePass.isActive = true;
+            
+            profile.hasBattlePass = true;
+            profile.battlePassId = battlePassId;
+            profile.battlePassLevel = 0;
+            profile.battlePassXP = 0;
+            
+            OnBattlePassPurchased?.Invoke(battlePass);
+            
+            return true;
+        }
+        
+        public void AddBattlePassXP(string playerId, int xp)
+        {
+            var profile = GetPlayerProfile(playerId);
+            if (!profile.hasBattlePass)
+                return;
+                
+            profile.battlePassXP += xp;
+            
+            // Check for level up
+            int newLevel = Mathf.FloorToInt(profile.battlePassXP / 1000f);
+            if (newLevel > profile.battlePassLevel)
+            {
+                LevelUpBattlePass(playerId, newLevel);
+            }
+        }
+        
+        private void LevelUpBattlePass(string playerId, int newLevel)
+        {
+            var profile = GetPlayerProfile(playerId);
+            var battlePass = _battlePasses[profile.battlePassId];
+            
+            profile.battlePassLevel = newLevel;
+            
+            // Award rewards for the new level
+            var rewards = battlePass.rewards.Where(r => r.level == newLevel).ToList();
+            foreach (var reward in rewards)
+            {
+                if (reward.isFree || profile.hasBattlePass)
+                {
+                    AwardBattlePassReward(playerId, reward);
+                }
+            }
+            
+            // Show level up notification
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
+            {
+                uiSystem.ShowNotification($"Battle Pass Level {newLevel} reached! Check your rewards!", 
+                    NotificationType.Success, 5f);
+            }
+        }
+        
+        private void AwardBattlePassReward(string playerId, BattlePassReward reward)
+        {
+            var gameManager = GameManager.Instance;
+            if (gameManager == null) return;
+            
+            foreach (var rewardString in reward.rewards)
+            {
+                var parts = rewardString.Split(':');
+                if (parts.Length == 2)
+                {
+                    var type = parts[0];
+                    var amount = int.Parse(parts[1]);
+                    
+                    switch (type)
+                    {
+                        case "coins":
+                            gameManager.AddCurrency("coins", amount);
+                            break;
+                        case "gems":
+                            gameManager.AddCurrency("gems", amount);
+                            break;
+                        case "energy":
+                            gameManager.AddCurrency("energy", amount);
+                            break;
+                        case "booster_extra_moves":
+                            gameManager.AddInventoryItem("booster_extra_moves", amount);
+                            break;
+                    }
+                }
+            }
+        }
+        #endregion
+        
+        #region Impulse Purchase System
+        private IEnumerator OfferGenerationCoroutine()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(300f); // Check every 5 minutes
+                
+                if (enableImpulsePurchases)
+                {
+                    CheckImpulsePurchases();
+                }
+                
+                if (enableLimitedOffers)
+                {
+                    CheckLimitedOffers();
+                }
+            }
+        }
+        
+        private void CheckImpulsePurchases()
+        {
+            foreach (var profile in _playerProfiles.Values)
+            {
+                if (ShouldCreateImpulseOffer(profile))
+                {
+                    CreateImpulseOffer(profile.playerId);
+                }
+            }
+        }
+        
+        private bool ShouldCreateImpulseOffer(PlayerMonetizationProfile profile)
+        {
+            // Create impulse offers based on player behavior
+            if (profile.hasActiveImpulseOffer)
+                return false;
+                
+            if (profile.lastImpulseOffer > DateTime.Now.AddHours(-2))
+                return false; // Minimum 2 hours between offers
+                
+            return UnityEngine.Random.Range(0f, 1f) < impulseChance;
+        }
+        
+        private void CreateImpulseOffer(string playerId)
+        {
+            var profile = GetPlayerProfile(playerId);
+            var offer = new ImpulseOffer
+            {
+                id = Guid.NewGuid().ToString(),
+                playerId = playerId,
+                itemId = "impulse_pack",
+                originalPrice = 100,
+                impulsePrice = Mathf.RoundToInt(100 * impulseDiscount),
+                duration = impulseDuration,
+                remainingTime = impulseDuration,
+                isActive = true,
+                createdAt = DateTime.Now
+            };
+            
+            _impulseOffers[offer.id] = offer;
+            profile.hasActiveImpulseOffer = true;
+            profile.lastImpulseOffer = DateTime.Now;
+            
+            OnImpulseOfferCreated?.Invoke(offer);
+            
+            // Show impulse offer UI
+            ShowImpulseOfferUI(offer);
+            
+            // Start countdown
+            StartCoroutine(ImpulseOfferCountdown(offer));
+        }
+        
+        private void ShowImpulseOfferUI(ImpulseOffer offer)
+        {
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
+            {
+                var message = $"⚡ IMPULSE DEAL! {offer.itemId} - {offer.impulsePrice} coins (was {offer.originalPrice})! Only {offer.remainingTime:F0}s left!";
+                uiSystem.ShowNotification(message, NotificationType.Warning, 10f);
+            }
+        }
+        
+        private IEnumerator ImpulseOfferCountdown(ImpulseOffer offer)
+        {
+            while (offer.isActive && offer.remainingTime > 0)
+            {
+                yield return new WaitForSeconds(1f);
+                offer.remainingTime -= 1f;
+                
+                if (offer.remainingTime <= 0)
+                {
+                    offer.isActive = false;
+                    var profile = GetPlayerProfile(offer.playerId);
+                    profile.hasActiveImpulseOffer = false;
+                }
+            }
+        }
+        #endregion
+        
+        #region Limited Time Offers
+        private void CheckLimitedOffers()
+        {
+            if (UnityEngine.Random.Range(0f, 1f) < offerChance)
+            {
+                CreateLimitedOffer();
+            }
+        }
+        
+        private void CreateLimitedOffer()
+        {
+            var offer = new LimitedOffer
+            {
+                id = Guid.NewGuid().ToString(),
+                name = "Limited Time Offer",
+                description = "Exclusive items at 60% off!",
+                originalPrice = 200,
+                limitedPrice = Mathf.RoundToInt(200 * (1f - offerDiscount)),
+                duration = offerDuration,
+                remainingTime = offerDuration,
+                isActive = true,
+                createdAt = DateTime.Now
+            };
+            
+            _limitedOffers[offer.id] = offer;
+            OnLimitedOfferCreated?.Invoke(offer);
+            
+            // Show limited offer UI
+            ShowLimitedOfferUI(offer);
+            
+            // Start countdown
+            StartCoroutine(LimitedOfferCountdown(offer));
+        }
+        
+        private void ShowLimitedOfferUI(LimitedOffer offer)
+        {
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
+            {
+                var message = $"🔥 LIMITED TIME! {offer.name} - {offer.limitedPrice} coins (was {offer.originalPrice})! Only {offer.remainingTime:F0}s left!";
+                uiSystem.ShowNotification(message, NotificationType.Error, 15f);
+            }
+        }
+        
+        private IEnumerator LimitedOfferCountdown(LimitedOffer offer)
+        {
+            while (offer.isActive && offer.remainingTime > 0)
+            {
+                yield return new WaitForSeconds(1f);
+                offer.remainingTime -= 1f;
+                
+                if (offer.remainingTime <= 0)
+                {
+                    offer.isActive = false;
+                }
+            }
+        }
+        #endregion
+        
+        #region VIP System
+        public void UpdateVIPStatus(string playerId)
+        {
+            var profile = GetPlayerProfile(playerId);
+            var totalSpent = profile.totalSpent;
+            
+            string newTier = "bronze";
+            for (int i = vipThresholds.Length - 1; i >= 0; i--)
+            {
+                if (totalSpent >= vipThresholds[i])
+                {
+                    newTier = vipTiers[i].ToLower();
+                    break;
+                }
+            }
+            
+            if (profile.vipTier != newTier)
+            {
+                profile.vipTier = newTier;
+                var vipStatus = _vipStatuses[newTier];
+                vipStatus.playerId = playerId;
+                vipStatus.achievedDate = DateTime.Now;
+                
+                OnVIPStatusUpdated?.Invoke(vipStatus);
+                
+                // Show VIP status update
+                ShowVIPStatusUpdate(vipStatus);
+            }
+        }
+        
+        private void ShowVIPStatusUpdate(VIPStatus vipStatus)
+        {
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
+            {
+                var message = $"🎉 VIP {vipStatus.tier.ToUpper()} achieved! New benefits unlocked!";
+                uiSystem.ShowNotification(message, NotificationType.Success, 8f);
+            }
+        }
+        
+        public float GetVIPMultiplier(string playerId)
+        {
+            var profile = GetPlayerProfile(playerId);
+            if (string.IsNullOrEmpty(profile.vipTier))
+                return 1.0f;
+                
+            var vipStatus = _vipStatuses[profile.vipTier];
+            return vipStatus.multiplier;
+        }
+        #endregion
+        
+        #region Player Profile Management
+        private PlayerMonetizationProfile GetPlayerProfile(string playerId)
+        {
+            if (!_playerProfiles.ContainsKey(playerId))
+            {
+                _playerProfiles[playerId] = new PlayerMonetizationProfile
+                {
+                    playerId = playerId,
+                    totalSpent = 0f,
+                    isHighSpender = false,
+                    isPriceSensitive = false,
+                    hasUrgency = false,
+                    hasActiveSubscription = false,
+                    hasBattlePass = false,
+                    hasActiveImpulseOffer = false,
+                    vipTier = "bronze",
+                    lastImpulseOffer = DateTime.MinValue,
+                    lastPurchase = DateTime.MinValue
+                };
+            }
+            
+            return _playerProfiles[playerId];
+        }
+        
+        public void OnPurchaseMade(string playerId, float amount, string currency)
+        {
+            var profile = GetPlayerProfile(playerId);
+            profile.totalSpent += amount;
+            profile.lastPurchase = DateTime.Now;
+            
+            // Update spending behavior
+            UpdateSpendingBehavior(profile);
+            
+            // Update VIP status
+            UpdateVIPStatus(playerId);
+            
+            // Track for analytics
+            var analytics = AdvancedAnalyticsSystem.Instance;
+            if (analytics != null)
+            {
+                analytics.TrackPurchase("monetization_purchase", amount, currency, new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["total_spent"] = profile.totalSpent,
+                    ["vip_tier"] = profile.vipTier
+                });
+            }
+        }
+        
+        private void UpdateSpendingBehavior(PlayerMonetizationProfile profile)
+        {
+            // Determine if player is high spender
+            profile.isHighSpender = profile.totalSpent > 100f;
+            
+            // Determine if player is price sensitive
+            profile.isPriceSensitive = profile.totalSpent < 50f && profile.lastPurchase < DateTime.Now.AddDays(-7);
+            
+            // Determine if player has urgency
+            profile.hasUrgency = profile.lastPurchase > DateTime.Now.AddHours(-1);
+        }
+        
+        private void LoadPlayerProfiles()
+        {
+            // Load player profiles from save data
+            // This would implement profile loading logic
+        }
+        
+        private void SavePlayerProfiles()
+        {
+            // Save player profiles to persistent storage
+            // This would implement profile saving logic
+        }
+        #endregion
+        
+        #region Public API
+        public Dictionary<string, object> GetMonetizationStatistics()
+        {
+            return new Dictionary<string, object>
+            {
+                {"total_players", _playerProfiles.Count},
+                {"total_revenue", _playerProfiles.Values.Sum(p => p.totalSpent)},
+                {"average_revenue_per_user", _playerProfiles.Values.Average(p => p.totalSpent)},
+                {"subscription_count", _subscriptions.Values.Count(s => s.isActive)},
+                {"battle_pass_count", _playerProfiles.Values.Count(p => p.hasBattlePass)},
+                {"active_impulse_offers", _impulseOffers.Values.Count(o => o.isActive)},
+                {"active_limited_offers", _limitedOffers.Values.Count(o => o.isActive)},
+                {"vip_distribution", GetVIPDistribution()}
             };
         }
         
-        private void UpdateRevenueData()
+        private Dictionary<string, int> GetVIPDistribution()
         {
-            // Update revenue data
-            // This would integrate with your analytics system
-        }
-        
-        private void OptimizeOffers()
-        {
-            // Optimize offers based on performance
-            foreach (var offer in _offers.Values)
+            var distribution = new Dictionary<string, int>();
+            foreach (var tier in vipTiers)
             {
-                // Optimize offer pricing and targeting
-                // This would integrate with your optimization system
+                distribution[tier] = _playerProfiles.Values.Count(p => p.vipTier == tier.ToLower());
             }
+            return distribution;
         }
-        
-        /// <summary>
-        /// Get optimized price for offer
-        /// </summary>
-        public float GetOptimizedPrice(string offerId, string playerId)
-        {
-            if (!_offers.ContainsKey(offerId)) return 0f;
-            
-            OfferData offer = _offers[offerId];
-            float basePrice = offer.pricing.basePrice;
-            
-            // Apply pricing strategies
-            if (enableDynamicPricing)
-            {
-                basePrice = ApplyDynamicPricing(basePrice, offer, playerId);
-            }
-            
-            if (enableRegionalPricing)
-            {
-                basePrice = ApplyRegionalPricing(basePrice, offer, playerId);
-            }
-            
-            if (enableTimeBasedPricing)
-            {
-                basePrice = ApplyTimeBasedPricing(basePrice, offer, playerId);
-            }
-            
-            if (enablePlayerSegmentation)
-            {
-                basePrice = ApplySegmentPricing(basePrice, offer, playerId);
-            }
-            
-            return Mathf.Clamp(basePrice, offer.pricing.minPrice, offer.pricing.maxPrice);
-        }
-        
-        private float ApplyDynamicPricing(float basePrice, OfferData offer, string playerId)
-        {
-            // Apply dynamic pricing based on demand and competition
-            // This would integrate with your dynamic pricing system
-            return basePrice;
-        }
-        
-        private float ApplyRegionalPricing(float basePrice, OfferData offer, string playerId)
-        {
-            // Apply regional pricing based on player location
-            // This would integrate with your regional system
-            return basePrice;
-        }
-        
-        private float ApplyTimeBasedPricing(float basePrice, OfferData offer, string playerId)
-        {
-            // Apply time-based pricing based on current time
-            // This would integrate with your time system
-            return basePrice;
-        }
-        
-        private float ApplySegmentPricing(float basePrice, OfferData offer, string playerId)
-        {
-            // Apply segment-based pricing based on player segment
-            // This would integrate with your segmentation system
-            return basePrice;
-        }
-        
-        /// <summary>
-        /// Get personalized offers for player
-        /// </summary>
-        public List<OfferData> GetPersonalizedOffers(string playerId)
-        {
-            List<OfferData> personalizedOffers = new List<OfferData>();
-            
-            foreach (var offer in _offers.Values)
-            {
-                if (IsOfferRelevant(offer, playerId))
-                {
-                    personalizedOffers.Add(offer);
-                }
-            }
-            
-            return personalizedOffers;
-        }
-        
-        private bool IsOfferRelevant(OfferData offer, string playerId)
-        {
-            // Check if offer is relevant for player
-            // This would integrate with your personalization system
-            return offer.isActive;
-        }
-        
-        /// <summary>
-        /// Record offer purchase
-        /// </summary>
-        public void RecordOfferPurchase(string offerId, string playerId, float price, float revenue)
-        {
-            if (!_offers.ContainsKey(offerId)) return;
-            
-            OfferData offer = _offers[offerId];
-            offer.currentPurchases++;
-            offer.revenue += revenue;
-            offer.analytics.purchases++;
-            offer.analytics.revenue += revenue;
-            offer.analytics.conversionRate = (float)offer.analytics.purchases / offer.analytics.views;
-            offer.analytics.lastUpdated = DateTime.Now;
-            
-            // Update revenue data
-            UpdateRevenueDataForOffer(offerId, revenue);
-        }
-        
-        private void UpdateRevenueDataForOffer(string offerId, float revenue)
-        {
-            // Update revenue data for offer
-            // This would integrate with your analytics system
-        }
-        
-        /// <summary>
-        /// Get revenue report
-        /// </summary>
-        public string GetRevenueReport()
-        {
-            System.Text.StringBuilder report = new System.Text.StringBuilder();
-            report.AppendLine("=== REVENUE REPORT ===");
-            report.AppendLine($"Timestamp: {DateTime.Now}");
-            report.AppendLine();
-            
-            float totalRevenue = 0f;
-            foreach (var offer in _offers.Values)
-            {
-                totalRevenue += offer.revenue;
-                report.AppendLine($"{offer.name}: ${offer.revenue:F2} (Purchases: {offer.currentPurchases}, Conversion: {offer.analytics.conversionRate:P2})");
-            }
-            
-            report.AppendLine();
-            report.AppendLine($"Total Revenue: ${totalRevenue:F2}");
-            
-            return report.ToString();
-        }
-        
-        /// <summary>
-        /// Set pricing strategy
-        /// </summary>
-        public void SetPricingStrategy(string strategyId, string offerId)
-        {
-            if (_pricingStrategies.ContainsKey(strategyId) && _offers.ContainsKey(offerId))
-            {
-                _offers[offerId].pricing.currentPrice = GetOptimizedPrice(offerId, "default");
-            }
-        }
-        
-        /// <summary>
-        /// Enable/disable monetization features
-        /// </summary>
-        public void SetMonetizationFeatures(bool dynamicPricing, bool abTesting, bool segmentation, bool regionalPricing, bool timeBasedPricing)
-        {
-            enableDynamicPricing = dynamicPricing;
-            enableA_BTesting = abTesting;
-            enablePlayerSegmentation = segmentation;
-            enableRegionalPricing = regionalPricing;
-            enableTimeBasedPricing = timeBasedPricing;
-        }
+        #endregion
         
         void OnDestroy()
         {
-            // Clean up monetization system
+            if (_pricingUpdateCoroutine != null)
+                StopCoroutine(_pricingUpdateCoroutine);
+            if (_offerGenerationCoroutine != null)
+                StopCoroutine(_offerGenerationCoroutine);
+            if (_subscriptionCheckCoroutine != null)
+                StopCoroutine(_subscriptionCheckCoroutine);
+                
+            SavePlayerProfiles();
         }
+    }
+    
+    // Data Classes
+    [System.Serializable]
+    public class PlayerMonetizationProfile
+    {
+        public string playerId;
+        public float totalSpent;
+        public bool isHighSpender;
+        public bool isPriceSensitive;
+        public bool hasUrgency;
+        public bool hasActiveSubscription;
+        public string subscriptionTier;
+        public bool hasBattlePass;
+        public string battlePassId;
+        public int battlePassLevel;
+        public int battlePassXP;
+        public bool hasActiveImpulseOffer;
+        public string vipTier;
+        public DateTime lastImpulseOffer;
+        public DateTime lastPurchase;
+    }
+    
+    [System.Serializable]
+    public class DynamicPrice
+    {
+        public string itemId;
+        public int basePrice;
+        public int currentPrice;
+        public int minPrice;
+        public int maxPrice;
+        public DateTime lastUpdated;
+    }
+    
+    [System.Serializable]
+    public class Subscription
+    {
+        public string id;
+        public string name;
+        public float price;
+        public int duration;
+        public List<string> benefits;
+        public bool isActive;
+        public string playerId;
+        public DateTime startDate;
+        public DateTime expiryDate;
+    }
+    
+    [System.Serializable]
+    public class BattlePass
+    {
+        public string id;
+        public string name;
+        public float price;
+        public int levels;
+        public float xpPerLevel;
+        public int daysRemaining;
+        public bool isActive;
+        public string playerId;
+        public DateTime purchaseDate;
+        public List<BattlePassReward> rewards;
+    }
+    
+    [System.Serializable]
+    public class BattlePassReward
+    {
+        public int level;
+        public bool isFree;
+        public List<string> rewards;
+    }
+    
+    [System.Serializable]
+    public class ImpulseOffer
+    {
+        public string id;
+        public string playerId;
+        public string itemId;
+        public int originalPrice;
+        public int impulsePrice;
+        public float duration;
+        public float remainingTime;
+        public bool isActive;
+        public DateTime createdAt;
+    }
+    
+    [System.Serializable]
+    public class LimitedOffer
+    {
+        public string id;
+        public string name;
+        public string description;
+        public int originalPrice;
+        public int limitedPrice;
+        public float duration;
+        public float remainingTime;
+        public bool isActive;
+        public DateTime createdAt;
+    }
+    
+    [System.Serializable]
+    public class VIPStatus
+    {
+        public string tier;
+        public int threshold;
+        public float multiplier;
+        public List<string> benefits;
+        public string playerId;
+        public DateTime achievedDate;
     }
 }

@@ -4,118 +4,84 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Evergreen.Core;
+using Evergreen.Analytics;
 
 namespace Evergreen.Social
 {
     /// <summary>
-    /// Advanced Social System with comprehensive team management, leaderboards, and community features
-    /// Provides 100% social engagement for player retention and monetization
+    /// Advanced social system with guilds, leaderboards, and viral mechanics
+    /// Designed to maximize player retention and viral growth
     /// </summary>
     public class AdvancedSocialSystem : MonoBehaviour
     {
-        [Header("Social Settings")]
-        public bool enableSocialFeatures = true;
-        public bool enableTeamManagement = true;
+        [Header("Guild System")]
+        public bool enableGuilds = true;
+        public int maxGuildMembers = 50;
+        public int maxGuilds = 1000;
+        public int guildLevels = 20;
+        public float guildXpPerLevel = 1000f;
+        
+        [Header("Leaderboard System")]
         public bool enableLeaderboards = true;
-        public bool enableChatSystem = true;
-        public bool enableGiftingSystem = true;
-        public bool enableSocialEvents = true;
-        public bool enableFriendSystem = true;
-        public bool enableGuildSystem = true;
+        public int leaderboardSize = 100;
+        public float leaderboardUpdateInterval = 300f; // 5 minutes
+        public string[] leaderboardTypes = { "coins", "gems", "levels", "combo", "guild" };
         
-        [Header("Team Management")]
-        public int maxTeamSize = 50;
-        public int maxTeamsPerPlayer = 3;
-        public bool enableTeamCreation = true;
-        public bool enableTeamInvites = true;
-        public bool enableTeamChat = true;
-        public bool enableTeamEvents = true;
+        [Header("Social Challenges")]
+        public bool enableSocialChallenges = true;
+        public int dailyChallengeCount = 3;
+        public float challengeRewardMultiplier = 1.5f;
+        public int challengeDuration = 24; // hours
         
-        [Header("Leaderboards")]
-        public bool enableGlobalLeaderboards = true;
-        public bool enableRegionalLeaderboards = true;
-        public bool enableTeamLeaderboards = true;
-        public bool enableWeeklyLeaderboards = true;
-        public bool enableMonthlyLeaderboards = true;
-        public int leaderboardUpdateInterval = 300f; // 5 minutes
-        public int maxLeaderboardEntries = 1000;
-        
-        [Header("Chat System")]
-        public bool enableGlobalChat = true;
-        public bool enableTeamChat = true;
-        public bool enablePrivateChat = true;
-        public bool enableChatModeration = true;
-        public bool enableChatFilters = true;
-        public int maxChatHistory = 1000;
-        public float chatCooldown = 1f;
-        
-        [Header("Gifting System")]
-        public bool enableGiftGiving = true;
-        public bool enableGiftReceiving = true;
-        public bool enableGiftTracking = true;
-        public int maxGiftsPerDay = 10;
-        public int maxGiftValue = 1000;
+        [Header("Gift System")]
+        public bool enableGiftSystem = true;
+        public int maxGiftsPerDay = 5;
+        public int maxGiftValue = 100;
         public float giftCooldown = 3600f; // 1 hour
         
-        [Header("Social Events")]
-        public bool enableSocialEvents = true;
-        public bool enableTeamEvents = true;
-        public bool enableGlobalEvents = true;
-        public bool enableEventRewards = true;
-        public float eventCheckInterval = 60f;
+        [Header("Viral Mechanics")]
+        public bool enableViralMechanics = true;
+        public float viralShareChance = 0.3f;
+        public string[] viralMessages = {
+            "I just got a 50x combo! Can you beat that?",
+            "I reached level 100! How far can you go?",
+            "I found a rare item! Check out this game!",
+            "I'm in the top 10! Can you catch me?",
+            "My guild is #1! Join us and compete!"
+        };
         
-        [Header("Friend System")]
-        public bool enableFriendRequests = true;
-        public bool enableFriendStatus = true;
-        public bool enableFriendActivity = true;
-        public int maxFriends = 200;
-        public float friendRequestCooldown = 300f; // 5 minutes
+        [Header("Social Proof")]
+        public bool enableSocialProof = true;
+        public float socialProofUpdateInterval = 30f;
+        public int fakePlayerCount = 5000;
+        public string[] socialProofActions = {
+            "just completed level",
+            "earned a rare item",
+            "achieved a high score",
+            "joined a guild",
+            "sent a gift"
+        };
         
-        [Header("Guild System")]
-        public bool enableGuildCreation = true;
-        public bool enableGuildManagement = true;
-        public bool enableGuildWars = true;
-        public bool enableGuildEvents = true;
-        public int maxGuildSize = 100;
-        public int maxGuildsPerPlayer = 1;
-        
-        private Dictionary<string, SocialPlayer> _players = new Dictionary<string, SocialPlayer>();
-        private Dictionary<string, SocialTeam> _teams = new Dictionary<string, SocialTeam>();
-        private Dictionary<string, SocialGuild> _guilds = new Dictionary<string, SocialGuild>();
-        private Dictionary<string, SocialLeaderboard> _leaderboards = new Dictionary<string, SocialLeaderboard>();
-        private Dictionary<string, SocialChat> _chats = new Dictionary<string, SocialChat>();
-        private Dictionary<string, SocialGift> _gifts = new Dictionary<string, SocialGift>();
-        private Dictionary<string, SocialEvent> _events = new Dictionary<string, SocialEvent>();
-        private Dictionary<string, SocialFriend> _friends = new Dictionary<string, SocialFriend>();
-        private Dictionary<string, SocialActivity> _activities = new Dictionary<string, SocialActivity>();
+        private Dictionary<string, Guild> _guilds = new Dictionary<string, Guild>();
+        private Dictionary<string, PlayerSocialProfile> _playerProfiles = new Dictionary<string, PlayerSocialProfile>();
+        private Dictionary<string, Leaderboard> _leaderboards = new Dictionary<string, Leaderboard>();
+        private Dictionary<string, SocialChallenge> _socialChallenges = new Dictionary<string, SocialChallenge>();
+        private Dictionary<string, Gift> _gifts = new Dictionary<string, Gift>();
+        private Dictionary<string, SocialProof> _socialProofs = new Dictionary<string, SocialProof>();
         
         private Coroutine _leaderboardUpdateCoroutine;
-        private Coroutine _eventCheckCoroutine;
-        private Coroutine _activityUpdateCoroutine;
-        private Coroutine _chatModerationCoroutine;
-        
-        private bool _isInitialized = false;
-        private string _currentPlayerId;
-        private Dictionary<string, object> _socialConfig = new Dictionary<string, object>();
+        private Coroutine _socialProofCoroutine;
+        private Coroutine _challengeUpdateCoroutine;
+        private Coroutine _giftUpdateCoroutine;
         
         // Events
-        public event Action<SocialPlayer> OnPlayerJoined;
-        public event Action<SocialPlayer> OnPlayerLeft;
-        public event Action<SocialTeam> OnTeamCreated;
-        public event Action<SocialTeam> OnTeamJoined;
-        public event Action<SocialTeam> OnTeamLeft;
-        public event Action<SocialGuild> OnGuildCreated;
-        public event Action<SocialGuild> OnGuildJoined;
-        public event Action<SocialGuild> OnGuildLeft;
-        public event Action<SocialLeaderboard> OnLeaderboardUpdated;
-        public event Action<SocialChat> OnChatMessage;
-        public event Action<SocialGift> OnGiftSent;
-        public event Action<SocialGift> OnGiftReceived;
-        public event Action<SocialEvent> OnEventStarted;
-        public event Action<SocialEvent> OnEventEnded;
-        public event Action<SocialFriend> OnFriendAdded;
-        public event Action<SocialFriend> OnFriendRemoved;
-        public event Action<SocialActivity> OnActivityPosted;
+        public System.Action<Guild> OnGuildCreated;
+        public System.Action<Guild> OnGuildJoined;
+        public System.Action<Leaderboard> OnLeaderboardUpdated;
+        public System.Action<SocialChallenge> OnChallengeCompleted;
+        public System.Action<Gift> OnGiftSent;
+        public System.Action<Gift> OnGiftReceived;
+        public System.Action<SocialProof> OnSocialProofShown;
         
         public static AdvancedSocialSystem Instance { get; private set; }
         
@@ -125,7 +91,7 @@ namespace Evergreen.Social
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeSocialsystemSafe();
+                InitializeSocialSystem();
             }
             else
             {
@@ -135,943 +101,704 @@ namespace Evergreen.Social
         
         void Start()
         {
-            StartSocialsystemSafe();
+            StartSocialSystems();
         }
         
-        private void InitializeSocialsystemSafe()
+        private void InitializeSocialSystem()
         {
-            Debug.Log("Advanced Social System initialized");
-            
-            // Initialize social configuration
-            InitializeSocialConfig();
+            Debug.Log("Advanced Social System initialized - Maximum engagement mode activated!");
             
             // Initialize leaderboards
             InitializeLeaderboards();
             
-            // Initialize chat channels
-            InitializeChatChannels();
+            // Initialize social challenges
+            InitializeSocialChallenges();
             
-            // Initialize social events
-            InitializeSocialEvents();
+            // Initialize social proof
+            InitializeSocialProof();
             
-            // Load social data
-            LoadSocialData();
-            
-            _isInitialized = true;
-        }
-        
-        private void InitializeSocialConfig()
-        {
-            _socialConfig["max_team_size"] = maxTeamSize;
-            _socialConfig["max_teams_per_player"] = maxTeamsPerPlayer;
-            _socialConfig["max_friends"] = maxFriends;
-            _socialConfig["max_guild_size"] = maxGuildSize;
-            _socialConfig["leaderboard_update_interval"] = leaderboardUpdateInterval;
-            _socialConfig["chat_cooldown"] = chatCooldown;
-            _socialConfig["gift_cooldown"] = giftCooldown;
-            _socialConfig["friend_request_cooldown"] = friendRequestCooldown;
+            // Load player profiles
+            LoadPlayerProfiles();
         }
         
         private void InitializeLeaderboards()
         {
-            // Global leaderboard
-            _leaderboards["global"] = new SocialLeaderboard
+            foreach (var type in leaderboardTypes)
             {
-                Id = "global",
-                Name = "Global Leaderboard",
-                Type = LeaderboardType.Global,
-                Category = "score",
-                Entries = new List<LeaderboardEntry>(),
-                LastUpdated = DateTime.Now,
-                IsActive = true
-            };
-            
-            // Regional leaderboards
-            _leaderboards["north_america"] = new SocialLeaderboard
-            {
-                Id = "north_america",
-                Name = "North America",
-                Type = LeaderboardType.Regional,
-                Category = "score",
-                Region = "NA",
-                Entries = new List<LeaderboardEntry>(),
-                LastUpdated = DateTime.Now,
-                IsActive = true
-            };
-            
-            _leaderboards["europe"] = new SocialLeaderboard
-            {
-                Id = "europe",
-                Name = "Europe",
-                Type = LeaderboardType.Regional,
-                Category = "score",
-                Region = "EU",
-                Entries = new List<LeaderboardEntry>(),
-                LastUpdated = DateTime.Now,
-                IsActive = true
-            };
-            
-            _leaderboards["asia"] = new SocialLeaderboard
-            {
-                Id = "asia",
-                Name = "Asia",
-                Type = LeaderboardType.Regional,
-                Category = "score",
-                Region = "AS",
-                Entries = new List<LeaderboardEntry>(),
-                LastUpdated = DateTime.Now,
-                IsActive = true
-            };
-            
-            // Weekly leaderboard
-            _leaderboards["weekly"] = new SocialLeaderboard
-            {
-                Id = "weekly",
-                Name = "Weekly Leaderboard",
-                Type = LeaderboardType.Weekly,
-                Category = "score",
-                Entries = new List<LeaderboardEntry>(),
-                LastUpdated = DateTime.Now,
-                IsActive = true
-            };
-            
-            // Monthly leaderboard
-            _leaderboards["monthly"] = new SocialLeaderboard
-            {
-                Id = "monthly",
-                Name = "Monthly Leaderboard",
-                Type = LeaderboardType.Monthly,
-                Category = "score",
-                Entries = new List<LeaderboardEntry>(),
-                LastUpdated = DateTime.Now,
-                IsActive = true
-            };
-        }
-        
-        private void InitializeChatChannels()
-        {
-            // Global chat
-            _chats["global"] = new SocialChat
-            {
-                Id = "global",
-                Name = "Global Chat",
-                Type = ChatType.Global,
-                Messages = new List<ChatMessage>(),
-                IsActive = true,
-                IsModerated = true
-            };
-            
-            // Team chat
-            _chats["team"] = new SocialChat
-            {
-                Id = "team",
-                Name = "Team Chat",
-                Type = ChatType.Team,
-                Messages = new List<ChatMessage>(),
-                IsActive = true,
-                IsModerated = false
-            };
-            
-            // Guild chat
-            _chats["guild"] = new SocialChat
-            {
-                Id = "guild",
-                Name = "Guild Chat",
-                Type = ChatType.Guild,
-                Messages = new List<ChatMessage>(),
-                IsActive = true,
-                IsModerated = false
-            };
-        }
-        
-        private void InitializeSocialEvents()
-        {
-            // Team event
-            _events["team_challenge"] = new SocialEvent
-            {
-                Id = "team_challenge",
-                Name = "Team Challenge",
-                Description = "Complete levels as a team to earn rewards",
-                Type = EventType.Team,
-                StartTime = DateTime.Now,
-                EndTime = DateTime.Now.AddDays(7),
-                Rewards = new List<EventReward>
+                _leaderboards[type] = new Leaderboard
                 {
-                    new EventReward { Type = RewardType.Coins, Amount = 1000 },
-                    new EventReward { Type = RewardType.Gems, Amount = 50 }
-                },
-                Participants = new List<string>(),
-                IsActive = true
-            };
-            
-            // Global event
-            _events["global_competition"] = new SocialEvent
+                    type = type,
+                    entries = new List<LeaderboardEntry>(),
+                    lastUpdated = DateTime.Now
+                };
+            }
+        }
+        
+        private void InitializeSocialChallenges()
+        {
+            // Create daily social challenges
+            for (int i = 0; i < dailyChallengeCount; i++)
             {
-                Id = "global_competition",
-                Name = "Global Competition",
-                Description = "Compete with players worldwide",
-                Type = EventType.Global,
-                StartTime = DateTime.Now,
-                EndTime = DateTime.Now.AddDays(3),
-                Rewards = new List<EventReward>
+                var challenge = new SocialChallenge
                 {
-                    new EventReward { Type = RewardType.Coins, Amount = 5000 },
-                    new EventReward { Type = RewardType.Gems, Amount = 100 }
-                },
-                Participants = new List<string>(),
-                IsActive = true
-            };
+                    id = Guid.NewGuid().ToString(),
+                    name = $"Daily Challenge {i + 1}",
+                    description = GenerateChallengeDescription(i),
+                    type = GetChallengeType(i),
+                    target = GetChallengeTarget(i),
+                    reward = GetChallengeReward(i),
+                    duration = challengeDuration,
+                    isActive = true,
+                    createdAt = DateTime.Now
+                };
+                
+                _socialChallenges[challenge.id] = challenge;
+            }
         }
         
-        private void LoadSocialData()
+        private void InitializeSocialProof()
         {
-            // Load social data from storage
-            // This would implement data loading logic
+            // Initialize social proof messages
+            for (int i = 0; i < 10; i++)
+            {
+                var socialProof = new SocialProof
+                {
+                    id = Guid.NewGuid().ToString(),
+                    playerName = GenerateRandomName(),
+                    action = socialProofActions[UnityEngine.Random.Range(0, socialProofActions.Length)],
+                    value = UnityEngine.Random.Range(1, 100),
+                    timestamp = DateTime.Now
+                };
+                
+                _socialProofs[socialProof.id] = socialProof;
+            }
         }
         
-        private void StartSocialsystemSafe()
+        private void StartSocialSystems()
         {
-            if (!enableSocialFeatures) return;
-            
-            // Start leaderboard updates
             if (enableLeaderboards)
             {
                 _leaderboardUpdateCoroutine = StartCoroutine(LeaderboardUpdateCoroutine());
             }
             
-            // Start event checking
-            if (enableSocialEvents)
+            if (enableSocialProof)
             {
-                _eventCheckCoroutine = StartCoroutine(EventCheckCoroutine());
+                _socialProofCoroutine = StartCoroutine(SocialProofCoroutine());
             }
             
-            // Start activity updates
-            _activityUpdateCoroutine = StartCoroutine(ActivityUpdateCoroutine());
-            
-            // Start chat moderation
-            if (enableChatModeration)
+            if (enableSocialChallenges)
             {
-                _chatModerationCoroutine = StartCoroutine(ChatModerationCoroutine());
+                _challengeUpdateCoroutine = StartCoroutine(ChallengeUpdateCoroutine());
+            }
+            
+            if (enableGiftSystem)
+            {
+                _giftUpdateCoroutine = StartCoroutine(GiftUpdateCoroutine());
             }
         }
         
+        #region Guild System
+        public bool CreateGuild(string playerId, string guildName, string description = "")
+        {
+            if (_guilds.Count >= maxGuilds)
+                return false;
+                
+            var guild = new Guild
+            {
+                id = Guid.NewGuid().ToString(),
+                name = guildName,
+                description = description,
+                leaderId = playerId,
+                members = new List<string> { playerId },
+                level = 1,
+                xp = 0,
+                maxMembers = maxGuildMembers,
+                createdAt = DateTime.Now,
+                isActive = true
+            };
+            
+            _guilds[guild.id] = guild;
+            
+            // Update player profile
+            var profile = GetPlayerProfile(playerId);
+            profile.guildId = guild.id;
+            profile.guildRole = "Leader";
+            
+            OnGuildCreated?.Invoke(guild);
+            
+            return true;
+        }
+        
+        public bool JoinGuild(string playerId, string guildId)
+        {
+            if (!_guilds.ContainsKey(guildId))
+                return false;
+                
+            var guild = _guilds[guildId];
+            if (guild.members.Count >= guild.maxMembers)
+                return false;
+                
+            guild.members.Add(playerId);
+            
+            // Update player profile
+            var profile = GetPlayerProfile(playerId);
+            profile.guildId = guildId;
+            profile.guildRole = "Member";
+            
+            OnGuildJoined?.Invoke(guild);
+            
+            return true;
+        }
+        
+        public void LeaveGuild(string playerId)
+        {
+            var profile = GetPlayerProfile(playerId);
+            if (string.IsNullOrEmpty(profile.guildId))
+                return;
+                
+            var guild = _guilds[profile.guildId];
+            guild.members.Remove(playerId);
+            
+            profile.guildId = "";
+            profile.guildRole = "";
+        }
+        
+        public void AddGuildXP(string guildId, int xp)
+        {
+            if (!_guilds.ContainsKey(guildId))
+                return;
+                
+            var guild = _guilds[guildId];
+            guild.xp += xp;
+            
+            // Check for level up
+            int newLevel = Mathf.FloorToInt(guild.xp / guildXpPerLevel) + 1;
+            if (newLevel > guild.level)
+            {
+                guild.level = newLevel;
+                guild.maxMembers = Mathf.Min(maxGuildMembers, 20 + (guild.level * 2));
+                
+                // Notify guild members
+                NotifyGuildLevelUp(guild);
+            }
+        }
+        
+        private void NotifyGuildLevelUp(Guild guild)
+        {
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
+            {
+                var message = $"🎉 {guild.name} reached level {guild.level}! Max members increased to {guild.maxMembers}!";
+                uiSystem.ShowNotification(message, NotificationType.Success, 8f);
+            }
+        }
+        #endregion
+        
+        #region Leaderboard System
         private IEnumerator LeaderboardUpdateCoroutine()
         {
             while (true)
             {
                 yield return new WaitForSeconds(leaderboardUpdateInterval);
                 
-                // Update all leaderboards
-                UpdateLeaderboards();
+                UpdateAllLeaderboards();
             }
         }
         
-        private IEnumerator EventCheckCoroutine()
-        {
-            while (true)
-            {
-                yield return new WaitForSeconds(eventCheckInterval);
-                
-                // Check for events that should start
-                CheckEventStart();
-                
-                // Check for events that should end
-                CheckEventEnd();
-                
-                // Update event participants
-                UpdateEventParticipants();
-            }
-        }
-        
-        private IEnumerator ActivityUpdateCoroutine()
-        {
-            while (true)
-            {
-                yield return new WaitForSeconds(30f);
-                
-                // Update player activities
-                UpdatePlayerActivities();
-                
-                // Update friend activities
-                UpdateFriendActivities();
-            }
-        }
-        
-        private IEnumerator ChatModerationCoroutine()
-        {
-            while (true)
-            {
-                yield return new WaitForSeconds(10f);
-                
-                // Moderate chat messages
-                ModerateChatMessages();
-            }
-        }
-        
-        private void UpdateLeaderboards()
+        private void UpdateAllLeaderboards()
         {
             foreach (var leaderboard in _leaderboards.Values)
             {
-                if (!leaderboard.IsActive) continue;
-                
-                // Update leaderboard entries
-                UpdateLeaderboardEntries(leaderboard);
-                
-                // Sort entries by score
-                leaderboard.Entries = leaderboard.Entries.OrderByDescending(e => e.Score).ToList();
-                
-                // Limit entries
-                if (leaderboard.Entries.Count > maxLeaderboardEntries)
+                UpdateLeaderboard(leaderboard);
+            }
+        }
+        
+        private void UpdateLeaderboard(Leaderboard leaderboard)
+        {
+            var entries = new List<LeaderboardEntry>();
+            
+            // Get top players for this leaderboard type
+            var topPlayers = GetTopPlayers(leaderboard.type, leaderboardSize);
+            
+            for (int i = 0; i < topPlayers.Count; i++)
+            {
+                var entry = new LeaderboardEntry
                 {
-                    leaderboard.Entries = leaderboard.Entries.Take(maxLeaderboardEntries).ToList();
-                }
+                    rank = i + 1,
+                    playerId = topPlayers[i].playerId,
+                    playerName = topPlayers[i].playerName,
+                    value = topPlayers[i].value,
+                    isCurrentPlayer = false // This would be set based on current player
+                };
                 
-                leaderboard.LastUpdated = DateTime.Now;
-                OnLeaderboardUpdated?.Invoke(leaderboard);
+                entries.Add(entry);
             }
+            
+            leaderboard.entries = entries;
+            leaderboard.lastUpdated = DateTime.Now;
+            
+            OnLeaderboardUpdated?.Invoke(leaderboard);
         }
         
-        private void UpdateLeaderboardEntries(SocialLeaderboard leaderboard)
+        private List<LeaderboardPlayer> GetTopPlayers(string type, int count)
         {
-            // Update leaderboard entries based on player scores
-            // This would implement leaderboard entry calculation
-        }
-        
-        private void CheckEventStart()
-        {
-            foreach (var eventData in _events.Values)
+            var players = new List<LeaderboardPlayer>();
+            
+            // This would get actual player data from your systems
+            // For now, generate fake data
+            for (int i = 0; i < count; i++)
             {
-                if (!eventData.IsActive) continue;
-                
-                if (eventData.StartTime <= DateTime.Now && eventData.Status == EventStatus.Scheduled)
+                players.Add(new LeaderboardPlayer
                 {
-                    eventData.Status = EventStatus.Active;
-                    OnEventStarted?.Invoke(eventData);
-                }
+                    playerId = $"player_{i}",
+                    playerName = GenerateRandomName(),
+                    value = UnityEngine.Random.Range(100, 10000)
+                });
+            }
+            
+            return players.OrderByDescending(p => p.value).Take(count).ToList();
+        }
+        
+        public Leaderboard GetLeaderboard(string type)
+        {
+            return _leaderboards.ContainsKey(type) ? _leaderboards[type] : null;
+        }
+        #endregion
+        
+        #region Social Challenges
+        private IEnumerator ChallengeUpdateCoroutine()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(3600f); // Check every hour
+                
+                UpdateSocialChallenges();
             }
         }
         
-        private void CheckEventEnd()
+        private void UpdateSocialChallenges()
         {
-            foreach (var eventData in _events.Values)
+            foreach (var challenge in _socialChallenges.Values)
             {
-                if (!eventData.IsActive) continue;
-                
-                if (eventData.EndTime <= DateTime.Now && eventData.Status == EventStatus.Active)
+                if (challenge.isActive && DateTime.Now > challenge.createdAt.AddHours(challenge.duration))
                 {
-                    eventData.Status = EventStatus.Ended;
-                    OnEventEnded?.Invoke(eventData);
+                    challenge.isActive = false;
+                    // Create new challenge
+                    CreateNewChallenge(challenge);
                 }
             }
         }
         
-        private void UpdateEventParticipants()
+        private void CreateNewChallenge(SocialChallenge oldChallenge)
         {
-            foreach (var eventData in _events.Values)
+            var challenge = new SocialChallenge
             {
-                if (eventData.Status != EventStatus.Active) continue;
+                id = Guid.NewGuid().ToString(),
+                name = oldChallenge.name,
+                description = GenerateChallengeDescription(UnityEngine.Random.Range(0, 3)),
+                type = GetChallengeType(UnityEngine.Random.Range(0, 3)),
+                target = GetChallengeTarget(UnityEngine.Random.Range(0, 3)),
+                reward = GetChallengeReward(UnityEngine.Random.Range(0, 3)),
+                duration = challengeDuration,
+                isActive = true,
+                createdAt = DateTime.Now
+            };
+            
+            _socialChallenges[challenge.id] = challenge;
+        }
+        
+        public void CompleteChallenge(string playerId, string challengeId, int value)
+        {
+            if (!_socialChallenges.ContainsKey(challengeId))
+                return;
                 
-                // Update event participants
-                // This would implement participant tracking logic
-            }
-        }
-        
-        private void UpdatePlayerActivities()
-        {
-            // Update current player activities
-            // This would implement activity tracking logic
-        }
-        
-        private void UpdateFriendActivities()
-        {
-            // Update friend activities
-            // This would implement friend activity tracking logic
-        }
-        
-        private void ModerateChatMessages()
-        {
-            foreach (var chat in _chats.Values)
-            {
-                if (!chat.IsModerated) continue;
+            var challenge = _socialChallenges[challengeId];
+            if (!challenge.isActive || value < challenge.target)
+                return;
                 
-                // Moderate chat messages
-                // This would implement chat moderation logic
+            // Award reward
+            AwardChallengeReward(playerId, challenge);
+            
+            // Mark as completed
+            challenge.isActive = false;
+            
+            OnChallengeCompleted?.Invoke(challenge);
+            
+            // Show completion notification
+            ShowChallengeCompletion(challenge);
+        }
+        
+        private void AwardChallengeReward(string playerId, SocialChallenge challenge)
+        {
+            var gameManager = GameManager.Instance;
+            if (gameManager == null) return;
+            
+            var reward = Mathf.RoundToInt(challenge.reward * challengeRewardMultiplier);
+            
+            switch (challenge.type)
+            {
+                case "coins":
+                    gameManager.AddCurrency("coins", reward);
+                    break;
+                case "gems":
+                    gameManager.AddCurrency("gems", reward);
+                    break;
+                case "energy":
+                    gameManager.AddCurrency("energy", reward);
+                    break;
             }
         }
         
-        /// <summary>
-        /// Create a new team
-        /// </summary>
-        public void CreateTeam(string teamName, string description, TeamPrivacy privacy)
+        private void ShowChallengeCompletion(SocialChallenge challenge)
         {
-            if (!enableTeamManagement || !enableTeamCreation) return;
-            
-            var team = new SocialTeam
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = teamName,
-                Description = description,
-                Privacy = privacy,
-                OwnerId = _currentPlayerId,
-                Members = new List<string> { _currentPlayerId },
-                CreatedAt = DateTime.Now,
-                IsActive = true
-            };
-            
-            _teams[team.Id] = team;
-            OnTeamCreated?.Invoke(team);
-        }
-        
-        /// <summary>
-        /// Join a team
-        /// </summary>
-        public void JoinTeam(string teamId)
-        {
-            if (!enableTeamManagement) return;
-            
-            if (!_teams.ContainsKey(teamId)) return;
-            
-            var team = _teams[teamId];
-            if (team.Members.Count >= maxTeamSize) return;
-            
-            team.Members.Add(_currentPlayerId);
-            OnTeamJoined?.Invoke(team);
-        }
-        
-        /// <summary>
-        /// Leave a team
-        /// </summary>
-        public void LeaveTeam(string teamId)
-        {
-            if (!enableTeamManagement) return;
-            
-            if (!_teams.ContainsKey(teamId)) return;
-            
-            var team = _teams[teamId];
-            team.Members.Remove(_currentPlayerId);
-            
-            if (team.Members.Count == 0)
-            {
-                team.IsActive = false;
+                var message = $"🎯 Challenge completed! {challenge.name} - +{challenge.reward} {challenge.type}!";
+                uiSystem.ShowNotification(message, NotificationType.Success, 5f);
             }
-            
-            OnTeamLeft?.Invoke(team);
         }
+        #endregion
         
-        /// <summary>
-        /// Create a new guild
-        /// </summary>
-        public void CreateGuild(string guildName, string description, GuildPrivacy privacy)
+        #region Gift System
+        private IEnumerator GiftUpdateCoroutine()
         {
-            if (!enableGuildSystem || !enableGuildCreation) return;
-            
-            var guild = new SocialGuild
+            while (true)
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = guildName,
-                Description = description,
-                Privacy = privacy,
-                OwnerId = _currentPlayerId,
-                Members = new List<string> { _currentPlayerId },
-                CreatedAt = DateTime.Now,
-                IsActive = true
-            };
-            
-            _guilds[guild.Id] = guild;
-            OnGuildCreated?.Invoke(guild);
-        }
-        
-        /// <summary>
-        /// Join a guild
-        /// </summary>
-        public void JoinGuild(string guildId)
-        {
-            if (!enableGuildSystem) return;
-            
-            if (!_guilds.ContainsKey(guildId)) return;
-            
-            var guild = _guilds[guildId];
-            if (guild.Members.Count >= maxGuildSize) return;
-            
-            guild.Members.Add(_currentPlayerId);
-            OnGuildJoined?.Invoke(guild);
-        }
-        
-        /// <summary>
-        /// Leave a guild
-        /// </summary>
-        public void LeaveGuild(string guildId)
-        {
-            if (!enableGuildSystem) return;
-            
-            if (!_guilds.ContainsKey(guildId)) return;
-            
-            var guild = _guilds[guildId];
-            guild.Members.Remove(_currentPlayerId);
-            
-            if (guild.Members.Count == 0)
-            {
-                guild.IsActive = false;
+                yield return new WaitForSeconds(60f); // Check every minute
+                
+                ProcessGifts();
             }
-            
-            OnGuildLeft?.Invoke(guild);
         }
         
-        /// <summary>
-        /// Send a chat message
-        /// </summary>
-        public void SendChatMessage(string chatId, string message)
+        private void ProcessGifts()
         {
-            if (!enableChatSystem) return;
-            
-            if (!_chats.ContainsKey(chatId)) return;
-            
-            var chat = _chats[chatId];
-            var chatMessage = new ChatMessage
+            // Process pending gifts
+            foreach (var gift in _gifts.Values)
             {
-                Id = Guid.NewGuid().ToString(),
-                PlayerId = _currentPlayerId,
-                Message = message,
-                Timestamp = DateTime.Now,
-                IsModerated = chat.IsModerated
-            };
-            
-            chat.Messages.Add(chatMessage);
-            
-            // Limit chat history
-            if (chat.Messages.Count > maxChatHistory)
-            {
-                chat.Messages.RemoveAt(0);
+                if (gift.isPending && DateTime.Now > gift.sentAt.AddSeconds(giftCooldown))
+                {
+                    gift.isPending = false;
+                    gift.isReceived = true;
+                    
+                    // Award gift to recipient
+                    AwardGift(gift);
+                    
+                    OnGiftReceived?.Invoke(gift);
+                }
             }
-            
-            OnChatMessage?.Invoke(chat);
         }
         
-        /// <summary>
-        /// Send a gift
-        /// </summary>
-        public void SendGift(string recipientId, GiftType giftType, int amount)
+        public bool SendGift(string senderId, string recipientId, string itemType, int amount)
         {
-            if (!enableGiftingSystem || !enableGiftGiving) return;
-            
-            var gift = new SocialGift
+            var senderProfile = GetPlayerProfile(senderId);
+            if (senderProfile.giftsSentToday >= maxGiftsPerDay)
+                return false;
+                
+            if (amount > maxGiftValue)
+                return false;
+                
+            var gift = new Gift
             {
-                Id = Guid.NewGuid().ToString(),
-                SenderId = _currentPlayerId,
-                RecipientId = recipientId,
-                Type = giftType,
-                Amount = amount,
-                SentAt = DateTime.Now,
-                IsReceived = false
+                id = Guid.NewGuid().ToString(),
+                senderId = senderId,
+                recipientId = recipientId,
+                itemType = itemType,
+                amount = amount,
+                sentAt = DateTime.Now,
+                isPending = true,
+                isReceived = false
             };
             
-            _gifts[gift.Id] = gift;
+            _gifts[gift.id] = gift;
+            senderProfile.giftsSentToday++;
+            
             OnGiftSent?.Invoke(gift);
+            
+            return true;
         }
         
-        /// <summary>
-        /// Receive a gift
-        /// </summary>
-        public void ReceiveGift(string giftId)
+        private void AwardGift(Gift gift)
         {
-            if (!enableGiftingSystem || !enableGiftReceiving) return;
+            var gameManager = GameManager.Instance;
+            if (gameManager == null) return;
             
-            if (!_gifts.ContainsKey(giftId)) return;
-            
-            var gift = _gifts[giftId];
-            gift.IsReceived = true;
-            gift.ReceivedAt = DateTime.Now;
-            
-            OnGiftReceived?.Invoke(gift);
-        }
-        
-        /// <summary>
-        /// Add a friend
-        /// </summary>
-        public void AddFriend(string friendId)
-        {
-            if (!enableFriendSystem || !enableFriendRequests) return;
-            
-            var friend = new SocialFriend
+            switch (gift.itemType)
             {
-                Id = Guid.NewGuid().ToString(),
-                PlayerId = _currentPlayerId,
-                FriendId = friendId,
-                Status = FriendStatus.Pending,
-                AddedAt = DateTime.Now
-            };
-            
-            _friends[friend.Id] = friend;
-            OnFriendAdded?.Invoke(friend);
+                case "coins":
+                    gameManager.AddCurrency("coins", gift.amount);
+                    break;
+                case "gems":
+                    gameManager.AddCurrency("gems", gift.amount);
+                    break;
+                case "energy":
+                    gameManager.AddCurrency("energy", gift.amount);
+                    break;
+            }
         }
+        #endregion
         
-        /// <summary>
-        /// Remove a friend
-        /// </summary>
-        public void RemoveFriend(string friendId)
+        #region Viral Mechanics
+        public void TriggerViralShare(string playerId, string action, int value)
         {
-            if (!enableFriendSystem) return;
-            
-            var friend = _friends.Values.FirstOrDefault(f => f.FriendId == friendId);
-            if (friend != null)
+            if (!enableViralMechanics)
+                return;
+                
+            if (UnityEngine.Random.Range(0f, 1f) < viralShareChance)
             {
-                _friends.Remove(friend.Id);
-                OnFriendRemoved?.Invoke(friend);
+                var message = GenerateViralMessage(action, value);
+                ShowViralSharePrompt(playerId, message);
             }
         }
         
-        /// <summary>
-        /// Post an activity
-        /// </summary>
-        public void PostActivity(ActivityType type, string description, Dictionary<string, object> data = null)
+        private string GenerateViralMessage(string action, int value)
         {
-            var activity = new SocialActivity
+            var baseMessage = viralMessages[UnityEngine.Random.Range(0, viralMessages.Length)];
+            return baseMessage.Replace("{value}", value.ToString());
+        }
+        
+        private void ShowViralSharePrompt(string playerId, string message)
+        {
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
             {
-                Id = Guid.NewGuid().ToString(),
-                PlayerId = _currentPlayerId,
-                Type = type,
-                Description = description,
-                Data = data ?? new Dictionary<string, object>(),
-                PostedAt = DateTime.Now,
-                IsPublic = true
+                uiSystem.ShowNotification($"Share your achievement: {message}", NotificationType.Info, 10f);
+            }
+        }
+        #endregion
+        
+        #region Social Proof
+        private IEnumerator SocialProofCoroutine()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(socialProofUpdateInterval);
+                
+                if (enableSocialProof)
+                {
+                    ShowSocialProof();
+                }
+            }
+        }
+        
+        private void ShowSocialProof()
+        {
+            var socialProof = _socialProofs.Values.OrderBy(s => s.timestamp).First();
+            socialProof.timestamp = DateTime.Now;
+            
+            OnSocialProofShown?.Invoke(socialProof);
+            
+            // Show social proof UI
+            var uiSystem = AdvancedUISystem.Instance;
+            if (uiSystem != null)
+            {
+                var message = $"{socialProof.playerName} {socialProof.action} {socialProof.value}!";
+                uiSystem.ShowNotification(message, NotificationType.Info, 5f);
+            }
+        }
+        #endregion
+        
+        #region Helper Methods
+        private string GenerateChallengeDescription(int index)
+        {
+            var descriptions = new[]
+            {
+                "Complete 5 levels in a row",
+                "Achieve a 10x combo",
+                "Earn 1000 coins",
+                "Use 3 boosters in one level"
             };
+            return descriptions[index % descriptions.Length];
+        }
+        
+        private string GetChallengeType(int index)
+        {
+            var types = new[] { "coins", "gems", "energy", "combo" };
+            return types[index % types.Length];
+        }
+        
+        private int GetChallengeTarget(int index)
+        {
+            var targets = new[] { 5, 10, 1000, 3 };
+            return targets[index % targets.Length];
+        }
+        
+        private int GetChallengeReward(int index)
+        {
+            var rewards = new[] { 100, 50, 10, 5 };
+            return rewards[index % rewards.Length];
+        }
+        
+        private string GenerateRandomName()
+        {
+            var names = new[]
+            {
+                "Player", "Gamer", "Pro", "Master", "Champion", "Hero", "Legend", "Star", "Ace", "Boss"
+            };
+            var numbers = new[] { "123", "456", "789", "007", "999", "111", "222", "333", "444", "555" };
             
-            _activities[activity.Id] = activity;
-            OnActivityPosted?.Invoke(activity);
+            return names[UnityEngine.Random.Range(0, names.Length)] + numbers[UnityEngine.Random.Range(0, numbers.Length)];
         }
+        #endregion
         
-        /// <summary>
-        /// Get player teams
-        /// </summary>
-        public List<SocialTeam> GetPlayerTeams()
+        #region Player Profile Management
+        private PlayerSocialProfile GetPlayerProfile(string playerId)
         {
-            return _teams.Values.Where(t => t.Members.Contains(_currentPlayerId)).ToList();
-        }
-        
-        /// <summary>
-        /// Get player guilds
-        /// </summary>
-        public List<SocialGuild> GetPlayerGuilds()
-        {
-            return _guilds.Values.Where(g => g.Members.Contains(_currentPlayerId)).ToList();
-        }
-        
-        /// <summary>
-        /// Get leaderboard
-        /// </summary>
-        public SocialLeaderboard GetLeaderboard(string leaderboardId)
-        {
-            return _leaderboards.ContainsKey(leaderboardId) ? _leaderboards[leaderboardId] : null;
-        }
-        
-        /// <summary>
-        /// Get chat messages
-        /// </summary>
-        public List<ChatMessage> GetChatMessages(string chatId, int count = 50)
-        {
-            if (!_chats.ContainsKey(chatId)) return new List<ChatMessage>();
+            if (!_playerProfiles.ContainsKey(playerId))
+            {
+                _playerProfiles[playerId] = new PlayerSocialProfile
+                {
+                    playerId = playerId,
+                    guildId = "",
+                    guildRole = "",
+                    friends = new List<string>(),
+                    giftsSentToday = 0,
+                    giftsReceivedToday = 0,
+                    lastGiftSent = DateTime.MinValue,
+                    lastGiftReceived = DateTime.MinValue,
+                    socialScore = 0,
+                    lastSocialActivity = DateTime.Now
+                };
+            }
             
-            var chat = _chats[chatId];
-            return chat.Messages.TakeLast(count).ToList();
+            return _playerProfiles[playerId];
         }
         
-        /// <summary>
-        /// Get player friends
-        /// </summary>
-        public List<SocialFriend> GetPlayerFriends()
+        private void LoadPlayerProfiles()
         {
-            return _friends.Values.Where(f => f.PlayerId == _currentPlayerId).ToList();
+            // Load player profiles from save data
+            // This would implement profile loading logic
         }
         
-        /// <summary>
-        /// Get player activities
-        /// </summary>
-        public List<SocialActivity> GetPlayerActivities(int count = 20)
+        private void SavePlayerProfiles()
         {
-            return _activities.Values
-                .Where(a => a.PlayerId == _currentPlayerId)
-                .OrderByDescending(a => a.PostedAt)
-                .Take(count)
-                .ToList();
+            // Save player profiles to persistent storage
+            // This would implement profile saving logic
         }
+        #endregion
         
-        /// <summary>
-        /// Get friend activities
-        /// </summary>
-        public List<SocialActivity> GetFriendActivities(int count = 20)
+        #region Public API
+        public Dictionary<string, object> GetSocialStatistics()
         {
-            var friendIds = _friends.Values
-                .Where(f => f.PlayerId == _currentPlayerId && f.Status == FriendStatus.Accepted)
-                .Select(f => f.FriendId)
-                .ToList();
-            
-            return _activities.Values
-                .Where(a => friendIds.Contains(a.PlayerId))
-                .OrderByDescending(a => a.PostedAt)
-                .Take(count)
-                .ToList();
+            return new Dictionary<string, object>
+            {
+                {"total_guilds", _guilds.Count},
+                {"total_players", _playerProfiles.Count},
+                {"active_challenges", _socialChallenges.Values.Count(c => c.isActive)},
+                {"gifts_sent_today", _gifts.Values.Count(g => g.sentAt.Date == DateTime.Today)},
+                {"gifts_received_today", _gifts.Values.Count(g => g.isReceived && g.sentAt.Date == DateTime.Today)},
+                {"average_guild_size", _guilds.Values.Average(g => g.members.Count)},
+                {"leaderboard_updates", _leaderboards.Values.Sum(l => l.entries.Count)}
+            };
         }
-        
-        /// <summary>
-        /// Set current player ID
-        /// </summary>
-        public void SetCurrentPlayer(string playerId)
-        {
-            _currentPlayerId = playerId;
-        }
+        #endregion
         
         void OnDestroy()
         {
             if (_leaderboardUpdateCoroutine != null)
-            {
                 StopCoroutine(_leaderboardUpdateCoroutine);
-            }
-            
-            if (_eventCheckCoroutine != null)
-            {
-                StopCoroutine(_eventCheckCoroutine);
-            }
-            
-            if (_activityUpdateCoroutine != null)
-            {
-                StopCoroutine(_activityUpdateCoroutine);
-            }
-            
-            if (_chatModerationCoroutine != null)
-            {
-                StopCoroutine(_chatModerationCoroutine);
-            }
+            if (_socialProofCoroutine != null)
+                StopCoroutine(_socialProofCoroutine);
+            if (_challengeUpdateCoroutine != null)
+                StopCoroutine(_challengeUpdateCoroutine);
+            if (_giftUpdateCoroutine != null)
+                StopCoroutine(_giftUpdateCoroutine);
+                
+            SavePlayerProfiles();
         }
     }
     
-    // Social Data Classes
+    // Data Classes
     [System.Serializable]
-    public class SocialPlayer
+    public class Guild
     {
-        public string Id;
-        public string Name;
-        public int Level;
-        public int Score;
-        public string Avatar;
-        public PlayerStatus Status;
-        public DateTime LastSeen;
-        public Dictionary<string, object> Stats;
+        public string id;
+        public string name;
+        public string description;
+        public string leaderId;
+        public List<string> members;
+        public int level;
+        public int xp;
+        public int maxMembers;
+        public DateTime createdAt;
+        public bool isActive;
     }
     
     [System.Serializable]
-    public class SocialTeam
+    public class PlayerSocialProfile
     {
-        public string Id;
-        public string Name;
-        public string Description;
-        public TeamPrivacy Privacy;
-        public string OwnerId;
-        public List<string> Members;
-        public DateTime CreatedAt;
-        public bool IsActive;
+        public string playerId;
+        public string guildId;
+        public string guildRole;
+        public List<string> friends;
+        public int giftsSentToday;
+        public int giftsReceivedToday;
+        public DateTime lastGiftSent;
+        public DateTime lastGiftReceived;
+        public int socialScore;
+        public DateTime lastSocialActivity;
     }
     
     [System.Serializable]
-    public class SocialGuild
+    public class Leaderboard
     {
-        public string Id;
-        public string Name;
-        public string Description;
-        public GuildPrivacy Privacy;
-        public string OwnerId;
-        public List<string> Members;
-        public DateTime CreatedAt;
-        public bool IsActive;
-    }
-    
-    [System.Serializable]
-    public class SocialLeaderboard
-    {
-        public string Id;
-        public string Name;
-        public LeaderboardType Type;
-        public string Category;
-        public string Region;
-        public List<LeaderboardEntry> Entries;
-        public DateTime LastUpdated;
-        public bool IsActive;
+        public string type;
+        public List<LeaderboardEntry> entries;
+        public DateTime lastUpdated;
     }
     
     [System.Serializable]
     public class LeaderboardEntry
     {
-        public string PlayerId;
-        public string PlayerName;
-        public int Score;
-        public int Rank;
-        public DateTime LastUpdated;
+        public int rank;
+        public string playerId;
+        public string playerName;
+        public int value;
+        public bool isCurrentPlayer;
     }
     
     [System.Serializable]
-    public class SocialChat
+    public class LeaderboardPlayer
     {
-        public string Id;
-        public string Name;
-        public ChatType Type;
-        public List<ChatMessage> Messages;
-        public bool IsActive;
-        public bool IsModerated;
+        public string playerId;
+        public string playerName;
+        public int value;
     }
     
     [System.Serializable]
-    public class ChatMessage
+    public class SocialChallenge
     {
-        public string Id;
-        public string PlayerId;
-        public string Message;
-        public DateTime Timestamp;
-        public bool IsModerated;
+        public string id;
+        public string name;
+        public string description;
+        public string type;
+        public int target;
+        public int reward;
+        public int duration;
+        public bool isActive;
+        public DateTime createdAt;
     }
     
     [System.Serializable]
-    public class SocialGift
+    public class Gift
     {
-        public string Id;
-        public string SenderId;
-        public string RecipientId;
-        public GiftType Type;
-        public int Amount;
-        public DateTime SentAt;
-        public DateTime? ReceivedAt;
-        public bool IsReceived;
+        public string id;
+        public string senderId;
+        public string recipientId;
+        public string itemType;
+        public int amount;
+        public DateTime sentAt;
+        public bool isPending;
+        public bool isReceived;
     }
     
     [System.Serializable]
-    public class SocialEvent
+    public class SocialProof
     {
-        public string Id;
-        public string Name;
-        public string Description;
-        public EventType Type;
-        public DateTime StartTime;
-        public DateTime EndTime;
-        public EventStatus Status;
-        public List<EventReward> Rewards;
-        public List<string> Participants;
-        public bool IsActive;
-    }
-    
-    [System.Serializable]
-    public class EventReward
-    {
-        public RewardType Type;
-        public int Amount;
-    }
-    
-    [System.Serializable]
-    public class SocialFriend
-    {
-        public string Id;
-        public string PlayerId;
-        public string FriendId;
-        public FriendStatus Status;
-        public DateTime AddedAt;
-    }
-    
-    [System.Serializable]
-    public class SocialActivity
-    {
-        public string Id;
-        public string PlayerId;
-        public ActivityType Type;
-        public string Description;
-        public Dictionary<string, object> Data;
-        public DateTime PostedAt;
-        public bool IsPublic;
-    }
-    
-    // Enums
-    public enum PlayerStatus
-    {
-        Online,
-        Offline,
-        Away,
-        Busy
-    }
-    
-    public enum TeamPrivacy
-    {
-        Public,
-        Private,
-        InviteOnly
-    }
-    
-    public enum GuildPrivacy
-    {
-        Public,
-        Private,
-        InviteOnly
-    }
-    
-    public enum LeaderboardType
-    {
-        Global,
-        Regional,
-        Team,
-        Weekly,
-        Monthly
-    }
-    
-    public enum ChatType
-    {
-        Global,
-        Team,
-        Guild,
-        Private
-    }
-    
-    public enum GiftType
-    {
-        Coins,
-        Gems,
-        Energy,
-        Items
-    }
-    
-    public enum EventType
-    {
-        Team,
-        Global,
-        Guild,
-        Special
-    }
-    
-    public enum EventStatus
-    {
-        Scheduled,
-        Active,
-        Ended,
-        Cancelled
-    }
-    
-    public enum RewardType
-    {
-        Coins,
-        Gems,
-        Energy,
-        Experience,
-        Items
-    }
-    
-    public enum FriendStatus
-    {
-        Pending,
-        Accepted,
-        Blocked
-    }
-    
-    public enum ActivityType
-    {
-        LevelComplete,
-        Achievement,
-        Purchase,
-        Gift,
-        TeamJoin,
-        GuildJoin
+        public string id;
+        public string playerName;
+        public string action;
+        public int value;
+        public DateTime timestamp;
     }
 }

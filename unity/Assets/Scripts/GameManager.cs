@@ -3,17 +3,35 @@ using Economy;
 using CloudCode;
 using RemoteConfig;
 using UI;
+using Evergreen.Integration;
+using Evergreen.Addiction;
+using Evergreen.Monetization;
+using Evergreen.Social;
+using Evergreen.Retention;
+using Evergreen.Gacha;
+using Evergreen.AI;
+using Evergreen.Analytics;
 
 public class GameManager : MonoBehaviour
 {
     [Header("Game Settings")]
     public bool debugMode = true;
     
-    [Header("Managers")]
+    [Header("Core Managers")]
     public EconomyManager economyManager;
     public CloudCodeManager cloudCodeManager;
     public RemoteConfigManager remoteConfigManager;
     public EconomyUI economyUI;
+    
+    [Header("Advanced Systems")]
+    public SystemIntegrationManager systemIntegrationManager;
+    public AddictionMechanics addictionMechanics;
+    public AdvancedMonetizationSystem monetizationSystem;
+    public AdvancedSocialSystem socialSystem;
+    public AdvancedRetentionSystem retentionSystem;
+    public AdvancedGachaSystem gachaSystem;
+    public AdvancedAIOptimization aiOptimization;
+    public AdvancedAnalyticsSystem analyticsSystem;
     
     public static GameManager Instance { get; private set; }
     
@@ -41,8 +59,14 @@ public class GameManager : MonoBehaviour
         // Initialize all managers
         InitializeManagers();
         
+        // Initialize advanced systems
+        InitializeAdvancedSystems();
+        
         // Set up event listeners
         SetupEventListeners();
+        
+        // Set up cross-system integration
+        SetupSystemIntegration();
         
         // Test the system
         if (debugMode)
@@ -78,6 +102,57 @@ public class GameManager : MonoBehaviour
         }
     }
     
+    private void InitializeAdvancedSystems()
+    {
+        // System Integration Manager
+        if (systemIntegrationManager == null)
+        {
+            systemIntegrationManager = FindObjectOfType<SystemIntegrationManager>();
+        }
+        
+        // Addiction Mechanics
+        if (addictionMechanics == null)
+        {
+            addictionMechanics = FindObjectOfType<AddictionMechanics>();
+        }
+        
+        // Advanced Monetization System
+        if (monetizationSystem == null)
+        {
+            monetizationSystem = FindObjectOfType<AdvancedMonetizationSystem>();
+        }
+        
+        // Advanced Social System
+        if (socialSystem == null)
+        {
+            socialSystem = FindObjectOfType<AdvancedSocialSystem>();
+        }
+        
+        // Advanced Retention System
+        if (retentionSystem == null)
+        {
+            retentionSystem = FindObjectOfType<AdvancedRetentionSystem>();
+        }
+        
+        // Advanced Gacha System
+        if (gachaSystem == null)
+        {
+            gachaSystem = FindObjectOfType<AdvancedGachaSystem>();
+        }
+        
+        // Advanced AI Optimization
+        if (aiOptimization == null)
+        {
+            aiOptimization = FindObjectOfType<AdvancedAIOptimization>();
+        }
+        
+        // Advanced Analytics System
+        if (analyticsSystem == null)
+        {
+            analyticsSystem = FindObjectOfType<AdvancedAnalyticsSystem>();
+        }
+    }
+    
     private void SetupEventListeners()
     {
         // Economy events
@@ -95,6 +170,46 @@ public class GameManager : MonoBehaviour
         RemoteConfigManager.OnConfigError += OnConfigError;
     }
     
+    private void SetupSystemIntegration()
+    {
+        // Set up cross-system event handling
+        if (addictionMechanics != null)
+        {
+            addictionMechanics.OnVariableRewardTriggered += OnVariableRewardTriggered;
+            addictionMechanics.OnNearMissTriggered += OnNearMissTriggered;
+        }
+        
+        if (monetizationSystem != null)
+        {
+            monetizationSystem.OnPriceUpdated += OnPriceUpdated;
+            monetizationSystem.OnSubscriptionStarted += OnSubscriptionStarted;
+        }
+        
+        if (socialSystem != null)
+        {
+            socialSystem.OnGuildCreated += OnGuildCreated;
+            socialSystem.OnLeaderboardUpdated += OnLeaderboardUpdated;
+        }
+        
+        if (retentionSystem != null)
+        {
+            retentionSystem.OnStreakRewardEarned += OnStreakRewardEarned;
+            retentionSystem.OnComebackOfferCreated += OnComebackOfferCreated;
+        }
+        
+        if (gachaSystem != null)
+        {
+            gachaSystem.OnGachaRewardEarned += OnGachaRewardEarned;
+            gachaSystem.OnRarityAchieved += OnRarityAchieved;
+        }
+        
+        if (aiOptimization != null)
+        {
+            aiOptimization.OnChurnPredicted += OnChurnPredicted;
+            aiOptimization.OnLTVPredicted += OnLTVPredicted;
+        }
+    }
+    
     private void OnDestroy()
     {
         // Unsubscribe from events
@@ -108,6 +223,43 @@ public class GameManager : MonoBehaviour
         
         RemoteConfigManager.OnConfigUpdated -= OnConfigUpdated;
         RemoteConfigManager.OnConfigError -= OnConfigError;
+        
+        // Unsubscribe from advanced system events
+        if (addictionMechanics != null)
+        {
+            addictionMechanics.OnVariableRewardTriggered -= OnVariableRewardTriggered;
+            addictionMechanics.OnNearMissTriggered -= OnNearMissTriggered;
+        }
+        
+        if (monetizationSystem != null)
+        {
+            monetizationSystem.OnPriceUpdated -= OnPriceUpdated;
+            monetizationSystem.OnSubscriptionStarted -= OnSubscriptionStarted;
+        }
+        
+        if (socialSystem != null)
+        {
+            socialSystem.OnGuildCreated -= OnGuildCreated;
+            socialSystem.OnLeaderboardUpdated -= OnLeaderboardUpdated;
+        }
+        
+        if (retentionSystem != null)
+        {
+            retentionSystem.OnStreakRewardEarned -= OnStreakRewardEarned;
+            retentionSystem.OnComebackOfferCreated -= OnComebackOfferCreated;
+        }
+        
+        if (gachaSystem != null)
+        {
+            gachaSystem.OnGachaRewardEarned -= OnGachaRewardEarned;
+            gachaSystem.OnRarityAchieved -= OnRarityAchieved;
+        }
+        
+        if (aiOptimization != null)
+        {
+            aiOptimization.OnChurnPredicted -= OnChurnPredicted;
+            aiOptimization.OnLTVPredicted -= OnLTVPredicted;
+        }
     }
     
     // Event handlers
@@ -244,5 +396,113 @@ public class GameManager : MonoBehaviour
     public int GetInventoryQuantity(string itemId)
     {
         return economyManager != null ? economyManager.GetInventoryQuantity(itemId) : 0;
+    }
+    
+    // Advanced System Event Handlers
+    private void OnVariableRewardTriggered(VariableReward reward)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Variable reward triggered: {reward.item.name} for {reward.playerId}");
+        }
+        
+        // Track analytics
+        if (analyticsSystem != null)
+        {
+            analyticsSystem.TrackEvent("variable_reward_earned", new Dictionary<string, object>
+            {
+                ["player_id"] = reward.playerId,
+                ["reward_type"] = reward.item.name,
+                ["rarity"] = reward.rarity.name
+            });
+        }
+    }
+    
+    private void OnNearMissTriggered(NearMiss nearMiss)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Near miss triggered: {nearMiss.progress:F2} for {nearMiss.playerId}");
+        }
+    }
+    
+    private void OnPriceUpdated(DynamicPrice price)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Price updated: {price.itemId} = {price.currentPrice}");
+        }
+    }
+    
+    private void OnSubscriptionStarted(Subscription subscription)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Subscription started: {subscription.name} for {subscription.playerId}");
+        }
+    }
+    
+    private void OnGuildCreated(Guild guild)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Guild created: {guild.name} by {guild.leaderId}");
+        }
+    }
+    
+    private void OnLeaderboardUpdated(Leaderboard leaderboard)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Leaderboard updated: {leaderboard.type}");
+        }
+    }
+    
+    private void OnStreakRewardEarned(StreakReward reward)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Streak reward earned: {reward.milestone} days for {reward.playerId}");
+        }
+    }
+    
+    private void OnComebackOfferCreated(ComebackOffer offer)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Comeback offer created: {offer.daysAway} days for {offer.playerId}");
+        }
+    }
+    
+    private void OnGachaRewardEarned(GachaReward reward)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Gacha reward earned: {reward.item.name} ({reward.rarity.name}) for {reward.playerId}");
+        }
+    }
+    
+    private void OnRarityAchieved(GachaRarity rarity)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Rarity achieved: {rarity.name}");
+        }
+    }
+    
+    private void OnChurnPredicted(ChurnPrediction prediction)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] Churn predicted: {prediction.riskLevel:F2} for {prediction.playerId}");
+        }
+    }
+    
+    private void OnLTVPredicted(LTVPrediction prediction)
+    {
+        if (debugMode)
+        {
+            Debug.Log($"[GameManager] LTV predicted: {prediction.predictedLTV:F2} for {prediction.playerId}");
+        }
     }
 }
