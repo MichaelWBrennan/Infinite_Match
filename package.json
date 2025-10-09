@@ -85,7 +85,8 @@
     "unity:deploy": "node scripts/unity-deploy.js",
     "unity:api-deploy": "node scripts/unity/unity-cloud-api-deploy.js",
     "unity:secrets": "node scripts/unity/fetch-unity-secrets.js",
-    "unity:test": "echo 'Unity Test Framework integration via GitHub Actions'"
+    "unity:test": "echo 'Unity Test Framework integration via GitHub Actions'",
+    "test:cursor-secrets": "node scripts/test-cursor-secrets.js"
   },
   "type": "module",
   "version": "1.0.0",
