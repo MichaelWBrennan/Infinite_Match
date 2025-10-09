@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-10-09T22:32:02.088455",
+  "overall_health": "critical",
+  "checks": {
+    "economy_data": {
+      "csv_exists": false,
+      "json_exists": false,
+      "csv_valid": false,
+      "json_valid": false,
+      "item_count": 0
+    },
+    "unity_services": {
+      "config_exists": false,
+      "config_valid": false,
+      "project_id_configured": false,
+      "environment_id_configured": false
+    },
+    "github_workflows": {
+      "workflows_exist": false,
+      "workflow_count": 0,
+      "recent_failures": 0
+    },
+    "scripts": {
+      "scripts_exist": false,
+      "script_count": 0,
+      "executable_scripts": 0
+    },
+    "dependencies": {
+      "python_available": true,
+      "node_available": true,
+      "git_available": true,
+      "unity_available": true
+    },
+    "activity": {
+      "recent_commits": 222,
+      "recent_builds": 0,
+      "last_activity": null
+    }
+  },
+  "health_score": 0.2,
+  "recommendations": [
+    "Fix economy CSV data - check format and content",
+    "Configure Unity Services - update project ID and environment ID",
+    "Add automation scripts to maintain system health"
+  ]
+}
