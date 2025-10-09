@@ -43,7 +43,7 @@ class UnityService {
         logger.info(
           'Unity account credentials found - using account-based authentication'
         );
-        this.accesstoken = process.env.TOKEN;
+        this.accessToken = 'unity-account-mode';
         return true;
       }
 
@@ -51,11 +51,11 @@ class UnityService {
       logger.warn(
         'No Unity credentials configured - using personal license mode'
       );
-      this.accesstoken = process.env.TOKEN;
+      this.accessToken = 'personal-license-mode';
       return true;
     } catch (error) {
       logger.error(`Unity authentication failed: ${error.message}`);
-      this.accesstoken = process.env.TOKEN;
+      this.accessToken = 'personal-license-mode';
       return true;
     }
   }
@@ -100,7 +100,7 @@ class UnityService {
           }
         );
         // Fall back to Cloud Code mode
-        this.accesstoken = process.env.TOKEN;
+        this.accessToken = 'cloud-code-mode';
         return true;
       }
 
@@ -118,7 +118,7 @@ class UnityService {
         error: error.message,
       });
       // Fall back to Cloud Code mode
-      this.accesstoken = process.env.TOKEN;
+      this.accessToken = 'cloud-code-mode';
       return true;
     }
   }
@@ -196,12 +196,7 @@ class UnityService {
   async createCurrency(currencyData) {
     try {
       // Try Unity Cloud Services API first (only if we have API credentials)
-      if (
-        this.accessToken &&
-        this.accessToken !== 'personal-license-mode' &&
-        this.accessToken !== 'unity-account-mode' &&
-        this.accessToken !== 'cloud-code-mode'
-      ) {
+      if (this.clientId && this.clientSecret) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies`;
         const result = await this.makeRequest(endpoint, {
           method: 'POST',
@@ -287,11 +282,7 @@ class UnityService {
   async createInventoryItem(itemData) {
     try {
       // Try Unity Cloud Services API first (only if we have proper credentials)
-      if (
-        this.accessToken &&
-        this.accessToken !== 'personal-license-mode' &&
-        this.accessToken !== 'cloud-code-mode'
-      ) {
+      if (this.clientId && this.clientSecret) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory-items`;
         const result = await this.makeRequest(endpoint, {
           method: 'POST',
