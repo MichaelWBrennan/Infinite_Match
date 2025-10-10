@@ -9,7 +9,7 @@ import DataLoader from '../../data/DataLoader.js';
 import EconomyValidator from '../../data/validators/EconomyValidator.js';
 import CacheManager from '../cache/CacheManager.js';
 import EconomyService from '../../services/economy/EconomyService.js';
-import UnityService from '../../services/unity/index.js';
+import HeadlessUnityService from '../../services/unity/headless-unity-service.js';
 
 /**
  * Register all services with the container
@@ -34,7 +34,7 @@ export function registerServices() {
 
   container.register(
     'unityService',
-    (c) => new UnityService(c.get('cacheManager')),
+    (c) => new HeadlessUnityService(c.get('cacheManager')),
     true
   );
 
