@@ -94,6 +94,7 @@
     "unity:extract-data": "python3 scripts/unity/extract-unity-cloud-data.py",
     "unity:extract-data-advanced": "python3 scripts/unity/extract-unity-cloud-data-advanced.py",
     "unity:check-services": "python3 scripts/unity/check-unity-cloud-services.py",
+    "unity:read-account": "python3 scripts/unity/read-unity-cloud-account.py",
     "unity:deploy-cloud-code": "node scripts/unity/deploy-cloud-code.js",
     "unity:test-cloud-code": "node scripts/unity/deploy-cloud-code.js"
   },

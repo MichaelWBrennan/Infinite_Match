@@ -1,0 +1,87 @@
+{
+  "timestamp": "2025-10-10T05:10:49.849995",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "account_data": {
+    "economy": {
+      "service": "Economy",
+      "method": "headless_reading",
+      "status": "local_data",
+      "error": null,
+      "economy_data": {
+        "currencies": [
+          "coins: Coins (soft_currency)",
+          "gems: Gems (hard_currency)",
+          "energy: Energy (consumable)"
+        ],
+        "inventory": [
+          "booster_extra_moves: Extra Moves (booster)",
+          "booster_color_bomb: Color Bomb (booster)",
+          "booster_rainbow_blast: Rainbow Blast (booster)",
+          "booster_striped_candy: Striped Candy (booster)",
+          "pack_starter: Starter Pack (pack)",
+          "pack_value: Value Pack (pack)",
+          "pack_premium: Premium Pack (pack)",
+          "pack_mega: Mega Pack (pack)",
+          "pack_ultimate: Ultimate Pack (pack)",
+          "pack_booster_small: Booster Bundle (pack)",
+          "pack_booster_large: Power Pack (pack)",
+          "pack_comeback: Welcome Back! (pack)",
+          "pack_flash_sale: Flash Sale! (pack)"
+        ],
+        "catalog": [
+          "coins_small: Small Coin Pack (gems: 20)",
+          "coins_medium: Medium Coin Pack (gems: 120)",
+          "coins_large: Large Coin Pack (gems: 300)",
+          "coins_mega: Mega Coin Pack (gems: 700)",
+          "coins_ultimate: Ultimate Coin Pack (gems: 2000)",
+          "energy_small: Energy Boost (gems: 5)",
+          "energy_large: Energy Surge (gems: 15)",
+          "booster_extra_moves: Extra Moves (coins: 200)",
+          "booster_color_bomb: Color Bomb (gems: 15)",
+          "booster_rainbow_blast: Rainbow Blast (gems: 25)",
+          "booster_striped_candy: Striped Candy (coins: 100)",
+          "pack_starter: Starter Pack (gems: 20)",
+          "pack_value: Value Pack (gems: 120)",
+          "pack_premium: Premium Pack (gems: 300)",
+          "pack_mega: Mega Pack (gems: 700)",
+          "pack_ultimate: Ultimate Pack (gems: 2000)",
+          "pack_booster_small: Booster Bundle (coins: 500)",
+          "pack_booster_large: Power Pack (gems: 25)",
+          "pack_comeback: Welcome Back! (gems: 50)",
+          "pack_flash_sale: Flash Sale! (gems: 25)"
+        ]
+      }
+    },
+    "remote_config": {
+      "service": "Remote Config",
+      "method": "headless_reading",
+      "status": "local_data",
+      "error": null,
+      "config_data": {
+        "configs": [
+          "game_settings: 6 settings",
+          "economy_settings: 5 settings",
+          "feature_flags: 6 settings",
+          "ui_settings: 4 settings",
+          "analytics_events: 8 settings"
+        ]
+      }
+    },
+    "cloud_code": {
+      "service": "Cloud Code",
+      "method": "headless_reading",
+      "status": "local_data",
+      "error": null,
+      "functions": [
+        "AddInventoryItem: AddInventoryItem.js",
+        "SpendCurrency: SpendCurrency.js",
+        "UseInventoryItem: UseInventoryItem.js",
+        "AddCurrency: AddCurrency.js",
+        "validationUtils: validationUtils.js"
+      ]
+    }
+  }
+}
