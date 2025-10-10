@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-10-10T05:34:42.131928",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "account_data": {
+    "dashboard": {
+      "service": "Unity Cloud Dashboard",
+      "method": "dashboard_scraping",
+      "status": "accessible",
+      "error": null,
+      "accessible": true,
+      "login_required": true
+    },
+    "project": {
+      "service": "Project Page",
+      "method": "dashboard_scraping",
+      "status": "accessible",
+      "error": null,
+      "accessible": true,
+      "project_data": {},
+      "login_required": true
+    },
+    "services": {
+      "service": "Service Pages",
+      "method": "dashboard_scraping",
+      "status": "partial",
+      "error": null,
+      "services": {
+        "Economy": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy",
+          "status_code": 200,
+          "accessible": true,
+          "login_required": true,
+          "service_data": {}
+        },
+        "Remote Config": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/remote-config",
+          "status_code": 200,
+          "accessible": true,
+          "login_required": true,
+          "service_data": {}
+        },
+        "Cloud Code": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/cloud-code",
+          "status_code": 200,
+          "accessible": true,
+          "login_required": true,
+          "service_data": {}
+        }
+      }
+    }
+  }
+}

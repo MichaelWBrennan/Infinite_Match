@@ -1,0 +1,27 @@
+{
+  "timestamp": "2025-10-10 06:30:34",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6",
+  "email": "michaelwilliambrennan@gmail.com",
+  "account_accessible": true,
+  "services_initialized": [
+    "economy",
+    "cloud-code",
+    "remote-config"
+  ],
+  "economy": {
+    "currencies": [],
+    "inventory": [],
+    "catalog": [],
+    "source": "real_unity_cloud"
+  },
+  "cloud_code": {
+    "functions": [],
+    "source": "real_unity_cloud"
+  },
+  "remote_config": {
+    "configs": [],
+    "source": "real_unity_cloud"
+  },
+  "total_items": 0
+}

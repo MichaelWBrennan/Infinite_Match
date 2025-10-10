@@ -1,0 +1,17 @@
+HEADLESS_MODE_ONLY=true
+UNITY_CLOUD_OPERATIONS=headless
+API_CALLS_DISABLED=true
+CLI_INSTALLATIONS_DISABLED=true
+PREFERRED_METHOD=headless_automation
+
+# Always use these scripts:
+# - python3 scripts/unity/test-headless-account-visibility.py
+# - node scripts/unity/deploy-cloud-code.js  
+# - python3 scripts/unity/match3_complete_automation.py
+# - python3 scripts/unity/headless-unity-cloud-reader.py
+
+# Never use:
+# - Direct Unity API calls
+# - Unity CLI commands
+# - External installations
+# - Non-headless browser automation

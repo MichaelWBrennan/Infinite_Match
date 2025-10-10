@@ -1,0 +1,80 @@
+{
+  "projectId": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environmentId": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "functions": [
+    {
+      "name": "AddCurrency",
+      "description": "Add currency to player account",
+      "parameters": [
+        {
+          "name": "currencyId",
+          "type": "string",
+          "required": true,
+          "description": "ID of the currency to add"
+        },
+        {
+          "name": "amount",
+          "type": "int",
+          "required": true,
+          "description": "Amount of currency to add"
+        }
+      ]
+    },
+    {
+      "name": "SpendCurrency",
+      "description": "Deduct currency from player account",
+      "parameters": [
+        {
+          "name": "currencyId",
+          "type": "string",
+          "required": true,
+          "description": "ID of the currency to spend"
+        },
+        {
+          "name": "amount",
+          "type": "int",
+          "required": true,
+          "description": "Amount of currency to spend"
+        }
+      ]
+    },
+    {
+      "name": "AddInventoryItem",
+      "description": "Add item to player inventory",
+      "parameters": [
+        {
+          "name": "itemId",
+          "type": "string",
+          "required": true,
+          "description": "ID of the item to add"
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "description": "Quantity of items to add"
+        }
+      ]
+    },
+    {
+      "name": "UseInventoryItem",
+      "description": "Consume inventory item",
+      "parameters": [
+        {
+          "name": "itemId",
+          "type": "string",
+          "required": true,
+          "description": "ID of the item to use"
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "required": false,
+          "default": 1,
+          "description": "Quantity of items to use"
+        }
+      ]
+    }
+  ]
+}
