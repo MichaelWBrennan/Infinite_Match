@@ -96,6 +96,7 @@
     "unity:check-services": "python3 scripts/unity/check-unity-cloud-services.py",
     "unity:read-account": "python3 scripts/unity/read-unity-cloud-account.py",
     "unity:read-actual-account": "python3 scripts/unity/read-actual-unity-cloud-account.py",
+    "unity:headless-read": "python3 scripts/unity/headless-unity-cloud-reader.py",
     "unity:deploy-cloud-code": "node scripts/unity/deploy-cloud-code.js",
     "unity:test-cloud-code": "node scripts/unity/deploy-cloud-code.js"
   },
