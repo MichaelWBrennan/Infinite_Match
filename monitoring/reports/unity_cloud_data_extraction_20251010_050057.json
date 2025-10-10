@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-10-10T05:00:56.648324",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "extracted_data": {
+    "project": {
+      "service": "Project Information",
+      "method": "dashboard_extraction",
+      "status": "extracted",
+      "error": null,
+      "project_data": {
+        "name": "Unknown",
+        "id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+        "organization_id": "2473931369648",
+        "services": []
+      }
+    },
+    "economy": {
+      "service": "Economy",
+      "method": "dashboard_extraction",
+      "status": "extracted",
+      "error": null,
+      "economy_data": {
+        "currencies": [],
+        "inventory": [],
+        "catalog": []
+      }
+    },
+    "remote_config": {
+      "service": "Remote Config",
+      "method": "dashboard_extraction",
+      "status": "extracted",
+      "error": null,
+      "config_data": {
+        "configs": []
+      }
+    },
+    "cloud_code": {
+      "service": "Cloud Code",
+      "method": "dashboard_extraction",
+      "status": "extracted",
+      "error": null,
+      "functions": []
+    }
+  }
+}

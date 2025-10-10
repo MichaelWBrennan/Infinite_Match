@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-10T05:20:05.986970",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "headless_account_data": {
+    "economy": {
+      "service": "Economy",
+      "method": "headless_with_credentials",
+      "status": "no_data",
+      "error": "No economy data found in dashboard",
+      "headless_data": {}
+    },
+    "remote_config": {
+      "service": "Remote Config",
+      "method": "headless_with_credentials",
+      "status": "no_data",
+      "error": "No remote config data found in dashboard",
+      "headless_data": {}
+    },
+    "cloud_code": {
+      "service": "Cloud Code",
+      "method": "headless_with_credentials",
+      "status": "no_data",
+      "error": "No cloud code data found in dashboard",
+      "headless_data": {}
+    }
+  }
+}

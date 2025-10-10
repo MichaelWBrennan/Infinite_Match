@@ -1,15 +1,14 @@
 /**
- * Unity Services Integration
- * Centralized Unity Cloud Services API client
+ * Headless Unity Services Integration
+ * Streamlined Unity Cloud Services client for headless operation only
  */
 
 import { AppConfig } from '../../core/config/index.js';
 import { Logger } from '../../core/logger/index.js';
 
+const logger = new Logger('HeadlessUnityService');
 
-const logger = new Logger('UnityService');
-
-class UnityService {
+class HeadlessUnityService {
   constructor(cacheManager) {
     this.projectId = AppConfig.unity.projectId;
     this.environmentId = AppConfig.unity.environmentId;
@@ -19,15 +18,13 @@ class UnityService {
 
   /**
    * Authenticate with Unity Services (Headless Mode)
-   * Always uses headless simulation mode - no API authentication required
+   * Always returns true for headless operation
    */
   async authenticate() {
-    logger.info('Unity Services headless mode - no authentication required');
+    logger.info('Headless Unity Services mode - no authentication required');
     this.accessToken = 'headless-simulation-mode';
     return true;
   }
-
-
 
   /**
    * Economy Service Methods (Headless Simulation)
@@ -131,74 +128,39 @@ class UnityService {
     };
 
     try {
-      // Deploy currencies
+      // Simulate currency deployment
       if (economyData.currencies?.length > 0) {
         for (const currency of economyData.currencies) {
-          try {
-            const result = await this.createCurrency(currency);
-            results.currencies.push(result);
-            logger.info(`Created currency: ${currency.id}`);
-          } catch (error) {
-            results.errors.push({
-              type: 'currency',
-              id: currency.id,
-              error: error.message,
-            });
-            logger.error(`Failed to create currency: ${currency.id}`, {
-              error: error.message,
-            });
-          }
+          const result = await this.createCurrency(currency);
+          results.currencies.push(result);
+          logger.info(`Simulated currency: ${currency.id}`);
         }
       }
 
-      // Deploy inventory items
+      // Simulate inventory deployment
       if (economyData.inventory?.length > 0) {
         for (const item of economyData.inventory) {
-          try {
-            const result = await this.createInventoryItem(item);
-            results.inventory.push(result);
-            logger.info(`Created inventory item: ${item.id}`);
-          } catch (error) {
-            results.errors.push({
-              type: 'inventory',
-              id: item.id,
-              error: error.message,
-            });
-            logger.error(`Failed to create inventory item: ${item.id}`, {
-              error: error.message,
-            });
-          }
+          const result = await this.createInventoryItem(item);
+          results.inventory.push(result);
+          logger.info(`Simulated inventory item: ${item.id}`);
         }
       }
 
-      // Deploy catalog items
+      // Simulate catalog deployment
       if (economyData.catalog?.length > 0) {
         for (const item of economyData.catalog) {
-          try {
-            const result = await this.createCatalogItem(item);
-            results.catalog.push(result);
-            logger.info(`Created catalog item: ${item.id}`);
-          } catch (error) {
-            results.errors.push({
-              type: 'catalog',
-              id: item.id,
-              error: error.message,
-            });
-            logger.error(`Failed to create catalog item: ${item.id}`, {
-              error: error.message,
-            });
-          }
+          const result = await this.createCatalogItem(item);
+          results.catalog.push(result);
+          logger.info(`Simulated catalog item: ${item.id}`);
         }
       }
 
       return results;
     } catch (error) {
-      logger.error('Economy data deployment failed', { error: error.message });
+      logger.error('Economy data simulation failed', { error: error.message });
       throw error;
     }
   }
-
-
 
   /**
    * Deploy all Unity services (Headless Simulation)
@@ -354,6 +316,19 @@ class UnityService {
 
     return result;
   }
+
+  /**
+   * Get service status
+   */
+  getStatus() {
+    return {
+      mode: this.mode,
+      projectId: this.projectId,
+      environmentId: this.environmentId,
+      authenticated: true,
+      message: 'Headless Unity Services operational',
+    };
+  }
 }
 
-export default UnityService;
+export default HeadlessUnityService;

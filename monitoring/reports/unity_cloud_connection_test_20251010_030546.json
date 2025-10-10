@@ -1,0 +1,64 @@
+{
+  "timestamp": "2025-10-10T03:05:45.792986",
+  "overall_status": "partial",
+  "tests": {
+    "secrets": {
+      "name": "Secrets Configuration",
+      "status": "passed",
+      "details": {
+        "configured": 4,
+        "total": 4,
+        "missing": [],
+        "project_id": "SET",
+        "environment_id": "SET",
+        "client_id": "SET",
+        "client_secret": "SET"
+      },
+      "error": null
+    },
+    "dashboard": {
+      "name": "Dashboard Ping",
+      "status": "failed",
+      "details": {
+        "status_code": 301,
+        "accessible": false
+      },
+      "error": "HTTP 301"
+    },
+    "authentication": {
+      "name": "OAuth Authentication",
+      "status": "failed",
+      "details": {
+        "status_code": 404,
+        "status_text": "Not Found"
+      },
+      "error": "HTTP 404: {\"status\":404,\"title\":\"Not Found\",\"requestId\":\"0c113b38-77d7-4b4f-a2ea-fd48e889ca90\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+    },
+    "api_endpoints": {
+      "name": "API Endpoints",
+      "status": "skipped",
+      "endpoints": {},
+      "error": "No access token available"
+    },
+    "project_access": {
+      "name": "Project Access",
+      "status": "failed",
+      "details": {},
+      "error": "HTTP 404: {\"status\":404,\"title\":\"Not Found\",\"requestId\":\"e70a6fad-9d23-4a71-9e60-eec77c8d2aee\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "Authentication",
+      "message": "Fix Unity Cloud OAuth credentials - check UNITY_CLIENT_ID and UNITY_CLIENT_SECRET",
+      "action": "Verify credentials in Unity Dashboard > Settings > API Keys"
+    },
+    {
+      "priority": "medium",
+      "category": "Connectivity",
+      "message": "Unity Cloud dashboard is not accessible",
+      "action": "Check internet connection and Unity Cloud service status"
+    }
+  ]
+}

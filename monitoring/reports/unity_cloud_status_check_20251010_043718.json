@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-10-10T04:37:18.399950",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "account_status": {
+    "dashboard": {
+      "service": "Unity Dashboard",
+      "method": "dashboard_check",
+      "status": "accessible",
+      "error": null,
+      "accessible": true
+    },
+    "cloud_services": {
+      "service": "Unity Cloud Services",
+      "method": "services_check",
+      "status": "unavailable",
+      "error": null,
+      "services_available": []
+    },
+    "project_config": {
+      "service": "Project Configuration",
+      "method": "config_check",
+      "status": "configured",
+      "error": null,
+      "services_configured": [
+        "Cloud Services Enabled",
+        "Project ID Match",
+        "Environment ID Match",
+        "License Type: personal",
+        "Economy Currencies: 3",
+        "Economy Inventory: 13",
+        "Economy Catalog: 20"
+      ]
+    },
+    "local_vs_cloud": {
+      "service": "Local vs Cloud Comparison",
+      "method": "comparison_check",
+      "status": "local_only",
+      "error": null,
+      "local_data": {
+        "currencies": 3,
+        "inventory": 13,
+        "catalog": 20,
+        "remote_config": 5,
+        "cloud_code": 5
+      },
+      "cloud_data": {
+        "status": "unreachable",
+        "reason": "API endpoints returning 404"
+      },
+      "sync_status": "unknown"
+    }
+  }
+}

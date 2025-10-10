@@ -1,0 +1,109 @@
+{
+  "timestamp": "2025-10-10T05:06:32.740714",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "services_status": {
+    "Economy": {
+      "service": "Economy",
+      "endpoints": {
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        },
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy/currencies": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy/currencies",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        },
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy/inventory": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy/inventory",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        },
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy/catalog": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/economy/catalog",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        }
+      },
+      "status": "accessible",
+      "enabled": true
+    },
+    "Remote Config": {
+      "service": "Remote Config",
+      "endpoints": {
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/remote-config": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/remote-config",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        },
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/remote-config/configs": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/remote-config/configs",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        }
+      },
+      "status": "accessible",
+      "enabled": true
+    },
+    "Cloud Code": {
+      "service": "Cloud Code",
+      "endpoints": {
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/cloud-code": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/cloud-code",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        },
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/cloud-code/functions": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/cloud-code/functions",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        }
+      },
+      "status": "accessible",
+      "enabled": true
+    },
+    "Analytics": {
+      "service": "Analytics",
+      "endpoints": {
+        "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/analytics": {
+          "url": "https://cloud.unity.com/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/analytics",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false,
+          "service_enabled": false
+        }
+      },
+      "status": "accessible",
+      "enabled": true
+    }
+  }
+}

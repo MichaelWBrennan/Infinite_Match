@@ -1,0 +1,125 @@
+{
+  "timestamp": "2025-10-10T03:03:33.682068",
+  "overall_status": "passed",
+  "tests": {
+    "config_files": {
+      "name": "Unity Configuration Files",
+      "status": "passed",
+      "details": {
+        "found_files": 5,
+        "total_files": 5,
+        "files": {
+          "unity_services_config": {
+            "exists": true,
+            "path": "unity/Assets/StreamingAssets/unity_services_config.json"
+          },
+          "economy_currencies": {
+            "exists": true,
+            "path": "economy/currencies.csv"
+          },
+          "economy_inventory": {
+            "exists": true,
+            "path": "economy/inventory.csv"
+          },
+          "economy_catalog": {
+            "exists": true,
+            "path": "economy/catalog.csv"
+          },
+          "remote_config": {
+            "exists": true,
+            "path": "remote-config/game_config.json"
+          }
+        }
+      },
+      "error": null
+    },
+    "economy_data": {
+      "name": "Economy Data Integrity",
+      "status": "passed",
+      "details": {
+        "currencies_count": 3,
+        "inventory_count": 13,
+        "catalog_count": 20,
+        "total_items": 36
+      },
+      "error": null
+    },
+    "unity_services": {
+      "name": "Unity Services Configuration",
+      "status": "passed",
+      "details": {
+        "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+        "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+        "cloud_services_available": true,
+        "economy_configured": true,
+        "currencies_count": 3,
+        "inventory_count": 13,
+        "catalog_count": 20
+      },
+      "error": null
+    },
+    "headless_scripts": {
+      "name": "Headless Automation Scripts",
+      "status": "passed",
+      "details": {
+        "found_scripts": 5,
+        "total_scripts": 5,
+        "scripts": {
+          "bootstrap_headless": {
+            "exists": true,
+            "path": "unity/Assets/Scripts/App/BootstrapHeadless.cs"
+          },
+          "headless_tests": {
+            "exists": true,
+            "path": "unity/Assets/Scripts/Testing/HeadlessTests.cs"
+          },
+          "unity_deploy": {
+            "exists": true,
+            "path": "scripts/unity-deploy.js"
+          },
+          "match3_automation": {
+            "exists": true,
+            "path": "scripts/unity/match3_complete_automation.py"
+          },
+          "github_workflow": {
+            "exists": true,
+            "path": ".github/workflows/unity-cloud-api-deploy.yml"
+          }
+        }
+      },
+      "error": null
+    },
+    "github_workflow": {
+      "name": "GitHub Actions Workflow",
+      "status": "passed",
+      "details": {
+        "workflow_exists": true,
+        "headless_indicators_found": 3,
+        "total_indicators": 3,
+        "indicators": [
+          "headless",
+          "Deploy Economy Data (Headless)",
+          "python3 scripts/unity/match3_complete_automation.py"
+        ]
+      },
+      "error": null
+    },
+    "simulation": {
+      "name": "Simulation Capability",
+      "status": "passed",
+      "details": {
+        "unity_service_exists": true,
+        "simulation_indicators_found": 4,
+        "total_indicators": 4,
+        "indicators": [
+          "personal-license-mode",
+          "simulation",
+          "fallback",
+          "api-fallback-simulation"
+        ]
+      },
+      "error": null
+    }
+  },
+  "recommendations": []
+}

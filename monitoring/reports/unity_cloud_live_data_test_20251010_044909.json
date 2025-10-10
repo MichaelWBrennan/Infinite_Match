@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-10-10T04:49:08.970970",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "live_data": {
+    "project_info": {
+      "service": "Project Info",
+      "method": "api_call",
+      "project_data": {},
+      "status": "error",
+      "error": "HTTP 404: {\"status\":404,\"title\":\"Not Found\",\"requestId\":\"b4f36b90-1066-407b-a13e-d682b493a95c\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+    },
+    "economy": {
+      "service": "Economy",
+      "method": "api_call",
+      "currencies": [],
+      "inventory": [],
+      "catalog": [],
+      "status": "error",
+      "error": "HTTP 404: {\"status\":404,\"title\":\"Not Found\",\"requestId\":\"595363b6-2b1a-4a65-9ba5-a3a7184f0a7a\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+    },
+    "remote_config": {
+      "service": "Remote Config",
+      "method": "api_call",
+      "configs": [],
+      "status": "error",
+      "error": "HTTP 401: {\"status\":401,\"title\":\"Unauthorized\",\"requestId\":\"3f5ff1cf-05c7-48a8-bbcf-b51cadcef963\",\"detail\":\"Request Authorization header type must be one of: basic,bearer\",\"code\":51,\"type\":\"https://services.docs.unity.com/docs/errors#51\"}"
+    },
+    "cloud_code": {
+      "service": "Cloud Code",
+      "method": "api_call",
+      "functions": [],
+      "status": "error",
+      "error": "HTTP 404: {\"status\":404,\"title\":\"Not Found\",\"requestId\":\"a928a7bd-be46-453a-bd55-81a0b93197ff\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+    }
+  }
+}

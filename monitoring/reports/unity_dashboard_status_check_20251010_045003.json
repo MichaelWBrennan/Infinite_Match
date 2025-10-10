@@ -1,0 +1,113 @@
+{
+  "timestamp": "2025-10-10T04:50:02.490469",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "dashboard_status": {
+    "dashboard": {
+      "service": "Unity Dashboard",
+      "method": "dashboard_check",
+      "status": "accessible",
+      "error": null,
+      "accessible": true,
+      "redirect_url": "https://cloud.unity.com/login?redirectTo=Lw==",
+      "login_required": true
+    },
+    "cloud_services": {
+      "service": "Unity Cloud Services",
+      "method": "endpoint_check",
+      "status": "partial",
+      "error": null,
+      "endpoints": {
+        "Dashboard": {
+          "url": "https://cloud.unity.com",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false
+        },
+        "Services API": {
+          "url": "https://services.api.unity.com",
+          "status_code": 200,
+          "accessible": true,
+          "auth_required": false,
+          "not_found": false
+        },
+        "Economy API": {
+          "url": "https://services.api.unity.com/economy/v1/projects",
+          "status_code": 404,
+          "accessible": false,
+          "auth_required": false,
+          "not_found": true
+        },
+        "Remote Config API": {
+          "url": "https://services.api.unity.com/remote-config/v1/projects",
+          "status_code": 404,
+          "accessible": false,
+          "auth_required": false,
+          "not_found": true
+        },
+        "Cloud Code API": {
+          "url": "https://services.api.unity.com/cloud-code/v1/projects",
+          "status_code": 404,
+          "accessible": false,
+          "auth_required": false,
+          "not_found": true
+        },
+        "Analytics API": {
+          "url": "https://services.api.unity.com/analytics/v1/projects",
+          "status_code": 404,
+          "accessible": false,
+          "auth_required": false,
+          "not_found": true
+        },
+        "Authentication API": {
+          "url": "https://services.api.unity.com/auth/v1/projects",
+          "status_code": 404,
+          "accessible": false,
+          "auth_required": false,
+          "not_found": true
+        }
+      }
+    },
+    "project_endpoints": {
+      "service": "Project-Specific Endpoints",
+      "method": "project_check",
+      "status": "auth_required",
+      "error": null,
+      "endpoints": {
+        "Project Info": {
+          "url": "https://services.api.unity.com/projects/v1/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574",
+          "status_code": 404,
+          "response": "{\"status\":404,\"title\":\"Not Found\",\"requestId\":\"96afc134-47b9-40f7-8043-3660d148eb69\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+        },
+        "Economy Currencies": {
+          "url": "https://services.api.unity.com/economy/v1/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/configs/currencies",
+          "status_code": 404,
+          "response": "{\"status\":404,\"title\":\"Not Found\",\"requestId\":\"7c9e3de8-0d8d-4f10-a07b-faa2049805a2\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+        },
+        "Economy Inventory": {
+          "url": "https://services.api.unity.com/economy/v1/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/configs/inventory",
+          "status_code": 404,
+          "response": "{\"status\":404,\"title\":\"Not Found\",\"requestId\":\"27736474-91ad-4ab8-b111-a066ead43b0e\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+        },
+        "Economy Catalog": {
+          "url": "https://services.api.unity.com/economy/v1/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/configs/catalog",
+          "status_code": 404,
+          "response": "{\"status\":404,\"title\":\"Not Found\",\"requestId\":\"9e69a625-50ed-4318-9cef-9dc7c0cb6531\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+        },
+        "Remote Config": {
+          "url": "https://services.api.unity.com/remote-config/v1/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/environments/1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d/configs",
+          "status_code": 401,
+          "response": "{\"status\":401,\"title\":\"Unauthorized\",\"requestId\":\"0be8c345-9e1e-4db6-8dd3-5370d9af2738\",\"detail\":\"Request Authorization header type must be one of: basic,bearer\",\"code\":51,\"type\":\"https://services.doc"
+        },
+        "Cloud Code": {
+          "url": "https://services.api.unity.com/cloud-code/v1/projects/0dd5a03e-7f23-49c4-964e-7919c48c0574/scripts",
+          "status_code": 404,
+          "response": "{\"status\":404,\"title\":\"Not Found\",\"requestId\":\"55aa0d56-d9ba-4bac-8eea-93e4980844dc\",\"detail\":\"Object could not be found\",\"code\":54,\"type\":\"https://services.docs.unity.com/docs/errors#54\"}"
+        }
+      }
+    }
+  }
+}
