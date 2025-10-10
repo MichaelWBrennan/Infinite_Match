@@ -85,7 +85,10 @@
     "unity:deploy": "node scripts/unity-deploy.js",
     "unity:secrets": "node scripts/unity/fetch-unity-secrets.js",
     "unity:test": "echo 'Unity Test Framework integration via GitHub Actions'",
-    "test:cursor-secrets": "node scripts/test-cursor-secrets.js"
+    "test:cursor-secrets": "node scripts/test-cursor-secrets.js",
+    "unity:test-connection": "python3 scripts/unity/test-unity-cloud-connection.py",
+    "unity:ping": "python3 scripts/unity/test-unity-cloud-connection.py",
+    "unity:health": "python3 scripts/unity/test-unity-cloud-connection.py"
   },
   "type": "module",
   "version": "1.0.0",
