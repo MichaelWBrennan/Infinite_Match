@@ -88,7 +88,9 @@
     "test:cursor-secrets": "node scripts/test-cursor-secrets.js",
     "unity:test-headless": "python3 scripts/unity/test-headless-unity-connection.py",
     "unity:headless-ping": "python3 scripts/unity/test-headless-unity-connection.py",
-    "unity:test-account-access": "python3 scripts/unity/test-unity-account-access.py"
+    "unity:test-account-access": "python3 scripts/unity/test-unity-account-access.py",
+    "unity:test-live-data": "python3 scripts/unity/test-unity-cloud-live-data.py",
+    "unity:check-status": "python3 scripts/unity/check-unity-cloud-status.py"
   },
   "type": "module",
   "version": "1.0.0",
