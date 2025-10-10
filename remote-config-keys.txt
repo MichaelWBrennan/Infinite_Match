@@ -1,0 +1,115 @@
+Key: max_level
+Value: 100
+Type: int
+
+Key: energy_refill_time
+Value: 300
+Type: int
+
+Key: daily_reward_coins
+Value: 100
+Type: int
+
+Key: daily_reward_gems
+Value: 5
+Type: int
+
+Key: max_energy
+Value: 30
+Type: int
+
+Key: energy_refill_cost_gems
+Value: 5
+Type: int
+
+Key: coin_multiplier
+Value: 1
+Type: float
+
+Key: gem_multiplier
+Value: 1
+Type: float
+
+Key: sale_discount
+Value: 0.5
+Type: float
+
+Key: daily_bonus_multiplier
+Value: 1.2
+Type: float
+
+Key: streak_bonus_multiplier
+Value: 1.5
+Type: float
+
+Key: new_levels_enabled
+Value: true
+Type: bool
+
+Key: daily_challenges_enabled
+Value: true
+Type: bool
+
+Key: social_features_enabled
+Value: false
+Type: bool
+
+Key: ads_enabled
+Value: true
+Type: bool
+
+Key: iap_enabled
+Value: true
+Type: bool
+
+Key: economy_enabled
+Value: true
+Type: bool
+
+Key: show_currency_balance
+Value: true
+Type: bool
+
+Key: show_energy_timer
+Value: true
+Type: bool
+
+Key: show_daily_rewards
+Value: true
+Type: bool
+
+Key: show_shop_notifications
+Value: true
+Type: bool
+
+Key: economy_purchase
+Value: true
+Type: bool
+
+Key: economy_balance_change
+Value: true
+Type: bool
+
+Key: economy_inventory_change
+Value: true
+Type: bool
+
+Key: level_completed
+Value: true
+Type: bool
+
+Key: streak_achieved
+Value: true
+Type: bool
+
+Key: currency_awarded
+Value: true
+Type: bool
+
+Key: booster_used
+Value: true
+Type: bool
+
+Key: pack_opened
+Value: true
+Type: bool
