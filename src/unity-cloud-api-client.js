@@ -9,20 +9,23 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import UnityCloudSecrets from './unity-cloud-secrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class UnityCloudAPIClient {
     constructor(options = {}) {
-        // Read from environment variables (secrets are already set)
-        // Use actual project ID from Unity services config
-        this.projectId = options.projectId || "0dd5a03e-7f23-49c4-964e-7919c48c0574";
-        this.environmentId = options.environmentId || process.env.UNITY_ENV_ID || "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d";
-        this.organizationId = options.organizationId || process.env.UNITY_ORG_ID || "2473931369648";
-        this.clientId = options.clientId || process.env.UNITY_CLIENT_ID;
-        this.clientSecret = options.clientSecret || process.env.UNITY_CLIENT_SECRET;
-        this.accessToken = options.accessToken || process.env.UNITY_API_TOKEN;
+        // Initialize secrets manager
+        this.secrets = new UnityCloudSecrets();
+        
+        // Use provided options or load from secrets
+        this.projectId = options.projectId;
+        this.environmentId = options.environmentId;
+        this.organizationId = options.organizationId;
+        this.clientId = options.clientId;
+        this.clientSecret = options.clientSecret;
+        this.accessToken = options.accessToken;
         
         this.baseURL = "https://services.api.unity.com";
         this.authURL = "https://services.api.unity.com/auth/v1";
@@ -57,13 +60,31 @@ class UnityCloudAPIClient {
      * Authenticate with Unity Cloud using client credentials
      */
     async authenticate() {
+        // Load secrets first
+        await this.secrets.loadSecrets();
+        
+        // Update credentials from secrets if not provided in constructor
+        if (!this.projectId) {
+            const config = this.secrets.getProjectConfig();
+            this.projectId = config.projectId;
+            this.environmentId = config.environmentId;
+            this.organizationId = config.organizationId;
+        }
+        
+        if (!this.clientId || !this.clientSecret) {
+            const auth = this.secrets.getAuthCredentials();
+            this.clientId = auth.clientId;
+            this.clientSecret = auth.clientSecret;
+            this.accessToken = auth.accessToken;
+        }
+
         if (this.accessToken) {
             this.headers['Authorization'] = `Bearer ${this.accessToken}`;
             return this.accessToken;
         }
 
         if (!this.clientId || !this.clientSecret) {
-            throw new Error('Unity Cloud credentials not provided. Set UNITY_CLIENT_ID and UNITY_CLIENT_SECRET environment variables.');
+            throw new Error('Unity Cloud credentials not provided. Please configure UNITY_CLIENT_ID and UNITY_CLIENT_SECRET in Cursor secrets or environment variables.');
         }
 
         try {
