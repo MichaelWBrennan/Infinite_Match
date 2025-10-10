@@ -12,10 +12,10 @@ This setup enables automatic syncing of every GitHub update to Unity Cloud.
 Add these secrets to your GitHub repository settings:
 
 ### Required Secrets:
-- `UNITY_PROJECT_ID`: Your Unity Cloud Project ID
-- `UNITY_ENV_ID`: Your Unity Cloud Environment ID  
-- `UNITY_CLIENT_ID`: Unity Cloud API Client ID
-- `UNITY_CLIENT_SECRET`: Unity Cloud API Client Secret
+- `UNITY_PROJECT_ID`: Your Unity Cloud Project ID (get from Unity Dashboard)
+- `UNITY_ENV_ID`: Your Unity Cloud Environment ID (get from Unity Dashboard)
+- `UNITY_CLIENT_ID`: Unity Cloud API Client ID (create in Unity Dashboard)
+- `UNITY_CLIENT_SECRET`: Unity Cloud API Client Secret (create in Unity Dashboard)
 - `GITHUB_WEBHOOK_SECRET`: Random secret for webhook verification
 
 ### Optional Secrets:

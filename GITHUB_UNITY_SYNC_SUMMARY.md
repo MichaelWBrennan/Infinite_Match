@@ -86,11 +86,11 @@ Your headless system now has **complete capability** to update your Unity Cloud 
 ### **1. Configure GitHub Secrets:**
 Add these to your GitHub repository settings:
 ```
-UNITY_PROJECT_ID=0dd5a03e-7f23-49c4-964e-7919c48c0574
-UNITY_ENV_ID=1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d
-UNITY_CLIENT_ID=your-client-id
-UNITY_CLIENT_SECRET=your-client-secret
-GITHUB_WEBHOOK_SECRET=your-webhook-secret
+UNITY_PROJECT_ID=your-project-id-from-unity-dashboard
+UNITY_ENV_ID=your-environment-id-from-unity-dashboard
+UNITY_CLIENT_ID=your-client-id-from-unity-dashboard
+UNITY_CLIENT_SECRET=your-client-secret-from-unity-dashboard
+GITHUB_WEBHOOK_SECRET=your-random-webhook-secret
 ```
 
 ### **2. Test the System:**

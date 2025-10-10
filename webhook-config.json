@@ -9,8 +9,8 @@
   },
   "github_webhook_secret": "your-github-webhook-secret-here",
   "unity_cloud": {
-    "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
-    "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d"
+    "project_id": "from UNITY_PROJECT_ID secret",
+    "environment_id": "from UNITY_ENV_ID secret"
   },
   "sync_triggers": [
     "push to main branch",

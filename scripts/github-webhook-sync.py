@@ -20,12 +20,16 @@ class GitHubUnityCloudSync:
     def __init__(self):
         self.repo_root = Path(__file__).parent.parent
         self.webhook_secret = os.getenv('GITHUB_WEBHOOK_SECRET', '')
-        self.unity_project_id = os.getenv('UNITY_PROJECT_ID', '0dd5a03e-7f23-49c4-964e-7919c48c0574')
-        self.unity_env_id = os.getenv('UNITY_ENV_ID', '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d')
-        self.unity_client_id = os.getenv('UNITY_CLIENT_ID', '')
-        self.unity_client_secret = os.getenv('UNITY_CLIENT_SECRET', '')
+        self.unity_project_id = os.getenv('UNITY_PROJECT_ID')
+        self.unity_env_id = os.getenv('UNITY_ENV_ID')
+        self.unity_client_id = os.getenv('UNITY_CLIENT_ID')
+        self.unity_client_secret = os.getenv('UNITY_CLIENT_SECRET')
         self.sync_log = self.repo_root / "logs" / "github_unity_sync.log"
         self.sync_log.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Validate required secrets
+        if not all([self.unity_project_id, self.unity_env_id, self.unity_client_id, self.unity_client_secret]):
+            raise ValueError("Missing required Unity Cloud secrets: UNITY_PROJECT_ID, UNITY_ENV_ID, UNITY_CLIENT_ID, UNITY_CLIENT_SECRET")
 
     def verify_github_signature(self, payload, signature):
         """Verify GitHub webhook signature"""

@@ -49,8 +49,8 @@ class UnityCloudAPIDeployer {
         }
       } else {
         // Fallback to environment variables
-        this.projectId = process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574';
-        this.environmentId = process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d';
+        this.projectId = process.env.UNITY_PROJECT_ID;
+        this.environmentId = process.env.UNITY_ENV_ID;
         this.clientId = process.env.UNITY_CLIENT_ID;
         this.clientSecret = process.env.UNITY_CLIENT_SECRET;
         logger.info('Loaded secrets from environment variables');
@@ -58,8 +58,8 @@ class UnityCloudAPIDeployer {
     } catch (error) {
       logger.warn('Failed to load secrets from Cursor:', error.message);
       // Fallback to environment variables
-      this.projectId = process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574';
-      this.environmentId = process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d';
+      this.projectId = process.env.UNITY_PROJECT_ID;
+      this.environmentId = process.env.UNITY_ENV_ID;
       this.clientId = process.env.UNITY_CLIENT_ID;
       this.clientSecret = process.env.UNITY_CLIENT_SECRET;
     }
@@ -68,6 +68,10 @@ class UnityCloudAPIDeployer {
   async authenticate() {
     if (!this.clientId || !this.clientSecret) {
       throw new Error('UNITY_CLIENT_ID and UNITY_CLIENT_SECRET environment variables are required');
+    }
+    
+    if (!this.projectId || !this.environmentId) {
+      throw new Error('UNITY_PROJECT_ID and UNITY_ENV_ID environment variables are required');
     }
 
     try {

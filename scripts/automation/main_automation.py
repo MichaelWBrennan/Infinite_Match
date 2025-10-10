@@ -24,17 +24,23 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utilities"))
 
 class Unity100PercentAutomation:
     def __init__(self):
-        self.project_id = "0dd5a03e-7f23-49c4-964e-7919c48c0574"
-        self.environment_id = "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d"
         self.unity_credentials = self.load_credentials()
+        self.project_id = self.unity_credentials.get('project_id')
+        self.environment_id = self.unity_credentials.get('environment_id')
 
     def load_credentials(self):
         """Load Unity credentials from environment or config"""
+        project_id = os.getenv("UNITY_PROJECT_ID")
+        environment_id = os.getenv("UNITY_ENV_ID")
+        
+        if not all([project_id, environment_id]):
+            raise ValueError("Missing required Unity Cloud secrets: UNITY_PROJECT_ID, UNITY_ENV_ID")
+            
         return {
             "client_id": os.getenv("UNITY_CLIENT_ID", ""),
             "client_secret": os.getenv("UNITY_CLIENT_SECRET", ""),
-            "project_id": self.project_id,
-            "environment_id": self.environment_id,
+            "project_id": project_id,
+            "environment_id": environment_id,
         }
 
     def setup_headless_browser(self):
