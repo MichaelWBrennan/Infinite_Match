@@ -9,23 +9,20 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import UnityCloudSecrets from './unity-cloud-secrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class UnityCloudAPIClient {
     constructor(options = {}) {
-        // Initialize secrets manager
-        this.secrets = new UnityCloudSecrets();
-        
-        // Use provided options or load from secrets
-        this.projectId = options.projectId;
-        this.environmentId = options.environmentId;
-        this.organizationId = options.organizationId;
-        this.clientId = options.clientId;
-        this.clientSecret = options.clientSecret;
-        this.accessToken = options.accessToken;
+        // Read from environment variables (secrets are already set)
+        // Use actual project ID from Unity services config
+        this.projectId = options.projectId || "0dd5a03e-7f23-49c4-964e-7919c48c0574";
+        this.environmentId = options.environmentId || "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d";
+        this.organizationId = options.organizationId || process.env.UNITY_ORG_ID || "2473931369648";
+        this.clientId = options.clientId || process.env.UNITY_CLIENT_ID;
+        this.clientSecret = options.clientSecret || process.env.UNITY_CLIENT_SECRET;
+        this.accessToken = options.accessToken || process.env.UNITY_API_TOKEN;
         
         this.baseURL = "https://services.api.unity.com";
         this.authURL = "https://services.api.unity.com/auth/v1";
