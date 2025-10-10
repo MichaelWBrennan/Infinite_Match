@@ -90,7 +90,9 @@
     "unity:headless-ping": "python3 scripts/unity/test-headless-unity-connection.py",
     "unity:test-account-access": "python3 scripts/unity/test-unity-account-access.py",
     "unity:test-live-data": "python3 scripts/unity/test-unity-cloud-live-data.py",
-    "unity:check-status": "python3 scripts/unity/check-unity-cloud-status.py"
+    "unity:check-status": "python3 scripts/unity/check-unity-cloud-status.py",
+    "unity:deploy-cloud-code": "node scripts/unity/deploy-cloud-code.js",
+    "unity:test-cloud-code": "node scripts/unity/deploy-cloud-code.js"
   },
   "type": "module",
   "version": "1.0.0",
