@@ -7,6 +7,9 @@ on:
       - 'economy/**'
       - 'cloud-code/**'
       - 'remote-config/**'
+      - 'scripts/unity/**'
+      - '.github/workflows/unity-cloud-api-deploy.yml'
+      - 'scripts/unified_economy_processor.py'
   workflow_dispatch:
     inputs:
       environment:
