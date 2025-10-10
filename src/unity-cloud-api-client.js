@@ -15,7 +15,9 @@ const __dirname = path.dirname(__filename);
 
 class UnityCloudAPIClient {
     constructor(options = {}) {
-        this.projectId = options.projectId || process.env.UNITY_PROJECT_ID || "0dd5a03e-7f23-49c4-964e-7919c48c0574";
+        // Read from environment variables (secrets are already set)
+        // Use actual project ID from Unity services config
+        this.projectId = options.projectId || "0dd5a03e-7f23-49c4-964e-7919c48c0574";
         this.environmentId = options.environmentId || process.env.UNITY_ENV_ID || "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d";
         this.organizationId = options.organizationId || process.env.UNITY_ORG_ID || "2473931369648";
         this.clientId = options.clientId || process.env.UNITY_CLIENT_ID;
@@ -32,6 +34,23 @@ class UnityCloudAPIClient {
         
         this.retryAttempts = 3;
         this.retryDelay = 1000;
+    }
+
+    /**
+     * Get secret from Cursor secrets or environment variables
+     */
+    getSecret(name) {
+        try {
+            // Try to get from Cursor secrets first
+            if (typeof cursor !== 'undefined' && cursor.getSecret) {
+                return cursor.getSecret(name);
+            }
+        } catch (error) {
+            // Cursor secrets not available, fall back to environment variables
+        }
+        
+        // Fall back to environment variables
+        return process.env[name];
     }
 
     /**
