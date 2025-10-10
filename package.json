@@ -2,6 +2,8 @@
   "author": "Your Team",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -98,7 +100,18 @@
     "unity:read-actual-account": "python3 scripts/unity/read-actual-unity-cloud-account.py",
     "unity:headless-read": "python3 scripts/unity/headless-unity-cloud-reader.py",
     "unity:deploy-cloud-code": "node scripts/unity/deploy-cloud-code.js",
-    "unity:test-cloud-code": "node scripts/unity/deploy-cloud-code.js"
+    "unity:test-cloud-code": "node scripts/unity/deploy-cloud-code.js",
+    "unity:api": "node src/unity-cloud-cli.js",
+    "unity:deploy-api": "node src/unity-cloud-cli.js deploy",
+    "unity:sync-api": "node src/unity-cloud-cli.js sync",
+    "unity:status-api": "node src/unity-cloud-cli.js status",
+    "unity:health-api": "node src/unity-cloud-cli.js health",
+    "unity:economy-api": "node src/unity-cloud-cli.js economy --list",
+    "unity:cloud-code-api": "node src/unity-cloud-cli.js cloud-code --list",
+    "unity:remote-config-api": "node src/unity-cloud-cli.js remote-config --list",
+    "unity:analytics-api": "node src/unity-cloud-cli.js analytics --list",
+    "unity:test-api": "node scripts/test-unity-cloud-api.js",
+    "unity:example-api": "node scripts/unity-cloud-api-example.js"
   },
   "type": "module",
   "version": "1.0.0",
