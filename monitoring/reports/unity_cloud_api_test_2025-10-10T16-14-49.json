@@ -1,0 +1,61 @@
+{
+  "timestamp": "2025-10-10T16:14:46.012Z",
+  "tests": [
+    {
+      "name": "API Client Initialization",
+      "timestamp": "2025-10-10T16:14:46.016Z",
+      "status": "passed",
+      "error": null,
+      "duration": 1
+    },
+    {
+      "name": "Headless Integration Initialization",
+      "timestamp": "2025-10-10T16:14:46.017Z",
+      "status": "passed",
+      "error": null,
+      "duration": 0
+    },
+    {
+      "name": "File Structure Check",
+      "timestamp": "2025-10-10T16:14:46.017Z",
+      "status": "passed",
+      "error": null,
+      "duration": 1
+    },
+    {
+      "name": "CSV Parsing",
+      "timestamp": "2025-10-10T16:14:46.018Z",
+      "status": "passed",
+      "error": null,
+      "duration": 1
+    },
+    {
+      "name": "API Endpoints",
+      "timestamp": "2025-10-10T16:14:46.019Z",
+      "status": "passed",
+      "error": null,
+      "duration": 0
+    },
+    {
+      "name": "Retry Logic",
+      "timestamp": "2025-10-10T16:14:46.019Z",
+      "status": "passed",
+      "error": null,
+      "duration": 0
+    },
+    {
+      "name": "Error Handling",
+      "timestamp": "2025-10-10T16:14:46.019Z",
+      "status": "passed",
+      "error": null,
+      "duration": 3199
+    }
+  ],
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "successRate": "100.0",
+    "totalDuration": 3202
+  }
+}
