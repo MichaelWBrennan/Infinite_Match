@@ -5,7 +5,7 @@
  * Provides headless access to all Unity Cloud services
  */
 
-import fetch from 'node-fetch';
+// Using built-in fetch API (Node.js 18+)
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

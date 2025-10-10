@@ -74,7 +74,6 @@ energy,Energy,consumable,5,30`;
             console.log(`   Remote Config Directory: ${this.integration.remoteConfigDir}`);
 
             // Check if directories exist
-            const fs = await import('fs');
             const directories = [
                 { name: 'Economy', path: this.integration.economyDir },
                 { name: 'Cloud Code', path: this.integration.cloudCodeDir },
