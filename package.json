@@ -86,7 +86,10 @@
     "unity:api-deploy": "node scripts/unity/unity-cloud-api-deploy.js",
     "unity:secrets": "node scripts/unity/fetch-unity-secrets.js",
     "unity:test": "echo 'Unity Test Framework integration via GitHub Actions'",
-    "test:cursor-secrets": "node scripts/test-cursor-secrets.js"
+    "test:cursor-secrets": "node scripts/test-cursor-secrets.js",
+    "sync:start": "python3 scripts/github-webhook-sync.py",
+    "sync:test": "python3 scripts/test-github-unity-sync.py",
+    "sync:monitor": "python3 scripts/monitor-github-unity-sync.py"
   },
   "type": "module",
   "version": "1.0.0",
