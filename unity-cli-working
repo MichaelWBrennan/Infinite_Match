@@ -43,6 +43,10 @@ case "$1" in
         echo "📊 Starting live dashboard..."
         python3 scripts/unity/headless-live-dashboard.py
         ;;
+    "remote-config"|"remoteconfig"|"config")
+        echo "⚙️ Testing Remote Config access..."
+        node scripts/unity/test-remote-config-cli.js
+        ;;
     "init"|"initialize")
         echo "🔧 Initializing Unity Cloud services..."
         python3 scripts/unity/headless-real-account-access.py
@@ -55,6 +59,7 @@ case "$1" in
         echo "  auth, status          - Check authentication status"
         echo "  cloud-code            - Deploy cloud code functions (JavaScript)"
         echo "  economy               - Deploy economy data"
+        echo "  remote-config, config - Test Remote Config access"
         echo "  deploy-all, deploy    - Deploy everything"
         echo "  list, list-functions  - List cloud code functions"
         echo "  list-economy          - List economy data"
