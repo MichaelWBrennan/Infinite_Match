@@ -37,19 +37,9 @@ class UnityCloudAPIClient {
     }
 
     /**
-     * Get secret from Cursor secrets or environment variables
+     * Get secret from environment variables
      */
     getSecret(name) {
-        try {
-            // Try to get from Cursor secrets first
-            if (typeof cursor !== 'undefined' && cursor.getSecret) {
-                return cursor.getSecret(name);
-            }
-        } catch (error) {
-            // Cursor secrets not available, fall back to environment variables
-        }
-        
-        // Fall back to environment variables
         return process.env[name];
     }
 
@@ -57,60 +47,60 @@ class UnityCloudAPIClient {
      * Authenticate with Unity Cloud using client credentials
      */
     async authenticate() {
-        // Load secrets first
-        await this.secrets.loadSecrets();
-        
-        // Update credentials from secrets if not provided in constructor
-        if (!this.projectId) {
-            const config = this.secrets.getProjectConfig();
-            this.projectId = config.projectId;
-            this.environmentId = config.environmentId;
-            this.organizationId = config.organizationId;
-        }
-        
-        if (!this.clientId || !this.clientSecret) {
-            const auth = this.secrets.getAuthCredentials();
-            this.clientId = auth.clientId;
-            this.clientSecret = auth.clientSecret;
-            this.accessToken = auth.accessToken;
-        }
-
         if (this.accessToken) {
             this.headers['Authorization'] = `Bearer ${this.accessToken}`;
             return this.accessToken;
         }
 
         if (!this.clientId || !this.clientSecret) {
-            throw new Error('Unity Cloud credentials not provided. Please configure UNITY_CLIENT_ID and UNITY_CLIENT_SECRET in Cursor secrets or environment variables.');
+            throw new Error('Unity Cloud credentials not available. Please check your secrets configuration.');
         }
 
-        try {
-            const response = await fetch(`${this.authURL}/token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams({
-                    grant_type: 'client_credentials',
-                    client_id: this.clientId,
-                    client_secret: this.clientSecret
-                })
-            });
+        // Try multiple authentication endpoints
+        const authEndpoints = [
+            'https://services.api.unity.com/oauth/token',
+            'https://cloud.unity.com/api/oauth/token',
+            'https://api.unity.com/oauth/token',
+            'https://services.api.unity.com/auth/v1/token',
+            'https://cloud.unity.com/api/auth/v1/token'
+        ];
 
-            if (!response.ok) {
-                throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
+        for (const endpoint of authEndpoints) {
+            try {
+                console.log(`Trying authentication endpoint: ${endpoint}`);
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        grant_type: 'client_credentials',
+                        client_id: this.clientId,
+                        client_secret: this.clientSecret
+                    })
+                });
+
+                console.log(`Response status: ${response.status}`);
+
+                if (response.ok) {
+                    const tokenData = await response.json();
+                    if (tokenData.access_token) {
+                        this.accessToken = tokenData.access_token;
+                        this.headers['Authorization'] = `Bearer ${this.accessToken}`;
+                        console.log('✅ Unity Cloud authentication successful');
+                        return this.accessToken;
+                    }
+                } else {
+                    const errorText = await response.text();
+                    console.log(`Auth failed: ${errorText.substring(0, 100)}...`);
+                }
+            } catch (error) {
+                console.log(`Auth error: ${error.message}`);
             }
-
-            const tokenData = await response.json();
-            this.accessToken = tokenData.access_token;
-            this.headers['Authorization'] = `Bearer ${this.accessToken}`;
-            
-            console.log('✅ Unity Cloud authentication successful');
-            return this.accessToken;
-        } catch (error) {
-            console.error('❌ Unity Cloud authentication failed:', error.message);
-            throw error;
         }
+
+        throw new Error('All authentication endpoints failed');
     }
 
     /**
@@ -285,8 +275,25 @@ class UnityCloudAPIClient {
      * Get all remote config entries
      */
     async getRemoteConfigs() {
-        const endpoint = `/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs`;
-        return await this.makeRequest(endpoint);
+        const endpoints = [
+            `/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs`,
+            `/remote-config/v1/projects/${this.projectId}/configs`,
+            `/remote-config/v2/projects/${this.projectId}/environments/${this.environmentId}/configs`,
+            `/remote-config/v2/projects/${this.projectId}/configs`
+        ];
+
+        for (const endpoint of endpoints) {
+            try {
+                console.log(`Trying Remote Config endpoint: ${endpoint}`);
+                const result = await this.makeRequest(endpoint);
+                console.log('✅ Remote Config data retrieved successfully');
+                return result;
+            } catch (error) {
+                console.log(`Remote Config endpoint failed: ${error.message}`);
+            }
+        }
+
+        throw new Error('All Remote Config endpoints failed');
     }
 
     /**
