@@ -1,0 +1,67 @@
+#!/bin/bash
+# Simple Unity CLI that uses existing working scripts
+# This provides a command-line interface using the existing headless scripts
+
+case "$1" in
+    "auth"|"auth-status"|"status")
+        echo "🔐 Checking Unity Cloud authentication..."
+        python3 scripts/unity/headless-unity-api-with-credentials.py
+        ;;
+    "cloud-code"|"deploy-cloud-code")
+        echo "☁️ Deploying Cloud Code functions..."
+        python3 scripts/unity/deploy-csharp-cloud-code.py
+        ;;
+    "economy"|"deploy-economy")
+        echo "💰 Deploying Economy data..."
+        python3 scripts/unity/deploy-economy-with-credentials.py
+        ;;
+    "deploy-all"|"deploy")
+        echo "🚀 Deploying everything to Unity Cloud..."
+        echo "  Deploying Cloud Code..."
+        python3 scripts/unity/deploy-csharp-cloud-code.py
+        echo "  Deploying Economy..."
+        python3 scripts/unity/deploy-economy-with-credentials.py
+        echo "✅ All deployments completed!"
+        ;;
+    "list"|"list-functions")
+        echo "☁️ Listing Cloud Code functions..."
+        python3 scripts/unity/headless-unity-api-with-credentials.py
+        ;;
+    "list-economy")
+        echo "💰 Listing Economy data..."
+        python3 scripts/unity/headless-unity-api-with-credentials.py
+        ;;
+    "monitor"|"live"|"realtime")
+        echo "📊 Starting real-time monitoring..."
+        python3 scripts/unity/headless-realtime-monitor.py
+        ;;
+    "dashboard")
+        echo "📊 Starting live dashboard..."
+        python3 scripts/unity/headless-live-dashboard.py
+        ;;
+    "help"|"--help"|"-h"|"")
+        echo "🎯 Unity CLI - Simple Interface"
+        echo "=============================="
+        echo ""
+        echo "Available commands:"
+        echo "  auth, status          - Check authentication status"
+        echo "  cloud-code            - Deploy cloud code functions"
+        echo "  economy               - Deploy economy data"
+        echo "  deploy-all, deploy    - Deploy everything"
+        echo "  list, list-functions  - List cloud code functions"
+        echo "  list-economy          - List economy data"
+        echo "  monitor, live         - Real-time monitoring"
+        echo "  dashboard             - Live dashboard"
+        echo "  help                  - Show this help"
+        echo ""
+        echo "Examples:"
+        echo "  ./unity-cli-simple auth"
+        echo "  ./unity-cli-simple deploy-all"
+        echo "  ./unity-cli-simple monitor"
+        ;;
+    *)
+        echo "❌ Unknown command: $1"
+        echo "Run './unity-cli-simple help' for available commands"
+        exit 1
+        ;;
+esac

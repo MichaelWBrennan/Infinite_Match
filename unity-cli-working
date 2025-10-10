@@ -1,0 +1,79 @@
+#!/bin/bash
+# Working Unity CLI that uses existing functional scripts
+# This provides a command-line interface using the working headless scripts
+
+echo "🎯 Unity CLI - Working Interface"
+echo "================================"
+
+case "$1" in
+    "auth"|"auth-status"|"status")
+        echo "🔐 Checking Unity Cloud authentication..."
+        python3 scripts/unity/headless-unity-api-with-credentials.py
+        ;;
+    "cloud-code"|"deploy-cloud-code")
+        echo "☁️ Deploying Cloud Code functions..."
+        echo "   Using JavaScript deployment (working)..."
+        node scripts/unity/deploy-cloud-code.js
+        ;;
+    "economy"|"deploy-economy")
+        echo "💰 Deploying Economy data..."
+        python3 scripts/unity/deploy-economy-with-credentials.py
+        ;;
+    "deploy-all"|"deploy")
+        echo "🚀 Deploying everything to Unity Cloud..."
+        echo "  Deploying Cloud Code (JavaScript)..."
+        node scripts/unity/deploy-cloud-code.js
+        echo "  Deploying Economy..."
+        python3 scripts/unity/deploy-economy-with-credentials.py
+        echo "✅ All deployments completed!"
+        ;;
+    "list"|"list-functions")
+        echo "☁️ Listing Cloud Code functions..."
+        python3 scripts/unity/headless-unity-api-with-credentials.py
+        ;;
+    "list-economy")
+        echo "💰 Listing Economy data..."
+        python3 scripts/unity/headless-unity-api-with-credentials.py
+        ;;
+    "monitor"|"live"|"realtime")
+        echo "📊 Starting real-time monitoring..."
+        python3 scripts/unity/headless-realtime-monitor.py
+        ;;
+    "dashboard")
+        echo "📊 Starting live dashboard..."
+        python3 scripts/unity/headless-live-dashboard.py
+        ;;
+    "init"|"initialize")
+        echo "🔧 Initializing Unity Cloud services..."
+        python3 scripts/unity/headless-real-account-access.py
+        ;;
+    "help"|"--help"|"-h"|"")
+        echo "🎯 Unity CLI - Working Interface"
+        echo "================================"
+        echo ""
+        echo "Available commands:"
+        echo "  auth, status          - Check authentication status"
+        echo "  cloud-code            - Deploy cloud code functions (JavaScript)"
+        echo "  economy               - Deploy economy data"
+        echo "  deploy-all, deploy    - Deploy everything"
+        echo "  list, list-functions  - List cloud code functions"
+        echo "  list-economy          - List economy data"
+        echo "  monitor, live         - Real-time monitoring"
+        echo "  dashboard             - Live dashboard"
+        echo "  init, initialize      - Initialize Unity Cloud services"
+        echo "  help                  - Show this help"
+        echo ""
+        echo "Examples:"
+        echo "  ./unity-cli-working auth"
+        echo "  ./unity-cli-working deploy-all"
+        echo "  ./unity-cli-working monitor"
+        echo ""
+        echo "Note: This CLI uses existing working scripts and may have limitations"
+        echo "      due to sandbox restrictions in this environment."
+        ;;
+    *)
+        echo "❌ Unknown command: $1"
+        echo "Run './unity-cli-working help' for available commands"
+        exit 1
+        ;;
+esac

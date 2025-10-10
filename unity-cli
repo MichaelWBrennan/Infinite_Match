@@ -1,0 +1,5 @@
+#!/bin/bash
+# Unity CLI Wrapper - Easy to use interface
+# This provides a command-line interface similar to the Unity CLI but using Python
+
+python3 scripts/unity/unity-cli-wrapper.py "$@"
