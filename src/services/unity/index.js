@@ -106,7 +106,7 @@ class UnityService {
    * Remote Config Service Methods (Headless Simulation)
    */
   async updateRemoteConfig(configData) {
-    logger.info('Simulating Remote Config update');
+    logger.info('Simulating Remote Config update', { configData });
     return {
       status: 'simulated',
       method: 'headless-simulation',
