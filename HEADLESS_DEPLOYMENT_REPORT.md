@@ -73,9 +73,9 @@
 
 ### **1. Access Unity Dashboard**
 - Go to: https://dashboard.unity3d.com
-- Navigate to your project: "Evergreen Puzzler"
-- Project ID: `0dd5a03e-7f23-49c4-964e-7919c48c0574`
-- Environment ID: `1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d`
+- Navigate to your project
+- Get your Project ID and Environment ID from the dashboard
+- Configure these as GitHub Secrets: `UNITY_PROJECT_ID` and `UNITY_ENV_ID`
 
 ### **2. Deploy Economy Data**
 - **Currencies**: Create 3 currencies (coins, gems, energy)

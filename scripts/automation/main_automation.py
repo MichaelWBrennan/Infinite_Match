@@ -24,17 +24,23 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utilities"))
 
 class Unity100PercentAutomation:
     def __init__(self):
-        self.project_id = "0dd5a03e-7f23-49c4-964e-7919c48c0574"
-        self.environment_id = "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d"
         self.unity_credentials = self.load_credentials()
+        self.project_id = self.unity_credentials.get('project_id')
+        self.environment_id = self.unity_credentials.get('environment_id')
 
     def load_credentials(self):
         """Load Unity credentials from environment or config"""
+        project_id = os.getenv("UNITY_PROJECT_ID")
+        environment_id = os.getenv("UNITY_ENV_ID")
+        
+        if not all([project_id, environment_id]):
+            raise ValueError("Missing required Unity Cloud secrets: UNITY_PROJECT_ID, UNITY_ENV_ID")
+            
         return {
             "client_id": os.getenv("UNITY_CLIENT_ID", ""),
             "client_secret": os.getenv("UNITY_CLIENT_SECRET", ""),
-            "project_id": self.project_id,
-            "environment_id": self.environment_id,
+            "project_id": project_id,
+            "environment_id": environment_id,
         }
 
     def setup_headless_browser(self):
@@ -1032,8 +1038,6 @@ namespace Evergreen.Editor
 
         # Create all automation scripts
         self.create_unity_cli_automation()
-        self.create_api_automation()
-        self.create_webhook_automation()
         self.create_ai_automation()
         self.create_github_actions_100_percent()
         self.create_unity_editor_100_percent()
@@ -1041,17 +1045,15 @@ namespace Evergreen.Editor
         print("\n🎉 100% AUTOMATION SETUP COMPLETED!")
         print("\n📋 What's been created:")
         print("   ✅ Unity CLI 100% automation script")
-        print("   ✅ Unity API 100% automation script")
-        print("   ✅ Unity Webhook 100% automation script")
         print("   ✅ Unity AI 100% automation script")
         print("   ✅ GitHub Actions 100% automation workflow")
         print("   ✅ Unity Editor 100% automation tool")
 
         print("\n🚀 To achieve 100% automation:")
         print("   1. Configure Unity credentials in GitHub Secrets")
-        print("   2. Open Unity Editor → Tools → Unity Cloud → 100% Automation")
-        print("   3. Click 'RUN 100% AUTOMATION'")
-        print("   4. Everything will be automated!")
+        print("   2. Make changes to your files")
+        print("   3. Push to GitHub - everything syncs automatically!")
+        print("   4. Unity Cloud updates automatically!")
 
         print("\n🎯 Result: 100% AUTOMATION ACHIEVED!")
         print("   ✅ Zero manual work required")

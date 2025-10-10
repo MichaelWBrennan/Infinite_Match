@@ -205,13 +205,19 @@ jobs:
     - name: Pre-deployment health check
       run: npm run health
 
-    - name: Deploy Unity Cloud Services via API
+    - name: Deploy Unity Cloud Services (Seamless)
       env:
         UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
         UNITY_ENV_ID: ${{ secrets.UNITY_ENV_ID }}
         UNITY_CLIENT_ID: ${{ secrets.UNITY_CLIENT_ID }}
         UNITY_CLIENT_SECRET: ${{ secrets.UNITY_CLIENT_SECRET }}
-      run: npm run unity:api-deploy
+        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      run: |
+        echo "🚀 Seamless Unity Cloud deployment..."
+        echo "📊 Detected changes will be automatically synced"
+        python3 scripts/unity/match3_complete_automation.py
+        echo "✅ Unity Cloud updated seamlessly!"
 
     - name: Run automation
       env:

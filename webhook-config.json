@@ -1,0 +1,30 @@
+{
+  "name": "GitHub to Unity Cloud Sync",
+  "description": "Automatically syncs every GitHub update to Unity Cloud",
+  "version": "1.0.0",
+  "webhook_endpoints": {
+    "github": "https://your-domain.com/webhook/github",
+    "status": "https://your-domain.com/sync/status",
+    "health": "https://your-domain.com/health"
+  },
+  "github_webhook_secret": "your-github-webhook-secret-here",
+  "unity_cloud": {
+    "project_id": "from UNITY_PROJECT_ID secret",
+    "environment_id": "from UNITY_ENV_ID secret"
+  },
+  "sync_triggers": [
+    "push to main branch",
+    "push to develop branch", 
+    "push to feature branches",
+    "push to hotfix branches",
+    "pull request merges"
+  ],
+  "sync_components": [
+    "economy data (currencies, inventory, catalog)",
+    "cloud code functions",
+    "remote config settings",
+    "unity assets and configurations",
+    "automation scripts",
+    "general configuration files"
+  ]
+}
