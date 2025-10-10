@@ -26,6 +26,7 @@ class UnityGamingServicesAPIClient {
         
         this.baseURL = "https://services.api.unity.com";
         this.authURL = "https://api.unity.com/v1/oauth2";
+        this.ugsBaseURL = "https://services.api.unity.com";
         
         this.headers = {
             'Content-Type': 'application/json',
@@ -103,7 +104,11 @@ class UnityGamingServicesAPIClient {
      * Make authenticated API request with retry logic
      */
     async makeRequest(endpoint, options = {}) {
-        const url = `${this.baseURL}${endpoint}`;
+        // Use UGS base URL for service endpoints
+        const baseURL = endpoint.startsWith('/remote-config') || endpoint.startsWith('/economy') || endpoint.startsWith('/cloud-code') 
+            ? this.ugsBaseURL 
+            : this.baseURL;
+        const url = `${baseURL}${endpoint}`;
         const requestOptions = {
             ...options,
             headers: {
@@ -273,9 +278,7 @@ class UnityGamingServicesAPIClient {
     async getRemoteConfigs() {
         const endpoints = [
             `/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs`,
-            `/remote-config/v1/projects/${this.projectId}/configs`,
-            `/remote-config/v2/projects/${this.projectId}/environments/${this.environmentId}/configs`,
-            `/remote-config/v2/projects/${this.projectId}/configs`
+            `/remote-config/v1/projects/${this.projectId}/configs`
         ];
 
         for (const endpoint of endpoints) {
