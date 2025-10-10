@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Unity Cloud Headless Integration
- * Provides headless access to Unity Cloud services using the API client
+ * Unity Gaming Services (UGS) Headless Integration
+ * Provides headless access to UGS services using the API client
  * Designed for automated deployment and management
  */
 
-import UnityCloudAPIClient from './unity-cloud-api-client.js';
+import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,9 +13,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-class UnityCloudHeadlessIntegration {
+class UnityGamingServicesHeadlessIntegration {
     constructor(options = {}) {
-        this.apiClient = new UnityCloudAPIClient(options);
+        this.apiClient = new UnityGamingServicesAPIClient(options);
         this.projectRoot = options.projectRoot || path.join(__dirname, '..');
         this.economyDir = path.join(this.projectRoot, 'economy');
         this.cloudCodeDir = path.join(this.projectRoot, 'cloud-code');
@@ -450,4 +450,4 @@ class UnityCloudHeadlessIntegration {
     }
 }
 
-export default UnityCloudHeadlessIntegration;
+export default UnityGamingServicesHeadlessIntegration;

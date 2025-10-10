@@ -2,7 +2,7 @@
 # Working Unity CLI that uses existing functional scripts
 # This provides a command-line interface using the working headless scripts
 
-echo "🎯 Unity CLI - Working Interface"
+echo "🎯 Unity Gaming Services (UGS) CLI - Working Interface"
 echo "================================"
 
 case "$1" in
@@ -15,7 +15,7 @@ case "$1" in
         python3 scripts/unity/deploy-economy-with-credentials.py
         ;;
     "deploy-all"|"deploy")
-        echo "🚀 Deploying everything to Unity Cloud..."
+        echo "🚀 Deploying everything to Unity Gaming Services (UGS)..."
         echo "  Deploying Cloud Code..."
         node scripts/unity/deploy-cloud-code.js
         echo "  Deploying Economy..."
@@ -23,7 +23,7 @@ case "$1" in
         echo "✅ All deployments completed!"
         ;;
     "help"|"--help"|"-h"|"")
-        echo "🎯 Unity CLI - Working Interface"
+        echo "🎯 Unity Gaming Services (UGS) CLI - Working Interface"
         echo "================================"
         echo ""
         echo "Available commands:"

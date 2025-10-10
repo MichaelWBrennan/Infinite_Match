@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * Unity Cloud CLI - Simplified Version
- * Command-line interface for Unity Cloud headless operations
+ * Unity Gaming Services (UGS) CLI - Simplified Version
+ * Command-line interface for UGS headless operations
  * No external dependencies required
  */
 
-import UnityCloudHeadlessIntegration from './unity-cloud-headless-integration.js';
-import UnityCloudAPIClient from './unity-cloud-api-client.js';
+import UnityGamingServicesHeadlessIntegration from './unity-cloud-headless-integration.js';
+import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
 
-class UnityCloudCLISimple {
+class UnityGamingServicesCLISimple {
     constructor() {
         this.commands = {
             'deploy': this.deployCommand.bind(this),
@@ -27,7 +27,7 @@ class UnityCloudCLISimple {
         console.log('🚀 Starting Unity Cloud deployment...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             
             if (args.includes('--economy')) {
                 console.log('💰 Deploying Economy service only...');
@@ -57,7 +57,7 @@ class UnityCloudCLISimple {
         console.log('🔄 Syncing local data with Unity Cloud...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             await integration.syncData();
             console.log('✅ Sync completed successfully!');
         } catch (error) {
@@ -70,7 +70,7 @@ class UnityCloudCLISimple {
         console.log('📊 Checking Unity Cloud status...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             const report = await integration.apiClient.generateStatusReport();
             
             console.log('\n✅ Unity Cloud Status Report:');
@@ -115,7 +115,7 @@ class UnityCloudCLISimple {
         console.log('🔍 Checking Unity Cloud service health...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             const health = await integration.apiClient.checkServiceHealth();
             
             console.log('\n✅ Unity Cloud Health Check:');
@@ -144,7 +144,7 @@ class UnityCloudCLISimple {
         console.log('💰 Economy service operations...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             await integration.initialize();
             
             if (args.includes('--list') || args.includes('-l')) {
@@ -165,7 +165,7 @@ class UnityCloudCLISimple {
         console.log('☁️ Cloud Code service operations...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             await integration.initialize();
             
             if (args.includes('--list') || args.includes('-l')) {
@@ -186,7 +186,7 @@ class UnityCloudCLISimple {
         console.log('⚙️ Remote Config service operations...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             await integration.initialize();
             
             if (args.includes('--list') || args.includes('-l')) {
@@ -207,7 +207,7 @@ class UnityCloudCLISimple {
         console.log('📊 Analytics service operations...');
         
         try {
-            const integration = new UnityCloudHeadlessIntegration();
+            const integration = new UnityGamingServicesHeadlessIntegration();
             await integration.initialize();
             
             if (args.includes('--list') || args.includes('-l')) {
@@ -266,7 +266,7 @@ class UnityCloudCLISimple {
 }
 
 // Run CLI
-const cli = new UnityCloudCLISimple();
+const cli = new UnityGamingServicesCLISimple();
 cli.run().catch(error => {
     console.error('❌ CLI failed:', error);
     process.exit(1);

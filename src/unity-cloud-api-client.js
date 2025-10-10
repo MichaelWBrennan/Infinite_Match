@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Unity Cloud API Client
- * Comprehensive API client for Unity Cloud Services
- * Provides headless access to all Unity Cloud services
+ * Unity Gaming Services (UGS) API Client
+ * Comprehensive API client for Unity Gaming Services
+ * Provides headless access to all UGS services
  */
 
 // Using built-in fetch API (Node.js 18+)
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-class UnityCloudAPIClient {
+class UnityGamingServicesAPIClient {
     constructor(options = {}) {
         // Read from environment variables (secrets are already set)
         // Use actual project ID from Unity services config
@@ -25,7 +25,7 @@ class UnityCloudAPIClient {
         this.accessToken = options.accessToken || process.env.UNITY_API_TOKEN;
         
         this.baseURL = "https://services.api.unity.com";
-        this.authURL = "https://services.api.unity.com/auth/v1";
+        this.authURL = "https://api.unity.com/v1/oauth2";
         
         this.headers = {
             'Content-Type': 'application/json',
@@ -53,16 +53,12 @@ class UnityCloudAPIClient {
         }
 
         if (!this.clientId || !this.clientSecret) {
-            throw new Error('Unity Cloud credentials not available. Please check your secrets configuration.');
+            throw new Error('UGS credentials not available. Please check your secrets configuration.');
         }
 
-        // Try multiple authentication endpoints
+        // UGS authentication endpoint
         const authEndpoints = [
-            'https://services.api.unity.com/oauth/token',
-            'https://cloud.unity.com/api/oauth/token',
-            'https://api.unity.com/oauth/token',
-            'https://services.api.unity.com/auth/v1/token',
-            'https://cloud.unity.com/api/auth/v1/token'
+            'https://api.unity.com/v1/oauth2/token'
         ];
 
         for (const endpoint of authEndpoints) {
@@ -88,7 +84,7 @@ class UnityCloudAPIClient {
                     if (tokenData.access_token) {
                         this.accessToken = tokenData.access_token;
                         this.headers['Authorization'] = `Bearer ${this.accessToken}`;
-                        console.log('✅ Unity Cloud authentication successful');
+                        console.log('✅ UGS authentication successful');
                         return this.accessToken;
                     }
                 } else {
@@ -100,7 +96,7 @@ class UnityCloudAPIClient {
             }
         }
 
-        throw new Error('All authentication endpoints failed');
+        throw new Error('UGS authentication failed - please check your credentials');
     }
 
     /**
@@ -733,4 +729,4 @@ class UnityCloudAPIClient {
     }
 }
 
-export default UnityCloudAPIClient;
+export default UnityGamingServicesAPIClient;
