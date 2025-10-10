@@ -45,18 +45,181 @@ class HeadlessUnityCloudReader:
         print(f"Timestamp: {self.results['timestamp']}")
         print("=" * 80)
 
+    def get_unity_credentials(self):
+        """Get Unity credentials from secrets"""
+        print("\n🔐 Getting Unity credentials from secrets...")
+        
+        try:
+            # Try to get credentials from environment variables first
+            client_id = os.getenv('UNITY_CLIENT_ID')
+            client_secret = os.getenv('UNITY_CLIENT_SECRET')
+            
+            if client_id and client_secret:
+                print("   ✅ UNITY_CLIENT_ID found in environment")
+                print("   ✅ UNITY_CLIENT_SECRET found in environment")
+                return {
+                    "client_id": client_id,
+                    "client_secret": client_secret
+                }
+            
+            # Try to get credentials from Cursor secrets
+            import subprocess
+            result = subprocess.run(['cursor', 'getSecret', 'UNITY_CLIENT_ID'], 
+                                 capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                client_id = result.stdout.strip()
+                print("   ✅ UNITY_CLIENT_ID found in Cursor secrets")
+            else:
+                print("   ❌ UNITY_CLIENT_ID not found")
+                return None
+            
+            result = subprocess.run(['cursor', 'getSecret', 'UNITY_CLIENT_SECRET'], 
+                                 capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                client_secret = result.stdout.strip()
+                print("   ✅ UNITY_CLIENT_SECRET found in Cursor secrets")
+            else:
+                print("   ❌ UNITY_CLIENT_SECRET not found")
+                return None
+            
+            return {
+                "client_id": client_id,
+                "client_secret": client_secret
+            }
+            
+        except Exception as e:
+            print(f"   ❌ Error getting credentials: {e}")
+            return None
+
+    def authenticate_with_unity(self, credentials):
+        """Authenticate with Unity Cloud using credentials"""
+        print("\n🔑 Authenticating with Unity Cloud...")
+        
+        try:
+            # Get access token from Unity
+            auth_url = "https://services.api.unity.com/auth/v1/token"
+            auth_data = {
+                "grant_type": "client_credentials",
+                "client_id": credentials["client_id"],
+                "client_secret": credentials["client_secret"]
+            }
+            
+            response = requests.post(auth_url, data=auth_data, timeout=15)
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                access_token = token_data.get("access_token")
+                print("   ✅ Authentication successful")
+                return access_token
+            else:
+                print(f"   ❌ Authentication failed: HTTP {response.status_code}")
+                print(f"   Response: {response.text}")
+                return None
+                
+        except Exception as e:
+            print(f"   ❌ Authentication error: {e}")
+            return None
+
     def read_headless_economy_data(self):
-        """Read economy data using headless methods only"""
-        print("\n💰 Reading Economy Data (Headless Method)...")
+        """Read economy data using headless methods with credentials"""
+        print("\n💰 Reading Economy Data (Headless Method with Credentials)...")
         
         economy_data = {
             "service": "Economy",
-            "method": "headless_dashboard_reading",
+            "method": "headless_with_credentials",
             "status": "unknown",
             "error": None,
             "headless_data": {}
         }
         
+        try:
+            # First try with credentials
+            credentials = self.get_unity_credentials()
+            if credentials:
+                access_token = self.authenticate_with_unity(credentials)
+                if access_token:
+                    # Try authenticated API access
+                    headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    # Try to read currencies
+                    print("   - Reading currencies with authentication...")
+                    currencies_response = requests.get(
+                        f"https://services.api.unity.com/economy/v1/projects/{self.project_id}/configs/currencies",
+                        headers=headers,
+                        timeout=15
+                    )
+                    
+                    if currencies_response.status_code == 200:
+                        currencies_data = currencies_response.json()
+                        economy_data["headless_data"]["currencies"] = currencies_data
+                        print(f"   ✅ Currencies: Found {len(currencies_data)} items")
+                        for currency in currencies_data:
+                            print(f"     - {currency.get('id', 'N/A')}: {currency.get('name', 'N/A')}")
+                    else:
+                        print(f"   ❌ Currencies: HTTP {currencies_response.status_code}")
+                    
+                    # Try to read inventory
+                    print("   - Reading inventory with authentication...")
+                    inventory_response = requests.get(
+                        f"https://services.api.unity.com/economy/v1/projects/{self.project_id}/configs/inventory",
+                        headers=headers,
+                        timeout=15
+                    )
+                    
+                    if inventory_response.status_code == 200:
+                        inventory_data = inventory_response.json()
+                        economy_data["headless_data"]["inventory"] = inventory_data
+                        print(f"   ✅ Inventory: Found {len(inventory_data)} items")
+                        for item in inventory_data:
+                            print(f"     - {item.get('id', 'N/A')}: {item.get('name', 'N/A')}")
+                    else:
+                        print(f"   ❌ Inventory: HTTP {inventory_response.status_code}")
+                    
+                    # Try to read catalog
+                    print("   - Reading catalog with authentication...")
+                    catalog_response = requests.get(
+                        f"https://services.api.unity.com/economy/v1/projects/{self.project_id}/configs/catalog",
+                        headers=headers,
+                        timeout=15
+                    )
+                    
+                    if catalog_response.status_code == 200:
+                        catalog_data = catalog_response.json()
+                        economy_data["headless_data"]["catalog"] = catalog_data
+                        print(f"   ✅ Catalog: Found {len(catalog_data)} items")
+                        for item in catalog_data:
+                            print(f"     - {item.get('id', 'N/A')}: {item.get('name', 'N/A')}")
+                    else:
+                        print(f"   ❌ Catalog: HTTP {catalog_response.status_code}")
+                    
+                    # Determine status
+                    if economy_data["headless_data"]:
+                        economy_data["status"] = "success"
+                        print("✅ Economy Data: Successfully read from Unity Cloud with authentication")
+                    else:
+                        economy_data["status"] = "no_data"
+                        economy_data["error"] = "No economy data found in Unity Cloud"
+                        print("❌ Economy Data: No data found in Unity Cloud")
+                else:
+                    print("   ⚠️ Authentication failed, trying dashboard method...")
+                    self.read_economy_from_dashboard(economy_data)
+            else:
+                print("   ⚠️ No credentials found, trying dashboard method...")
+                self.read_economy_from_dashboard(economy_data)
+                
+        except Exception as e:
+            economy_data["status"] = "error"
+            economy_data["error"] = str(e)
+            print(f"❌ Economy Data: Error - {e}")
+        
+        self.results["headless_account_data"]["economy"] = economy_data
+        return economy_data
+
+    def read_economy_from_dashboard(self, economy_data):
+        """Fallback method to read economy data from dashboard"""
         try:
             # Use headless method to read from Unity Cloud dashboard
             session = requests.Session()
@@ -71,7 +234,7 @@ class HeadlessUnityCloudReader:
             
             # Try to read economy page
             economy_url = f"{self.base_url}/projects/{self.project_id}/economy"
-            print(f"   - Reading from: {economy_url}")
+            print(f"   - Reading from dashboard: {economy_url}")
             
             response = session.get(economy_url, timeout=15)
             
@@ -115,12 +278,9 @@ class HeadlessUnityCloudReader:
                 economy_data["error"] = f"HTTP {response.status_code}"
                 
         except Exception as e:
+            print(f"   ❌ Dashboard method error: {e}")
             economy_data["status"] = "error"
             economy_data["error"] = str(e)
-            print(f"❌ Economy Data: Error - {e}")
-        
-        self.results["headless_account_data"]["economy"] = economy_data
-        return economy_data
 
     def extract_headless_economy_data(self, html_content):
         """Extract economy data from HTML using headless methods"""
@@ -263,17 +423,71 @@ class HeadlessUnityCloudReader:
         return list(set(catalog))
 
     def read_headless_remote_config_data(self):
-        """Read remote config data using headless methods only"""
-        print("\n⚙️ Reading Remote Config Data (Headless Method)...")
+        """Read remote config data using headless methods with credentials"""
+        print("\n⚙️ Reading Remote Config Data (Headless Method with Credentials)...")
         
         remote_config_data = {
             "service": "Remote Config",
-            "method": "headless_dashboard_reading",
+            "method": "headless_with_credentials",
             "status": "unknown",
             "error": None,
             "headless_data": {}
         }
         
+        try:
+            # First try with credentials
+            credentials = self.get_unity_credentials()
+            if credentials:
+                access_token = self.authenticate_with_unity(credentials)
+                if access_token:
+                    # Try authenticated API access
+                    headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    # Try to read remote config
+                    print("   - Reading remote config with authentication...")
+                    config_response = requests.get(
+                        f"https://services.api.unity.com/remote-config/v1/projects/{self.project_id}/environments/{self.environment_id}/configs",
+                        headers=headers,
+                        timeout=15
+                    )
+                    
+                    if config_response.status_code == 200:
+                        config_data = config_response.json()
+                        remote_config_data["headless_data"]["configs"] = config_data
+                        print(f"   ✅ Remote Config: Found {len(config_data)} configurations")
+                        for config in config_data:
+                            print(f"     - {config.get('key', 'N/A')}: {config.get('value', 'N/A')}")
+                    else:
+                        print(f"   ❌ Remote Config: HTTP {config_response.status_code}")
+                    
+                    # Determine status
+                    if remote_config_data["headless_data"]:
+                        remote_config_data["status"] = "success"
+                        print("✅ Remote Config Data: Successfully read from Unity Cloud with authentication")
+                    else:
+                        remote_config_data["status"] = "no_data"
+                        remote_config_data["error"] = "No remote config data found in Unity Cloud"
+                        print("❌ Remote Config Data: No data found in Unity Cloud")
+                else:
+                    print("   ⚠️ Authentication failed, trying dashboard method...")
+                    self.read_remote_config_from_dashboard(remote_config_data)
+            else:
+                print("   ⚠️ No credentials found, trying dashboard method...")
+                self.read_remote_config_from_dashboard(remote_config_data)
+                
+        except Exception as e:
+            remote_config_data["status"] = "error"
+            remote_config_data["error"] = str(e)
+            print(f"❌ Remote Config Data: Error - {e}")
+        
+        self.results["headless_account_data"]["remote_config"] = remote_config_data
+        return remote_config_data
+
+    def read_remote_config_from_dashboard(self, remote_config_data):
+        """Fallback method to read remote config data from dashboard"""
         try:
             # Use headless method to read from Unity Cloud dashboard
             session = requests.Session()
@@ -288,7 +502,7 @@ class HeadlessUnityCloudReader:
             
             # Try to read remote config page
             remote_config_url = f"{self.base_url}/projects/{self.project_id}/remote-config"
-            print(f"   - Reading from: {remote_config_url}")
+            print(f"   - Reading from dashboard: {remote_config_url}")
             
             response = session.get(remote_config_url, timeout=15)
             
@@ -319,12 +533,9 @@ class HeadlessUnityCloudReader:
                 remote_config_data["error"] = f"HTTP {response.status_code}"
                 
         except Exception as e:
+            print(f"   ❌ Dashboard method error: {e}")
             remote_config_data["status"] = "error"
             remote_config_data["error"] = str(e)
-            print(f"❌ Remote Config Data: Error - {e}")
-        
-        self.results["headless_account_data"]["remote_config"] = remote_config_data
-        return remote_config_data
 
     def extract_headless_remote_config_data(self, html_content):
         """Extract remote config data from HTML using headless methods"""
@@ -394,17 +605,71 @@ class HeadlessUnityCloudReader:
         return list(set(configs))
 
     def read_headless_cloud_code_data(self):
-        """Read cloud code data using headless methods only"""
-        print("\n☁️ Reading Cloud Code Data (Headless Method)...")
+        """Read cloud code data using headless methods with credentials"""
+        print("\n☁️ Reading Cloud Code Data (Headless Method with Credentials)...")
         
         cloud_code_data = {
             "service": "Cloud Code",
-            "method": "headless_dashboard_reading",
+            "method": "headless_with_credentials",
             "status": "unknown",
             "error": None,
             "headless_data": {}
         }
         
+        try:
+            # First try with credentials
+            credentials = self.get_unity_credentials()
+            if credentials:
+                access_token = self.authenticate_with_unity(credentials)
+                if access_token:
+                    # Try authenticated API access
+                    headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    # Try to read cloud code functions
+                    print("   - Reading cloud code functions with authentication...")
+                    functions_response = requests.get(
+                        f"https://services.api.unity.com/cloud-code/v1/projects/{self.project_id}/scripts",
+                        headers=headers,
+                        timeout=15
+                    )
+                    
+                    if functions_response.status_code == 200:
+                        functions_data = functions_response.json()
+                        cloud_code_data["headless_data"]["functions"] = functions_data
+                        print(f"   ✅ Cloud Code: Found {len(functions_data)} functions")
+                        for func in functions_data:
+                            print(f"     - {func.get('name', 'N/A')}: {func.get('description', 'N/A')}")
+                    else:
+                        print(f"   ❌ Cloud Code: HTTP {functions_response.status_code}")
+                    
+                    # Determine status
+                    if cloud_code_data["headless_data"]:
+                        cloud_code_data["status"] = "success"
+                        print("✅ Cloud Code Data: Successfully read from Unity Cloud with authentication")
+                    else:
+                        cloud_code_data["status"] = "no_data"
+                        cloud_code_data["error"] = "No cloud code data found in Unity Cloud"
+                        print("❌ Cloud Code Data: No data found in Unity Cloud")
+                else:
+                    print("   ⚠️ Authentication failed, trying dashboard method...")
+                    self.read_cloud_code_from_dashboard(cloud_code_data)
+            else:
+                print("   ⚠️ No credentials found, trying dashboard method...")
+                self.read_cloud_code_from_dashboard(cloud_code_data)
+                
+        except Exception as e:
+            cloud_code_data["status"] = "error"
+            cloud_code_data["error"] = str(e)
+            print(f"❌ Cloud Code Data: Error - {e}")
+        
+        self.results["headless_account_data"]["cloud_code"] = cloud_code_data
+        return cloud_code_data
+
+    def read_cloud_code_from_dashboard(self, cloud_code_data):
+        """Fallback method to read cloud code data from dashboard"""
         try:
             # Use headless method to read from Unity Cloud dashboard
             session = requests.Session()
@@ -419,7 +684,7 @@ class HeadlessUnityCloudReader:
             
             # Try to read cloud code page
             cloud_code_url = f"{self.base_url}/projects/{self.project_id}/cloud-code"
-            print(f"   - Reading from: {cloud_code_url}")
+            print(f"   - Reading from dashboard: {cloud_code_url}")
             
             response = session.get(cloud_code_url, timeout=15)
             
@@ -450,12 +715,9 @@ class HeadlessUnityCloudReader:
                 cloud_code_data["error"] = f"HTTP {response.status_code}"
                 
         except Exception as e:
+            print(f"   ❌ Dashboard method error: {e}")
             cloud_code_data["status"] = "error"
             cloud_code_data["error"] = str(e)
-            print(f"❌ Cloud Code Data: Error - {e}")
-        
-        self.results["headless_account_data"]["cloud_code"] = cloud_code_data
-        return cloud_code_data
 
     def extract_headless_cloud_code_data(self, html_content):
         """Extract cloud code data from HTML using headless methods"""
