@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-10-10T05:05:41.738629",
+  "project_id": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environment_id": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organization_id": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "extracted_data": {
+    "economy": {
+      "service": "Economy",
+      "method": "advanced_dashboard_extraction",
+      "status": "not_found",
+      "error": "No economy data found in any endpoint",
+      "economy_data": {}
+    },
+    "remote_config": {
+      "service": "Remote Config",
+      "method": "advanced_dashboard_extraction",
+      "status": "not_found",
+      "error": "No remote config data found",
+      "config_data": {}
+    }
+  }
+}

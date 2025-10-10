@@ -92,6 +92,8 @@
     "unity:test-account-visibility": "python3 scripts/unity/test-headless-account-visibility.py",
     "unity:check-dashboard": "python3 scripts/unity/check-unity-cloud-dashboard.py",
     "unity:extract-data": "python3 scripts/unity/extract-unity-cloud-data.py",
+    "unity:extract-data-advanced": "python3 scripts/unity/extract-unity-cloud-data-advanced.py",
+    "unity:check-services": "python3 scripts/unity/check-unity-cloud-services.py",
     "unity:deploy-cloud-code": "node scripts/unity/deploy-cloud-code.js",
     "unity:test-cloud-code": "node scripts/unity/deploy-cloud-code.js"
   },
