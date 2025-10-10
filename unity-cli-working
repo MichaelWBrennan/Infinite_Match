@@ -51,6 +51,11 @@ case "$1" in
         echo "🔐 Testing Unity email/password authentication..."
         node scripts/unity/unity-email-auth-test.js
         ;;
+    "auto"|"automated"|"deploy-all-auto")
+        echo "🚀 Running fully automated Unity Cloud deployment..."
+        echo "   No manual intervention required - everything will be handled automatically"
+        node scripts/unity/automated-unity-cloud-manager.js
+        ;;
     "init"|"initialize")
         echo "🔧 Initializing Unity Cloud services..."
         python3 scripts/unity/headless-real-account-access.py
@@ -65,6 +70,7 @@ case "$1" in
         echo "  economy               - Deploy economy data"
         echo "  remote-config, config - Test Remote Config access"
         echo "  auth-email, login     - Test Unity email/password auth"
+        echo "  auto, automated       - Fully automated deployment (NO MANUAL STEPS)"
         echo "  deploy-all, deploy    - Deploy everything"
         echo "  list, list-functions  - List cloud code functions"
         echo "  list-economy          - List economy data"

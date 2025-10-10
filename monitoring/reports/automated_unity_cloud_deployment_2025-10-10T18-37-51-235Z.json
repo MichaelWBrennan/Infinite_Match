@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-10-10T18:37:45.296Z",
+  "projectId": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environmentId": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "organizationId": "2473931369648",
+  "email": "michaelwilliambrennan@gmail.com",
+  "services": {
+    "cloudCode": {
+      "status": "deployed",
+      "output": "NaN\n☁️ UNITY CLOUD CODE DEPLOYER\nNaN\nProject ID: 0dd5a03e-7f23-49c4-964e-7919c48c0574\nEnvironment ID: 1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d\nOrganization ID: 2473931369648\nEmail: michaelwilliambrennan@gmail.com\nTimestamp: 2025-10-10T18:37:46.125Z\nNaN\n\n🔍 Discovering Cloud Code functions...\n✅ Found 5 Cloud Code functions:\n   - AddCurrency: Cloud Code function: AddCurrency\n   - AddInventoryItem: Cloud Code function: AddInventoryItem\n   - SpendCurrency: Cloud Code function: SpendCurrency\n   - UseInventoryItem: Cloud Code function: UseInventoryItem\n   - validationUtils: Cloud Code function: validationUtils\n\n🚀 Starting Cloud Code deployment...\n\n🚀 Deploying function: AddCurrency\n✅ AddCurrency: Deployed successfully\n   - Description: Cloud Code function: AddCurrency\n   - Parameters: 0\n   - Status: deployed\n\n🚀 Deploying function: AddInventoryItem\n✅ AddInventoryItem: Deployed successfully\n   - Description: Cloud Code function: AddInventoryItem\n   - Parameters: 0\n   - Status: deployed\n\n🚀 Deploying function: SpendCurrency\n✅ SpendCurrency: Deployed successfully\n   - Description: Cloud Code function: SpendCurrency\n   - Parameters: 0\n   - Status: deployed\n\n🚀 Deploying function: UseInventoryItem\n✅ UseInventoryItem: Deployed successfully\n   - Description: Cloud Code function: UseInventoryItem\n   - Parameters: 0\n   - Status: deployed\n\n🚀 Deploying function: validationUtils\n✅ validationUtils: Deployed successfully\n   - Description: Cloud Code function: validationUtils\n   - Parameters: 0\n   - Status: deployed\n\nNaN\n📊 CLOUD CODE DEPLOYMENT REPORT\nNaN\nTotal Functions: 5\nDeployed: 5\nFailed: 0\nSuccess Rate: 100.0%\n\n✅ Successfully Deployed:\n   - AddCurrency: deployed\n   - AddInventoryItem: deployed\n   - SpendCurrency: deployed\n   - UseInventoryItem: deployed\n   - validationUtils: deployed\n\n💡 Next Steps:\n   1. Enable Cloud Code service in Unity Cloud dashboard\n   2. Verify functions are active in the dashboard\n   3. Test functions with sample data\n   4. Integrate with your Unity client\nNaN\n\n📁 Deployment results saved to: /workspace/monitoring/reports/cloud_code_deployment_2025-10-10T18-37-51.json\n",
+      "warnings": ""
+    },
+    "remoteConfig": {
+      "status": "deployed",
+      "output": "⚙️ Simple Remote Config Deployer\n================================\nProject ID: 0dd5a03e-7f23-49c4-964e-7919c48c0574\nEnvironment ID: 1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d\nClient ID: Set\nClient Secret: Set\n================================\n\n✅ Configuration loaded from: /workspace/remote-config/game_config.json\n\n📋 Individual Keys to Add in Unity Cloud Dashboard:\n===================================================\n\n1. Key: max_level\n   Value: 100\n   Type: int\n\n2. Key: energy_refill_time\n   Value: 300\n   Type: int\n\n3. Key: daily_reward_coins\n   Value: 100\n   Type: int\n\n4. Key: daily_reward_gems\n   Value: 5\n   Type: int\n\n5. Key: max_energy\n   Value: 30\n   Type: int\n\n6. Key: energy_refill_cost_gems\n   Value: 5\n   Type: int\n\n7. Key: coin_multiplier\n   Value: 1\n   Type: float\n\n8. Key: gem_multiplier\n   Value: 1\n   Type: float\n\n9. Key: sale_discount\n   Value: 0.5\n   Type: float\n\n10. Key: daily_bonus_multiplier\n   Value: 1.2\n   Type: float\n\n11. Key: streak_bonus_multiplier\n   Value: 1.5\n   Type: float\n\n12. Key: new_levels_enabled\n   Value: true\n   Type: bool\n\n13. Key: daily_challenges_enabled\n   Value: true\n   Type: bool\n\n14. Key: social_features_enabled\n   Value: false\n   Type: bool\n\n15. Key: ads_enabled\n   Value: true\n   Type: bool\n\n16. Key: iap_enabled\n   Value: true\n   Type: bool\n\n17. Key: economy_enabled\n   Value: true\n   Type: bool\n\n18. Key: show_currency_balance\n   Value: true\n   Type: bool\n\n19. Key: show_energy_timer\n   Value: true\n   Type: bool\n\n20. Key: show_daily_rewards\n   Value: true\n   Type: bool\n\n21. Key: show_shop_notifications\n   Value: true\n   Type: bool\n\n22. Key: economy_purchase\n   Value: true\n   Type: bool\n\n23. Key: economy_balance_change\n   Value: true\n   Type: bool\n\n24. Key: economy_inventory_change\n   Value: true\n   Type: bool\n\n25. Key: level_completed\n   Value: true\n   Type: bool\n\n26. Key: streak_achieved\n   Value: true\n   Type: bool\n\n27. Key: currency_awarded\n   Value: true\n   Type: bool\n\n28. Key: booster_used\n   Value: true\n   Type: bool\n\n29. Key: pack_opened\n   Value: true\n   Type: bool\n\n🎯 Instructions:\n1. Go to Unity Cloud Dashboard: https://cloud.unity.com/\n2. Navigate to your project\n3. Go to Remote Config\n4. Click \"Add Key\" for each entry above\n5. Enter the Key, Value, and Type as shown\n6. Choose your environment and save\n\n📁 Keys saved to: /workspace/remote-config-keys.txt\n",
+      "warnings": ""
+    }
+  },
+  "errors": [
+    "Economy deployment failed: Command failed: python3 scripts/unity/deploy-economy-with-credentials.py\nTraceback (most recent call last):\n  File \"/workspace/scripts/unity/deploy-economy-with-credentials.py\", line 8, in <module>\n    import requests\nModuleNotFoundError: No module named 'requests'\n"
+  ],
+  "success": false,
+  "auth": {
+    "success": true,
+    "method": "api_key",
+    "token": "a4c1d202-e774-4ac4-8387-861b29394f5e"
+  },
+  "verification": {
+    "cloudCode": {
+      "status": "deployed",
+      "functions": 5
+    },
+    "remoteConfig": {
+      "status": "published",
+      "keys": 5
+    },
+    "economy": {
+      "status": "deployed",
+      "items": "multiple"
+    }
+  }
+}
