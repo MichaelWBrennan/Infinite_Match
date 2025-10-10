@@ -22,6 +22,10 @@ case "$1" in
         echo "📖 Reading Unity Cloud data..."
         python3 scripts/unity/headless-unity-cloud-reader.py
         ;;
+    "real"|"api"|"credentials")
+        echo "🔐 Reading real Unity Cloud data with credentials..."
+        python3 scripts/unity/headless-unity-api-with-credentials.py
+        ;;
     "all"|"everything")
         echo "🚀 Running all headless operations..."
         echo ""
@@ -46,7 +50,8 @@ case "$1" in
         echo "  status, check, visibility  - Check Unity Cloud account visibility"
         echo "  deploy, cloud-code        - Deploy cloud code functions"
         echo "  economy, automation       - Run economy automation"
-        echo "  read, data               - Read Unity Cloud data"
+        echo "  read, data               - Read Unity Cloud data (simulated)"
+        echo "  real, api, credentials   - Read real Unity Cloud data with API"
         echo "  all, everything          - Run all headless operations"
         echo "  help                     - Show this help"
         echo ""
