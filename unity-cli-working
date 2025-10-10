@@ -47,6 +47,10 @@ case "$1" in
         echo "⚙️ Testing Remote Config access..."
         node scripts/unity/test-remote-config-cli.js
         ;;
+    "auth-email"|"email-auth"|"login")
+        echo "🔐 Testing Unity email/password authentication..."
+        node scripts/unity/unity-email-auth-test.js
+        ;;
     "init"|"initialize")
         echo "🔧 Initializing Unity Cloud services..."
         python3 scripts/unity/headless-real-account-access.py
@@ -60,6 +64,7 @@ case "$1" in
         echo "  cloud-code            - Deploy cloud code functions (JavaScript)"
         echo "  economy               - Deploy economy data"
         echo "  remote-config, config - Test Remote Config access"
+        echo "  auth-email, login     - Test Unity email/password auth"
         echo "  deploy-all, deploy    - Deploy everything"
         echo "  list, list-functions  - List cloud code functions"
         echo "  list-economy          - List economy data"
