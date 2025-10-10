@@ -58,7 +58,7 @@
     "automation:legacy": "node scripts/automation.js",
     "build": "echo 'No build step required for Node.js'",
     "dashboard": "node scripts/deployment-dashboard.js",
-    "deploy:all": "npm run health && npm run unity:api-deploy && npm run automation",
+    "deploy:all": "npm run health && npm run automation",
     "dev": "nodemon src/server/index.js",
     "error-recovery": "node scripts/error-recovery.js",
     "format": "prettier --write \"src/**/*.{js,ts,json}\"",
