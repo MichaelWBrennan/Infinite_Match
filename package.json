@@ -92,7 +92,8 @@
     "unity:test-headless": "python3 scripts/unity/test-headless-unity-connection.py",
     "unity:headless-ping": "python3 scripts/unity/test-headless-unity-connection.py",
     "unity:get-project-id": "python3 scripts/unity/get-unity-project-id.py",
-    "unity:find-project-id": "python3 scripts/unity/find-correct-project-id.py"
+    "unity:find-project-id": "python3 scripts/unity/find-correct-project-id.py",
+    "unity:test-credentials": "python3 scripts/unity/test-unity-credentials.py"
   },
   "type": "module",
   "version": "1.0.0",
