@@ -111,7 +111,7 @@ namespace Evergreen.Editor
             SetCommonBuildSettings();
             SetAndroidSettings();
             
-            string buildPath = Path.Combine(BuildPath, "Android", $"{ProductName}.apk");
+            string buildPath = Path.Combine(BuildPath, "Android", $"{ProductName}.aab");
             BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions
             {
                 scenes = Scenes,
@@ -196,15 +196,66 @@ namespace Evergreen.Editor
             PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.Android, ApiCompatibilityLevel.NET_Standard_2_1);
             PlayerSettings.stripEngineCode = !IsDevelopmentBuild();
             
-            // Android specific settings
-            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
-            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel21;
+            // Android specific settings for Google Play Store compliance
+            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34; // Required for 2024
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel21; // Android 5.0+
             PlayerSettings.Android.bundleVersionCode = GetBuildNumber();
-            PlayerSettings.Android.keystoreName = "user.keystore";
-            PlayerSettings.Android.keyaliasName = "user";
+            
+            // Keystore configuration (use environment variables for CI)
+            string keystoreName = Environment.GetEnvironmentVariable("KEYSTORE_NAME") ?? "user.keystore";
+            string keyaliasName = Environment.GetEnvironmentVariable("KEYALIAS_NAME") ?? "user";
+            PlayerSettings.Android.keystoreName = keystoreName;
+            PlayerSettings.Android.keyaliasName = keyaliasName;
             
             // Set package name
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.evergreen.match3");
+            
+            // Google Play Store compliance settings
+            PlayerSettings.Android.useCustomKeystore = true;
+            PlayerSettings.Android.keystorePass = Environment.GetEnvironmentVariable("KEYSTORE_PASS") ?? "";
+            PlayerSettings.Android.keyaliasPass = Environment.GetEnvironmentVariable("KEYALIAS_PASS") ?? "";
+            
+            // App Bundle settings (required for Google Play)
+            EditorUserBuildSettings.buildAppBundle = true;
+            EditorUserBuildSettings.androidBuildSystem = AndroidBuildSystem.Gradle;
+            
+            // Performance and compatibility settings
+            PlayerSettings.Android.preferredInstallLocation = AndroidPreferredInstallLocation.Auto;
+            PlayerSettings.Android.forceInternetPermission = true;
+            PlayerSettings.Android.forceSDCardPermission = false;
+            PlayerSettings.Android.useCustomMainManifest = true;
+            PlayerSettings.Android.useCustomLauncherManifest = false;
+            PlayerSettings.Android.useCustomMainGradleTemplate = false;
+            PlayerSettings.Android.useCustomLauncherGradleManifest = false;
+            PlayerSettings.Android.useCustomBaseGradleTemplate = false;
+            PlayerSettings.Android.useCustomGradlePropertiesTemplate = false;
+            PlayerSettings.Android.useCustomGradleSettingsTemplate = false;
+            
+            // Graphics and rendering
+            PlayerSettings.Android.blitType = AndroidBlitType.Never;
+            PlayerSettings.Android.muteOtherAudioSources = false;
+            PlayerSettings.Android.androidSplashScreenScale = AndroidSplashScreenScale.Center;
+            PlayerSettings.Android.androidUseSwappy = true;
+            PlayerSettings.Android.androidUseCustomKeystore = true;
+            
+            // Security settings
+            PlayerSettings.Android.androidTVCompatibility = false;
+            PlayerSettings.Android.chromeosInputEmulation = false;
+            PlayerSettings.Android.androidIsGame = true;
+            PlayerSettings.Android.androidEnableTango = false;
+            PlayerSettings.Android.androidEnableBanner = false;
+            PlayerSettings.Android.androidUseLowAccuracyLocation = false;
+            PlayerSettings.Android.androidUseCustomKeystore = true;
+            
+            // Splash screen
+            PlayerSettings.Android.splashScreenScale = AndroidSplashScreenScale.Center;
+            PlayerSettings.Android.showActivityIndicatorOnStart = true;
+            PlayerSettings.Android.activityIndicatorStyle = AndroidActivityIndicatorStyle.Large;
+            
+            // Debugging (disabled for release)
+            PlayerSettings.Android.useCustomKeystore = !IsDevelopmentBuild();
+            PlayerSettings.Android.keystorePass = IsDevelopmentBuild() ? "" : Environment.GetEnvironmentVariable("KEYSTORE_PASS") ?? "";
+            PlayerSettings.Android.keyaliasPass = IsDevelopmentBuild() ? "" : Environment.GetEnvironmentVariable("KEYALIAS_PASS") ?? "";
         }
 
         private static void SetiOSSettings()
