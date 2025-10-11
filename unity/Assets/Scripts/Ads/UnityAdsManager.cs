@@ -112,6 +112,9 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
 
     private bool AreAdsEnabled()
     {
+        // Disable ads entirely when kid_safe_mode is enabled
+        if (RemoteConfigManager.Instance?.GetBool("kid_safe_mode", true) == true)
+            return false;
         // Default to true unless explicitly disabled via Remote Config
         return RemoteConfigManager.Instance?.GetBool("ads_enabled", true) ?? true;
     }
