@@ -1,10 +1,10 @@
-# Privacy Policy for Evergreen Puzzler
+# Privacy Policy for Infinite Match
 
 **Last updated: January 2025**
 
 ## Introduction
 
-Evergreen Puzzler ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile game application.
+Infinite Match ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile game application.
 
 **Important for Parents:** Our game is designed to be family-friendly and suitable for all ages, including children under 13. We take special care to protect children's privacy and comply with all applicable laws regarding children's data.
 
@@ -79,7 +79,7 @@ Our game is designed to be family-friendly and suitable for all ages, including 
 
 ### How to Contact Us About Your Child's Information:
 If you are a parent and have concerns about your child's privacy or want to review, modify, or delete your child's information, please contact us at:
-- Email: privacy@evergreen.match3
+- Email: privacy@infinite.match
 - Subject: "Child Privacy Request"
 
 We will respond to your request within 30 days and may require verification of your identity as the child's parent or guardian.
@@ -108,7 +108,7 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 ## Contact Us
 
 If you have any questions about this Privacy Policy, please contact us at:
-- Email: privacy@evergreen.match3
+- Email: privacy@infinite.match
 - Website: [Your website URL]
 
 ## Compliance

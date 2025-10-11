@@ -1,10 +1,10 @@
-# Privacy Policy for Evergreen Puzzler (iOS)
+# Privacy Policy for Infinite Match (iOS)
 
 **Last updated: [DATE]**
 
 ## Introduction
 
-Evergreen Puzzler ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile game application on iOS devices.
+Infinite Match ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile game application on iOS devices.
 
 ## Information We Collect
 
@@ -102,7 +102,7 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 ## Contact Us
 
 If you have any questions about this Privacy Policy, please contact us at:
-- Email: privacy@evergreen.match3
+- Email: privacy@infinite.match
 - Website: [Your website URL]
 - App Store: [Your app store URL]
 

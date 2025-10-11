@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.evergreen.match3">
+    package="com.infinite.match">
 
     <!-- Required permissions for Unity and basic functionality -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -88,7 +88,7 @@
         <!-- File Provider for sharing -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.evergreen.match3.fileprovider"
+            android:authorities="com.infinite.match.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
