@@ -1,10 +1,12 @@
 # Privacy Policy for Evergreen Puzzler
 
-**Last updated: [DATE]**
+**Last updated: January 2025**
 
 ## Introduction
 
 Evergreen Puzzler ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile game application.
+
+**Important for Parents:** Our game is designed to be family-friendly and suitable for all ages, including children under 13. We take special care to protect children's privacy and comply with all applicable laws regarding children's data.
 
 ## Information We Collect
 
@@ -12,18 +14,21 @@ Evergreen Puzzler ("we," "our," or "us") is committed to protecting your privacy
 - Game progress and achievements
 - In-app purchase history
 - Customer support communications
+- Optional: Player name or nickname (no real names required)
 
 ### Information We Collect Automatically
 - Device information (model, operating system, unique device identifiers)
 - Game performance data and crash reports
-- Usage analytics (game sessions, features used)
-- IP address and general location data (country/region level)
+- Usage analytics (game sessions, features used, time spent playing)
+- IP address and general location data (country/region level only)
+- Game statistics (scores, levels completed, achievements earned)
 
 ### Third-Party Services
 We use the following third-party services that may collect additional information:
-- Unity Analytics (for game analytics)
-- Unity Cloud Services (for game data synchronization)
-- Google Play Services (for achievements and leaderboards)
+- Unity Analytics (for game analytics and performance monitoring)
+- Unity Cloud Services (for game data synchronization and cloud saves)
+- Google Play Services (for achievements, leaderboards, and app functionality)
+- Google Play Games (for social features and achievements)
 
 ## How We Use Your Information
 
