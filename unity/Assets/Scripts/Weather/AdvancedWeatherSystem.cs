@@ -679,7 +679,7 @@ namespace Evergreen.Weather
             _weatherAPI = new WeatherAPI
             {
                 isEnabled = enableWeatherAPI,
-                apiKey = "",
+                apiKey = "", // Set via Unity Inspector or environment
                 apiEndpoint = "https://api.openweathermap.org/data/2.5/weather",
                 location = "London",
                 latitude = 51.5074f,

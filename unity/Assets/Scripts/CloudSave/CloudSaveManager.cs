@@ -153,7 +153,7 @@ namespace Evergreen.CloudSave
         [Header("Backend Settings")]
         public string cloudSaveUrl = "https://api.evergreen-game.com/save";
         public string cloudLoadUrl = "https://api.evergreen-game.com/load";
-        public string apiKey = process.env.API_KEY;
+        [SerializeField] private string apiKey = ""; // Set via Unity Inspector or environment
         
         public static CloudSaveManager Instance { get; private set; }
         

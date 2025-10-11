@@ -432,8 +432,8 @@ namespace Evergreen.CloudGaming
                 description = "Google's cloud gaming platform",
                 type = CloudProviderType.GoogleStadia,
                 apiEndpoint = "https://stadia.google.com/api",
-                apiKey = "",
-                apiSecret = "",
+                apiKey = "", // Set via Unity Inspector or environment
+                apiSecret = "", // Set via Unity Inspector or environment
                 supportedRegions = new List<string> { "US", "EU", "CA", "AU" },
                 supportedDevices = new List<string> { "Chrome", "Android", "iOS", "TV" },
                 capabilities = new StreamingCapabilities
@@ -474,8 +474,8 @@ namespace Evergreen.CloudGaming
                 description = "NVIDIA's cloud gaming platform",
                 type = CloudProviderType.NvidiaGeForceNow,
                 apiEndpoint = "https://api.nvidia.com/geforce-now",
-                apiKey = "",
-                apiSecret = "",
+                apiKey = "", // Set via Unity Inspector or environment
+                apiSecret = "", // Set via Unity Inspector or environment
                 supportedRegions = new List<string> { "US", "EU", "AS" },
                 supportedDevices = new List<string> { "PC", "Mac", "Android", "iOS", "TV" },
                 capabilities = new StreamingCapabilities
