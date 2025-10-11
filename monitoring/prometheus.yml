@@ -1,0 +1,111 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # GraphQL Service
+  - job_name: 'graphql-service'
+    static_configs:
+      - targets: ['graphql-service:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Game Service
+  - job_name: 'game-service'
+    static_configs:
+      - targets: ['game-service:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Economy Service
+  - job_name: 'economy-service'
+    static_configs:
+      - targets: ['economy-service:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Analytics Service
+  - job_name: 'analytics-service'
+    static_configs:
+      - targets: ['analytics-service:3003']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Security Service
+  - job_name: 'security-service'
+    static_configs:
+      - targets: ['security-service:3004']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # Unity Service
+  - job_name: 'unity-service'
+    static_configs:
+      - targets: ['unity-service:3005']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # WebSocket Service
+  - job_name: 'websocket-service'
+    static_configs:
+      - targets: ['websocket-service:3006']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # AI Service
+  - job_name: 'ai-service'
+    static_configs:
+      - targets: ['ai-service:3007']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # MongoDB
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+    scrape_interval: 30s
+
+  # Node Exporter (if available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # Nginx
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    scrape_interval: 30s
