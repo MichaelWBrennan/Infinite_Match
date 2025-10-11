@@ -24,13 +24,6 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 5s
 
-  # GraphQL Service
-  - job_name: 'graphql-service'
-    static_configs:
-      - targets: ['graphql-service:4000']
-    metrics_path: '/metrics'
-    scrape_interval: 5s
-
   # Game Service
   - job_name: 'game-service'
     static_configs:
@@ -66,17 +59,10 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 5s
 
-  # WebSocket Service
-  - job_name: 'websocket-service'
-    static_configs:
-      - targets: ['websocket-service:3006']
-    metrics_path: '/metrics'
-    scrape_interval: 5s
-
   # AI Service
   - job_name: 'ai-service'
     static_configs:
-      - targets: ['ai-service:3007']
+      - targets: ['ai-service:3006']
     metrics_path: '/metrics'
     scrape_interval: 5s
 

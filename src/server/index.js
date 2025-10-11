@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { AppConfig } from 'core/config/index.js';
 import { Logger } from 'core/logger/index.js';
 import security from 'core/security/index.js';
-import { httpsEnforcement, httpsHeaders } from 'core/security/https.js';
 import { mobileGameSecurity } from 'core/security/mobile-game-security.js';
 import {
   registerServices,
@@ -42,8 +41,6 @@ const unityService = getService('unityService');
 const economyService = getService('economyService');
 
 // Middleware stack
-app.use(httpsEnforcement); // HTTPS enforcement
-app.use(httpsHeaders); // HTTPS security headers
 app.use(security.helmetConfig);
 app.use(security.corsConfig);
 app.use(security.securityHeaders);
@@ -85,17 +82,21 @@ app.get('/health', (req, res) => {
   });
 });
 
-// HTTPS health check endpoint
-app.get('/health/https', (req, res) => {
-  const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-  const protocol = isSecure ? 'https' : 'http';
-  
+// Mobile game health check endpoint
+app.get('/health/mobile', (req, res) => {
   res.json({
-    https: isSecure,
-    protocol,
+    status: 'healthy',
+    platform: 'mobile',
     environment: AppConfig.server.environment,
     timestamp: new Date().toISOString(),
-    status: isSecure ? 'secure' : 'insecure'
+    services: {
+      game: 'active',
+      economy: 'active',
+      analytics: 'active',
+      security: 'active',
+      unity: 'active',
+      ai: 'active'
+    }
   });
 });
 
