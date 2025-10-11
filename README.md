@@ -66,7 +66,8 @@ Set Unity Cloud credentials in GitHub Secrets:
 
 ## 📚 Documentation
 
-- [Architecture](docs/architecture.md) | [Economy System](docs/economy.md) | [CI/CD Pipeline](docs/CI_CD.md)
+- [Architecture](docs/architecture.md) | [Economy System](docs/economy.md) | [Setup Guide](docs/SETUP.md)
+- [Automation](docs/AUTOMATION.md) | [Features](docs/FEATURES.md) | [Security Report](SECURITY_REPORT.md)
 
 ## 🤝 Contributing
 
