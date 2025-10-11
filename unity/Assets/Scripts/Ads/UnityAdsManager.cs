@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Advertisements;
+using RemoteConfig;
 
 public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, IUnityAdsLoadListener, IUnityAdsShowListener
 {
@@ -22,7 +23,20 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
     public void InitializeAds()
     {
         _gameId = (Application.platform == RuntimePlatform.IPhonePlayer) ? iOSGameId : androidGameId;
-        if (!Advertisement.isInitialized)
+        // Enforce non-personalized ads for child safety and global compliance
+        try
+        {
+            var privacy = new MetaData("privacy");
+            privacy.Set("user.nonbehavioral", "true");
+            Advertisement.SetMetaData(privacy);
+
+            var gdpr = new MetaData("gdpr");
+            gdpr.Set("consent", "false");
+            Advertisement.SetMetaData(gdpr);
+        }
+        catch { /* best-effort metadata */ }
+
+        if (!Advertisement.isInitialized && AreAdsEnabled())
         {
             Advertisement.Initialize(_gameId, testMode, this);
         }
@@ -30,6 +44,7 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
 
     public void OnInitializationComplete()
     {
+        if (!AreAdsEnabled()) return;
         LoadInterstitial();
         LoadRewarded();
         LoadBanner();
@@ -40,25 +55,33 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
         Debug.LogError($"Unity Ads init failed: {error} {message}");
     }
 
-    public void LoadRewarded() => Advertisement.Load(rewardedPlacementId, this);
-    public void LoadInterstitial() => Advertisement.Load(interstitialPlacementId, this);
-    public void LoadBanner() => Advertisement.Load(bannerPlacementId, this);
+    public void LoadRewarded() { if (AreAdsEnabled()) Advertisement.Load(rewardedPlacementId, this); }
+    public void LoadInterstitial() { if (AreAdsEnabled()) Advertisement.Load(interstitialPlacementId, this); }
+    public void LoadBanner() { if (AreAdsEnabled()) Advertisement.Load(bannerPlacementId, this); }
 
     public void ShowRewarded(Action onComplete)
     {
+        if (!AreAdsEnabled()) return;
         _onRewardedComplete = onComplete;
-        Advertisement.Show(rewardedPlacementId, this);
+        if (Advertisement.isInitialized)
+        {
+            Advertisement.Show(rewardedPlacementId, this);
+        }
     }
 
-    public void ShowInterstitial() => Advertisement.Show(interstitialPlacementId, this);
+    public void ShowInterstitial() { if (AreAdsEnabled()) Advertisement.Show(interstitialPlacementId, this); }
 
     public void ShowBanner()
     {
+        if (!AreAdsEnabled()) return;
         Advertisement.Banner.SetPosition(BannerPosition.BOTTOM_CENTER);
-        Advertisement.Banner.Show(bannerPlacementId);
+        if (Advertisement.isInitialized)
+        {
+            Advertisement.Banner.Show(bannerPlacementId);
+        }
     }
 
-    public void HideBanner() => Advertisement.Banner.Hide();
+    public void HideBanner() { if (Advertisement.isInitialized) Advertisement.Banner.Hide(); }
 
     // IUnityAdsLoadListener
     public void OnUnityAdsAdLoaded(string placementId) { }
@@ -86,4 +109,10 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
 
     public void OnUnityAdsShowStart(string placementId) { }
     public void OnUnityAdsShowClick(string placementId) { }
+
+    private bool AreAdsEnabled()
+    {
+        // Default to true unless explicitly disabled via Remote Config
+        return RemoteConfigManager.Instance?.GetBool("ads_enabled", true) ?? true;
+    }
 }
