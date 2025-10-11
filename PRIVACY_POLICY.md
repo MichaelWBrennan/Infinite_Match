@@ -51,9 +51,38 @@ We do not sell your personal information. We may share your information only in 
 
 We implement appropriate security measures to protect your information against unauthorized access, alteration, disclosure, or destruction.
 
-## Children's Privacy
+## Children's Privacy (COPPA Compliance)
 
-Our game is suitable for all ages. We do not knowingly collect personal information from children under 13. If you are a parent and believe your child has provided us with personal information, please contact us.
+**Special Protection for Children Under 13:**
+
+Our game is designed to be family-friendly and suitable for all ages, including children under 13. We take special care to protect children's privacy and comply with the Children's Online Privacy Protection Act (COPPA).
+
+### What We Do NOT Collect from Children Under 13:
+- Real names or personal identifiers
+- Email addresses or phone numbers
+- Photos or videos
+- Precise location data
+- Contact information
+- Social media account information
+
+### What We May Collect from Children Under 13:
+- Game progress and achievements (anonymized)
+- Device information (for technical support)
+- Game performance data (for improving the game)
+- General location (country/region level only)
+
+### Parental Controls and Rights:
+- Parents can request to review, modify, or delete their child's information
+- Parents can opt out of data collection for their child
+- We do not share children's information with third parties for marketing purposes
+- We do not use children's information for behavioral advertising
+
+### How to Contact Us About Your Child's Information:
+If you are a parent and have concerns about your child's privacy or want to review, modify, or delete your child's information, please contact us at:
+- Email: privacy@evergreen.match3
+- Subject: "Child Privacy Request"
+
+We will respond to your request within 30 days and may require verification of your identity as the child's parent or guardian.
 
 ## Your Rights
 
