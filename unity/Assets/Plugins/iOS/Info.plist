@@ -4,11 +4,11 @@
 <dict>
     <!-- App Information -->
     <key>CFBundleDisplayName</key>
-    <string>Evergreen Puzzler</string>
+    <string>Infinite Match</string>
     <key>CFBundleName</key>
-    <string>Evergreen Puzzler</string>
+    <string>Infinite Match</string>
     <key>CFBundleIdentifier</key>
-    <string>com.evergreen.match3</string>
+    <string>com.infinite.match</string>
     <key>CFBundleVersion</key>
     <string>1.0.0</string>
     <key>CFBundleShortVersionString</key>
@@ -153,7 +153,7 @@
     <array>
         <dict>
             <key>CFBundleURLName</key>
-            <string>com.evergreen.match3</string>
+            <string>com.infinite.match</string>
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>evergreen-match3</string>

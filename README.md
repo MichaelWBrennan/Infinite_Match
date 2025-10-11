@@ -1,4 +1,4 @@
-# Evergreen Puzzler - Match-3 Unity Game
+# Infinite Match - Match-3 Unity Game
 
 [![CI/CD](https://github.com/MichaelWBrennan/MobileGameSDK/workflows/Optimized%20CI/CD%20Pipeline/badge.svg)](https://github.com/MichaelWBrennan/MobileGameSDK/actions)
 [![Unity](https://img.shields.io/badge/Unity-2022.3.21f1-blue.svg)](https://unity3d.com/)
