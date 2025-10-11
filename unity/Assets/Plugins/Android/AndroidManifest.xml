@@ -17,11 +17,7 @@
     <!-- Google Play Services -->
     <uses-permission android:name="com.android.vending.BILLING" />
     
-    <!-- Required for Unity Cloud Build and Analytics -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" 
-        android:required="false" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" 
-        android:required="false" />
+    <!-- Remove location access to minimize data collection and support E rating -->
     
     <!-- Hardware features -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

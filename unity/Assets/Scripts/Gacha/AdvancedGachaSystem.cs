@@ -149,6 +149,13 @@ namespace Evergreen.Gacha
         #region Gacha Pulling
         public bool PullGacha(string playerId, string boxId, int pullCount = 1)
         {
+            // Respect kid safe mode: disable gacha mechanics when enabled
+            if (RemoteConfig.RemoteConfigManager.Instance != null &&
+                RemoteConfig.RemoteConfigManager.Instance.GetBool("kid_safe_mode", true))
+            {
+                Debug.LogWarning("Gacha pulls are disabled in kid_safe_mode");
+                return false;
+            }
             if (!_gachaBoxes.ContainsKey(boxId))
                 return false;
                 

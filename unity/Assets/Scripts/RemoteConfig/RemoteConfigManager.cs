@@ -10,6 +10,7 @@ namespace RemoteConfig
     public class GameSettings
     {
         public bool ads_enabled;
+        public bool kid_safe_mode;
         public bool daily_bonus_enabled;
         public int energy_recharge_rate;
         public int max_energy;
@@ -108,6 +109,7 @@ namespace RemoteConfig
                 game_settings = new GameSettings
                 {
                     ads_enabled = true,
+                    kid_safe_mode = true,
                     daily_bonus_enabled = true,
                     energy_recharge_rate = 300,
                     max_energy = 100,
@@ -145,6 +147,8 @@ namespace RemoteConfig
                 {
                     case "ads_enabled":
                         return config.game_settings.ads_enabled;
+                    case "kid_safe_mode":
+                        return config.game_settings.kid_safe_mode;
                     case "daily_bonus_enabled":
                         return config.game_settings.daily_bonus_enabled;
                     default:
@@ -218,6 +222,7 @@ namespace RemoteConfig
             {
                 Debug.Log("=== REMOTE CONFIG VALUES ===");
                 Debug.Log($"Ads Enabled: {config.game_settings.ads_enabled}");
+                Debug.Log($"Kid Safe Mode: {config.game_settings.kid_safe_mode}");
                 Debug.Log($"Daily Bonus Enabled: {config.game_settings.daily_bonus_enabled}");
                 Debug.Log($"Energy Recharge Rate: {config.game_settings.energy_recharge_rate}");
                 Debug.Log($"Max Energy: {config.game_settings.max_energy}");

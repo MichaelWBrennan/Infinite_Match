@@ -54,37 +54,15 @@
         </dict>
     </dict>
     
-    <!-- Privacy Usage Descriptions (Required for App Store) -->
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app uses location data to provide personalized game content and analytics.</string>
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>This app uses location data to provide personalized game content and analytics.</string>
+    <!-- Privacy: remove location prompts to minimize data collection for E rating -->
     <key>NSCameraUsageDescription</key>
     <string>This app uses the camera to scan QR codes for special features.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app accesses your photo library to save and share game screenshots.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>This app uses the microphone for voice commands and audio features.</string>
-    <key>NSContactsUsageDescription</key>
-    <string>This app accesses your contacts to find friends who also play the game.</string>
-    <key>NSCalendarsUsageDescription</key>
-    <string>This app accesses your calendar to schedule game reminders and events.</string>
-    <key>NSRemindersUsageDescription</key>
-    <string>This app accesses your reminders to set game-related notifications.</string>
-    <key>NSMotionUsageDescription</key>
-    <string>This app uses motion data to enhance gameplay with device movement.</string>
-    <key>NSHealthShareUsageDescription</key>
-    <string>This app accesses health data to provide wellness-related game features.</string>
-    <key>NSHealthUpdateUsageDescription</key>
-    <string>This app updates health data to track gaming activity and wellness.</string>
-    <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>This app uses Bluetooth to connect with other players and accessories.</string>
-    <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>This app uses Bluetooth to connect with other players and accessories.</string>
-    <key>NSLocalNetworkUsageDescription</key>
-    <string>This app uses the local network to discover nearby players and features.</string>
-    <key>NSUserTrackingUsageDescription</key>
-    <string>This app uses tracking data to provide personalized content and improve your gaming experience.</string>
+    <!-- Remove unused high-risk privacy permissions -->
+    <!-- Remove ATT prompt; no tracking for child-directed/non-personalized ads -->
     
     <!-- App Store Optimization -->
     <key>ITSAppUsesNonExemptEncryption</key>
@@ -105,12 +83,7 @@
         </dict>
     </array>
     
-    <!-- Background Modes -->
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>background-processing</string>
-        <string>background-fetch</string>
-    </array>
+    <!-- Remove background modes not required for gameplay -->
     
     <!-- Scene Configuration -->
     <key>UIApplicationSceneManifest</key>
@@ -167,11 +140,7 @@
         <string>gamekit</string>
     </array>
     
-    <!-- In-App Purchase -->
-    <key>com.apple.developer.in-app-payments</key>
-    <array>
-        <string>merchant.com.evergreen.match3</string>
-    </array>
+    <!-- Keep IAP only if used via StoreKit; remove Apple Pay merchant if unused -->
     
     <!-- Push Notifications -->
     <key>UIBackgroundModes</key>
