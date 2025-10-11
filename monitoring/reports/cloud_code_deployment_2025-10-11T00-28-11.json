@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-10-11T00:28:06.878Z",
+  "projectId": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environmentId": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "deployed": [
+    {
+      "name": "AddCurrency",
+      "status": "deployed",
+      "message": "Function deployed successfully to Unity Cloud"
+    },
+    {
+      "name": "AddInventoryItem",
+      "status": "deployed",
+      "message": "Function deployed successfully to Unity Cloud"
+    },
+    {
+      "name": "SpendCurrency",
+      "status": "deployed",
+      "message": "Function deployed successfully to Unity Cloud"
+    },
+    {
+      "name": "UseInventoryItem",
+      "status": "deployed",
+      "message": "Function deployed successfully to Unity Cloud"
+    },
+    {
+      "name": "validationUtils",
+      "status": "deployed",
+      "message": "Function deployed successfully to Unity Cloud"
+    }
+  ],
+  "failed": [],
+  "summary": {
+    "total": 5,
+    "deployed": 5,
+    "failed": 0,
+    "successRate": "100.0%"
+  }
+}
