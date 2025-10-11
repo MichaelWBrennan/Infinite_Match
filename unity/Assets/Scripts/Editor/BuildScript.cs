@@ -264,11 +264,128 @@ namespace Evergreen.Editor
             PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.iOS, ApiCompatibilityLevel.NET_Standard_2_1);
             PlayerSettings.stripEngineCode = !IsDevelopmentBuild();
             
-            // iOS specific settings
+            // iOS specific settings for App Store compliance
             PlayerSettings.iOS.buildNumber = GetBuildNumber().ToString();
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.iOS, "com.evergreen.match3");
-            PlayerSettings.iOS.targetOSVersionString = "12.0";
+            PlayerSettings.iOS.targetOSVersionString = "12.0"; // iOS 12.0+ support
             PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
+            
+            // App Store compliance settings
+            PlayerSettings.iOS.appleDeveloperTeamID = Environment.GetEnvironmentVariable("APPLE_TEAM_ID") ?? "";
+            PlayerSettings.iOS.appleEnableAutomaticSigning = true;
+            PlayerSettings.iOS.iOSManualProvisioningProfileID = Environment.GetEnvironmentVariable("PROVISIONING_PROFILE_ID") ?? "";
+            PlayerSettings.iOS.iOSManualProvisioningProfileType = ProvisioningProfileType.Distribution;
+            
+            // Bundle settings
+            PlayerSettings.iOS.bundleVersion = GetVersion();
+            PlayerSettings.iOS.shortBundleVersion = GetVersion();
+            
+            // App Store optimization
+            PlayerSettings.iOS.privacyDescription = "This app uses data to provide personalized gaming experience and analytics.";
+            PlayerSettings.iOS.requiresFullScreen = false;
+            PlayerSettings.iOS.statusBarHidden = false;
+            PlayerSettings.iOS.statusBarStyle = iOSStatusBarStyle.Default;
+            
+            // Performance and compatibility
+            PlayerSettings.iOS.scriptingBackend = ScriptingImplementation.IL2CPP;
+            PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
+            PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
+            PlayerSettings.iOS.targetOSVersionString = "12.0";
+            
+            // Graphics and rendering
+            PlayerSettings.iOS.appleTVSplashScreen = null;
+            PlayerSettings.iOS.appleTVSplashScreen2x = null;
+            PlayerSettings.iOS.iPadSplashScreen = null;
+            PlayerSettings.iOS.iPadSplashScreen2x = null;
+            PlayerSettings.iOS.iPhoneSplashScreen = null;
+            PlayerSettings.iOS.iPhoneSplashScreen2x = null;
+            PlayerSettings.iOS.iPhoneSplashScreen640x960 = null;
+            PlayerSettings.iOS.iPhoneSplashScreen640x1136 = null;
+            PlayerSettings.iOS.iPhoneSplashScreen750x1334 = null;
+            PlayerSettings.iOS.iPhoneSplashScreen1125x2436 = null;
+            PlayerSettings.iOS.iPhoneSplashScreen1242x2208 = null;
+            PlayerSettings.iOS.iPhoneSplashScreen2436x1125 = null;
+            PlayerSettings.iOS.iPhoneSplashScreen2688x1242 = null;
+            PlayerSettings.iOS.iPhoneSplashScreen1792x828 = null;
+            
+            // Security and privacy
+            PlayerSettings.iOS.allowHTTPDownload = false;
+            PlayerSettings.iOS.allowHTTPDownloadInHTTPS = false;
+            PlayerSettings.iOS.allowHTTPDownloadInHTTPSStreamingAsset = false;
+            PlayerSettings.iOS.allowHTTPDownloadInHTTPSWebGL = false;
+            
+            // App Store Connect
+            PlayerSettings.iOS.appleEnableAutomaticSigning = true;
+            PlayerSettings.iOS.appleDeveloperTeamID = Environment.GetEnvironmentVariable("APPLE_TEAM_ID") ?? "";
+            
+            // Game Center and In-App Purchase
+            PlayerSettings.iOS.allowDownloadsOverCellular = false;
+            PlayerSettings.iOS.allowDownloadsOverCellularInHTTPS = false;
+            
+            // Background modes
+            PlayerSettings.iOS.backgroundModes = iOSBackgroundMode.BackgroundFetch | iOSBackgroundMode.BackgroundProcessing;
+            
+            // Push notifications
+            PlayerSettings.iOS.remoteNotificationSupport = true;
+            
+            // Camera and microphone
+            PlayerSettings.iOS.cameraUsageDescription = "This app uses the camera to scan QR codes for special features.";
+            PlayerSettings.iOS.microphoneUsageDescription = "This app uses the microphone for voice commands and audio features.";
+            
+            // Location services
+            PlayerSettings.iOS.locationUsageDescription = "This app uses location data to provide personalized game content and analytics.";
+            
+            // Photo library
+            PlayerSettings.iOS.photoLibraryUsageDescription = "This app accesses your photo library to save and share game screenshots.";
+            
+            // Contacts
+            PlayerSettings.iOS.contactsUsageDescription = "This app accesses your contacts to find friends who also play the game.";
+            
+            // Calendar
+            PlayerSettings.iOS.calendarsUsageDescription = "This app accesses your calendar to schedule game reminders and events.";
+            
+            // Reminders
+            PlayerSettings.iOS.remindersUsageDescription = "This app accesses your reminders to set game-related notifications.";
+            
+            // Motion
+            PlayerSettings.iOS.motionUsageDescription = "This app uses motion data to enhance gameplay with device movement.";
+            
+            // Health
+            PlayerSettings.iOS.healthShareUsageDescription = "This app accesses health data to provide wellness-related game features.";
+            PlayerSettings.iOS.healthUpdateUsageDescription = "This app updates health data to track gaming activity and wellness.";
+            
+            // Bluetooth
+            PlayerSettings.iOS.bluetoothUsageDescription = "This app uses Bluetooth to connect with other players and accessories.";
+            
+            // Local network
+            PlayerSettings.iOS.localNetworkUsageDescription = "This app uses the local network to discover nearby players and features.";
+            
+            // User tracking (iOS 14.5+)
+            PlayerSettings.iOS.userTrackingUsageDescription = "This app uses tracking data to provide personalized content and improve your gaming experience.";
+            
+            // App Transport Security
+            PlayerSettings.iOS.allowHTTPDownload = false;
+            PlayerSettings.iOS.allowHTTPDownloadInHTTPS = false;
+            
+            // Scene configuration
+            PlayerSettings.iOS.supportsMultipleScenes = false;
+            
+            // Accessibility
+            PlayerSettings.iOS.accessibilityUsageDescription = "This app uses accessibility features to provide an inclusive gaming experience.";
+            
+            // App Store Review Guidelines compliance
+            PlayerSettings.iOS.requiresFullScreen = false;
+            PlayerSettings.iOS.statusBarHidden = false;
+            PlayerSettings.iOS.statusBarStyle = iOSStatusBarStyle.Default;
+            
+            // Unity Services
+            PlayerSettings.iOS.cloudProjectId = Environment.GetEnvironmentVariable("UNITY_CLOUD_PROJECT_ID") ?? "";
+            PlayerSettings.iOS.cloudServicesEnabled = true;
+            
+            // Build settings
+            PlayerSettings.iOS.developmentTeam = Environment.GetEnvironmentVariable("APPLE_TEAM_ID") ?? "";
+            PlayerSettings.iOS.iOSManualProvisioningProfileID = Environment.GetEnvironmentVariable("PROVISIONING_PROFILE_ID") ?? "";
+            PlayerSettings.iOS.iOSManualProvisioningProfileType = ProvisioningProfileType.Distribution;
         }
 
         private static void HandleBuildResult(BuildReport report, string platform)
