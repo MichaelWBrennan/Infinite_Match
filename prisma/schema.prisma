@@ -1,0 +1,355 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  email       String   @unique
+  level       Int      @default(1)
+  experience  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  currency      PlayerCurrency?
+  inventory     InventoryItem[]
+  statistics    PlayerStatistics?
+  achievements  Achievement[]
+  gameSessions  GameSession[]
+  analytics     GameAnalytics[]
+  securityEvents SecurityEvent[]
+  deviceFingerprints DeviceFingerprint[]
+
+  @@map("players")
+}
+
+model PlayerCurrency {
+  id       String @id @default(cuid())
+  playerId String @unique
+  coins    Int    @default(0)
+  gems     Int    @default(0)
+  energy   Int    @default(100)
+  maxEnergy Int   @default(100)
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_currencies")
+}
+
+model InventoryItem {
+  id       String     @id @default(cuid())
+  playerId String
+  itemId   String
+  quantity Int        @default(1)
+  rarity   ItemRarity @default(COMMON)
+  metadata Json?
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, itemId])
+  @@map("inventory_items")
+}
+
+model PlayerStatistics {
+  id           String  @id @default(cuid())
+  playerId     String  @unique
+  gamesPlayed  Int     @default(0)
+  gamesWon     Int     @default(0)
+  totalScore   Int     @default(0)
+  bestScore    Int     @default(0)
+  averageScore Float   @default(0)
+  playTime     Int     @default(0)
+  lastPlayed   DateTime?
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("player_statistics")
+}
+
+model Achievement {
+  id          String     @id @default(cuid())
+  playerId    String
+  name        String
+  description String
+  icon        String
+  unlockedAt  DateTime?
+  progress    Int        @default(0)
+  maxProgress Int        @default(100)
+  reward      Json?
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, name])
+  @@map("achievements")
+}
+
+model GameSession {
+  id        String   @id @default(cuid())
+  playerId  String
+  level     Int
+  score     Int      @default(0)
+  moves     Int      @default(0)
+  timeSpent Int      @default(0)
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  endedAt   DateTime?
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("game_sessions")
+}
+
+model Match3Level {
+  id          String         @id @default(cuid())
+  levelNumber Int            @unique
+  difficulty  LevelDifficulty @default(EASY)
+  targetScore Int
+  maxMoves    Int
+  timeLimit   Int?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  specialTiles SpecialTile[]
+  obstacles    Obstacle[]
+  rewards      Reward[]
+
+  @@map("match3_levels")
+}
+
+model SpecialTile {
+  id      String          @id @default(cuid())
+  levelId String
+  type    SpecialTileType
+  x       Int
+  y       Int
+  effect  Json?
+
+  // Relations
+  level Match3Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@map("special_tiles")
+}
+
+model Obstacle {
+  id      String      @id @default(cuid())
+  levelId String
+  type    ObstacleType
+  x       Int
+  y       Int
+  health  Int?
+
+  // Relations
+  level Match3Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@map("obstacles")
+}
+
+model Reward {
+  id         String     @id @default(cuid())
+  levelId    String
+  type       RewardType
+  amount     Int
+  probability Float
+
+  // Relations
+  level Match3Level @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@map("rewards")
+}
+
+model ShopItem {
+  id          String       @id @default(cuid())
+  name        String
+  description String
+  price       Int
+  currency    CurrencyType
+  category    ShopCategory
+  rarity      ItemRarity   @default(COMMON)
+  metadata    Json?
+  available   Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("shop_items")
+}
+
+model GameAnalytics {
+  id        String   @id @default(cuid())
+  playerId  String
+  sessionId String
+  events    Json
+  metrics   Json
+  timestamp DateTime @default(now())
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("game_analytics")
+}
+
+model SecurityEvent {
+  id          String           @id @default(cuid())
+  playerId    String?
+  type        SecurityEventType
+  severity    SecuritySeverity
+  description String
+  metadata    Json
+  resolved    Boolean          @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  timestamp   DateTime         @default(now())
+
+  // Relations
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@map("security_events")
+}
+
+model DeviceFingerprint {
+  id           String   @id @default(cuid())
+  playerId     String
+  fingerprint  String   @unique
+  platform     String
+  deviceModel  String
+  osVersion    String
+  appVersion   String
+  firstSeen    DateTime @default(now())
+  lastSeen     DateTime @default(now())
+  requestCount Int      @default(1)
+
+  // Relations
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("device_fingerprints")
+}
+
+model UnityCloudConfig {
+  id            String   @id @default(cuid())
+  projectId     String   @unique
+  environmentId String
+  organizationId String
+  clientId      String
+  clientSecret  String   @default("")
+  apiToken      String   @default("")
+  email         String   @default("")
+  password      String   @default("")
+  githubToken   String   @default("")
+  services      Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("unity_cloud_configs")
+}
+
+model SystemHealth {
+  id          String   @id @default(cuid())
+  service     String
+  status      String
+  responseTime Int?
+  lastCheck   DateTime @default(now())
+  metadata    Json?
+
+  @@map("system_health")
+}
+
+model SystemMetrics {
+  id        String   @id @default(cuid())
+  cpu       Float
+  memory    Float
+  disk      Float
+  network   Json
+  database  Json
+  timestamp DateTime @default(now())
+
+  @@map("system_metrics")
+}
+
+// Enums
+enum ItemRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum LevelDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+  MASTER
+}
+
+enum SpecialTileType {
+  BOMB
+  LIGHTNING
+  RAINBOW
+  MULTIPLIER
+  FREEZE
+}
+
+enum ObstacleType {
+  ROCK
+  ICE
+  CHAIN
+  LOCK
+  TIMER
+}
+
+enum RewardType {
+  COINS
+  GEMS
+  ENERGY
+  POWER_UP
+  EXPERIENCE
+}
+
+enum CurrencyType {
+  COINS
+  GEMS
+  ENERGY
+}
+
+enum ShopCategory {
+  POWER_UPS
+  COSMETICS
+  CURRENCY
+  BOOSTERS
+}
+
+enum SecurityEventType {
+  CHEAT_DETECTED
+  SUSPICIOUS_ACTIVITY
+  DEVICE_CHANGE
+  MULTIPLE_DEVICES
+  RAPID_ACTIONS
+  IMPOSSIBLE_SCORE
+  ACCOUNT_SHARING
+  DEVICE_SPOOFING
+  INVALID_PURCHASE
+  DATA_TAMPERING
+}
+
+enum SecuritySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}

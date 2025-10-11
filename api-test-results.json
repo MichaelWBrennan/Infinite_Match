@@ -1,0 +1,159 @@
+{
+  "timestamp": "2025-10-11T01:50:24.555Z",
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "successRate": 100
+  },
+  "details": [
+    {
+      "name": "Environment Variables",
+      "status": "PASS",
+      "result": {
+        "total": 12,
+        "present": 6,
+        "missing": 6,
+        "missingVars": [
+          "NODE_ENV",
+          "DATABASE_URL",
+          "REDIS_URL",
+          "MONGODB_URI",
+          "JWT_SECRET",
+          "ENCRYPTION_KEY"
+        ],
+        "presentVars": [
+          "UNITY_PROJECT_ID",
+          "UNITY_ENV_ID",
+          "UNITY_ORG_ID",
+          "UNITY_CLIENT_ID",
+          "UNITY_CLIENT_SECRET",
+          "UNITY_API_TOKEN"
+        ]
+      }
+    },
+    {
+      "name": "Package.json Configuration",
+      "status": "PASS",
+      "result": {
+        "name": "evergreen-match3-unity",
+        "version": "1.0.0",
+        "dependencies": 22,
+        "scripts": 38
+      }
+    },
+    {
+      "name": "TypeScript Configuration",
+      "status": "PASS",
+      "result": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "strict": true
+      }
+    },
+    {
+      "name": "Docker Configuration",
+      "status": "PASS",
+      "result": {
+        "hasApiGateway": true,
+        "hasGameService": true,
+        "hasEconomyService": true,
+        "hasAnalyticsService": true,
+        "hasSecurityService": true,
+        "hasUnityService": true,
+        "hasAIService": true
+      }
+    },
+    {
+      "name": "Source Code Structure",
+      "status": "PASS",
+      "result": {
+        "total": 4,
+        "present": 4,
+        "missing": 0,
+        "presentDirs": [
+          "core",
+          "routes",
+          "services",
+          "microservices"
+        ],
+        "missingDirs": []
+      }
+    },
+    {
+      "name": "Unity Integration",
+      "status": "PASS",
+      "result": {
+        "total": 3,
+        "present": 3,
+        "missing": 0,
+        "presentFiles": [
+          "Assets/Scripts/CloudSave/CloudSaveManager.cs",
+          "Assets/Scripts/Weather/AdvancedWeatherSystem.cs",
+          "Assets/Scripts/CloudGaming/CloudGamingSystem.cs"
+        ],
+        "missingFiles": []
+      }
+    },
+    {
+      "name": "Security Configuration",
+      "status": "PASS",
+      "result": {
+        "total": 6,
+        "present": 6,
+        "missing": 0,
+        "presentFiles": [
+          "index.js",
+          "mobile-game-security.js",
+          "mfa.js",
+          "rbac.js",
+          "key-rotation.js",
+          "https.js"
+        ],
+        "missingFiles": []
+      }
+    },
+    {
+      "name": "Monitoring Configuration",
+      "status": "PASS",
+      "result": {
+        "total": 3,
+        "present": 3,
+        "missing": 0,
+        "presentFiles": [
+          "prometheus.yml",
+          "grafana/datasources/prometheus.yml",
+          "grafana/dashboards/game-dashboard.json"
+        ],
+        "missingFiles": []
+      }
+    },
+    {
+      "name": "CI/CD Configuration",
+      "status": "PASS",
+      "result": {
+        "workflowCount": 9,
+        "workflowFiles": [
+          "android.yml",
+          "ci-cd.yml",
+          "codeql-analysis.yml",
+          "ios.yml",
+          "optimized-ci-cd.yml",
+          "performance-testing.yml",
+          "security-maintenance.yml",
+          "unity-cloud-api-deploy.yml",
+          "unity-cloud.yml"
+        ]
+      }
+    },
+    {
+      "name": "Environment File",
+      "status": "PASS",
+      "result": {
+        "hasEnv": true,
+        "hasEnvExample": true,
+        "envExampleExists": true
+      }
+    }
+  ]
+}

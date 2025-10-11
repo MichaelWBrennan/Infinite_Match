@@ -16,8 +16,9 @@ const logger = new Logger('Utils');
  */
 export const generateRandomString = (length = 32, charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') => {
   let result = '';
+  const randomBytes = crypto.getRandomValues(new Uint8Array(length));
   for (let i = 0; i < length; i++) {
-    result += charset.charAt(Math.floor((crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff) * charset.length));
+    result += charset[randomBytes[i] % charset.length];
   }
   return result;
 };

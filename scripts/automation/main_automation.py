@@ -120,7 +120,11 @@ from file_validator import file_validator
 remote_config = file_validator.validate_remote_config_files()
 if remote_config['game_config.json']:
     print('Deploying remote-config/game_config.json...')
-    os.systemSafe('unity remote-config import remote-config/game_config.json --project-id $UNITY_PROJECT_ID --environment-id $UNITY_ENV_ID')
+    subprocess.run([
+        'unity', 'remote-config', 'import', 'remote-config/game_config.json',
+        '--project-id', os.environ.get('UNITY_PROJECT_ID', ''),
+        '--environment-id', os.environ.get('UNITY_ENV_ID', '')
+    ], check=False)
 else:
     print('⚠️ remote-config/game_config.json not found')
 "

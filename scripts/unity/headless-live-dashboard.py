@@ -91,7 +91,11 @@ class HeadlessLiveDashboard:
     
     def display_dashboard(self, data):
         """Display live dashboard"""
-        os.system('clear' if os.name == 'posix' else 'cls')
+        # Clear screen safely
+        if os.name == 'posix':
+            subprocess.run(['clear'], check=False)
+        else:
+            subprocess.run(['cls'], check=False, shell=True)
         
         print("🔴 UNITY CLOUD LIVE DASHBOARD")
         print("=" * 60)

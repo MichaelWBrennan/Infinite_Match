@@ -104,7 +104,11 @@ class HeadlessRealtimeMonitor:
     
     def display_data(self):
         """Display current data in a nice format"""
-        os.system('clear' if os.name == 'posix' else 'cls')
+        # Clear screen safely
+        if os.name == 'posix':
+            subprocess.run(['clear'], check=False)
+        else:
+            subprocess.run(['cls'], check=False, shell=True)
         
         print("=" * 80)
         print("🔴 HEADLESS REAL-TIME UNITY CLOUD MONITOR")

@@ -6,6 +6,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import security from 'core/security/index.js';
+import { mfaProvider } from 'core/security/mfa.js';
 import { Logger } from 'core/logger/index.js';
 import { asyncHandler } from 'core/middleware/index.js';
 import { ValidationError } from 'core/errors/ErrorHandler.js';
@@ -200,5 +201,83 @@ router.get('/profile', security.sessionValidation, (req, res) => {
     });
   }
 });
+
+// MFA Setup Routes
+router.post('/mfa/setup', security.sessionValidation, asyncHandler(async (req, res) => {
+  const { playerId, email } = req.user;
+  
+  try {
+    const mfaData = mfaProvider.generateSecret(playerId, email);
+    
+    // Store MFA secret in user session (in production, store in database)
+    req.session.mfaSecret = mfaData.secret;
+    req.session.mfaBackupCodes = mfaData.backupCodes;
+    
+    res.json({
+      success: true,
+      secret: mfaData.secret,
+      qrCodeData: mfaData.qrCodeData,
+      backupCodes: mfaData.backupCodes,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    logger.error('MFA setup failed', { error: error.message, playerId });
+    res.status(500).json({ 
+      success: false,
+      error: 'MFA setup failed',
+      requestId: req.requestId
+    });
+  }
+}));
+
+router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  const { playerId } = req.user;
+  
+  if (!token) {
+    return res.status(400).json({ 
+      success: false,
+      error: 'MFA token required',
+      requestId: req.requestId
+    });
+  }
+  
+  try {
+    const secret = req.session.mfaSecret;
+    if (!secret) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'MFA not set up',
+        requestId: req.requestId
+      });
+    }
+    
+    const isValid = mfaProvider.verifyToken(secret, token);
+    
+    if (isValid) {
+      req.session.mfaEnabled = true;
+      logger.info('MFA enabled successfully', { playerId });
+      res.json({ 
+        success: true, 
+        message: 'MFA enabled successfully',
+        requestId: req.requestId
+      });
+    } else {
+      logger.warn('MFA verification failed', { playerId });
+      res.status(400).json({ 
+        success: false,
+        error: 'Invalid MFA token',
+        requestId: req.requestId
+      });
+    }
+  } catch (error) {
+    logger.error('MFA verification error', { error: error.message, playerId });
+    res.status(500).json({ 
+      success: false,
+      error: 'MFA verification failed',
+      requestId: req.requestId
+    });
+  }
+}));
 
 export default router;

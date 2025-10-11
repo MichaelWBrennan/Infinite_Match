@@ -28,7 +28,7 @@ export const AppConfig = {
   // Security Configuration
   security: {
     jwt: {
-      secret: process.env.JWT_SECRET || 'your-secret-key',
+      secret: process.env.JWT_SECRET || 'CHANGE_THIS_IN_PRODUCTION_USE_STRONG_SECRET_32_CHARS_MIN',
       expiresIn: process.env.JWT_EXPIRES_IN || '24h',
     },
     bcrypt: {
@@ -40,7 +40,7 @@ export const AppConfig = {
     },
     encryption: {
       algorithm: 'aes-256-gcm',
-      key: process.env.ENCRYPTION_KEY || 'your-encryption-key',
+      key: process.env.ENCRYPTION_KEY || 'CHANGE_THIS_IN_PRODUCTION_USE_STRONG_32_CHAR_KEY',
     },
   },
 
@@ -89,7 +89,7 @@ export const AppConfig = {
   paths: {
     root: join(__dirname, '..'),
     assets: join(__dirname, 'assets'),
-    config: join(__dirname, '..', '..', '..', 'economy'), // Point to /workspace/economy
+    config: join(__dirname, '..', '..', 'economy'), // Point to /workspace/economy
     logs: join(__dirname, 'logs'),
     temp: join(__dirname, 'temp'),
   },

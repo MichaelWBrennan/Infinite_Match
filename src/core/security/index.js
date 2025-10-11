@@ -15,6 +15,7 @@ import xss from 'xss';
 import mongoSanitize from 'express-mongo-sanitize';
 import { AppConfig } from '../config/index.js';
 import { securityLogger } from 'logger/index.js';
+import { rbacProvider, ROLES, PERMISSIONS } from './rbac.js';
 
 // In-memory stores for security tracking
 const suspiciousIPs = new Map();
@@ -395,4 +396,99 @@ export default {
   logSecurityEvent,
   markIPSuspicious,
   cleanupOldData,
+};
+
+// RBAC Middleware Functions
+export const requirePermission = (permission) => {
+  return (req, res, next) => {
+    try {
+      const { playerId } = req.user || {};
+      
+      if (!playerId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+          requestId: req.requestId
+        });
+      }
+
+      if (!rbacProvider.hasPermission(playerId, permission)) {
+        securityLogger.warn('Permission denied', { 
+          playerId, 
+          permission, 
+          ip: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        
+        return res.status(403).json({
+          success: false,
+          error: 'Insufficient permissions',
+          requestId: req.requestId
+        });
+      }
+
+      next();
+    } catch (error) {
+      securityLogger.error('Permission check failed', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: 'Permission check failed',
+        requestId: req.requestId
+      });
+    }
+  };
+};
+
+export const requireMinRole = (minRole) => {
+  return (req, res, next) => {
+    try {
+      const { playerId } = req.user || {};
+      
+      if (!playerId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+          requestId: req.requestId
+        });
+      }
+
+      const userRole = rbacProvider.getUserRole(playerId);
+      const roleHierarchy = {
+        [ROLES.GUEST]: 0,
+        [ROLES.USER]: 1,
+        [ROLES.PREMIUM_USER]: 2,
+        [ROLES.MODERATOR]: 3,
+        [ROLES.ADMIN]: 4,
+        [ROLES.SUPER_ADMIN]: 5
+      };
+
+      const userLevel = roleHierarchy[userRole] || 0;
+      const requiredLevel = roleHierarchy[minRole] || 0;
+      
+      if (userLevel < requiredLevel) {
+        securityLogger.warn('Insufficient role level', { 
+          playerId, 
+          requiredRole: minRole,
+          userRole,
+          ip: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        
+        return res.status(403).json({
+          success: false,
+          error: 'Insufficient role privileges',
+          requestId: req.requestId
+        });
+      }
+
+      next();
+    } catch (error) {
+      securityLogger.error('Role level check failed', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: 'Role level check failed',
+        requestId: req.requestId
+      });
+    }
+  };
 };
