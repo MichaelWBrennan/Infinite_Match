@@ -12,6 +12,7 @@ import { AppConfig } from 'core/config/index.js';
 import { Logger } from 'core/logger/index.js';
 import security from 'core/security/index.js';
 import { httpsEnforcement, httpsHeaders } from 'core/security/https.js';
+import { mobileGameSecurity } from 'core/security/mobile-game-security.js';
 import {
   registerServices,
   getService,
@@ -95,6 +96,79 @@ app.get('/health/https', (req, res) => {
     environment: AppConfig.server.environment,
     timestamp: new Date().toISOString(),
     status: isSecure ? 'secure' : 'insecure'
+  });
+});
+
+// Mobile Game Security Endpoints
+app.post('/api/mobile/device/fingerprint', asyncHandler(async (req, res) => {
+  const { deviceInfo } = req.body;
+  
+  if (!deviceInfo) {
+    return res.status(400).json({
+      success: false,
+      error: 'Device information required',
+      requestId: req.requestId
+    });
+  }
+  
+  const fingerprint = mobileGameSecurity.generateDeviceFingerprint(deviceInfo);
+  
+  res.json({
+    success: true,
+    fingerprint,
+    requestId: req.requestId
+  });
+}));
+
+app.post('/api/mobile/cheat/detect', security.sessionValidation, asyncHandler(async (req, res) => {
+  const { gameAction } = req.body;
+  const { playerId } = req.user;
+  
+  if (!gameAction) {
+    return res.status(400).json({
+      success: false,
+      error: 'Game action data required',
+      requestId: req.requestId
+    });
+  }
+  
+  const cheatDetection = mobileGameSecurity.detectCheating(playerId, gameAction);
+  
+  res.json({
+    success: true,
+    cheatDetection,
+    requestId: req.requestId
+  });
+}));
+
+app.post('/api/mobile/save/validate', security.sessionValidation, asyncHandler(async (req, res) => {
+  const { saveData } = req.body;
+  const { playerId } = req.user;
+  
+  if (!saveData) {
+    return res.status(400).json({
+      success: false,
+      error: 'Save data required',
+      requestId: req.requestId
+    });
+  }
+  
+  const validation = mobileGameSecurity.validateCloudSave(playerId, saveData);
+  
+  res.json({
+    success: true,
+    validation,
+    requestId: req.requestId
+  });
+}));
+
+app.get('/api/mobile/security/stats', security.requireMinRole('ADMIN'), (req, res) => {
+  const stats = mobileGameSecurity.getMobileGameSecurityStats();
+  
+  res.json({
+    success: true,
+    stats,
+    requestId: req.requestId
   });
 });
 
