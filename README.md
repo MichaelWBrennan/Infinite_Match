@@ -4,82 +4,47 @@
 [![Unity](https://img.shields.io/badge/Unity-2022.3.21f1-blue.svg)](https://unity3d.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A Match-3 puzzle game with Unity Cloud integration, automation, and CI/CD pipelines.
-
-## 🎮 Features
-
-- Match-3 gameplay with economy system
-- Unity Cloud services integration
-- Multi-platform support (Windows, iOS, Android, WebGL)
-- Automated CI/CD and deployment
+A Match-3 puzzle game with Unity Cloud integration and automated deployment.
 
 ## 🚀 Quick Start
 
-**Prerequisites:** Unity 2022.3.21f1+, Node.js 18+, Python 3.9+
+**Prerequisites:** Unity 2022.3.21f1+, Node.js 18+
 
 ```bash
-# Clone and setup
 git clone https://github.com/MichaelWBrennan/MobileGameSDK.git
 cd MobileGameSDK
 npm install
-pip install -r requirements.txt
-
-# Open in Unity Hub from unity/ directory
+# Open unity/ directory in Unity Hub
 ```
 
-**Development Commands:**
+**Commands:**
 ```bash
 npm run health          # Health checks
 npm run automation      # Run automation
 npm run economy:deploy  # Deploy economy data
-npm run unity:deploy    # Deploy Unity services
 ```
 
-## 📁 Project Structure
+## 🔧 Setup
 
-```
-├── unity/                 # Unity project
-├── scripts/               # Automation scripts
-├── economy/               # Economy data (CSV)
-├── cloud-code/            # Unity Cloud Code
-├── docs/                  # Documentation
-└── .github/workflows/     # CI/CD pipelines
-```
+1. Set Unity Cloud credentials in GitHub Secrets: `UNITY_PROJECT_ID`, `UNITY_ENV_ID`, `UNITY_CLIENT_ID`, `UNITY_CLIENT_SECRET`
+2. Run `npm run health` to verify setup
+3. See [docs/SETUP.md](docs/SETUP.md) for detailed configuration
 
-## 🔧 Configuration
+## 📁 Structure
 
-Set Unity Cloud credentials in GitHub Secrets:
-- `UNITY_PROJECT_ID`, `UNITY_ENV_ID`, `UNITY_CLIENT_ID`, `UNITY_CLIENT_SECRET`
-
-## 🎯 Headless Mode
-
-**HEADLESS MODE ONLY** - No APIs, no CLI, no external dependencies.
-
-```bash
-./scripts/headless-unity-ops.sh status   # Check account
-./scripts/headless-unity-ops.sh deploy   # Deploy cloud code
-./scripts/headless-unity-ops.sh economy  # Run economy automation
-./scripts/headless-unity-ops.sh all      # Run everything
-```
-
-**Benefits:** Offline operation, no authentication, bypasses sandbox restrictions, complete data visibility.
+- `unity/` - Unity project
+- `scripts/` - Automation scripts  
+- `economy/` - Economy data (CSV)
+- `cloud-code/` - Unity Cloud Code
+- `docs/` - Documentation
 
 ## 📚 Documentation
 
-- [Architecture](docs/architecture.md) | [Economy System](docs/economy.md) | [Setup Guide](docs/SETUP.md)
-- [Automation](docs/AUTOMATION.md) | [Features](docs/FEATURES.md) | [Security Report](SECURITY_REPORT.md)
-
-## 🤝 Contributing
-
-1. Fork → Create feature branch → Make changes → Run tests → Submit PR
-2. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details
+- [Setup Guide](docs/SETUP.md) - Complete setup instructions
+- [Architecture](docs/ARCHITECTURE.md) - System overview
+- [Economy](docs/ECONOMY.md) - Monetization systems
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file.
-
-## 🆘 Support
-
-- [Issues](https://github.com/MichaelWBrennan/MobileGameSDK/issues)
-- [Discussions](https://github.com/MichaelWBrennan/MobileGameSDK/discussions)
+MIT License - see [LICENSE](LICENSE)
 
