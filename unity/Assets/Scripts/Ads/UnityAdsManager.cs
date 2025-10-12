@@ -61,12 +61,6 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
     public void OnInitializationComplete()
     {
         if (!AreAdsEnabled()) return;
-        if (!RemoteConfigManager.Instance?.GetBool("ads_rewarded_enabled", true) ?? true) return;
-
-        int cap = RemoteConfigManager.Instance?.GetInt("ads_rewarded_max_per_session", 6) ?? 6;
-        int interval = RemoteConfigManager.Instance?.GetInt("ads_rewarded_min_interval_seconds", 45) ?? 45;
-        if (_rewardedShownThisSession >= cap) return;
-        if (Time.unscaledTime - _lastRewardedTime < interval) return;
         LoadInterstitial();
         LoadRewarded();
         LoadBanner();
@@ -107,6 +101,7 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
     public void ShowBanner()
     {
         if (!AreAdsEnabled()) return;
+        if (!RemoteConfigManager.Instance?.GetBool("ads_banner_enabled", false) ?? false) return;
         Advertisement.Banner.SetPosition(BannerPosition.BOTTOM_CENTER);
         if (Advertisement.isInitialized)
         {

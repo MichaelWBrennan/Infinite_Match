@@ -3,6 +3,30 @@
   "environmentId": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
   "licenseType": "personal",
   "cloudServicesAvailable": true,
+  "remoteConfig": {
+    "game_settings": {
+      "ads_enabled": true,
+      "kid_safe_mode": false,
+      "ads_interstitial_enabled": true,
+      "ads_rewarded_enabled": true,
+      "ads_banner_enabled": false,
+      "ads_interstitial_max_per_session": 6,
+      "ads_rewarded_max_per_session": 6,
+      "ads_interstitial_min_interval_seconds": 120,
+      "ads_rewarded_min_interval_seconds": 45,
+      "ad_content_rating_max": "G",
+      "use_npa_for_kids": true,
+      "starter_offer_enabled": true,
+      "starter_offer_discount": 0.5,
+      "energy_recharge_rate": 300,
+      "max_energy": 30,
+      "max_lives": 5,
+      "match3_board_size": 8,
+      "level_difficulty_multiplier": 1.0,
+      "booster_effectiveness": 1.0,
+      "currency_reward_multiplier": 1.0
+    }
+  },
   "economy": {
     "currencies": [
       {
