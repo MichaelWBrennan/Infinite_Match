@@ -5,32 +5,36 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-mobile:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ android, ios ]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y jq curl
-      
-      - name: Trigger Cloud Build
-        run: ./unity-wrapper build webgl
+
+      - name: Trigger ${{ matrix.target }} Build
+        run: ./unity-wrapper trigger ${{ matrix.target }}
         env:
           UNITY_ORG_ID: ${{ secrets.UNITY_ORG_ID }}
           UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
           UNITY_API_TOKEN: ${{ secrets.UNITY_API_TOKEN }}
-      
-      - name: Get Build Status
-        run: ./unity-wrapper status webgl
+
+      - name: Wait and Check ${{ matrix.target }} Build Status
+        run: ./unity-wrapper status ${{ matrix.target }}
         env:
           UNITY_ORG_ID: ${{ secrets.UNITY_ORG_ID }}
           UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
           UNITY_API_TOKEN: ${{ secrets.UNITY_API_TOKEN }}
-      
-      - name: Download Build Artifacts
-        run: ./unity-wrapper download webgl
+
+      - name: Download ${{ matrix.target }} Build Artifacts
+        run: ./unity-wrapper download ${{ matrix.target }}
         env:
           UNITY_ORG_ID: ${{ secrets.UNITY_ORG_ID }}
           UNITY_PROJECT_ID: ${{ secrets.UNITY_PROJECT_ID }}
