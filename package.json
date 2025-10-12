@@ -104,7 +104,12 @@
     "unity:secrets": "node scripts/unity/fetch-unity-secrets.js",
     "unity:deploy-cloud-code": "node scripts/unity/deploy-cloud-code.js",
     "unity:deploy-economy": "python3 scripts/unity/deploy-economy-with-credentials.py",
-    "unity:deploy-all": "./unity-cli-working deploy-all"
+    "unity:deploy-all": "./unity-cli-working deploy-all",
+    "unity:cloud:build": "node src/unity-cloud-cli-simple.js build $UNITY_TARGET",
+    "unity:cloud:build:webgl": "node src/unity-cloud-cli-simple.js build webgl",
+    "unity:cloud:status": "node src/unity-cloud-cli-simple.js build-status $UNITY_TARGET",
+    "unity:cloud:download": "node src/unity-cloud-cli-simple.js build-download $UNITY_TARGET",
+    "unity:cloud:list": "node src/unity-cloud-cli-simple.js build-list"
   },
   "type": "module",
   "version": "1.0.0",
