@@ -12,6 +12,9 @@ namespace RemoteConfig
         public bool ads_enabled;
         public bool kid_safe_mode;
         public bool daily_bonus_enabled;
+        public bool ads_interstitial_enabled;
+        public bool ads_rewarded_enabled;
+        public bool ads_banner_enabled;
         public int energy_recharge_rate;
         public int max_energy;
         public int max_lives;
@@ -19,6 +22,14 @@ namespace RemoteConfig
         public float level_difficulty_multiplier;
         public float booster_effectiveness;
         public float currency_reward_multiplier;
+        public int ads_interstitial_max_per_session;
+        public int ads_rewarded_max_per_session;
+        public int ads_interstitial_min_interval_seconds;
+        public int ads_rewarded_min_interval_seconds;
+        public string ad_content_rating_max;
+        public bool use_npa_for_kids;
+        public bool starter_offer_enabled;
+        public float starter_offer_discount;
     }
 
     [System.Serializable]
@@ -109,15 +120,26 @@ namespace RemoteConfig
                 game_settings = new GameSettings
                 {
                     ads_enabled = true,
-                    kid_safe_mode = true,
+                    kid_safe_mode = false,
                     daily_bonus_enabled = true,
+                    ads_interstitial_enabled = true,
+                    ads_rewarded_enabled = true,
+                    ads_banner_enabled = false,
                     energy_recharge_rate = 300,
                     max_energy = 100,
                     max_lives = 5,
                     match3_board_size = 8,
                     level_difficulty_multiplier = 1.0f,
                     booster_effectiveness = 1.0f,
-                    currency_reward_multiplier = 1.0f
+                    currency_reward_multiplier = 1.0f,
+                    ads_interstitial_max_per_session = 6,
+                    ads_rewarded_max_per_session = 6,
+                    ads_interstitial_min_interval_seconds = 120,
+                    ads_rewarded_min_interval_seconds = 45,
+                    ad_content_rating_max = "G",
+                    use_npa_for_kids = true,
+                    starter_offer_enabled = true,
+                    starter_offer_discount = 0.5f
                 }
             };
             
@@ -151,6 +173,16 @@ namespace RemoteConfig
                         return config.game_settings.kid_safe_mode;
                     case "daily_bonus_enabled":
                         return config.game_settings.daily_bonus_enabled;
+                    case "ads_interstitial_enabled":
+                        return config.game_settings.ads_interstitial_enabled;
+                    case "ads_rewarded_enabled":
+                        return config.game_settings.ads_rewarded_enabled;
+                    case "ads_banner_enabled":
+                        return config.game_settings.ads_banner_enabled;
+                    case "use_npa_for_kids":
+                        return config.game_settings.use_npa_for_kids;
+                    case "starter_offer_enabled":
+                        return config.game_settings.starter_offer_enabled;
                     default:
                         return defaultValue;
                 }
@@ -172,6 +204,14 @@ namespace RemoteConfig
                         return config.game_settings.max_lives;
                     case "match3_board_size":
                         return config.game_settings.match3_board_size;
+                    case "ads_interstitial_max_per_session":
+                        return config.game_settings.ads_interstitial_max_per_session;
+                    case "ads_rewarded_max_per_session":
+                        return config.game_settings.ads_rewarded_max_per_session;
+                    case "ads_interstitial_min_interval_seconds":
+                        return config.game_settings.ads_interstitial_min_interval_seconds;
+                    case "ads_rewarded_min_interval_seconds":
+                        return config.game_settings.ads_rewarded_min_interval_seconds;
                     default:
                         return defaultValue;
                 }
@@ -191,6 +231,8 @@ namespace RemoteConfig
                         return config.game_settings.booster_effectiveness;
                     case "currency_reward_multiplier":
                         return config.game_settings.currency_reward_multiplier;
+                    case "starter_offer_discount":
+                        return config.game_settings.starter_offer_discount;
                     default:
                         return defaultValue;
                 }
@@ -200,7 +242,16 @@ namespace RemoteConfig
 
         public string GetString(string key, string defaultValue = "")
         {
-            // For future string configs
+            if (config?.game_settings != null)
+            {
+                switch (key.ToLower())
+                {
+                    case "ad_content_rating_max":
+                        return string.IsNullOrEmpty(config.game_settings.ad_content_rating_max) ? defaultValue : config.game_settings.ad_content_rating_max;
+                    default:
+                        return defaultValue;
+                }
+            }
             return defaultValue;
         }
 
@@ -224,6 +275,9 @@ namespace RemoteConfig
                 Debug.Log($"Ads Enabled: {config.game_settings.ads_enabled}");
                 Debug.Log($"Kid Safe Mode: {config.game_settings.kid_safe_mode}");
                 Debug.Log($"Daily Bonus Enabled: {config.game_settings.daily_bonus_enabled}");
+                Debug.Log($"Ads Interstitial Enabled: {config.game_settings.ads_interstitial_enabled}");
+                Debug.Log($"Ads Rewarded Enabled: {config.game_settings.ads_rewarded_enabled}");
+                Debug.Log($"Ads Banner Enabled: {config.game_settings.ads_banner_enabled}");
                 Debug.Log($"Energy Recharge Rate: {config.game_settings.energy_recharge_rate}");
                 Debug.Log($"Max Energy: {config.game_settings.max_energy}");
                 Debug.Log($"Max Lives: {config.game_settings.max_lives}");
@@ -231,6 +285,9 @@ namespace RemoteConfig
                 Debug.Log($"Level Difficulty Multiplier: {config.game_settings.level_difficulty_multiplier}");
                 Debug.Log($"Booster Effectiveness: {config.game_settings.booster_effectiveness}");
                 Debug.Log($"Currency Reward Multiplier: {config.game_settings.currency_reward_multiplier}");
+                Debug.Log($"Interstitial Cap/Interval: {config.game_settings.ads_interstitial_max_per_session}/{config.game_settings.ads_interstitial_min_interval_seconds}s");
+                Debug.Log($"Rewarded Cap/Interval: {config.game_settings.ads_rewarded_max_per_session}/{config.game_settings.ads_rewarded_min_interval_seconds}s");
+                Debug.Log($"Ad Content Rating Max: {config.game_settings.ad_content_rating_max}");
                 Debug.Log("===========================");
             }
         }

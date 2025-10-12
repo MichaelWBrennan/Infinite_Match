@@ -33,6 +33,10 @@ public class IAPManager : MonoBehaviour, IStoreListener
         builder.AddProduct("gems_large", ProductType.Consumable);
         builder.AddProduct("gems_huge", ProductType.Consumable);
         builder.AddProduct("vip_sub_monthly", ProductType.Subscription);
+        // High-value additions
+        builder.AddProduct("gems_ultra", ProductType.Consumable); // $49.99 tier
+        builder.AddProduct("gems_ultimate", ProductType.Consumable); // $99.99 tier
+        builder.AddProduct("vip_sub_annual", ProductType.Subscription); // Annual VIP
         InitializeGrants();
         UnityPurchasing.Initialize(this, builder);
     }
@@ -55,6 +59,9 @@ public class IAPManager : MonoBehaviour, IStoreListener
         _grants["gems_large"] = () => GameState.AddGems(300);
         _grants["gems_huge"] = () => GameState.AddGems(700);
         _grants["vip_sub_monthly"] = () => { /* VIP flags */ };
+        _grants["gems_ultra"] = () => GameState.AddGems(1600);
+        _grants["gems_ultimate"] = () => GameState.AddGems(3500);
+        _grants["vip_sub_annual"] = () => { /* VIP flags annual */ };
     }
 
     public void Purchase(string sku)

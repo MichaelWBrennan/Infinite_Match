@@ -13,28 +13,22 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
     [SerializeField] private string bannerPlacementId = "Banner_Android";
 
     private string _gameId;
+    private float _lastInterstitialTime;
+    private float _lastRewardedTime;
+    private int _interstitialShownThisSession;
+    private int _rewardedShownThisSession;
 
     void Awake()
     {
         DontDestroyOnLoad(gameObject);
         InitializeAds();
+        RemoteConfigManager.OnConfigUpdated += _ => ApplyAdMetadata();
     }
 
     public void InitializeAds()
     {
         _gameId = (Application.platform == RuntimePlatform.IPhonePlayer) ? iOSGameId : androidGameId;
-        // Enforce non-personalized ads for child safety and global compliance
-        try
-        {
-            var privacy = new MetaData("privacy");
-            privacy.Set("user.nonbehavioral", "true");
-            Advertisement.SetMetaData(privacy);
-
-            var gdpr = new MetaData("gdpr");
-            gdpr.Set("consent", "false");
-            Advertisement.SetMetaData(gdpr);
-        }
-        catch { /* best-effort metadata */ }
+        ApplyAdMetadata();
 
         if (!Advertisement.isInitialized && AreAdsEnabled())
         {
@@ -42,9 +36,37 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
         }
     }
 
+    private void ApplyAdMetadata()
+    {
+        try
+        {
+            bool kidSafe = RemoteConfigManager.Instance?.GetBool("kid_safe_mode", true) ?? true;
+            bool npa = kidSafe || (RemoteConfigManager.Instance?.GetBool("use_npa_for_kids", true) ?? true);
+
+            var privacy = new MetaData("privacy");
+            privacy.Set("user.nonbehavioral", npa ? "true" : "false");
+            Advertisement.SetMetaData(privacy);
+
+            var gdpr = new MetaData("gdpr");
+            gdpr.Set("consent", npa ? "false" : "false");
+            Advertisement.SetMetaData(gdpr);
+
+            var meta = new MetaData("meta");
+            meta.Set("ad_content_rating_max", RemoteConfigManager.Instance?.GetString("ad_content_rating_max", "G"));
+            Advertisement.SetMetaData(meta);
+        }
+        catch { }
+    }
+
     public void OnInitializationComplete()
     {
         if (!AreAdsEnabled()) return;
+        if (!RemoteConfigManager.Instance?.GetBool("ads_rewarded_enabled", true) ?? true) return;
+
+        int cap = RemoteConfigManager.Instance?.GetInt("ads_rewarded_max_per_session", 6) ?? 6;
+        int interval = RemoteConfigManager.Instance?.GetInt("ads_rewarded_min_interval_seconds", 45) ?? 45;
+        if (_rewardedShownThisSession >= cap) return;
+        if (Time.unscaledTime - _lastRewardedTime < interval) return;
         LoadInterstitial();
         LoadRewarded();
         LoadBanner();
@@ -69,7 +91,18 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
         }
     }
 
-    public void ShowInterstitial() { if (AreAdsEnabled()) Advertisement.Show(interstitialPlacementId, this); }
+    public void ShowInterstitial()
+    {
+        if (!AreAdsEnabled()) return;
+        if (!RemoteConfigManager.Instance?.GetBool("ads_interstitial_enabled", true) ?? true) return;
+
+        int cap = RemoteConfigManager.Instance?.GetInt("ads_interstitial_max_per_session", 6) ?? 6;
+        int interval = RemoteConfigManager.Instance?.GetInt("ads_interstitial_min_interval_seconds", 120) ?? 120;
+        if (_interstitialShownThisSession >= cap) return;
+        if (Time.unscaledTime - _lastInterstitialTime < interval) return;
+
+        Advertisement.Show(interstitialPlacementId, this);
+    }
 
     public void ShowBanner()
     {
@@ -98,6 +131,13 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
         if (placementId == rewardedPlacementId && showCompletionState == UnityAdsShowCompletionState.COMPLETED)
         {
             _onRewardedComplete?.Invoke();
+            _rewardedShownThisSession++;
+            _lastRewardedTime = Time.unscaledTime;
+        }
+        if (placementId == interstitialPlacementId)
+        {
+            _interstitialShownThisSession++;
+            _lastInterstitialTime = Time.unscaledTime;
         }
         LoadRewarded();
     }
