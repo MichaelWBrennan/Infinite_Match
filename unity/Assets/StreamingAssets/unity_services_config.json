@@ -18,6 +18,7 @@
       "use_npa_for_kids": true,
       "starter_offer_enabled": true,
       "starter_offer_discount": 0.5,
+      "interstitial_on_gameover_pct": 66,
       "energy_recharge_rate": 300,
       "max_energy": 30,
       "max_lives": 5,

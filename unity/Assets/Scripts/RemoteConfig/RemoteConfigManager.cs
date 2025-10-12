@@ -30,6 +30,7 @@ namespace RemoteConfig
         public bool use_npa_for_kids;
         public bool starter_offer_enabled;
         public float starter_offer_discount;
+        public int interstitial_on_gameover_pct;
     }
 
     [System.Serializable]
@@ -139,7 +140,8 @@ namespace RemoteConfig
                     ad_content_rating_max = "G",
                     use_npa_for_kids = true,
                     starter_offer_enabled = true,
-                    starter_offer_discount = 0.5f
+                    starter_offer_discount = 0.5f,
+                    interstitial_on_gameover_pct = 66
                 }
             };
             
@@ -212,6 +214,8 @@ namespace RemoteConfig
                         return config.game_settings.ads_interstitial_min_interval_seconds;
                     case "ads_rewarded_min_interval_seconds":
                         return config.game_settings.ads_rewarded_min_interval_seconds;
+                    case "interstitial_on_gameover_pct":
+                        return config.game_settings.interstitial_on_gameover_pct;
                     default:
                         return defaultValue;
                 }
@@ -288,6 +292,7 @@ namespace RemoteConfig
                 Debug.Log($"Interstitial Cap/Interval: {config.game_settings.ads_interstitial_max_per_session}/{config.game_settings.ads_interstitial_min_interval_seconds}s");
                 Debug.Log($"Rewarded Cap/Interval: {config.game_settings.ads_rewarded_max_per_session}/{config.game_settings.ads_rewarded_min_interval_seconds}s");
                 Debug.Log($"Ad Content Rating Max: {config.game_settings.ad_content_rating_max}");
+                Debug.Log($"Interstitial on Game Over %: {config.game_settings.interstitial_on_gameover_pct}");
                 Debug.Log("===========================");
             }
         }

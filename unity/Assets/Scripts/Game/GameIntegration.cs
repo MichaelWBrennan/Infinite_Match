@@ -6,6 +6,7 @@ using Evergreen.Collections;
 using Evergreen.Character;
 using Evergreen.UI;
 using Evergreen.Effects;
+using RemoteConfig;
 
 namespace Evergreen.Game
 {
@@ -179,6 +180,25 @@ namespace Evergreen.Game
         {
             // Update systems when a level is failed
             UpdateCharacterOnLevelFailed(level, score);
+
+            // Monetization: Show interstitial on level fail based on remote-config probability
+            try
+            {
+                var ads = FindObjectOfType<UnityAdsManager>();
+                if (ads != null)
+                {
+                    int pct = RemoteConfigManager.Instance?.GetInt("interstitial_on_gameover_pct", 0) ?? 0;
+                    if (pct > 0)
+                    {
+                        int roll = UnityEngine.Random.Range(0, 100);
+                        if (roll < pct)
+                        {
+                            ads.ShowInterstitial();
+                        }
+                    }
+                }
+            }
+            catch { }
         }
         
         public void OnMatchMade(int matchSize, bool isSpecial)
