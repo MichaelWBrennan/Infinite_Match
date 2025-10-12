@@ -7,6 +7,12 @@
 
 import UnityGamingServicesHeadlessIntegration from './unity-cloud-headless-integration.js';
 import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class UnityGamingServicesCLISimple {
     constructor() {
@@ -19,9 +25,61 @@ class UnityGamingServicesCLISimple {
             'cloud-code': this.cloudCodeCommand.bind(this),
             'remote-config': this.remoteConfigCommand.bind(this),
             'analytics': this.analyticsCommand.bind(this),
+      // Cloud-only build commands (proxy to unity-wrapper)
+      'build': this.buildCommand.bind(this),
+      'build-status': this.buildStatusCommand.bind(this),
+      'build-download': this.buildDownloadCommand.bind(this),
+      'build-list': this.buildListCommand.bind(this),
             'help': this.helpCommand.bind(this)
         };
     }
+
+  async runWrapper(args) {
+    const wrapperPath = path.resolve(__dirname, '..', 'unity-wrapper');
+    return new Promise((resolve, reject) => {
+      const child = spawn(wrapperPath, args, {
+        stdio: 'inherit',
+        env: process.env,
+      });
+      child.on('exit', (code) => {
+        if (code === 0) return resolve();
+        reject(new Error(`unity-wrapper exited with code ${code}`));
+      });
+      child.on('error', (err) => reject(err));
+    });
+  }
+
+  async buildCommand(args = []) {
+    const target = args[0] || process.env.UNITY_TARGET;
+    if (!target) {
+      console.error('❌ Build target required. Usage: build <target>');
+      process.exit(1);
+    }
+    console.log(`🚀 Triggering Unity Cloud Build for target: ${target}`);
+    await this.runWrapper(['build', target]);
+  }
+
+  async buildStatusCommand(args = []) {
+    const target = args[0] || process.env.UNITY_TARGET;
+    if (!target) {
+      console.error('❌ Build target required. Usage: build-status <target>');
+      process.exit(1);
+    }
+    await this.runWrapper(['status', target]);
+  }
+
+  async buildDownloadCommand(args = []) {
+    const target = args[0] || process.env.UNITY_TARGET;
+    if (!target) {
+      console.error('❌ Build target required. Usage: build-download <target>');
+      process.exit(1);
+    }
+    await this.runWrapper(['download', target]);
+  }
+
+  async buildListCommand(args = []) { // eslint-disable-line @typescript-eslint/no-unused-vars
+    await this.runWrapper(['list']);
+  }
 
     async deployCommand(args = []) {
         console.log('🚀 Starting Unity Cloud deployment...');
