@@ -23,12 +23,15 @@ import {
   errorHandler,
 } from 'core/middleware/index.js';
 import { HTTP_STATUS, CACHE_KEYS, PROMO_CODES, PROMO_REWARDS } from 'core/constants/index.js';
+import OffersService from 'services/offers/OffersService.js';
+import ReceiptVerificationService from 'services/payments/ReceiptVerificationService.js';
 
 // Routes
 import authRoutes from 'routes/auth.js';
 import economyRoutes from 'routes/economy.js';
 import gameRoutes from 'routes/game.js';
 import adminRoutes from 'routes/admin.js';
+import monetizationRoutes from 'routes/monetization.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -39,6 +42,7 @@ registerServices();
 // Initialize services
 const unityService = getService('unityService');
 const economyService = getService('economyService');
+const offersService = new OffersService();
 
 // Middleware stack
 app.use(security.helmetConfig);
@@ -178,24 +182,37 @@ app.use('/api/auth', authRoutes);
 app.use('/api/economy', economyRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/monetization', monetizationRoutes);
 
 // Receipt verification endpoint
 app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {
-  const { sku, receipt } = req.body;
+  const { platform, payload } = req.body;
 
-  if (!sku || !receipt) {
+  if (!platform || !payload) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({
-      valid: false,
-      error: 'Missing required fields: sku, receipt',
+      success: false,
+      error: 'Missing required fields: platform, payload',
     });
   }
 
-  // TODO: Implement actual receipt verification with Apple/Google
-  const isValid = String(receipt).length > 20;
+  const result = await ReceiptVerificationService.verify({ platform, payload });
+
+  if (!result.success) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      platform,
+      error: 'verification_failed',
+      details: result.reason || result.status || result.state || 'invalid',
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   res.json({
-    valid: isValid,
-    sku,
+    success: true,
+    platform,
+    productId: result.productId,
+    transactionId: result.transactionId,
+    duplicate: Boolean(result.duplicate),
     timestamp: new Date().toISOString(),
   });
 }));
@@ -248,6 +265,13 @@ app.post('/api/segments', security.sessionValidation, asyncHandler(async (req, r
   economyService.setCachedData(cacheKey, result);
 
   res.json(result);
+}));
+
+// Event-driven offers endpoint
+app.post('/api/offers', security.sessionValidation, asyncHandler(async (req, res) => {
+  const profile = req.body || {};
+  const offers = offersService.getOffers(profile);
+  res.json({ success: true, offers });
 }));
 
 // Promo codes endpoint

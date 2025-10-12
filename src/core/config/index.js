@@ -85,6 +85,20 @@ export const AppConfig = {
     maxSize: parseInt(process.env.CACHE_MAX_SIZE) || 1000,
   },
 
+  // Payments / Monetization configuration
+  payments: {
+    apple: {
+      sharedSecret: process.env.APPLE_SHARED_SECRET || '',
+    },
+    google: {
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || '',
+    },
+    pricing: {
+      defaultCurrency: process.env.DEFAULT_CURRENCY || 'USD',
+      countryOverridesPath: process.env.PRICING_OVERRIDES_PATH || '',
+    },
+  },
+
   // File Paths
   paths: {
     root: join(__dirname, '..'),
