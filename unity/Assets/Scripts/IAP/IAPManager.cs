@@ -43,7 +43,7 @@ public class IAPManager : MonoBehaviour, IStoreListener
 
     private void InitializeGrants()
     {
-        _grants["remove_ads"] = () => { /* set flag */ };
+        _grants["remove_ads"] = () => { PlayerPrefs.SetInt("ads_removed", 1); PlayerPrefs.Save(); };
         _grants["starter_pack_small"] = () => GameState.AddCoins(500);
         _grants["starter_pack_large"] = () => GameState.AddCoins(5000);
         _grants["coins_small"] = () => GameState.AddCoins(500);

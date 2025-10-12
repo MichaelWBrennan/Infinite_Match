@@ -877,7 +877,8 @@ namespace Evergreen.Subscription
                     // Add gems
                     break;
                 case BenefitType.AdFree:
-                    // Disable ads
+                    PlayerPrefs.SetInt("ads_removed", 1);
+                    PlayerPrefs.Save();
                     break;
                 case BenefitType.Exclusive:
                     // Unlock exclusive content

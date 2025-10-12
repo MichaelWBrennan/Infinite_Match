@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Advertisements;
 using RemoteConfig;
+using Evergreen.Game;
 
 public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, IUnityAdsLoadListener, IUnityAdsShowListener
 {
@@ -33,6 +34,7 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
         if (!Advertisement.isInitialized && AreAdsEnabled())
         {
             Advertisement.Initialize(_gameId, testMode, this);
+            AnalyticsAdapter.CustomEvent("ads_init", new System.Collections.Generic.Dictionary<string, object>{{"testMode", testMode}});
         }
     }
 
@@ -112,10 +114,13 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
     public void HideBanner() { if (Advertisement.isInitialized) Advertisement.Banner.Hide(); }
 
     // IUnityAdsLoadListener
-    public void OnUnityAdsAdLoaded(string placementId) { }
+    public void OnUnityAdsAdLoaded(string placementId) {
+        AnalyticsAdapter.CustomEvent("ad_loaded", new System.Collections.Generic.Dictionary<string, object>{{"placementId", placementId}});
+    }
     public void OnUnityAdsFailedToLoad(string placementId, UnityAdsLoadError error, string message)
     {
         Debug.LogWarning($"Load failed {placementId}: {error} {message}");
+        AnalyticsAdapter.CustomEvent("ad_load_failed", new System.Collections.Generic.Dictionary<string, object>{{"placementId", placementId},{"error", error.ToString()}});
     }
 
     private Action _onRewardedComplete;
@@ -128,11 +133,13 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
             _onRewardedComplete?.Invoke();
             _rewardedShownThisSession++;
             _lastRewardedTime = Time.unscaledTime;
+            AnalyticsAdapter.CustomEvent("ad_rewarded_complete", new System.Collections.Generic.Dictionary<string, object>{{"placementId", placementId}});
         }
         if (placementId == interstitialPlacementId)
         {
             _interstitialShownThisSession++;
             _lastInterstitialTime = Time.unscaledTime;
+            AnalyticsAdapter.CustomEvent("ad_interstitial_shown", new System.Collections.Generic.Dictionary<string, object>{{"placementId", placementId}});
         }
         LoadRewarded();
     }
@@ -140,16 +147,23 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
     public void OnUnityAdsShowFailure(string placementId, UnityAdsShowError error, string message)
     {
         Debug.LogWarning($"Show failed {placementId}: {error} {message}");
+        AnalyticsAdapter.CustomEvent("ad_show_failed", new System.Collections.Generic.Dictionary<string, object>{{"placementId", placementId},{"error", error.ToString()}});
     }
 
-    public void OnUnityAdsShowStart(string placementId) { }
-    public void OnUnityAdsShowClick(string placementId) { }
+    public void OnUnityAdsShowStart(string placementId) {
+        AnalyticsAdapter.CustomEvent("ad_show_start", new System.Collections.Generic.Dictionary<string, object>{{"placementId", placementId}});
+    }
+    public void OnUnityAdsShowClick(string placementId) {
+        AnalyticsAdapter.CustomEvent("ad_click", new System.Collections.Generic.Dictionary<string, object>{{"placementId", placementId}});
+    }
 
     private bool AreAdsEnabled()
     {
         // Disable ads entirely when kid_safe_mode is enabled
         if (RemoteConfigManager.Instance?.GetBool("kid_safe_mode", true) == true)
             return false;
+        // Respect ad removal purchases / subscription benefit
+        if (PlayerPrefs.GetInt("ads_removed", 0) == 1) return false;
         // Default to true unless explicitly disabled via Remote Config
         return RemoteConfigManager.Instance?.GetBool("ads_enabled", true) ?? true;
     }
