@@ -1,0 +1,3 @@
+{
+  "receipt_validation_url": "http://localhost:3030/api/verify_receipt"
+}

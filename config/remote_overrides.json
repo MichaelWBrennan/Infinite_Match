@@ -6,11 +6,11 @@
   "dda_max_soften_steps": 3,
   "dda_moves_bonus_per_step": 3,
   "dda_reduce_colors_per_step": 0,
-  "enable_receipt_validation": 0,
+  "enable_receipt_validation": 1,
   "interstitial_on_gameover_pct": 66,
   "most_popular_sku": "gems_medium",
   "pity_prelevel_booster_chance_pct": 30,
-  "receipt_validation_url": "",
+  "receipt_validation_url": "http://localhost:3030/api/verify_receipt",
   "rv_prelevel_booster_enabled": 1,
   "store_review_url": "https://example.com/store"
 }

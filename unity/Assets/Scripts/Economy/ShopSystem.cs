@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Evergreen.Core;
+using RemoteConfig;
 
 namespace Evergreen.Economy
 {
@@ -858,8 +859,27 @@ namespace Evergreen.Economy
         
         private void UpdateDynamicPricing()
         {
-            // This would implement dynamic pricing based on player behavior, demand, etc.
-            // For now, it's a placeholder
+            // Apply starter offer discount and availability from Remote Config
+            try
+            {
+                var rc = RemoteConfigManager.Instance;
+                if (rc != null && _shopItems.ContainsKey("starter_pack_99"))
+                {
+                    var starterEnabled = rc.GetBool("starter_offer_enabled", true);
+                    var starterDiscount = rc.GetFloat("starter_offer_discount", 0.5f);
+                    var starterItem = _shopItems["starter_pack_99"];
+                    starterItem.isAvailable = starterEnabled;
+                    foreach (var cost in starterItem.costs)
+                    {
+                        cost.isDiscounted = starterDiscount > 0f;
+                        cost.discountPercentage = Mathf.Clamp(starterDiscount * 100f, 0f, 95f);
+                        cost.originalAmount = Mathf.Max(cost.originalAmount, cost.amount);
+                        cost.amount = Mathf.RoundToInt(cost.originalAmount * (1f - starterDiscount));
+                        if (cost.amount < 1) cost.amount = 1;
+                    }
+                }
+            }
+            catch { }
         }
         
         private void SaveShopData()
