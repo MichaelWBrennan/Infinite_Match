@@ -36,6 +36,13 @@ public class Bootstrap : MonoBehaviour
         
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        // Ensure camera background is opaque for visibility
+        if (Camera.main != null)
+        {
+            var c = Camera.main.backgroundColor;
+            Camera.main.backgroundColor = new Color(c.r, c.g, c.b, 1f);
+            Camera.main.clearFlags = CameraClearFlags.SolidColor;
+        }
         
         // Initialize the game using the new GameManager
         InitializeGame();
@@ -94,6 +101,21 @@ public class Bootstrap : MonoBehaviour
 
     private void EnsureManagers()
     {
+        // Ensure EventSystem and Canvas exist for UI
+        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        {
+            var es = new GameObject("EventSystem");
+            es.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+        }
+        if (FindObjectOfType<Canvas>() == null)
+        {
+            var canvasGo = new GameObject("Canvas");
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasGo.AddComponent<UnityEngine.UI.CanvasScaler>();
+            canvasGo.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+        }
         if (FindObjectOfType<UnityAdsManager>() == null)
         {
             var go = new GameObject("UnityAdsManager");
