@@ -2,6 +2,7 @@ import express from 'express';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { Logger } from 'core/logger/index.js';
+import { requireEntitlement } from '../middleware/entitlements.js';
 
 const router = express.Router();
 const logger = new Logger('BattlePassRoutes');
@@ -17,6 +18,11 @@ router.get('/config', async (req, res) => {
     logger.error('Failed to load battle pass config', { error: error.message });
     res.status(500).json({ success: false, error: 'config_error' });
   }
+});
+
+router.post('/premium/reward', requireEntitlement('season_pass_premium'), async (req, res) => {
+  // In production, grant the specific premium reward for a tier
+  res.json({ success: true });
 });
 
 export default router;
