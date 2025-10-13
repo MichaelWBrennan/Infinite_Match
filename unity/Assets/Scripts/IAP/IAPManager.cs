@@ -100,7 +100,7 @@ public class IAPManager : MonoBehaviour, IStoreListener
 
     private System.Collections.IEnumerator VerifyAndGrant(string sku, string receipt)
     {
-        var url = Evergreen.Game.RemoteConfigService.Get("receipt_validation_url", "http://localhost:3030/verify_receipt");
+        var url = Evergreen.Game.RemoteConfigService.Get("receipt_validation_url", "http://localhost:3030/api/verify_receipt");
         var body = new System.Collections.Generic.Dictionary<string, object>{
             {"sku", sku}, {"receipt", receipt}, {"platform", Application.platform.ToString()}, {"locale", Application.systemLanguage.ToString()}, {"version", Application.version}
         };
@@ -112,8 +112,23 @@ public class IAPManager : MonoBehaviour, IStoreListener
             req.downloadHandler = new DownloadHandlerBuffer();
             req.SetRequestHeader("Content-Type", "application/json");
             yield return req.SendWebRequest();
-            var ok = req.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
-            if (ok && req.downloadHandler.text.Contains("valid"))
+            var isHttpOk = req.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
+            bool isVerified = false;
+            if (isHttpOk)
+            {
+                try
+                {
+                    var resp = Evergreen.Game.MiniJSON.Json.Deserialize(req.downloadHandler.text) as System.Collections.Generic.Dictionary<string, object>;
+                    if (resp != null)
+                    {
+                        if (resp.ContainsKey("success") && resp["success"] is bool b1 && b1) isVerified = true;
+                        if (resp.ContainsKey("valid") && resp["valid"] is bool b2 && b2) isVerified = true;
+                    }
+                }
+                catch { }
+            }
+
+            if (isHttpOk && isVerified)
             {
                 if (_grants.TryGetValue(sku, out var grant)) grant.Invoke();
                 Evergreen.Game.AnalyticsAdapter.CustomEvent("purchase", sku);

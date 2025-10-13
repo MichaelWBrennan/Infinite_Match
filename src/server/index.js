@@ -32,6 +32,7 @@ import economyRoutes from 'routes/economy.js';
 import gameRoutes from 'routes/game.js';
 import adminRoutes from 'routes/admin.js';
 import monetizationRoutes from 'routes/monetization.js';
+import analyticsRoutes from 'routes/analytics.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -183,10 +184,68 @@ app.use('/api/economy', economyRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/monetization', monetizationRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Receipt verification endpoint
 app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {
-  const { platform, payload } = req.body;
+  // Backward-compatible handler. Supports two shapes:
+  // 1) { platform: 'ios'|'android', payload: {...} }
+  // 2) { sku, receipt, platform: 'IPhonePlayer'|'Android' }
+
+  let { platform, payload, sku, receipt } = req.body || {};
+
+  const normalizePlatform = (p) => {
+    if (!p) return undefined;
+    const v = String(p).toLowerCase();
+    if (v.includes('iphone') || v.includes('ios')) return 'ios';
+    if (v.includes('android')) return 'android';
+    return p;
+  };
+
+  const tryParseUnityReceipt = (receiptString, platformHint) => {
+    try {
+      const parsed = JSON.parse(receiptString);
+      // Unity IAP often wraps payload under `Payload`
+      if (platformHint === 'ios') {
+        const base64 = parsed?.Payload || parsed?.payload || parsed?.receipt;
+        if (base64) return { platform: 'ios', payload: { receiptData: base64 } };
+      }
+      if (platformHint === 'android') {
+        const payloadStr = parsed?.Payload || parsed?.payload || '';
+        if (payloadStr) {
+          try {
+            const inner = JSON.parse(payloadStr);
+            const jsonStr = inner?.json || payloadStr;
+            const purchase = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : inner;
+            return {
+              platform: 'android',
+              payload: {
+                packageName: purchase.packageName || purchase.package_name,
+                productId: purchase.productId || purchase.product_id || sku,
+                purchaseToken: purchase.purchaseToken || purchase.purchase_token,
+              },
+            };
+          } catch (_) { /* ignore */ }
+        }
+      }
+    } catch (_) {
+      // If not JSON, could be raw base64 (iOS)
+      if (platformHint === 'ios' && typeof receiptString === 'string' && receiptString.length > 20) {
+        return { platform: 'ios', payload: { receiptData: receiptString } };
+      }
+    }
+    return undefined;
+  };
+
+  platform = normalizePlatform(platform);
+
+  if (!payload && receipt) {
+    const inferred = tryParseUnityReceipt(receipt, platform);
+    if (inferred) {
+      platform = inferred.platform;
+      payload = inferred.payload;
+    }
+  }
 
   if (!platform || !payload) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -210,8 +269,8 @@ app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req,
   res.json({
     success: true,
     platform,
-    productId: result.productId,
-    transactionId: result.transactionId,
+    productId: result.productId || sku || null,
+    transactionId: result.transactionId || null,
     duplicate: Boolean(result.duplicate),
     timestamp: new Date().toISOString(),
   });

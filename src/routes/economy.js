@@ -7,7 +7,6 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import security from 'core/security/index.js';
 import { Logger } from 'core/logger/index.js';
-import { body, validationResult } from 'express-validator';
 import PricingService from 'services/pricing/PricingService.js';
 import EconomyService from 'services/economy/index.js';
 import UnityService from 'services/unity/index.js';
