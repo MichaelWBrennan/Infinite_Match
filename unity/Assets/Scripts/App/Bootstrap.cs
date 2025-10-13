@@ -1,9 +1,30 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Evergreen.Core;
 
 public class Bootstrap : MonoBehaviour
 {
     private static Bootstrap _instance;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void EnsureBootstrapExists()
+    {
+        // If scene reference is missing or not placed, create one at runtime
+        if (FindObjectOfType<Bootstrap>() == null)
+        {
+            var go = new GameObject("Bootstrap");
+            go.AddComponent<Bootstrap>();
+            // Ensure there is at least a main camera
+            if (Camera.main == null)
+            {
+                var camGo = new GameObject("Main Camera");
+                var cam = camGo.AddComponent<Camera>();
+                cam.tag = "MainCamera";
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                var c = cam.backgroundColor; cam.backgroundColor = new Color(c.r, c.g, c.b, 1f);
+            }
+        }
+    }
 
     void Awake()
     {
@@ -36,6 +57,12 @@ public class Bootstrap : MonoBehaviour
             gameManager.InitializeGame();
             
             Debug.Log("Game initialization completed successfully");
+
+            // If no UI is present, try loading MainMenu scene
+            if (FindObjectOfType<Canvas>() == null)
+            {
+                TryLoadMainMenu();
+            }
         }
         catch (System.Exception e)
         {
@@ -58,7 +85,11 @@ public class Bootstrap : MonoBehaviour
         EnsureManagers();
         
         // Show main menu
-        MainMenuUI.Show();
+        if (!TryLoadMainMenu())
+        {
+            // As an ultimate fallback, try to show the legacy UI if present
+            MainMenuUI.Show();
+        }
     }
 
     private void EnsureManagers()
@@ -93,5 +124,21 @@ public class Bootstrap : MonoBehaviour
             var go = new GameObject("TeamGifting");
             go.AddComponent<Evergreen.Social.TeamGifting>();
         }
+    }
+
+    private bool TryLoadMainMenu()
+    {
+        // Load MainMenu scene if it exists in the project
+        try
+        {
+            var mainMenu = "MainMenu";
+            if (Application.CanStreamedLevelBeLoaded(mainMenu))
+            {
+                SceneManager.LoadScene(mainMenu);
+                return true;
+            }
+        }
+        catch {}
+        return false;
     }
 }
