@@ -131,6 +131,33 @@ export class ReceiptVerificationService {
         return { success: false, platform: 'android', state: data.purchaseState, raw: data };
       }
       const transactionId = this.buildAndroidTransactionId({ productId, purchaseToken });
+      // Try to acknowledge if not already acknowledged
+      let acknowledged = Boolean(data.acknowledged);
+      if (!acknowledged) {
+        try {
+          const ackUrl = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(
+            packageName
+          )}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(
+            purchaseToken
+          )}:acknowledge`;
+          const ackRes = await fetch(ackUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken.token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ developerPayload: productId }),
+          });
+          if (ackRes.ok) {
+            acknowledged = true;
+          } else {
+            const txt = await ackRes.text();
+            logger.warn('Android acknowledge failed', { status: ackRes.status, body: txt });
+          }
+        } catch (ackError) {
+          logger.warn('Android acknowledge error', { error: ackError.message });
+        }
+      }
       if (transactionId && dedupCache.has(transactionId)) {
         return { success: true, platform: 'android', duplicate: true, productId, transactionId };
       }
@@ -140,7 +167,7 @@ export class ReceiptVerificationService {
         platform: 'android',
         productId,
         transactionId,
-        acknowledged: Boolean(data.acknowledged),
+        acknowledged,
         raw: data,
       };
     } catch (error) {

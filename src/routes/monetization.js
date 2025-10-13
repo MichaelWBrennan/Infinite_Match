@@ -6,6 +6,7 @@ import ReceiptVerificationService from 'services/payments/ReceiptVerificationSer
 import PricingService from 'services/pricing/PricingService.js';
 import AdConfigService from 'services/ad/AdConfigService.js';
 import OffersService from 'services/offers/OffersService.js';
+import { Logger as BaseLogger } from 'core/logger/index.js';
 
 const router = express.Router();
 const logger = new Logger('MonetizationRoutes');

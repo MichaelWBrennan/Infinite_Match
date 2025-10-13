@@ -33,6 +33,7 @@ import gameRoutes from 'routes/game.js';
 import adminRoutes from 'routes/admin.js';
 import monetizationRoutes from 'routes/monetization.js';
 import analyticsRoutes from 'routes/analytics.js';
+import crmRoutes from 'routes/crm.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -185,6 +186,7 @@ app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/monetization', monetizationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/crm', crmRoutes);
 
 // Receipt verification endpoint
 app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {
