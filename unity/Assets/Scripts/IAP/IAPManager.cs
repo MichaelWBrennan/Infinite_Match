@@ -18,6 +18,7 @@ public class IAPManager : MonoBehaviour, IStoreListener
         var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
         // Add products - mirror your SKUs
         builder.AddProduct("remove_ads", ProductType.NonConsumable);
+        builder.AddProduct("piggy_bank_unlock", ProductType.Consumable);
         builder.AddProduct("starter_pack_small", ProductType.Consumable);
         builder.AddProduct("starter_pack_large", ProductType.Consumable);
         builder.AddProduct("coins_small", ProductType.Consumable);
@@ -44,6 +45,7 @@ public class IAPManager : MonoBehaviour, IStoreListener
     private void InitializeGrants()
     {
         _grants["remove_ads"] = () => { PlayerPrefs.SetInt("ads_removed", 1); PlayerPrefs.Save(); };
+        _grants["piggy_bank_unlock"] = () => Evergreen.Monetization.PiggyBankSystem.Instance?.Cashout();
         _grants["starter_pack_small"] = () => GameState.AddCoins(500);
         _grants["starter_pack_large"] = () => GameState.AddCoins(5000);
         _grants["coins_small"] = () => GameState.AddCoins(500);

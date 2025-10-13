@@ -1,0 +1,19 @@
+{
+  "season": 1,
+  "name": "Royal Puzzles Season",
+  "start": "2025-10-01T00:00:00Z",
+  "end": "2025-10-31T23:59:59Z",
+  "tiers": [
+    { "level": 1,  "xp": 0,   "free": { "coins": 100 }, "premium": { "gems": 10 } },
+    { "level": 2,  "xp": 100, "free": { "booster": "extra_moves", "amount": 1 }, "premium": { "coins": 500 } },
+    { "level": 3,  "xp": 250, "free": { "coins": 200 }, "premium": { "gems": 20 } },
+    { "level": 4,  "xp": 450, "free": { "coins": 300 }, "premium": { "booster": "color_bomb", "amount": 1 } },
+    { "level": 5,  "xp": 700, "free": { "coins": 500 }, "premium": { "gems": 30 } }
+  ],
+  "premiumSku": "season_pass_premium",
+  "xpEvents": {
+    "level_complete": 50,
+    "daily_login": 10,
+    "challenge_complete": 100
+  }
+}
