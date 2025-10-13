@@ -25,6 +25,7 @@ import {
 import { HTTP_STATUS, CACHE_KEYS, PROMO_CODES, PROMO_REWARDS } from 'core/constants/index.js';
 import OffersService from 'services/offers/OffersService.js';
 import ReceiptVerificationService from 'services/payments/ReceiptVerificationService.js';
+import PurchaseLedger from 'services/payments/PurchaseLedger.js';
 
 // Routes
 import authRoutes from 'routes/auth.js';
@@ -35,6 +36,9 @@ import monetizationRoutes from 'routes/monetization.js';
 import analyticsRoutes from 'routes/analytics.js';
 import crmRoutes from 'routes/crm.js';
 import battlepassRoutes from 'routes/battlepass.js';
+import subscriptionsRoutes from 'routes/subscriptions.js';
+import experimentsRoutes from 'routes/experiments.js';
+import pushRoutes from 'routes/push.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -189,6 +193,9 @@ app.use('/api/monetization', monetizationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/crm', crmRoutes);
 app.use('/api/battlepass', battlepassRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/experiments', experimentsRoutes);
+app.use('/api/push', pushRoutes);
 
 // Receipt verification endpoint
 app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {
@@ -278,6 +285,15 @@ app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req,
     duplicate: Boolean(result.duplicate),
     timestamp: new Date().toISOString(),
   });
+  try {
+    await PurchaseLedger.recordPurchase({
+      platform,
+      productId: result.productId || sku || null,
+      transactionId: result.transactionId || null,
+      acknowledged: result.acknowledged,
+      playerId: req.user?.playerId,
+    });
+  } catch (_) {}
 }));
 
 // Segments endpoint

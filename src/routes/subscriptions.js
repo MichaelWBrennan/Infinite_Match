@@ -1,0 +1,34 @@
+import express from 'express';
+import { Logger } from 'core/logger/index.js';
+import PurchaseLedger from 'services/payments/PurchaseLedger.js';
+
+const router = express.Router();
+const logger = new Logger('SubscriptionsRoutes');
+
+// Apple Server-to-Server Notifications (legacy V1 and V2 JSON supported loosely)
+router.post('/apple', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const eventType = body.notification_type || body.notificationType || body.signedPayload?.eventType || 'unknown';
+    await PurchaseLedger.recordSubscriptionEvent({ provider: 'apple', eventType, raw: body });
+    res.json({ ok: true });
+  } catch (error) {
+    logger.error('Apple subscription webhook error', { error: error.message });
+    res.status(500).json({ ok: false });
+  }
+});
+
+// Google Real-time Developer Notifications (RTDN)
+router.post('/google', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const message = body.message || {};
+    await PurchaseLedger.recordSubscriptionEvent({ provider: 'google', eventType: 'rtdn', raw: body, message });
+    res.json({ ok: true });
+  } catch (error) {
+    logger.error('Google subscription webhook error', { error: error.message });
+    res.status(500).json({ ok: false });
+  }
+});
+
+export default router;
