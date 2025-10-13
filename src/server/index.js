@@ -42,6 +42,7 @@ import experimentsRoutes from 'routes/experiments.js';
 import pushRoutes from 'routes/push.js';
 import entitlementsRoutes from 'routes/entitlements.js';
 import consentRoutes from 'routes/consent.js';
+import adsRoutes from 'routes/ads.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -201,6 +202,7 @@ app.use('/api/experiments', experimentsRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/entitlements', entitlementsRoutes);
 app.use('/api/consent', consentRoutes);
+app.use('/api/ads', adsRoutes);
 
 // Receipt verification endpoint
 app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {
