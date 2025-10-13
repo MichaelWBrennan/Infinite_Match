@@ -1,5 +1,6 @@
 import express from 'express';
 import { Logger } from 'core/logger/index.js';
+import DeviceTokenDb from 'services/push/DeviceTokenDb.js';
 
 let admin = null;
 try {
@@ -19,11 +20,10 @@ const logger = new Logger('PushRoutes');
 
 router.post('/register', async (req, res) => {
   try {
-    const { userId, token } = req.body || {};
+    const { userId, token, platform, locale } = req.body || {};
     if (!userId || !token) return res.status(400).json({ success: false, error: 'userId, token required' });
-    // Store token in-memory JSONL (could be DB-backed)
-    await (await import('fs')).promises.appendFile('monitoring/reports/device_tokens.jsonl', JSON.stringify({ userId, token, ts: Date.now() }) + '\n');
-    res.json({ success: true });
+    await DeviceTokenDb.upsert({ userId, token, platform, locale });
+    res.json({ success: true, stored: true });
   } catch (error) {
     logger.error('Token register error', { error: error.message });
     res.status(500).json({ success: false });

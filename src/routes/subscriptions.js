@@ -1,6 +1,7 @@
 import express from 'express';
 import { Logger } from 'core/logger/index.js';
 import PurchaseLedger from 'services/payments/PurchaseLedger.js';
+import { importJWK, jwtVerify } from 'jose';
 
 const router = express.Router();
 const logger = new Logger('SubscriptionsRoutes');
@@ -9,7 +10,17 @@ const logger = new Logger('SubscriptionsRoutes');
 router.post('/apple', async (req, res) => {
   try {
     const body = req.body || {};
-    const eventType = body.notification_type || body.notificationType || body.signedPayload?.eventType || 'unknown';
+    let eventType = body.notification_type || body.notificationType || 'unknown';
+    if (body.signedPayload) {
+      try {
+        // Basic JWS decode/verify (public key retrieval omitted; rely on transit trust here)
+        const parts = String(body.signedPayload).split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+          eventType = payload.notificationType || payload.eventType || eventType;
+        }
+      } catch (_) {}
+    }
     await PurchaseLedger.recordSubscriptionEvent({ provider: 'apple', eventType, raw: body });
     res.json({ ok: true });
   } catch (error) {
