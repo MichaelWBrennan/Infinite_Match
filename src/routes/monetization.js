@@ -7,6 +7,7 @@ import PricingService from 'services/pricing/PricingService.js';
 import AdConfigService from 'services/ad/AdConfigService.js';
 import OffersService from 'services/offers/OffersService.js';
 import { Logger as BaseLogger } from 'core/logger/index.js';
+import PurchaseLedgerDb from 'services/payments/PurchaseLedgerDb.js';
 
 const router = express.Router();
 const logger = new Logger('MonetizationRoutes');
@@ -48,6 +49,15 @@ router.get(
     try {
       const profile = req.user || {};
       const config = await adConfigService.getAdConfigForPlayer(profile);
+      // Entitlement enforcement: disable ads if user owns remove_ads
+      if (req.user?.playerId) {
+        const hasRemoveAds = await PurchaseLedgerDb.hasPurchase(req.user.playerId, 'remove_ads');
+        if (hasRemoveAds) {
+          config.enabled = false;
+          config.rewarded.enabled = false;
+          config.interstitial.enabled = false;
+        }
+      }
       res.json({ success: true, config });
     } catch (error) {
       logger.error('Ad config retrieval failed', { error: error.message });

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Advertisements;
 using RemoteConfig;
+using Evergreen.Privacy;
 using Evergreen.Game;
 
 public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, IUnityAdsLoadListener, IUnityAdsShowListener
@@ -162,6 +163,8 @@ public class UnityAdsManager : MonoBehaviour, IUnityAdsInitializationListener, I
         // Disable ads entirely when kid_safe_mode is enabled
         if (RemoteConfigManager.Instance?.GetBool("kid_safe_mode", true) == true)
             return false;
+        // Respect user consent
+        if (!ConsentManager.AdsAllowed()) return false;
         // Respect ad removal purchases / subscription benefit
         if (PlayerPrefs.GetInt("ads_removed", 0) == 1) return false;
         // Default to true unless explicitly disabled via Remote Config
