@@ -125,4 +125,21 @@ router.get('/arpu', security.sessionValidation, async (req, res) => {
   }
 });
 
+router.get('/metrics', security.sessionValidation, async (req, res) => {
+  try {
+    const days = Math.max(1, Math.min(365, parseInt(req.query.days) || 30));
+    const activeUsers = req.query.activeUsers ? parseInt(req.query.activeUsers) : null;
+
+    const { revenue, payers } = await PurchaseLedgerDb.revenueSince?.(days) || { revenue: 0, payers: 0 };
+    const arppu = payers > 0 ? revenue / payers : 0;
+    const arpu = activeUsers ? revenue / activeUsers : null;
+    const payerRate = activeUsers ? (payers / activeUsers) : null;
+
+    res.json({ success: true, days, revenue, payers, arppu, arpu, payerRate, activeUsers });
+  } catch (error) {
+    logger.error('Failed to compute metrics', { error: error.message });
+    res.status(500).json({ success: false, error: 'metrics_error' });
+  }
+});
+
 export default router;
