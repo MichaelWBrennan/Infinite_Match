@@ -17,6 +17,19 @@ try {
 const router = express.Router();
 const logger = new Logger('PushRoutes');
 
+router.post('/register', async (req, res) => {
+  try {
+    const { userId, token } = req.body || {};
+    if (!userId || !token) return res.status(400).json({ success: false, error: 'userId, token required' });
+    // Store token in-memory JSONL (could be DB-backed)
+    await (await import('fs')).promises.appendFile('monitoring/reports/device_tokens.jsonl', JSON.stringify({ userId, token, ts: Date.now() }) + '\n');
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Token register error', { error: error.message });
+    res.status(500).json({ success: false });
+  }
+});
+
 router.post('/send', async (req, res) => {
   try {
     const { token, title, body, data } = req.body || {};

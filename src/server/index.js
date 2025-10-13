@@ -40,6 +40,7 @@ import battlepassRoutes from 'routes/battlepass.js';
 import subscriptionsRoutes from 'routes/subscriptions.js';
 import experimentsRoutes from 'routes/experiments.js';
 import pushRoutes from 'routes/push.js';
+import entitlementsRoutes from 'routes/entitlements.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -197,6 +198,7 @@ app.use('/api/battlepass', battlepassRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/experiments', experimentsRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/entitlements', entitlementsRoutes);
 
 // Receipt verification endpoint
 app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {

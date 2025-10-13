@@ -102,6 +102,25 @@ export const PurchaseLedgerDb = {
       return { revenue: 0, payers: 0 };
     }
   },
+  async hasPurchase(playerId, productId) {
+    try {
+      await ensureConnection();
+      const found = await PurchaseModel.findOne({ playerId, productId }).lean();
+      return Boolean(found);
+    } catch (error) {
+      logger.error('hasPurchase failed', { error: error.message });
+      return false;
+    }
+  },
+  async listPurchases(playerId) {
+    try {
+      await ensureConnection();
+      return await PurchaseModel.find({ playerId }).lean();
+    } catch (error) {
+      logger.error('listPurchases failed', { error: error.message });
+      return [];
+    }
+  },
 };
 
 export default PurchaseLedgerDb;

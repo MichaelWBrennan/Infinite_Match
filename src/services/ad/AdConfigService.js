@@ -36,11 +36,29 @@ export class AdConfigService {
     const gs = rc.game_settings || {};
 
     // Placeholder: recommend mediation settings (to be consumed by client)
+    const country = (profile.country || profile.region || 'US').toUpperCase();
+    const providerByGeo = {
+      US: 'MAX',
+      CA: 'MAX',
+      GB: 'MAX',
+      DE: 'LEVELPLAY',
+      FR: 'LEVELPLAY',
+      JP: 'LEVELPLAY',
+      KR: 'MAX',
+      IN: 'MAX',
+      BR: 'LEVELPLAY',
+      DEFAULT: 'MAX',
+    };
+    const provider = providerByGeo[country] || providerByGeo.DEFAULT;
     const mediation = {
-      provider: 'MAX',
+      provider,
       waterfalls: {
-        default: ['applovin', 'admob', 'unityads', 'meta_audience'],
-        tier2: ['admob', 'applovin', 'ironsource', 'chartboost'],
+        default: provider === 'MAX'
+          ? ['applovin', 'admob', 'unityads', 'meta_audience']
+          : ['ironsource', 'admob', 'applovin', 'unityads'],
+        tier2: provider === 'MAX'
+          ? ['admob', 'applovin', 'ironsource', 'chartboost']
+          : ['admob', 'ironsource', 'applovin', 'chartboost'],
       },
       A_B: {
         experiment: 'ad_freq_v1',
