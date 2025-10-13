@@ -2,6 +2,7 @@ import express from 'express';
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import PurchaseLedgerDb from 'services/payments/PurchaseLedgerDb.js';
 import security from 'core/security/index.js';
 import { Logger } from 'core/logger/index.js';
 
@@ -110,10 +111,14 @@ router.get('/arpu', security.sessionValidation, async (req, res) => {
       }
     }
 
-    const arppu = payerIds.size > 0 ? totalRevenueUsd / payerIds.size : 0;
-    const arpu = activeUsers ? totalRevenueUsd / activeUsers : null;
+    // DB-backed revenue (if available)
+    const { revenue: dbRevenue, payers: dbPayers } = await PurchaseLedgerDb.revenueSince?.(days) || { revenue: 0, payers: 0 };
+    const revenue = Math.max(totalRevenueUsd, dbRevenue);
+    const payers = Math.max(payerIds.size, dbPayers);
+    const arppu = payers > 0 ? revenue / payers : 0;
+    const arpu = activeUsers ? revenue / activeUsers : null;
 
-    res.json({ success: true, days, totalRevenueUsd, payers: payerIds.size, arppu, arpu, activeUsers });
+    res.json({ success: true, days, revenue, payers, arppu, arpu, activeUsers });
   } catch (error) {
     logger.error('Failed to compute ARPU', { error: error.message });
     res.status(500).json({ success: false, error: 'compute_error' });

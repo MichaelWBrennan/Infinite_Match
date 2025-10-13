@@ -26,6 +26,7 @@ import { HTTP_STATUS, CACHE_KEYS, PROMO_CODES, PROMO_REWARDS } from 'core/consta
 import OffersService from 'services/offers/OffersService.js';
 import ReceiptVerificationService from 'services/payments/ReceiptVerificationService.js';
 import PurchaseLedger from 'services/payments/PurchaseLedger.js';
+import PurchaseLedgerDb, { PurchaseLedgerDb as _PLDB } from 'services/payments/PurchaseLedgerDb.js';
 
 // Routes
 import authRoutes from 'routes/auth.js';
@@ -287,6 +288,13 @@ app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req,
   });
   try {
     await PurchaseLedger.recordPurchase({
+      platform,
+      productId: result.productId || sku || null,
+      transactionId: result.transactionId || null,
+      acknowledged: result.acknowledged,
+      playerId: req.user?.playerId,
+    });
+    await PurchaseLedgerDb.recordPurchase({
       platform,
       productId: result.productId || sku || null,
       transactionId: result.transactionId || null,
