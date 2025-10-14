@@ -33,6 +33,21 @@ namespace Evergreen.Analytics
         public string[] playerSegments = { "non_payer", "low_value", "medium_value", "high_value", "whale" };
         public int[] retentionThresholds = { 1, 3, 7, 14, 30 }; // days
         
+        [Header("Industry Leader Targets")]
+        public float targetARPU = 3.50f; // Industry average for top games
+        public float targetARPPU = 25.00f; // Industry average for top games
+        public float targetConversionRate = 0.08f; // 8% conversion rate
+        public float targetRetentionD1 = 0.40f; // 40% Day 1 retention
+        public float targetRetentionD7 = 0.20f; // 20% Day 7 retention
+        public float targetRetentionD30 = 0.10f; // 10% Day 30 retention
+        
+        [Header("Industry Leader Strategies")]
+        public bool enableKingAnalytics = true; // Candy Crush analytics
+        public bool enableSupercellAnalytics = true; // Clash of Clans analytics
+        public bool enableNianticAnalytics = true; // Pokemon GO analytics
+        public bool enableEpicAnalytics = true; // Fortnite analytics
+        public bool enableRobloxAnalytics = true; // Roblox analytics
+        
         private Dictionary<string, PlayerARPUProfile> _playerProfiles = new Dictionary<string, PlayerARPUProfile>();
         private Dictionary<string, RevenueEvent> _revenueEvents = new Dictionary<string, RevenueEvent>();
         private Dictionary<string, ConversionFunnel> _conversionFunnels = new Dictionary<string, ConversionFunnel>();
@@ -75,7 +90,88 @@ namespace Evergreen.Analytics
         
         private void InitializeARPUAnalytics()
         {
-            Debug.Log("ARPU Analytics System initialized - Revenue optimization mode activated!");
+            // Apply industry leader analytics strategies
+            ApplyIndustryLeaderAnalyticsStrategies();
+            
+            Debug.Log("ARPU Analytics System initialized - Industry leader revenue optimization mode activated!");
+        }
+        
+        private void ApplyIndustryLeaderAnalyticsStrategies()
+        {
+            if (enableKingAnalytics)
+            {
+                ApplyKingAnalyticsStrategy();
+            }
+            
+            if (enableSupercellAnalytics)
+            {
+                ApplySupercellAnalyticsStrategy();
+            }
+            
+            if (enableNianticAnalytics)
+            {
+                ApplyNianticAnalyticsStrategy();
+            }
+            
+            if (enableEpicAnalytics)
+            {
+                ApplyEpicAnalyticsStrategy();
+            }
+            
+            if (enableRobloxAnalytics)
+            {
+                ApplyRobloxAnalyticsStrategy();
+            }
+        }
+        
+        private void ApplyKingAnalyticsStrategy()
+        {
+            // King (Candy Crush) analytics strategy
+            targetARPU = 2.50f; // King's ARPU target
+            targetARPPU = 15.00f; // King's ARPPU target
+            targetConversionRate = 0.05f; // 5% conversion rate
+            
+            Debug.Log("Applied King (Candy Crush) analytics strategy: ARPU $2.50, ARPPU $15.00, 5% conversion");
+        }
+        
+        private void ApplySupercellAnalyticsStrategy()
+        {
+            // Supercell (Clash of Clans) analytics strategy
+            targetARPU = 4.00f; // Supercell's ARPU target
+            targetARPPU = 30.00f; // Supercell's ARPPU target
+            targetConversionRate = 0.08f; // 8% conversion rate
+            
+            Debug.Log("Applied Supercell (Clash of Clans) analytics strategy: ARPU $4.00, ARPPU $30.00, 8% conversion");
+        }
+        
+        private void ApplyNianticAnalyticsStrategy()
+        {
+            // Niantic (Pokemon GO) analytics strategy
+            targetARPU = 3.00f; // Niantic's ARPU target
+            targetARPPU = 20.00f; // Niantic's ARPPU target
+            targetConversionRate = 0.06f; // 6% conversion rate
+            
+            Debug.Log("Applied Niantic (Pokemon GO) analytics strategy: ARPU $3.00, ARPPU $20.00, 6% conversion");
+        }
+        
+        private void ApplyEpicAnalyticsStrategy()
+        {
+            // Epic (Fortnite) analytics strategy
+            targetARPU = 5.00f; // Epic's ARPU target
+            targetARPPU = 40.00f; // Epic's ARPPU target
+            targetConversionRate = 0.10f; // 10% conversion rate
+            
+            Debug.Log("Applied Epic (Fortnite) analytics strategy: ARPU $5.00, ARPPU $40.00, 10% conversion");
+        }
+        
+        private void ApplyRobloxAnalyticsStrategy()
+        {
+            // Roblox analytics strategy
+            targetARPU = 2.00f; // Roblox's ARPU target
+            targetARPPU = 12.00f; // Roblox's ARPPU target
+            targetConversionRate = 0.04f; // 4% conversion rate
+            
+            Debug.Log("Applied Roblox analytics strategy: ARPU $2.00, ARPPU $12.00, 4% conversion");
         }
         
         private void InitializeARPUMetrics()
@@ -477,18 +573,68 @@ namespace Evergreen.Analytics
             var totalPlayers = _playerProfiles.Count;
             var payingPlayers = _playerProfiles.Values.Count(p => p.totalSpent > 0);
             var totalRevenue = _revenueEvents.Values.Sum(e => e.amount);
+            var currentARPU = totalPlayers > 0 ? totalRevenue / totalPlayers : 0f;
+            var currentARPPU = payingPlayers > 0 ? totalRevenue / payingPlayers : 0f;
+            var currentConversionRate = totalPlayers > 0 ? (float)payingPlayers / totalPlayers : 0f;
             
             return new Dictionary<string, object>
             {
                 ["total_players"] = totalPlayers,
                 ["paying_players"] = payingPlayers,
                 ["total_revenue"] = totalRevenue,
-                ["arpu"] = totalPlayers > 0 ? totalRevenue / totalPlayers : 0f,
-                ["arpu_paying"] = payingPlayers > 0 ? totalRevenue / payingPlayers : 0f,
-                ["conversion_rate"] = totalPlayers > 0 ? (float)payingPlayers / totalPlayers * 100f : 0f,
+                ["arpu"] = currentARPU,
+                ["arppu"] = currentARPPU,
+                ["arpu_paying"] = currentARPPU,
+                ["conversion_rate"] = currentConversionRate * 100f,
                 ["segment_distribution"] = GetSegmentDistribution(),
                 ["revenue_sources"] = GetRevenueSourceDistribution(),
-                ["retention_rates"] = GetRetentionRates()
+                ["retention_rates"] = GetRetentionRates(),
+                ["industry_targets"] = GetIndustryTargets(),
+                ["performance_vs_targets"] = GetPerformanceVsTargets(currentARPU, currentARPPU, currentConversionRate),
+                ["industry_leader_status"] = GetIndustryLeaderStatus(currentARPU, currentARPPU, currentConversionRate)
+            };
+        }
+        
+        private Dictionary<string, object> GetIndustryTargets()
+        {
+            return new Dictionary<string, object>
+            {
+                ["target_arpu"] = targetARPU,
+                ["target_arppu"] = targetARPPU,
+                ["target_conversion_rate"] = targetConversionRate,
+                ["target_retention_d1"] = targetRetentionD1,
+                ["target_retention_d7"] = targetRetentionD7,
+                ["target_retention_d30"] = targetRetentionD30
+            };
+        }
+        
+        private Dictionary<string, float> GetPerformanceVsTargets(float currentARPU, float currentARPPU, float currentConversionRate)
+        {
+            return new Dictionary<string, float>
+            {
+                ["arpu_performance"] = currentARPU / targetARPU,
+                ["arppu_performance"] = currentARPPU / targetARPPU,
+                ["conversion_performance"] = currentConversionRate / targetConversionRate,
+                ["overall_performance"] = (currentARPU / targetARPU + currentARPPU / targetARPPU + currentConversionRate / targetConversionRate) / 3f
+            };
+        }
+        
+        private Dictionary<string, object> GetIndustryLeaderStatus(float currentARPU, float currentARPPU, float currentConversionRate)
+        {
+            var arpuStatus = currentARPU >= targetARPU ? "ACHIEVED" : "BELOW_TARGET";
+            var arppuStatus = currentARPPU >= targetARPPU ? "ACHIEVED" : "BELOW_TARGET";
+            var conversionStatus = currentConversionRate >= targetConversionRate ? "ACHIEVED" : "BELOW_TARGET";
+            
+            var overallStatus = (currentARPU >= targetARPU && currentARPPU >= targetARPPU && currentConversionRate >= targetConversionRate) 
+                ? "INDUSTRY_LEADER_LEVEL" : "NEEDS_OPTIMIZATION";
+            
+            return new Dictionary<string, object>
+            {
+                ["arpu_status"] = arpuStatus,
+                ["arppu_status"] = arppuStatus,
+                ["conversion_status"] = conversionStatus,
+                ["overall_status"] = overallStatus,
+                ["is_industry_leader"] = overallStatus == "INDUSTRY_LEADER_LEVEL"
             };
         }
         

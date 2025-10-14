@@ -21,6 +21,13 @@ namespace Evergreen.Economy
         public int energyRefillAmount = 1;
         public bool enableEnergySystem = true;
         
+        [Header("Industry Leader Settings")]
+        public bool enableKingStyleEnergy = true; // Candy Crush style (5 lives, 30 min refill)
+        public bool enableSupercellStyleEnergy = true; // Clash of Clans style (shield system)
+        public bool enableNianticStyleEnergy = true; // Pokemon GO style (walking energy)
+        public bool enableEpicStyleEnergy = true; // Fortnite style (battle pass energy)
+        public bool enableRobloxStyleEnergy = true; // Roblox style (developer energy)
+        
         [Header("Monetization Settings")]
         public bool enableEnergyPacks = true;
         public bool enableEnergySubscriptions = true;
@@ -77,7 +84,88 @@ namespace Evergreen.Economy
             _currentEnergy = maxEnergy;
             _lastEnergyRefill = DateTime.Now;
             
-            Debug.Log("Energy System initialized - Monetization mode activated!");
+            // Apply industry leader energy strategies
+            ApplyIndustryLeaderEnergyStrategies();
+            
+            Debug.Log("Energy System initialized - Industry leader monetization mode activated!");
+        }
+        
+        private void ApplyIndustryLeaderEnergyStrategies()
+        {
+            if (enableKingStyleEnergy)
+            {
+                ApplyKingEnergyStrategy();
+            }
+            
+            if (enableSupercellStyleEnergy)
+            {
+                ApplySupercellEnergyStrategy();
+            }
+            
+            if (enableNianticStyleEnergy)
+            {
+                ApplyNianticEnergyStrategy();
+            }
+            
+            if (enableEpicStyleEnergy)
+            {
+                ApplyEpicEnergyStrategy();
+            }
+            
+            if (enableRobloxStyleEnergy)
+            {
+                ApplyRobloxEnergyStrategy();
+            }
+        }
+        
+        private void ApplyKingEnergyStrategy()
+        {
+            // King (Candy Crush) energy strategy
+            maxEnergy = 5; // King uses 5 lives
+            energyRefillTime = 1800f; // 30 minutes per life
+            energyRefillCost = 1; // 1 gem per life
+            
+            Debug.Log("Applied King (Candy Crush) energy strategy: 5 lives, 30min refill, 1 gem cost");
+        }
+        
+        private void ApplySupercellEnergyStrategy()
+        {
+            // Supercell (Clash of Clans) energy strategy
+            maxEnergy = 20; // Supercell uses more energy
+            energyRefillTime = 600f; // 10 minutes per energy
+            energyRefillCost = 5; // 5 gems per energy
+            
+            Debug.Log("Applied Supercell (Clash of Clans) energy strategy: 20 energy, 10min refill, 5 gem cost");
+        }
+        
+        private void ApplyNianticEnergyStrategy()
+        {
+            // Niantic (Pokemon GO) energy strategy
+            maxEnergy = 50; // Niantic uses high energy
+            energyRefillTime = 120f; // 2 minutes per energy
+            energyRefillCost = 2; // 2 gems per energy
+            
+            Debug.Log("Applied Niantic (Pokemon GO) energy strategy: 50 energy, 2min refill, 2 gem cost");
+        }
+        
+        private void ApplyEpicEnergyStrategy()
+        {
+            // Epic (Fortnite) energy strategy
+            maxEnergy = 100; // Epic uses very high energy
+            energyRefillTime = 60f; // 1 minute per energy
+            energyRefillCost = 1; // 1 gem per energy
+            
+            Debug.Log("Applied Epic (Fortnite) energy strategy: 100 energy, 1min refill, 1 gem cost");
+        }
+        
+        private void ApplyRobloxEnergyStrategy()
+        {
+            // Roblox energy strategy
+            maxEnergy = 200; // Roblox uses highest energy
+            energyRefillTime = 30f; // 30 seconds per energy
+            energyRefillCost = 1; // 1 gem per energy
+            
+            Debug.Log("Applied Roblox energy strategy: 200 energy, 30sec refill, 1 gem cost");
         }
         
         private void LoadEnergyData()

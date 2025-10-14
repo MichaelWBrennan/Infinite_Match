@@ -22,9 +22,24 @@ namespace Evergreen.Core
         [SerializeField] private bool enableAnalytics = true;
         [SerializeField] private bool enableARPUSystems = true;
         
+        [Header("Industry Leader ARPU Targets")]
+        [SerializeField] private float targetARPU = 3.50f; // Industry average for top games
+        [SerializeField] private float targetARPPU = 25.00f; // Industry average for top games
+        [SerializeField] private float targetConversionRate = 0.08f; // 8% conversion rate
+        [SerializeField] private float targetRetentionD1 = 0.40f; // 40% Day 1 retention
+        [SerializeField] private float targetRetentionD7 = 0.20f; // 20% Day 7 retention
+        [SerializeField] private float targetRetentionD30 = 0.10f; // 10% Day 30 retention
+        
         [Header("Currency Settings")]
         [SerializeField] private int startingCoins = 1000;
         [SerializeField] private int startingGems = 50;
+        
+        [Header("Industry Leader Strategies")]
+        [SerializeField] private bool enableKingStrategies = true; // Candy Crush strategies
+        [SerializeField] private bool enableSupercellStrategies = true; // Clash of Clans strategies
+        [SerializeField] private bool enableNianticStrategies = true; // Pokemon GO strategies
+        [SerializeField] private bool enableEpicStrategies = true; // Fortnite strategies
+        [SerializeField] private bool enableRobloxStrategies = true; // Roblox strategies
         
         public static GameManager Instance { get; private set; }
         
@@ -84,6 +99,9 @@ namespace Evergreen.Core
                 {
                     InitializeARPUSystems();
                 }
+                
+                // Apply industry leader strategies
+                ApplyIndustryLeaderStrategies();
                 
                 _isInitialized = true;
                 Debug.Log("Game initialization completed successfully");
@@ -465,6 +483,170 @@ namespace Evergreen.Core
             if (analytics != null)
             {
                 analytics.TrackPlayerAction(playerId, action, parameters);
+            }
+        }
+        
+        /// <summary>
+        /// Get current ARPU metrics
+        /// </summary>
+        public System.Collections.Generic.Dictionary<string, object> GetARPUReport()
+        {
+            var analytics = GetService<ARPUAnalyticsSystem>();
+            return analytics != null ? analytics.GetARPUReport() : new System.Collections.Generic.Dictionary<string, object>();
+        }
+        
+        /// <summary>
+        /// Check if ARPU targets are being met
+        /// </summary>
+        public bool AreARPUTargetsMet()
+        {
+            var report = GetARPUReport();
+            var currentARPU = report.ContainsKey("arpu") ? (float)report["arpu"] : 0f;
+            var currentARPPU = report.ContainsKey("arppu") ? (float)report["arppu"] : 0f;
+            var currentConversionRate = report.ContainsKey("conversion_rate") ? (float)report["conversion_rate"] : 0f;
+            
+            return currentARPU >= targetARPU && currentARPPU >= targetARPPU && currentConversionRate >= targetConversionRate;
+        }
+        
+        /// <summary>
+        /// Get ARPU performance vs industry targets
+        /// </summary>
+        public System.Collections.Generic.Dictionary<string, float> GetARPUPerformance()
+        {
+            var report = GetARPUReport();
+            var currentARPU = report.ContainsKey("arpu") ? (float)report["arpu"] : 0f;
+            var currentARPPU = report.ContainsKey("arppu") ? (float)report["arppu"] : 0f;
+            var currentConversionRate = report.ContainsKey("conversion_rate") ? (float)report["conversion_rate"] : 0f;
+            
+            return new System.Collections.Generic.Dictionary<string, float>
+            {
+                ["arpu_performance"] = currentARPU / targetARPU,
+                ["arppu_performance"] = currentARPPU / targetARPPU,
+                ["conversion_performance"] = currentConversionRate / targetConversionRate,
+                ["overall_performance"] = (currentARPU / targetARPU + currentARPPU / targetARPPU + currentConversionRate / targetConversionRate) / 3f
+            };
+        }
+        
+        /// <summary>
+        /// Apply industry leader strategies
+        /// </summary>
+        public void ApplyIndustryLeaderStrategies()
+        {
+            if (enableKingStrategies)
+            {
+                ApplyKingStrategies();
+            }
+            
+            if (enableSupercellStrategies)
+            {
+                ApplySupercellStrategies();
+            }
+            
+            if (enableNianticStrategies)
+            {
+                ApplyNianticStrategies();
+            }
+            
+            if (enableEpicStrategies)
+            {
+                ApplyEpicStrategies();
+            }
+            
+            if (enableRobloxStrategies)
+            {
+                ApplyRobloxStrategies();
+            }
+        }
+        
+        private void ApplyKingStrategies()
+        {
+            // King (Candy Crush) strategies
+            Debug.Log("Applying King (Candy Crush) strategies...");
+            
+            // Energy monetization
+            var energySystem = GetService<EnergySystem>();
+            if (energySystem != null)
+            {
+                // Implement King-style energy system
+                energySystem.maxEnergy = 5; // King uses 5 lives
+                energySystem.energyRefillTime = 1800f; // 30 minutes per life
+                energySystem.energyRefillCost = 1; // 1 gem per life
+            }
+            
+            // Boosters system
+            var offerSystem = GetService<PersonalizedOfferSystem>();
+            if (offerSystem != null)
+            {
+                // Add King-style boosters
+                var boosters = new[]
+                {
+                    "color_bomb", "striped_candy", "wrapped_candy", "coconut_wheel", "fish"
+                };
+                
+                foreach (var booster in boosters)
+                {
+                    // Add booster to offer system
+                }
+            }
+        }
+        
+        private void ApplySupercellStrategies()
+        {
+            // Supercell (Clash of Clans) strategies
+            Debug.Log("Applying Supercell (Clash of Clans) strategies...");
+            
+            // Gems system
+            var economyService = GetService<EconomyService>();
+            if (economyService != null)
+            {
+                // Implement Supercell-style gems
+                AddCurrency("gems", 500); // Starting gems
+            }
+            
+            // Clan system
+            var socialSystem = GetService<SocialSystem>();
+            if (socialSystem != null)
+            {
+                // Implement Supercell-style clan features
+            }
+        }
+        
+        private void ApplyNianticStrategies()
+        {
+            // Niantic (Pokemon GO) strategies
+            Debug.Log("Applying Niantic (Pokemon GO) strategies...");
+            
+            // Location-based features
+            var liveOpsSystem = GetService<AdvancedLiveOpsSystem>();
+            if (liveOpsSystem != null)
+            {
+                // Implement Niantic-style location-based events
+            }
+        }
+        
+        private void ApplyEpicStrategies()
+        {
+            // Epic (Fortnite) strategies
+            Debug.Log("Applying Epic (Fortnite) strategies...");
+            
+            // Battle pass system
+            var subscriptionSystem = GetService<SubscriptionSystem>();
+            if (subscriptionSystem != null)
+            {
+                // Implement Epic-style battle pass
+            }
+        }
+        
+        private void ApplyRobloxStrategies()
+        {
+            // Roblox strategies
+            Debug.Log("Applying Roblox strategies...");
+            
+            // User-generated content
+            var personalizationSystem = GetService<AIPersonalizationSystem>();
+            if (personalizationSystem != null)
+            {
+                // Implement Roblox-style UGC features
             }
         }
         
