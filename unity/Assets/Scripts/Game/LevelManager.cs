@@ -4,6 +4,7 @@ using UnityEngine;
 using Evergreen.Match3;
 using Evergreen.Game;
 using Evergreen.Data;
+using Core;
 
 public class LevelManager : MonoBehaviour
 {
@@ -63,14 +64,25 @@ public class LevelManager : MonoBehaviour
 
     private void LoadLevelFromFile(int id)
     {
-        var path = Path.Combine(Application.streamingAssetsPath, "levels", $"level_{id}.json");
-        if (File.Exists(path))
+        try
         {
-            var txt = File.ReadAllText(path);
-            LevelConfig = JsonUtility.FromJsonToDictionary(txt);
+            string fileName = $"level_{id}.json";
+            string txt = RobustFileManager.ReadTextFile(fileName, FileLocation.StreamingAssets, "levels");
+            
+            if (!string.IsNullOrEmpty(txt))
+            {
+                LevelConfig = JsonUtility.FromJsonToDictionary(txt);
+                Debug.Log($"[LevelManager] Successfully loaded level {id} from file");
+            }
+            else
+            {
+                Debug.LogWarning($"[LevelManager] Failed to load level {id} from file, using default config");
+                LevelConfig = new Dictionary<string, object>();
+            }
         }
-        else
+        catch (System.Exception ex)
         {
+            Debug.LogError($"[LevelManager] Error loading level {id}: {ex.Message}");
             LevelConfig = new Dictionary<string, object>();
         }
     }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using Newtonsoft.Json;
+using Core;
 
 namespace RemoteConfig
 {
@@ -81,11 +82,10 @@ namespace RemoteConfig
         {
             try
             {
-                string configPath = Path.Combine(Application.streamingAssetsPath, "unity_services_config.json");
+                string jsonContent = RobustFileManager.ReadTextFile("unity_services_config.json", FileLocation.StreamingAssets);
                 
-                if (File.Exists(configPath))
+                if (!string.IsNullOrEmpty(jsonContent))
                 {
-                    string jsonContent = File.ReadAllText(configPath);
                     var fullConfig = JsonConvert.DeserializeObject<UnityServicesConfig>(jsonContent);
                     config = new RemoteConfigData
                     {
@@ -102,7 +102,7 @@ namespace RemoteConfig
                 }
                 else
                 {
-                    Debug.LogError("[RemoteConfig] Configuration file not found at: " + configPath);
+                    Debug.LogError("[RemoteConfig] Configuration file not found or could not be read");
                     CreateDefaultConfig();
                 }
             }
