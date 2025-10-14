@@ -47,6 +47,12 @@ namespace Evergreen.Core
         [SerializeField] private bool enableTransparentARPU = true;
         [SerializeField] private bool enableHonestARPU = true;
         
+        [Header("🌐 Platform Management")]
+        [SerializeField] private bool enablePlatformManagement = true;
+        [SerializeField] private bool enablePlatformValidation = true;
+        [SerializeField] private bool enableComplianceChecks = true;
+        [SerializeField] private bool showPlatformInfo = true;
+        
         public static GameManager Instance { get; private set; }
         
         private bool _isInitialized = false;
@@ -110,6 +116,12 @@ namespace Evergreen.Core
                 if (enableCompliantARPU)
                 {
                     InitializeCompliantARPUSystems();
+                }
+                
+                // Initialize Platform Management
+                if (enablePlatformManagement)
+                {
+                    InitializePlatformManagement();
                 }
                 
                 // Apply industry leader strategies
@@ -611,6 +623,38 @@ namespace Evergreen.Core
             catch (System.Exception e)
             {
                 Debug.LogError($"❌ Error initializing Compliant ARPU systems: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Initialize Platform Management system
+        /// </summary>
+        private void InitializePlatformManagement()
+        {
+            Debug.Log("🌐 Initializing Platform Management...");
+            
+            try
+            {
+                // Add PlatformManager component
+                var platformManager = gameObject.AddComponent<Evergreen.Platform.PlatformManager>();
+                if (platformManager != null)
+                {
+                    Debug.Log("✅ PlatformManager added successfully");
+                    
+                    // Configure platform manager
+                    platformManager.enablePlatformValidation = enablePlatformValidation;
+                    platformManager.enableComplianceChecks = enableComplianceChecks;
+                    
+                    Debug.Log("🌐 Platform Management initialized successfully!");
+                }
+                else
+                {
+                    Debug.LogError("❌ Failed to add PlatformManager");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ Error initializing Platform Management: {e.Message}");
             }
         }
         

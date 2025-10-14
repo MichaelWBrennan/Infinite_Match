@@ -1,0 +1,171 @@
+{
+  "platform": "googleplay",
+  "name": "Google Play Android Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for Google Play Android deployment",
+  
+  "build_settings": {
+    "target_platform": "Android",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "architecture": "ARM64",
+    "min_sdk_version": 21,
+    "target_sdk_version": 34,
+    "compile_sdk_version": 34,
+    "build_tools_version": "34.0.0"
+  },
+  
+  "ad_sdks": {
+    "primary": "google_mobile_ads",
+    "fallback": "unity_ads",
+    "mediation": "admob_mediation",
+    "required_apis": [
+      "GoogleMobileAds.Api",
+      "GoogleMobileAds.Common",
+      "GoogleMobileAds.Ump.Api"
+    ],
+    "forbidden_apis": [
+      "PokiSDK",
+      "AppLovin",
+      "IronSource"
+    ],
+    "ad_units": {
+      "banner": "ca-app-pub-3940256099942544/6300978111",
+      "interstitial": "ca-app-pub-3940256099942544/1033173712",
+      "rewarded": "ca-app-pub-3940256099942544/5224354917"
+    }
+  },
+  
+  "monetization": {
+    "iap_enabled": true,
+    "google_play_billing": true,
+    "billing_version": "6.0.0",
+    "sku_types": ["inapp", "subs"],
+    "max_sku_count": 100,
+    "required_permissions": [
+      "com.android.vending.BILLING"
+    ],
+    "billing_features": [
+      "subscriptions",
+      "one_time_purchases",
+      "consumable_products",
+      "non_consumable_products"
+    ]
+  },
+  
+  "analytics": {
+    "google_analytics": true,
+    "firebase_analytics": true,
+    "unity_analytics": true,
+    "custom_analytics": true,
+    "data_collection": "comprehensive",
+    "privacy_compliant": true,
+    "gdpr_compliant": true,
+    "ccpa_compliant": true,
+    "required_events": [
+      "purchase",
+      "level_complete",
+      "level_fail",
+      "session_start",
+      "session_end",
+      "ad_impression",
+      "ad_click"
+    ]
+  },
+  
+  "performance": {
+    "max_apk_size": "150MB",
+    "max_obb_size": "2GB",
+    "max_memory_usage": "512MB",
+    "max_loading_time": "15s",
+    "texture_compression": "ETC2",
+    "audio_compression": "Vorbis",
+    "mesh_compression": "High"
+  },
+  
+  "permissions": {
+    "required": [
+      "android.permission.INTERNET",
+      "android.permission.ACCESS_NETWORK_STATE",
+      "android.permission.WAKE_LOCK"
+    ],
+    "optional": [
+      "android.permission.VIBRATE",
+      "android.permission.ACCESS_WIFI_STATE"
+    ],
+    "forbidden": [
+      "android.permission.READ_CONTACTS",
+      "android.permission.READ_CALENDAR",
+      "android.permission.READ_SMS",
+      "android.permission.READ_PHONE_STATE"
+    ]
+  },
+  
+  "content_restrictions": {
+    "violence_level": "moderate",
+    "language_restrictions": "teen_appropriate",
+    "gambling_elements": true,
+    "loot_boxes": true,
+    "real_money_gambling": false,
+    "age_rating": "T",
+    "content_descriptors": [
+      "Simulated Gambling",
+      "In-App Purchases"
+    ]
+  },
+  
+  "technical_requirements": {
+    "android_version": "5.0+",
+    "screen_densities": ["ldpi", "mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"],
+    "screen_sizes": ["small", "normal", "large", "xlarge"],
+    "orientation_support": ["portrait", "landscape"],
+    "hardware_features": ["touchscreen", "accelerometer"],
+    "network_requirements": ["internet", "wifi"]
+  },
+  
+  "google_play_specific": {
+    "package_name": "com.yourcompany.yourgame",
+    "version_code": 1,
+    "version_name": "1.0.0",
+    "target_audience": "teens_and_up",
+    "content_rating": "Teen",
+    "data_safety": {
+      "data_collected": true,
+      "data_shared": false,
+      "data_encrypted": true,
+      "data_deletion": true
+    },
+    "store_listing": {
+      "short_description": "Your game description",
+      "full_description": "Full game description",
+      "screenshots_required": 2,
+      "feature_graphic_required": true,
+      "icon_required": true
+    }
+  },
+  
+  "compliance_checks": {
+    "target_sdk_check": true,
+    "permission_check": true,
+    "billing_check": true,
+    "ad_policy_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "security_check": true,
+    "privacy_policy_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_ANDROID",
+    "GOOGLE_PLAY_PLATFORM",
+    "ANDROID_BUILD",
+    "GOOGLE_PLAY_BILLING",
+    "GOOGLE_MOBILE_ADS"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_WEBGL",
+    "UNITY_IOS",
+    "UNITY_STANDALONE"
+  ]
+}

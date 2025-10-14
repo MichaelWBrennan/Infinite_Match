@@ -1,0 +1,170 @@
+{
+  "platform": "appstore",
+  "name": "Apple App Store iOS Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for Apple App Store iOS deployment",
+  
+  "build_settings": {
+    "target_platform": "iOS",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "architecture": "ARM64",
+    "min_ios_version": "12.0",
+    "target_ios_version": "17.0",
+    "deployment_target": "12.0",
+    "bitcode_enabled": false
+  },
+  
+  "ad_sdks": {
+    "primary": "unity_ads",
+    "fallback": "google_mobile_ads",
+    "mediation": "unity_mediation",
+    "required_apis": [
+      "UnityEngine.Advertisements",
+      "UnityEngine.Monetization"
+    ],
+    "forbidden_apis": [
+      "PokiSDK",
+      "AppLovin",
+      "IronSource"
+    ],
+    "ad_units": {
+      "banner": "Banner_Android",
+      "interstitial": "Interstitial_Android",
+      "rewarded": "Rewarded_Android"
+    }
+  },
+  
+  "monetization": {
+    "iap_enabled": true,
+    "storekit": true,
+    "storekit_version": "2.0",
+    "product_types": ["consumable", "non_consumable", "auto_renewable_subscription"],
+    "max_product_count": 100,
+    "required_capabilities": [
+      "In-App Purchase"
+    ],
+    "subscription_groups": true,
+    "family_sharing": true
+  },
+  
+  "analytics": {
+    "unity_analytics": true,
+    "firebase_analytics": true,
+    "custom_analytics": true,
+    "data_collection": "comprehensive",
+    "privacy_compliant": true,
+    "att_framework": true,
+    "privacy_manifest": true,
+    "required_events": [
+      "purchase",
+      "level_complete",
+      "level_fail",
+      "session_start",
+      "session_end",
+      "ad_impression",
+      "ad_click"
+    ]
+  },
+  
+  "performance": {
+    "max_app_size": "4GB",
+    "max_download_size": "200MB",
+    "max_memory_usage": "1GB",
+    "max_loading_time": "20s",
+    "texture_compression": "ASTC",
+    "audio_compression": "AAC",
+    "mesh_compression": "High"
+  },
+  
+  "permissions": {
+    "required": [
+      "NSInternetUsageDescription",
+      "NSLocalNetworkUsageDescription"
+    ],
+    "optional": [
+      "NSCameraUsageDescription",
+      "NSMicrophoneUsageDescription",
+      "NSLocationWhenInUseUsageDescription"
+    ],
+    "forbidden": [
+      "NSContactsUsageDescription",
+      "NSCalendarsUsageDescription",
+      "NSRemindersUsageDescription"
+    ]
+  },
+  
+  "content_restrictions": {
+    "violence_level": "moderate",
+    "language_restrictions": "teen_appropriate",
+    "gambling_elements": true,
+    "loot_boxes": true,
+    "real_money_gambling": false,
+    "age_rating": "12+",
+    "content_descriptors": [
+      "Simulated Gambling",
+      "In-App Purchases"
+    ]
+  },
+  
+  "technical_requirements": {
+    "ios_version": "12.0+",
+    "device_models": ["iPhone", "iPad"],
+    "screen_sizes": ["iPhone", "iPad"],
+    "orientation_support": ["portrait", "landscape"],
+    "hardware_features": ["touchscreen", "accelerometer", "gyroscope"],
+    "network_requirements": ["internet", "wifi", "cellular"]
+  },
+  
+  "app_store_specific": {
+    "bundle_identifier": "com.yourcompany.yourgame",
+    "version": "1.0.0",
+    "build_number": 1,
+    "target_audience": "12+",
+    "content_rating": "12+",
+    "privacy_labels": {
+      "data_collected": true,
+      "data_linked_to_user": false,
+      "data_used_for_tracking": false,
+      "data_encrypted": true
+    },
+    "app_store_connect": {
+      "app_name": "Your Game Name",
+      "subtitle": "Your game subtitle",
+      "keywords": ["game", "puzzle", "match3"],
+      "screenshots_required": 3,
+      "app_preview_required": false,
+      "app_icon_required": true
+    },
+    "testflight": {
+      "beta_testing": true,
+      "internal_testing": true,
+      "external_testing": true
+    }
+  },
+  
+  "compliance_checks": {
+    "storekit_check": true,
+    "privacy_manifest_check": true,
+    "att_framework_check": true,
+    "ad_policy_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "security_check": true,
+    "app_store_guidelines_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_IOS",
+    "APP_STORE_PLATFORM",
+    "IOS_BUILD",
+    "STOREKIT_2",
+    "UNITY_ADS"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_WEBGL",
+    "UNITY_ANDROID",
+    "UNITY_STANDALONE"
+  ]
+}
