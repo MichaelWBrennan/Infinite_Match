@@ -1,0 +1,100 @@
+# Unity WebGL Builder Docker Image
+FROM ubuntu:20.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    xvfb \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    libxrandr2 \
+    libxss1 \
+    libxcursor1 \
+    libxcomposite1 \
+    libasound2 \
+    libxi6 \
+    libxtst6 \
+    libnss3 \
+    libgconf-2-4 \
+    libxss1 \
+    libgconf2-4 \
+    libxrandr2 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libatk1.0-0 \
+    libcairo-gobject2 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxss1 \
+    libxtst6 \
+    libnss3 \
+    libgconf-2-4 \
+    libxss1 \
+    libgconf2-4 \
+    libxrandr2 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libatk1.0-0 \
+    libcairo-gobject2 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Unity Hub and Unity Editor
+WORKDIR /opt/unity
+
+# Download Unity Hub
+RUN wget -q https://public-cdn.cloud.unity3d.com/hub/prod/UnityHub.AppImage -O UnityHub.AppImage \
+    && chmod +x UnityHub.AppImage
+
+# Download Unity Editor (2022.3.21f1)
+RUN wget -q https://download.unity3d.com/download_unity/8e5c7b4b5b5f/UnitySetup-2022.3.21f1 \
+    && chmod +x UnitySetup-2022.3.21f1
+
+# Install Unity Editor
+RUN ./UnitySetup-2022.3.21f1 --unattended --install-location=/opt/Unity/Editor --components=Unity,WebGL
+
+# Set up environment
+ENV PATH="/opt/Unity/Editor:${PATH}"
+ENV UNITY_LICENSE_SERVER=""
+
+# Create workspace
+WORKDIR /workspace
+
+# Copy project files
+COPY unity/ /workspace/unity/
+
+# Create build script
+RUN echo '#!/bin/bash\n\
+echo "🚀 Building WebGL for $1..."\n\
+/opt/Unity/Editor/Unity \\\n\
+    -batchmode \\\n\
+    -quit \\\n\
+    -projectPath /workspace/unity \\\n\
+    -executeMethod Evergreen.Editor.HeadlessWebGLBuilder.BuildWebGLHeadless \\\n\
+    -platform "$1" \\\n\
+    -buildPath "/workspace/builds/$1" \\\n\
+    -development "false" \\\n\
+    -logFile "/workspace/build-log.txt"\n\
+\n\
+if [ $? -eq 0 ]; then\n\
+    echo "✅ Build completed successfully!"\n\
+    echo "📁 Build output: /workspace/builds/$1"\n\
+    ls -la "/workspace/builds/$1"\n\
+else\n\
+    echo "❌ Build failed. Check build-log.txt for details."\n\
+    exit 1\n\
+fi' > /workspace/build-webgl-docker.sh
+
+RUN chmod +x /workspace/build-webgl-docker.sh
+
+# Default command
+CMD ["/workspace/build-webgl-docker.sh", "poki"]
