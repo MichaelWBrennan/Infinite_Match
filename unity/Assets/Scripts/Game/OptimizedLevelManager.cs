@@ -4,6 +4,7 @@ using UnityEngine;
 using System.Collections;
 using Evergreen.Data;
 using Evergreen.Core;
+using Core;
 
 namespace Evergreen.Game
 {
@@ -197,17 +198,16 @@ namespace Evergreen.Game
 
             try
             {
-                // Load from file
-                var levelPath = $"levels/level_{levelId}.json";
-                var filePath = System.IO.Path.Combine(Application.streamingAssetsPath, levelPath);
+                // Load from file using robust file manager
+                string fileName = $"level_{levelId}.json";
+                string json = RobustFileManager.ReadTextFile(fileName, FileLocation.StreamingAssets, "levels");
                 
-                if (!System.IO.File.Exists(filePath))
+                if (string.IsNullOrEmpty(json))
                 {
-                    Logger.Warning($"Level file not found: {filePath}", "LevelManager");
+                    Logger.Warning($"Level file not found or could not be read: {fileName}", "LevelManager");
                     return null;
                 }
 
-                var json = System.IO.File.ReadAllText(filePath);
                 var levelData = JsonUtility.FromJson<LevelData>(json);
 
                 if (levelData == null)
@@ -277,9 +277,8 @@ namespace Evergreen.Game
         /// </summary>
         public bool LevelExists(int levelId)
         {
-            var levelPath = $"levels/level_{levelId}.json";
-            var filePath = System.IO.Path.Combine(Application.streamingAssetsPath, levelPath);
-            return System.IO.File.Exists(filePath);
+            string fileName = $"level_{levelId}.json";
+            return RobustFileManager.FileExists(fileName, FileLocation.StreamingAssets, "levels");
         }
 
         /// <summary>
@@ -287,14 +286,8 @@ namespace Evergreen.Game
         /// </summary>
         public int GetTotalLevels()
         {
-            var levelsPath = System.IO.Path.Combine(Application.streamingAssetsPath, "levels");
-            if (!System.IO.Directory.Exists(levelsPath))
-            {
-                return 0;
-            }
-
-            var files = System.IO.Directory.GetFiles(levelsPath, "level_*.json");
-            return files.Length;
+            string[] levelFiles = RobustFileManager.ListFiles("levels", FileLocation.StreamingAssets, "level_*.json");
+            return levelFiles?.Length ?? 0;
         }
         #endregion
 
