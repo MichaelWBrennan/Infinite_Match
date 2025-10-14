@@ -126,7 +126,18 @@ namespace Evergreen.Platform
         private PlatformType DetectCurrentPlatform()
         {
 #if UNITY_WEBGL
+            // Check for platform-specific defines
+#if POKI_PLATFORM
             return PlatformType.Poki;
+#elif FACEBOOK_PLATFORM
+            return PlatformType.Facebook;
+#elif SNAP_PLATFORM
+            return PlatformType.Snap;
+#elif TIKTOK_PLATFORM
+            return PlatformType.TikTok;
+#else
+            return PlatformType.Poki; // Default to Poki for WebGL
+#endif
 #elif UNITY_ANDROID
             return PlatformType.GooglePlay;
 #elif UNITY_IOS
@@ -192,6 +203,15 @@ namespace Evergreen.Platform
                 case PlatformType.AppStore:
                     ApplyAppStoreSettings();
                     break;
+                case PlatformType.Facebook:
+                    ApplyFacebookSettings();
+                    break;
+                case PlatformType.Snap:
+                    ApplySnapSettings();
+                    break;
+                case PlatformType.TikTok:
+                    ApplyTikTokSettings();
+                    break;
             }
         }
         
@@ -240,6 +260,45 @@ namespace Evergreen.Platform
             
             // Initialize analytics adapter
             InitializeAnalyticsAdapter();
+            
+            // Initialize platform-specific adapters
+            InitializePlatformSpecificAdapters();
+        }
+        
+        private void InitializePlatformSpecificAdapters()
+        {
+            Debug.Log("🔌 Initializing platform-specific adapters...");
+            
+            switch (CurrentPlatform)
+            {
+                case PlatformType.Facebook:
+                    InitializeFacebookAdapter();
+                    break;
+                case PlatformType.Snap:
+                    InitializeSnapAdapter();
+                    break;
+                case PlatformType.TikTok:
+                    InitializeTikTokAdapter();
+                    break;
+            }
+        }
+        
+        private void InitializeFacebookAdapter()
+        {
+            var facebookAdapter = gameObject.AddComponent<FacebookInstantGamesAdapter>();
+            facebookAdapter.Initialize(CurrentProfile);
+        }
+        
+        private void InitializeSnapAdapter()
+        {
+            var snapAdapter = gameObject.AddComponent<SnapMiniGamesAdapter>();
+            snapAdapter.Initialize(CurrentProfile);
+        }
+        
+        private void InitializeTikTokAdapter()
+        {
+            var tiktokAdapter = gameObject.AddComponent<TikTokMiniGamesAdapter>();
+            tiktokAdapter.Initialize(CurrentProfile);
         }
         
         private void InitializeAdAdapter()
@@ -288,6 +347,54 @@ namespace Evergreen.Platform
         private void ConfigureUnityAds()
         {
             Debug.Log("📺 Configuring Unity Ads...");
+        }
+        
+        private void ApplyFacebookSettings()
+        {
+            Debug.Log("📘 Applying Facebook Instant Games settings...");
+            
+            // Disable IAP systems for Facebook
+            DisableIAPSystems();
+            
+            // Enable Facebook-specific features
+            EnableFacebookFeatures();
+        }
+        
+        private void ApplySnapSettings()
+        {
+            Debug.Log("👻 Applying Snap Mini Games settings...");
+            
+            // Disable IAP systems for Snap
+            DisableIAPSystems();
+            
+            // Enable Snap-specific features
+            EnableSnapFeatures();
+        }
+        
+        private void ApplyTikTokSettings()
+        {
+            Debug.Log("🎵 Applying TikTok Mini Games settings...");
+            
+            // Disable IAP systems for TikTok
+            DisableIAPSystems();
+            
+            // Enable TikTok-specific features
+            EnableTikTokFeatures();
+        }
+        
+        private void EnableFacebookFeatures()
+        {
+            Debug.Log("📘 Enabling Facebook Instant Games features...");
+        }
+        
+        private void EnableSnapFeatures()
+        {
+            Debug.Log("👻 Enabling Snap Mini Games features...");
+        }
+        
+        private void EnableTikTokFeatures()
+        {
+            Debug.Log("🎵 Enabling TikTok Mini Games features...");
         }
         
         private void RunComplianceChecks()
@@ -482,6 +589,9 @@ namespace Evergreen.Platform
         Poki,
         GooglePlay,
         AppStore,
+        Facebook,
+        Snap,
+        TikTok,
         Standalone
     }
     

@@ -94,6 +94,20 @@ namespace Evergreen.Editor
                 BuildPlatform(PlatformType.AppStore);
             }
             GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Build Facebook (WebGL)"))
+            {
+                BuildPlatform(PlatformType.Facebook);
+            }
+            if (GUILayout.Button("Build Snap (WebGL)"))
+            {
+                BuildPlatform(PlatformType.Snap);
+            }
+            if (GUILayout.Button("Build TikTok (WebGL)"))
+            {
+                BuildPlatform(PlatformType.TikTok);
+            }
+            GUILayout.EndHorizontal();
             GUILayout.Space(10);
             
             // Compliance Report
@@ -117,6 +131,15 @@ namespace Evergreen.Editor
             
             // Load App Store profile
             LoadProfile(PlatformType.AppStore, "appstore.json");
+            
+            // Load Facebook Instant Games profile
+            LoadProfile(PlatformType.Facebook, "facebook.json");
+            
+            // Load Snap Mini Games profile
+            LoadProfile(PlatformType.Snap, "snap.json");
+            
+            // Load TikTok Mini Games profile
+            LoadProfile(PlatformType.TikTok, "tiktok.json");
         }
         
         private void LoadProfile(PlatformType platformType, string fileName)
@@ -157,7 +180,10 @@ namespace Evergreen.Editor
             {
                 PlatformType.Poki,
                 PlatformType.GooglePlay,
-                PlatformType.AppStore
+                PlatformType.AppStore,
+                PlatformType.Facebook,
+                PlatformType.Snap,
+                PlatformType.TikTok
             };
             
             foreach (var platform in platformsToBuild)
