@@ -253,17 +253,13 @@ namespace Evergreen.Economy
                     OnEnergyDepleted?.Invoke();
                 }
                 
-                // Track analytics
-                var analytics = AdvancedAnalyticsSystem.Instance;
-                if (analytics != null)
+                // Track with Unity Analytics
+                UnityEngine.Analytics.Analytics.CustomEvent("energy_consumed", new Dictionary<string, object>
                 {
-                    analytics.TrackEvent("energy_consumed", new Dictionary<string, object>
-                    {
-                        ["amount"] = amount,
-                        ["remaining"] = _currentEnergy,
-                        ["max_energy"] = maxEnergy
-                    });
-                }
+                    ["amount"] = amount,
+                    ["remaining"] = _currentEnergy,
+                    ["max_energy"] = maxEnergy
+                });
                 
                 return true;
             }
@@ -295,16 +291,12 @@ namespace Evergreen.Economy
                 var energyNeeded = maxEnergy - _currentEnergy;
                 AddEnergy(energyNeeded);
                 
-                // Track analytics
-                var analytics = AdvancedAnalyticsSystem.Instance;
-                if (analytics != null)
+                // Track with Unity Analytics
+                UnityEngine.Analytics.Analytics.CustomEvent("energy_refilled_gems", new Dictionary<string, object>
                 {
-                    analytics.TrackEvent("energy_refilled_gems", new Dictionary<string, object>
-                    {
-                        ["cost"] = energyRefillCost,
-                        ["energy_gained"] = energyNeeded
-                    });
-                }
+                    ["cost"] = energyRefillCost,
+                    ["energy_gained"] = energyNeeded
+                });
                 
                 return true;
             }
@@ -332,15 +324,11 @@ namespace Evergreen.Economy
                     _lastEnergyAd = DateTime.Now;
                     SaveEnergyData();
                     
-                    // Track analytics
-                    var analytics = AdvancedAnalyticsSystem.Instance;
-                    if (analytics != null)
+                    // Track with Unity Analytics
+                    UnityEngine.Analytics.Analytics.CustomEvent("energy_refilled_ad", new Dictionary<string, object>
                     {
-                        analytics.TrackEvent("energy_refilled_ad", new Dictionary<string, object>
-                        {
-                            ["energy_gained"] = energyAdReward
-                        });
-                    }
+                        ["energy_gained"] = energyAdReward
+                    });
                 });
                 
                 return true;
@@ -365,18 +353,14 @@ namespace Evergreen.Economy
                 
                 OnEnergyPackPurchased?.Invoke(pack);
                 
-                // Track analytics
-                var analytics = AdvancedAnalyticsSystem.Instance;
-                if (analytics != null)
+                // Track with Unity Analytics
+                UnityEngine.Analytics.Analytics.CustomEvent("energy_pack_purchased", new Dictionary<string, object>
                 {
-                    analytics.TrackEvent("energy_pack_purchased", new Dictionary<string, object>
-                    {
-                        ["pack_id"] = packId,
-                        ["cost"] = pack.cost,
-                        ["cost_type"] = pack.costType,
-                        ["energy_gained"] = pack.energy
-                    });
-                }
+                    ["pack_id"] = packId,
+                    ["cost"] = pack.cost,
+                    ["cost_type"] = pack.costType,
+                    ["energy_gained"] = pack.energy
+                });
                 
                 return true;
             }

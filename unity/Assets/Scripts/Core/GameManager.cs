@@ -19,7 +19,6 @@ namespace Evergreen.Core
         [Header("System Initialization")]
         [SerializeField] private bool initializeOnAwake = true;
         [SerializeField] private bool enablePerformanceMonitoring = true;
-        [SerializeField] private bool enableAnalytics = true;
         [SerializeField] private bool enableARPUSystems = true;
         
         [Header("Industry Leader ARPU Targets")]
@@ -317,11 +316,11 @@ namespace Evergreen.Core
                 return go.AddComponent<SocialCompetitionSystem>();
             });
             
-            // Register ARPU Analytics System
-            ServiceLocator.RegisterFactory<ARPUAnalyticsSystem>(() => 
+            // Register Unity Analytics ARPU Helper
+            ServiceLocator.RegisterFactory<UnityAnalyticsARPUHelper>(() => 
             {
-                var go = new GameObject("ARPUAnalyticsSystem");
-                return go.AddComponent<ARPUAnalyticsSystem>();
+                var go = new GameObject("UnityAnalyticsARPUHelper");
+                return go.AddComponent<UnityAnalyticsARPUHelper>();
             });
             
             // Register Advanced Retention System
@@ -463,36 +462,41 @@ namespace Evergreen.Core
         }
         
         /// <summary>
-        /// Track revenue event
+        /// Track revenue event using Unity Analytics
         /// </summary>
         public void TrackRevenue(string playerId, float amount, RevenueSource source, string itemId = "")
         {
-            var analytics = GetService<ARPUAnalyticsSystem>();
-            if (analytics != null)
+            var helper = UnityAnalyticsARPUHelper.Instance;
+            if (helper != null)
             {
-                analytics.TrackRevenue(playerId, amount, source, itemId);
+                helper.TrackRevenue(playerId, amount, source.ToString(), itemId);
             }
         }
         
         /// <summary>
-        /// Track player action
+        /// Track player action using Unity Analytics
         /// </summary>
         public void TrackPlayerAction(string playerId, string action, System.Collections.Generic.Dictionary<string, object> parameters = null)
         {
-            var analytics = GetService<ARPUAnalyticsSystem>();
-            if (analytics != null)
+            var helper = UnityAnalyticsARPUHelper.Instance;
+            if (helper != null)
             {
-                analytics.TrackPlayerAction(playerId, action, parameters);
+                helper.TrackPlayerAction(playerId, action, parameters);
             }
         }
         
         /// <summary>
-        /// Get current ARPU metrics
+        /// Get current ARPU metrics (using Unity Analytics data)
         /// </summary>
         public System.Collections.Generic.Dictionary<string, object> GetARPUReport()
         {
-            var analytics = GetService<ARPUAnalyticsSystem>();
-            return analytics != null ? analytics.GetARPUReport() : new System.Collections.Generic.Dictionary<string, object>();
+            var helper = UnityAnalyticsARPUHelper.Instance;
+            if (helper != null)
+            {
+                return helper.GetARPUReport();
+            }
+            
+            return new System.Collections.Generic.Dictionary<string, object>();
         }
         
         /// <summary>
@@ -500,12 +504,13 @@ namespace Evergreen.Core
         /// </summary>
         public bool AreARPUTargetsMet()
         {
-            var report = GetARPUReport();
-            var currentARPU = report.ContainsKey("arpu") ? (float)report["arpu"] : 0f;
-            var currentARPPU = report.ContainsKey("arppu") ? (float)report["arppu"] : 0f;
-            var currentConversionRate = report.ContainsKey("conversion_rate") ? (float)report["conversion_rate"] : 0f;
+            var helper = UnityAnalyticsARPUHelper.Instance;
+            if (helper != null)
+            {
+                return helper.AreARPUTargetsMet();
+            }
             
-            return currentARPU >= targetARPU && currentARPPU >= targetARPPU && currentConversionRate >= targetConversionRate;
+            return false;
         }
         
         /// <summary>
@@ -513,18 +518,13 @@ namespace Evergreen.Core
         /// </summary>
         public System.Collections.Generic.Dictionary<string, float> GetARPUPerformance()
         {
-            var report = GetARPUReport();
-            var currentARPU = report.ContainsKey("arpu") ? (float)report["arpu"] : 0f;
-            var currentARPPU = report.ContainsKey("arppu") ? (float)report["arppu"] : 0f;
-            var currentConversionRate = report.ContainsKey("conversion_rate") ? (float)report["conversion_rate"] : 0f;
-            
-            return new System.Collections.Generic.Dictionary<string, float>
+            var helper = UnityAnalyticsARPUHelper.Instance;
+            if (helper != null)
             {
-                ["arpu_performance"] = currentARPU / targetARPU,
-                ["arppu_performance"] = currentARPPU / targetARPPU,
-                ["conversion_performance"] = currentConversionRate / targetConversionRate,
-                ["overall_performance"] = (currentARPU / targetARPU + currentARPPU / targetARPPU + currentConversionRate / targetConversionRate) / 3f
-            };
+                return helper.GetARPUPerformance();
+            }
+            
+            return new System.Collections.Generic.Dictionary<string, float>();
         }
         
         /// <summary>
