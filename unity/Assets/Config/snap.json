@@ -42,7 +42,39 @@
     "free_currency": "coins",
     "max_purchase_amount": 0,
     "currency_exchange_rate": 1.0,
-    "snap_coins": true
+    "snap_coins": true,
+    "roi_optimization": {
+      "aggressive_ad_frequency": true,
+      "ad_cooldown_seconds": 20,
+      "rewarded_ad_multiplier": 5.0,
+      "energy_system": true,
+      "energy_refill_cost": 3,
+      "energy_pack_sizes": [5, 15, 30, 60, 120],
+      "energy_pack_costs": [5, 12, 20, 35, 60],
+      "lives_system": true,
+      "lives_refill_cost": 2,
+      "boosters_system": true,
+      "booster_prices": [3, 6, 12, 25],
+      "daily_rewards": true,
+      "premium_daily_rewards": true,
+      "streak_bonuses": true,
+      "max_streak_days": 14,
+      "streak_multiplier": 2.5,
+      "snap_specific_monetization": {
+        "camera_integration_ads": true,
+        "ar_feature_ads": true,
+        "snapchat_ads": true,
+        "lens_ads": true,
+        "story_ads": true,
+        "social_sharing_bonuses": true,
+        "snap_score_rewards": true,
+        "bitmoji_integration": true,
+        "snap_map_integration": true,
+        "viral_mechanics": true,
+        "trending_challenges": true,
+        "user_generated_content": true
+      }
+    }
   },
   
   "analytics": {

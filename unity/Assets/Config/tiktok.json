@@ -44,7 +44,43 @@
     "free_currency": "coins",
     "max_purchase_amount": 0,
     "currency_exchange_rate": 1.0,
-    "tiktok_coins": true
+    "tiktok_coins": true,
+    "roi_optimization": {
+      "aggressive_ad_frequency": true,
+      "ad_cooldown_seconds": 15,
+      "rewarded_ad_multiplier": 4.0,
+      "energy_system": true,
+      "energy_refill_cost": 2,
+      "energy_pack_sizes": [5, 15, 30, 60, 120],
+      "energy_pack_costs": [3, 8, 15, 25, 45],
+      "lives_system": true,
+      "lives_refill_cost": 1,
+      "boosters_system": true,
+      "booster_prices": [2, 5, 10, 20],
+      "daily_rewards": true,
+      "premium_daily_rewards": true,
+      "streak_bonuses": true,
+      "max_streak_days": 21,
+      "streak_multiplier": 2.0,
+      "tiktok_specific_monetization": {
+        "video_creation_ads": true,
+        "trending_feature_ads": true,
+        "hashtag_challenge_ads": true,
+        "tiktok_ads": true,
+        "in_feed_ads": true,
+        "branded_effects_ads": true,
+        "social_sharing_bonuses": true,
+        "viral_mechanics": true,
+        "trending_challenges": true,
+        "user_generated_content": true,
+        "dance_challenge_integration": true,
+        "music_integration": true,
+        "filter_integration": true,
+        "duet_feature": true,
+        "stitch_feature": true,
+        "live_streaming_integration": true
+      }
+    }
   },
   
   "analytics": {

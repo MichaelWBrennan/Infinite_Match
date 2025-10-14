@@ -39,7 +39,25 @@
     "premium_currency": "gems",
     "free_currency": "coins",
     "max_purchase_amount": 0,
-    "currency_exchange_rate": 1.0
+    "currency_exchange_rate": 1.0,
+    "roi_optimization": {
+      "aggressive_ad_frequency": true,
+      "ad_cooldown_seconds": 30,
+      "rewarded_ad_multiplier": 3.0,
+      "energy_system": true,
+      "energy_refill_cost": 5,
+      "energy_pack_sizes": [10, 25, 50, 100],
+      "energy_pack_costs": [10, 20, 35, 60],
+      "lives_system": true,
+      "lives_refill_cost": 3,
+      "boosters_system": true,
+      "booster_prices": [5, 10, 20, 50],
+      "daily_rewards": true,
+      "premium_daily_rewards": true,
+      "streak_bonuses": true,
+      "max_streak_days": 7,
+      "streak_multiplier": 2.0
+    }
   },
   
   "analytics": {
