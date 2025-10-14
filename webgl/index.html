@@ -188,52 +188,56 @@
             
             loadingBar.style.display = "block";
             
+            // Load Unity WebGL build
+            loadUnityWebGL();
+        }
+        
+        // Load Unity WebGL build
+        function loadUnityWebGL() {
             var buildUrl = "Build";
             var loaderUrl = buildUrl + "/WebGL.loader.js";
-            var config = {
-                dataUrl: buildUrl + "/WebGL.data",
-                frameworkUrl: buildUrl + "/WebGL.framework.js",
-                codeUrl: buildUrl + "/WebGL.wasm",
-                streamingAssetsUrl: "StreamingAssets",
-                companyName: "Poki Game",
-                productName: "Match3 Unity Game",
-                productVersion: "1.0",
-            };
             
-            // Add Poki SDK to Unity config
-            if (pokiSDK) {
-                config.pokiSDK = pokiSDK;
-            }
-            
+            // Load the Unity loader script
             var script = document.createElement("script");
             script.src = loaderUrl;
             script.onload = () => {
-                createUnityInstance(canvas, config, (progress) => {
-                    progressBarFull.style.width = 100 * progress + "%";
-                }).then((unityInstance) => {
-                    gameInstance = unityInstance;
-                    loadingBar.style.display = "none";
-                    
-                    // Set up fullscreen button
-                    fullscreenButton.onclick = () => {
-                        unityInstance.SetFullscreen(1);
-                    };
-                    
-                    // Poki SDK game ready callback
-                    if (pokiSDK) {
-                        pokiSDK.gameplayStart();
-                    }
-                    
-                    console.log('✅ Unity game loaded successfully');
-                }).catch((message) => {
-                    console.error('❌ Unity game load failed:', message);
-                    showError('Failed to load game: ' + message);
-                });
+                console.log('📦 Unity loader loaded, initializing...');
+                
+                // Create Unity instance with progress callback
+                if (typeof createUnityInstance === 'function') {
+                    createUnityInstance(canvas, {}, (progress) => {
+                        progressBarFull.style.width = 100 * progress + "%";
+                        console.log('📊 Loading progress:', Math.round(progress * 100) + '%');
+                    }).then((unityInstance) => {
+                        gameInstance = unityInstance;
+                        loadingBar.style.display = "none";
+                        
+                        // Set up fullscreen functionality
+                        if (unityInstance.SetFullscreen) {
+                            canvas.addEventListener('dblclick', () => {
+                                unityInstance.SetFullscreen(1);
+                            });
+                        }
+                        
+                        // Poki SDK game ready callback
+                        if (pokiSDK) {
+                            pokiSDK.gameplayStart();
+                        }
+                        
+                        console.log('✅ Unity game loaded successfully');
+                    }).catch((message) => {
+                        console.error('❌ Unity game load failed:', message);
+                        showError('Failed to load game: ' + message);
+                    });
+                } else {
+                    console.error('❌ createUnityInstance function not found');
+                    showError('Unity loader not properly loaded');
+                }
             };
             
             script.onerror = () => {
-                console.error('❌ Failed to load Unity WebGL build');
-                showError('Failed to load Unity WebGL build. Please check your browser console for errors.');
+                console.error('❌ Failed to load Unity WebGL loader');
+                showError('Failed to load Unity WebGL loader. Please check your browser console for errors.');
             };
             
             document.body.appendChild(script);
