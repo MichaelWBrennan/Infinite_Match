@@ -128,7 +128,10 @@ public class Match3UIBootstrap : MonoBehaviour
         var go = new GameObject(name);
         var rt = go.AddComponent<RectTransform>();
         go.transform.SetParent(parent, false);
-        var img = go.AddComponent<Image>(); img.color = new Color(0.2f, 0.5f, 1f, 0.85f);
+        var img = go.AddComponent<Image>();
+        var icon = Resources.Load<Sprite>($"UI/Icons/{name.ToLower()}");
+        if (icon != null) { img.sprite = icon; img.color = Color.white; }
+        else { img.color = new Color(0.2f, 0.5f, 1f, 0.85f); }
         var btn = go.AddComponent<Button>(); btn.onClick.AddListener(onClick);
         var labelGo = new GameObject("Text");
         var lrt = labelGo.AddComponent<RectTransform>(); labelGo.transform.SetParent(go.transform, false);
