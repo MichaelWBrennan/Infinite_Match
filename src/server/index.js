@@ -23,12 +23,26 @@ import {
   errorHandler,
 } from 'core/middleware/index.js';
 import { HTTP_STATUS, CACHE_KEYS, PROMO_CODES, PROMO_REWARDS } from 'core/constants/index.js';
+import OffersService from 'services/offers/OffersService.js';
+import ReceiptVerificationService from 'services/payments/ReceiptVerificationService.js';
+import PurchaseLedger from 'services/payments/PurchaseLedger.js';
+import PurchaseLedgerDb, { PurchaseLedgerDb as _PLDB } from 'services/payments/PurchaseLedgerDb.js';
 
 // Routes
 import authRoutes from 'routes/auth.js';
 import economyRoutes from 'routes/economy.js';
 import gameRoutes from 'routes/game.js';
 import adminRoutes from 'routes/admin.js';
+import monetizationRoutes from 'routes/monetization.js';
+import analyticsRoutes from 'routes/analytics.js';
+import crmRoutes from 'routes/crm.js';
+import battlepassRoutes from 'routes/battlepass.js';
+import subscriptionsRoutes from 'routes/subscriptions.js';
+import experimentsRoutes from 'routes/experiments.js';
+import pushRoutes from 'routes/push.js';
+import entitlementsRoutes from 'routes/entitlements.js';
+import consentRoutes from 'routes/consent.js';
+import adsRoutes from 'routes/ads.js';
 
 const logger = new Logger('Server');
 const app = express();
@@ -39,6 +53,7 @@ registerServices();
 // Initialize services
 const unityService = getService('unityService');
 const economyService = getService('economyService');
+const offersService = new OffersService();
 
 // Middleware stack
 app.use(security.helmetConfig);
@@ -178,26 +193,121 @@ app.use('/api/auth', authRoutes);
 app.use('/api/economy', economyRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/monetization', monetizationRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/crm', crmRoutes);
+app.use('/api/battlepass', battlepassRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/experiments', experimentsRoutes);
+app.use('/api/push', pushRoutes);
+app.use('/api/entitlements', entitlementsRoutes);
+app.use('/api/consent', consentRoutes);
+app.use('/api/ads', adsRoutes);
 
 // Receipt verification endpoint
 app.post('/api/verify_receipt', security.authRateLimit, asyncHandler(async (req, res) => {
-  const { sku, receipt } = req.body;
+  // Backward-compatible handler. Supports two shapes:
+  // 1) { platform: 'ios'|'android', payload: {...} }
+  // 2) { sku, receipt, platform: 'IPhonePlayer'|'Android' }
 
-  if (!sku || !receipt) {
+  let { platform, payload, sku, receipt } = req.body || {};
+
+  const normalizePlatform = (p) => {
+    if (!p) return undefined;
+    const v = String(p).toLowerCase();
+    if (v.includes('iphone') || v.includes('ios')) return 'ios';
+    if (v.includes('android')) return 'android';
+    return p;
+  };
+
+  const tryParseUnityReceipt = (receiptString, platformHint) => {
+    try {
+      const parsed = JSON.parse(receiptString);
+      // Unity IAP often wraps payload under `Payload`
+      if (platformHint === 'ios') {
+        const base64 = parsed?.Payload || parsed?.payload || parsed?.receipt;
+        if (base64) return { platform: 'ios', payload: { receiptData: base64 } };
+      }
+      if (platformHint === 'android') {
+        const payloadStr = parsed?.Payload || parsed?.payload || '';
+        if (payloadStr) {
+          try {
+            const inner = JSON.parse(payloadStr);
+            const jsonStr = inner?.json || payloadStr;
+            const purchase = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : inner;
+            return {
+              platform: 'android',
+              payload: {
+                packageName: purchase.packageName || purchase.package_name,
+                productId: purchase.productId || purchase.product_id || sku,
+                purchaseToken: purchase.purchaseToken || purchase.purchase_token,
+              },
+            };
+          } catch (_) { /* ignore */ }
+        }
+      }
+    } catch (_) {
+      // If not JSON, could be raw base64 (iOS)
+      if (platformHint === 'ios' && typeof receiptString === 'string' && receiptString.length > 20) {
+        return { platform: 'ios', payload: { receiptData: receiptString } };
+      }
+    }
+    return undefined;
+  };
+
+  platform = normalizePlatform(platform);
+
+  if (!payload && receipt) {
+    const inferred = tryParseUnityReceipt(receipt, platform);
+    if (inferred) {
+      platform = inferred.platform;
+      payload = inferred.payload;
+    }
+  }
+
+  if (!platform || !payload) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({
-      valid: false,
-      error: 'Missing required fields: sku, receipt',
+      success: false,
+      error: 'Missing required fields: platform, payload',
     });
   }
 
-  // TODO: Implement actual receipt verification with Apple/Google
-  const isValid = String(receipt).length > 20;
+  const result = await ReceiptVerificationService.verify({ platform, payload });
+
+  if (!result.success) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      platform,
+      error: 'verification_failed',
+      details: result.reason || result.status || result.state || 'invalid',
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   res.json({
-    valid: isValid,
-    sku,
+    success: true,
+    platform,
+    productId: result.productId || sku || null,
+    transactionId: result.transactionId || null,
+    duplicate: Boolean(result.duplicate),
     timestamp: new Date().toISOString(),
   });
+  try {
+    await PurchaseLedger.recordPurchase({
+      platform,
+      productId: result.productId || sku || null,
+      transactionId: result.transactionId || null,
+      acknowledged: result.acknowledged,
+      playerId: req.user?.playerId,
+    });
+    await PurchaseLedgerDb.recordPurchase({
+      platform,
+      productId: result.productId || sku || null,
+      transactionId: result.transactionId || null,
+      acknowledged: result.acknowledged,
+      playerId: req.user?.playerId,
+    });
+  } catch (_) {}
 }));
 
 // Segments endpoint
@@ -248,6 +358,13 @@ app.post('/api/segments', security.sessionValidation, asyncHandler(async (req, r
   economyService.setCachedData(cacheKey, result);
 
   res.json(result);
+}));
+
+// Event-driven offers endpoint
+app.post('/api/offers', security.sessionValidation, asyncHandler(async (req, res) => {
+  const profile = req.body || {};
+  const offers = offersService.getOffers(profile);
+  res.json({ success: true, offers });
 }));
 
 // Promo codes endpoint

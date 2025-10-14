@@ -1,0 +1,36 @@
+# General
+.git
+.gitignore
+.env
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+
+# Build output
+/dist
+/build
+/coverage
+/.cache
+
+# Local tooling
+.vscode
+.idea
+
+# Large, non-essential contexts
+/assets
+/assets_external
+/unity
+/marketing
+/monitoring/reports
+/webgl
+
+# Tests
+**/__tests__
+**/*.test.*
+
+# Docker
+Dockerfile*
+.dockerignore

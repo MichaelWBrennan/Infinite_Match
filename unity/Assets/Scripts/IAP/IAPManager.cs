@@ -18,6 +18,7 @@ public class IAPManager : MonoBehaviour, IStoreListener
         var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
         // Add products - mirror your SKUs
         builder.AddProduct("remove_ads", ProductType.NonConsumable);
+        builder.AddProduct("piggy_bank_unlock", ProductType.Consumable);
         builder.AddProduct("starter_pack_small", ProductType.Consumable);
         builder.AddProduct("starter_pack_large", ProductType.Consumable);
         builder.AddProduct("coins_small", ProductType.Consumable);
@@ -44,6 +45,7 @@ public class IAPManager : MonoBehaviour, IStoreListener
     private void InitializeGrants()
     {
         _grants["remove_ads"] = () => { PlayerPrefs.SetInt("ads_removed", 1); PlayerPrefs.Save(); };
+        _grants["piggy_bank_unlock"] = () => Evergreen.Monetization.PiggyBankSystem.Instance?.Cashout();
         _grants["starter_pack_small"] = () => GameState.AddCoins(500);
         _grants["starter_pack_large"] = () => GameState.AddCoins(5000);
         _grants["coins_small"] = () => GameState.AddCoins(500);
@@ -100,7 +102,7 @@ public class IAPManager : MonoBehaviour, IStoreListener
 
     private System.Collections.IEnumerator VerifyAndGrant(string sku, string receipt)
     {
-        var url = Evergreen.Game.RemoteConfigService.Get("receipt_validation_url", "http://localhost:3030/verify_receipt");
+        var url = Evergreen.Game.RemoteConfigService.Get("receipt_validation_url", "http://localhost:3030/api/verify_receipt");
         var body = new System.Collections.Generic.Dictionary<string, object>{
             {"sku", sku}, {"receipt", receipt}, {"platform", Application.platform.ToString()}, {"locale", Application.systemLanguage.ToString()}, {"version", Application.version}
         };
@@ -112,8 +114,23 @@ public class IAPManager : MonoBehaviour, IStoreListener
             req.downloadHandler = new DownloadHandlerBuffer();
             req.SetRequestHeader("Content-Type", "application/json");
             yield return req.SendWebRequest();
-            var ok = req.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
-            if (ok && req.downloadHandler.text.Contains("valid"))
+            var isHttpOk = req.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
+            bool isVerified = false;
+            if (isHttpOk)
+            {
+                try
+                {
+                    var resp = Evergreen.Game.MiniJSON.Json.Deserialize(req.downloadHandler.text) as System.Collections.Generic.Dictionary<string, object>;
+                    if (resp != null)
+                    {
+                        if (resp.ContainsKey("success") && resp["success"] is bool b1 && b1) isVerified = true;
+                        if (resp.ContainsKey("valid") && resp["valid"] is bool b2 && b2) isVerified = true;
+                    }
+                }
+                catch { }
+            }
+
+            if (isHttpOk && isVerified)
             {
                 if (_grants.TryGetValue(sku, out var grant)) grant.Invoke();
                 Evergreen.Game.AnalyticsAdapter.CustomEvent("purchase", sku);

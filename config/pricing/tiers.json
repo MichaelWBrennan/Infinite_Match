@@ -1,0 +1,7 @@
+{
+  "tiers": [
+    { "sku": "starter_pack", "usdPrice": 2.99, "title": "Starter Pack", "description": "Great value for new players" },
+    { "sku": "value_pack",   "usdPrice": 9.99, "title": "Value Pack",   "description": "Extra currency and boosters" },
+    { "sku": "premium_pack", "usdPrice": 19.99, "title": "Premium Pack", "description": "Best value bundle" }
+  ]
+}

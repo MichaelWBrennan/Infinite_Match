@@ -1,0 +1,10 @@
+{
+  "IN": {
+    "starter_pack": { "usdPrice": 1.49 },
+    "value_pack":   { "usdPrice": 6.99 }
+  },
+  "BR": {
+    "starter_pack": { "usdPrice": 1.99 },
+    "value_pack":   { "usdPrice": 7.99 }
+  }
+}
