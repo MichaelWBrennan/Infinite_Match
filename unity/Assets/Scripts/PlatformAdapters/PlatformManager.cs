@@ -66,23 +66,24 @@ namespace Evergreen.Platform
         {
             Debug.Log("📋 Loading platform profiles...");
             
-            // Load Poki profile
+            // Load WebGL platforms
             LoadProfile(PlatformType.Poki, "poki.json");
+            LoadProfile(PlatformType.Facebook, "facebook.json");
+            LoadProfile(PlatformType.Snap, "snap.json");
+            LoadProfile(PlatformType.TikTok, "tiktok.json");
+            LoadProfile(PlatformType.Kongregate, "kongregate.json");
+            LoadProfile(PlatformType.CrazyGames, "crazygames.json");
             
-            // Load Google Play profile
+            // Load Mobile platforms
             LoadProfile(PlatformType.GooglePlay, "googleplay.json");
-            
-            // Load App Store profile
             LoadProfile(PlatformType.AppStore, "appstore.json");
             
-            // Load Facebook Instant Games profile
-            LoadProfile(PlatformType.Facebook, "facebook.json");
+            // Load PC platforms
+            LoadProfile(PlatformType.Steam, "steam.json");
+            LoadProfile(PlatformType.Epic, "epic.json");
             
-            // Load Snap Mini Games profile
-            LoadProfile(PlatformType.Snap, "snap.json");
-            
-            // Load TikTok Mini Games profile
-            LoadProfile(PlatformType.TikTok, "tiktok.json");
+            // Load Console platforms
+            LoadProfile(PlatformType.PS5, "ps5.json");
         }
         
         private void LoadProfile(PlatformType platformType, string fileName)
@@ -592,6 +593,11 @@ namespace Evergreen.Platform
         Facebook,
         Snap,
         TikTok,
+        Steam,
+        Epic,
+        PS5,
+        Kongregate,
+        CrazyGames,
         Standalone
     }
     
