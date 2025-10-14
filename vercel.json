@@ -3,6 +3,11 @@
   "rewrites": [
     { "source": "/", "destination": "/webgl/index.html" }
   ],
+  "functions": {
+    "webgl/index.html": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "headers": [
     { "source": "/index.html", "headers": [
       { "key": "Cache-Control", "value": "no-cache" }

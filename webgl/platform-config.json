@@ -1,0 +1,11 @@
+{
+  "platform": "poki",
+  "buildTime": "2025-10-14T22:10:02.082Z",
+  "version": "1.0.0",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": true,
+    "analytics": true
+  }
+}
