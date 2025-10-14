@@ -6,8 +6,8 @@
     <meta name="description" content="Unity WebGL Game on Poki Platform">
     <title>Unity WebGL Game - Poki</title>
     
-    <!-- Poki SDK -->
-    <script src="https://game-cdn.poki.com/scripts/poki-sdk.js"></script>
+    <!-- Platform Detection -->
+    <script src="platform-detection.js"></script>
     
     <style>
         html, body {
@@ -124,11 +124,12 @@
             WebGL builds are not supported on mobile devices.
         </div>
         <div id="poki-placeholder" class="poki-placeholder">
-            <h2>🎮 Unity WebGL Game - Poki Ready</h2>
+            <h2>🎮 Unity WebGL Game - Multi-Platform Ready</h2>
             <p>Drop your Unity WebGL build here (Build/, TemplateData/, updated index.html) and deploy with Vercel.</p>
-            <p><strong>Poki SDK Integration:</strong> ✅ Ready</p>
+            <p><strong>Platform Detection:</strong> ✅ Kongregate, Game Crazy, Poki</p>
             <p><strong>Vercel Deployment:</strong> ✅ Ready</p>
             <p><strong>WebGL Optimization:</strong> ✅ Ready</p>
+            <p><strong>Unified API:</strong> ✅ Cross-platform compatibility</p>
         </div>
     </div>
     
@@ -141,27 +142,40 @@
         var mobileWarning = document.querySelector("#unity-mobile-warning");
         var placeholder = document.querySelector("#poki-placeholder");
         
-        // Poki SDK Integration
-        var pokiSDK = null;
+        // Platform Integration
+        var platformAPI = null;
         var gameInstance = null;
+        var platformDetector = null;
         
-        // Initialize Poki SDK
-        function initializePokiSDK() {
-            if (typeof window.pokiSDK !== 'undefined') {
-                pokiSDK = window.pokiSDK;
-                console.log('🎮 Poki SDK initialized');
+        // Initialize Platform Detection and SDK
+        async function initializePlatform() {
+            try {
+                platformDetector = new PlatformDetector();
+                const platformInfo = await platformDetector.initialize();
                 
-                // Poki SDK callbacks
-                pokiSDK.init().then(() => {
-                    console.log('✅ Poki SDK ready');
-                    startGame();
-                }).catch((error) => {
-                    console.error('❌ Poki SDK initialization failed:', error);
-                    showError('Failed to initialize Poki SDK');
-                });
-            } else {
-                console.warn('⚠️ Poki SDK not found, starting game without Poki features');
+                console.log(`🎮 Platform: ${platformInfo.config.name}`);
+                console.log(`📱 Features:`, platformInfo.config.features);
+                
+                platformAPI = platformDetector.getUnifiedAPI();
+                
+                // Initialize platform-specific features
+                if (platformInfo.config.features.ads) {
+                    console.log('✅ Ad support enabled');
+                }
+                if (platformInfo.config.features.iap) {
+                    console.log('✅ In-app purchase support enabled');
+                }
+                if (platformInfo.config.features.social) {
+                    console.log('✅ Social features enabled');
+                }
+                if (platformInfo.config.features.analytics) {
+                    console.log('✅ Analytics enabled');
+                }
+                
                 startGame();
+            } catch (error) {
+                console.error('❌ Platform initialization failed:', error);
+                showError('Failed to initialize platform: ' + error.message);
             }
         }
         
@@ -219,9 +233,9 @@
                             });
                         }
                         
-                        // Poki SDK game ready callback
-                        if (pokiSDK) {
-                            pokiSDK.gameplayStart();
+                        // Platform game ready callback
+                        if (platformAPI) {
+                            platformAPI.gameplayStart();
                         }
                         
                         console.log('✅ Unity game loaded successfully');
@@ -254,22 +268,22 @@
             loadingBar.innerHTML = '<div class="poki-error">' + message + '</div>';
         }
         
-        // Poki SDK event handlers
+        // Platform event handlers
         function onGamePause() {
-            if (pokiSDK) {
-                pokiSDK.gameplayStop();
+            if (platformAPI) {
+                platformAPI.gameplayStop();
             }
         }
         
         function onGameResume() {
-            if (pokiSDK) {
-                pokiSDK.gameplayStart();
+            if (platformAPI) {
+                platformAPI.gameplayStart();
             }
         }
         
         function onGameQuit() {
-            if (pokiSDK) {
-                pokiSDK.gameplayStop();
+            if (platformAPI) {
+                platformAPI.gameplayStop();
             }
         }
         
@@ -289,66 +303,93 @@
         
         // Initialize when page loads
         window.addEventListener('load', function() {
-            initializePokiSDK();
+            initializePlatform();
         });
         
-        // Poki SDK API functions for Unity
-        window.PokiAPI = {
-            // Show Poki ad
+        // Unified Platform API for Unity
+        window.GameAPI = {
+            // Show ad
             showAd: function(type) {
-                if (pokiSDK) {
-                    return pokiSDK.showAd(type);
+                if (platformAPI) {
+                    return platformAPI.showAd(type);
                 }
                 return Promise.resolve();
             },
             
             // Show rewarded ad
             showRewardedAd: function() {
-                if (pokiSDK) {
-                    return pokiSDK.showRewardedAd();
+                if (platformAPI) {
+                    return platformAPI.showRewardedAd();
                 }
                 return Promise.resolve();
             },
             
             // Show interstitial ad
             showInterstitialAd: function() {
-                if (pokiSDK) {
-                    return pokiSDK.showInterstitialAd();
+                if (platformAPI) {
+                    return platformAPI.showInterstitialAd();
                 }
                 return Promise.resolve();
             },
             
             // Check if ad is blocked
             isAdBlocked: function() {
-                if (pokiSDK) {
-                    return pokiSDK.getAdBlocked();
+                if (platformAPI) {
+                    return platformAPI.isAdBlocked();
                 }
                 return false;
             },
             
             // Check if user has ad-free
             isAdFree: function() {
-                if (pokiSDK) {
-                    return pokiSDK.getAdFree();
+                if (platformAPI) {
+                    return platformAPI.isAdFree();
                 }
                 return false;
             },
             
             // Track game event
             trackEvent: function(eventName, data) {
-                if (pokiSDK) {
-                    pokiSDK.trackEvent(eventName, data);
+                if (platformAPI) {
+                    platformAPI.trackEvent(eventName, data);
                 }
             },
             
-            // Get Poki user info
+            // Get user info
             getUserInfo: function() {
-                if (pokiSDK) {
-                    return pokiSDK.getUserInfo();
+                if (platformAPI) {
+                    return platformAPI.getUserInfo();
                 }
                 return null;
+            },
+            
+            // Get platform info
+            getPlatform: function() {
+                if (platformAPI) {
+                    return platformAPI.getPlatform();
+                }
+                return 'unknown';
+            },
+            
+            // Get platform name
+            getPlatformName: function() {
+                if (platformAPI) {
+                    return platformAPI.getPlatformName();
+                }
+                return 'Unknown';
+            },
+            
+            // Get available features
+            getFeatures: function() {
+                if (platformAPI) {
+                    return platformAPI.getFeatures();
+                }
+                return {};
             }
         };
+        
+        // Legacy Poki API for backward compatibility
+        window.PokiAPI = window.GameAPI;
     </script>
 </body>
 </html>

@@ -1,0 +1,32 @@
+{
+  "platform": "kongregate",
+  "name": "Kongregate",
+  "sdkUrl": "https://cdn1.kongregate.com/javascripts/kongregate_api.js",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": true,
+    "analytics": true,
+    "achievements": true,
+    "chat": true
+  },
+  "api": {
+    "showAd": "kongregate.services.showAd",
+    "showRewardedAd": "kongregate.services.showRewardedAd",
+    "showInterstitialAd": "kongregate.services.showInterstitialAd",
+    "trackEvent": "kongregate.stats.submit",
+    "getUserInfo": "kongregate.services.getUserInfo",
+    "isAdBlocked": "kongregate.services.isAdBlocked",
+    "isAdFree": "kongregate.services.isAdFree"
+  },
+  "ui": {
+    "theme": "dark",
+    "primaryColor": "#ff6b35",
+    "secondaryColor": "#f7931e"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": true,
+    "resumeOnFocus": true
+  }
+}
