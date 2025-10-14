@@ -19,3 +19,10 @@ pack_booster_small,Booster Bundle,coins,500,pack_booster_small:1
 pack_booster_large,Power Pack,gems,25,pack_booster_large:1
 pack_comeback,Welcome Back!,gems,50,pack_comeback:1
 pack_flash_sale,Flash Sale!,gems,25,pack_flash_sale:1
+energy_small,Energy Boost,gems,5,energy:10
+energy_medium,Energy Surge,gems,10,energy:25
+energy_large,Energy Rush,gems,18,energy:50
+energy_ultimate,Unlimited Energy,gems,50,energy:999
+subscription_basic,Basic Pass,gems,20,subscription_basic:1
+subscription_premium,Premium Pass,gems,40,subscription_premium:1
+subscription_ultimate,Ultimate Pass,gems,80,subscription_ultimate:1

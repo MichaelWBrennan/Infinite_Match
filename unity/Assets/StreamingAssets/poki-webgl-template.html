@@ -102,12 +102,6 @@
             font-size: 16px;
             margin-top: 20px;
         }
-        
-        .poki-placeholder {
-            text-align: center;
-            font-size: 24px;
-            color: #888;
-        }
     </style>
 </head>
 <body>
@@ -123,13 +117,6 @@
         <div id="unity-mobile-warning">
             WebGL builds are not supported on mobile devices.
         </div>
-        <div id="poki-placeholder" class="poki-placeholder">
-            <h2>🎮 Unity WebGL Game - Poki Ready</h2>
-            <p>Drop your Unity WebGL build here (Build/, TemplateData/, updated index.html) and deploy with Vercel.</p>
-            <p><strong>Poki SDK Integration:</strong> ✅ Ready</p>
-            <p><strong>Vercel Deployment:</strong> ✅ Ready</p>
-            <p><strong>WebGL Optimization:</strong> ✅ Ready</p>
-        </div>
     </div>
     
     <script>
@@ -139,7 +126,6 @@
         var progressBarFull = document.querySelector("#unity-progress-bar-full");
         var fullscreenButton = document.querySelector("#unity-fullscreen-button");
         var mobileWarning = document.querySelector("#unity-mobile-warning");
-        var placeholder = document.querySelector("#poki-placeholder");
         
         // Poki SDK Integration
         var pokiSDK = null;
@@ -167,15 +153,6 @@
         
         // Start the game
         function startGame() {
-            // Check if Unity build files exist
-            if (!checkUnityBuildFiles()) {
-                console.log('📁 Unity build files not found, showing placeholder');
-                return;
-            }
-            
-            // Hide placeholder
-            placeholder.style.display = 'none';
-            
             // Show a mobile message if the user is on a mobile device
             if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
                 container.className = "unity-mobile";
@@ -237,12 +214,6 @@
             };
             
             document.body.appendChild(script);
-        }
-        
-        // Check if Unity build files exist
-        function checkUnityBuildFiles() {
-            // This is a simple check - in a real implementation, you'd check for actual files
-            return false; // Return false to show placeholder for now
         }
         
         // Show error message

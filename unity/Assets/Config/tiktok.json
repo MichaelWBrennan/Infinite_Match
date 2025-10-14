@@ -1,0 +1,170 @@
+{
+  "platform": "tiktok",
+  "name": "TikTok Mini Games Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for TikTok Mini Games deployment",
+  
+  "build_settings": {
+    "target_platform": "WebGL",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "memory_size": 128,
+    "data_caching": true,
+    "exception_support": "Explicitly Thrown Exceptions Only"
+  },
+  
+  "ad_sdks": {
+    "primary": "tiktok_ads",
+    "fallback": "unity_ads",
+    "required_apis": [
+      "TikTokMiniGame",
+      "TikTokMiniGame.ads",
+      "TikTokMiniGame.player",
+      "TikTokMiniGame.social"
+    ],
+    "forbidden_apis": [
+      "PokiSDK",
+      "GoogleMobileAds",
+      "AppLovin",
+      "IronSource",
+      "FBInstant",
+      "SnapMinis"
+    ],
+    "ad_units": {
+      "banner": "BANNER",
+      "interstitial": "INTERSTITIAL",
+      "rewarded": "REWARDED_VIDEO"
+    }
+  },
+  
+  "monetization": {
+    "iap_enabled": false,
+    "virtual_currency_only": true,
+    "premium_currency": "gems",
+    "free_currency": "coins",
+    "max_purchase_amount": 0,
+    "currency_exchange_rate": 1.0,
+    "tiktok_coins": true,
+    "roi_optimization": {
+      "aggressive_ad_frequency": true,
+      "ad_cooldown_seconds": 15,
+      "rewarded_ad_multiplier": 4.0,
+      "energy_system": true,
+      "energy_refill_cost": 2,
+      "energy_pack_sizes": [5, 15, 30, 60, 120],
+      "energy_pack_costs": [3, 8, 15, 25, 45],
+      "lives_system": true,
+      "lives_refill_cost": 1,
+      "boosters_system": true,
+      "booster_prices": [2, 5, 10, 20],
+      "daily_rewards": true,
+      "premium_daily_rewards": true,
+      "streak_bonuses": true,
+      "max_streak_days": 21,
+      "streak_multiplier": 2.0,
+      "tiktok_specific_monetization": {
+        "video_creation_ads": true,
+        "trending_feature_ads": true,
+        "hashtag_challenge_ads": true,
+        "tiktok_ads": true,
+        "in_feed_ads": true,
+        "branded_effects_ads": true,
+        "social_sharing_bonuses": true,
+        "viral_mechanics": true,
+        "trending_challenges": true,
+        "user_generated_content": true,
+        "dance_challenge_integration": true,
+        "music_integration": true,
+        "filter_integration": true,
+        "duet_feature": true,
+        "stitch_feature": true,
+        "live_streaming_integration": true
+      }
+    }
+  },
+  
+  "analytics": {
+    "tiktok_analytics": true,
+    "unity_analytics": true,
+    "custom_analytics": false,
+    "data_collection": "minimal",
+    "privacy_compliant": true,
+    "required_events": [
+      "game_start",
+      "level_complete",
+      "level_fail",
+      "session_end"
+    ]
+  },
+  
+  "performance": {
+    "max_memory_usage": "128MB",
+    "max_build_size": "25MB",
+    "max_loading_time": "5s",
+    "max_initial_download": "10MB",
+    "texture_compression": "DXT1",
+    "audio_compression": "Vorbis",
+    "mesh_compression": "Off"
+  },
+  
+  "content_restrictions": {
+    "violence_level": "minimal",
+    "language_restrictions": "family_friendly",
+    "gambling_elements": false,
+    "loot_boxes": false,
+    "real_money_gambling": false,
+    "age_rating": "E",
+    "content_descriptors": []
+  },
+  
+  "technical_requirements": {
+    "webgl_version": "2.0",
+    "browser_support": ["Chrome", "Safari"],
+    "mobile_web_support": true,
+    "touch_controls": true,
+    "keyboard_controls": false,
+    "fullscreen_support": false,
+    "local_storage": true,
+    "cookies": false
+  },
+  
+  "tiktok_specific": {
+    "app_id": "your_tiktok_app_id_here",
+    "app_secret": "your_tiktok_app_secret_here",
+    "environment": "production",
+    "debug_mode": false,
+    "ad_frequency": "low",
+    "social_features": true,
+    "leaderboards": true,
+    "achievements": true,
+    "sharing": true,
+    "video_integration": true,
+    "trending_features": true,
+    "hashtag_integration": true
+  },
+  
+  "compliance_checks": {
+    "file_size_check": true,
+    "memory_usage_check": true,
+    "loading_time_check": true,
+    "ad_integration_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "tiktok_policy_check": true,
+    "mini_games_policy_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_WEBGL",
+    "TIKTOK_PLATFORM",
+    "WEBGL_BUILD",
+    "TIKTOK_MINI_GAMES",
+    "TIKTOK_ADS"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_ANDROID",
+    "UNITY_IOS",
+    "UNITY_STANDALONE"
+  ]
+}

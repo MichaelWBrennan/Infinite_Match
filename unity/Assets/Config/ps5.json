@@ -1,0 +1,200 @@
+{
+  "platform": "ps5",
+  "name": "PlayStation 5 Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for PlayStation 5 deployment",
+  
+  "build_settings": {
+    "target_platform": "PS5",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "architecture": "ARM64",
+    "min_ps5_version": "21.00",
+    "target_ps5_version": "23.00"
+  },
+  
+  "ad_sdks": {
+    "primary": "unity_ads",
+    "fallback": "sony_ads",
+    "required_apis": [
+      "UnityEngine.Advertisements",
+      "UnityEngine.PS5"
+    ],
+    "forbidden_apis": [
+      "PokiSDK",
+      "GoogleMobileAds",
+      "AppLovin",
+      "IronSource",
+      "FBInstant",
+      "Steamworks.NET",
+      "Epic.OnlineServices"
+    ],
+    "ad_units": {
+      "banner": "Banner_PS5",
+      "interstitial": "Interstitial_PS5",
+      "rewarded": "Rewarded_PS5"
+    }
+  },
+  
+  "monetization": {
+    "iap_enabled": true,
+    "playstation_store": true,
+    "playstation_plus": true,
+    "playstation_now": true,
+    "premium_currency": "psn_wallet",
+    "free_currency": "coins",
+    "max_purchase_amount": 200,
+    "currency_exchange_rate": 1.0,
+    "required_permissions": [
+      "PlayStationStore"
+    ],
+    "roi_optimization": {
+      "aggressive_pricing": true,
+      "dynamic_pricing": true,
+      "price_testing": true,
+      "bundle_discounts": true,
+      "ps5_specific_features": {
+        "ps5_adaptive_triggers": true,
+        "ps5_haptic_feedback": true,
+        "ps5_3d_audio": true,
+        "ps5_activity_cards": true,
+        "ps5_game_help": true,
+        "ps5_share_screen": true,
+        "ps5_remote_play": true,
+        "ps5_cloud_gaming": true,
+        "ps5_achievements": true,
+        "ps5_trophies": true,
+        "ps5_leaderboards": true,
+        "ps5_friends": true,
+        "ps5_party_chat": true,
+        "ps5_screen_sharing": true
+      },
+      "consumable_products": [
+        {"id": "coins_100", "price": 0.99, "currency": "USD"},
+        {"id": "coins_500", "price": 4.99, "currency": "USD"},
+        {"id": "coins_1000", "price": 9.99, "currency": "USD"},
+        {"id": "coins_2500", "price": 19.99, "currency": "USD"},
+        {"id": "coins_5000", "price": 39.99, "currency": "USD"},
+        {"id": "coins_10000", "price": 79.99, "currency": "USD"}
+      ],
+      "dlc_products": [
+        {"id": "expansion_pack_1", "price": 14.99, "currency": "USD"},
+        {"id": "expansion_pack_2", "price": 19.99, "currency": "USD"},
+        {"id": "cosmetic_pack", "price": 4.99, "currency": "USD"},
+        {"id": "soundtrack", "price": 9.99, "currency": "USD"}
+      ],
+      "energy_system": true,
+      "energy_refill_cost": 0.99,
+      "energy_pack_sizes": [10, 25, 50, 100, 250],
+      "energy_pack_costs": [0.99, 1.99, 3.99, 6.99, 14.99],
+      "lives_system": true,
+      "lives_refill_cost": 0.49,
+      "boosters_system": true,
+      "booster_prices": [0.99, 1.99, 4.99, 9.99],
+      "daily_rewards": true,
+      "premium_daily_rewards": true,
+      "streak_bonuses": true,
+      "max_streak_days": 30,
+      "streak_multiplier": 3.0,
+      "whale_targeting": true,
+      "whale_threshold": 100.0,
+      "whale_bonuses": true,
+      "retention_offers": true,
+      "comeback_offers": true,
+      "personalized_offers": true
+    }
+  },
+  
+  "analytics": {
+    "playstation_analytics": true,
+    "unity_analytics": true,
+    "custom_analytics": true,
+    "data_collection": "comprehensive",
+    "privacy_compliant": true,
+    "required_events": [
+      "game_start",
+      "level_complete",
+      "level_fail",
+      "session_end",
+      "purchase",
+      "trophy_earned",
+      "activity_completed"
+    ]
+  },
+  
+  "performance": {
+    "max_memory_usage": "16GB",
+    "max_build_size": "100GB",
+    "max_loading_time": "10s",
+    "max_initial_download": "50GB",
+    "texture_compression": "BC7",
+    "audio_compression": "Vorbis",
+    "mesh_compression": "High"
+  },
+  
+  "content_restrictions": {
+    "violence_level": "moderate",
+    "language_restrictions": "teen_appropriate",
+    "gambling_elements": true,
+    "loot_boxes": true,
+    "real_money_gambling": false,
+    "age_rating": "T",
+    "content_descriptors": [
+      "Simulated Gambling",
+      "In-App Purchases"
+    ]
+  },
+  
+  "technical_requirements": {
+    "ps5_version": "21.00+",
+    "hardware_features": ["dualsense", "adaptive_triggers", "haptic_feedback", "3d_audio"],
+    "network_requirements": ["internet", "psn_connection"]
+  },
+  
+  "ps5_specific": {
+    "title_id": "your_ps5_title_id_here",
+    "np_title_id": "your_np_title_id_here",
+    "environment": "production",
+    "debug_mode": false,
+    "ps5_adaptive_triggers": true,
+    "ps5_haptic_feedback": true,
+    "ps5_3d_audio": true,
+    "ps5_activity_cards": true,
+    "ps5_game_help": true,
+    "ps5_share_screen": true,
+    "ps5_remote_play": true,
+    "ps5_cloud_gaming": true,
+    "ps5_achievements": true,
+    "ps5_trophies": true,
+    "ps5_leaderboards": true,
+    "ps5_friends": true,
+    "ps5_party_chat": true,
+    "ps5_screen_sharing": true
+  },
+  
+  "compliance_checks": {
+    "file_size_check": true,
+    "memory_usage_check": true,
+    "loading_time_check": true,
+    "ad_integration_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "ps5_policy_check": true,
+    "playstation_store_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_PS5",
+    "PS5_PLATFORM",
+    "PLAYSTATION_BUILD",
+    "PS5_ADAPTIVE_TRIGGERS",
+    "PS5_HAPTIC_FEEDBACK"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_WEBGL",
+    "UNITY_ANDROID",
+    "UNITY_IOS",
+    "UNITY_STANDALONE"
+  ]
+}

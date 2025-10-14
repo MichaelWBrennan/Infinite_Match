@@ -1,0 +1,84 @@
+{
+  "energy": {
+    "maxEnergy": 30,
+    "energyPerLevel": 1,
+    "energyRefillCost": 10,
+    "energyRefillTime": 300,
+    "enableEnergyPacks": true,
+    "enableEnergyAds": true
+  },
+  "subscriptions": {
+    "enableSubscriptions": true,
+    "tiers": [
+      {
+        "id": "basic",
+        "name": "Basic Pass",
+        "price": 4.99,
+        "duration": 30,
+        "benefits": [
+          {
+            "type": "energy_multiplier",
+            "value": 1.5
+          },
+          {
+            "type": "coins_multiplier",
+            "value": 1.2
+          },
+          {
+            "type": "daily_bonus",
+            "value": 100
+          }
+        ]
+      },
+      {
+        "id": "premium",
+        "name": "Premium Pass",
+        "price": 9.99,
+        "duration": 30,
+        "benefits": [
+          {
+            "type": "energy_multiplier",
+            "value": 2
+          },
+          {
+            "type": "coins_multiplier",
+            "value": 1.5
+          },
+          {
+            "type": "gems_multiplier",
+            "value": 1.3
+          },
+          {
+            "type": "daily_bonus",
+            "value": 200
+          },
+          {
+            "type": "exclusive_items",
+            "value": 1
+          }
+        ]
+      }
+    ]
+  },
+  "offers": {
+    "enablePersonalization": true,
+    "maxActiveOffers": 3,
+    "offerRefreshInterval": 1800,
+    "offerExpiryTime": 3600
+  },
+  "social": {
+    "enableSocialFeatures": true,
+    "enableLeaderboards": true,
+    "enableGuilds": true,
+    "enableSocialChallenges": true,
+    "enableFriendGifting": true
+  },
+  "analytics": {
+    "enableARPUTracking": true,
+    "enableRealTimeRevenue": true,
+    "enablePlayerSegmentation": true,
+    "enableConversionFunnels": true,
+    "enableRetentionAnalysis": true,
+    "enableLTVPrediction": true
+  }
+}

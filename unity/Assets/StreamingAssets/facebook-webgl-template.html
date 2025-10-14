@@ -3,11 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Unity WebGL Game on Poki Platform">
-    <title>Unity WebGL Game - Poki</title>
+    <meta name="description" content="Unity WebGL Game on Facebook Instant Games">
+    <title>Unity WebGL Game - Facebook Instant Games</title>
     
-    <!-- Poki SDK -->
-    <script src="https://game-cdn.poki.com/scripts/poki-sdk.js"></script>
+    <!-- Facebook Instant Games SDK -->
+    <script src="https://connect.facebook.net/en_US/fbinstant.6.3.js"></script>
     
     <style>
         html, body {
@@ -60,24 +60,6 @@
             background: url('TemplateData/progress-bar-full-dark.png') no-repeat center / contain;
         }
         
-        #unity-footer {
-            position: relative;
-        }
-        
-        #unity-webgl-logo {
-            float: left;
-            width: 204px;
-            height: 38px;
-            background: url('TemplateData/webgl-logo.png') no-repeat center / contain;
-        }
-        
-        #unity-fullscreen-button {
-            float: right;
-            width: 38px;
-            height: 38px;
-            background: url('TemplateData/fullscreen-button.png') no-repeat center / contain;
-        }
-        
         #unity-mobile-warning {
             position: absolute;
             left: 50%;
@@ -90,23 +72,17 @@
             display: none;
         }
         
-        .poki-loading {
+        .facebook-loading {
             text-align: center;
             font-size: 18px;
             margin-top: 20px;
         }
         
-        .poki-error {
+        .facebook-error {
             color: #ff6b6b;
             text-align: center;
             font-size: 16px;
             margin-top: 20px;
-        }
-        
-        .poki-placeholder {
-            text-align: center;
-            font-size: 24px;
-            color: #888;
         }
     </style>
 </head>
@@ -118,17 +94,10 @@
             <div id="unity-progress-bar-empty">
                 <div id="unity-progress-bar-full"></div>
             </div>
-            <div class="poki-loading">Loading game...</div>
+            <div class="facebook-loading">Loading game...</div>
         </div>
         <div id="unity-mobile-warning">
             WebGL builds are not supported on mobile devices.
-        </div>
-        <div id="poki-placeholder" class="poki-placeholder">
-            <h2>🎮 Unity WebGL Game - Poki Ready</h2>
-            <p>Drop your Unity WebGL build here (Build/, TemplateData/, updated index.html) and deploy with Vercel.</p>
-            <p><strong>Poki SDK Integration:</strong> ✅ Ready</p>
-            <p><strong>Vercel Deployment:</strong> ✅ Ready</p>
-            <p><strong>WebGL Optimization:</strong> ✅ Ready</p>
         </div>
     </div>
     
@@ -137,45 +106,34 @@
         var canvas = document.querySelector("#unity-canvas");
         var loadingBar = document.querySelector("#unity-loading-bar");
         var progressBarFull = document.querySelector("#unity-progress-bar-full");
-        var fullscreenButton = document.querySelector("#unity-fullscreen-button");
         var mobileWarning = document.querySelector("#unity-mobile-warning");
-        var placeholder = document.querySelector("#poki-placeholder");
         
-        // Poki SDK Integration
-        var pokiSDK = null;
+        // Facebook Instant Games SDK Integration
+        var facebookSDK = null;
         var gameInstance = null;
         
-        // Initialize Poki SDK
-        function initializePokiSDK() {
-            if (typeof window.pokiSDK !== 'undefined') {
-                pokiSDK = window.pokiSDK;
-                console.log('🎮 Poki SDK initialized');
+        // Initialize Facebook Instant Games SDK
+        function initializeFacebookSDK() {
+            if (typeof FBInstant !== 'undefined') {
+                facebookSDK = FBInstant;
+                console.log('📘 Facebook Instant Games SDK initialized');
                 
-                // Poki SDK callbacks
-                pokiSDK.init().then(() => {
-                    console.log('✅ Poki SDK ready');
+                // Facebook Instant Games initialization
+                facebookSDK.initializeAsync().then(() => {
+                    console.log('✅ Facebook Instant Games ready');
                     startGame();
                 }).catch((error) => {
-                    console.error('❌ Poki SDK initialization failed:', error);
-                    showError('Failed to initialize Poki SDK');
+                    console.error('❌ Facebook Instant Games initialization failed:', error);
+                    showError('Failed to initialize Facebook Instant Games');
                 });
             } else {
-                console.warn('⚠️ Poki SDK not found, starting game without Poki features');
+                console.warn('⚠️ Facebook Instant Games SDK not found, starting game without Facebook features');
                 startGame();
             }
         }
         
         // Start the game
         function startGame() {
-            // Check if Unity build files exist
-            if (!checkUnityBuildFiles()) {
-                console.log('📁 Unity build files not found, showing placeholder');
-                return;
-            }
-            
-            // Hide placeholder
-            placeholder.style.display = 'none';
-            
             // Show a mobile message if the user is on a mobile device
             if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
                 container.className = "unity-mobile";
@@ -200,9 +158,9 @@
                 productVersion: "1.0",
             };
             
-            // Add Poki SDK to Unity config
-            if (pokiSDK) {
-                config.pokiSDK = pokiSDK;
+            // Add Facebook Instant Games SDK to Unity config
+            if (facebookSDK) {
+                config.facebookSDK = facebookSDK;
             }
             
             var script = document.createElement("script");
@@ -214,14 +172,9 @@
                     gameInstance = unityInstance;
                     loadingBar.style.display = "none";
                     
-                    // Set up fullscreen button
-                    fullscreenButton.onclick = () => {
-                        unityInstance.SetFullscreen(1);
-                    };
-                    
-                    // Poki SDK game ready callback
-                    if (pokiSDK) {
-                        pokiSDK.gameplayStart();
+                    // Facebook Instant Games game ready callback
+                    if (facebookSDK) {
+                        facebookSDK.startGameAsync();
                     }
                     
                     console.log('✅ Unity game loaded successfully');
@@ -239,33 +192,27 @@
             document.body.appendChild(script);
         }
         
-        // Check if Unity build files exist
-        function checkUnityBuildFiles() {
-            // This is a simple check - in a real implementation, you'd check for actual files
-            return false; // Return false to show placeholder for now
-        }
-        
         // Show error message
         function showError(message) {
-            loadingBar.innerHTML = '<div class="poki-error">' + message + '</div>';
+            loadingBar.innerHTML = '<div class="facebook-error">' + message + '</div>';
         }
         
-        // Poki SDK event handlers
+        // Facebook Instant Games event handlers
         function onGamePause() {
-            if (pokiSDK) {
-                pokiSDK.gameplayStop();
+            if (facebookSDK) {
+                facebookSDK.pauseAsync();
             }
         }
         
         function onGameResume() {
-            if (pokiSDK) {
-                pokiSDK.gameplayStart();
+            if (facebookSDK) {
+                facebookSDK.resumeAsync();
             }
         }
         
         function onGameQuit() {
-            if (pokiSDK) {
-                pokiSDK.gameplayStop();
+            if (facebookSDK) {
+                facebookSDK.quitAsync();
             }
         }
         
@@ -285,64 +232,78 @@
         
         // Initialize when page loads
         window.addEventListener('load', function() {
-            initializePokiSDK();
+            initializeFacebookSDK();
         });
         
-        // Poki SDK API functions for Unity
-        window.PokiAPI = {
-            // Show Poki ad
+        // Facebook Instant Games API functions for Unity
+        window.FacebookAPI = {
+            // Show Facebook ad
             showAd: function(type) {
-                if (pokiSDK) {
-                    return pokiSDK.showAd(type);
+                if (facebookSDK) {
+                    return facebookSDK.showAdAsync();
                 }
                 return Promise.resolve();
             },
             
             // Show rewarded ad
             showRewardedAd: function() {
-                if (pokiSDK) {
-                    return pokiSDK.showRewardedAd();
+                if (facebookSDK) {
+                    return facebookSDK.showRewardedAdAsync();
                 }
                 return Promise.resolve();
             },
             
             // Show interstitial ad
             showInterstitialAd: function() {
-                if (pokiSDK) {
-                    return pokiSDK.showInterstitialAd();
+                if (facebookSDK) {
+                    return facebookSDK.showAdAsync();
                 }
                 return Promise.resolve();
             },
             
-            // Check if ad is blocked
-            isAdBlocked: function() {
-                if (pokiSDK) {
-                    return pokiSDK.getAdBlocked();
+            // Purchase product
+            purchaseProduct: function(productId, price) {
+                if (facebookSDK) {
+                    return facebookSDK.payments.purchaseAsync({
+                        productID: productId,
+                        developerPayload: 'payload'
+                    });
                 }
-                return false;
+                return Promise.resolve();
             },
             
-            // Check if user has ad-free
-            isAdFree: function() {
-                if (pokiSDK) {
-                    return pokiSDK.getAdFree();
+            // Share game
+            shareGame: function(message) {
+                if (facebookSDK) {
+                    return facebookSDK.shareAsync({
+                        intent: 'SHARE',
+                        text: message
+                    });
                 }
-                return false;
+                return Promise.resolve();
+            },
+            
+            // Update player score
+            updatePlayerScore: function(score) {
+                if (facebookSDK) {
+                    return facebookSDK.setScoreAsync(score);
+                }
+                return Promise.resolve();
+            },
+            
+            // Get player info
+            getPlayerInfo: function() {
+                if (facebookSDK) {
+                    return facebookSDK.player;
+                }
+                return null;
             },
             
             // Track game event
             trackEvent: function(eventName, data) {
-                if (pokiSDK) {
-                    pokiSDK.trackEvent(eventName, data);
+                if (facebookSDK) {
+                    facebookSDK.logEvent(eventName, data);
                 }
-            },
-            
-            // Get Poki user info
-            getUserInfo: function() {
-                if (pokiSDK) {
-                    return pokiSDK.getUserInfo();
-                }
-                return null;
             }
         };
     </script>

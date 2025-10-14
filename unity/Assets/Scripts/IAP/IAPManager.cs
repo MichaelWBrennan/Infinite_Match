@@ -38,6 +38,15 @@ public class IAPManager : MonoBehaviour, IStoreListener
         builder.AddProduct("gems_ultra", ProductType.Consumable); // $49.99 tier
         builder.AddProduct("gems_ultimate", ProductType.Consumable); // $99.99 tier
         builder.AddProduct("vip_sub_annual", ProductType.Subscription); // Annual VIP
+        // Energy system products
+        builder.AddProduct("energy_small", ProductType.Consumable);
+        builder.AddProduct("energy_medium", ProductType.Consumable);
+        builder.AddProduct("energy_large", ProductType.Consumable);
+        builder.AddProduct("energy_ultimate", ProductType.Consumable);
+        builder.AddProduct("energy_refill", ProductType.Consumable);
+        // Subscription products
+        builder.AddProduct("energy_sub_monthly", ProductType.Subscription);
+        builder.AddProduct("energy_sub_annual", ProductType.Subscription);
         InitializeGrants();
         UnityPurchasing.Initialize(this, builder);
     }
@@ -64,6 +73,27 @@ public class IAPManager : MonoBehaviour, IStoreListener
         _grants["gems_ultra"] = () => GameState.AddGems(1600);
         _grants["gems_ultimate"] = () => GameState.AddGems(3500);
         _grants["vip_sub_annual"] = () => { /* VIP flags annual */ };
+        // Energy system grants
+        _grants["energy_small"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(10);
+        _grants["energy_medium"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(25);
+        _grants["energy_large"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(50);
+        _grants["energy_ultimate"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(999);
+        _grants["energy_refill"] = () => Evergreen.Economy.EnergySystem.Instance?.RefillEnergyWithGems();
+        // Subscription grants
+        _grants["energy_sub_monthly"] = () => { 
+            var subscriptionSystem = SubscriptionSystem.Instance;
+            if (subscriptionSystem != null)
+            {
+                subscriptionSystem.StartSubscription("player_123", "basic");
+            }
+        };
+        _grants["energy_sub_annual"] = () => { 
+            var subscriptionSystem = SubscriptionSystem.Instance;
+            if (subscriptionSystem != null)
+            {
+                subscriptionSystem.StartSubscription("player_123", "premium");
+            }
+        };
     }
 
     public void Purchase(string sku)
