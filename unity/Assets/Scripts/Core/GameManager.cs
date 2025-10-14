@@ -40,6 +40,13 @@ namespace Evergreen.Core
         [SerializeField] private bool enableEpicStrategies = true; // Fortnite strategies
         [SerializeField] private bool enableRobloxStrategies = true; // Roblox strategies
         
+        [Header("🚀 Google Play Compliant ARPU Systems")]
+        [SerializeField] private bool enableCompliantARPU = true;
+        [SerializeField] private bool enableOneClickARPU = true;
+        [SerializeField] private bool enableAutoARPUOptimization = true;
+        [SerializeField] private bool enableTransparentARPU = true;
+        [SerializeField] private bool enableHonestARPU = true;
+        
         public static GameManager Instance { get; private set; }
         
         private bool _isInitialized = false;
@@ -97,6 +104,12 @@ namespace Evergreen.Core
                 if (enableARPUSystems)
                 {
                     InitializeARPUSystems();
+                }
+                
+                // Initialize Google Play Compliant ARPU systems
+                if (enableCompliantARPU)
+                {
+                    InitializeCompliantARPUSystems();
                 }
                 
                 // Apply industry leader strategies
@@ -555,6 +568,49 @@ namespace Evergreen.Core
             if (enableRobloxStrategies)
             {
                 ApplyRobloxStrategies();
+            }
+        }
+        
+        /// <summary>
+        /// Initialize Google Play Compliant ARPU systems
+        /// </summary>
+        private void InitializeCompliantARPUSystems()
+        {
+            Debug.Log("🚀 Initializing Google Play Compliant ARPU systems...");
+            
+            try
+            {
+                // Add CompliantARPUInitializer component
+                var initializer = gameObject.AddComponent<Evergreen.ARPU.CompliantARPUInitializer>();
+                if (initializer != null)
+                {
+                    Debug.Log("✅ CompliantARPUInitializer added successfully");
+                    
+                    // Configure initializer
+                    initializer.enableAutoInitialization = enableOneClickARPU;
+                    initializer.enableOneClickSetup = enableOneClickARPU;
+                    initializer.enableOptimalConfiguration = enableAutoARPUOptimization;
+                    initializer.enableGooglePlayCompliance = enableTransparentARPU;
+                    initializer.enableTransparentSetup = enableHonestARPU;
+                    
+                    // Set optimal targets
+                    initializer.targetARPU = 15.00f; // 5x industry average
+                    initializer.targetARPPU = 125.00f; // 5x industry average
+                    initializer.targetConversionRate = 0.40f; // 5x industry average
+                    initializer.targetRetentionD1 = 0.80f; // 2x industry average
+                    initializer.targetRetentionD7 = 0.60f; // 2x industry average
+                    initializer.targetRetentionD30 = 0.40f; // 2x industry average
+                    
+                    Debug.Log("🚀 Google Play Compliant ARPU systems initialized successfully!");
+                }
+                else
+                {
+                    Debug.LogError("❌ Failed to add CompliantARPUInitializer");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ Error initializing Compliant ARPU systems: {e.Message}");
             }
         }
         
