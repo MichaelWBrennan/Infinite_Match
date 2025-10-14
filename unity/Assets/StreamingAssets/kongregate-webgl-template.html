@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity WebGL Player | Kongregate Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #unityContainer {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #unityCanvas {
+            background: #231F20;
+        }
+        .unity-mobile #unityCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        .unity-loading-bar {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+        .unity-progress-bar-empty {
+            width: 141px;
+            height: 18px;
+            margin-top: 10px;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') no-repeat center / cover;
+        }
+        .unity-progress-bar-full {
+            width: 0%;
+            height: 18px;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') no-repeat center / cover;
+        }
+        .unity-logo {
+            float: left;
+            width: 154px;
+            height: 130px;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') no-repeat center / contain;
+        }
+        .unity-fullscreen-button {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            width: 38px;
+            height: 38px;
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') no-repeat center / contain;
+        }
+        .unity-warning {
+            position: absolute;
+            left: 50%;
+            top: 5%;
+            transform: translate(-50%, 0);
+            background: orange;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="unityContainer">
+        <canvas id="unityCanvas" tabindex="-1"></canvas>
+        <div id="unityLoadingBar" class="unity-loading-bar">
+            <div class="unity-logo"></div>
+            <div class="unity-progress-bar-empty">
+                <div class="unity-progress-bar-full" id="unity-progress-bar-full"></div>
+            </div>
+        </div>
+        <div id="unity-warning"></div>
+    </div>
+    <div class="unity-fullscreen-button" onclick="SetFullscreen(1)"></div>
+
+    <script>
+        var container = document.querySelector("#unityContainer");
+        var canvas = document.querySelector("#unityCanvas");
+        var loadingBar = document.querySelector("#unityLoadingBar");
+        var progressBarFull = document.querySelector("#unity-progress-bar-full");
+        var fullscreenButton = document.querySelector(".unity-fullscreen-button");
+
+        // Kongregate API Integration
+        var kongregate = null;
+        
+        // Initialize Kongregate API
+        function initKongregate() {
+            if (typeof KongregateAPI !== 'undefined') {
+                kongregate = KongregateAPI;
+                kongregate.loadAPI(onKongregateLoaded);
+            } else {
+                console.warn('Kongregate API not available');
+            }
+        }
+        
+        function onKongregateLoaded() {
+            console.log('Kongregate API loaded');
+            // Kongregate API is ready
+        }
+
+        // Show loading progress
+        function UnityProgress(gameInstance, progress) {
+            if (!gameInstance.Module) {
+                return;
+            }
+            loadingBar.style.display = "block";
+            progressBarFull.style.width = 100 * progress + "%";
+            if (progress == 1) {
+                loadingBar.style.display = "none";
+            }
+        }
+
+        // Create Unity instance
+        var gameInstance = null;
+        
+        function createUnityInstance() {
+            gameInstance = UnityLoader.instantiate("unityCanvas", "Build/WebGL.json", {
+                onProgress: UnityProgress,
+                Module: {
+                    TOTAL_MEMORY: 268435456,
+                    errorhandler: null,
+                    compatibilitycheck: null,
+                    dataUrl: "Build/WebGL.data",
+                    codeUrl: "Build/WebGL.wasm",
+                    memUrl: "Build/WebGL.mem",
+                }
+            });
+        }
+
+        // Fullscreen functionality
+        function SetFullscreen(fullscreen) {
+            if (!gameInstance) return;
+            
+            if (fullscreen) {
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                } else if (container.msRequestFullscreen) {
+                    container.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Kongregate-specific functions
+        function showKongregateBanner() {
+            if (kongregate && kongregate.ads) {
+                kongregate.ads.showBanner();
+            }
+        }
+
+        function showKongregateInterstitial() {
+            if (kongregate && kongregate.ads) {
+                kongregate.ads.showInterstitial();
+            }
+        }
+
+        function showKongregateRewarded() {
+            if (kongregate && kongregate.ads) {
+                kongregate.ads.showRewarded();
+            }
+        }
+
+        function submitKongregateScore(score) {
+            if (kongregate && kongregate.stats) {
+                kongregate.stats.submit("HighScore", score);
+            }
+        }
+
+        function unlockKongregateAchievement(achievementId) {
+            if (kongregate && kongregate.stats) {
+                kongregate.stats.submit(achievementId, 1);
+            }
+        }
+
+        function purchaseKongregateItem(itemId) {
+            if (kongregate && kongregate.mtx) {
+                kongregate.mtx.purchaseItems([itemId], function(data) {
+                    if (data.success) {
+                        console.log('Purchase successful:', data);
+                    } else {
+                        console.log('Purchase failed:', data);
+                    }
+                });
+            }
+        }
+
+        // Initialize everything
+        window.addEventListener('load', function() {
+            initKongregate();
+            createUnityInstance();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (gameInstance) {
+                gameInstance.SendMessage('GameManager', 'OnWindowResize', '');
+            }
+        });
+
+        // Handle visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (gameInstance) {
+                if (document.hidden) {
+                    gameInstance.SendMessage('GameManager', 'OnApplicationPause', 'true');
+                } else {
+                    gameInstance.SendMessage('GameManager', 'OnApplicationPause', 'false');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

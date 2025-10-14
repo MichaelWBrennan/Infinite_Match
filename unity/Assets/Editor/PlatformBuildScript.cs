@@ -108,6 +108,41 @@ namespace Evergreen.Editor
                 BuildPlatform(PlatformType.TikTok);
             }
             GUILayout.EndHorizontal();
+            
+            GUILayout.Space(5);
+            GUILayout.Label("Additional WebGL Platforms", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Build Kongregate (WebGL)"))
+            {
+                BuildPlatform(PlatformType.Kongregate);
+            }
+            if (GUILayout.Button("Build CrazyGames (WebGL)"))
+            {
+                BuildPlatform(PlatformType.CrazyGames);
+            }
+            GUILayout.EndHorizontal();
+            
+            GUILayout.Space(5);
+            GUILayout.Label("PC Platforms", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Build Steam (PC)"))
+            {
+                BuildPlatform(PlatformType.Steam);
+            }
+            if (GUILayout.Button("Build Epic (PC)"))
+            {
+                BuildPlatform(PlatformType.Epic);
+            }
+            GUILayout.EndHorizontal();
+            
+            GUILayout.Space(5);
+            GUILayout.Label("Console Platforms", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Build PS5 (Console)"))
+            {
+                BuildPlatform(PlatformType.PS5);
+            }
+            GUILayout.EndHorizontal();
             GUILayout.Space(10);
             
             // Compliance Report
@@ -140,6 +175,21 @@ namespace Evergreen.Editor
             
             // Load TikTok Mini Games profile
             LoadProfile(PlatformType.TikTok, "tiktok.json");
+            
+            // Load Kongregate profile
+            LoadProfile(PlatformType.Kongregate, "kongregate.json");
+            
+            // Load CrazyGames profile
+            LoadProfile(PlatformType.CrazyGames, "crazygames.json");
+            
+            // Load Steam profile
+            LoadProfile(PlatformType.Steam, "steam.json");
+            
+            // Load Epic profile
+            LoadProfile(PlatformType.Epic, "epic.json");
+            
+            // Load PS5 profile
+            LoadProfile(PlatformType.PS5, "ps5.json");
         }
         
         private void LoadProfile(PlatformType platformType, string fileName)
@@ -183,7 +233,12 @@ namespace Evergreen.Editor
                 PlatformType.AppStore,
                 PlatformType.Facebook,
                 PlatformType.Snap,
-                PlatformType.TikTok
+                PlatformType.TikTok,
+                PlatformType.Kongregate,
+                PlatformType.CrazyGames,
+                PlatformType.Steam,
+                PlatformType.Epic,
+                PlatformType.PS5
             };
             
             foreach (var platform in platformsToBuild)
@@ -467,11 +522,21 @@ namespace Evergreen.Editor
             switch (platformType)
             {
                 case PlatformType.Poki:
+                case PlatformType.Facebook:
+                case PlatformType.Snap:
+                case PlatformType.TikTok:
+                case PlatformType.Kongregate:
+                case PlatformType.CrazyGames:
                     return BuildTarget.WebGL;
                 case PlatformType.GooglePlay:
                     return BuildTarget.Android;
                 case PlatformType.AppStore:
                     return BuildTarget.iOS;
+                case PlatformType.Steam:
+                case PlatformType.Epic:
+                    return BuildTarget.StandaloneWindows;
+                case PlatformType.PS5:
+                    return BuildTarget.PS5;
                 default:
                     return BuildTarget.StandaloneWindows;
             }
@@ -597,6 +662,22 @@ namespace Evergreen.Editor
                     return PlatformType.GooglePlay;
                 case "appstore":
                     return PlatformType.AppStore;
+                case "facebook":
+                    return PlatformType.Facebook;
+                case "snap":
+                    return PlatformType.Snap;
+                case "tiktok":
+                    return PlatformType.TikTok;
+                case "kongregate":
+                    return PlatformType.Kongregate;
+                case "crazygames":
+                    return PlatformType.CrazyGames;
+                case "steam":
+                    return PlatformType.Steam;
+                case "epic":
+                    return PlatformType.Epic;
+                case "ps5":
+                    return PlatformType.PS5;
                 default:
                     return PlatformType.Standalone;
             }

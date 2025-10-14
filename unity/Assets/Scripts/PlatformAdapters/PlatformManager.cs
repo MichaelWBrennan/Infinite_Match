@@ -136,6 +136,10 @@ namespace Evergreen.Platform
             return PlatformType.Snap;
 #elif TIKTOK_PLATFORM
             return PlatformType.TikTok;
+#elif KONGREGATE_PLATFORM
+            return PlatformType.Kongregate;
+#elif CRAZYGAMES_PLATFORM
+            return PlatformType.CrazyGames;
 #else
             return PlatformType.Poki; // Default to Poki for WebGL
 #endif
@@ -143,6 +147,16 @@ namespace Evergreen.Platform
             return PlatformType.GooglePlay;
 #elif UNITY_IOS
             return PlatformType.AppStore;
+#elif UNITY_STANDALONE_WIN
+#if STEAM_PLATFORM
+            return PlatformType.Steam;
+#elif EPIC_PLATFORM
+            return PlatformType.Epic;
+#else
+            return PlatformType.Standalone;
+#endif
+#elif UNITY_PS5
+            return PlatformType.PS5;
 #else
             return PlatformType.Standalone;
 #endif
@@ -213,6 +227,21 @@ namespace Evergreen.Platform
                 case PlatformType.TikTok:
                     ApplyTikTokSettings();
                     break;
+                case PlatformType.Steam:
+                    ApplySteamSettings();
+                    break;
+                case PlatformType.Epic:
+                    ApplyEpicSettings();
+                    break;
+                case PlatformType.PS5:
+                    ApplyPS5Settings();
+                    break;
+                case PlatformType.Kongregate:
+                    ApplyKongregateSettings();
+                    break;
+                case PlatformType.CrazyGames:
+                    ApplyCrazyGamesSettings();
+                    break;
             }
         }
         
@@ -281,6 +310,21 @@ namespace Evergreen.Platform
                 case PlatformType.TikTok:
                     InitializeTikTokAdapter();
                     break;
+                case PlatformType.Kongregate:
+                    InitializeKongregateAdapter();
+                    break;
+                case PlatformType.CrazyGames:
+                    InitializeCrazyGamesAdapter();
+                    break;
+                case PlatformType.Steam:
+                    InitializeSteamAdapter();
+                    break;
+                case PlatformType.Epic:
+                    InitializeEpicAdapter();
+                    break;
+                case PlatformType.PS5:
+                    InitializePS5Adapter();
+                    break;
             }
         }
         
@@ -300,6 +344,36 @@ namespace Evergreen.Platform
         {
             var tiktokAdapter = gameObject.AddComponent<TikTokMiniGamesAdapter>();
             tiktokAdapter.Initialize(CurrentProfile);
+        }
+        
+        private void InitializeKongregateAdapter()
+        {
+            var kongregateAdapter = gameObject.AddComponent<KongregateAdapter>();
+            kongregateAdapter.Initialize(CurrentProfile);
+        }
+        
+        private void InitializeCrazyGamesAdapter()
+        {
+            var crazyGamesAdapter = gameObject.AddComponent<CrazyGamesAdapter>();
+            crazyGamesAdapter.Initialize(CurrentProfile);
+        }
+        
+        private void InitializeSteamAdapter()
+        {
+            var steamAdapter = gameObject.AddComponent<SteamAdapter>();
+            steamAdapter.Initialize(CurrentProfile);
+        }
+        
+        private void InitializeEpicAdapter()
+        {
+            var epicAdapter = gameObject.AddComponent<EpicAdapter>();
+            epicAdapter.Initialize(CurrentProfile);
+        }
+        
+        private void InitializePS5Adapter()
+        {
+            var ps5Adapter = gameObject.AddComponent<PS5Adapter>();
+            ps5Adapter.Initialize(CurrentProfile);
         }
         
         private void InitializeAdAdapter()
@@ -396,6 +470,36 @@ namespace Evergreen.Platform
         private void EnableTikTokFeatures()
         {
             Debug.Log("🎵 Enabling TikTok Mini Games features...");
+        }
+        
+        private void ApplySteamSettings()
+        {
+            Debug.Log("🎮 Applying Steam settings...");
+            // Steam-specific settings would go here
+        }
+        
+        private void ApplyEpicSettings()
+        {
+            Debug.Log("⚡ Applying Epic settings...");
+            // Epic-specific settings would go here
+        }
+        
+        private void ApplyPS5Settings()
+        {
+            Debug.Log("🎮 Applying PS5 settings...");
+            // PS5-specific settings would go here
+        }
+        
+        private void ApplyKongregateSettings()
+        {
+            Debug.Log("🎯 Applying Kongregate settings...");
+            // Kongregate-specific settings would go here
+        }
+        
+        private void ApplyCrazyGamesSettings()
+        {
+            Debug.Log("🎪 Applying CrazyGames settings...");
+            // CrazyGames-specific settings would go here
         }
         
         private void RunComplianceChecks()
