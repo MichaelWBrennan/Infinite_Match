@@ -1,0 +1,135 @@
+{
+  "platform": "facebook",
+  "name": "Facebook Instant Games Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for Facebook Instant Games deployment",
+  
+  "build_settings": {
+    "target_platform": "WebGL",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "memory_size": 256,
+    "data_caching": true,
+    "exception_support": "Explicitly Thrown Exceptions Only"
+  },
+  
+  "ad_sdks": {
+    "primary": "facebook_ads",
+    "fallback": "unity_ads",
+    "required_apis": [
+      "FBInstant",
+      "FBInstant.ads",
+      "FBInstant.payments",
+      "FBInstant.player"
+    ],
+    "forbidden_apis": [
+      "PokiSDK",
+      "GoogleMobileAds",
+      "AppLovin",
+      "IronSource"
+    ],
+    "ad_units": {
+      "interstitial": "VIDEO",
+      "rewarded": "REWARDED_VIDEO"
+    }
+  },
+  
+  "monetization": {
+    "iap_enabled": true,
+    "facebook_payments": true,
+    "virtual_currency_only": false,
+    "premium_currency": "gems",
+    "free_currency": "coins",
+    "max_purchase_amount": 100,
+    "currency_exchange_rate": 1.0,
+    "required_permissions": [
+      "payments"
+    ]
+  },
+  
+  "analytics": {
+    "facebook_analytics": true,
+    "unity_analytics": true,
+    "custom_analytics": false,
+    "data_collection": "comprehensive",
+    "privacy_compliant": true,
+    "required_events": [
+      "game_start",
+      "level_complete",
+      "level_fail",
+      "session_end",
+      "purchase",
+      "ad_impression"
+    ]
+  },
+  
+  "performance": {
+    "max_memory_usage": "256MB",
+    "max_build_size": "50MB",
+    "max_loading_time": "10s",
+    "max_initial_download": "20MB",
+    "texture_compression": "DXT1",
+    "audio_compression": "Vorbis",
+    "mesh_compression": "Off"
+  },
+  
+  "content_restrictions": {
+    "violence_level": "minimal",
+    "language_restrictions": "family_friendly",
+    "gambling_elements": false,
+    "loot_boxes": false,
+    "real_money_gambling": false,
+    "age_rating": "E",
+    "content_descriptors": []
+  },
+  
+  "technical_requirements": {
+    "webgl_version": "2.0",
+    "browser_support": ["Chrome", "Firefox", "Safari", "Edge"],
+    "mobile_web_support": true,
+    "touch_controls": true,
+    "keyboard_controls": true,
+    "fullscreen_support": true,
+    "local_storage": true,
+    "cookies": false
+  },
+  
+  "facebook_specific": {
+    "app_id": "your_app_id_here",
+    "app_secret": "your_app_secret_here",
+    "environment": "production",
+    "debug_mode": false,
+    "ad_frequency": "balanced",
+    "social_features": true,
+    "leaderboards": true,
+    "achievements": true,
+    "invites": true,
+    "sharing": true,
+    "context_switching": true
+  },
+  
+  "compliance_checks": {
+    "file_size_check": true,
+    "memory_usage_check": true,
+    "loading_time_check": true,
+    "ad_integration_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "facebook_policy_check": true,
+    "instant_games_policy_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_WEBGL",
+    "FACEBOOK_PLATFORM",
+    "WEBGL_BUILD",
+    "FACEBOOK_INSTANT_GAMES",
+    "FACEBOOK_ADS"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_ANDROID",
+    "UNITY_IOS",
+    "UNITY_STANDALONE"
+  ]
+}

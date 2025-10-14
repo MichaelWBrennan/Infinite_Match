@@ -1,0 +1,131 @@
+{
+  "platform": "snap",
+  "name": "Snap Mini Games Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for Snap Mini Games deployment",
+  
+  "build_settings": {
+    "target_platform": "WebGL",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "memory_size": 128,
+    "data_caching": true,
+    "exception_support": "Explicitly Thrown Exceptions Only"
+  },
+  
+  "ad_sdks": {
+    "primary": "snap_ads",
+    "fallback": "unity_ads",
+    "required_apis": [
+      "SnapMinis",
+      "SnapMinis.ads",
+      "SnapMinis.player",
+      "SnapMinis.social"
+    ],
+    "forbidden_apis": [
+      "PokiSDK",
+      "GoogleMobileAds",
+      "AppLovin",
+      "IronSource",
+      "FBInstant"
+    ],
+    "ad_units": {
+      "interstitial": "INTERSTITIAL",
+      "rewarded": "REWARDED"
+    }
+  },
+  
+  "monetization": {
+    "iap_enabled": false,
+    "virtual_currency_only": true,
+    "premium_currency": "gems",
+    "free_currency": "coins",
+    "max_purchase_amount": 0,
+    "currency_exchange_rate": 1.0,
+    "snap_coins": true
+  },
+  
+  "analytics": {
+    "snap_analytics": true,
+    "unity_analytics": true,
+    "custom_analytics": false,
+    "data_collection": "minimal",
+    "privacy_compliant": true,
+    "required_events": [
+      "game_start",
+      "level_complete",
+      "level_fail",
+      "session_end"
+    ]
+  },
+  
+  "performance": {
+    "max_memory_usage": "128MB",
+    "max_build_size": "25MB",
+    "max_loading_time": "5s",
+    "max_initial_download": "10MB",
+    "texture_compression": "DXT1",
+    "audio_compression": "Vorbis",
+    "mesh_compression": "Off"
+  },
+  
+  "content_restrictions": {
+    "violence_level": "minimal",
+    "language_restrictions": "family_friendly",
+    "gambling_elements": false,
+    "loot_boxes": false,
+    "real_money_gambling": false,
+    "age_rating": "E",
+    "content_descriptors": []
+  },
+  
+  "technical_requirements": {
+    "webgl_version": "2.0",
+    "browser_support": ["Chrome", "Safari"],
+    "mobile_web_support": true,
+    "touch_controls": true,
+    "keyboard_controls": false,
+    "fullscreen_support": false,
+    "local_storage": true,
+    "cookies": false
+  },
+  
+  "snap_specific": {
+    "app_id": "your_snap_app_id_here",
+    "app_secret": "your_snap_app_secret_here",
+    "environment": "production",
+    "debug_mode": false,
+    "ad_frequency": "low",
+    "social_features": true,
+    "leaderboards": true,
+    "achievements": true,
+    "sharing": true,
+    "camera_integration": true,
+    "ar_features": true
+  },
+  
+  "compliance_checks": {
+    "file_size_check": true,
+    "memory_usage_check": true,
+    "loading_time_check": true,
+    "ad_integration_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "snap_policy_check": true,
+    "mini_games_policy_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_WEBGL",
+    "SNAP_PLATFORM",
+    "WEBGL_BUILD",
+    "SNAP_MINI_GAMES",
+    "SNAP_ADS"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_ANDROID",
+    "UNITY_IOS",
+    "UNITY_STANDALONE"
+  ]
+}

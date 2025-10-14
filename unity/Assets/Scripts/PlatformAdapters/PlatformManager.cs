@@ -74,6 +74,15 @@ namespace Evergreen.Platform
             
             // Load App Store profile
             LoadProfile(PlatformType.AppStore, "appstore.json");
+            
+            // Load Facebook Instant Games profile
+            LoadProfile(PlatformType.Facebook, "facebook.json");
+            
+            // Load Snap Mini Games profile
+            LoadProfile(PlatformType.Snap, "snap.json");
+            
+            // Load TikTok Mini Games profile
+            LoadProfile(PlatformType.TikTok, "tiktok.json");
         }
         
         private void LoadProfile(PlatformType platformType, string fileName)
