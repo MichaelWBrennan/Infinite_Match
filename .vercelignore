@@ -1,0 +1,68 @@
+# Ignore development files
+node_modules/
+src/
+scripts/
+unity/
+cloud-code/
+cloud-code-csharp/
+config/
+deployment/
+docs/
+economy/
+i18n/
+marketing/
+metadata/
+monitoring/
+nginx/
+prisma/
+remote-config/
+server/
+unity-cli-working
+unity-wrapper
+webgl-builder.js
+webhook-config.json
+
+# Ignore build artifacts
+dist/
+Builds/
+*.log
+*.tmp
+
+# Ignore documentation
+*.md
+!README.md
+
+# Ignore test files
+test-*.js
+test-*.cjs
+*test*.json
+
+# Ignore Docker files
+Dockerfile*
+docker-compose*.yml
+
+# Ignore Unity files
+*.unitypackage
+*.cs
+*.csproj
+
+# Ignore Python files
+*.py
+requirements.txt
+
+# Ignore shell scripts
+*.sh
+
+# Ignore config files
+*.conf
+*.json
+!package.json
+!vercel.json
+!platform-config.json
+!platform-configs/*.json
+
+# Ignore other files
+*.zip
+*.unitypackage
+HEADLESS_ONLY_MODE
+jq

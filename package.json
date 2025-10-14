@@ -76,6 +76,7 @@
     "automation": "node scripts/refactored-automation.js",
     "automation:legacy": "node scripts/automation.js",
     "build": "tsc",
+    "build:vercel": "echo 'Vercel build - copying WebGL files' && cp -r webgl/* . && echo 'WebGL files copied for Vercel deployment'",
     "build:microservices": "docker-compose build",
     "build:production": "npm run build",
     "dashboard": "node scripts/deployment-dashboard.js",

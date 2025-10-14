@@ -1,13 +1,11 @@
 {
   "version": 2,
+  "installCommand": "npm install",
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": ".",
   "rewrites": [
-    { "source": "/", "destination": "/webgl/index.html" }
+    { "source": "/", "destination": "/index.html" }
   ],
-  "functions": {
-    "webgl/index.html": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "headers": [
     { "source": "/index.html", "headers": [
       { "key": "Cache-Control", "value": "no-cache" }
