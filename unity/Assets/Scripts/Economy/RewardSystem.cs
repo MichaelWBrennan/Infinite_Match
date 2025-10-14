@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Evergreen.Core;
+using Evergreen.Monetization;
 
 namespace Evergreen.Economy
 {
@@ -625,6 +626,17 @@ namespace Evergreen.Economy
                 
                 // Apply current multiplier
                 multiplier *= progress.currentMultiplier;
+                
+                // Apply subscription multipliers
+                var gameManager = GameManager.Instance;
+                if (gameManager != null)
+                {
+                    var coinMultiplier = gameManager.GetSubscriptionMultiplier(progress.playerId, "coins_multiplier");
+                    var gemMultiplier = gameManager.GetSubscriptionMultiplier(progress.playerId, "gems_multiplier");
+                    
+                    // Use the higher multiplier for general rewards
+                    multiplier *= Mathf.Max(coinMultiplier, gemMultiplier);
+                }
             }
             
             return Mathf.Clamp(multiplier, 1.0f, maxMultiplier);

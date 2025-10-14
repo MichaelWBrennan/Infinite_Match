@@ -22,13 +22,12 @@
     "mongoose": "^8.0.3",
     "node-fetch": "^3.3.2",
     "redis": "^4.6.12",
-    "uuid": "^13.0.0",
+    "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1",
     "xss": "^1.0.14",
     "lodash": "^4.17.21",
-    "moment": "^2.29.4",
-    "uuid": "^9.0.1"
+    "moment": "^2.29.4"
   },
   "description": "Infinite Match Unity Game with comprehensive automation and CI/CD",
   "devDependencies": {
@@ -125,7 +124,10 @@
     "unity:cloud:download": "node src/unity-cloud-cli-simple.js build-download $UNITY_TARGET",
     "unity:cloud:download:android": "node src/unity-cloud-cli-simple.js build-download android",
     "unity:cloud:download:ios": "node src/unity-cloud-cli-simple.js build-download ios",
-    "unity:cloud:list": "node src/unity-cloud-cli-simple.js build-list"
+    "unity:cloud:list": "node src/unity-cloud-cli-simple.js build-list",
+    "arpu:start": "node scripts/arpu-integration.js",
+    "arpu:test": "node scripts/test-arpu-systems.js",
+    "arpu:monitor": "node scripts/monitor-arpu.js"
   },
   "type": "module",
   "version": "1.0.0",

@@ -80,8 +80,20 @@ public class IAPManager : MonoBehaviour, IStoreListener
         _grants["energy_ultimate"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(999);
         _grants["energy_refill"] = () => Evergreen.Economy.EnergySystem.Instance?.RefillEnergyWithGems();
         // Subscription grants
-        _grants["energy_sub_monthly"] = () => { /* Energy subscription monthly */ };
-        _grants["energy_sub_annual"] = () => { /* Energy subscription annual */ };
+        _grants["energy_sub_monthly"] = () => { 
+            var subscriptionSystem = SubscriptionSystem.Instance;
+            if (subscriptionSystem != null)
+            {
+                subscriptionSystem.StartSubscription("player_123", "basic");
+            }
+        };
+        _grants["energy_sub_annual"] = () => { 
+            var subscriptionSystem = SubscriptionSystem.Instance;
+            if (subscriptionSystem != null)
+            {
+                subscriptionSystem.StartSubscription("player_123", "premium");
+            }
+        };
     }
 
     public void Purchase(string sku)

@@ -4,6 +4,7 @@ using UnityEngine;
 using Evergreen.Match3;
 using Evergreen.Game;
 using Evergreen.Data;
+using Evergreen.Core;
 using Core;
 
 public class LevelManager : MonoBehaviour
@@ -35,6 +36,15 @@ public class LevelManager : MonoBehaviour
 
     public void LoadLevel(int id)
     {
+        // Check energy before loading level
+        var gameManager = GameManager.Instance;
+        if (gameManager != null && !gameManager.CanPlayLevel())
+        {
+            Debug.Log("[LevelManager] Not enough energy to play level");
+            ShowEnergyPurchaseUI();
+            return;
+        }
+        
         try
         {
             if (enableCaching)
@@ -48,6 +58,18 @@ public class LevelManager : MonoBehaviour
             
             ApplyConfig();
             
+            // Consume energy for level play
+            if (gameManager != null)
+            {
+                gameManager.TryConsumeEnergy(1);
+                gameManager.TrackPlayerAction("player_123", "level_start", new Dictionary<string, object>
+                {
+                    ["level_id"] = id,
+                    ["board_size"] = BoardSize,
+                    ["move_limit"] = MoveLimit
+                });
+            }
+            
             // Preload next levels if caching is enabled
             if (enableCaching)
             {
@@ -60,6 +82,13 @@ public class LevelManager : MonoBehaviour
             LevelConfig = new Dictionary<string, object>();
             ApplyConfig();
         }
+    }
+    
+    private void ShowEnergyPurchaseUI()
+    {
+        // This would show your energy purchase UI
+        Debug.Log("[LevelManager] Show energy purchase UI");
+        // Example: UIManager.Instance.ShowEnergyPurchasePanel();
     }
 
     private void LoadLevelFromFile(int id)

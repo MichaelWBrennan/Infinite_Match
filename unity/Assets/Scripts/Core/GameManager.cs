@@ -5,6 +5,8 @@ using Evergreen.Ads;
 using Evergreen.Social;
 using Evergreen.MetaGame;
 using Evergreen.Economy;
+using Evergreen.Monetization;
+using Evergreen.Analytics;
 using System.Collections.Generic;
 
 namespace Evergreen.Core
@@ -18,6 +20,7 @@ namespace Evergreen.Core
         [SerializeField] private bool initializeOnAwake = true;
         [SerializeField] private bool enablePerformanceMonitoring = true;
         [SerializeField] private bool enableAnalytics = true;
+        [SerializeField] private bool enableARPUSystems = true;
         
         [Header("Currency Settings")]
         [SerializeField] private int startingCoins = 1000;
@@ -74,6 +77,12 @@ namespace Evergreen.Core
                 if (enablePerformanceMonitoring)
                 {
                     InitializePerformanceSystems();
+                }
+                
+                // Initialize ARPU systems
+                if (enableARPUSystems)
+                {
+                    InitializeARPUSystems();
                 }
                 
                 _isInitialized = true;
@@ -260,6 +269,60 @@ namespace Evergreen.Core
             Debug.Log("Performance systems initialized");
         }
         
+        private void InitializeARPUSystems()
+        {
+            // Register Energy System
+            ServiceLocator.RegisterFactory<EnergySystem>(() => 
+            {
+                var go = new GameObject("EnergySystem");
+                return go.AddComponent<EnergySystem>();
+            });
+            
+            // Register Subscription System
+            ServiceLocator.RegisterFactory<SubscriptionSystem>(() => 
+            {
+                var go = new GameObject("SubscriptionSystem");
+                return go.AddComponent<SubscriptionSystem>();
+            });
+            
+            // Register Personalized Offer System
+            ServiceLocator.RegisterFactory<PersonalizedOfferSystem>(() => 
+            {
+                var go = new GameObject("PersonalizedOfferSystem");
+                return go.AddComponent<PersonalizedOfferSystem>();
+            });
+            
+            // Register Social Competition System
+            ServiceLocator.RegisterFactory<SocialCompetitionSystem>(() => 
+            {
+                var go = new GameObject("SocialCompetitionSystem");
+                return go.AddComponent<SocialCompetitionSystem>();
+            });
+            
+            // Register ARPU Analytics System
+            ServiceLocator.RegisterFactory<ARPUAnalyticsSystem>(() => 
+            {
+                var go = new GameObject("ARPUAnalyticsSystem");
+                return go.AddComponent<ARPUAnalyticsSystem>();
+            });
+            
+            // Register Advanced Retention System
+            ServiceLocator.RegisterFactory<AdvancedRetentionSystem>(() => 
+            {
+                var go = new GameObject("AdvancedRetentionSystem");
+                return go.AddComponent<AdvancedRetentionSystem>();
+            });
+            
+            // Register ARPU Integration Manager
+            ServiceLocator.RegisterFactory<ARPUIntegrationManager>(() => 
+            {
+                var go = new GameObject("ARPUIntegrationManager");
+                return go.AddComponent<ARPUIntegrationManager>();
+            });
+            
+            Debug.Log("ARPU systems initialized");
+        }
+        
         /// <summary>
         /// Get a service from the service locator
         /// </summary>
@@ -316,6 +379,93 @@ namespace Evergreen.Core
         {
             _currencies[currencyType] = amount;
             SaveCurrencies();
+        }
+        
+        /// <summary>
+        /// Check if player can play level (energy check)
+        /// </summary>
+        public bool CanPlayLevel()
+        {
+            var energySystem = GetService<EnergySystem>();
+            return energySystem != null ? energySystem.CanPlayLevel() : true;
+        }
+        
+        /// <summary>
+        /// Try to consume energy for level play
+        /// </summary>
+        public bool TryConsumeEnergy(int amount = 1)
+        {
+            var energySystem = GetService<EnergySystem>();
+            return energySystem != null ? energySystem.TryConsumeEnergy(amount) : true;
+        }
+        
+        /// <summary>
+        /// Get current energy level
+        /// </summary>
+        public int GetCurrentEnergy()
+        {
+            var energySystem = GetService<EnergySystem>();
+            return energySystem != null ? energySystem.GetCurrentEnergy() : 30;
+        }
+        
+        /// <summary>
+        /// Get max energy level
+        /// </summary>
+        public int GetMaxEnergy()
+        {
+            var energySystem = GetService<EnergySystem>();
+            return energySystem != null ? energySystem.GetMaxEnergy() : 30;
+        }
+        
+        /// <summary>
+        /// Check if player has active subscription
+        /// </summary>
+        public bool HasActiveSubscription(string playerId)
+        {
+            var subscriptionSystem = GetService<SubscriptionSystem>();
+            return subscriptionSystem != null ? subscriptionSystem.HasActiveSubscription(playerId) : false;
+        }
+        
+        /// <summary>
+        /// Get subscription multiplier for rewards
+        /// </summary>
+        public float GetSubscriptionMultiplier(string playerId, string multiplierType)
+        {
+            var subscriptionSystem = GetService<SubscriptionSystem>();
+            return subscriptionSystem != null ? subscriptionSystem.GetSubscriptionMultiplier(playerId, multiplierType) : 1f;
+        }
+        
+        /// <summary>
+        /// Get personalized offers for player
+        /// </summary>
+        public System.Collections.Generic.List<PersonalizedOffer> GetPersonalizedOffers(string playerId)
+        {
+            var offerSystem = GetService<PersonalizedOfferSystem>();
+            return offerSystem != null ? offerSystem.GetOffersForPlayer(playerId) : new System.Collections.Generic.List<PersonalizedOffer>();
+        }
+        
+        /// <summary>
+        /// Track revenue event
+        /// </summary>
+        public void TrackRevenue(string playerId, float amount, RevenueSource source, string itemId = "")
+        {
+            var analytics = GetService<ARPUAnalyticsSystem>();
+            if (analytics != null)
+            {
+                analytics.TrackRevenue(playerId, amount, source, itemId);
+            }
+        }
+        
+        /// <summary>
+        /// Track player action
+        /// </summary>
+        public void TrackPlayerAction(string playerId, string action, System.Collections.Generic.Dictionary<string, object> parameters = null)
+        {
+            var analytics = GetService<ARPUAnalyticsSystem>();
+            if (analytics != null)
+            {
+                analytics.TrackPlayerAction(playerId, action, parameters);
+            }
         }
         
         private void LoadCurrencies()
