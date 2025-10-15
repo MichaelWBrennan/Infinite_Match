@@ -1,0 +1,42 @@
+{
+  "tile_material": {
+    "name": "TileMaterial",
+    "dynamic_friction": 0.6,
+    "static_friction": 0.6,
+    "bounciness": 0.0,
+    "friction_combine": "Average",
+    "bounce_combine": "Average"
+  },
+  "board_material": {
+    "name": "BoardMaterial",
+    "dynamic_friction": 0.8,
+    "static_friction": 0.8,
+    "bounciness": 0.1,
+    "friction_combine": "Average",
+    "bounce_combine": "Average"
+  },
+  "wall_material": {
+    "name": "WallMaterial",
+    "dynamic_friction": 0.9,
+    "static_friction": 0.9,
+    "bounciness": 0.0,
+    "friction_combine": "Maximum",
+    "bounce_combine": "Minimum"
+  },
+  "ice_material": {
+    "name": "IceMaterial",
+    "dynamic_friction": 0.1,
+    "static_friction": 0.1,
+    "bounciness": 0.0,
+    "friction_combine": "Minimum",
+    "bounce_combine": "Average"
+  },
+  "bouncy_material": {
+    "name": "BouncyMaterial",
+    "dynamic_friction": 0.4,
+    "static_friction": 0.4,
+    "bounciness": 0.8,
+    "friction_combine": "Average",
+    "bounce_combine": "Maximum"
+  }
+}

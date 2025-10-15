@@ -1,0 +1,28 @@
+{
+  "textures": {
+    "ui_icon": {
+      "android": "Textures/UI/Android/icon.png",
+      "ios": "Textures/UI/iOS/icon.png",
+      "standalone": "Textures/UI/Standalone/icon.png"
+    },
+    "background": {
+      "android": "Textures/Backgrounds/Android/background.png",
+      "ios": "Textures/Backgrounds/iOS/background.png",
+      "standalone": "Textures/Backgrounds/Standalone/background.png"
+    }
+  },
+  "audio": {
+    "background_music": {
+      "android": "Audio/Music/Android/background.ogg",
+      "ios": "Audio/Music/iOS/background.m4a",
+      "standalone": "Audio/Music/Standalone/background.wav"
+    }
+  },
+  "models": {
+    "character": {
+      "android": "Models/Characters/Android/character.fbx",
+      "ios": "Models/Characters/iOS/character.fbx",
+      "standalone": "Models/Characters/Standalone/character.fbx"
+    }
+  }
+}

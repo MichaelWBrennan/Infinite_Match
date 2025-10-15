@@ -1,0 +1,37 @@
+{
+  "name": "UIAnimator",
+  "layers": [
+    {
+      "name": "Base Layer",
+      "weight": 1.0,
+      "blending_mode": "Override",
+      "states": [
+        {
+          "name": "Hidden",
+          "is_default": true,
+          "motion": "Hidden",
+          "transitions": [
+            {
+              "destination": "Show",
+              "has_exit_time": false,
+              "has_fixed_duration": true,
+              "duration": 0.25
+            }
+          ]
+        },
+        {
+          "name": "Show",
+          "motion": "Show",
+          "transitions": [
+            {
+              "destination": "Hidden",
+              "has_exit_time": false,
+              "has_fixed_duration": true,
+              "duration": 0.25
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

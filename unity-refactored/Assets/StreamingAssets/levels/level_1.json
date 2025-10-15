@@ -1,0 +1,26 @@
+{
+  "goals": [
+    {
+      "amount": 30,
+      "color": 0,
+      "type": "collect_color"
+    },
+    {
+      "amount": 30,
+      "color": 1,
+      "type": "collect_color"
+    }
+  ],
+  "id": 1,
+  "move_limit": 20,
+  "num_colors": 5,
+  "score_stars": [
+    500,
+    1500,
+    3000
+  ],
+  "size": [
+    8,
+    8
+  ]
+}

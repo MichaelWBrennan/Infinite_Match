@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App Information -->
+    <key>CFBundleDisplayName</key>
+    <string>Infinite Match</string>
+    <key>CFBundleName</key>
+    <string>Infinite Match</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.infinite.match</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    
+    <!-- App Store Requirements -->
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+    </array>
+    
+    <!-- Supported Device Orientations -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    
+    <!-- App Transport Security -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>unity3d.com</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.0</string>
+            </dict>
+        </dict>
+    </dict>
+    
+    <!-- Privacy: remove location prompts to minimize data collection for E rating -->
+    <key>NSCameraUsageDescription</key>
+    <string>This app uses the camera to scan QR codes for special features.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app accesses your photo library to save and share game screenshots.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This app uses the microphone for voice commands and audio features.</string>
+    <!-- Remove unused high-risk privacy permissions -->
+    <!-- Remove ATT prompt; no tracking for child-directed/non-personalized ads -->
+    
+    <!-- App Store Optimization -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.games</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Game Save</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.evergreen.match3.gamesave</string>
+            </array>
+        </dict>
+    </array>
+    
+    <!-- Remove background modes not required for gameplay -->
+    
+    <!-- Scene Configuration -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>UnityFramework.UISceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+    
+    <!-- Status Bar -->
+    <key>UIStatusBarHidden</key>
+    <false/>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <true/>
+    
+    <!-- Launch Screen -->
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    
+    <!-- Required for iOS 14+ -->
+    <key>NSUserActivityTypes</key>
+    <array>
+        <string>com.evergreen.match3.gameplay</string>
+        <string>com.evergreen.match3.achievements</string>
+    </array>
+    
+    <!-- App Store Connect -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.infinite.match</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>evergreen-match3</string>
+            </array>
+        </dict>
+    </array>
+    
+    <!-- Game Center -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>gamekit</string>
+    </array>
+    
+    <!-- Keep IAP only if used via StoreKit; remove Apple Pay merchant if unused -->
+    
+    <!-- Push Notifications -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+    
+    <!-- Unity Specific -->
+    <key>UnityCloudProjectID</key>
+    <string>your-unity-project-id</string>
+    <key>UnityServicesEnvironment</key>
+    <string>production</string>
+    
+    <!-- Performance -->
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+    <key>UISupportsDocumentBrowser</key>
+    <false/>
+    
+    <!-- Accessibility -->
+    <key>UIAccessibilityIgnoresInvertColors</key>
+    <true/>
+    
+    <!-- App Store Review Guidelines Compliance -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>https</string>
+        <string>http</string>
+        <string>unity3d</string>
+    </array>
+    
+</dict>
+</plist>

@@ -1,0 +1,21 @@
+id,type,name,cost_gems,cost_coins,quantity,description,rarity,category,is_purchasable,is_consumable,is_tradeable,icon_path
+coins_small,currency,Small Coin Pack,20,0,1000,Perfect for new players! Great value!,common,currency,true,false,true,UI/Currency/Coins
+coins_medium,currency,Medium Coin Pack,120,0,5000,Most popular choice! Amazing value!,uncommon,currency,true,false,true,UI/Currency/Coins
+coins_large,currency,Large Coin Pack,300,0,15000,For serious players! Maximum value!,rare,currency,true,false,true,UI/Currency/Coins
+coins_mega,currency,Mega Coin Pack,700,0,40000,Ultimate value for power players!,epic,currency,true,false,true,UI/Currency/Coins
+coins_ultimate,currency,Ultimate Coin Pack,2000,0,100000,The ultimate collection!,legendary,currency,true,false,true,UI/Currency/Coins
+energy_small,currency,Energy Boost,5,0,5,Quick energy refill,common,consumable,true,true,false,UI/Currency/Energy
+energy_large,currency,Energy Surge,15,0,20,Maximum energy boost!,uncommon,consumable,true,true,false,UI/Currency/Energy
+booster_extra_moves,booster,Extra Moves,0,200,3,Get 3 extra moves for your next level,common,booster,true,true,true,UI/Boosters/ExtraMoves
+booster_color_bomb,booster,Color Bomb,15,0,1,Start your next level with a color bomb,uncommon,booster,true,true,true,UI/Boosters/ColorBomb
+booster_rainbow_blast,booster,Rainbow Blast,25,0,1,Create a powerful rainbow blast,rare,booster,true,true,true,UI/Boosters/RainbowBlast
+booster_striped_candy,booster,Striped Candy,0,100,1,Create a striped candy for extra power,common,booster,true,true,true,UI/Boosters/StripedCandy
+pack_starter,pack,Starter Pack,20,0,1,Perfect for new players! 50% off!,common,starter,true,false,false,UI/Packs/StarterPack
+pack_value,pack,Value Pack,120,0,1,Most popular! Amazing value!,uncommon,currency,true,false,false,UI/Packs/ValuePack
+pack_premium,pack,Premium Pack,300,0,1,For serious players! Maximum value!,rare,currency,true,false,false,UI/Packs/PremiumPack
+pack_mega,pack,Mega Pack,700,0,1,Ultimate value for power players!,epic,currency,true,false,false,UI/Packs/MegaPack
+pack_ultimate,pack,Ultimate Pack,2000,0,1,The ultimate collection!,legendary,currency,true,false,false,UI/Packs/UltimatePack
+pack_booster_small,pack,Booster Bundle,0,500,1,Essential boosters for success!,uncommon,booster,true,false,false,UI/Packs/BoosterBundle
+pack_booster_large,pack,Power Pack,25,0,1,Ultimate booster collection!,rare,booster,true,false,false,UI/Packs/PowerPack
+pack_comeback,pack,Welcome Back!,50,0,1,We missed you! Special comeback offer!,epic,special,true,false,false,UI/Packs/ComebackPack
+pack_flash_sale,pack,Flash Sale!,25,0,1,Limited time! 75% off everything!,legendary,special,true,false,false,UI/Packs/FlashSale

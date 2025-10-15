@@ -1,0 +1,47 @@
+{
+  "main_canvas": {
+    "name": "MainCanvas",
+    "render_mode": "ScreenSpaceOverlay",
+    "sorting_order": 0,
+    "ui_scale_mode": "ScaleWithScreenSize",
+    "reference_resolution": [
+      1920,
+      1080
+    ],
+    "screen_match_mode": "MatchWidthOrHeight",
+    "match_width_or_height": 0.5,
+    "canvas_scaler": {
+      "ui_scale_mode": "ScaleWithScreenSize",
+      "reference_resolution": [
+        1920,
+        1080
+      ],
+      "screen_match_mode": "MatchWidthOrHeight",
+      "match_width_or_height": 0.5
+    }
+  },
+  "gameplay_canvas": {
+    "name": "GameplayCanvas",
+    "render_mode": "ScreenSpaceOverlay",
+    "sorting_order": 1,
+    "ui_scale_mode": "ScaleWithScreenSize",
+    "reference_resolution": [
+      1920,
+      1080
+    ],
+    "screen_match_mode": "MatchWidthOrHeight",
+    "match_width_or_height": 0.5
+  },
+  "ui_canvas": {
+    "name": "UICanvas",
+    "render_mode": "ScreenSpaceOverlay",
+    "sorting_order": 2,
+    "ui_scale_mode": "ScaleWithScreenSize",
+    "reference_resolution": [
+      1920,
+      1080
+    ],
+    "screen_match_mode": "MatchWidthOrHeight",
+    "match_width_or_height": 0.5
+  }
+}

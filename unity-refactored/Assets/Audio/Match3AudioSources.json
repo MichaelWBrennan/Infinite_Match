@@ -1,0 +1,162 @@
+{
+  "background_music": {
+    "tracks": [
+      {
+        "name": "main_theme",
+        "file": "Audio/Music/main_theme.ogg",
+        "volume": 0.7,
+        "pitch": 1.0,
+        "loop": true,
+        "play_on_awake": true,
+        "spatial_blend": 0.0,
+        "priority": 128
+      },
+      {
+        "name": "menu_music",
+        "file": "Audio/Music/menu_music.ogg",
+        "volume": 0.6,
+        "pitch": 1.0,
+        "loop": true,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 128
+      },
+      {
+        "name": "level_complete",
+        "file": "Audio/Music/level_complete.ogg",
+        "volume": 0.8,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 64
+      }
+    ]
+  },
+  "sound_effects": {
+    "tile_sounds": [
+      {
+        "name": "tile_click",
+        "file": "Audio/SFX/tile_click.wav",
+        "volume": 0.8,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 192
+      },
+      {
+        "name": "tile_match",
+        "file": "Audio/SFX/tile_match.wav",
+        "volume": 0.9,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 128
+      },
+      {
+        "name": "tile_fall",
+        "file": "Audio/SFX/tile_fall.wav",
+        "volume": 0.7,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 160
+      },
+      {
+        "name": "tile_swap",
+        "file": "Audio/SFX/tile_swap.wav",
+        "volume": 0.6,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 180
+      }
+    ],
+    "combo_sounds": [
+      {
+        "name": "combo_3",
+        "file": "Audio/SFX/combo_3.wav",
+        "volume": 0.8,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 96
+      },
+      {
+        "name": "combo_4",
+        "file": "Audio/SFX/combo_4.wav",
+        "volume": 0.9,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 80
+      },
+      {
+        "name": "combo_5",
+        "file": "Audio/SFX/combo_5.wav",
+        "volume": 1.0,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 64
+      }
+    ],
+    "ui_sounds": [
+      {
+        "name": "button_click",
+        "file": "Audio/SFX/button_click.wav",
+        "volume": 0.7,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 200
+      },
+      {
+        "name": "button_hover",
+        "file": "Audio/SFX/button_hover.wav",
+        "volume": 0.5,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 220
+      },
+      {
+        "name": "level_start",
+        "file": "Audio/SFX/level_start.wav",
+        "volume": 0.8,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 100
+      },
+      {
+        "name": "level_complete",
+        "file": "Audio/SFX/level_complete.wav",
+        "volume": 0.9,
+        "pitch": 1.0,
+        "loop": false,
+        "play_on_awake": false,
+        "spatial_blend": 0.0,
+        "priority": 80
+      }
+    ]
+  },
+  "spatial_audio": {
+    "enable_3d_sound": true,
+    "doppler_factor": 1.0,
+    "speed_of_sound": 343.0,
+    "rolloff_mode": "Logarithmic",
+    "max_distance": 50.0,
+    "min_distance": 1.0
+  }
+}

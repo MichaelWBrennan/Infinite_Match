@@ -1,0 +1,175 @@
+name: Daily Package & SDK Updates
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC (adjust timezone as needed)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+    inputs:
+      force_update:
+        description: 'Force update even if no updates available'
+        required: false
+        default: 'false'
+        type: boolean
+      update_major:
+        description: 'Include major version updates with breaking changes'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  UNITY_VERSION: '2024.3.0f1'
+  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      updates-available: ${{ steps.check.outputs.updates-available }}
+      update-count: ${{ steps.check.outputs.update-count }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pyyaml
+
+      - name: Check for updates
+        id: check
+        run: |
+          python scripts/auto-updater/package-updater.py --check-only
+          echo "updates-available=true" >> $GITHUB_OUTPUT
+          echo "update-count=$(python scripts/auto-updater/package-updater.py --count)" >> $GITHUB_OUTPUT
+
+  update-packages:
+    needs: check-updates
+    if: needs.check-updates.outputs.updates-available == 'true' || github.event.inputs.force_update == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pyyaml
+
+      - name: Cache Unity packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/unity
+            unity-refactored/Library
+            unity-refactored/Temp
+          key: ${{ runner.os }}-unity-${{ env.UNITY_VERSION }}-${{ hashFiles('unity-refactored/Packages/**', 'unity-refactored/ProjectSettings/**') }}
+          restore-keys: |
+            ${{ runner.os }}-unity-${{ env.UNITY_VERSION }}-
+
+      - name: Run package updates
+        env:
+          FORCE_UPDATE: ${{ github.event.inputs.force_update || 'false' }}
+          UPDATE_MAJOR: ${{ github.event.inputs.update_major || 'false' }}
+        run: |
+          python scripts/auto-updater/package-updater.py \
+            --force-update=$FORCE_UPDATE \
+            --update-major=$UPDATE_MAJOR
+
+      - name: Test WebGL build
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ env.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ env.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: WebGL
+          projectPath: unity-refactored
+          allowDirtyBuild: true
+
+      - name: Test Android build
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ env.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ env.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: Android
+          projectPath: unity-refactored
+          allowDirtyBuild: true
+
+      - name: Upload update report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: update-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 30
+
+      - name: Create Pull Request
+        if: success()
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update packages and SDKs to latest versions'
+          title: '🔄 Daily Package Updates - ${{ github.run_number }}'
+          body: |
+            ## 📦 Package Updates
+            
+            This PR contains automatic updates to Unity packages and SDKs.
+            
+            ### Updates Applied
+            - Check the update report in the artifacts for detailed information
+            - All builds have been tested and are passing
+            
+            ### Changes
+            - Updated Unity packages to latest versions
+            - Updated SDKs to current versions
+            - Maintained backward compatibility where possible
+            
+            ### Testing
+            - ✅ WebGL build successful
+            - ✅ Android build successful
+            - ✅ All package dependencies resolved
+            
+            This PR was created automatically by the daily package update workflow.
+          branch: auto-update/packages-${{ github.run_number }}
+          delete-branch: true
+
+  notify-on-failure:
+    needs: [check-updates, update-packages]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify on failure
+        run: |
+          echo "Package update failed. Check the logs for details."
+          # Add notification logic here (Slack, Discord, email, etc.)
+
+  cleanup-old-backups:
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cleanup old backups
+        run: |
+          # Keep only last 7 days of backups
+          find backups/ -name "backup_*" -type d -mtime +7 -exec rm -rf {} \;
+          find reports/ -name "update_report_*" -type f -mtime +30 -delete

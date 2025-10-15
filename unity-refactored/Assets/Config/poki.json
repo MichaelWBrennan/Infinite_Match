@@ -1,0 +1,143 @@
+{
+  "platform": "poki",
+  "name": "Poki WebGL Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for Poki WebGL deployment",
+  
+  "build_settings": {
+    "target_platform": "WebGL",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "compression_format": "Gzip",
+    "memory_size": 256,
+    "data_caching": true,
+    "exception_support": "Explicitly Thrown Exceptions Only"
+  },
+  
+  "ad_sdks": {
+    "primary": "poki_sdk",
+    "fallback": "unity_ads",
+    "required_apis": [
+      "PokiSDK.ShowAd",
+      "PokiSDK.ShowRewardedAd",
+      "PokiSDK.ShowInterstitialAd",
+      "PokiSDK.GetAdBlocked",
+      "PokiSDK.GetAdFree"
+    ],
+    "forbidden_apis": [
+      "UnityEngine.Advertisements",
+      "GoogleMobileAds",
+      "AppLovin",
+      "IronSource"
+    ]
+  },
+  
+  "monetization": {
+    "iap_enabled": false,
+    "virtual_currency_only": true,
+    "poki_coins": true,
+    "premium_currency": "gems",
+    "free_currency": "coins",
+    "max_purchase_amount": 0,
+    "currency_exchange_rate": 1.0,
+    "roi_optimization": {
+      "aggressive_ad_frequency": true,
+      "ad_cooldown_seconds": 30,
+      "rewarded_ad_multiplier": 3.0,
+      "energy_system": true,
+      "energy_refill_cost": 5,
+      "energy_pack_sizes": [10, 25, 50, 100],
+      "energy_pack_costs": [10, 20, 35, 60],
+      "lives_system": true,
+      "lives_refill_cost": 3,
+      "boosters_system": true,
+      "booster_prices": [5, 10, 20, 50],
+      "daily_rewards": true,
+      "premium_daily_rewards": true,
+      "streak_bonuses": true,
+      "max_streak_days": 7,
+      "streak_multiplier": 2.0
+    }
+  },
+  
+  "analytics": {
+    "poki_analytics": true,
+    "unity_analytics": true,
+    "custom_analytics": false,
+    "data_collection": "minimal",
+    "privacy_compliant": true,
+    "required_events": [
+      "game_start",
+      "level_complete",
+      "level_fail",
+      "session_end"
+    ]
+  },
+  
+  "performance": {
+    "max_memory_usage": "256MB",
+    "max_build_size": "50MB",
+    "max_loading_time": "10s",
+    "max_initial_download": "20MB",
+    "texture_compression": "DXT1",
+    "audio_compression": "Vorbis",
+    "mesh_compression": "Off"
+  },
+  
+  "content_restrictions": {
+    "violence_level": "minimal",
+    "language_restrictions": "family_friendly",
+    "gambling_elements": false,
+    "loot_boxes": false,
+    "real_money_gambling": false,
+    "age_rating": "E",
+    "content_descriptors": []
+  },
+  
+  "technical_requirements": {
+    "webgl_version": "2.0",
+    "browser_support": ["Chrome", "Firefox", "Safari", "Edge"],
+    "mobile_web_support": true,
+    "touch_controls": true,
+    "keyboard_controls": true,
+    "fullscreen_support": true,
+    "local_storage": true,
+    "cookies": false
+  },
+  
+  "poki_specific": {
+    "game_id": "your_game_id_here",
+    "api_key": "your_api_key_here",
+    "environment": "production",
+    "debug_mode": false,
+    "ad_frequency": "balanced",
+    "reward_multiplier": 1.0,
+    "social_features": true,
+    "leaderboards": true,
+    "achievements": true
+  },
+  
+  "compliance_checks": {
+    "file_size_check": true,
+    "memory_usage_check": true,
+    "loading_time_check": true,
+    "ad_integration_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "browser_compatibility_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_WEBGL",
+    "POKI_PLATFORM",
+    "WEBGL_BUILD",
+    "NO_IAP",
+    "POKI_ADS_ONLY"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_ANDROID",
+    "UNITY_IOS",
+    "UNITY_STANDALONE"
+  ]
+}

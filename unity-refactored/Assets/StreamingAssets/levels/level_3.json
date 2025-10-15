@@ -1,0 +1,53 @@
+{
+  "goals": [
+    {
+      "amount": 50,
+      "color": 0,
+      "type": "collect_color"
+    },
+    {
+      "amount": 40,
+      "color": 4,
+      "type": "collect_color"
+    }
+  ],
+  "id": 3,
+  "jelly": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      8,
+      0,
+      1
+    ],
+    [
+      0,
+      8,
+      1
+    ],
+    [
+      8,
+      8,
+      1
+    ],
+    [
+      4,
+      4,
+      2
+    ]
+  ],
+  "move_limit": 24,
+  "num_colors": 6,
+  "score_stars": [
+    1200,
+    2500,
+    4000
+  ],
+  "size": [
+    9,
+    9
+  ]
+}
