@@ -1,4 +1,11 @@
 {
   "version": "1.0.0",
-  "buildTime": "2025-10-14T22:10:02.081Z"
+  "unityVersion": "2022.3.21f1",
+  "buildTime": "2024-01-01T00:00:00Z",
+  "platform": "WebGL",
+  "dataUrl": "WebGL.data",
+  "wasmUrl": "WebGL.wasm",
+  "memoryUrl": "WebGL.mem",
+  "frameworkUrl": "WebGL.framework.js",
+  "loaderUrl": "WebGL.loader.js"
 }

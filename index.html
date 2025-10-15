@@ -31,6 +31,9 @@
         #unity-canvas {
             background: #231F20;
             display: block;
+            border: 2px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         
         #unity-loading-bar {
@@ -149,14 +152,6 @@
         <div id="unity-mobile-warning">
             WebGL builds are not supported on mobile devices.
         </div>
-        <div id="poki-placeholder" class="poki-placeholder">
-            <h2>🎮 Unity WebGL Game - Multi-Platform Ready</h2>
-            <p>Drop your Unity WebGL build here (Build/, TemplateData/, updated index.html) and deploy with Vercel.</p>
-            <p><strong>Platform Detection:</strong> ✅ Kongregate, Game Crazy, Poki</p>
-            <p><strong>Vercel Deployment:</strong> ✅ Ready</p>
-            <p><strong>WebGL Optimization:</strong> ✅ Ready</p>
-            <p><strong>Unified API:</strong> ✅ Cross-platform compatibility</p>
-        </div>
     </div>
     
     <script>
@@ -207,15 +202,6 @@
         
         // Start the game
         function startGame() {
-            // Check if Unity build files exist
-            if (!checkUnityBuildFiles()) {
-                console.log('📁 Unity build files not found, showing placeholder');
-                return;
-            }
-            
-            // Hide placeholder
-            placeholder.style.display = 'none';
-            
             // Show a mobile message if the user is on a mobile device
             if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
                 container.className = "unity-mobile";
@@ -259,6 +245,11 @@
                             });
                         }
                         
+                        // Start the game
+                        if (unityInstance.start) {
+                            unityInstance.start();
+                        }
+                        
                         // Platform game ready callback
                         if (platformAPI) {
                             platformAPI.gameplayStart();
@@ -286,7 +277,8 @@
         // Check if Unity build files exist
         function checkUnityBuildFiles() {
             // Check if the main Unity build files exist
-            return true; // Unity build files are now present
+            // For now, we'll always try to load Unity
+            return true;
         }
         
         // Show error message

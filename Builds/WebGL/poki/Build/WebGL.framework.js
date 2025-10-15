@@ -1,23 +1,16 @@
 // Unity WebGL Framework
-// This is a minimal framework implementation for Unity WebGL builds
+// This is a minimal framework file for Unity WebGL builds
 
 var UnityFramework = {
-  version: "1.0.0",
-  initialized: false,
-  
-  init: function() {
-    this.initialized = true;
-    console.log("Unity Framework initialized");
-  },
-  
-  isInitialized: function() {
-    return this.initialized;
-  }
+    name: "UnityFramework",
+    version: "1.0.0",
+    initialize: function() {
+        console.log("Unity Framework initialized");
+        return Promise.resolve();
+    }
 };
 
-// Export for global access
+// Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = UnityFramework;
-} else {
-  window.UnityFramework = UnityFramework;
+    module.exports = UnityFramework;
 }
