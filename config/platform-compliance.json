@@ -1,0 +1,409 @@
+{
+  "apple_app_store": {
+    "compliance_version": "1.0.0",
+    "last_updated": "2024-01-15T00:00:00Z",
+    "requirements": {
+      "age_rating": "4+",
+      "content_guidelines": {
+        "violence": "none",
+        "sexual_content": "none",
+        "profanity": "none",
+        "drugs": "none",
+        "gambling": "simulated",
+        "horror": "none"
+      },
+      "monetization": {
+        "loot_boxes": {
+          "allowed": true,
+          "disclosure_required": true,
+          "odds_disclosure": true,
+          "age_verification": false
+        },
+        "subscriptions": {
+          "allowed": true,
+          "auto_renewal_disclosure": true,
+          "cancellation_required": true,
+          "refund_policy": "apple_standard"
+        },
+        "ads": {
+          "allowed": true,
+          "age_appropriate": true,
+          "disclosure_required": true,
+          "frequency_capping": true
+        }
+      },
+      "privacy": {
+        "data_collection": {
+          "personal_data": "minimal",
+          "location_data": "optional",
+          "device_data": "allowed",
+          "analytics_data": "allowed"
+        },
+        "gdpr_compliance": true,
+        "ccpa_compliance": true,
+        "coppa_compliance": true,
+        "privacy_policy_required": true
+      },
+      "technical": {
+        "ios_version": "12.0",
+        "iphone_support": true,
+        "ipad_support": true,
+        "app_clip_support": false,
+        "widget_support": false,
+        "background_modes": ["background_processing"],
+        "permissions": ["camera", "photo_library", "notifications"]
+      },
+      "content": {
+        "in_app_purchases": true,
+        "external_links": "restricted",
+        "user_generated_content": false,
+        "social_features": true,
+        "multiplayer": false
+      }
+    },
+    "review_guidelines": {
+      "app_review_time": "24-48_hours",
+      "rejection_reasons": [
+        "incomplete_functionality",
+        "misleading_metadata",
+        "spam",
+        "copyright_violation",
+        "excessive_ads",
+        "inappropriate_content"
+      ],
+      "preparation_checklist": [
+        "test_all_features",
+        "verify_iap_functionality",
+        "check_privacy_policy",
+        "validate_metadata",
+        "test_on_multiple_devices",
+        "verify_age_rating"
+      ]
+    }
+  },
+  "google_play_store": {
+    "compliance_version": "1.0.0",
+    "last_updated": "2024-01-15T00:00:00Z",
+    "requirements": {
+      "age_rating": "Everyone",
+      "content_guidelines": {
+        "violence": "mild",
+        "sexual_content": "none",
+        "profanity": "mild",
+        "drugs": "none",
+        "gambling": "simulated",
+        "horror": "mild"
+      },
+      "monetization": {
+        "loot_boxes": {
+          "allowed": true,
+          "disclosure_required": true,
+          "odds_disclosure": true,
+          "age_verification": false
+        },
+        "subscriptions": {
+          "allowed": true,
+          "auto_renewal_disclosure": true,
+          "cancellation_required": true,
+          "refund_policy": "google_standard"
+        },
+        "ads": {
+          "allowed": true,
+          "age_appropriate": true,
+          "disclosure_required": true,
+          "frequency_capping": true
+        }
+      },
+      "privacy": {
+        "data_collection": {
+          "personal_data": "minimal",
+          "location_data": "optional",
+          "device_data": "allowed",
+          "analytics_data": "allowed"
+        },
+        "gdpr_compliance": true,
+        "ccpa_compliance": true,
+        "coppa_compliance": true,
+        "privacy_policy_required": true
+      },
+      "technical": {
+        "android_version": "7.0",
+        "target_sdk": 34,
+        "compile_sdk": 34,
+        "permissions": ["INTERNET", "ACCESS_NETWORK_STATE", "VIBRATE", "WAKE_LOCK"],
+        "features": ["android.hardware.touchscreen"],
+        "screen_sizes": ["small", "normal", "large", "xlarge"]
+      },
+      "content": {
+        "in_app_purchases": true,
+        "external_links": "allowed",
+        "user_generated_content": false,
+        "social_features": true,
+        "multiplayer": false
+      }
+    },
+    "review_guidelines": {
+      "app_review_time": "1-3_days",
+      "rejection_reasons": [
+        "policy_violation",
+        "spam",
+        "malware",
+        "copyright_violation",
+        "inappropriate_content",
+        "misleading_metadata"
+      ],
+      "preparation_checklist": [
+        "test_all_features",
+        "verify_iap_functionality",
+        "check_privacy_policy",
+        "validate_metadata",
+        "test_on_multiple_devices",
+        "verify_age_rating",
+        "check_permissions"
+      ]
+    }
+  },
+  "kongregate": {
+    "compliance_version": "1.0.0",
+    "last_updated": "2024-01-15T00:00:00Z",
+    "requirements": {
+      "age_rating": "Teen",
+      "content_guidelines": {
+        "violence": "mild",
+        "sexual_content": "none",
+        "profanity": "mild",
+        "drugs": "none",
+        "gambling": "simulated",
+        "horror": "mild"
+      },
+      "monetization": {
+        "loot_boxes": {
+          "allowed": true,
+          "disclosure_required": true,
+          "odds_disclosure": true,
+          "age_verification": false
+        },
+        "subscriptions": {
+          "allowed": true,
+          "auto_renewal_disclosure": true,
+          "cancellation_required": true,
+          "refund_policy": "kongregate_standard"
+        },
+        "ads": {
+          "allowed": true,
+          "age_appropriate": true,
+          "disclosure_required": true,
+          "frequency_capping": true
+        }
+      },
+      "privacy": {
+        "data_collection": {
+          "personal_data": "minimal",
+          "location_data": "none",
+          "device_data": "allowed",
+          "analytics_data": "allowed"
+        },
+        "gdpr_compliance": true,
+        "ccpa_compliance": true,
+        "coppa_compliance": true,
+        "privacy_policy_required": true
+      },
+      "technical": {
+        "webgl_support": true,
+        "html5_support": true,
+        "browser_compatibility": ["chrome", "firefox", "safari", "edge"],
+        "resolution_support": ["1920x1080", "1366x768", "1280x720"],
+        "mobile_support": false
+      },
+      "content": {
+        "in_app_purchases": true,
+        "external_links": "allowed",
+        "user_generated_content": false,
+        "social_features": true,
+        "multiplayer": false
+      }
+    },
+    "review_guidelines": {
+      "app_review_time": "1-2_days",
+      "rejection_reasons": [
+        "inappropriate_content",
+        "spam",
+        "copyright_violation",
+        "excessive_ads",
+        "poor_quality",
+        "policy_violation"
+      ],
+      "preparation_checklist": [
+        "test_all_features",
+        "verify_iap_functionality",
+        "check_privacy_policy",
+        "validate_metadata",
+        "test_on_multiple_browsers",
+        "verify_age_rating"
+      ]
+    }
+  },
+  "poki": {
+    "compliance_version": "1.0.0",
+    "last_updated": "2024-01-15T00:00:00Z",
+    "requirements": {
+      "age_rating": "Everyone",
+      "content_guidelines": {
+        "violence": "none",
+        "sexual_content": "none",
+        "profanity": "none",
+        "drugs": "none",
+        "gambling": "simulated",
+        "horror": "none"
+      },
+      "monetization": {
+        "loot_boxes": {
+          "allowed": true,
+          "disclosure_required": true,
+          "odds_disclosure": true,
+          "age_verification": false
+        },
+        "subscriptions": {
+          "allowed": true,
+          "auto_renewal_disclosure": true,
+          "cancellation_required": true,
+          "refund_policy": "poki_standard"
+        },
+        "ads": {
+          "allowed": true,
+          "age_appropriate": true,
+          "disclosure_required": true,
+          "frequency_capping": true
+        }
+      },
+      "privacy": {
+        "data_collection": {
+          "personal_data": "minimal",
+          "location_data": "none",
+          "device_data": "allowed",
+          "analytics_data": "allowed"
+        },
+        "gdpr_compliance": true,
+        "ccpa_compliance": true,
+        "coppa_compliance": true,
+        "privacy_policy_required": true
+      },
+      "technical": {
+        "webgl_support": true,
+        "html5_support": true,
+        "browser_compatibility": ["chrome", "firefox", "safari", "edge"],
+        "resolution_support": ["1920x1080", "1366x768", "1280x720"],
+        "mobile_support": true
+      },
+      "content": {
+        "in_app_purchases": true,
+        "external_links": "restricted",
+        "user_generated_content": false,
+        "social_features": true,
+        "multiplayer": false
+      }
+    },
+    "review_guidelines": {
+      "app_review_time": "1-3_days",
+      "rejection_reasons": [
+        "inappropriate_content",
+        "spam",
+        "copyright_violation",
+        "excessive_ads",
+        "poor_quality",
+        "policy_violation"
+      ],
+      "preparation_checklist": [
+        "test_all_features",
+        "verify_iap_functionality",
+        "check_privacy_policy",
+        "validate_metadata",
+        "test_on_multiple_browsers",
+        "verify_age_rating"
+      ]
+    }
+  },
+  "vercel": {
+    "compliance_version": "1.0.0",
+    "last_updated": "2024-01-15T00:00:00Z",
+    "requirements": {
+      "age_rating": "Everyone",
+      "content_guidelines": {
+        "violence": "mild",
+        "sexual_content": "none",
+        "profanity": "mild",
+        "drugs": "none",
+        "gambling": "simulated",
+        "horror": "mild"
+      },
+      "monetization": {
+        "loot_boxes": {
+          "allowed": true,
+          "disclosure_required": true,
+          "odds_disclosure": true,
+          "age_verification": false
+        },
+        "subscriptions": {
+          "allowed": true,
+          "auto_renewal_disclosure": true,
+          "cancellation_required": true,
+          "refund_policy": "vercel_standard"
+        },
+        "ads": {
+          "allowed": true,
+          "age_appropriate": true,
+          "disclosure_required": true,
+          "frequency_capping": true
+        }
+      },
+      "privacy": {
+        "data_collection": {
+          "personal_data": "minimal",
+          "location_data": "optional",
+          "device_data": "allowed",
+          "analytics_data": "allowed"
+        },
+        "gdpr_compliance": true,
+        "ccpa_compliance": true,
+        "coppa_compliance": true,
+        "privacy_policy_required": true
+      },
+      "technical": {
+        "webgl_support": true,
+        "html5_support": true,
+        "browser_compatibility": ["chrome", "firefox", "safari", "edge"],
+        "resolution_support": ["1920x1080", "1366x768", "1280x720"],
+        "mobile_support": true,
+        "serverless_functions": true,
+        "edge_functions": true
+      },
+      "content": {
+        "in_app_purchases": true,
+        "external_links": "allowed",
+        "user_generated_content": false,
+        "social_features": true,
+        "multiplayer": false
+      }
+    },
+    "review_guidelines": {
+      "app_review_time": "automatic",
+      "rejection_reasons": [
+        "inappropriate_content",
+        "spam",
+        "copyright_violation",
+        "excessive_ads",
+        "poor_quality",
+        "policy_violation"
+      ],
+      "preparation_checklist": [
+        "test_all_features",
+        "verify_iap_functionality",
+        "check_privacy_policy",
+        "validate_metadata",
+        "test_on_multiple_browsers",
+        "verify_age_rating",
+        "check_serverless_functions"
+      ]
+    }
+  }
+}

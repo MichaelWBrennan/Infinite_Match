@@ -5,7 +5,49 @@
     "energyRefillCost": 10,
     "energyRefillTime": 300,
     "enableEnergyPacks": true,
-    "enableEnergyAds": true
+    "enableEnergyAds": true,
+    "energyDecayRate": 0.1,
+    "energyBoostMultiplier": 2.0,
+    "energyEmergencyRefill": true
+  },
+  "addiction_mechanics": {
+    "daily_rewards": {
+      "enabled": true,
+      "streak_bonus": true,
+      "max_streak": 30,
+      "streak_multiplier": 1.5,
+      "missed_streak_penalty": 0.5,
+      "comeback_bonus": true,
+      "comeback_days": 3,
+      "comeback_multiplier": 2.0
+    },
+    "fomo_events": {
+      "enabled": true,
+      "limited_time_offers": true,
+      "exclusive_items": true,
+      "seasonal_events": true,
+      "flash_sales": true,
+      "urgency_timers": true,
+      "scarcity_indicators": true
+    },
+    "variable_rewards": {
+      "enabled": true,
+      "loot_boxes": true,
+      "mystery_rewards": true,
+      "random_bonuses": true,
+      "surprise_events": true,
+      "jackpot_mechanics": true,
+      "progressive_rewards": true
+    },
+    "social_pressure": {
+      "enabled": true,
+      "leaderboards": true,
+      "friend_challenges": true,
+      "guild_competitions": true,
+      "social_sharing": true,
+      "achievement_showcase": true,
+      "peer_comparison": true
+    }
   },
   "subscriptions": {
     "enableSubscriptions": true,
@@ -57,8 +99,77 @@
             "value": 1
           }
         ]
+      },
+      {
+        "id": "ultimate",
+        "name": "Ultimate Pass",
+        "price": 19.99,
+        "duration": 30,
+        "benefits": [
+          {
+            "type": "energy_multiplier",
+            "value": 3
+          },
+          {
+            "type": "coins_multiplier",
+            "value": 2
+          },
+          {
+            "type": "gems_multiplier",
+            "value": 1.8
+          },
+          {
+            "type": "daily_bonus",
+            "value": 500
+          },
+          {
+            "type": "exclusive_items",
+            "value": 3
+          },
+          {
+            "type": "ad_free",
+            "value": 1
+          },
+          {
+            "type": "priority_support",
+            "value": 1
+          }
+        ]
       }
     ]
+  },
+  "monetization": {
+    "dynamic_pricing": {
+      "enabled": true,
+      "player_segmentation": true,
+      "spending_behavior_analysis": true,
+      "price_optimization": true,
+      "a_b_testing": true
+    },
+    "personalized_offers": {
+      "enabled": true,
+      "ai_recommendations": true,
+      "behavioral_targeting": true,
+      "retention_offers": true,
+      "upsell_opportunities": true,
+      "churn_prevention": true
+    },
+    "battle_pass": {
+      "enabled": true,
+      "free_track": true,
+      "premium_track": true,
+      "seasonal_themes": true,
+      "exclusive_rewards": true,
+      "progression_mechanics": true
+    },
+    "loot_boxes": {
+      "enabled": true,
+      "tier_system": true,
+      "guaranteed_rewards": true,
+      "duplicate_protection": true,
+      "pity_timer": true,
+      "transparency": true
+    }
   },
   "offers": {
     "enablePersonalization": true,

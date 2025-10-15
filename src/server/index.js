@@ -6,8 +6,9 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import * as Sentry from '@sentry/node';
-import analyticsService from '../services/enhanced-analytics-service.js';
+import analyticsService from '../services/advanced-analytics-service.js';
 import cloudServices from '../services/enhanced-cloud-services.js';
+import retentionSystem from '../services/retention-system.js';
 import gameRoutes from '../routes/game-routes.js';
 import { analyticsMiddleware, errorTrackingMiddleware } from '../middleware/analytics-middleware.js';
 
@@ -32,6 +33,9 @@ async function initializeServices() {
         
         // Initialize cloud services
         await cloudServices.initialize();
+        
+        // Initialize retention system
+        await retentionSystem.initialize();
         
         console.log('All services initialized successfully');
     } catch (error) {
