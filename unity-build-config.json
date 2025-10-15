@@ -1,0 +1,22 @@
+{
+  "webgl_build_settings": {
+    "memory_size": 256,
+    "data_caching": true,
+    "exception_support": "ExplicitlyThrownExceptionsOnly",
+    "compression_format": "Gzip",
+    "name_files_as_hashes": true,
+    "threads_support": false,
+    "template": "PROJECT:Default"
+  },
+  "build_paths": {
+    "root": "/workspace/Build",
+    "webgl": "/workspace/webgl/Build", 
+    "poki": "/workspace/Builds/WebGL/poki/Build",
+    "vercel": "/workspace/Build"
+  },
+  "asset_paths": {
+    "template_data": "TemplateData/",
+    "streaming_assets": "StreamingAssets/",
+    "platform_configs": "PlatformConfigs/"
+  }
+}

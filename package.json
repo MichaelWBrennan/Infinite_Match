@@ -129,7 +129,12 @@
     "arpu:test": "node scripts/test-arpu-systems.js",
     "arpu:monitor": "node scripts/monitor-arpu.js",
     "sync:all": "./sync-all-versions.sh",
-    "deploy:vercel": "npm run sync:all && npm run build:vercel"
+    "deploy:vercel": "npm run sync:all && npm run build:vercel",
+    "build:webgl:vercel": "./build-webgl-vercel.sh",
+    "build:webgl:webgl": "./build-webgl-webgl.sh",
+    "build:webgl:poki": "./build-webgl-poki.sh",
+    "build:webgl:all": "./build-all-webgl.sh",
+    "configure:webgl": "./configure-webgl-build-paths.sh"
   },
   "type": "module",
   "version": "1.0.0",
