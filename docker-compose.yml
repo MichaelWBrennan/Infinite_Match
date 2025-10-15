@@ -132,7 +132,7 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     environment:
       - POSTGRES_DB=evergreen_match3
       - POSTGRES_USER=postgres
@@ -148,7 +148,7 @@ services:
 
   # Redis Cache
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     command: redis-server --appendonly yes --requirepass password
     volumes:
       - redis_data:/data
@@ -160,7 +160,7 @@ services:
 
   # MongoDB for Analytics
   mongodb:
-    image: mongo:7
+    image: mongo:8
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=password
@@ -174,7 +174,7 @@ services:
 
   # Prometheus Monitoring
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.0
     ports:
       - "9090:9090"
     volumes:
@@ -193,7 +193,7 @@ services:
 
   # Grafana Dashboard
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.5.0
     ports:
       - "3001:3000"
     environment:

@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Unity.Services.CloudCode" Version="1.0.0" />
-    <PackageReference Include="Unity.Services.Economy" Version="1.0.0" />
-    <PackageReference Include="Unity.Services.Authentication" Version="1.0.0" />
-    <PackageReference Include="Unity.Services.Core" Version="1.0.0" />
+    <PackageReference Include="Unity.Services.CloudCode" Version="3.0.0" />
+    <PackageReference Include="Unity.Services.Economy" Version="3.0.0" />
+    <PackageReference Include="Unity.Services.Authentication" Version="3.0.0" />
+    <PackageReference Include="Unity.Services.Core" Version="2.0.0" />
   </ItemGroup>
 
 </Project>
