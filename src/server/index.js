@@ -6,8 +6,8 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import * as Sentry from '@sentry/node';
-import analyticsService from '../services/analytics-service.js';
-import cloudServices from '../services/cloud-services.js';
+import analyticsService from '../services/enhanced-analytics-service.js';
+import cloudServices from '../services/enhanced-cloud-services.js';
 import gameRoutes from '../routes/game-routes.js';
 import { analyticsMiddleware, errorTrackingMiddleware } from '../middleware/analytics-middleware.js';
 

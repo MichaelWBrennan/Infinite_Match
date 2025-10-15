@@ -4,10 +4,11 @@
   "buildCommand": "npm run build:vercel",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/", "destination": "/index.html" }
+    { "source": "/", "destination": "/Build/index.html" },
+    { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "functions": {
-    "src/server/index.js": {
+    "api/**/*.js": {
       "runtime": "nodejs20.x"
     }
   },

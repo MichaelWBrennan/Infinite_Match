@@ -9,6 +9,15 @@
     <!-- Platform Detection -->
     <script src="platform-detection.js"></script>
     
+    <!-- Analytics SDKs -->
+    <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
+    <script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
+    <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
+    
+    <!-- Match 3 Fallback Game -->
+    <script src="match3-fallback.js"></script>
+    
     <style>
         html, body {
             height: 100%;
@@ -137,6 +146,177 @@
             font-size: 24px;
             color: #888;
         }
+        
+        /* Match 3 Game Styles */
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+        
+        .score, .level, .moves {
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .game-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(45deg, #74b9ff, #0984e3);
+        }
+        
+        .btn.success {
+            background: linear-gradient(45deg, #00b894, #00a085);
+        }
+        
+        .match3-board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 2px;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            margin: 20px auto;
+            width: fit-content;
+        }
+        
+        .tile {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .tile:hover {
+            transform: scale(1.1);
+            border-color: #fff;
+        }
+        
+        .tile.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+        
+        .tile.matched {
+            animation: matchAnimation 0.5s ease-in-out;
+        }
+        
+        @keyframes matchAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(0); }
+        }
+        
+        .tile.red { background: linear-gradient(45deg, #ff6b6b, #ee5a24); }
+        .tile.blue { background: linear-gradient(45deg, #74b9ff, #0984e3); }
+        .tile.green { background: linear-gradient(45deg, #00b894, #00a085); }
+        .tile.yellow { background: linear-gradient(45deg, #fdcb6e, #e17055); }
+        .tile.purple { background: linear-gradient(45deg, #a29bfe, #6c5ce7); }
+        .tile.orange { background: linear-gradient(45deg, #fd79a8, #e84393); }
+        
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 2000;
+            display: none;
+        }
+        
+        .game-over h2 {
+            margin: 0 0 20px 0;
+            font-size: 36px;
+        }
+        
+        .game-over p {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #ffd700;
+            border-radius: 50%;
+            animation: particleAnimation 1s ease-out forwards;
+        }
+        
+        @keyframes particleAnimation {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-100px);
+            }
+        }
     </style>
 </head>
 <body>
@@ -168,9 +348,114 @@
         var gameInstance = null;
         var platformDetector = null;
         
+        // Analytics Integration
+        var analytics = {
+            amplitude: null,
+            mixpanel: null,
+            sentry: null,
+            datadog: null,
+            sessionId: null,
+            initialized: false
+        };
+        
+        // Initialize Analytics
+        function initializeAnalytics() {
+            try {
+                analytics.sessionId = 'webgl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Initialize Amplitude
+                if (typeof amplitude !== 'undefined') {
+                    analytics.amplitude = amplitude;
+                    analytics.amplitude.init('YOUR_AMPLITUDE_API_KEY', null, {
+                        saveEvents: true,
+                        includeUtm: true,
+                        includeReferrer: true
+                    });
+                    console.log('✅ Amplitude initialized');
+                }
+                
+                // Initialize Mixpanel
+                if (typeof mixpanel !== 'undefined') {
+                    analytics.mixpanel = mixpanel;
+                    analytics.mixpanel.init('YOUR_MIXPANEL_TOKEN');
+                    console.log('✅ Mixpanel initialized');
+                }
+                
+                // Initialize Sentry
+                if (typeof Sentry !== 'undefined') {
+                    analytics.sentry = Sentry;
+                    analytics.sentry.init({
+                        dsn: 'YOUR_SENTRY_DSN',
+                        environment: 'production',
+                        tracesSampleRate: 1.0
+                    });
+                    console.log('✅ Sentry initialized');
+                }
+                
+                // Initialize Datadog RUM
+                if (typeof DD_RUM !== 'undefined') {
+                    analytics.datadog = DD_RUM;
+                    analytics.datadog.init({
+                        applicationId: 'YOUR_DATADOG_APP_ID',
+                        clientToken: 'YOUR_DATADOG_CLIENT_TOKEN',
+                        site: 'datadoghq.com',
+                        service: 'match3-game-webgl',
+                        env: 'production',
+                        version: '1.0.0',
+                        sessionSampleRate: 100,
+                        sessionReplaySampleRate: 20,
+                        trackUserInteractions: true,
+                        trackResources: true,
+                        trackLongTasks: true
+                    });
+                    console.log('✅ Datadog RUM initialized');
+                }
+                
+                analytics.initialized = true;
+                console.log('✅ Analytics initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Analytics initialization failed:', error);
+            }
+        }
+        
+        // Track game events
+        function trackEvent(eventName, properties = {}) {
+            if (!analytics.initialized) return;
+            
+            try {
+                const eventData = {
+                    ...properties,
+                    session_id: analytics.sessionId,
+                    timestamp: new Date().toISOString(),
+                    platform: 'webgl',
+                    game_version: '1.0.0'
+                };
+                
+                if (analytics.amplitude) {
+                    analytics.amplitude.track(eventName, eventData);
+                }
+                
+                if (analytics.mixpanel) {
+                    analytics.mixpanel.track(eventName, eventData);
+                }
+                
+                if (analytics.datadog) {
+                    analytics.datadog.addAction(eventName, eventData);
+                }
+                
+                console.log('📊 Event tracked:', eventName, eventData);
+            } catch (error) {
+                console.error('Failed to track event:', error);
+            }
+        }
+        
         // Initialize Platform Detection and SDK
         async function initializePlatform() {
             try {
+                // Initialize analytics first
+                initializeAnalytics();
+                
                 platformDetector = new PlatformDetector();
                 const platformInfo = await platformDetector.initialize();
                 
@@ -192,6 +477,12 @@
                 if (platformInfo.config.features.analytics) {
                     console.log('✅ Analytics enabled');
                 }
+                
+                // Track platform initialization
+                trackEvent('platform_initialized', {
+                    platform: platformInfo.config.name,
+                    features: platformInfo.config.features
+                });
                 
                 startGame();
             } catch (error) {
@@ -255,10 +546,17 @@
                             platformAPI.gameplayStart();
                         }
                         
+                        // Track game loaded
+                        trackEvent('game_loaded', {
+                            load_time: Date.now() - window.performance.timing.navigationStart,
+                            platform: 'webgl'
+                        });
+                        
                         console.log('✅ Unity game loaded successfully');
                     }).catch((message) => {
                         console.error('❌ Unity game load failed:', message);
-                        showError('Failed to load game: ' + message);
+                        console.log('🔄 Falling back to Match 3 game...');
+                        startFallbackGame();
                     });
                 } else {
                     console.error('❌ createUnityInstance function not found');
@@ -268,7 +566,8 @@
             
             script.onerror = () => {
                 console.error('❌ Failed to load Unity WebGL loader');
-                showError('Failed to load Unity WebGL loader. Please check your browser console for errors.');
+                console.log('🔄 Falling back to Match 3 game...');
+                startFallbackGame();
             };
             
             document.body.appendChild(script);
@@ -281,6 +580,27 @@
             return true;
         }
         
+        // Start fallback Match 3 game
+        function startFallbackGame() {
+            console.log('🎮 Starting Match 3 fallback game...');
+            
+            // Hide Unity canvas and loading bar
+            const canvas = document.querySelector('#unity-canvas');
+            const loadingBar = document.querySelector('#unity-loading-bar');
+            
+            if (canvas) canvas.style.display = 'none';
+            if (loadingBar) loadingBar.style.display = 'none';
+            
+            // Initialize the Match 3 game
+            if (typeof Match3Game !== 'undefined') {
+                window.match3Game = new Match3Game();
+                console.log('✅ Match 3 game started successfully');
+            } else {
+                console.error('❌ Match3Game class not found');
+                showError('Failed to load game. Please refresh the page.');
+            }
+        }
+        
         // Show error message
         function showError(message) {
             loadingBar.innerHTML = '<div class="poki-error">' + message + '</div>';
@@ -291,18 +611,31 @@
             if (platformAPI) {
                 platformAPI.gameplayStop();
             }
+            trackEvent('game_paused', {
+                level: 1, // This would come from Unity
+                score: 0  // This would come from Unity
+            });
         }
         
         function onGameResume() {
             if (platformAPI) {
                 platformAPI.gameplayStart();
             }
+            trackEvent('game_resumed', {
+                level: 1, // This would come from Unity
+                score: 0  // This would come from Unity
+            });
         }
         
         function onGameQuit() {
             if (platformAPI) {
                 platformAPI.gameplayStop();
             }
+            trackEvent('game_quit', {
+                session_duration: Date.now() - window.performance.timing.navigationStart,
+                level: 1, // This would come from Unity
+                score: 0  // This would come from Unity
+            });
         }
         
         // Handle page visibility changes
@@ -371,6 +704,8 @@
                 if (platformAPI) {
                     platformAPI.trackEvent(eventName, data);
                 }
+                // Also track with our analytics
+                trackEvent(eventName, data);
             },
             
             // Get user info
