@@ -2,38 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Unity WebGL Game - Multi-Platform Ready">
-    <title>Unity WebGL Game - Multi-Platform</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Infinite Match - Match 3 Game</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     
-    <!-- Platform Detection -->
-    <script src="platform-detection.js"></script>
+    <!-- Analytics SDKs -->
+    <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
+    <script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
+    <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
     
     <style>
-        html, body {
-            height: 100%;
+        body {
             margin: 0;
             padding: 0;
-            background: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
             overflow: hidden;
         }
         
         #unity-container {
-            width: 100%;
-            height: 100%;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
         }
         
         #unity-canvas {
             background: #231F20;
-            display: block;
-            border: 2px solid #444;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
         #unity-loading-bar {
@@ -47,367 +50,688 @@
         #unity-logo {
             width: 154px;
             height: 130px;
-            background: #333;
-            border: 2px solid #555;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #fff;
+            background: url('TemplateData/unity-logo-dark.png') no-repeat center / contain;
         }
         
         #unity-progress-bar-empty {
             width: 141px;
             height: 18px;
             margin-top: 10px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 9px;
-            overflow: hidden;
+            background: url('TemplateData/progress-bar-empty-dark.png') no-repeat center / contain;
         }
         
         #unity-progress-bar-full {
             width: 0%;
             height: 18px;
-            background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            transition: width 0.3s ease;
+            background: url('TemplateData/progress-bar-full-dark.png') no-repeat center / contain;
         }
         
         #unity-footer {
             position: relative;
         }
         
-        #unity-webgl-logo {
-            float: left;
-            width: 204px;
-            height: 38px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: #fff;
-        }
-        
-        #unity-fullscreen-button {
+        .unity-fullscreen-button {
             float: right;
             width: 38px;
             height: 38px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
+            background: url('TemplateData/fullscreen-button.png') no-repeat center / contain;
+        }
+        
+        .loading-text {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+        
+        .score, .level, .moves {
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .game-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(45deg, #74b9ff, #0984e3);
+        }
+        
+        .btn.success {
+            background: linear-gradient(45deg, #00b894, #00a085);
+        }
+        
+        .match3-board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 2px;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            margin: 20px auto;
+            width: fit-content;
+        }
+        
+        .tile {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
-            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
             cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
         
-        #unity-mobile-warning {
+        .tile:hover {
+            transform: scale(1.1);
+            border-color: #fff;
+        }
+        
+        .tile.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+        
+        .tile.matched {
+            animation: matchAnimation 0.5s ease-in-out;
+        }
+        
+        @keyframes matchAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(0); }
+        }
+        
+        .tile.red { background: linear-gradient(45deg, #ff6b6b, #ee5a24); }
+        .tile.blue { background: linear-gradient(45deg, #74b9ff, #0984e3); }
+        .tile.green { background: linear-gradient(45deg, #00b894, #00a085); }
+        .tile.yellow { background: linear-gradient(45deg, #fdcb6e, #e17055); }
+        .tile.purple { background: linear-gradient(45deg, #a29bfe, #6c5ce7); }
+        .tile.orange { background: linear-gradient(45deg, #fd79a8, #e84393); }
+        
+        .game-over {
             position: absolute;
+            top: 50%;
             left: 50%;
-            top: 5%;
-            transform: translate(-50%, -5%);
-            background: #000;
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 2000;
             display: none;
         }
         
-        .poki-loading {
-            text-align: center;
+        .game-over h2 {
+            margin: 0 0 20px 0;
+            font-size: 36px;
+        }
+        
+        .game-over p {
+            margin: 10px 0;
             font-size: 18px;
-            margin-top: 20px;
         }
         
-        .poki-error {
-            color: #ff6b6b;
-            text-align: center;
-            font-size: 16px;
-            margin-top: 20px;
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
         }
         
-        .poki-placeholder {
-            text-align: center;
-            font-size: 24px;
-            color: #888;
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #ffd700;
+            border-radius: 50%;
+            animation: particleAnimation 1s ease-out forwards;
+        }
+        
+        @keyframes particleAnimation {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-100px);
+            }
         }
     </style>
 </head>
 <body>
-    <div id="unity-container" class="unity-desktop">
-        <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-container">
         <div id="unity-loading-bar">
-            <div id="unity-logo">Unity</div>
+            <div id="unity-logo"></div>
             <div id="unity-progress-bar-empty">
                 <div id="unity-progress-bar-full"></div>
             </div>
-            <div class="poki-loading">Loading game...</div>
+            <div class="loading-text">Loading Infinite Match...</div>
         </div>
-        <div id="unity-mobile-warning">
-            WebGL builds are not supported on mobile devices.
+        
+        <div class="game-ui">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div class="moves">Moves: <span id="moves">30</span></div>
         </div>
+        
+        <div class="game-controls">
+            <button class="btn" onclick="startNewGame()">New Game</button>
+            <button class="btn secondary" onclick="pauseGame()">Pause</button>
+            <button class="btn success" onclick="usePowerUp()">Power Up</button>
+        </div>
+        
+        <div class="game-over" id="gameOver">
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Level Reached: <span id="finalLevel">1</span></p>
+            <button class="btn" onclick="startNewGame()">Play Again</button>
+        </div>
+        
+        <div class="particles" id="particles"></div>
     </div>
     
     <script>
-        var container = document.querySelector("#unity-container");
-        var canvas = document.querySelector("#unity-canvas");
-        var loadingBar = document.querySelector("#unity-loading-bar");
-        var progressBarFull = document.querySelector("#unity-progress-bar-full");
-        var fullscreenButton = document.querySelector("#unity-fullscreen-button");
-        var mobileWarning = document.querySelector("#unity-mobile-warning");
-        var placeholder = document.querySelector("#poki-placeholder");
-        
-        // Platform Integration
-        var platformAPI = null;
-        var gameInstance = null;
-        var platformDetector = null;
-        
-        // Initialize Platform Detection and SDK
-        async function initializePlatform() {
-            try {
-                platformDetector = new PlatformDetector();
-                const platformInfo = await platformDetector.initialize();
-                
-                console.log(`🎮 Platform: ${platformInfo.config.name}`);
-                console.log(`📱 Features:`, platformInfo.config.features);
-                
-                platformAPI = platformDetector.getUnifiedAPI();
-                
-                // Initialize platform-specific features
-                if (platformInfo.config.features.ads) {
-                    console.log('✅ Ad support enabled');
-                }
-                if (platformInfo.config.features.iap) {
-                    console.log('✅ In-app purchase support enabled');
-                }
-                if (platformInfo.config.features.social) {
-                    console.log('✅ Social features enabled');
-                }
-                if (platformInfo.config.features.analytics) {
-                    console.log('✅ Analytics enabled');
-                }
-                
-                startGame();
-            } catch (error) {
-                console.error('❌ Platform initialization failed:', error);
-                showError('Failed to initialize platform: ' + error.message);
-            }
-        }
-        
-        // Start the game
-        function startGame() {
-            // Show a mobile message if the user is on a mobile device
-            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                container.className = "unity-mobile";
-                mobileWarning.style.display = "block";
-                return;
-            } else {
-                canvas.style.width = "960px";
-                canvas.style.height = "600px";
-            }
-            
-            loadingBar.style.display = "block";
-            
-            // Load Unity WebGL build
-            loadUnityWebGL();
-        }
-        
-        // Load Unity WebGL build
-        function loadUnityWebGL() {
-            var buildUrl = "Build";
-            var loaderUrl = buildUrl + "/WebGL.loader.js";
-            
-            // Load the Unity loader script
-            var script = document.createElement("script");
-            script.src = loaderUrl;
-            script.onload = () => {
-                console.log('📦 Unity loader loaded, initializing...');
-                
-                // Create Unity instance with progress callback
-                if (typeof createUnityInstance === 'function') {
-                    createUnityInstance(canvas, {}, (progress) => {
-                        progressBarFull.style.width = 100 * progress + "%";
-                        console.log('📊 Loading progress:', Math.round(progress * 100) + '%');
-                    }).then((unityInstance) => {
-                        gameInstance = unityInstance;
-                        loadingBar.style.display = "none";
-                        
-                        // Set up fullscreen functionality
-                        if (unityInstance.SetFullscreen) {
-                            canvas.addEventListener('dblclick', () => {
-                                unityInstance.SetFullscreen(1);
-                            });
-                        }
-                        
-                        // Start the game
-                        if (unityInstance.start) {
-                            unityInstance.start();
-                        }
-                        
-                        // Platform game ready callback
-                        if (platformAPI) {
-                            platformAPI.gameplayStart();
-                        }
-                        
-                        console.log('✅ Unity game loaded successfully');
-                    }).catch((message) => {
-                        console.error('❌ Unity game load failed:', message);
-                        showError('Failed to load game: ' + message);
-                    });
-                } else {
-                    console.error('❌ createUnityInstance function not found');
-                    showError('Unity loader not properly loaded');
-                }
-            };
-            
-            script.onerror = () => {
-                console.error('❌ Failed to load Unity WebGL loader');
-                showError('Failed to load Unity WebGL loader. Please check your browser console for errors.');
-            };
-            
-            document.body.appendChild(script);
-        }
-        
-        // Check if Unity build files exist
-        function checkUnityBuildFiles() {
-            // Check if the main Unity build files exist
-            // For now, we'll always try to load Unity
-            return true;
-        }
-        
-        // Show error message
-        function showError(message) {
-            loadingBar.innerHTML = '<div class="poki-error">' + message + '</div>';
-        }
-        
-        // Platform event handlers
-        function onGamePause() {
-            if (platformAPI) {
-                platformAPI.gameplayStop();
-            }
-        }
-        
-        function onGameResume() {
-            if (platformAPI) {
-                platformAPI.gameplayStart();
-            }
-        }
-        
-        function onGameQuit() {
-            if (platformAPI) {
-                platformAPI.gameplayStop();
-            }
-        }
-        
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                onGamePause();
-            } else {
-                onGameResume();
-            }
-        });
-        
-        // Handle page unload
-        window.addEventListener('beforeunload', function() {
-            onGameQuit();
-        });
-        
-        // Initialize when page loads
-        window.addEventListener('load', function() {
-            initializePlatform();
-        });
-        
-        // Unified Platform API for Unity
-        window.GameAPI = {
-            // Show ad
-            showAd: function(type) {
-                if (platformAPI) {
-                    return platformAPI.showAd(type);
-                }
-                return Promise.resolve();
-            },
-            
-            // Show rewarded ad
-            showRewardedAd: function() {
-                if (platformAPI) {
-                    return platformAPI.showRewardedAd();
-                }
-                return Promise.resolve();
-            },
-            
-            // Show interstitial ad
-            showInterstitialAd: function() {
-                if (platformAPI) {
-                    return platformAPI.showInterstitialAd();
-                }
-                return Promise.resolve();
-            },
-            
-            // Check if ad is blocked
-            isAdBlocked: function() {
-                if (platformAPI) {
-                    return platformAPI.isAdBlocked();
-                }
-                return false;
-            },
-            
-            // Check if user has ad-free
-            isAdFree: function() {
-                if (platformAPI) {
-                    return platformAPI.isAdFree();
-                }
-                return false;
-            },
-            
-            // Track game event
-            trackEvent: function(eventName, data) {
-                if (platformAPI) {
-                    platformAPI.trackEvent(eventName, data);
-                }
-            },
-            
-            // Get user info
-            getUserInfo: function() {
-                if (platformAPI) {
-                    return platformAPI.getUserInfo();
-                }
-                return null;
-            },
-            
-            // Get platform info
-            getPlatform: function() {
-                if (platformAPI) {
-                    return platformAPI.getPlatform();
-                }
-                return 'unknown';
-            },
-            
-            // Get platform name
-            getPlatformName: function() {
-                if (platformAPI) {
-                    return platformAPI.getPlatformName();
-                }
-                return 'Unknown';
-            },
-            
-            // Get available features
-            getFeatures: function() {
-                if (platformAPI) {
-                    return platformAPI.getFeatures();
-                }
-                return {};
-            }
+        // Game state
+        let gameState = {
+            score: 0,
+            level: 1,
+            moves: 30,
+            board: [],
+            selectedTile: null,
+            isPaused: false,
+            isGameOver: false,
+            colors: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'],
+            boardSize: 8
         };
         
-        // Legacy Poki API for backward compatibility
-        window.PokiAPI = window.GameAPI;
+        // Analytics initialization
+        let analytics = {
+            amplitude: null,
+            mixpanel: null,
+            sentry: null,
+            datadog: null,
+            sessionId: null
+        };
+        
+        // Initialize analytics
+        function initializeAnalytics() {
+            try {
+                // Initialize Amplitude
+                if (typeof amplitude !== 'undefined') {
+                    analytics.amplitude = amplitude;
+                    analytics.amplitude.init('YOUR_AMPLITUDE_API_KEY', null, {
+                        saveEvents: true,
+                        includeUtm: true,
+                        includeReferrer: true
+                    });
+                }
+                
+                // Initialize Mixpanel
+                if (typeof mixpanel !== 'undefined') {
+                    analytics.mixpanel = mixpanel;
+                    analytics.mixpanel.init('YOUR_MIXPANEL_TOKEN');
+                }
+                
+                // Initialize Sentry
+                if (typeof Sentry !== 'undefined') {
+                    analytics.sentry = Sentry;
+                    analytics.sentry.init({
+                        dsn: 'YOUR_SENTRY_DSN',
+                        environment: 'production'
+                    });
+                }
+                
+                // Initialize Datadog RUM
+                if (typeof DD_RUM !== 'undefined') {
+                    analytics.datadog = DD_RUM;
+                    analytics.datadog.init({
+                        applicationId: 'YOUR_DATADOG_APP_ID',
+                        clientToken: 'YOUR_DATADOG_CLIENT_TOKEN',
+                        site: 'datadoghq.com',
+                        service: 'match3-game',
+                        env: 'production'
+                    });
+                }
+                
+                analytics.sessionId = 'webgl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                console.log('Analytics initialized');
+            } catch (error) {
+                console.error('Failed to initialize analytics:', error);
+            }
+        }
+        
+        // Track game events
+        function trackEvent(eventName, properties = {}) {
+            try {
+                const eventData = {
+                    ...properties,
+                    session_id: analytics.sessionId,
+                    timestamp: new Date().toISOString(),
+                    platform: 'webgl',
+                    game_version: '1.0.0'
+                };
+                
+                if (analytics.amplitude) {
+                    analytics.amplitude.track(eventName, eventData);
+                }
+                
+                if (analytics.mixpanel) {
+                    analytics.mixpanel.track(eventName, eventData);
+                }
+                
+                if (analytics.datadog) {
+                    analytics.datadog.addAction(eventName, eventData);
+                }
+                
+                console.log('Event tracked:', eventName, eventData);
+            } catch (error) {
+                console.error('Failed to track event:', error);
+            }
+        }
+        
+        // Initialize game
+        function initGame() {
+            initializeAnalytics();
+            createBoard();
+            updateUI();
+            trackEvent('game_started', {
+                level: gameState.level,
+                platform: 'webgl'
+            });
+        }
+        
+        // Create game board
+        function createBoard() {
+            gameState.board = [];
+            for (let row = 0; row < gameState.boardSize; row++) {
+                gameState.board[row] = [];
+                for (let col = 0; col < gameState.boardSize; col++) {
+                    gameState.board[row][col] = {
+                        color: gameState.colors[Math.floor(Math.random() * gameState.colors.length)],
+                        row: row,
+                        col: col
+                    };
+                }
+            }
+            renderBoard();
+        }
+        
+        // Render game board
+        function renderBoard() {
+            const container = document.getElementById('unity-container');
+            
+            // Remove existing board
+            const existingBoard = document.querySelector('.match3-board');
+            if (existingBoard) {
+                existingBoard.remove();
+            }
+            
+            // Create new board
+            const board = document.createElement('div');
+            board.className = 'match3-board';
+            
+            for (let row = 0; row < gameState.boardSize; row++) {
+                for (let col = 0; col < gameState.boardSize; col++) {
+                    const tile = document.createElement('div');
+                    tile.className = `tile ${gameState.board[row][col].color}`;
+                    tile.dataset.row = row;
+                    tile.dataset.col = col;
+                    tile.onclick = () => selectTile(row, col);
+                    board.appendChild(tile);
+                }
+            }
+            
+            container.appendChild(board);
+        }
+        
+        // Select tile
+        function selectTile(row, col) {
+            if (gameState.isPaused || gameState.isGameOver) return;
+            
+            const tile = gameState.board[row][col];
+            
+            if (gameState.selectedTile === null) {
+                // First selection
+                gameState.selectedTile = { row, col };
+                updateTileSelection();
+            } else {
+                // Second selection
+                const firstTile = gameState.board[gameState.selectedTile.row][gameState.selectedTile.col];
+                
+                if (isAdjacent(gameState.selectedTile, { row, col })) {
+                    // Swap tiles
+                    swapTiles(gameState.selectedTile, { row, col });
+                    
+                    // Check for matches
+                    const matches = findMatches();
+                    if (matches.length > 0) {
+                        processMatches(matches);
+                        trackEvent('match_made', {
+                            match_type: matches.length,
+                            pieces_matched: matches.reduce((sum, match) => sum + match.length, 0),
+                            level: gameState.level
+                        });
+                    } else {
+                        // Swap back if no matches
+                        swapTiles(gameState.selectedTile, { row, col });
+                    }
+                }
+                
+                gameState.selectedTile = null;
+                updateTileSelection();
+            }
+        }
+        
+        // Check if tiles are adjacent
+        function isAdjacent(tile1, tile2) {
+            const rowDiff = Math.abs(tile1.row - tile2.row);
+            const colDiff = Math.abs(tile1.col - tile2.col);
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+        
+        // Swap tiles
+        function swapTiles(tile1, tile2) {
+            const temp = gameState.board[tile1.row][tile1.col];
+            gameState.board[tile1.row][tile1.col] = gameState.board[tile2.row][tile2.col];
+            gameState.board[tile2.row][tile2.col] = temp;
+            renderBoard();
+        }
+        
+        // Find matches
+        function findMatches() {
+            const matches = [];
+            const visited = Array(gameState.boardSize).fill().map(() => Array(gameState.boardSize).fill(false));
+            
+            for (let row = 0; row < gameState.boardSize; row++) {
+                for (let col = 0; col < gameState.boardSize; col++) {
+                    if (!visited[row][col]) {
+                        const match = findMatchFromTile(row, col, visited);
+                        if (match.length >= 3) {
+                            matches.push(match);
+                        }
+                    }
+                }
+            }
+            
+            return matches;
+        }
+        
+        // Find match from specific tile
+        function findMatchFromTile(row, col, visited) {
+            const color = gameState.board[row][col].color;
+            const match = [];
+            const stack = [{ row, col }];
+            
+            while (stack.length > 0) {
+                const { row: r, col: c } = stack.pop();
+                
+                if (visited[r][c] || gameState.board[r][c].color !== color) continue;
+                
+                visited[r][c] = true;
+                match.push({ row: r, col: c });
+                
+                // Check adjacent tiles
+                const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                for (const [dr, dc] of directions) {
+                    const newRow = r + dr;
+                    const newCol = c + dc;
+                    
+                    if (newRow >= 0 && newRow < gameState.boardSize && 
+                        newCol >= 0 && newCol < gameState.boardSize && 
+                        !visited[newRow][newCol]) {
+                        stack.push({ row: newRow, col: newCol });
+                    }
+                }
+            }
+            
+            return match;
+        }
+        
+        // Process matches
+        function processMatches(matches) {
+            let totalScore = 0;
+            
+            matches.forEach(match => {
+                // Calculate score
+                const matchScore = match.length * 100 * gameState.level;
+                totalScore += matchScore;
+                
+                // Mark tiles as matched
+                match.forEach(({ row, col }) => {
+                    gameState.board[row][col] = null;
+                });
+                
+                // Create particle effect
+                createParticleEffect(match[0].row, match[0].col);
+            });
+            
+            gameState.score += totalScore;
+            gameState.moves--;
+            
+            // Fill empty spaces
+            fillEmptySpaces();
+            
+            // Check for new matches
+            const newMatches = findMatches();
+            if (newMatches.length > 0) {
+                setTimeout(() => processMatches(newMatches), 500);
+            }
+            
+            updateUI();
+            checkGameOver();
+        }
+        
+        // Fill empty spaces
+        function fillEmptySpaces() {
+            for (let col = 0; col < gameState.boardSize; col++) {
+                // Move existing tiles down
+                let writeRow = gameState.boardSize - 1;
+                for (let row = gameState.boardSize - 1; row >= 0; row--) {
+                    if (gameState.board[row][col] !== null) {
+                        if (writeRow !== row) {
+                            gameState.board[writeRow][col] = gameState.board[row][col];
+                            gameState.board[row][col] = null;
+                        }
+                        writeRow--;
+                    }
+                }
+                
+                // Fill empty spaces with new tiles
+                for (let row = writeRow; row >= 0; row--) {
+                    gameState.board[row][col] = {
+                        color: gameState.colors[Math.floor(Math.random() * gameState.colors.length)],
+                        row: row,
+                        col: col
+                    };
+                }
+            }
+            
+            renderBoard();
+        }
+        
+        // Create particle effect
+        function createParticleEffect(row, col) {
+            const particles = document.getElementById('particles');
+            const tileSize = 60;
+            const boardOffset = 20;
+            
+            for (let i = 0; i < 10; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = (col * tileSize + boardOffset + tileSize / 2) + 'px';
+                particle.style.top = (row * tileSize + boardOffset + tileSize / 2) + 'px';
+                particle.style.left = (parseInt(particle.style.left) + (Math.random() - 0.5) * 20) + 'px';
+                particle.style.top = (parseInt(particle.style.top) + (Math.random() - 0.5) * 20) + 'px';
+                
+                particles.appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.remove();
+                }, 1000);
+            }
+        }
+        
+        // Update tile selection
+        function updateTileSelection() {
+            const tiles = document.querySelectorAll('.tile');
+            tiles.forEach(tile => tile.classList.remove('selected'));
+            
+            if (gameState.selectedTile) {
+                const selectedTile = document.querySelector(`[data-row="${gameState.selectedTile.row}"][data-col="${gameState.selectedTile.col}"]`);
+                if (selectedTile) {
+                    selectedTile.classList.add('selected');
+                }
+            }
+        }
+        
+        // Update UI
+        function updateUI() {
+            document.getElementById('score').textContent = gameState.score.toLocaleString();
+            document.getElementById('level').textContent = gameState.level;
+            document.getElementById('moves').textContent = gameState.moves;
+        }
+        
+        // Check game over
+        function checkGameOver() {
+            if (gameState.moves <= 0) {
+                gameState.isGameOver = true;
+                showGameOver();
+                trackEvent('game_ended', {
+                    final_score: gameState.score,
+                    level_reached: gameState.level,
+                    moves_used: 30 - gameState.moves
+                });
+            } else if (gameState.score >= gameState.level * 1000) {
+                // Level up
+                gameState.level++;
+                gameState.moves += 10; // Bonus moves
+                trackEvent('level_completed', {
+                    level: gameState.level - 1,
+                    score: gameState.score,
+                    moves_remaining: gameState.moves
+                });
+            }
+        }
+        
+        // Show game over
+        function showGameOver() {
+            document.getElementById('finalScore').textContent = gameState.score.toLocaleString();
+            document.getElementById('finalLevel').textContent = gameState.level;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        // Game controls
+        function startNewGame() {
+            gameState = {
+                score: 0,
+                level: 1,
+                moves: 30,
+                board: [],
+                selectedTile: null,
+                isPaused: false,
+                isGameOver: false,
+                colors: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'],
+                boardSize: 8
+            };
+            
+            document.getElementById('gameOver').style.display = 'none';
+            initGame();
+        }
+        
+        function pauseGame() {
+            gameState.isPaused = !gameState.isPaused;
+            trackEvent(gameState.isPaused ? 'game_paused' : 'game_resumed', {
+                level: gameState.level,
+                score: gameState.score
+            });
+        }
+        
+        function usePowerUp() {
+            if (gameState.score >= 1000) {
+                gameState.score -= 1000;
+                gameState.moves += 5;
+                updateUI();
+                trackEvent('powerup_used', {
+                    powerup_type: 'extra_moves',
+                    cost: 1000,
+                    level: gameState.level
+                });
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initGame);
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Adjust board size if needed
+            renderBoard();
+        });
+        
+        // Handle visibility change (pause when tab is not visible)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && !gameState.isPaused && !gameState.isGameOver) {
+                pauseGame();
+            }
+        });
     </script>
 </body>
 </html>
