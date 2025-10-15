@@ -6,6 +6,11 @@
   "rewrites": [
     { "source": "/", "destination": "/index.html" }
   ],
+  "functions": {
+    "src/server/index.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "headers": [
     { "source": "/index.html", "headers": [
       { "key": "Cache-Control", "value": "no-cache" }
