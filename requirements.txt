@@ -7,3 +7,31 @@ beautifulsoup4>=4.12.0
 pandas>=2.0.0
 numpy>=1.24.0
 matplotlib>=3.7.0
+
+# Additional Python SDKs for game development and analytics
+fastapi>=0.119.0
+uvicorn[standard]>=0.37.0
+pydantic>=2.12.0
+sqlalchemy>=2.0.0
+alembic>=1.17.0
+Pygments>=2.19.0
+
+# Cloud and monitoring SDKs
+boto3>=1.35.0
+google-cloud-storage>=2.10.0
+google-cloud-firestore>=2.11.0
+azure-storage-blob>=12.19.0
+azure-identity>=1.15.0
+
+# Data processing and ML
+scikit-learn>=1.3.0
+tensorflow>=2.15.0
+torch>=2.1.0
+transformers>=4.35.0
+
+# Testing and development
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.7.0
