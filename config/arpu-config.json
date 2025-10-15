@@ -191,5 +191,80 @@
     "enableConversionFunnels": true,
     "enableRetentionAnalysis": true,
     "enableLTVPrediction": true
+  },
+  "addiction_mechanics": {
+    "daily_rewards": {
+      "enabled": true,
+      "streak_bonus": true,
+      "max_streak": 30,
+      "streak_multiplier": 1.5,
+      "comeback_bonus": true,
+      "comeback_days": 3,
+      "comeback_multiplier": 2.0
+    },
+    "fomo_events": {
+      "enabled": true,
+      "limited_time_offers": true,
+      "exclusive_items": true,
+      "flash_sales": true,
+      "urgency_timers": true
+    },
+    "variable_rewards": {
+      "enabled": true,
+      "loot_boxes": true,
+      "mystery_rewards": true,
+      "random_bonuses": true,
+      "jackpot_mechanics": true
+    },
+    "social_pressure": {
+      "enabled": true,
+      "leaderboards": true,
+      "friend_challenges": true,
+      "guild_competitions": true,
+      "social_sharing": true
+    }
+  },
+  "monetization": {
+    "dynamic_pricing": {
+      "enabled": true,
+      "player_segmentation": true,
+      "a_b_testing": true
+    },
+    "subscription_tiers": {
+      "basic": {
+        "price": 4.99,
+        "duration": 30,
+        "energy_multiplier": 1.5,
+        "coins_multiplier": 1.2,
+        "daily_bonus": 100
+      },
+      "premium": {
+        "price": 9.99,
+        "duration": 30,
+        "energy_multiplier": 2.0,
+        "coins_multiplier": 1.5,
+        "gems_multiplier": 1.3,
+        "daily_bonus": 200,
+        "exclusive_items": true
+      },
+      "ultimate": {
+        "price": 19.99,
+        "duration": 30,
+        "energy_multiplier": 3.0,
+        "coins_multiplier": 2.0,
+        "gems_multiplier": 1.8,
+        "daily_bonus": 500,
+        "exclusive_items": true,
+        "ad_free": true,
+        "priority_support": true
+      }
+    },
+    "battle_pass": {
+      "enabled": true,
+      "free_track": true,
+      "premium_track": true,
+      "seasonal_themes": true,
+      "exclusive_rewards": true
+    }
   }
 }

@@ -41,6 +41,12 @@ class EnhancedAnalyticsService {
             enableRedis: process.env.REDIS_URL ? true : false,
             enableMongoDB: process.env.MONGODB_URI ? true : false
         };
+        
+        // Addiction mechanics tracking
+        this.dailyStreaks = new Map();
+        this.comebackBonuses = new Map();
+        this.fomoEvents = new Map();
+        this.variableRewards = new Map();
     }
 
     /**
@@ -648,6 +654,194 @@ class EnhancedAnalyticsService {
         } catch (error) {
             console.error('Error during analytics shutdown:', error);
         }
+    }
+
+    // ===== ADDICTION MECHANICS =====
+
+    /**
+     * Check daily reward eligibility for player
+     */
+    async checkDailyRewardEligibility(userId) {
+        try {
+            const now = new Date();
+            const lastLogin = this.dailyStreaks.get(userId)?.lastLogin || new Date(0);
+            const hoursSinceLastLogin = (now - lastLogin) / (1000 * 60 * 60);
+            
+            let streak = this.dailyStreaks.get(userId)?.streak || 0;
+            let maxStreak = this.dailyStreaks.get(userId)?.maxStreak || 0;
+            
+            // Check if it's a new day (24+ hours since last login)
+            if (hoursSinceLastLogin >= 24) {
+                if (hoursSinceLastLogin >= 24 && hoursSinceLastLogin <= 48) {
+                    // Continue streak
+                    streak++;
+                    if (streak > maxStreak) maxStreak = streak;
+                } else if (hoursSinceLastLogin > 72) { // 3 days
+                    // Reset streak but give comeback bonus
+                    streak = 1;
+                    await this.triggerComebackBonus(userId);
+                } else {
+                    // Reset streak
+                    streak = 1;
+                }
+                
+                // Update streak data
+                this.dailyStreaks.set(userId, {
+                    streak,
+                    maxStreak,
+                    lastLogin: now,
+                    hasClaimedToday: false
+                });
+                
+                // Track daily reward availability
+                await this.trackGameEvent('daily_reward_available', {
+                    userId,
+                    streak,
+                    maxStreak,
+                    isComeback: hoursSinceLastLogin > 72
+                });
+            }
+        } catch (error) {
+            console.error('Failed to check daily reward eligibility:', error);
+        }
+    }
+
+    /**
+     * Trigger comeback bonus for returning player
+     */
+    async triggerComebackBonus(userId) {
+        const bonusId = uuidv4();
+        this.comebackBonuses.set(bonusId, {
+            userId,
+            bonusType: 'comeback',
+            multiplier: 2.0,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+            createdAt: new Date()
+        });
+        
+        await this.trackGameEvent('comeback_bonus_triggered', {
+            userId,
+            bonusId,
+            multiplier: 2.0,
+            expiresIn: 24 * 60 * 60 * 1000
+        });
+    }
+
+    /**
+     * Claim daily reward
+     */
+    async claimDailyReward(userId) {
+        const streakData = this.dailyStreaks.get(userId);
+        if (!streakData || streakData.hasClaimedToday) {
+            return { success: false, message: 'Already claimed today' };
+        }
+        
+        // Calculate reward
+        const baseReward = 100;
+        const streakBonus = streakData.streak * 10;
+        const multiplier = streakData.streak >= 7 ? 1.5 : 1.0;
+        const totalReward = Math.floor((baseReward + streakBonus) * multiplier);
+        
+        // Mark as claimed
+        streakData.hasClaimedToday = true;
+        this.dailyStreaks.set(userId, streakData);
+        
+        // Track reward claim
+        await this.trackGameEvent('daily_reward_claimed', {
+            userId,
+            streak: streakData.streak,
+            maxStreak: streakData.maxStreak,
+            baseReward,
+            streakBonus,
+            multiplier,
+            totalReward
+        });
+        
+        return { success: true, reward: totalReward };
+    }
+
+    /**
+     * Create FOMO event
+     */
+    async createFOMOEvent(eventType, eventData) {
+        const eventId = uuidv4();
+        const fomoEvent = {
+            id: eventId,
+            type: eventType,
+            data: eventData,
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + (eventData.duration || 3600) * 1000)
+        };
+        
+        this.fomoEvents.set(eventId, fomoEvent);
+        
+        await this.trackGameEvent('fomo_event_created', {
+            eventId,
+            eventType,
+            duration: eventData.duration || 3600,
+            ...eventData
+        });
+        
+        return fomoEvent;
+    }
+
+    /**
+     * Track variable reward
+     */
+    async trackVariableReward(userId, rewardType, rewardValue, rarity) {
+        const rewardId = uuidv4();
+        
+        await this.trackGameEvent('variable_reward', {
+            userId,
+            rewardId,
+            rewardType,
+            rewardValue,
+            rarity,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Store reward for analytics
+        this.variableRewards.set(rewardId, {
+            userId,
+            rewardType,
+            rewardValue,
+            rarity,
+            timestamp: new Date()
+        });
+    }
+
+    /**
+     * Track social interaction
+     */
+    async trackSocialInteraction(userId, interactionType, interactionData) {
+        await this.trackGameEvent('social_interaction', {
+            userId,
+            interactionType,
+            timestamp: new Date().toISOString(),
+            ...interactionData
+        });
+    }
+
+    /**
+     * Get addiction mechanics data for player
+     */
+    getAddictionData(userId) {
+        const streakData = this.dailyStreaks.get(userId);
+        const activeFOMOEvents = Array.from(this.fomoEvents.values())
+            .filter(event => event.expiresAt > new Date());
+        const recentRewards = Array.from(this.variableRewards.values())
+            .filter(reward => reward.userId === userId)
+            .slice(-10); // Last 10 rewards
+        
+        return {
+            dailyStreak: streakData?.streak || 0,
+            maxStreak: streakData?.maxStreak || 0,
+            hasClaimedToday: streakData?.hasClaimedToday || false,
+            activeFOMOEvents,
+            recentRewards,
+            comebackBonuses: Array.from(this.comebackBonuses.values())
+                .filter(bonus => bonus.userId === userId && bonus.expiresAt > new Date())
+        };
     }
 }
 

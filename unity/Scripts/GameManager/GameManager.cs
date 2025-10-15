@@ -32,6 +32,16 @@ namespace Match3Game.Core
         [SerializeField] private int movesUsed;
         [SerializeField] private int powerupsUsed;
         
+        [Header("Monetization")]
+        [SerializeField] private int coins = 0;
+        [SerializeField] private int gems = 0;
+        [SerializeField] private int energy = 30;
+        [SerializeField] private int maxEnergy = 30;
+        [SerializeField] private float energyRefillTime = 300f; // 5 minutes
+        [SerializeField] private float lastEnergyRefill;
+        [SerializeField] private string currentSubscription = "none";
+        [SerializeField] private float subscriptionMultiplier = 1f;
+        
         // Game data
         private PlayerProgressData playerProgress;
         private GameSettingsData gameSettings;
@@ -44,6 +54,10 @@ namespace Match3Game.Core
         public System.Action<int> OnStarsEarned;
         public System.Action OnGameOver;
         public System.Action OnGameWin;
+        public System.Action<int> OnCoinsChanged;
+        public System.Action<int> OnGemsChanged;
+        public System.Action<int> OnEnergyChanged;
+        public System.Action<string> OnSubscriptionChanged;
         
         private void Start()
         {
@@ -255,6 +269,9 @@ namespace Match3Game.Core
         
         public void MakePurchase(string itemId, string currency, float amount, string transactionId = "")
         {
+            // Process purchase based on item type
+            ProcessPurchase(itemId, currency, amount);
+            
             // Track purchase
             if (analyticsManager)
             {
@@ -267,6 +284,183 @@ namespace Match3Game.Core
             }
             
             Debug.Log($"Purchase made: {itemId} for {amount} {currency}");
+        }
+        
+        private void ProcessPurchase(string itemId, string currency, float amount)
+        {
+            switch (itemId)
+            {
+                case "coins_100":
+                    AddCoins(100);
+                    break;
+                case "coins_500":
+                    AddCoins(500);
+                    break;
+                case "coins_1000":
+                    AddCoins(1000);
+                    break;
+                case "gems_50":
+                    AddGems(50);
+                    break;
+                case "gems_100":
+                    AddGems(100);
+                    break;
+                case "gems_500":
+                    AddGems(500);
+                    break;
+                case "energy_pack":
+                    RefillEnergy();
+                    break;
+                case "premium_pack":
+                    AddCoins(1000);
+                    AddGems(100);
+                    RefillEnergy();
+                    break;
+                case "basic_subscription":
+                    SetSubscription("basic", 1.5f);
+                    break;
+                case "premium_subscription":
+                    SetSubscription("premium", 2f);
+                    break;
+                case "ultimate_subscription":
+                    SetSubscription("ultimate", 3f);
+                    break;
+            }
+        }
+        
+        public void AddCoins(int amount)
+        {
+            coins += amount;
+            OnCoinsChanged?.Invoke(coins);
+            
+            if (analyticsManager)
+            {
+                analyticsManager.TrackCustomEvent("currency_earned", new Dictionary<string, object>
+                {
+                    {"currency_type", "coins"},
+                    {"amount", amount},
+                    {"total_coins", coins}
+                });
+            }
+        }
+        
+        public void SpendCoins(int amount)
+        {
+            if (coins >= amount)
+            {
+                coins -= amount;
+                OnCoinsChanged?.Invoke(coins);
+                
+                if (analyticsManager)
+                {
+                    analyticsManager.TrackCustomEvent("currency_spent", new Dictionary<string, object>
+                    {
+                        {"currency_type", "coins"},
+                        {"amount", amount},
+                        {"total_coins", coins}
+                    });
+                }
+                return true;
+            }
+            return false;
+        }
+        
+        public void AddGems(int amount)
+        {
+            gems += amount;
+            OnGemsChanged?.Invoke(gems);
+            
+            if (analyticsManager)
+            {
+                analyticsManager.TrackCustomEvent("currency_earned", new Dictionary<string, object>
+                {
+                    {"currency_type", "gems"},
+                    {"amount", amount},
+                    {"total_gems", gems}
+                });
+            }
+        }
+        
+        public bool SpendGems(int amount)
+        {
+            if (gems >= amount)
+            {
+                gems -= amount;
+                OnGemsChanged?.Invoke(gems);
+                
+                if (analyticsManager)
+                {
+                    analyticsManager.TrackCustomEvent("currency_spent", new Dictionary<string, object>
+                    {
+                        {"currency_type", "gems"},
+                        {"amount", amount},
+                        {"total_gems", gems}
+                    });
+                }
+                return true;
+            }
+            return false;
+        }
+        
+        public void RefillEnergy()
+        {
+            energy = maxEnergy;
+            lastEnergyRefill = Time.time;
+            OnEnergyChanged?.Invoke(energy);
+            
+            if (analyticsManager)
+            {
+                analyticsManager.TrackCustomEvent("energy_refilled", new Dictionary<string, object>
+                {
+                    {"energy_amount", energy},
+                    {"max_energy", maxEnergy}
+                });
+            }
+        }
+        
+        public void UseEnergy(int amount = 1)
+        {
+            if (energy >= amount)
+            {
+                energy -= amount;
+                OnEnergyChanged?.Invoke(energy);
+                
+                if (analyticsManager)
+                {
+                    analyticsManager.TrackCustomEvent("energy_used", new Dictionary<string, object>
+                    {
+                        {"energy_used", amount},
+                        {"remaining_energy", energy}
+                    });
+                }
+            }
+        }
+        
+        public void SetSubscription(string subscriptionType, float multiplier)
+        {
+            currentSubscription = subscriptionType;
+            subscriptionMultiplier = multiplier;
+            OnSubscriptionChanged?.Invoke(subscriptionType);
+            
+            if (analyticsManager)
+            {
+                analyticsManager.TrackCustomEvent("subscription_changed", new Dictionary<string, object>
+                {
+                    {"subscription_type", subscriptionType},
+                    {"multiplier", multiplier}
+                });
+            }
+        }
+        
+        private void Update()
+        {
+            // Auto-refill energy over time
+            if (energy < maxEnergy && Time.time - lastEnergyRefill >= energyRefillTime)
+            {
+                energy++;
+                lastEnergyRefill = Time.time;
+                OnEnergyChanged?.Invoke(energy);
+            }
         }
         
         public void LoseLife()

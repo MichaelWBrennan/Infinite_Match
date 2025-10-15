@@ -432,6 +432,11 @@
                     game_version: '1.0.0'
                 };
                 
+                // Check for addiction mechanics
+                if (eventName === 'game_started') {
+                    checkDailyRewardEligibility();
+                }
+                
                 if (analytics.amplitude) {
                     analytics.amplitude.track(eventName, eventData);
                 }
@@ -449,6 +454,139 @@
                 console.error('Failed to track event:', error);
             }
         }
+        
+        // Addiction mechanics
+        function checkDailyRewardEligibility() {
+            const lastLogin = localStorage.getItem('lastLogin') || 0;
+            const now = Date.now();
+            const hoursSinceLastLogin = (now - lastLogin) / (1000 * 60 * 60);
+            
+            let streak = parseInt(localStorage.getItem('dailyStreak') || '0');
+            let maxStreak = parseInt(localStorage.getItem('maxStreak') || '0');
+            
+            if (hoursSinceLastLogin >= 24) {
+                if (hoursSinceLastLogin >= 24 && hoursSinceLastLogin <= 48) {
+                    streak++;
+                    if (streak > maxStreak) maxStreak = streak;
+                } else if (hoursSinceLastLogin > 72) {
+                    streak = 1;
+                    triggerComebackBonus();
+                } else {
+                    streak = 1;
+                }
+                
+                localStorage.setItem('dailyStreak', streak);
+                localStorage.setItem('maxStreak', maxStreak);
+                localStorage.setItem('lastLogin', now);
+                localStorage.setItem('hasClaimedToday', 'false');
+                
+                // Show daily reward notification
+                showDailyRewardNotification(streak, maxStreak);
+            }
+        }
+        
+        function triggerComebackBonus() {
+            trackEvent('comeback_bonus_triggered', {
+                multiplier: 2.0,
+                expiresIn: 24 * 60 * 60 * 1000
+            });
+            
+            showNotification('🎉 Welcome back! You\'ve earned a 2x bonus for the next 24 hours!', 'success');
+        }
+        
+        function claimDailyReward() {
+            const hasClaimed = localStorage.getItem('hasClaimedToday') === 'true';
+            if (hasClaimed) return;
+            
+            const streak = parseInt(localStorage.getItem('dailyStreak') || '0');
+            const baseReward = 100;
+            const streakBonus = streak * 10;
+            const multiplier = streak >= 7 ? 1.5 : 1.0;
+            const totalReward = Math.floor((baseReward + streakBonus) * multiplier);
+            
+            localStorage.setItem('hasClaimedToday', 'true');
+            
+            trackEvent('daily_reward_claimed', {
+                streak,
+                baseReward,
+                streakBonus,
+                multiplier,
+                totalReward
+            });
+            
+            showNotification(`🎁 Daily reward claimed! You earned ${totalReward} coins!`, 'success');
+        }
+        
+        function showDailyRewardNotification(streak, maxStreak) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                z-index: 10000;
+                max-width: 300px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            notification.innerHTML = `
+                <h3 style="margin: 0 0 10px 0; font-size: 18px;">🎁 Daily Reward Available!</h3>
+                <p style="margin: 0 0 10px 0;">Streak: ${streak} days (Best: ${maxStreak})</p>
+                <button onclick="claimDailyReward(); this.parentElement.remove();" 
+                        style="background: #4CAF50; color: white; border: none; padding: 8px 16px; 
+                               border-radius: 5px; cursor: pointer; font-weight: bold;">
+                    Claim Reward
+                </button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 10000);
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+        
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
         
         // Initialize Platform Detection and SDK
         async function initializePlatform() {

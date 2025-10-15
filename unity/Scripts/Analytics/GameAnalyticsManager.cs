@@ -22,6 +22,13 @@ namespace Match3Game.Analytics
         [SerializeField] private int currentLevel = 1;
         [SerializeField] private int totalScore = 0;
         
+        [Header("Addiction Mechanics")]
+        [SerializeField] private int dailyStreak = 0;
+        [SerializeField] private int maxStreak = 0;
+        [SerializeField] private bool hasClaimedTodayReward = false;
+        [SerializeField] private float lastLoginTime;
+        [SerializeField] private int comebackBonusDays = 3;
+        
         private bool isInitialized = false;
         
         private void Start()
@@ -96,6 +103,9 @@ namespace Match3Game.Analytics
             
             gameSessionId = System.Guid.NewGuid().ToString();
             
+            // Check for daily reward eligibility
+            CheckDailyRewardEligibility();
+            
             // Unity Analytics
             if (enableUnityAnalytics)
             {
@@ -103,7 +113,10 @@ namespace Match3Game.Analytics
                 {
                     {"session_id", gameSessionId},
                     {"timestamp", System.DateTime.UtcNow.ToString()},
-                    {"platform", Application.platform.ToString()}
+                    {"platform", Application.platform.ToString()},
+                    {"daily_streak", dailyStreak},
+                    {"max_streak", maxStreak},
+                    {"comeback_bonus", IsComebackBonusEligible()}
                 });
             }
             
@@ -114,7 +127,10 @@ namespace Match3Game.Analytics
                 {
                     {"session_id", gameSessionId},
                     {"level", currentLevel},
-                    {"platform", Application.platform.ToString()}
+                    {"platform", Application.platform.ToString()},
+                    {"daily_streak", dailyStreak},
+                    {"max_streak", maxStreak},
+                    {"comeback_bonus", IsComebackBonusEligible()}
                 });
             }
         }
@@ -309,6 +325,125 @@ namespace Match3Game.Analytics
         {
             // Sentry error tracking implementation
             Debug.LogError($"Error Tracked: {errorType} - {errorMessage}");
+        }
+        
+        #endregion
+        
+        #region Addiction Mechanics
+        
+        private void CheckDailyRewardEligibility()
+        {
+            float currentTime = Time.time;
+            float timeSinceLastLogin = currentTime - lastLoginTime;
+            float hoursSinceLastLogin = timeSinceLastLogin / 3600f;
+            
+            // Check if it's a new day (24+ hours since last login)
+            if (hoursSinceLastLogin >= 24f)
+            {
+                // Check if streak should continue or reset
+                if (hoursSinceLastLogin >= 24f && hoursSinceLastLogin <= 48f)
+                {
+                    // Continue streak
+                    dailyStreak++;
+                    if (dailyStreak > maxStreak)
+                        maxStreak = dailyStreak;
+                }
+                else if (hoursSinceLastLogin > (comebackBonusDays * 24f))
+                {
+                    // Reset streak but give comeback bonus
+                    dailyStreak = 1;
+                    TriggerComebackBonus();
+                }
+                else
+                {
+                    // Reset streak
+                    dailyStreak = 1;
+                }
+                
+                hasClaimedTodayReward = false;
+                lastLoginTime = currentTime;
+                
+                // Track daily reward availability
+                TrackCustomEvent("daily_reward_available", new Dictionary<string, object>
+                {
+                    {"streak", dailyStreak},
+                    {"max_streak", maxStreak},
+                    {"is_comeback", hoursSinceLastLogin > (comebackBonusDays * 24f)}
+                });
+            }
+        }
+        
+        private bool IsComebackBonusEligible()
+        {
+            float currentTime = Time.time;
+            float timeSinceLastLogin = currentTime - lastLoginTime;
+            float hoursSinceLastLogin = timeSinceLastLogin / 3600f;
+            return hoursSinceLastLogin > (comebackBonusDays * 24f);
+        }
+        
+        private void TriggerComebackBonus()
+        {
+            TrackCustomEvent("comeback_bonus_triggered", new Dictionary<string, object>
+            {
+                {"days_away", (Time.time - lastLoginTime) / (24f * 3600f)},
+                {"streak_reset", true}
+            });
+        }
+        
+        public void ClaimDailyReward()
+        {
+            if (hasClaimedTodayReward) return;
+            
+            hasClaimedTodayReward = true;
+            
+            // Calculate reward based on streak
+            float baseReward = 100f;
+            float streakBonus = dailyStreak * 10f;
+            float multiplier = dailyStreak >= 7 ? 1.5f : 1f;
+            float totalReward = (baseReward + streakBonus) * multiplier;
+            
+            TrackCustomEvent("daily_reward_claimed", new Dictionary<string, object>
+            {
+                {"streak", dailyStreak},
+                {"max_streak", maxStreak},
+                {"base_reward", baseReward},
+                {"streak_bonus", streakBonus},
+                {"multiplier", multiplier},
+                {"total_reward", totalReward}
+            });
+        }
+        
+        public void TrackFOMOEvent(string eventType, Dictionary<string, object> eventData)
+        {
+            TrackCustomEvent("fomo_event", new Dictionary<string, object>
+            {
+                {"event_type", eventType},
+                {"timestamp", System.DateTime.UtcNow.ToString()},
+                {"session_id", gameSessionId},
+                {"level", currentLevel}
+            }.Concat(eventData).ToDictionary(x => x.Key, x => x.Value));
+        }
+        
+        public void TrackVariableReward(string rewardType, float rewardValue, string rarity)
+        {
+            TrackCustomEvent("variable_reward", new Dictionary<string, object>
+            {
+                {"reward_type", rewardType},
+                {"reward_value", rewardValue},
+                {"rarity", rarity},
+                {"timestamp", System.DateTime.UtcNow.ToString()},
+                {"session_id", gameSessionId}
+            });
+        }
+        
+        public void TrackSocialInteraction(string interactionType, Dictionary<string, object> interactionData)
+        {
+            TrackCustomEvent("social_interaction", new Dictionary<string, object>
+            {
+                {"interaction_type", interactionType},
+                {"timestamp", System.DateTime.UtcNow.ToString()},
+                {"session_id", gameSessionId}
+            }.Concat(interactionData).ToDictionary(x => x.Key, x => x.Value));
         }
         
         #endregion
