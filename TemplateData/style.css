@@ -1,0 +1,305 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
+}
+
+#unity-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#unity-canvas {
+    background: #231F20;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+#unity-loading-bar {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+}
+
+#unity-logo {
+    width: 154px;
+    height: 130px;
+    background: url('unity-logo-dark.png') no-repeat center / contain;
+}
+
+#unity-progress-bar-empty {
+    width: 141px;
+    height: 18px;
+    margin-top: 10px;
+    background: url('progress-bar-empty-dark.png') no-repeat center / contain;
+}
+
+#unity-progress-bar-full {
+    width: 0%;
+    height: 18px;
+    background: url('progress-bar-full-dark.png') no-repeat center / contain;
+}
+
+#unity-footer {
+    position: relative;
+}
+
+.unity-fullscreen-button {
+    float: right;
+    width: 38px;
+    height: 38px;
+    background: url('fullscreen-button.png') no-repeat center / contain;
+}
+
+.loading-text {
+    color: white;
+    text-align: center;
+    margin-top: 20px;
+    font-size: 18px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.game-ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+}
+
+.score, .level, .moves {
+    background: rgba(0,0,0,0.5);
+    padding: 10px 20px;
+    border-radius: 25px;
+    backdrop-filter: blur(10px);
+}
+
+.game-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    gap: 15px;
+}
+
+.btn {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    border: none;
+    color: white;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn.secondary {
+    background: linear-gradient(45deg, #74b9ff, #0984e3);
+}
+
+.btn.success {
+    background: linear-gradient(45deg, #00b894, #00a085);
+}
+
+.match3-board {
+    display: grid;
+    grid-template-columns: repeat(8, 60px);
+    grid-template-rows: repeat(8, 60px);
+    gap: 2px;
+    background: rgba(0,0,0,0.3);
+    padding: 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    margin: 20px auto;
+    width: fit-content;
+}
+
+.tile {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.tile:hover {
+    transform: scale(1.1);
+    border-color: #fff;
+}
+
+.tile.selected {
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+.tile.matched {
+    animation: matchAnimation 0.5s ease-in-out;
+}
+
+@keyframes matchAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(0); }
+}
+
+.tile.red { background: linear-gradient(45deg, #ff6b6b, #ee5a24); }
+.tile.blue { background: linear-gradient(45deg, #74b9ff, #0984e3); }
+.tile.green { background: linear-gradient(45deg, #00b894, #00a085); }
+.tile.yellow { background: linear-gradient(45deg, #fdcb6e, #e17055); }
+.tile.purple { background: linear-gradient(45deg, #a29bfe, #6c5ce7); }
+.tile.orange { background: linear-gradient(45deg, #fd79a8, #e84393); }
+
+.game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9);
+    color: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    z-index: 2000;
+    display: none;
+}
+
+.game-over h2 {
+    margin: 0 0 20px 0;
+    font-size: 36px;
+}
+
+.game-over p {
+    margin: 10px 0;
+    font-size: 18px;
+}
+
+.particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 500;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #ffd700;
+    border-radius: 50%;
+    animation: particleAnimation 1s ease-out forwards;
+}
+
+@keyframes particleAnimation {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0) translateY(-100px);
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .match3-board {
+        grid-template-columns: repeat(8, 50px);
+        grid-template-rows: repeat(8, 50px);
+        gap: 1px;
+        padding: 15px;
+    }
+    
+    .tile {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .game-ui {
+        font-size: 18px;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+    }
+    
+    .score, .level, .moves {
+        padding: 8px 15px;
+        font-size: 16px;
+    }
+    
+    .game-controls {
+        bottom: 10px;
+        gap: 10px;
+    }
+    
+    .btn {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .match3-board {
+        grid-template-columns: repeat(8, 40px);
+        grid-template-rows: repeat(8, 40px);
+        gap: 1px;
+        padding: 10px;
+    }
+    
+    .tile {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .game-ui {
+        font-size: 16px;
+    }
+    
+    .score, .level, .moves {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+    
+    .btn {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+}
