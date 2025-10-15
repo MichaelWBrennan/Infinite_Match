@@ -1,0 +1,243 @@
+# Unity Package & SDK Auto-Updater Configuration
+
+# Update schedule
+schedule:
+  # Cron expression for daily updates (2 AM UTC)
+  cron: "0 2 * * *"
+  # Timezone for cron schedule
+  timezone: "UTC"
+
+# Package update settings
+packages:
+  # Unity packages to track
+  unity_packages:
+    - "com.unity.analytics"
+    - "com.unity.cloud.build"
+    - "com.unity.cloudcode"
+    - "com.unity.remote-config"
+    - "com.unity.services.analytics"
+    - "com.unity.services.authentication"
+    - "com.unity.services.cloudcode"
+    - "com.unity.services.core"
+    - "com.unity.services.economy"
+    - "com.unity.services.remote-config"
+    - "com.unity.textmeshpro"
+    - "com.unity.timeline"
+    - "com.unity.ugui"
+    - "com.unity.purchasing"
+    - "com.unity.ads"
+    - "com.unity.ads.ios-support"
+    - "com.unity.addressables"
+    - "com.unity.render-pipelines.universal"
+    - "com.unity.visualscripting"
+    - "com.unity.inputsystem"
+    - "com.unity.cinemachine"
+    - "com.unity.postprocessing"
+    - "com.unity.shadergraph"
+    - "com.unity.probuilder"
+    - "com.unity.progrids"
+    - "com.unity.polybrush"
+    - "com.unity.terrain-tools"
+    - "com.unity.ai.navigation"
+    - "com.unity.multiplayer.tools"
+    - "com.unity.netcode.gameobjects"
+    - "com.unity.transport"
+    - "com.unity.multiplayer.mlapi"
+
+  # Third-party packages to track
+  third_party_packages:
+    - "com.cysharp.unitask"
+    - "com.neuecc.unirx"
+    - "com.demigiant.dotween"
+    - "com.prime31.charactercontroller2d"
+    - "com.prime31.charactercontroller3d"
+    - "com.prime31.zigzag"
+    - "com.prime31.zigzag2d"
+    - "com.prime31.zigzag3d"
+    - "com.prime31.zigzag4d"
+    - "com.prime31.zigzag5d"
+    - "com.prime31.zigzag6d"
+    - "com.prime31.zigzag7d"
+    - "com.prime31.zigzag8d"
+    - "com.prime31.zigzag9d"
+    - "com.prime31.zigzag10d"
+
+# Update behavior
+update_behavior:
+  # Automatically apply minor and patch updates
+  auto_apply_minor: true
+  auto_apply_patch: true
+  
+  # Require manual approval for major updates
+  auto_apply_major: false
+  
+  # Skip updates with breaking changes
+  skip_breaking_changes: true
+  
+  # Maximum number of packages to update per run
+  max_updates_per_run: 10
+  
+  # Delay between updates (seconds)
+  update_delay: 5
+
+# Testing settings
+testing:
+  # Run build tests after updates
+  run_build_tests: true
+  
+  # Platforms to test
+  test_platforms:
+    - "WebGL"
+    - "Android"
+    - "iOS"
+    - "StandaloneWindows64"
+  
+  # Build timeout (minutes)
+  build_timeout: 30
+  
+  # Skip testing for patch updates
+  skip_testing_patch: false
+
+# Backup settings
+backup:
+  # Create backup before updates
+  create_backup: true
+  
+  # Number of backups to keep
+  keep_backups: 7
+  
+  # Backup directory
+  backup_directory: "backups"
+  
+  # Compress backups
+  compress_backups: true
+
+# Notification settings
+notifications:
+  # Enable notifications
+  enabled: true
+  
+  # Notification channels
+  channels:
+    - "github_pr"
+    - "slack"
+    - "email"
+  
+  # Slack webhook URL
+  slack_webhook: "${SLACK_WEBHOOK_URL}"
+  
+  # Email settings
+  email:
+    smtp_server: "${SMTP_SERVER}"
+    smtp_port: 587
+    username: "${EMAIL_USERNAME}"
+    password: "${EMAIL_PASSWORD}"
+    to_addresses:
+      - "dev-team@company.com"
+      - "ci@company.com"
+
+# Security settings
+security:
+  # Scan packages for vulnerabilities
+  vulnerability_scan: true
+  
+  # Block updates with known vulnerabilities
+  block_vulnerable: true
+  
+  # Security scan timeout (minutes)
+  scan_timeout: 10
+
+# Reporting
+reporting:
+  # Generate detailed reports
+  generate_reports: true
+  
+  # Report formats
+  formats:
+    - "json"
+    - "html"
+    - "markdown"
+  
+  # Report directory
+  report_directory: "reports"
+  
+  # Keep reports for (days)
+  keep_reports: 30
+
+# Rollback settings
+rollback:
+  # Auto-rollback on build failure
+  auto_rollback: true
+  
+  # Rollback timeout (minutes)
+  rollback_timeout: 15
+  
+  # Test rollback before applying
+  test_rollback: true
+
+# Package registry settings
+registries:
+  unity:
+    url: "https://packages.unity.com"
+    timeout: 30
+  
+  openupm:
+    url: "https://package.openupm.com"
+    timeout: 30
+  
+  npm:
+    url: "https://registry.npmjs.org"
+    timeout: 30
+
+# Unity project settings
+unity:
+  # Unity project path
+  project_path: "unity-refactored"
+  
+  # Unity executable path (if not in PATH)
+  unity_executable: "Unity"
+  
+  # Unity batch mode arguments
+  batch_mode_args:
+    - "-batchmode"
+    - "-quit"
+    - "-logFile"
+    - "unity.log"
+  
+  # Project settings to preserve
+  preserve_settings:
+    - "ProjectSettings/ProjectVersion.txt"
+    - "ProjectSettings/ProjectSettings.asset"
+    - "ProjectSettings/EditorBuildSettings.asset"
+
+# Environment variables
+environment:
+  # Required environment variables
+  required:
+    - "UNITY_EMAIL"
+    - "UNITY_PASSWORD"
+    - "GITHUB_TOKEN"
+  
+  # Optional environment variables
+  optional:
+    - "SLACK_WEBHOOK_URL"
+    - "SMTP_SERVER"
+    - "EMAIL_USERNAME"
+    - "EMAIL_PASSWORD"
+    - "UNITY_LICENSE"
+    - "UNITY_SERIAL"
+
+# Logging
+logging:
+  # Log level
+  level: "INFO"
+  
+  # Log file
+  log_file: "logs/package-updater.log"
+  
+  # Log rotation
+  max_log_size: "10MB"
+  backup_count: 5
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
