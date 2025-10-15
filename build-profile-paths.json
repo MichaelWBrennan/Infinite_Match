@@ -1,0 +1,204 @@
+{
+  "build_profile_paths": {
+    "version": "1.0.0",
+    "description": "Unity WebGL Build Profile Paths Configuration",
+    "last_updated": "2024-01-01T00:00:00Z"
+  },
+  "unity_project_paths": {
+    "root": "/workspace/unity",
+    "config_directory": "/workspace/unity/Assets/Config",
+    "streaming_assets": "/workspace/unity/Assets/StreamingAssets",
+    "editor_scripts": "/workspace/unity/Assets/Scripts/Editor",
+    "platform_adapters": "/workspace/unity/Assets/Scripts/PlatformAdapters"
+  },
+  "platform_profile_files": {
+    "poki": {
+      "path": "/workspace/unity/Assets/Config/poki.json",
+      "platform": "poki",
+      "target": "WebGL",
+      "description": "Poki WebGL Platform Profile"
+    },
+    "kongregate": {
+      "path": "/workspace/unity/Assets/Config/kongregate.json",
+      "platform": "kongregate",
+      "target": "WebGL",
+      "description": "Kongregate WebGL Platform Profile"
+    },
+    "crazygames": {
+      "path": "/workspace/unity/Assets/Config/crazygames.json",
+      "platform": "crazygames",
+      "target": "WebGL",
+      "description": "CrazyGames WebGL Platform Profile"
+    },
+    "facebook": {
+      "path": "/workspace/unity/Assets/Config/facebook.json",
+      "platform": "facebook",
+      "target": "WebGL",
+      "description": "Facebook Instant Games Profile"
+    },
+    "snap": {
+      "path": "/workspace/unity/Assets/Config/snap.json",
+      "platform": "snap",
+      "target": "WebGL",
+      "description": "Snap Mini Games Profile"
+    },
+    "tiktok": {
+      "path": "/workspace/unity/Assets/Config/tiktok.json",
+      "platform": "tiktok",
+      "target": "WebGL",
+      "description": "TikTok Mini Games Profile"
+    },
+    "googleplay": {
+      "path": "/workspace/unity/Assets/Config/googleplay.json",
+      "platform": "googleplay",
+      "target": "Android",
+      "description": "Google Play Store Profile"
+    },
+    "appstore": {
+      "path": "/workspace/unity/Assets/Config/appstore.json",
+      "platform": "appstore",
+      "target": "iOS",
+      "description": "Apple App Store Profile"
+    },
+    "steam": {
+      "path": "/workspace/unity/Assets/Config/steam.json",
+      "platform": "steam",
+      "target": "StandaloneWindows64",
+      "description": "Steam Platform Profile"
+    },
+    "epic": {
+      "path": "/workspace/unity/Assets/Config/epic.json",
+      "platform": "epic",
+      "target": "StandaloneWindows64",
+      "description": "Epic Games Store Profile"
+    },
+    "ps5": {
+      "path": "/workspace/unity/Assets/Config/ps5.json",
+      "platform": "ps5",
+      "target": "PS5",
+      "description": "PlayStation 5 Profile"
+    }
+  },
+  "build_script_paths": {
+    "headless_webgl_builder": {
+      "path": "/workspace/unity/Assets/Scripts/Editor/HeadlessWebGLBuilder.cs",
+      "class": "Evergreen.Editor.HeadlessWebGLBuilder",
+      "method": "BuildWebGLHeadless",
+      "description": "Headless WebGL build script for command line"
+    },
+    "poki_webgl_builder": {
+      "path": "/workspace/unity/Assets/Editor/PokiWebGLBuildScript.cs",
+      "class": "Evergreen.Editor.PokiWebGLBuildScript",
+      "method": "BuildPokiWebGL",
+      "description": "Poki-specific WebGL build script"
+    },
+    "platform_build_script": {
+      "path": "/workspace/unity/Assets/Editor/PlatformBuildScript.cs",
+      "class": "Evergreen.Editor.PlatformBuildScript",
+      "method": "BuildForPlatform",
+      "description": "General platform build script"
+    },
+    "general_build_script": {
+      "path": "/workspace/unity/Assets/Scripts/Editor/BuildScript.cs",
+      "class": "Evergreen.Editor.BuildScript",
+      "method": "BuildWebGL",
+      "description": "General Unity build script"
+    }
+  },
+  "build_output_paths": {
+    "root_build": "/workspace/Build",
+    "webgl_build": "/workspace/webgl/Build",
+    "poki_build": "/workspace/Builds/WebGL/poki/Build",
+    "kongregate_build": "/workspace/Builds/WebGL/kongregate/Build",
+    "crazygames_build": "/workspace/Builds/WebGL/crazygames/Build",
+    "facebook_build": "/workspace/Builds/WebGL/facebook/Build",
+    "snap_build": "/workspace/Builds/WebGL/snap/Build",
+    "tiktok_build": "/workspace/Builds/WebGL/tiktok/Build"
+  },
+  "profile_loading_configuration": {
+    "headless_builder_profile_path": "Assets/Config/{platform}.json",
+    "platform_manager_profile_path": "Assets/Config/{platform}.json",
+    "build_script_profile_path": "Assets/Config/{platform}.json",
+    "profile_validation": true,
+    "profile_caching": true,
+    "fallback_profile": "poki"
+  },
+  "build_commands": {
+    "unity_editor": {
+      "headless_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod Evergreen.Editor.HeadlessWebGLBuilder.BuildWebGLHeadless -platform {platform} -buildPath {buildPath}",
+      "poki_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod Evergreen.Editor.PokiWebGLBuildScript.BuildPokiWebGL",
+      "general_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod Evergreen.Editor.BuildScript.BuildWebGL"
+    },
+    "docker_build": {
+      "webgl": "./build-webgl-docker.sh {platform} {buildPath}",
+      "poki": "./build-webgl-docker.sh poki /workspace/Builds/WebGL/poki"
+    },
+    "local_build": {
+      "webgl": "./build-webgl.sh {platform} {buildPath}",
+      "poki": "./build-webgl.sh poki /workspace/Builds/WebGL/poki"
+    },
+    "cloud_build": {
+      "webgl": "./unity-cli-working build webgl",
+      "android": "./unity-cli-working build android",
+      "ios": "./unity-cli-working build ios"
+    }
+  },
+  "platform_specific_settings": {
+    "poki": {
+      "profile_path": "/workspace/unity/Assets/Config/poki.json",
+      "build_path": "/workspace/Builds/WebGL/poki/Build",
+      "template_path": "/workspace/unity/Assets/StreamingAssets/poki-webgl-template.html",
+      "defines": ["UNITY_WEBGL", "POKI_PLATFORM", "WEBGL_BUILD", "NO_IAP", "POKI_ADS_ONLY"],
+      "memory_size": 256,
+      "compression": "Gzip",
+      "scripting_backend": "IL2CPP"
+    },
+    "kongregate": {
+      "profile_path": "/workspace/unity/Assets/Config/kongregate.json",
+      "build_path": "/workspace/Builds/WebGL/kongregate/Build",
+      "template_path": "/workspace/unity/Assets/StreamingAssets/kongregate-webgl-template.html",
+      "defines": ["UNITY_WEBGL", "KONGREGATE_PLATFORM", "WEBGL_BUILD"],
+      "memory_size": 256,
+      "compression": "Gzip",
+      "scripting_backend": "IL2CPP"
+    },
+    "crazygames": {
+      "profile_path": "/workspace/unity/Assets/Config/crazygames.json",
+      "build_path": "/workspace/Builds/WebGL/crazygames/Build",
+      "template_path": "/workspace/unity/Assets/StreamingAssets/crazygames-webgl-template.html",
+      "defines": ["UNITY_WEBGL", "CRAZYGAMES_PLATFORM", "WEBGL_BUILD"],
+      "memory_size": 256,
+      "compression": "Gzip",
+      "scripting_backend": "IL2CPP"
+    }
+  },
+  "profile_validation": {
+    "required_fields": [
+      "platform",
+      "name",
+      "build_settings",
+      "monetization",
+      "analytics",
+      "performance",
+      "content_restrictions",
+      "technical_requirements",
+      "compliance_checks",
+      "build_defines"
+    ],
+    "build_settings_required": [
+      "target_platform",
+      "scripting_backend",
+      "api_compatibility_level",
+      "memory_size",
+      "data_caching",
+      "exception_support"
+    ],
+    "validation_checks": [
+      "file_exists",
+      "json_valid",
+      "required_fields_present",
+      "build_settings_valid",
+      "platform_compatible"
+    ]
+  }
+}

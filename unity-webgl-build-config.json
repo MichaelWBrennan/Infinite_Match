@@ -1,0 +1,120 @@
+{
+  "webgl_build_configuration": {
+    "version": "1.0.0",
+    "description": "Unity WebGL Build Configuration for Multi-Platform Deployment",
+    "last_updated": "2024-01-01T00:00:00Z"
+  },
+  "build_paths": {
+    "root_build_path": "/workspace/Build",
+    "webgl_build_path": "/workspace/webgl/Build",
+    "poki_build_path": "/workspace/Builds/WebGL/poki/Build",
+    "vercel_build_path": "/workspace/Build",
+    "unity_project_path": "/workspace/unity",
+    "streaming_assets_path": "/workspace/unity/Assets/StreamingAssets"
+  },
+  "webgl_settings": {
+    "memory_size": 256,
+    "data_caching": true,
+    "exception_support": "ExplicitlyThrownExceptionsOnly",
+    "compression_format": "Gzip",
+    "name_files_as_hashes": true,
+    "threads_support": false,
+    "template": "PROJECT:Default",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": "NET_Standard_2_1"
+  },
+  "asset_paths": {
+    "template_data": "TemplateData/",
+    "streaming_assets": "StreamingAssets/",
+    "platform_configs": "PlatformConfigs/",
+    "build_files": "Build/",
+    "webgl_loader": "Build/WebGL.loader.js",
+    "webgl_framework": "Build/WebGL.framework.js",
+    "webgl_data": "Build/WebGL.data",
+    "webgl_wasm": "Build/WebGL.wasm",
+    "webgl_mem": "Build/WebGL.mem",
+    "webgl_json": "Build/WebGL.json"
+  },
+  "platform_configurations": {
+    "poki": {
+      "build_path": "/workspace/Builds/WebGL/poki/Build",
+      "template_file": "poki-webgl-template.html",
+      "config_file": "poki.json",
+      "defines": ["POKI_PLATFORM", "POKI_ADS", "UNITY_WEBGL", "WEBGL_BUILD"]
+    },
+    "webgl": {
+      "build_path": "/workspace/webgl/Build",
+      "template_file": "webgl-template.html",
+      "config_file": "webgl.json",
+      "defines": ["UNITY_WEBGL", "WEBGL_BUILD"]
+    },
+    "vercel": {
+      "build_path": "/workspace/Build",
+      "template_file": "vercel-template.html",
+      "config_file": "vercel.json",
+      "defines": ["UNITY_WEBGL", "WEBGL_BUILD", "VERCEL_DEPLOYMENT"]
+    },
+    "kongregate": {
+      "build_path": "/workspace/Builds/WebGL/kongregate/Build",
+      "template_file": "kongregate-webgl-template.html",
+      "config_file": "kongregate.json",
+      "defines": ["KONGREGATE_PLATFORM", "KONGREGATE_ADS", "UNITY_WEBGL", "WEBGL_BUILD"]
+    },
+    "crazygames": {
+      "build_path": "/workspace/Builds/WebGL/crazygames/Build",
+      "template_file": "crazygames-webgl-template.html",
+      "config_file": "crazygames.json",
+      "defines": ["CRAZYGAMES_PLATFORM", "CRAZYGAMES_ADS", "UNITY_WEBGL", "WEBGL_BUILD"]
+    }
+  },
+  "build_scripts": {
+    "unity_headless_builder": "/workspace/unity/Assets/Scripts/Editor/HeadlessWebGLBuilder.cs",
+    "poki_build_script": "/workspace/unity/Assets/Editor/PokiWebGLBuildScript.cs",
+    "general_build_script": "/workspace/unity/Assets/Scripts/Editor/BuildScript.cs",
+    "docker_build_script": "/workspace/build-webgl-docker.sh",
+    "local_build_script": "/workspace/build-webgl.sh"
+  },
+  "deployment_configs": {
+    "vercel": {
+      "config_file": "/workspace/vercel.json",
+      "build_command": "npm run build:vercel",
+      "output_directory": ".",
+      "rewrites": [{"source": "/", "destination": "/index.html"}]
+    },
+    "webgl": {
+      "config_file": "/workspace/webgl/index.html",
+      "build_command": "cp -r webgl/* .",
+      "output_directory": "webgl"
+    },
+    "poki": {
+      "config_file": "/workspace/Builds/WebGL/poki/index.html",
+      "build_command": "cp -r Builds/WebGL/poki/* .",
+      "output_directory": "Builds/WebGL/poki"
+    }
+  },
+  "asset_optimization": {
+    "enable_compression": true,
+    "compression_format": "Gzip",
+    "enable_data_caching": true,
+    "memory_optimization": true,
+    "texture_compression": "DXT1",
+    "audio_compression": "Vorbis"
+  },
+  "platform_specific_assets": {
+    "poki": {
+      "logo": "TemplateData/poki-logo.png",
+      "loading_screen": "TemplateData/poki-loading.png",
+      "config": "PlatformConfigs/poki.json"
+    },
+    "kongregate": {
+      "logo": "TemplateData/kongregate-logo.png",
+      "loading_screen": "TemplateData/kongregate-loading.png",
+      "config": "PlatformConfigs/kongregate.json"
+    },
+    "crazygames": {
+      "logo": "TemplateData/crazygames-logo.png",
+      "loading_screen": "TemplateData/crazygames-loading.png",
+      "config": "PlatformConfigs/crazygames.json"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "platform": "poki",
+  "name": "Poki",
+  "sdkUrl": "https://game-cdn.poki.com/scripts/poki-sdk.js",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": true,
+    "analytics": true,
+    "achievements": false,
+    "chat": false
+  },
+  "api": {
+    "showAd": "pokiSDK.showAd",
+    "showRewardedAd": "pokiSDK.showRewardedAd",
+    "showInterstitialAd": "pokiSDK.showInterstitialAd",
+    "trackEvent": "pokiSDK.trackEvent",
+    "getUserInfo": "pokiSDK.getUserInfo",
+    "isAdBlocked": "pokiSDK.getAdBlocked",
+    "isAdFree": "pokiSDK.getAdFree"
+  },
+  "ui": {
+    "theme": "dark",
+    "primaryColor": "#ff6b6b",
+    "secondaryColor": "#4ecdc4"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": true,
+    "resumeOnFocus": true
+  }
+}
