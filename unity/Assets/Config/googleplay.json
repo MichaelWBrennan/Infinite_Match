@@ -1,18 +1,24 @@
 {
   "platform": "googleplay",
   "name": "Google Play Android Platform",
-  "version": "1.0.0",
-  "description": "Compliance profile for Google Play Android deployment",
+  "version": "2.1.0",
+  "description": "Updated compliance profile for Google Play Android deployment with latest standards",
+  "last_updated": "2024-12-19T00:00:00Z",
   
   "build_settings": {
     "target_platform": "Android",
     "scripting_backend": "IL2CPP",
     "api_compatibility_level": ".NET Standard 2.1",
     "architecture": "ARM64",
-    "min_sdk_version": 21,
-    "target_sdk_version": 34,
-    "compile_sdk_version": 34,
-    "build_tools_version": "34.0.0"
+    "min_sdk_version": 23,
+    "target_sdk_version": 35,
+    "compile_sdk_version": 35,
+    "build_tools_version": "35.0.0",
+    "android_ndk_version": "26.1.10909125",
+    "android_gradle_version": "8.4",
+    "android_plugin_version": "4.2.0",
+    "android_java_version": "17",
+    "android_kotlin_version": "1.9.0"
   },
   
   "ad_sdks": {
@@ -119,11 +125,20 @@
   "performance": {
     "max_apk_size": "150MB",
     "max_obb_size": "2GB",
-    "max_memory_usage": "512MB",
-    "max_loading_time": "15s",
-    "texture_compression": "ETC2",
+    "max_memory_usage": "1GB",
+    "max_loading_time": "10s",
+    "texture_compression": "ASTC",
     "audio_compression": "Vorbis",
-    "mesh_compression": "High"
+    "mesh_compression": "High",
+    "android_optimization": {
+      "enable_android_app_bundle": true,
+      "enable_android_dynamic_delivery": true,
+      "enable_android_instant_apps": false,
+      "enable_android_play_asset_delivery": true,
+      "enable_android_play_billing": true,
+      "enable_android_play_games": true,
+      "enable_android_play_services": true
+    }
   },
   
   "permissions": {
@@ -184,6 +199,36 @@
       "screenshots_required": 2,
       "feature_graphic_required": true,
       "icon_required": true
+    },
+    "google_play_sdk_version": "2.0.0",
+    "google_play_analytics_version": "1.5.0",
+    "google_play_ads_version": "1.8.0",
+    "google_play_billing_version": "1.2.0",
+    "google_play_games_version": "1.3.0",
+    "google_play_services_version": "1.1.0",
+    "google_play_analytics_events": [
+      "purchase",
+      "level_complete",
+      "level_fail",
+      "session_start",
+      "session_end",
+      "ad_impression",
+      "ad_click",
+      "achievement_unlocked",
+      "leaderboard_update",
+      "iap_purchase",
+      "subscription_start",
+      "subscription_cancel"
+    ],
+    "google_play_compliance": {
+      "gdpr_compliant": true,
+      "ccpa_compliant": true,
+      "coppa_compliant": true,
+      "privacy_policy_required": true,
+      "cookie_consent_required": true,
+      "data_retention_days": 365,
+      "google_play_policy_compliant": true,
+      "android_policy_compliant": true
     }
   },
   
