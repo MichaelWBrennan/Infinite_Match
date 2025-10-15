@@ -1,0 +1,129 @@
+{
+  "button_animations": {
+    "button_hover": {
+      "duration": 0.2,
+      "ease_type": "EaseOut",
+      "scale_from": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "scale_to": [
+        1.1,
+        1.1,
+        1.0
+      ],
+      "color_from": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "color_to": [
+        1.2,
+        1.2,
+        1.2,
+        1.0
+      ]
+    },
+    "button_click": {
+      "duration": 0.1,
+      "ease_type": "EaseIn",
+      "scale_from": [
+        1.1,
+        1.1,
+        1.0
+      ],
+      "scale_to": [
+        0.95,
+        0.95,
+        1.0
+      ],
+      "color_from": [
+        1.2,
+        1.2,
+        1.2,
+        1.0
+      ],
+      "color_to": [
+        0.8,
+        0.8,
+        0.8,
+        1.0
+      ]
+    }
+  },
+  "text_animations": {
+    "score_popup": {
+      "duration": 1.0,
+      "ease_type": "BounceOut",
+      "scale_from": [
+        0.5,
+        0.5,
+        1.0
+      ],
+      "scale_to": [
+        1.2,
+        1.2,
+        1.0
+      ],
+      "position_offset": [
+        0,
+        50,
+        0
+      ],
+      "alpha_from": 0.0,
+      "alpha_to": 1.0
+    },
+    "combo_text": {
+      "duration": 0.8,
+      "ease_type": "EaseOut",
+      "scale_from": [
+        0.8,
+        0.8,
+        1.0
+      ],
+      "scale_to": [
+        1.5,
+        1.5,
+        1.0
+      ],
+      "alpha_from": 0.0,
+      "alpha_to": 1.0
+    }
+  },
+  "panel_animations": {
+    "panel_slide_in": {
+      "duration": 0.5,
+      "ease_type": "EaseOut",
+      "position_from": [
+        -800,
+        0,
+        0
+      ],
+      "position_to": [
+        0,
+        0,
+        0
+      ],
+      "alpha_from": 0.0,
+      "alpha_to": 1.0
+    },
+    "panel_slide_out": {
+      "duration": 0.3,
+      "ease_type": "EaseIn",
+      "position_from": [
+        0,
+        0,
+        0
+      ],
+      "position_to": [
+        800,
+        0,
+        0
+      ],
+      "alpha_from": 1.0,
+      "alpha_to": 0.0
+    }
+  }
+}

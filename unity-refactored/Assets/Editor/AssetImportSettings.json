@@ -1,0 +1,53 @@
+{
+  "textures": {
+    "android": {
+      "textureCompression": "ASTC_6x6",
+      "maxTextureSize": 2048,
+      "textureFormat": "ASTC_6x6"
+    },
+    "ios": {
+      "textureCompression": "ASTC_6x6",
+      "maxTextureSize": 2048,
+      "textureFormat": "ASTC_6x6"
+    },
+    "standalone": {
+      "textureCompression": "DXT5",
+      "maxTextureSize": 4096,
+      "textureFormat": "DXT5"
+    }
+  },
+  "audio": {
+    "android": {
+      "loadType": "CompressedInMemory",
+      "compressionFormat": "Vorbis",
+      "quality": 0.7
+    },
+    "ios": {
+      "loadType": "CompressedInMemory",
+      "compressionFormat": "Vorbis",
+      "quality": 0.8
+    },
+    "standalone": {
+      "loadType": "CompressedInMemory",
+      "compressionFormat": "Vorbis",
+      "quality": 0.9
+    }
+  },
+  "models": {
+    "android": {
+      "meshCompression": "Medium",
+      "optimizeMesh": true,
+      "generateColliders": false
+    },
+    "ios": {
+      "meshCompression": "Medium",
+      "optimizeMesh": true,
+      "generateColliders": false
+    },
+    "standalone": {
+      "meshCompression": "Off",
+      "optimizeMesh": false,
+      "generateColliders": true
+    }
+  }
+}

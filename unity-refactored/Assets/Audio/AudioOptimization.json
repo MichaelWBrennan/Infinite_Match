@@ -1,0 +1,40 @@
+{
+  "compression_settings": {
+    "android": {
+      "format": "Vorbis",
+      "quality": 0.7,
+      "load_type": "CompressedInMemory",
+      "preload_audio_data": false
+    },
+    "ios": {
+      "format": "Vorbis",
+      "quality": 0.8,
+      "load_type": "CompressedInMemory",
+      "preload_audio_data": false
+    },
+    "standalone": {
+      "format": "Vorbis",
+      "quality": 0.9,
+      "load_type": "CompressedInMemory",
+      "preload_audio_data": true
+    }
+  },
+  "audio_pooling": {
+    "enable_audio_pooling": true,
+    "max_audio_sources": 32,
+    "pool_warmup_count": 8,
+    "pool_growth_rate": 4
+  },
+  "memory_management": {
+    "enable_audio_compression": true,
+    "max_audio_memory_mb": 64,
+    "unload_unused_audio": true,
+    "audio_garbage_collection_interval": 30.0
+  },
+  "performance_settings": {
+    "enable_audio_lod": true,
+    "audio_lod_distance": 20.0,
+    "enable_audio_occlusion": false,
+    "max_audio_voices": 64
+  }
+}

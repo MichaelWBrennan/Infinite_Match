@@ -1,0 +1,166 @@
+{
+  "tile_animations": {
+    "tile_spawn": {
+      "duration": 0.3,
+      "ease_type": "BounceOut",
+      "scale_from": [
+        0,
+        0,
+        1
+      ],
+      "scale_to": [
+        1,
+        1,
+        1
+      ],
+      "rotation_from": [
+        0,
+        0,
+        180
+      ],
+      "rotation_to": [
+        0,
+        0,
+        0
+      ]
+    },
+    "tile_match": {
+      "duration": 0.5,
+      "ease_type": "EaseInOut",
+      "scale_from": [
+        1,
+        1,
+        1
+      ],
+      "scale_to": [
+        1.2,
+        1.2,
+        1
+      ],
+      "alpha_from": 1.0,
+      "alpha_to": 0.0
+    },
+    "tile_fall": {
+      "duration": 0.4,
+      "ease_type": "EaseIn",
+      "position_offset": [
+        0,
+        -100,
+        0
+      ],
+      "rotation_from": [
+        0,
+        0,
+        0
+      ],
+      "rotation_to": [
+        0,
+        0,
+        360
+      ]
+    },
+    "tile_swap": {
+      "duration": 0.2,
+      "ease_type": "EaseOut",
+      "scale_from": [
+        1,
+        1,
+        1
+      ],
+      "scale_to": [
+        1.1,
+        1.1,
+        1
+      ]
+    }
+  },
+  "ui_animations": {
+    "score_popup": {
+      "duration": 1.0,
+      "ease_type": "BounceOut",
+      "scale_from": [
+        0,
+        0,
+        1
+      ],
+      "scale_to": [
+        1,
+        1,
+        1
+      ],
+      "position_offset": [
+        0,
+        50,
+        0
+      ],
+      "alpha_from": 0.0,
+      "alpha_to": 1.0
+    },
+    "combo_text": {
+      "duration": 0.8,
+      "ease_type": "EaseOut",
+      "scale_from": [
+        0.5,
+        0.5,
+        1
+      ],
+      "scale_to": [
+        1.2,
+        1.2,
+        1
+      ],
+      "alpha_from": 0.0,
+      "alpha_to": 1.0
+    },
+    "level_complete": {
+      "duration": 1.5,
+      "ease_type": "EaseInOut",
+      "scale_from": [
+        0,
+        0,
+        1
+      ],
+      "scale_to": [
+        1,
+        1,
+        1
+      ],
+      "rotation_from": [
+        0,
+        0,
+        -180
+      ],
+      "rotation_to": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "particle_animations": {
+    "match_explosion": {
+      "duration": 0.6,
+      "particle_count": 20,
+      "burst_radius": 2.0,
+      "velocity": 5.0,
+      "colors": [
+        "#FF6B6B",
+        "#4ECDC4",
+        "#45B7D1",
+        "#96CEB4",
+        "#FFEAA7"
+      ]
+    },
+    "combo_effect": {
+      "duration": 1.0,
+      "particle_count": 50,
+      "burst_radius": 3.0,
+      "velocity": 8.0,
+      "colors": [
+        "#FFD700",
+        "#FF6B6B",
+        "#4ECDC4"
+      ]
+    }
+  }
+}

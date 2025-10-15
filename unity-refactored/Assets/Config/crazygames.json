@@ -1,0 +1,169 @@
+{
+  "platform": "crazygames",
+  "name": "CrazyGames WebGL Platform",
+  "version": "1.0.0",
+  "description": "Compliance profile for CrazyGames WebGL deployment",
+  
+  "build_settings": {
+    "target_platform": "WebGL",
+    "scripting_backend": "IL2CPP",
+    "api_compatibility_level": ".NET Standard 2.1",
+    "memory_size": 256,
+    "data_caching": true,
+    "exception_support": "Explicitly Thrown Exceptions Only"
+  },
+  
+  "ad_sdks": {
+    "primary": "crazygames_ads",
+    "fallback": "unity_ads",
+    "required_apis": [
+      "CrazyGames",
+      "CrazyGames.ads",
+      "CrazyGames.player",
+      "CrazyGames.sdk"
+    ],
+    "forbidden_apis": [
+      "PokiSDK",
+      "GoogleMobileAds",
+      "AppLovin",
+      "IronSource",
+      "FBInstant",
+      "KongregateAPI"
+    ],
+    "ad_units": {
+      "banner": "BANNER",
+      "interstitial": "INTERSTITIAL",
+      "rewarded": "REWARDED"
+    }
+  },
+  
+  "monetization": {
+    "iap_enabled": false,
+    "virtual_currency_only": true,
+    "premium_currency": "gems",
+    "free_currency": "coins",
+    "max_purchase_amount": 0,
+    "currency_exchange_rate": 1.0,
+    "crazygames_coins": true,
+    "roi_optimization": {
+      "aggressive_ad_frequency": true,
+      "ad_cooldown_seconds": 25,
+      "rewarded_ad_multiplier": 4.0,
+      "energy_system": true,
+      "energy_refill_cost": 3,
+      "energy_pack_sizes": [5, 15, 30, 60, 120],
+      "energy_pack_costs": [5, 12, 20, 35, 60],
+      "lives_system": true,
+      "lives_refill_cost": 2,
+      "boosters_system": true,
+      "booster_prices": [3, 6, 12, 25],
+      "daily_rewards": true,
+      "premium_daily_rewards": true,
+      "streak_bonuses": true,
+      "max_streak_days": 14,
+      "streak_multiplier": 2.5,
+      "crazygames_specific_monetization": {
+        "crazygames_ads": true,
+        "crazygames_rewards": true,
+        "crazygames_leaderboards": true,
+        "crazygames_achievements": true,
+        "crazygames_social": true,
+        "crazygames_sharing": true,
+        "crazygames_favorites": true,
+        "crazygames_ratings": true,
+        "crazygames_comments": true,
+        "crazygames_collections": true,
+        "crazygames_trending": true,
+        "crazygames_featured": true
+      }
+    }
+  },
+  
+  "analytics": {
+    "crazygames_analytics": true,
+    "unity_analytics": true,
+    "custom_analytics": false,
+    "data_collection": "minimal",
+    "privacy_compliant": true,
+    "required_events": [
+      "game_start",
+      "level_complete",
+      "level_fail",
+      "session_end"
+    ]
+  },
+  
+  "performance": {
+    "max_memory_usage": "256MB",
+    "max_build_size": "50MB",
+    "max_loading_time": "10s",
+    "max_initial_download": "20MB",
+    "texture_compression": "DXT1",
+    "audio_compression": "Vorbis",
+    "mesh_compression": "Off"
+  },
+  
+  "content_restrictions": {
+    "violence_level": "minimal",
+    "language_restrictions": "family_friendly",
+    "gambling_elements": false,
+    "loot_boxes": false,
+    "real_money_gambling": false,
+    "age_rating": "E",
+    "content_descriptors": []
+  },
+  
+  "technical_requirements": {
+    "webgl_version": "2.0",
+    "browser_support": ["Chrome", "Firefox", "Safari", "Edge"],
+    "mobile_web_support": true,
+    "touch_controls": true,
+    "keyboard_controls": true,
+    "fullscreen_support": true,
+    "local_storage": true,
+    "cookies": false
+  },
+  
+  "crazygames_specific": {
+    "game_id": "your_crazygames_game_id_here",
+    "api_key": "your_crazygames_api_key_here",
+    "environment": "production",
+    "debug_mode": false,
+    "ad_frequency": "balanced",
+    "social_features": true,
+    "leaderboards": true,
+    "achievements": true,
+    "sharing": true,
+    "favorites": true,
+    "ratings": true,
+    "comments": true,
+    "collections": true,
+    "trending": true,
+    "featured": true
+  },
+  
+  "compliance_checks": {
+    "file_size_check": true,
+    "memory_usage_check": true,
+    "loading_time_check": true,
+    "ad_integration_check": true,
+    "content_policy_check": true,
+    "performance_check": true,
+    "crazygames_policy_check": true,
+    "webgl_compatibility_check": true
+  },
+  
+  "build_defines": [
+    "UNITY_WEBGL",
+    "CRAZYGAMES_PLATFORM",
+    "WEBGL_BUILD",
+    "CRAZYGAMES_ADS",
+    "CRAZYGAMES_SOCIAL"
+  ],
+  
+  "excluded_platforms": [
+    "UNITY_ANDROID",
+    "UNITY_IOS",
+    "UNITY_STANDALONE"
+  ]
+}

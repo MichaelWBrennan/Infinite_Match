@@ -1,0 +1,57 @@
+{
+  "lighting_settings": {
+    "environment_lighting": {
+      "environment_mode": "Skybox",
+      "environment_lighting_mode": "Baked",
+      "environment_lighting_intensity": 1.0,
+      "environment_lighting_color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "lightmap_settings": {
+      "enable_baked_lightmaps": true,
+      "enable_realtime_lightmaps": false,
+      "bake_resolution": 40,
+      "lightmap_parameters": "Default-Medium",
+      "lightmaps_bake_mode": "Mixed",
+      "bake_backend": "ProgressiveCPU"
+    },
+    "reflection_probes": {
+      "enable_reflection_probes": true,
+      "reflection_compression": "Compressed",
+      "reflection_bounces": 1,
+      "reflection_intensity": 1.0
+    },
+    "light_probes": {
+      "enable_light_probes": true,
+      "light_probe_sample_count_multiplier": 4
+    }
+  },
+  "scene_lighting": {
+    "main_light": {
+      "type": "Directional",
+      "color": [
+        1.0,
+        0.95,
+        0.8,
+        1.0
+      ],
+      "intensity": 1.0,
+      "shadows": "Soft",
+      "shadow_resolution": "High"
+    },
+    "ambient_light": {
+      "skybox_color": [
+        0.5,
+        0.7,
+        1.0,
+        1.0
+      ],
+      "ambient_mode": "Skybox",
+      "ambient_intensity": 1.0
+    }
+  }
+}

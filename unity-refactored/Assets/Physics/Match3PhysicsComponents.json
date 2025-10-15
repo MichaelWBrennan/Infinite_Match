@@ -1,0 +1,102 @@
+{
+  "tile_physics": {
+    "rigidbody": {
+      "mass": 1.0,
+      "drag": 0.0,
+      "angular_drag": 0.05,
+      "use_gravity": false,
+      "is_kinematic": true,
+      "interpolation": "None",
+      "collision_detection": "Discrete"
+    },
+    "collider": {
+      "type": "BoxCollider",
+      "is_trigger": false,
+      "material": "TileMaterial",
+      "size": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "center": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "board_physics": {
+    "rigidbody": {
+      "mass": 0.0,
+      "drag": 0.0,
+      "angular_drag": 0.05,
+      "use_gravity": false,
+      "is_kinematic": true,
+      "interpolation": "None",
+      "collision_detection": "Discrete"
+    },
+    "collider": {
+      "type": "BoxCollider",
+      "is_trigger": false,
+      "material": "BoardMaterial",
+      "size": [
+        10.0,
+        0.1,
+        10.0
+      ],
+      "center": [
+        0,
+        -0.5,
+        0
+      ]
+    }
+  },
+  "wall_physics": {
+    "rigidbody": {
+      "mass": 0.0,
+      "drag": 0.0,
+      "angular_drag": 0.05,
+      "use_gravity": false,
+      "is_kinematic": true,
+      "interpolation": "None",
+      "collision_detection": "Discrete"
+    },
+    "collider": {
+      "type": "BoxCollider",
+      "is_trigger": false,
+      "material": "WallMaterial",
+      "size": [
+        0.2,
+        10.0,
+        10.0
+      ],
+      "center": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "powerup_physics": {
+    "rigidbody": {
+      "mass": 0.5,
+      "drag": 0.5,
+      "angular_drag": 0.1,
+      "use_gravity": true,
+      "is_kinematic": false,
+      "interpolation": "Interpolate",
+      "collision_detection": "Continuous"
+    },
+    "collider": {
+      "type": "SphereCollider",
+      "is_trigger": true,
+      "material": "BouncyMaterial",
+      "radius": 0.5,
+      "center": [
+        0,
+        0,
+        0
+      ]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "texture_optimization": {
+    "enable_compression": true,
+    "enable_mipmaps": true,
+    "enable_readable": false,
+    "enable_generate_cubemap": false,
+    "enable_alpha_is_transparency": true
+  },
+  "audio_optimization": {
+    "enable_compression": true,
+    "enable_3d_sound": true,
+    "enable_loop": false,
+    "enable_preload": false
+  },
+  "model_optimization": {
+    "enable_read_write": false,
+    "enable_optimize_mesh": true,
+    "enable_generate_colliders": false,
+    "enable_swap_uvs": false
+  },
+  "animation_optimization": {
+    "enable_compression": true,
+    "enable_optimize_game_objects": true,
+    "enable_optimize_root_motion": true
+  }
+}

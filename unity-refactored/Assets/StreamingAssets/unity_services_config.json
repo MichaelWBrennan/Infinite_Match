@@ -1,0 +1,291 @@
+{
+  "projectId": "0dd5a03e-7f23-49c4-964e-7919c48c0574",
+  "environmentId": "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
+  "licenseType": "personal",
+  "cloudServicesAvailable": true,
+  "remoteConfig": {
+    "game_settings": {
+      "ads_enabled": true,
+      "kid_safe_mode": false,
+      "ads_interstitial_enabled": true,
+      "ads_rewarded_enabled": true,
+      "ads_banner_enabled": false,
+      "ads_interstitial_max_per_session": 6,
+      "ads_rewarded_max_per_session": 6,
+      "ads_interstitial_min_interval_seconds": 120,
+      "ads_rewarded_min_interval_seconds": 45,
+      "ad_content_rating_max": "G",
+      "use_npa_for_kids": true,
+      "starter_offer_enabled": true,
+      "starter_offer_discount": 0.5,
+      "interstitial_on_gameover_pct": 66,
+      "energy_recharge_rate": 300,
+      "max_energy": 30,
+      "max_lives": 5,
+      "match3_board_size": 8,
+      "level_difficulty_multiplier": 1.0,
+      "booster_effectiveness": 1.0,
+      "currency_reward_multiplier": 1.0
+    }
+  },
+  "economy": {
+    "currencies": [
+      {
+        "id": "coins",
+        "name": "Coins",
+        "type": "soft_currency",
+        "initial": 1000,
+        "maximum": 999999
+      },
+      {
+        "id": "gems",
+        "name": "Gems",
+        "type": "hard_currency",
+        "initial": 50,
+        "maximum": 99999
+      },
+      {
+        "id": "energy",
+        "name": "Energy",
+        "type": "consumable",
+        "initial": 5,
+        "maximum": 30
+      }
+    ],
+    "inventory": [
+      {
+        "id": "booster_extra_moves",
+        "name": "Extra Moves",
+        "type": "booster",
+        "tradable": true,
+        "stackable": true
+      },
+      {
+        "id": "booster_color_bomb",
+        "name": "Color Bomb",
+        "type": "booster",
+        "tradable": true,
+        "stackable": true
+      },
+      {
+        "id": "booster_rainbow_blast",
+        "name": "Rainbow Blast",
+        "type": "booster",
+        "tradable": true,
+        "stackable": true
+      },
+      {
+        "id": "booster_striped_candy",
+        "name": "Striped Candy",
+        "type": "booster",
+        "tradable": true,
+        "stackable": true
+      },
+      {
+        "id": "pack_starter",
+        "name": "Starter Pack",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_value",
+        "name": "Value Pack",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_premium",
+        "name": "Premium Pack",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_mega",
+        "name": "Mega Pack",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_ultimate",
+        "name": "Ultimate Pack",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_booster_small",
+        "name": "Booster Bundle",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_booster_large",
+        "name": "Power Pack",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_comeback",
+        "name": "Welcome Back!",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      },
+      {
+        "id": "pack_flash_sale",
+        "name": "Flash Sale!",
+        "type": "pack",
+        "tradable": false,
+        "stackable": false
+      }
+    ],
+    "catalog": [
+      {
+        "id": "coins_small",
+        "name": "Small Coin Pack",
+        "cost_currency": "gems",
+        "cost_amount": 20,
+        "rewards": "coins:1000"
+      },
+      {
+        "id": "coins_medium",
+        "name": "Medium Coin Pack",
+        "cost_currency": "gems",
+        "cost_amount": 120,
+        "rewards": "coins:5000"
+      },
+      {
+        "id": "coins_large",
+        "name": "Large Coin Pack",
+        "cost_currency": "gems",
+        "cost_amount": 300,
+        "rewards": "coins:15000"
+      },
+      {
+        "id": "coins_mega",
+        "name": "Mega Coin Pack",
+        "cost_currency": "gems",
+        "cost_amount": 700,
+        "rewards": "coins:40000"
+      },
+      {
+        "id": "coins_ultimate",
+        "name": "Ultimate Coin Pack",
+        "cost_currency": "gems",
+        "cost_amount": 2000,
+        "rewards": "coins:100000"
+      },
+      {
+        "id": "energy_small",
+        "name": "Energy Boost",
+        "cost_currency": "gems",
+        "cost_amount": 5,
+        "rewards": "coins:5"
+      },
+      {
+        "id": "energy_large",
+        "name": "Energy Surge",
+        "cost_currency": "gems",
+        "cost_amount": 15,
+        "rewards": "coins:20"
+      },
+      {
+        "id": "booster_extra_moves",
+        "name": "Extra Moves",
+        "cost_currency": "coins",
+        "cost_amount": 200,
+        "rewards": "booster_extra_moves:3"
+      },
+      {
+        "id": "booster_color_bomb",
+        "name": "Color Bomb",
+        "cost_currency": "gems",
+        "cost_amount": 15,
+        "rewards": "booster_color_bomb:1"
+      },
+      {
+        "id": "booster_rainbow_blast",
+        "name": "Rainbow Blast",
+        "cost_currency": "gems",
+        "cost_amount": 25,
+        "rewards": "booster_rainbow_blast:1"
+      },
+      {
+        "id": "booster_striped_candy",
+        "name": "Striped Candy",
+        "cost_currency": "coins",
+        "cost_amount": 100,
+        "rewards": "booster_striped_candy:1"
+      },
+      {
+        "id": "pack_starter",
+        "name": "Starter Pack",
+        "cost_currency": "gems",
+        "cost_amount": 20,
+        "rewards": "pack_starter:1"
+      },
+      {
+        "id": "pack_value",
+        "name": "Value Pack",
+        "cost_currency": "gems",
+        "cost_amount": 120,
+        "rewards": "pack_value:1"
+      },
+      {
+        "id": "pack_premium",
+        "name": "Premium Pack",
+        "cost_currency": "gems",
+        "cost_amount": 300,
+        "rewards": "pack_premium:1"
+      },
+      {
+        "id": "pack_mega",
+        "name": "Mega Pack",
+        "cost_currency": "gems",
+        "cost_amount": 700,
+        "rewards": "pack_mega:1"
+      },
+      {
+        "id": "pack_ultimate",
+        "name": "Ultimate Pack",
+        "cost_currency": "gems",
+        "cost_amount": 2000,
+        "rewards": "pack_ultimate:1"
+      },
+      {
+        "id": "pack_booster_small",
+        "name": "Booster Bundle",
+        "cost_currency": "coins",
+        "cost_amount": 500,
+        "rewards": "pack_booster_small:1"
+      },
+      {
+        "id": "pack_booster_large",
+        "name": "Power Pack",
+        "cost_currency": "gems",
+        "cost_amount": 25,
+        "rewards": "pack_booster_large:1"
+      },
+      {
+        "id": "pack_comeback",
+        "name": "Welcome Back!",
+        "cost_currency": "gems",
+        "cost_amount": 50,
+        "rewards": "pack_comeback:1"
+      },
+      {
+        "id": "pack_flash_sale",
+        "name": "Flash Sale!",
+        "cost_currency": "gems",
+        "cost_amount": 25,
+        "rewards": "pack_flash_sale:1"
+      }
+    ]
+  }
+}

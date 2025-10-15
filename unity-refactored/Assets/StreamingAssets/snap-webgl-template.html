@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Unity WebGL Game on Snap Mini Games">
+    <title>Unity WebGL Game - Snap Mini Games</title>
+    
+    <!-- Snap Mini Games SDK -->
+    <script src="https://sdk.snapchat.com/minis/v1/snap-minis-sdk.js"></script>
+    
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #unity-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #unity-canvas {
+            background: #231F20;
+            display: block;
+        }
+        
+        #unity-loading-bar {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+        
+        #unity-logo {
+            width: 154px;
+            height: 130px;
+            background: url('TemplateData/unity-logo-dark.png') no-repeat center / contain;
+        }
+        
+        #unity-progress-bar-empty {
+            width: 141px;
+            height: 18px;
+            margin-top: 10px;
+            background: url('TemplateData/progress-bar-empty-dark.png') no-repeat center / contain;
+        }
+        
+        #unity-progress-bar-full {
+            width: 0%;
+            height: 18px;
+            background: url('TemplateData/progress-bar-full-dark.png') no-repeat center / contain;
+        }
+        
+        #unity-mobile-warning {
+            position: absolute;
+            left: 50%;
+            top: 5%;
+            transform: translate(-50%, -5%);
+            background: #000;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .snap-loading {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        
+        .snap-error {
+            color: #ff6b6b;
+            text-align: center;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="unity-container" class="unity-desktop">
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+        <div id="unity-loading-bar">
+            <div id="unity-logo"></div>
+            <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+            </div>
+            <div class="snap-loading">Loading game...</div>
+        </div>
+        <div id="unity-mobile-warning">
+            WebGL builds are not supported on mobile devices.
+        </div>
+    </div>
+    
+    <script>
+        var container = document.querySelector("#unity-container");
+        var canvas = document.querySelector("#unity-canvas");
+        var loadingBar = document.querySelector("#unity-loading-bar");
+        var progressBarFull = document.querySelector("#unity-progress-bar-full");
+        var mobileWarning = document.querySelector("#unity-mobile-warning");
+        
+        // Snap Mini Games SDK Integration
+        var snapSDK = null;
+        var gameInstance = null;
+        
+        // Initialize Snap Mini Games SDK
+        function initializeSnapSDK() {
+            if (typeof SnapMinis !== 'undefined') {
+                snapSDK = SnapMinis;
+                console.log('👻 Snap Mini Games SDK initialized');
+                
+                // Snap Mini Games initialization
+                snapSDK.initialize().then(() => {
+                    console.log('✅ Snap Mini Games ready');
+                    startGame();
+                }).catch((error) => {
+                    console.error('❌ Snap Mini Games initialization failed:', error);
+                    showError('Failed to initialize Snap Mini Games');
+                });
+            } else {
+                console.warn('⚠️ Snap Mini Games SDK not found, starting game without Snap features');
+                startGame();
+            }
+        }
+        
+        // Start the game
+        function startGame() {
+            // Show a mobile message if the user is on a mobile device
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                container.className = "unity-mobile";
+                mobileWarning.style.display = "block";
+                return;
+            } else {
+                canvas.style.width = "960px";
+                canvas.style.height = "600px";
+            }
+            
+            loadingBar.style.display = "block";
+            
+            var buildUrl = "Build";
+            var loaderUrl = buildUrl + "/WebGL.loader.js";
+            var config = {
+                dataUrl: buildUrl + "/WebGL.data",
+                frameworkUrl: buildUrl + "/WebGL.framework.js",
+                codeUrl: buildUrl + "/WebGL.wasm",
+                streamingAssetsUrl: "StreamingAssets",
+                companyName: "YourCompany",
+                productName: "YourGame",
+                productVersion: "1.0",
+            };
+            
+            // Add Snap Mini Games SDK to Unity config
+            if (snapSDK) {
+                config.snapSDK = snapSDK;
+            }
+            
+            var script = document.createElement("script");
+            script.src = loaderUrl;
+            script.onload = () => {
+                createUnityInstance(canvas, config, (progress) => {
+                    progressBarFull.style.width = 100 * progress + "%";
+                }).then((unityInstance) => {
+                    gameInstance = unityInstance;
+                    loadingBar.style.display = "none";
+                    
+                    // Snap Mini Games game ready callback
+                    if (snapSDK) {
+                        snapSDK.gameplayStart();
+                    }
+                    
+                    console.log('✅ Unity game loaded successfully');
+                }).catch((message) => {
+                    console.error('❌ Unity game load failed:', message);
+                    showError('Failed to load game: ' + message);
+                });
+            };
+            
+            script.onerror = () => {
+                console.error('❌ Failed to load Unity WebGL build');
+                showError('Failed to load Unity WebGL build. Please check your browser console for errors.');
+            };
+            
+            document.body.appendChild(script);
+        }
+        
+        // Show error message
+        function showError(message) {
+            loadingBar.innerHTML = '<div class="snap-error">' + message + '</div>';
+        }
+        
+        // Snap Mini Games event handlers
+        function onGamePause() {
+            if (snapSDK) {
+                snapSDK.gameplayStop();
+            }
+        }
+        
+        function onGameResume() {
+            if (snapSDK) {
+                snapSDK.gameplayStart();
+            }
+        }
+        
+        function onGameQuit() {
+            if (snapSDK) {
+                snapSDK.gameplayStop();
+            }
+        }
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                onGamePause();
+            } else {
+                onGameResume();
+            }
+        });
+        
+        // Handle page unload
+        window.addEventListener('beforeunload', function() {
+            onGameQuit();
+        });
+        
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            initializeSnapSDK();
+        });
+        
+        // Snap Mini Games API functions for Unity
+        window.SnapAPI = {
+            // Show Snap ad
+            showAd: function(type) {
+                if (snapSDK) {
+                    return snapSDK.ads.showAd(type);
+                }
+                return Promise.resolve();
+            },
+            
+            // Show rewarded ad
+            showRewardedAd: function() {
+                if (snapSDK) {
+                    return snapSDK.ads.showRewardedAd();
+                }
+                return Promise.resolve();
+            },
+            
+            // Show interstitial ad
+            showInterstitialAd: function() {
+                if (snapSDK) {
+                    return snapSDK.ads.showInterstitialAd();
+                }
+                return Promise.resolve();
+            },
+            
+            // Share game
+            shareGame: function(message) {
+                if (snapSDK) {
+                    return snapSDK.social.share(message);
+                }
+                return Promise.resolve();
+            },
+            
+            // Update player score
+            updatePlayerScore: function(score) {
+                if (snapSDK) {
+                    return snapSDK.social.updateScore(score);
+                }
+                return Promise.resolve();
+            },
+            
+            // Capture photo
+            capturePhoto: function() {
+                if (snapSDK) {
+                    return snapSDK.camera.capturePhoto();
+                }
+                return Promise.resolve();
+            },
+            
+            // Use AR feature
+            useARFeature: function(featureName) {
+                if (snapSDK) {
+                    return snapSDK.ar.useFeature(featureName);
+                }
+                return Promise.resolve();
+            },
+            
+            // Get player info
+            getPlayerInfo: function() {
+                if (snapSDK) {
+                    return snapSDK.player;
+                }
+                return null;
+            },
+            
+            // Track game event
+            trackEvent: function(eventName, data) {
+                if (snapSDK) {
+                    snapSDK.analytics.track(eventName, data);
+                }
+            }
+        };
+    </script>
+</body>
+</html>
