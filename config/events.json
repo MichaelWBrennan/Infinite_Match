@@ -1,24 +1,54 @@
 {
   "events": [
     {
-      "end": "11-02",
+      "end": "10-31",
       "name": "halloween",
-      "start": "10-15"
+      "start": "10-31"
     },
     {
-      "end": "01-05",
+      "end": "12-25",
       "name": "christmas",
+      "start": "12-25"
+    },
+    {
+      "end": "02-14",
+      "name": "valentines",
+      "start": "02-14"
+    },
+    {
+      "end": "03-17",
+      "name": "st_patrick",
+      "start": "03-17"
+    },
+    {
+      "end": "04-16",
+      "name": "easter",
+      "start": "04-16"
+    },
+    {
+      "end": "05-31",
+      "name": "spring",
+      "start": "03-01"
+    },
+    {
+      "end": "08-31",
+      "name": "summer",
+      "start": "06-01"
+    },
+    {
+      "end": "11-30",
+      "name": "autumn",
+      "start": "09-01"
+    },
+    {
+      "end": "02-28",
+      "name": "winter",
       "start": "12-01"
     },
     {
-      "end": "02-15",
-      "name": "valentines",
-      "start": "02-07"
-    },
-    {
-      "end": "03-21",
-      "name": "st_patrick",
-      "start": "03-15"
+      "end": "01-01",
+      "name": "holiday",
+      "start": "01-01"
     }
   ]
 }

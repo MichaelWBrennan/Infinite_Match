@@ -4,12 +4,24 @@
     "default": 834,
     "halloween": 200,
     "st_patrick": 200,
-    "valentines": 200
+    "valentines": 200,
+    "easter": 150,
+    "spring": 169,
+    "summer": 166,
+    "autumn": 381,
+    "winter": 280,
+    "holiday": 150
   },
   "holiday_themes": [
     "halloween",
     "christmas",
     "valentines",
-    "st_patrick"
+    "st_patrick",
+    "easter",
+    "spring",
+    "summer",
+    "autumn",
+    "winter",
+    "holiday"
   ]
 }
