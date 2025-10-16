@@ -1,16 +1,26 @@
 {
   "platform": "kongregate",
   "name": "Kongregate WebGL Platform",
-  "version": "1.0.0",
-  "description": "Compliance profile for Kongregate WebGL deployment",
+  "version": "2.1.0",
+  "description": "Updated compliance profile for Kongregate WebGL deployment with latest standards",
+  "last_updated": "2024-12-19T00:00:00Z",
   
   "build_settings": {
     "target_platform": "WebGL",
     "scripting_backend": "IL2CPP",
     "api_compatibility_level": ".NET Standard 2.1",
-    "memory_size": 256,
+    "compression_format": "Brotli",
+    "memory_size": 512,
     "data_caching": true,
-    "exception_support": "Explicitly Thrown Exceptions Only"
+    "exception_support": "Explicitly Thrown Exceptions Only",
+    "webgl_template": "Default",
+    "webgl_compression_format": "Brotli",
+    "webgl_memory_size": 512,
+    "webgl_data_caching": true,
+    "webgl_exception_support": "Explicitly Thrown Exceptions Only",
+    "webgl_name_files_as_hash": true,
+    "webgl_debug_symbols": false,
+    "webgl_emscripten_args": "--memory-init-file 0 --preload-file StreamingAssets@StreamingAssets"
   },
   
   "ad_sdks": {
@@ -117,13 +127,22 @@
   },
   
   "performance": {
-    "max_memory_usage": "256MB",
-    "max_build_size": "50MB",
-    "max_loading_time": "10s",
-    "max_initial_download": "20MB",
-    "texture_compression": "DXT1",
+    "max_memory_usage": "512MB",
+    "max_build_size": "100MB",
+    "max_loading_time": "8s",
+    "max_initial_download": "30MB",
+    "texture_compression": "ASTC",
     "audio_compression": "Vorbis",
-    "mesh_compression": "Off"
+    "mesh_compression": "High",
+    "webgl_optimization": {
+      "enable_webgl_2": true,
+      "enable_webgl_1_fallback": true,
+      "enable_webgl_worker": true,
+      "enable_webgl_shared_array_buffer": true,
+      "enable_webgl_offscreen_canvas": true,
+      "enable_webgl_webxr": false,
+      "enable_webgl_webgpu": false
+    }
   },
   
   "content_restrictions": {
@@ -163,7 +182,36 @@
     "messaging": true,
     "badges": true,
     "stats": true,
-    "high_scores": true
+    "high_scores": true,
+    "kongregate_sdk_version": "2.0.0",
+    "kongregate_analytics_version": "1.5.0",
+    "kongregate_ads_version": "1.8.0",
+    "kongregate_payments_version": "1.2.0",
+    "kongregate_social_version": "1.3.0",
+    "kongregate_leaderboards_version": "1.1.0",
+    "kongregate_achievements_version": "1.0.0",
+    "kongregate_analytics_events": [
+      "game_start",
+      "level_complete",
+      "level_fail",
+      "session_end",
+      "ad_impression",
+      "ad_click",
+      "purchase",
+      "achievement_unlocked",
+      "leaderboard_update",
+      "chat_message",
+      "guild_join",
+      "friend_add"
+    ],
+    "kongregate_compliance": {
+      "gdpr_compliant": true,
+      "ccpa_compliant": true,
+      "coppa_compliant": true,
+      "privacy_policy_required": true,
+      "cookie_consent_required": true,
+      "data_retention_days": 365
+    }
   },
   
   "compliance_checks": {
