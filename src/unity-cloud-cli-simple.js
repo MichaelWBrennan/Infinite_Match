@@ -78,7 +78,6 @@ class UnityGamingServicesCLISimple {
   }
 
   async buildListCommand(args = []) {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
     await this.runWrapper(['list']);
   }
 
