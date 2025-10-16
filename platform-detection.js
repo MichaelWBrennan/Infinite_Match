@@ -58,29 +58,6 @@ class PlatformDetector {
                     achievements: true,
                     chat: true
                 },
-                compliance: {
-                    ageRating: 'Teen',
-                    contentGuidelines: {
-                        violence: 'mild',
-                        sexualContent: 'none',
-                        profanity: 'mild',
-                        drugs: 'none',
-                        gambling: 'simulated',
-                        horror: 'mild'
-                    },
-                    monetization: {
-                        lootBoxes: { allowed: true, disclosureRequired: true, oddsDisclosure: true },
-                        subscriptions: { allowed: true, autoRenewalDisclosure: true, cancellationRequired: true },
-                        ads: { allowed: true, ageAppropriate: true, disclosureRequired: true, frequencyCapping: true }
-                    },
-                    privacy: {
-                        dataCollection: { personalData: 'minimal', locationData: 'none', deviceData: 'allowed', analyticsData: 'allowed' },
-                        gdprCompliance: true,
-                        ccpaCompliance: true,
-                        coppaCompliance: true,
-                        privacyPolicyRequired: true
-                    }
-                },
                 api: {
                     showAd: 'kongregate.services.showAd',
                     showRewardedAd: 'kongregate.services.showRewardedAd',
