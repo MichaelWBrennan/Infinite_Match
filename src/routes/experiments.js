@@ -23,7 +23,9 @@ router.post('/assign', async (req, res) => {
   try {
     const { userId, experiment, variants } = req.body || {};
     if (!userId || !experiment || !Array.isArray(variants) || variants.length < 2) {
-      return res.status(400).json({ success: false, error: 'userId, experiment, variants[] required' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'userId, experiment, variants[] required' });
     }
     const variant = stickyAssign(userId, variants);
     const evt = { type: 'assign', userId, experiment, variant, ts: Date.now() };

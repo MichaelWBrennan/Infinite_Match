@@ -11,7 +11,7 @@ const adEventSchema = new mongoose.Schema(
     revenueUsd: { type: Number, default: 0 },
     placement: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 let AdEvent;
@@ -36,8 +36,27 @@ export const AdEventDb = {
     if (format) match.format = format;
     const agg = await AdEvent.aggregate([
       { $match: match },
-      { $group: { _id: { network: '$network' }, revenue: { $sum: '$revenueUsd' }, impressions: { $sum: { $cond: [{ $eq: ['$event', 'impression'] }, 1, 0] } } } },
-      { $project: { network: '$_id.network', revenue: 1, impressions: 1, ecpm: { $cond: [{ $gt: ['$impressions', 0] }, { $multiply: [{ $divide: ['$revenue', '$impressions'] }, 1000] }, 0] } } },
+      {
+        $group: {
+          _id: { network: '$network' },
+          revenue: { $sum: '$revenueUsd' },
+          impressions: { $sum: { $cond: [{ $eq: ['$event', 'impression'] }, 1, 0] } },
+        },
+      },
+      {
+        $project: {
+          network: '$_id.network',
+          revenue: 1,
+          impressions: 1,
+          ecpm: {
+            $cond: [
+              { $gt: ['$impressions', 0] },
+              { $multiply: [{ $divide: ['$revenue', '$impressions'] }, 1000] },
+              0,
+            ],
+          },
+        },
+      },
       { $sort: { ecpm: -1 } },
     ]);
     return agg;

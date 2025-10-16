@@ -32,47 +32,42 @@ router.post(
       const { platform, payload } = req.body;
       const result = await ReceiptVerificationService.verify({ platform, payload });
       if (!result.success) {
-        return res.status(400).json({ success: false, error: 'verification_failed', details: result });
+        return res
+          .status(400)
+          .json({ success: false, error: 'verification_failed', details: result });
       }
       res.json({ success: true, result });
     } catch (error) {
       logger.error('Receipt verification error', { error: error.message });
       res.status(500).json({ success: false, error: 'verification_error' });
     }
-  }
+  },
 );
 
-router.get(
-  '/ad-config',
-  security.sessionValidation,
-  async (req, res) => {
-    try {
-      const profile = req.user || {};
-      const config = await adConfigService.getAdConfigForPlayer(profile);
-      // Entitlement enforcement: disable ads if user owns remove_ads
-      if (req.user?.playerId) {
-        const hasRemoveAds = await PurchaseLedgerDb.hasPurchase(req.user.playerId, 'remove_ads');
-        if (hasRemoveAds) {
-          config.enabled = false;
-          config.rewarded.enabled = false;
-          config.interstitial.enabled = false;
-        }
+router.get('/ad-config', security.sessionValidation, async (req, res) => {
+  try {
+    const profile = req.user || {};
+    const config = await adConfigService.getAdConfigForPlayer(profile);
+    // Entitlement enforcement: disable ads if user owns remove_ads
+    if (req.user?.playerId) {
+      const hasRemoveAds = await PurchaseLedgerDb.hasPurchase(req.user.playerId, 'remove_ads');
+      if (hasRemoveAds) {
+        config.enabled = false;
+        config.rewarded.enabled = false;
+        config.interstitial.enabled = false;
       }
-      res.json({ success: true, config });
-    } catch (error) {
-      logger.error('Ad config retrieval failed', { error: error.message });
-      res.status(500).json({ success: false, error: 'ad_config_error' });
     }
+    res.json({ success: true, config });
+  } catch (error) {
+    logger.error('Ad config retrieval failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'ad_config_error' });
   }
-);
+});
 
 router.get(
   '/pricing',
   security.sessionValidation,
-  [
-    query('country').optional().isString(),
-    query('currency').optional().isString(),
-  ],
+  [query('country').optional().isString(), query('currency').optional().isString()],
   async (req, res) => {
     try {
       const { country, currency } = req.query;
@@ -82,22 +77,18 @@ router.get(
       logger.error('Pricing retrieval failed', { error: error.message });
       res.status(500).json({ success: false, error: 'pricing_error' });
     }
-  }
+  },
 );
 
-router.post(
-  '/offers',
-  security.sessionValidation,
-  async (req, res) => {
-    try {
-      const profile = req.body || {};
-      const offers = offersService.getOffers(profile);
-      res.json({ success: true, offers });
-    } catch (error) {
-      logger.error('Offers generation failed', { error: error.message });
-      res.status(500).json({ success: false, error: 'offers_error' });
-    }
+router.post('/offers', security.sessionValidation, async (req, res) => {
+  try {
+    const profile = req.body || {};
+    const offers = offersService.getOffers(profile);
+    res.json({ success: true, offers });
+  } catch (error) {
+    logger.error('Offers generation failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'offers_error' });
   }
-);
+});
 
 export default router;

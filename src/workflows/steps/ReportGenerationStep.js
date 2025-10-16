@@ -51,10 +51,7 @@ export class ReportGenerationStep {
       const reportsDir = join(process.cwd(), 'src', 'core', 'reports');
       await mkdir(reportsDir, { recursive: true });
 
-      const reportPath = join(
-        reportsDir,
-        `automation_report_${Date.now()}.json`
-      );
+      const reportPath = join(reportsDir, `automation_report_${Date.now()}.json`);
       await writeFile(reportPath, JSON.stringify(report, null, 2));
 
       // Store report in state

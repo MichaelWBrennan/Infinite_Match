@@ -53,18 +53,28 @@ export class AdConfigService {
     const mediation = {
       provider,
       waterfalls: {
-        default: provider === 'MAX'
-          ? ['applovin', 'admob', 'unityads', 'meta_audience']
-          : ['ironsource', 'admob', 'applovin', 'unityads'],
-        tier2: provider === 'MAX'
-          ? ['admob', 'applovin', 'ironsource', 'chartboost']
-          : ['admob', 'ironsource', 'applovin', 'chartboost'],
+        default:
+          provider === 'MAX'
+            ? ['applovin', 'admob', 'unityads', 'meta_audience']
+            : ['ironsource', 'admob', 'applovin', 'unityads'],
+        tier2:
+          provider === 'MAX'
+            ? ['admob', 'applovin', 'ironsource', 'chartboost']
+            : ['admob', 'ironsource', 'applovin', 'chartboost'],
       },
       A_B: {
         experiment: 'ad_freq_v1',
         variants: [
-          { key: 'A', rewarded_interval: gs.ads_rewarded_min_interval_seconds, interstitial_interval: gs.ads_interstitial_min_interval_seconds },
-          { key: 'B', rewarded_interval: Math.max(30, gs.ads_rewarded_min_interval_seconds - 15), interstitial_interval: Math.max(60, gs.ads_interstitial_min_interval_seconds - 60) },
+          {
+            key: 'A',
+            rewarded_interval: gs.ads_rewarded_min_interval_seconds,
+            interstitial_interval: gs.ads_interstitial_min_interval_seconds,
+          },
+          {
+            key: 'B',
+            rewarded_interval: Math.max(30, gs.ads_rewarded_min_interval_seconds - 15),
+            interstitial_interval: Math.max(60, gs.ads_interstitial_min_interval_seconds - 60),
+          },
         ],
       },
     };

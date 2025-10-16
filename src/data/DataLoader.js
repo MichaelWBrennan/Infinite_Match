@@ -48,10 +48,7 @@ export class DataLoader {
       const parser = this.parsers.get(extension);
 
       if (!parser) {
-        throw new ValidationError(
-          `No parser found for file type: ${extension}`,
-          'fileType'
-        );
+        throw new ValidationError(`No parser found for file type: ${extension}`, 'fileType');
       }
 
       const data = await parser(content, options);
@@ -139,10 +136,7 @@ export class DataLoader {
       const data = JSON.parse(content);
       return Array.isArray(data) ? data : [data];
     } catch (error) {
-      throw new ValidationError(
-        `Invalid JSON format: ${error.message}`,
-        'jsonFormat'
-      );
+      throw new ValidationError(`Invalid JSON format: ${error.message}`, 'jsonFormat');
     }
   }
 

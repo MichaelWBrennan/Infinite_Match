@@ -22,7 +22,7 @@ if (AppConfig.logging.format === 'json') {
   transports.push(
     new winston.transports.Console({
       format: combine(timestamp(), errors({ stack: true }), json()),
-    })
+    }),
   );
 } else {
   transports.push(
@@ -31,9 +31,9 @@ if (AppConfig.logging.format === 'json') {
         timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         colorize(),
         errors({ stack: true }),
-        consoleFormat
+        consoleFormat,
       ),
-    })
+    }),
   );
 }
 
@@ -46,7 +46,7 @@ if (AppConfig.logging.file.enabled) {
       maxSize: AppConfig.logging.file.maxSize,
       maxFiles: AppConfig.logging.file.maxFiles,
       format: combine(timestamp(), errors({ stack: true }), json()),
-    })
+    }),
   );
 }
 
@@ -68,13 +68,13 @@ const securityLogger = winston.createLogger({
     }),
     ...(AppConfig.logging.file.enabled
       ? [
-        new DailyRotateFile({
-          filename: `${AppConfig.logging.file.path}/security-%DATE%.log`,
-          datePattern: 'YYYY-MM-DD',
-          maxSize: AppConfig.logging.file.maxSize,
-          maxFiles: AppConfig.logging.file.maxFiles,
-        }),
-      ]
+          new DailyRotateFile({
+            filename: `${AppConfig.logging.file.path}/security-%DATE%.log`,
+            datePattern: 'YYYY-MM-DD',
+            maxSize: AppConfig.logging.file.maxSize,
+            maxFiles: AppConfig.logging.file.maxFiles,
+          }),
+        ]
       : []),
   ],
   exitOnError: false,
@@ -87,13 +87,13 @@ const requestLogger = winston.createLogger({
   transports: [
     ...(AppConfig.logging.file.enabled
       ? [
-        new DailyRotateFile({
-          filename: `${AppConfig.logging.file.path}/requests-%DATE%.log`,
-          datePattern: 'YYYY-MM-DD',
-          maxSize: AppConfig.logging.file.maxSize,
-          maxFiles: AppConfig.logging.file.maxFiles,
-        }),
-      ]
+          new DailyRotateFile({
+            filename: `${AppConfig.logging.file.path}/requests-%DATE%.log`,
+            datePattern: 'YYYY-MM-DD',
+            maxSize: AppConfig.logging.file.maxSize,
+            maxFiles: AppConfig.logging.file.maxFiles,
+          }),
+        ]
       : []),
   ],
   exitOnError: false,

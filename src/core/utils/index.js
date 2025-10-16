@@ -14,7 +14,10 @@ const logger = new Logger('Utils');
  * @param {string} charset - Character set to use
  * @returns {string} Random string
  */
-export const generateRandomString = (length = 32, charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') => {
+export const generateRandomString = (
+  length = 32,
+  charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+) => {
   let result = '';
   const randomBytes = crypto.getRandomValues(new Uint8Array(length));
   for (let i = 0; i < length; i++) {
@@ -48,7 +51,7 @@ export const hashString = (input) => {
 export const deepClone = (obj) => {
   if (obj === null || typeof obj !== 'object') return obj;
   if (obj instanceof Date) return new Date(obj.getTime());
-  if (obj instanceof Array) return obj.map(item => deepClone(item));
+  if (obj instanceof Array) return obj.map((item) => deepClone(item));
   if (typeof obj === 'object') {
     const clonedObj = {};
     for (const key in obj) {
@@ -124,7 +127,11 @@ export const getTimeDifference = (start, end = new Date()) => {
     const endTime = new Date(end).getTime();
     return endTime - startTime;
   } catch (error) {
-    logger.warn('Invalid date for time difference calculation', { start, end, error: error.message });
+    logger.warn('Invalid date for time difference calculation', {
+      start,
+      end,
+      error: error.message,
+    });
     return 0;
   }
 };
@@ -138,25 +145,25 @@ export const getTimeDifference = (start, end = new Date()) => {
  */
 export const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
   let lastError;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      
+
       if (attempt === maxRetries) {
         throw lastError;
       }
-      
+
       const delay = baseDelay * Math.pow(2, attempt);
       logger.debug(`Retry attempt ${attempt + 1} failed, retrying in ${delay}ms`, {
         error: error.message,
         attempt: attempt + 1,
         maxRetries,
       });
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 };
@@ -191,7 +198,7 @@ export const throttle = (func, limit) => {
     if (!inThrottle) {
       func.apply(this, args);
       inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
+      setTimeout(() => (inThrottle = false), limit);
     }
   };
 };
@@ -202,7 +209,7 @@ export const throttle = (func, limit) => {
  * @returns {Promise} Promise that resolves after the specified time
  */
 export const sleep = (ms) => {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 /**

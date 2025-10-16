@@ -44,7 +44,10 @@ class PurchaseLedgerImpl {
     };
     if (event.transactionId) this.seenTransactionIds.add(event.transactionId);
     await this.appendJsonl('purchase-ledger', event);
-    logger.info('Recorded purchase', { transactionId: event.transactionId, productId: event.productId });
+    logger.info('Recorded purchase', {
+      transactionId: event.transactionId,
+      productId: event.productId,
+    });
   }
 
   async recordRefund(evt) {

@@ -14,7 +14,7 @@ export const ROLES = {
   PREMIUM_USER: 'premium_user',
   MODERATOR: 'moderator',
   ADMIN: 'admin',
-  SUPER_ADMIN: 'super_admin'
+  SUPER_ADMIN: 'super_admin',
 };
 
 export const PERMISSIONS = {
@@ -22,37 +22,37 @@ export const PERMISSIONS = {
   READ_PROFILE: 'read_profile',
   UPDATE_PROFILE: 'update_profile',
   DELETE_ACCOUNT: 'delete_account',
-  
+
   // Game permissions
   PLAY_GAME: 'play_game',
   ACCESS_PREMIUM_FEATURES: 'access_premium_features',
   USE_BOOSTERS: 'use_boosters',
   PURCHASE_ITEMS: 'purchase_items',
-  
+
   // Social permissions
   VIEW_LEADERBOARDS: 'view_leaderboards',
   SEND_FRIEND_REQUESTS: 'send_friend_requests',
   CHAT_WITH_FRIENDS: 'chat_with_friends',
   CREATE_GUILDS: 'create_guilds',
-  
+
   // Moderation permissions
   MODERATE_CHAT: 'moderate_chat',
   BAN_USERS: 'ban_users',
   VIEW_REPORTS: 'view_reports',
   MANAGE_CONTENT: 'manage_content',
-  
+
   // Admin permissions
   MANAGE_USERS: 'manage_users',
   MANAGE_GAME_SETTINGS: 'manage_game_settings',
   VIEW_ANALYTICS: 'view_analytics',
   MANAGE_ECONOMY: 'manage_economy',
   DEPLOY_UPDATES: 'deploy_updates',
-  
+
   // Super admin permissions
   MANAGE_ADMINS: 'manage_admins',
   SYSTEM_CONFIGURATION: 'system_configuration',
   DATABASE_ACCESS: 'database_access',
-  SECURITY_OVERRIDE: 'security_override'
+  SECURITY_OVERRIDE: 'security_override',
 };
 
 // Role hierarchy (higher roles inherit lower role permissions)
@@ -62,15 +62,13 @@ const ROLE_HIERARCHY = {
   [ROLES.PREMIUM_USER]: 2,
   [ROLES.MODERATOR]: 3,
   [ROLES.ADMIN]: 4,
-  [ROLES.SUPER_ADMIN]: 5
+  [ROLES.SUPER_ADMIN]: 5,
 };
 
 // Define permissions for each role
 const ROLE_PERMISSIONS = {
-  [ROLES.GUEST]: [
-    PERMISSIONS.READ_PROFILE
-  ],
-  
+  [ROLES.GUEST]: [PERMISSIONS.READ_PROFILE],
+
   [ROLES.USER]: [
     PERMISSIONS.READ_PROFILE,
     PERMISSIONS.UPDATE_PROFILE,
@@ -80,24 +78,24 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.PURCHASE_ITEMS,
     PERMISSIONS.VIEW_LEADERBOARDS,
     PERMISSIONS.SEND_FRIEND_REQUESTS,
-    PERMISSIONS.CHAT_WITH_FRIENDS
+    PERMISSIONS.CHAT_WITH_FRIENDS,
   ],
-  
+
   [ROLES.PREMIUM_USER]: [
     // Inherits all USER permissions
     ...Object.values(ROLE_PERMISSIONS[ROLES.USER]),
     PERMISSIONS.ACCESS_PREMIUM_FEATURES,
-    PERMISSIONS.CREATE_GUILDS
+    PERMISSIONS.CREATE_GUILDS,
   ],
-  
+
   [ROLES.MODERATOR]: [
     // Inherits all PREMIUM_USER permissions
     ...Object.values(ROLE_PERMISSIONS[ROLES.PREMIUM_USER]),
     PERMISSIONS.MODERATE_CHAT,
     PERMISSIONS.VIEW_REPORTS,
-    PERMISSIONS.MANAGE_CONTENT
+    PERMISSIONS.MANAGE_CONTENT,
   ],
-  
+
   [ROLES.ADMIN]: [
     // Inherits all MODERATOR permissions
     ...Object.values(ROLE_PERMISSIONS[ROLES.MODERATOR]),
@@ -106,17 +104,17 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.MANAGE_GAME_SETTINGS,
     PERMISSIONS.VIEW_ANALYTICS,
     PERMISSIONS.MANAGE_ECONOMY,
-    PERMISSIONS.DEPLOY_UPDATES
+    PERMISSIONS.DEPLOY_UPDATES,
   ],
-  
+
   [ROLES.SUPER_ADMIN]: [
     // Inherits all ADMIN permissions
     ...Object.values(ROLE_PERMISSIONS[ROLES.ADMIN]),
     PERMISSIONS.MANAGE_ADMINS,
     PERMISSIONS.SYSTEM_CONFIGURATION,
     PERMISSIONS.DATABASE_ACCESS,
-    PERMISSIONS.SECURITY_OVERRIDE
-  ]
+    PERMISSIONS.SECURITY_OVERRIDE,
+  ],
 };
 
 export class RBACProvider {
@@ -140,7 +138,7 @@ export class RBACProvider {
       role,
       assignedBy,
       assignedAt: new Date().toISOString(),
-      permissions: this.getRolePermissions(role)
+      permissions: this.getRolePermissions(role),
     });
 
     logger.info('Role assigned', { userId, role, assignedBy });
@@ -199,10 +197,10 @@ export class RBACProvider {
     const permissions = new Set();
 
     // Add permissions from current role and all lower roles
-    Object.keys(ROLE_HIERARCHY).forEach(roleName => {
+    Object.keys(ROLE_HIERARCHY).forEach((roleName) => {
       if (ROLE_HIERARCHY[roleName] <= ROLE_HIERARCHY[role]) {
         const rolePermissions = this.getRolePermissions(roleName);
-        rolePermissions.forEach(permission => permissions.add(permission));
+        rolePermissions.forEach((permission) => permissions.add(permission));
       }
     });
 
@@ -228,7 +226,7 @@ export class RBACProvider {
    */
   hasAnyPermission(userId, permissions) {
     const userPermissions = this.getUserPermissions(userId);
-    return permissions.some(permission => userPermissions.includes(permission));
+    return permissions.some((permission) => userPermissions.includes(permission));
   }
 
   /**
@@ -239,7 +237,7 @@ export class RBACProvider {
    */
   hasAllPermissions(userId, permissions) {
     const userPermissions = this.getUserPermissions(userId);
-    return permissions.every(permission => userPermissions.includes(permission));
+    return permissions.every((permission) => userPermissions.includes(permission));
   }
 
   /**
@@ -275,7 +273,7 @@ export class RBACProvider {
    */
   getRoleStatistics() {
     const stats = {};
-    Object.values(ROLES).forEach(role => {
+    Object.values(ROLES).forEach((role) => {
       stats[role] = 0;
     });
 
@@ -295,7 +293,7 @@ export class RBACProvider {
   canAssignRole(assignerRole, targetRole) {
     const assignerLevel = ROLE_HIERARCHY[assignerRole] || 0;
     const targetLevel = ROLE_HIERARCHY[targetRole] || 0;
-    
+
     // Can only assign roles at or below your level
     return assignerLevel > targetLevel;
   }

@@ -112,7 +112,9 @@ router.get('/arpu', security.sessionValidation, async (req, res) => {
     }
 
     // DB-backed revenue (if available)
-    const { revenue: dbRevenue, payers: dbPayers } = await PurchaseLedgerDb.revenueSince?.(days) || { revenue: 0, payers: 0 };
+    const { revenue: dbRevenue, payers: dbPayers } = (await PurchaseLedgerDb.revenueSince?.(
+      days,
+    )) || { revenue: 0, payers: 0 };
     const revenue = Math.max(totalRevenueUsd, dbRevenue);
     const payers = Math.max(payerIds.size, dbPayers);
     const arppu = payers > 0 ? revenue / payers : 0;
@@ -130,10 +132,13 @@ router.get('/metrics', security.sessionValidation, async (req, res) => {
     const days = Math.max(1, Math.min(365, parseInt(req.query.days) || 30));
     const activeUsers = req.query.activeUsers ? parseInt(req.query.activeUsers) : null;
 
-    const { revenue, payers } = await PurchaseLedgerDb.revenueSince?.(days) || { revenue: 0, payers: 0 };
+    const { revenue, payers } = (await PurchaseLedgerDb.revenueSince?.(days)) || {
+      revenue: 0,
+      payers: 0,
+    };
     const arppu = payers > 0 ? revenue / payers : 0;
     const arpu = activeUsers ? revenue / activeUsers : null;
-    const payerRate = activeUsers ? (payers / activeUsers) : null;
+    const payerRate = activeUsers ? payers / activeUsers : null;
 
     res.json({ success: true, days, revenue, payers, arppu, arpu, payerRate, activeUsers });
   } catch (error) {

@@ -32,7 +32,7 @@ export class MongoService {
   async connect(): Promise<boolean> {
     try {
       const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/evergreen-match3';
-      
+
       await mongoose.connect(mongoUri, {
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 5000,
@@ -73,7 +73,7 @@ export class MongoService {
       await collection.insertOne({
         ...analytics,
         timestamp: new Date(),
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       logger.info('Game analytics saved', { playerId: analytics.playerId });
@@ -117,7 +117,7 @@ export class MongoService {
       await collection.updateOne(
         { playerId: behavior.playerId },
         { $set: { ...behavior, updatedAt: new Date() } },
-        { upsert: true }
+        { upsert: true },
       );
 
       logger.info('Player behavior saved', { playerId: behavior.playerId });
@@ -154,7 +154,7 @@ export class MongoService {
       await collection.insertOne({
         ...event,
         timestamp: new Date(),
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       logger.info('Game event saved', { eventType: event.type, playerId: event.playerId });
@@ -175,11 +175,7 @@ export class MongoService {
       const query: any = { playerId };
       if (eventType) query.type = eventType;
 
-      const events = await collection
-        .find(query)
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .toArray();
+      const events = await collection.find(query).sort({ timestamp: -1 }).limit(limit).toArray();
 
       return events;
     } catch (error) {
@@ -199,7 +195,7 @@ export class MongoService {
       await collection.insertOne({
         ...result,
         timestamp: new Date(),
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       logger.info('A/B test result saved', { testId: result.testId, playerId: result.playerId });
@@ -217,10 +213,7 @@ export class MongoService {
         throw new Error('MongoDB not connected');
       }
 
-      const results = await collection
-        .find({ testId })
-        .sort({ timestamp: -1 })
-        .toArray();
+      const results = await collection.find({ testId }).sort({ timestamp: -1 }).toArray();
 
       return results;
     } catch (error) {
@@ -240,7 +233,7 @@ export class MongoService {
       await collection.insertOne({
         ...log,
         timestamp: new Date(),
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       logger.info('Unity Cloud log saved', { service: log.service, level: log.level });
@@ -262,11 +255,7 @@ export class MongoService {
       if (service) query.service = service;
       if (level) query.level = level;
 
-      const logs = await collection
-        .find(query)
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .toArray();
+      const logs = await collection.find(query).sort({ timestamp: -1 }).limit(limit).toArray();
 
       return logs;
     } catch (error) {
@@ -286,7 +275,7 @@ export class MongoService {
       await collection.insertOne({
         ...metrics,
         timestamp: new Date(),
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       logger.info('Performance metrics saved', { service: metrics.service });
@@ -312,10 +301,7 @@ export class MongoService {
         if (endDate) query.timestamp.$lte = endDate;
       }
 
-      const metrics = await collection
-        .find(query)
-        .sort({ timestamp: -1 })
-        .toArray();
+      const metrics = await collection.find(query).sort({ timestamp: -1 }).toArray();
 
       return metrics;
     } catch (error) {

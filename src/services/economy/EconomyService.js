@@ -60,10 +60,7 @@ class EconomyService {
       return economyData;
     } catch (error) {
       logger.error('Failed to load economy data', { error: error.message });
-      throw new ServiceError(
-        `Failed to load economy data: ${error.message}`,
-        'EconomyService'
-      );
+      throw new ServiceError(`Failed to load economy data: ${error.message}`, 'EconomyService');
     }
   }
 
@@ -112,7 +109,7 @@ class EconomyService {
       });
       throw new ServiceError(
         `Failed to generate economy report: ${error.message}`,
-        'EconomyService'
+        'EconomyService',
       );
     }
   }
@@ -127,10 +124,7 @@ class EconomyService {
       logger.info(`Economy data saved to ${filePath}`);
     } catch (error) {
       logger.error('Failed to save economy data', { error: error.message });
-      throw new ServiceError(
-        `Failed to save economy data: ${error.message}`,
-        'EconomyService'
-      );
+      throw new ServiceError(`Failed to save economy data: ${error.message}`, 'EconomyService');
     }
   }
 

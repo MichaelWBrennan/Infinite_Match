@@ -16,7 +16,7 @@ class ARPUOptimizationService {
     this.subscriptionTiers = new Map();
     this.energyPacks = new Map();
     this.socialChallenges = new Map();
-    
+
     this.initializeData();
   }
 
@@ -31,13 +31,13 @@ class ARPUOptimizationService {
       conditions: {
         max_level: 10,
         max_spent: 5,
-        days_since_install: 7
+        days_since_install: 7,
       },
       rewards: {
         coins: 1000,
         gems: 50,
-        energy: 20
-      }
+        energy: 20,
+      },
     });
 
     this.offerTemplates.set('comeback_pack', {
@@ -48,13 +48,13 @@ class ARPUOptimizationService {
       targetSegments: ['returning_players', 'churn_risk'],
       conditions: {
         days_since_last_play: 3,
-        max_days_since_last_play: 30
+        max_days_since_last_play: 30,
       },
       rewards: {
         coins: 2000,
         gems: 100,
-        energy: 50
-      }
+        energy: 50,
+      },
     });
 
     // Initialize subscription tiers
@@ -66,8 +66,8 @@ class ARPUOptimizationService {
       benefits: [
         { type: 'energy_multiplier', value: 1.5, description: '1.5x Energy Regeneration' },
         { type: 'coins_multiplier', value: 1.2, description: '1.2x Coin Rewards' },
-        { type: 'daily_bonus', value: 100, description: 'Daily 100 Coins' }
-      ]
+        { type: 'daily_bonus', value: 100, description: 'Daily 100 Coins' },
+      ],
     });
 
     this.subscriptionTiers.set('premium', {
@@ -80,8 +80,8 @@ class ARPUOptimizationService {
         { type: 'coins_multiplier', value: 1.5, description: '1.5x Coin Rewards' },
         { type: 'gems_multiplier', value: 1.3, description: '1.3x Gem Rewards' },
         { type: 'daily_bonus', value: 200, description: 'Daily 200 Coins + 10 Gems' },
-        { type: 'exclusive_items', value: 1, description: 'Exclusive Items Access' }
-      ]
+        { type: 'exclusive_items', value: 1, description: 'Exclusive Items Access' },
+      ],
     });
 
     // Initialize energy packs
@@ -90,7 +90,7 @@ class ARPUOptimizationService {
       name: 'Energy Boost',
       energy: 10,
       cost: 5,
-      costType: 'gems'
+      costType: 'gems',
     });
 
     this.energyPacks.set('energy_medium', {
@@ -98,7 +98,7 @@ class ARPUOptimizationService {
       name: 'Energy Surge',
       energy: 25,
       cost: 10,
-      costType: 'gems'
+      costType: 'gems',
     });
 
     this.energyPacks.set('energy_large', {
@@ -106,7 +106,7 @@ class ARPUOptimizationService {
       name: 'Energy Rush',
       energy: 50,
       cost: 18,
-      costType: 'gems'
+      costType: 'gems',
     });
   }
 
@@ -117,17 +117,17 @@ class ARPUOptimizationService {
     try {
       const offers = [];
       const playerSegment = this.determinePlayerSegment(playerProfile);
-      
+
       for (const [templateId, template] of this.offerTemplates) {
         if (this.shouldShowOffer(template, playerProfile, playerSegment)) {
           const offer = this.createPersonalizedOffer(template, playerProfile, playerSegment);
           offers.push(offer);
         }
       }
-      
+
       // Sort by discount (highest first)
       offers.sort((a, b) => b.discount - a.discount);
-      
+
       logger.info(`Generated ${offers.length} personalized offers for player ${playerId}`);
       return offers;
     } catch (error) {
@@ -143,13 +143,13 @@ class ARPUOptimizationService {
     const totalSpent = playerProfile.totalSpent || 0;
     const spendingThresholds = [0, 5, 25, 100, 500];
     const segments = ['non_payer', 'low_value', 'medium_value', 'high_value', 'whale'];
-    
+
     for (let i = spendingThresholds.length - 1; i >= 0; i--) {
       if (totalSpent >= spendingThresholds[i]) {
         return segments[i];
       }
     }
-    
+
     return segments[0]; // non_payer
   }
 
@@ -161,14 +161,14 @@ class ARPUOptimizationService {
     if (!template.targetSegments.includes(playerSegment)) {
       return false;
     }
-    
+
     // Check conditions
     for (const [condition, value] of Object.entries(template.conditions)) {
       if (!this.evaluateCondition(condition, value, playerProfile)) {
         return false;
       }
     }
-    
+
     return true;
   }
 
@@ -206,9 +206,17 @@ class ARPUOptimizationService {
    * Create personalized offer
    */
   createPersonalizedOffer(template, playerProfile, playerSegment) {
-    const personalizedPrice = this.calculatePersonalizedPrice(template, playerProfile, playerSegment);
-    const personalizedDiscount = this.calculatePersonalizedDiscount(template, playerProfile, playerSegment);
-    
+    const personalizedPrice = this.calculatePersonalizedPrice(
+      template,
+      playerProfile,
+      playerSegment,
+    );
+    const personalizedDiscount = this.calculatePersonalizedDiscount(
+      template,
+      playerProfile,
+      playerSegment,
+    );
+
     return {
       id: this.generateId(),
       templateId: template.id,
@@ -224,8 +232,8 @@ class ARPUOptimizationService {
       personalizationFactors: {
         playerSegment,
         totalSpent: playerProfile.totalSpent || 0,
-        level: playerProfile.level || 0
-      }
+        level: playerProfile.level || 0,
+      },
     };
   }
 
@@ -235,7 +243,7 @@ class ARPUOptimizationService {
   calculatePersonalizedPrice(template, playerProfile, playerSegment) {
     let basePrice = template.basePrice;
     let multiplier = 1;
-    
+
     // High-value players get higher prices
     if ((playerProfile.totalSpent || 0) > 100) {
       multiplier *= 1.2;
@@ -244,17 +252,17 @@ class ARPUOptimizationService {
     else if ((playerProfile.totalSpent || 0) < 10) {
       multiplier *= 0.8;
     }
-    
+
     // Churn risk players get discounts
     if (playerProfile.churnRisk > 0.7) {
       multiplier *= 0.7;
     }
-    
+
     // New players get discounts
     if (playerSegment === 'new_players') {
       multiplier *= 0.6;
     }
-    
+
     return basePrice * multiplier;
   }
 
@@ -264,22 +272,22 @@ class ARPUOptimizationService {
   calculatePersonalizedDiscount(template, playerProfile, playerSegment) {
     let baseDiscount = template.baseDiscount;
     let additionalDiscount = 0;
-    
+
     // Churn risk players get extra discount
     if (playerProfile.churnRisk > 0.7) {
       additionalDiscount += 0.2;
     }
-    
+
     // New players get extra discount
     if (playerSegment === 'new_players') {
       additionalDiscount += 0.1;
     }
-    
+
     // Low-value players get extra discount
     if ((playerProfile.totalSpent || 0) < 10) {
       additionalDiscount += 0.1;
     }
-    
+
     return Math.min(1, baseDiscount + additionalDiscount);
   }
 
@@ -290,17 +298,17 @@ class ARPUOptimizationService {
     try {
       // Track revenue event
       this.trackRevenue(playerId, amount, 'IAP', offerId);
-      
+
       // Update player profile
       const profile = this.getPlayerProfile(playerId);
       profile.totalSpent = (profile.totalSpent || 0) + amount;
       profile.lastPurchaseTime = new Date().toISOString();
       profile.purchaseCount = (profile.purchaseCount || 0) + 1;
-      
+
       this.playerProfiles.set(playerId, profile);
-      
-      logger.info(`Processed offer purchase`, { offerId, playerId, amount });
-      
+
+      logger.info('Processed offer purchase', { offerId, playerId, amount });
+
       return { success: true, offerId, amount };
     } catch (error) {
       logger.error('Failed to process offer purchase', { error: error.message, offerId, playerId });
@@ -318,11 +326,11 @@ class ARPUOptimizationService {
       amount,
       source,
       itemId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
-    
+
     this.revenueEvents.set(revenueEvent.id, revenueEvent);
-    
+
     logger.info('Revenue tracked', { playerId, amount, source, itemId });
   }
 
@@ -339,10 +347,10 @@ class ARPUOptimizationService {
         installDate: new Date().toISOString(),
         lastPlayTime: new Date().toISOString(),
         level: 1,
-        churnRisk: 0
+        churnRisk: 0,
       });
     }
-    
+
     return this.playerProfiles.get(playerId);
   }
 
@@ -360,9 +368,14 @@ class ARPUOptimizationService {
    */
   getARPUStatistics() {
     const totalPlayers = this.playerProfiles.size;
-    const payingPlayers = Array.from(this.playerProfiles.values()).filter(p => p.totalSpent > 0).length;
-    const totalRevenue = Array.from(this.revenueEvents.values()).reduce((sum, e) => sum + e.amount, 0);
-    
+    const payingPlayers = Array.from(this.playerProfiles.values()).filter(
+      (p) => p.totalSpent > 0,
+    ).length;
+    const totalRevenue = Array.from(this.revenueEvents.values()).reduce(
+      (sum, e) => sum + e.amount,
+      0,
+    );
+
     return {
       totalPlayers,
       payingPlayers,
@@ -371,7 +384,7 @@ class ARPUOptimizationService {
       arpuPaying: payingPlayers > 0 ? totalRevenue / payingPlayers : 0,
       conversionRate: totalPlayers > 0 ? (payingPlayers / totalPlayers) * 100 : 0,
       revenueBySource: this.getRevenueBySource(),
-      segmentDistribution: this.getSegmentDistribution()
+      segmentDistribution: this.getSegmentDistribution(),
     };
   }
 
@@ -380,8 +393,11 @@ class ARPUOptimizationService {
    */
   getRevenueBySource() {
     const revenueBySource = {};
-    const totalRevenue = Array.from(this.revenueEvents.values()).reduce((sum, e) => sum + e.amount, 0);
-    
+    const totalRevenue = Array.from(this.revenueEvents.values()).reduce(
+      (sum, e) => sum + e.amount,
+      0,
+    );
+
     if (totalRevenue > 0) {
       for (const event of this.revenueEvents.values()) {
         if (!revenueBySource[event.source]) {
@@ -389,13 +405,13 @@ class ARPUOptimizationService {
         }
         revenueBySource[event.source] += event.amount;
       }
-      
+
       // Convert to percentages
       for (const source in revenueBySource) {
         revenueBySource[source] = (revenueBySource[source] / totalRevenue) * 100;
       }
     }
-    
+
     return revenueBySource;
   }
 
@@ -404,12 +420,12 @@ class ARPUOptimizationService {
    */
   getSegmentDistribution() {
     const distribution = {};
-    
+
     for (const profile of this.playerProfiles.values()) {
       const segment = this.determinePlayerSegment(profile);
       distribution[segment] = (distribution[segment] || 0) + 1;
     }
-    
+
     return distribution;
   }
 

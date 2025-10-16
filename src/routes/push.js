@@ -21,7 +21,8 @@ const logger = new Logger('PushRoutes');
 router.post('/register', async (req, res) => {
   try {
     const { userId, token, platform, locale } = req.body || {};
-    if (!userId || !token) return res.status(400).json({ success: false, error: 'userId, token required' });
+    if (!userId || !token)
+      return res.status(400).json({ success: false, error: 'userId, token required' });
     await DeviceTokenDb.upsert({ userId, token, platform, locale });
     res.json({ success: true, stored: true });
   } catch (error) {

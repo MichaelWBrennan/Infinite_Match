@@ -13,10 +13,18 @@ router.post('/apple', async (req, res) => {
     let eventType = body.notification_type || body.notificationType || 'unknown';
     if (body.signedPayload) {
       try {
-        const JWKS = createRemoteJWKSet(new URL('https://api.storekit.itunes.apple.com/inApps/v1/notifications/jwsKeys'));
-        const { payload } = await jwtVerify(String(body.signedPayload), JWKS, { algorithms: ['ES256'] });
+        const JWKS = createRemoteJWKSet(
+          new URL('https://api.storekit.itunes.apple.com/inApps/v1/notifications/jwsKeys'),
+        );
+        const { payload } = await jwtVerify(String(body.signedPayload), JWKS, {
+          algorithms: ['ES256'],
+        });
         eventType = payload.notificationType || payload.eventType || eventType;
-        await PurchaseLedger.recordSubscriptionEvent({ provider: 'apple', eventType, raw: payload });
+        await PurchaseLedger.recordSubscriptionEvent({
+          provider: 'apple',
+          eventType,
+          raw: payload,
+        });
         return res.json({ ok: true });
       } catch (_) {}
     }
@@ -40,7 +48,13 @@ router.post('/google', async (req, res) => {
         decoded = JSON.parse(json);
       }
     } catch (_) {}
-    await PurchaseLedger.recordSubscriptionEvent({ provider: 'google', eventType: 'rtdn', raw: body, message, decoded });
+    await PurchaseLedger.recordSubscriptionEvent({
+      provider: 'google',
+      eventType: 'rtdn',
+      raw: body,
+      message,
+      decoded,
+    });
     res.json({ ok: true });
   } catch (error) {
     logger.error('Google subscription webhook error', { error: error.message });

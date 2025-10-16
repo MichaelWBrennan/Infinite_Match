@@ -14,7 +14,7 @@ const purchaseSchema = new mongoose.Schema(
     amountUsd: Number,
     currency: String,
   },
-  { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
+  { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } },
 );
 
 const refundSchema = new mongoose.Schema(
@@ -24,7 +24,7 @@ const refundSchema = new mongoose.Schema(
     amountUsd: Number,
     currency: String,
   },
-  { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
+  { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } },
 );
 
 const subEventSchema = new mongoose.Schema(
@@ -33,7 +33,7 @@ const subEventSchema = new mongoose.Schema(
     eventType: String,
     raw: mongoose.Schema.Types.Mixed,
   },
-  { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
+  { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } },
 );
 
 let PurchaseModel;
@@ -47,7 +47,8 @@ async function ensureConnection() {
   await mongoose.connect(uri, AppConfig.database.options || {});
   PurchaseModel = mongoose.models.Purchase || mongoose.model('Purchase', purchaseSchema);
   RefundModel = mongoose.models.Refund || mongoose.model('Refund', refundSchema);
-  SubEventModel = mongoose.models.SubscriptionEvent || mongoose.model('SubscriptionEvent', subEventSchema);
+  SubEventModel =
+    mongoose.models.SubscriptionEvent || mongoose.model('SubscriptionEvent', subEventSchema);
   connected = true;
   logger.info('Connected to MongoDB for ledger');
 }
@@ -60,7 +61,7 @@ export const PurchaseLedgerDb = {
         await PurchaseModel.updateOne(
           { transactionId: doc.transactionId },
           { $setOnInsert: { ...doc } },
-          { upsert: true }
+          { upsert: true },
         );
       } else {
         await new PurchaseModel(doc).save();
@@ -91,7 +92,13 @@ export const PurchaseLedgerDb = {
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       const pipeline = [
         { $match: { createdAt: { $gte: since }, amountUsd: { $gt: 0 } } },
-        { $group: { _id: null, revenue: { $sum: '$amountUsd' }, payers: { $addToSet: '$playerId' } } },
+        {
+          $group: {
+            _id: null,
+            revenue: { $sum: '$amountUsd' },
+            payers: { $addToSet: '$playerId' },
+          },
+        },
       ];
       const res = await PurchaseModel.aggregate(pipeline);
       const revenue = res[0]?.revenue || 0;

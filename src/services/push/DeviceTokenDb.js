@@ -8,7 +8,7 @@ const tokenSchema = new mongoose.Schema(
     platform: String,
     locale: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 let DeviceToken;
@@ -26,7 +26,7 @@ export const DeviceTokenDb = {
     await DeviceToken.updateOne(
       { token },
       { $set: { userId, platform: platform || null, locale: locale || null } },
-      { upsert: true }
+      { upsert: true },
     );
   },
 };

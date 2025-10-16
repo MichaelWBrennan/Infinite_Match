@@ -15,10 +15,10 @@ export class KeyRotationManager {
     this.keyHistory = new Map();
     this.currentKeys = new Map();
     this.rotationCallbacks = new Map();
-    
+
     // Initialize with current keys
     this.initializeKeys();
-    
+
     // Start rotation timer
     this.startRotationTimer();
   }
@@ -29,24 +29,24 @@ export class KeyRotationManager {
   initializeKeys() {
     const jwtSecret = AppConfig.security.jwt.secret;
     const encryptionKey = AppConfig.security.encryption.key;
-    
+
     this.currentKeys.set('jwt', {
       key: jwtSecret,
       createdAt: new Date(),
       version: 1,
-      active: true
+      active: true,
     });
-    
+
     this.currentKeys.set('encryption', {
       key: encryptionKey,
       createdAt: new Date(),
       version: 1,
-      active: true
+      active: true,
     });
-    
-    logger.info('Keys initialized', { 
-      jwtVersion: 1, 
-      encryptionVersion: 1 
+
+    logger.info('Keys initialized', {
+      jwtVersion: 1,
+      encryptionVersion: 1,
     });
   }
 
@@ -58,12 +58,12 @@ export class KeyRotationManager {
    */
   generateKey(type, length = 32) {
     const key = crypto.randomBytes(length).toString('hex');
-    
-    logger.info('New key generated', { 
-      type, 
-      length: key.length 
+
+    logger.info('New key generated', {
+      type,
+      length: key.length,
     });
-    
+
     return key;
   }
 
@@ -82,48 +82,47 @@ export class KeyRotationManager {
       // Generate new key
       const newKey = this.generateKey(keyType);
       const newVersion = currentKey.version + 1;
-      
+
       // Store old key in history
       this.keyHistory.set(`${keyType}_${currentKey.version}`, {
         ...currentKey,
         active: false,
-        rotatedAt: new Date()
+        rotatedAt: new Date(),
       });
-      
+
       // Update current key
       this.currentKeys.set(keyType, {
         key: newKey,
         createdAt: new Date(),
         version: newVersion,
-        active: true
+        active: true,
       });
-      
+
       // Notify callbacks
       this.notifyKeyRotation(keyType, newKey, newVersion);
-      
-      logger.info('Key rotated successfully', { 
-        keyType, 
+
+      logger.info('Key rotated successfully', {
+        keyType,
         version: newVersion,
-        previousVersion: currentKey.version
+        previousVersion: currentKey.version,
       });
-      
+
       return {
         success: true,
         keyType,
         newVersion,
-        previousVersion: currentKey.version
+        previousVersion: currentKey.version,
       };
-      
     } catch (error) {
-      logger.error('Key rotation failed', { 
-        error: error.message, 
-        keyType 
+      logger.error('Key rotation failed', {
+        error: error.message,
+        keyType,
       });
-      
+
       return {
         success: false,
         error: error.message,
-        keyType
+        keyType,
       };
     }
   }
@@ -134,15 +133,15 @@ export class KeyRotationManager {
    */
   rotateAllKeys() {
     const results = {};
-    
+
     for (const keyType of this.currentKeys.keys()) {
       results[keyType] = this.rotateKey(keyType);
     }
-    
-    logger.info('All keys rotated', { 
-      results: Object.keys(results).length 
+
+    logger.info('All keys rotated', {
+      results: Object.keys(results).length,
     });
-    
+
     return results;
   }
 
@@ -176,9 +175,9 @@ export class KeyRotationManager {
     if (!this.rotationCallbacks.has(keyType)) {
       this.rotationCallbacks.set(keyType, []);
     }
-    
+
     this.rotationCallbacks.get(keyType).push(callback);
-    
+
     logger.info('Key rotation callback registered', { keyType });
   }
 
@@ -190,14 +189,14 @@ export class KeyRotationManager {
    */
   notifyKeyRotation(keyType, newKey, version) {
     const callbacks = this.rotationCallbacks.get(keyType) || [];
-    
-    callbacks.forEach(callback => {
+
+    callbacks.forEach((callback) => {
       try {
         callback(keyType, newKey, version);
       } catch (error) {
-        logger.error('Key rotation callback failed', { 
-          error: error.message, 
-          keyType 
+        logger.error('Key rotation callback failed', {
+          error: error.message,
+          keyType,
         });
       }
     });
@@ -210,9 +209,9 @@ export class KeyRotationManager {
     setInterval(() => {
       this.rotateAllKeys();
     }, this.rotationInterval);
-    
-    logger.info('Key rotation timer started', { 
-      interval: this.rotationInterval 
+
+    logger.info('Key rotation timer started', {
+      interval: this.rotationInterval,
     });
   }
 
@@ -225,17 +224,17 @@ export class KeyRotationManager {
       totalKeys: this.currentKeys.size,
       totalHistory: this.keyHistory.size,
       rotationInterval: this.rotationInterval,
-      keys: {}
+      keys: {},
     };
-    
+
     for (const [keyType, keyData] of this.currentKeys.entries()) {
       stats.keys[keyType] = {
         version: keyData.version,
         createdAt: keyData.createdAt,
-        active: keyData.active
+        active: keyData.active,
       };
     }
-    
+
     return stats;
   }
 
@@ -243,17 +242,18 @@ export class KeyRotationManager {
    * Clean up old keys from history
    * @param {number} maxAge - Maximum age in milliseconds
    */
-  cleanupOldKeys(maxAge = 7 * 24 * 60 * 60 * 1000) { // 7 days
+  cleanupOldKeys(maxAge = 7 * 24 * 60 * 60 * 1000) {
+    // 7 days
     const cutoff = new Date(Date.now() - maxAge);
     let cleaned = 0;
-    
+
     for (const [key, keyData] of this.keyHistory.entries()) {
       if (keyData.rotatedAt < cutoff) {
         this.keyHistory.delete(key);
         cleaned++;
       }
     }
-    
+
     logger.info('Old keys cleaned up', { cleaned });
   }
 
@@ -272,11 +272,11 @@ export class KeyRotationManager {
    */
   getNextRotation() {
     const nextRotation = new Date(Date.now() + this.rotationInterval);
-    
+
     return {
       nextRotation,
       interval: this.rotationInterval,
-      timeUntilRotation: nextRotation.getTime() - Date.now()
+      timeUntilRotation: nextRotation.getTime() - Date.now(),
     };
   }
 }

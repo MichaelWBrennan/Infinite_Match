@@ -12,13 +12,7 @@ export class EconomyValidator {
   constructor() {
     this.currencyRules = {
       required: ['id', 'name', 'type'],
-      optional: [
-        'description',
-        'initial',
-        'maximum',
-        'isTradable',
-        'isConsumable',
-      ],
+      optional: ['description', 'initial', 'maximum', 'isTradable', 'isConsumable'],
       types: {
         id: 'string',
         name: 'string',
@@ -32,14 +26,7 @@ export class EconomyValidator {
 
     this.inventoryRules = {
       required: ['id', 'name', 'type'],
-      optional: [
-        'description',
-        'rarity',
-        'category',
-        'tradable',
-        'stackable',
-        'iconPath',
-      ],
+      optional: ['description', 'rarity', 'category', 'tradable', 'stackable', 'iconPath'],
       types: {
         id: 'string',
         name: 'string',
@@ -55,14 +42,7 @@ export class EconomyValidator {
 
     this.catalogRules = {
       required: ['id', 'name', 'cost_currency', 'cost_amount'],
-      optional: [
-        'description',
-        'type',
-        'rewards',
-        'category',
-        'rarity',
-        'isActive',
-      ],
+      optional: ['description', 'type', 'rewards', 'category', 'rarity', 'isActive'],
       types: {
         id: 'string',
         name: 'string',
@@ -114,10 +94,7 @@ export class EconomyValidator {
    */
   validateData(data, rules, dataType) {
     if (!Array.isArray(data)) {
-      throw new ValidationError(
-        `Expected array for ${dataType} data`,
-        'dataType'
-      );
+      throw new ValidationError(`Expected array for ${dataType} data`, 'dataType');
     }
 
     const validatedData = [];
@@ -164,23 +141,13 @@ export class EconomyValidator {
    */
   validateItem(item, rules, dataType, index) {
     if (!item || typeof item !== 'object') {
-      throw new ValidationError(
-        `Invalid item at index ${index}: must be an object`,
-        'itemType'
-      );
+      throw new ValidationError(`Invalid item at index ${index}: must be an object`, 'itemType');
     }
 
     // Check required fields
     for (const field of rules.required) {
-      if (
-        !(field in item) ||
-        item[field] === null ||
-        item[field] === undefined
-      ) {
-        throw new ValidationError(
-          `Missing required field '${field}' at index ${index}`,
-          field
-        );
+      if (!(field in item) || item[field] === null || item[field] === undefined) {
+        throw new ValidationError(`Missing required field '${field}' at index ${index}`, field);
       }
     }
 
@@ -189,12 +156,7 @@ export class EconomyValidator {
 
     for (const [field, value] of Object.entries(item)) {
       if (rules.types[field]) {
-        validatedItem[field] = this.validateFieldType(
-          field,
-          value,
-          rules.types[field],
-          index
-        );
+        validatedItem[field] = this.validateFieldType(field, value, rules.types[field], index);
       } else {
         validatedItem[field] = value;
       }
@@ -216,36 +178,36 @@ export class EconomyValidator {
    */
   validateFieldType(field, value, expectedType, index) {
     switch (expectedType) {
-    case 'string': {
-      return String(value);
-    }
+      case 'string': {
+        return String(value);
+      }
 
-    case 'number': {
-      const num = Number(value);
-      if (isNaN(num)) {
+      case 'number': {
+        const num = Number(value);
+        if (isNaN(num)) {
+          throw new ValidationError(
+            `Invalid number for field '${field}' at index ${index}: ${value}`,
+            field,
+          );
+        }
+        return num;
+      }
+
+      case 'boolean': {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const lower = value.toLowerCase();
+          if (lower === 'true') return true;
+          if (lower === 'false') return false;
+        }
         throw new ValidationError(
-          `Invalid number for field '${field}' at index ${index}: ${value}`,
-          field
+          `Invalid boolean for field '${field}' at index ${index}: ${value}`,
+          field,
         );
       }
-      return num;
-    }
 
-    case 'boolean': {
-      if (typeof value === 'boolean') return value;
-      if (typeof value === 'string') {
-        const lower = value.toLowerCase();
-        if (lower === 'true') return true;
-        if (lower === 'false') return false;
-      }
-      throw new ValidationError(
-        `Invalid boolean for field '${field}' at index ${index}: ${value}`,
-        field
-      );
-    }
-
-    default:
-      return value;
+      default:
+        return value;
     }
   }
 
@@ -261,27 +223,25 @@ export class EconomyValidator {
 
     // Apply specific mappings based on data type
     switch (dataType) {
-    case 'currency':
-      mappedItem.isTradable = mappedItem.isTradable || false;
-      mappedItem.isConsumable = mappedItem.isConsumable || false;
-      break;
+      case 'currency':
+        mappedItem.isTradable = mappedItem.isTradable || false;
+        mappedItem.isConsumable = mappedItem.isConsumable || false;
+        break;
 
-    case 'inventory':
-      mappedItem.isTradable = this.parseBoolean(mappedItem.tradable) || false;
-      mappedItem.isConsumable = mappedItem.isConsumable || false;
-      mappedItem.maxStackSize = this.parseBoolean(mappedItem.stackable)
-        ? 999
-        : 1;
-      mappedItem.rarity = mappedItem.rarity || 'common';
-      mappedItem.category = mappedItem.category || 'general';
-      break;
+      case 'inventory':
+        mappedItem.isTradable = this.parseBoolean(mappedItem.tradable) || false;
+        mappedItem.isConsumable = mappedItem.isConsumable || false;
+        mappedItem.maxStackSize = this.parseBoolean(mappedItem.stackable) ? 999 : 1;
+        mappedItem.rarity = mappedItem.rarity || 'common';
+        mappedItem.category = mappedItem.category || 'general';
+        break;
 
-    case 'catalog':
-      mappedItem.cost = mappedItem.cost_amount || 0;
-      mappedItem.currency = mappedItem.cost_currency || 'coins';
-      mappedItem.type = mappedItem.type || 'item';
-      mappedItem.isActive = mappedItem.isActive !== false;
-      break;
+      case 'catalog':
+        mappedItem.cost = mappedItem.cost_amount || 0;
+        mappedItem.currency = mappedItem.cost_currency || 'coins';
+        mappedItem.type = mappedItem.type || 'item';
+        mappedItem.isActive = mappedItem.isActive !== false;
+        break;
     }
 
     return mappedItem;
@@ -314,8 +274,7 @@ export class EconomyValidator {
       invalidItems: originalData.length - validatedData.length,
       successRate:
         originalData.length > 0
-          ? ((validatedData.length / originalData.length) * 100).toFixed(2) +
-            '%'
+          ? ((validatedData.length / originalData.length) * 100).toFixed(2) + '%'
           : '0%',
     };
   }

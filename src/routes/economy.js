@@ -31,9 +31,7 @@ const handleRouteError = (res, error, operation, requestId) => {
 
 // Validation middleware
 const validateEconomyData = [
-  body('type')
-    .isIn(['currency', 'inventory', 'catalog'])
-    .withMessage('Invalid economy data type'),
+  body('type').isIn(['currency', 'inventory', 'catalog']).withMessage('Invalid economy data type'),
   body('data').isArray().withMessage('Data must be an array'),
 ];
 
@@ -68,26 +66,22 @@ router.get('/report', security.sessionValidation, async (req, res) => {
 });
 
 // Deploy economy data to Unity
-router.post(
-  '/deploy',
-  security.sessionValidation,
-  validateEconomyData,
-  async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          errors: errors.array(),
-          requestId: req.requestId,
-        });
-      }
+router.post('/deploy', security.sessionValidation, validateEconomyData, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array(),
+        requestId: req.requestId,
+      });
+    }
 
-      const { type, data } = req.body;
+    const { type, data } = req.body;
 
-      // Prepare economy data based on type
-      let economyData = {};
-      switch (type) {
+    // Prepare economy data based on type
+    let economyData = {};
+    switch (type) {
       case 'currency':
         economyData.currencies = data;
         break;
@@ -103,28 +97,27 @@ router.post(
           error: 'Invalid economy data type',
           requestId: req.requestId,
         });
-      }
-
-      // Deploy to Unity Services
-      const result = await unityService.deployEconomyData(economyData);
-
-      security.logSecurityEvent('economy_deploy', {
-        playerId: req.user.playerId,
-        type,
-        itemCount: data.length,
-        ip: req.ip,
-      });
-
-      res.json({
-        success: true,
-        result,
-        requestId: req.requestId,
-      });
-    } catch (error) {
-      handleRouteError(res, error, 'deploy economy data', req.requestId);
     }
+
+    // Deploy to Unity Services
+    const result = await unityService.deployEconomyData(economyData);
+
+    security.logSecurityEvent('economy_deploy', {
+      playerId: req.user.playerId,
+      type,
+      itemCount: data.length,
+      ip: req.ip,
+    });
+
+    res.json({
+      success: true,
+      result,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    handleRouteError(res, error, 'deploy economy data', req.requestId);
   }
-);
+});
 
 // Get currencies
 router.get('/currencies', security.sessionValidation, async (req, res) => {

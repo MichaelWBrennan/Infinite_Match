@@ -67,17 +67,17 @@ class HeadlessUnityService {
 
   async getCurrencies() {
     logger.info('Simulating get currencies');
-    return this.loadEconomyDataFromCSV().then(data => data.currencies);
+    return this.loadEconomyDataFromCSV().then((data) => data.currencies);
   }
 
   async getInventoryItems() {
     logger.info('Simulating get inventory items');
-    return this.loadEconomyDataFromCSV().then(data => data.inventory);
+    return this.loadEconomyDataFromCSV().then((data) => data.inventory);
   }
 
   async getCatalogItems() {
     logger.info('Simulating get catalog items');
-    return this.loadEconomyDataFromCSV().then(data => data.catalog);
+    return this.loadEconomyDataFromCSV().then((data) => data.catalog);
   }
 
   /**
@@ -239,21 +239,12 @@ class HeadlessUnityService {
       // Load currencies
       const currenciesCSV = await readFile(
         join(process.cwd(), 'economy', 'currencies.csv'),
-        'utf-8'
+        'utf-8',
       );
-      const currencies = this.parseCSV(currenciesCSV, [
-        'id',
-        'name',
-        'type',
-        'initial',
-        'maximum',
-      ]);
+      const currencies = this.parseCSV(currenciesCSV, ['id', 'name', 'type', 'initial', 'maximum']);
 
       // Load inventory
-      const inventoryCSV = await readFile(
-        join(process.cwd(), 'economy', 'inventory.csv'),
-        'utf-8'
-      );
+      const inventoryCSV = await readFile(join(process.cwd(), 'economy', 'inventory.csv'), 'utf-8');
       const inventory = this.parseCSV(inventoryCSV, [
         'id',
         'name',
@@ -263,10 +254,7 @@ class HeadlessUnityService {
       ]);
 
       // Load catalog
-      const catalogCSV = await readFile(
-        join(process.cwd(), 'economy', 'catalog.csv'),
-        'utf-8'
-      );
+      const catalogCSV = await readFile(join(process.cwd(), 'economy', 'catalog.csv'), 'utf-8');
       const catalog = this.parseCSV(catalogCSV, [
         'id',
         'name',

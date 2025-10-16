@@ -25,17 +25,19 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utilities"))
 class Unity100PercentAutomation:
     def __init__(self):
         self.unity_credentials = self.load_credentials()
-        self.project_id = self.unity_credentials.get('project_id')
-        self.environment_id = self.unity_credentials.get('environment_id')
+        self.project_id = self.unity_credentials.get("project_id")
+        self.environment_id = self.unity_credentials.get("environment_id")
 
     def load_credentials(self):
         """Load Unity credentials from environment or config"""
         project_id = os.getenv("UNITY_PROJECT_ID")
         environment_id = os.getenv("UNITY_ENV_ID")
-        
+
         if not all([project_id, environment_id]):
-            raise ValueError("Missing required Unity Cloud secrets: UNITY_PROJECT_ID, UNITY_ENV_ID")
-            
+            raise ValueError(
+                "Missing required Unity Cloud secrets: UNITY_PROJECT_ID, UNITY_ENV_ID"
+            )
+
         return {
             "client_id": os.getenv("UNITY_CLIENT_ID", ""),
             "client_secret": os.getenv("UNITY_CLIENT_SECRET", ""),

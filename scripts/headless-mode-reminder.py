@@ -7,6 +7,7 @@ This script reminds users to use headless mode for all Unity Cloud operations
 import os
 import sys
 
+
 def show_headless_reminder():
     """Display headless mode reminder"""
     print("=" * 80)
@@ -34,28 +35,30 @@ def show_headless_reminder():
     print("   • Full service simulation")
     print("=" * 80)
 
+
 def check_headless_scripts():
     """Check if headless scripts exist"""
     scripts = [
         "scripts/unity/test-headless-account-visibility.py",
         "scripts/unity/deploy-cloud-code.js",
         "scripts/unity/match3_complete_automation.py",
-        "scripts/unity/headless-unity-cloud-reader.py"
+        "scripts/unity/headless-unity-cloud-reader.py",
     ]
-    
+
     missing = []
     for script in scripts:
         if not os.path.exists(script):
             missing.append(script)
-    
+
     if missing:
         print("⚠️ Missing headless scripts:")
         for script in missing:
             print(f"   • {script}")
         return False
-    
+
     print("✅ All headless scripts are available")
     return True
+
 
 def main():
     """Main function"""
@@ -64,6 +67,7 @@ def main():
     check_headless_scripts()
     print()
     print("🚀 Ready for headless operations!")
+
 
 if __name__ == "__main__":
     main()

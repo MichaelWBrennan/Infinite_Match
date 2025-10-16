@@ -17,16 +17,12 @@ const logger = new Logger('AuthRoutes');
 // Validation middleware
 const validateLogin = [
   body('playerId').notEmpty().withMessage('Player ID is required'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ];
 
 const validateRegister = [
   body('playerId').notEmpty().withMessage('Player ID is required'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('email').isEmail().withMessage('Valid email is required'),
 ];
 
@@ -62,57 +58,52 @@ router.post(
       token,
       sessionId,
     });
-  })
+  }),
 );
 
 // Register endpoint
-router.post(
-  '/register',
-  security.authRateLimit,
-  validateRegister,
-  async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          errors: errors.array(),
-          requestId: req.requestId,
-        });
-      }
-
-      const { playerId, email, deviceInfo } = req.body;
-
-      // TODO: Implement actual user registration
-      // For now, we'll create a session for any valid registration
-      const sessionId = security.createSession(playerId, { deviceInfo, email });
-      const token = security.generateToken({ playerId, sessionId });
-
-      security.logSecurityEvent('player_register', {
-        playerId,
-        email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        deviceInfo,
-      });
-
-      res.json({
-        success: true,
-        token,
-        sessionId,
-        message: 'Registration successful',
-        requestId: req.requestId,
-      });
-    } catch (error) {
-      logger.error('Registration failed', { error: error.message });
-      res.status(500).json({
+router.post('/register', security.authRateLimit, validateRegister, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
         success: false,
-        error: 'Registration failed',
+        errors: errors.array(),
         requestId: req.requestId,
       });
     }
+
+    const { playerId, email, deviceInfo } = req.body;
+
+    // TODO: Implement actual user registration
+    // For now, we'll create a session for any valid registration
+    const sessionId = security.createSession(playerId, { deviceInfo, email });
+    const token = security.generateToken({ playerId, sessionId });
+
+    security.logSecurityEvent('player_register', {
+      playerId,
+      email,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      deviceInfo,
+    });
+
+    res.json({
+      success: true,
+      token,
+      sessionId,
+      message: 'Registration successful',
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logger.error('Registration failed', { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Registration failed',
+      requestId: req.requestId,
+    });
   }
-);
+});
 
 // Logout endpoint
 router.post('/logout', security.sessionValidation, (req, res) => {
@@ -203,81 +194,89 @@ router.get('/profile', security.sessionValidation, (req, res) => {
 });
 
 // MFA Setup Routes
-router.post('/mfa/setup', security.sessionValidation, asyncHandler(async (req, res) => {
-  const { playerId, email } = req.user;
-  
-  try {
-    const mfaData = mfaProvider.generateSecret(playerId, email);
-    
-    // Store MFA secret in user session (in production, store in database)
-    req.session.mfaSecret = mfaData.secret;
-    req.session.mfaBackupCodes = mfaData.backupCodes;
-    
-    res.json({
-      success: true,
-      secret: mfaData.secret,
-      qrCodeData: mfaData.qrCodeData,
-      backupCodes: mfaData.backupCodes,
-      requestId: req.requestId
-    });
-  } catch (error) {
-    logger.error('MFA setup failed', { error: error.message, playerId });
-    res.status(500).json({ 
-      success: false,
-      error: 'MFA setup failed',
-      requestId: req.requestId
-    });
-  }
-}));
+router.post(
+  '/mfa/setup',
+  security.sessionValidation,
+  asyncHandler(async (req, res) => {
+    const { playerId, email } = req.user;
 
-router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, res) => {
-  const { token } = req.body;
-  const { playerId } = req.user;
-  
-  if (!token) {
-    return res.status(400).json({ 
-      success: false,
-      error: 'MFA token required',
-      requestId: req.requestId
-    });
-  }
-  
-  try {
-    const secret = req.session.mfaSecret;
-    if (!secret) {
-      return res.status(400).json({ 
+    try {
+      const mfaData = mfaProvider.generateSecret(playerId, email);
+
+      // Store MFA secret in user session (in production, store in database)
+      req.session.mfaSecret = mfaData.secret;
+      req.session.mfaBackupCodes = mfaData.backupCodes;
+
+      res.json({
+        success: true,
+        secret: mfaData.secret,
+        qrCodeData: mfaData.qrCodeData,
+        backupCodes: mfaData.backupCodes,
+        requestId: req.requestId,
+      });
+    } catch (error) {
+      logger.error('MFA setup failed', { error: error.message, playerId });
+      res.status(500).json({
         success: false,
-        error: 'MFA not set up',
-        requestId: req.requestId
+        error: 'MFA setup failed',
+        requestId: req.requestId,
       });
     }
-    
-    const isValid = mfaProvider.verifyToken(secret, token);
-    
-    if (isValid) {
-      req.session.mfaEnabled = true;
-      logger.info('MFA enabled successfully', { playerId });
-      res.json({ 
-        success: true, 
-        message: 'MFA enabled successfully',
-        requestId: req.requestId
-      });
-    } else {
-      logger.warn('MFA verification failed', { playerId });
-      res.status(400).json({ 
+  }),
+);
+
+router.post(
+  '/mfa/verify',
+  security.sessionValidation,
+  asyncHandler(async (req, res) => {
+    const { token } = req.body;
+    const { playerId } = req.user;
+
+    if (!token) {
+      return res.status(400).json({
         success: false,
-        error: 'Invalid MFA token',
-        requestId: req.requestId
+        error: 'MFA token required',
+        requestId: req.requestId,
       });
     }
-  } catch (error) {
-    logger.error('MFA verification error', { error: error.message, playerId });
-    res.status(500).json({ 
-      success: false,
-      error: 'MFA verification failed',
-      requestId: req.requestId
-    });
-  }
-}));
+
+    try {
+      const secret = req.session.mfaSecret;
+      if (!secret) {
+        return res.status(400).json({
+          success: false,
+          error: 'MFA not set up',
+          requestId: req.requestId,
+        });
+      }
+
+      const isValid = mfaProvider.verifyToken(secret, token);
+
+      if (isValid) {
+        req.session.mfaEnabled = true;
+        logger.info('MFA enabled successfully', { playerId });
+        res.json({
+          success: true,
+          message: 'MFA enabled successfully',
+          requestId: req.requestId,
+        });
+      } else {
+        logger.warn('MFA verification failed', { playerId });
+        res.status(400).json({
+          success: false,
+          error: 'Invalid MFA token',
+          requestId: req.requestId,
+        });
+      }
+    } catch (error) {
+      logger.error('MFA verification error', { error: error.message, playerId });
+      res.status(500).json({
+        success: false,
+        error: 'MFA verification failed',
+        requestId: req.requestId,
+      });
+    }
+  }),
+);
 
 export default router;

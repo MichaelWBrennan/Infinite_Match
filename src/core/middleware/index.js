@@ -54,8 +54,8 @@ export const validateRequest = (schema) => {
  */
 export const responseFormatter = (req, res, next) => {
   const originalJson = res.json;
-  
-  res.json = function(data) {
+
+  res.json = function (data) {
     const response = {
       success: res.statusCode < 400,
       data: res.statusCode < 400 ? data : undefined,
@@ -63,10 +63,10 @@ export const responseFormatter = (req, res, next) => {
       timestamp: new Date().toISOString(),
       requestId: req.requestId,
     };
-    
+
     return originalJson.call(this, response);
   };
-  
+
   next();
 };
 
@@ -78,7 +78,7 @@ export const responseFormatter = (req, res, next) => {
  */
 export const performanceMonitor = (req, res, next) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     logger.info('Request performance', {
@@ -89,7 +89,7 @@ export const performanceMonitor = (req, res, next) => {
       requestId: req.requestId,
     });
   });
-  
+
   next();
 };
 

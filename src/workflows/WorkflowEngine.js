@@ -56,11 +56,7 @@ export class WorkflowStep {
   async executeWithTimeout(state) {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(
-          new Error(
-            `Step ${this.name} timed out after ${this.options.timeout}ms`
-          )
-        );
+        reject(new Error(`Step ${this.name} timed out after ${this.options.timeout}ms`));
       }, this.options.timeout);
 
       this.executeFn(state)
@@ -202,17 +198,10 @@ export class WorkflowEngine {
    * @returns {Object} Workflow statistics
    */
   getStats() {
-    const totalDuration = this.results.reduce(
-      (sum, result) => sum + result.duration,
-      0
-    );
+    const totalDuration = this.results.reduce((sum, result) => sum + result.duration, 0);
     const successRate =
       this.results.length > 0
-        ? (
-          (this.results.filter((r) => r.success).length /
-              this.results.length) *
-            100
-        ).toFixed(2)
+        ? ((this.results.filter((r) => r.success).length / this.results.length) * 100).toFixed(2)
         : 0;
 
     return {
@@ -221,9 +210,7 @@ export class WorkflowEngine {
       successRate: `${successRate}%`,
       totalDuration: `${totalDuration}ms`,
       averageStepDuration:
-        this.results.length > 0
-          ? `${Math.round(totalDuration / this.results.length)}ms`
-          : '0ms',
+        this.results.length > 0 ? `${Math.round(totalDuration / this.results.length)}ms` : '0ms',
     };
   }
 

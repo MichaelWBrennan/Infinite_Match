@@ -34,10 +34,7 @@ describe('Server', () => {
     });
 
     it('should return error for missing fields', async () => {
-      const response = await request(app)
-        .post('/api/verify_receipt')
-        .send({})
-        .expect(400);
+      const response = await request(app).post('/api/verify_receipt').send({}).expect(400);
 
       expect(response.body).toHaveProperty('valid', false);
       expect(response.body).toHaveProperty('error');

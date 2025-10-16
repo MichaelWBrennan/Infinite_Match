@@ -118,9 +118,9 @@ export class ReceiptVerificationService {
       const client = await auth.getClient();
       const accessToken = await client.getAccessToken();
       const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(
-        packageName
+        packageName,
       )}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(
-        purchaseToken
+        purchaseToken,
       )}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken.token}` },
@@ -136,9 +136,9 @@ export class ReceiptVerificationService {
       if (!acknowledged) {
         try {
           const ackUrl = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(
-            packageName
+            packageName,
           )}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(
-            purchaseToken
+            purchaseToken,
           )}:acknowledge`;
           const ackRes = await fetch(ackUrl, {
             method: 'POST',

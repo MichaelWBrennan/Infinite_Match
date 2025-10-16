@@ -49,7 +49,7 @@ export class ServiceContainer {
     const service = this.services.get(name);
     if (!service) {
       throw new Error(
-        `Service '${name}' not found. Available services: ${Array.from(this.services.keys()).join(', ')}`
+        `Service '${name}' not found. Available services: ${Array.from(this.services.keys()).join(', ')}`,
       );
     }
 

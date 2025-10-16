@@ -28,15 +28,15 @@ const activeSessions = new Map();
 export const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ['\'self\''],
-      styleSrc: ['\'self\'', '\'unsafe-inline\''],
-      scriptSrc: ['\'self\''],
-      imgSrc: ['\'self\'', 'data:', 'https:'],
-      connectSrc: ['\'self\''],
-      fontSrc: ['\'self\''],
-      objectSrc: ['\'none\''],
-      mediaSrc: ['\'self\''],
-      frameSrc: ['\'none\''],
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -143,10 +143,7 @@ export const securityHeaders = (req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader(
-    'Permissions-Policy',
-    'geolocation=(), microphone=(), camera=()'
-  );
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   next();
 };
 
@@ -403,27 +400,27 @@ export const requirePermission = (permission) => {
   return (req, res, next) => {
     try {
       const { playerId } = req.user || {};
-      
+
       if (!playerId) {
         return res.status(401).json({
           success: false,
           error: 'Authentication required',
-          requestId: req.requestId
+          requestId: req.requestId,
         });
       }
 
       if (!rbacProvider.hasPermission(playerId, permission)) {
-        securityLogger.warn('Permission denied', { 
-          playerId, 
-          permission, 
+        securityLogger.warn('Permission denied', {
+          playerId,
+          permission,
           ip: req.ip,
-          userAgent: req.get('User-Agent')
+          userAgent: req.get('User-Agent'),
         });
-        
+
         return res.status(403).json({
           success: false,
           error: 'Insufficient permissions',
-          requestId: req.requestId
+          requestId: req.requestId,
         });
       }
 
@@ -433,7 +430,7 @@ export const requirePermission = (permission) => {
       res.status(500).json({
         success: false,
         error: 'Permission check failed',
-        requestId: req.requestId
+        requestId: req.requestId,
       });
     }
   };
@@ -443,12 +440,12 @@ export const requireMinRole = (minRole) => {
   return (req, res, next) => {
     try {
       const { playerId } = req.user || {};
-      
+
       if (!playerId) {
         return res.status(401).json({
           success: false,
           error: 'Authentication required',
-          requestId: req.requestId
+          requestId: req.requestId,
         });
       }
 
@@ -459,25 +456,25 @@ export const requireMinRole = (minRole) => {
         [ROLES.PREMIUM_USER]: 2,
         [ROLES.MODERATOR]: 3,
         [ROLES.ADMIN]: 4,
-        [ROLES.SUPER_ADMIN]: 5
+        [ROLES.SUPER_ADMIN]: 5,
       };
 
       const userLevel = roleHierarchy[userRole] || 0;
       const requiredLevel = roleHierarchy[minRole] || 0;
-      
+
       if (userLevel < requiredLevel) {
-        securityLogger.warn('Insufficient role level', { 
-          playerId, 
+        securityLogger.warn('Insufficient role level', {
+          playerId,
           requiredRole: minRole,
           userRole,
           ip: req.ip,
-          userAgent: req.get('User-Agent')
+          userAgent: req.get('User-Agent'),
         });
-        
+
         return res.status(403).json({
           success: false,
           error: 'Insufficient role privileges',
-          requestId: req.requestId
+          requestId: req.requestId,
         });
       }
 
@@ -487,7 +484,7 @@ export const requireMinRole = (minRole) => {
       res.status(500).json({
         success: false,
         error: 'Role level check failed',
-        requestId: req.requestId
+        requestId: req.requestId,
       });
     }
   };

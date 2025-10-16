@@ -54,7 +54,7 @@ export enum LevelDifficulty {
   MEDIUM = 'MEDIUM',
   HARD = 'HARD',
   EXPERT = 'EXPERT',
-  MASTER = 'MASTER'
+  MASTER = 'MASTER',
 }
 
 export enum SpecialTileType {
@@ -62,7 +62,7 @@ export enum SpecialTileType {
   LIGHTNING = 'LIGHTNING',
   RAINBOW = 'RAINBOW',
   MULTIPLIER = 'MULTIPLIER',
-  FREEZE = 'FREEZE'
+  FREEZE = 'FREEZE',
 }
 
 export enum ObstacleType {
@@ -70,7 +70,7 @@ export enum ObstacleType {
   ICE = 'ICE',
   CHAIN = 'CHAIN',
   LOCK = 'LOCK',
-  TIMER = 'TIMER'
+  TIMER = 'TIMER',
 }
 
 export enum RewardType {
@@ -78,5 +78,5 @@ export enum RewardType {
   GEMS = 'GEMS',
   ENERGY = 'ENERGY',
   POWER_UP = 'POWER_UP',
-  EXPERIENCE = 'EXPERIENCE'
+  EXPERIENCE = 'EXPERIENCE',
 }

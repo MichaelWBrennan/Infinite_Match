@@ -324,7 +324,9 @@ namespace Evergreen.Editor
             print("✅ Physics System - 100% Automated")
             print("✅ Unity Cloud - Automatically Synced")
             print("✅ Automation Report - Generated")
-            print("\n🎮 Your Evergreen Puzzler Match-3 game is now seamlessly automated!")
+            print(
+                "\n🎮 Your Evergreen Puzzler Match-3 game is now seamlessly automated!"
+            )
             print("   - Zero manual work required")
             print("   - Unity Cloud updates automatically")
             print("   - Complete CI/CD pipeline")

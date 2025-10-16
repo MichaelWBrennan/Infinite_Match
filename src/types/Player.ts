@@ -53,5 +53,5 @@ export enum ItemRarity {
   UNCOMMON = 'UNCOMMON',
   RARE = 'RARE',
   EPIC = 'EPIC',
-  LEGENDARY = 'LEGENDARY'
+  LEGENDARY = 'LEGENDARY',
 }

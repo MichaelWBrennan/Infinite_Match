@@ -63,9 +63,7 @@ export class HealthCheckStep {
         },
       };
 
-      const overallStatus = Object.values(healthStatus).every(
-        (check) => check.status === 'healthy'
-      )
+      const overallStatus = Object.values(healthStatus).every((check) => check.status === 'healthy')
         ? 'healthy'
         : 'unhealthy';
 

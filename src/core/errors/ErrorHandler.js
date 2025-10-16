@@ -170,7 +170,7 @@ export class ErrorHandler {
           errorInfo.message,
           errorInfo.context?.code || 'WRAPPED_ERROR',
           errorInfo.context?.statusCode || 500,
-          errorInfo.context
+          errorInfo.context,
         );
       }
     };

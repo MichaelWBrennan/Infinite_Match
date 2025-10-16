@@ -60,10 +60,7 @@ class EconomyService {
       return economyData;
     } catch (error) {
       logger.error('Failed to load economy data', { error: error.message });
-      throw new ServiceError(
-        `Failed to load economy data: ${error.message}`,
-        'EconomyService'
-      );
+      throw new ServiceError(`Failed to load economy data: ${error.message}`, 'EconomyService');
     }
   }
 
@@ -133,9 +130,7 @@ class EconomyService {
         // Apply field mappings with defaults
         for (const [field, mapping] of Object.entries(fieldMappings)) {
           if (mapping.transform) {
-            validatedItem[field] = mapping.transform(
-              item[mapping.source || field]
-            );
+            validatedItem[field] = mapping.transform(item[mapping.source || field]);
           } else {
             validatedItem[field] = item[field] || mapping.default;
           }
@@ -163,12 +158,7 @@ class EconomyService {
       isConsumable: { default: false },
     };
 
-    return this.validateEconomyData(
-      currencies,
-      'currency',
-      requiredFields,
-      fieldMappings
-    );
+    return this.validateEconomyData(currencies, 'currency', requiredFields, fieldMappings);
   }
 
   /**
@@ -192,12 +182,7 @@ class EconomyService {
       iconPath: { default: '' },
     };
 
-    return this.validateEconomyData(
-      inventory,
-      'inventory',
-      requiredFields,
-      fieldMappings
-    );
+    return this.validateEconomyData(inventory, 'inventory', requiredFields, fieldMappings);
   }
 
   /**
@@ -220,12 +205,7 @@ class EconomyService {
       iconPath: { default: '' },
     };
 
-    return this.validateEconomyData(
-      catalog,
-      'catalog',
-      requiredFields,
-      fieldMappings
-    );
+    return this.validateEconomyData(catalog, 'catalog', requiredFields, fieldMappings);
   }
 
   /**
@@ -233,8 +213,7 @@ class EconomyService {
    */
   hasRequiredFields(obj, requiredFields) {
     return requiredFields.every(
-      (field) =>
-        Object.prototype.hasOwnProperty.call(obj, field) && obj[field] !== ''
+      (field) => Object.prototype.hasOwnProperty.call(obj, field) && obj[field] !== '',
     );
   }
 

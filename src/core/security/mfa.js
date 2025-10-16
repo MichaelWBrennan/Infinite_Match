@@ -27,13 +27,13 @@ export class MFAProvider {
     try {
       const secret = crypto.randomBytes(20).toString('base32');
       const qrCodeData = this.generateQRCodeData(userId, userEmail, secret);
-      
+
       logger.info('MFA secret generated', { userId, hasSecret: !!secret });
-      
+
       return {
         secret,
         qrCodeData,
-        backupCodes: this.generateBackupCodes()
+        backupCodes: this.generateBackupCodes(),
       };
     } catch (error) {
       logger.error('Failed to generate MFA secret', { error: error.message, userId });
@@ -51,20 +51,19 @@ export class MFAProvider {
     try {
       const currentTime = Math.floor(Date.now() / 1000);
       const timeWindow = 1; // Allow 1 time window before/after
-      
+
       for (let i = -timeWindow; i <= timeWindow; i++) {
-        const time = currentTime + (i * this.period);
+        const time = currentTime + i * this.period;
         const expectedToken = this.generateTOTP(secret, time);
-        
-        if (crypto.timingSafeEqual(
-          Buffer.from(token, 'utf8'),
-          Buffer.from(expectedToken, 'utf8')
-        )) {
+
+        if (
+          crypto.timingSafeEqual(Buffer.from(token, 'utf8'), Buffer.from(expectedToken, 'utf8'))
+        ) {
           logger.info('MFA token verified successfully');
           return true;
         }
       }
-      
+
       logger.warn('MFA token verification failed', { token: token.substring(0, 2) + '****' });
       return false;
     } catch (error) {
@@ -83,22 +82,23 @@ export class MFAProvider {
     const counter = Math.floor(time / this.period);
     const key = this.base32Decode(secret);
     const buffer = Buffer.alloc(8);
-    
+
     for (let i = 7; i >= 0; i--) {
       buffer[i] = counter & 0xff;
       counter >>= 8;
     }
-    
+
     const hmac = crypto.createHmac(this.algorithm, key);
     hmac.update(buffer);
     const hash = hmac.digest();
-    
+
     const offset = hash[hash.length - 1] & 0xf;
-    const code = ((hash[offset] & 0x7f) << 24) |
-                 ((hash[offset + 1] & 0xff) << 16) |
-                 ((hash[offset + 2] & 0xff) << 8) |
-                 (hash[offset + 3] & 0xff);
-    
+    const code =
+      ((hash[offset] & 0x7f) << 24) |
+      ((hash[offset + 1] & 0xff) << 16) |
+      ((hash[offset + 2] & 0xff) << 8) |
+      (hash[offset + 3] & 0xff);
+
     return (code % Math.pow(10, this.digits)).toString().padStart(this.digits, '0');
   }
 
@@ -150,20 +150,23 @@ export class MFAProvider {
   base32Decode(str) {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
     const padding = '=';
-    
+
     str = str.replace(/\s/g, '').toUpperCase();
     const paddingCount = (str.match(new RegExp(padding, 'g')) || []).length;
-    
+
     if (paddingCount > 0 && paddingCount < 8) {
       str = str.replace(new RegExp(padding + '+$'), '');
     }
-    
-    const bits = str.split('').map(char => {
-      const index = alphabet.indexOf(char);
-      if (index === -1) throw new Error('Invalid base32 character');
-      return index.toString(2).padStart(5, '0');
-    }).join('');
-    
+
+    const bits = str
+      .split('')
+      .map((char) => {
+        const index = alphabet.indexOf(char);
+        if (index === -1) throw new Error('Invalid base32 character');
+        return index.toString(2).padStart(5, '0');
+      })
+      .join('');
+
     const bytes = [];
     for (let i = 0; i < bits.length; i += 8) {
       const byte = bits.substr(i, 8);
@@ -171,7 +174,7 @@ export class MFAProvider {
         bytes.push(parseInt(byte, 2));
       }
     }
-    
+
     return Buffer.from(bytes);
   }
 }

@@ -30,14 +30,14 @@ export const httpsEnforcement = (req, res, next) => {
 
   // Redirect to HTTPS
   const httpsUrl = `https://${req.get('host')}${req.originalUrl}`;
-  
-  logger.info('Redirecting to HTTPS', { 
+
+  logger.info('Redirecting to HTTPS', {
     originalUrl: req.originalUrl,
     httpsUrl,
     ip: req.ip,
-    userAgent: req.get('User-Agent')
+    userAgent: req.get('User-Agent'),
   });
-  
+
   res.redirect(301, httpsUrl);
 };
 
@@ -56,13 +56,13 @@ export const httpsOnly = (req, res, next) => {
     logger.warn('Blocked non-HTTPS request', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
-      url: req.originalUrl
+      url: req.originalUrl,
     });
-    
+
     return res.status(403).json({
       success: false,
       error: 'HTTPS required',
-      message: 'This application requires a secure connection'
+      message: 'This application requires a secure connection',
     });
   }
 
@@ -79,23 +79,25 @@ export const httpsHeaders = (req, res, next) => {
   }
 
   // Content Security Policy with HTTPS enforcement
-  res.setHeader('Content-Security-Policy', 
+  res.setHeader(
+    'Content-Security-Policy',
     "default-src 'self' https:; " +
-    "script-src 'self' 'unsafe-inline' https:; " +
-    "style-src 'self' 'unsafe-inline' https:; " +
-    "img-src 'self' data: https:; " +
-    "font-src 'self' https:; " +
-    "connect-src 'self' https:; " +
-    "frame-ancestors 'none'; " +
-    "upgrade-insecure-requests"
+      "script-src 'self' 'unsafe-inline' https:; " +
+      "style-src 'self' 'unsafe-inline' https:; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' https:; " +
+      "connect-src 'self' https:; " +
+      "frame-ancestors 'none'; " +
+      'upgrade-insecure-requests',
   );
 
   // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
   // Permissions Policy
-  res.setHeader('Permissions-Policy', 
-    'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+  res.setHeader(
+    'Permissions-Policy',
+    'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
   );
 
   next();
@@ -107,12 +109,12 @@ export const httpsHeaders = (req, res, next) => {
 export const httpsHealthCheck = (req, res) => {
   const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
   const protocol = isSecure ? 'https' : 'http';
-  
+
   res.json({
     https: isSecure,
     protocol,
     environment: AppConfig.server.environment,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 };
 
@@ -128,8 +130,8 @@ export const getHttpsConfig = () => {
       hsts: true,
       csp: true,
       referrerPolicy: true,
-      permissionsPolicy: true
-    }
+      permissionsPolicy: true,
+    },
   };
 };
 
@@ -138,5 +140,5 @@ export default {
   httpsOnly,
   httpsHeaders,
   httpsHealthCheck,
-  getHttpsConfig
+  getHttpsConfig,
 };

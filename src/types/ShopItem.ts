@@ -15,14 +15,14 @@ export interface ShopItem {
 export enum CurrencyType {
   COINS = 'COINS',
   GEMS = 'GEMS',
-  ENERGY = 'ENERGY'
+  ENERGY = 'ENERGY',
 }
 
 export enum ShopCategory {
   POWER_UPS = 'POWER_UPS',
   COSMETICS = 'COSMETICS',
   CURRENCY = 'CURRENCY',
-  BOOSTERS = 'BOOSTERS'
+  BOOSTERS = 'BOOSTERS',
 }
 
 export enum ItemRarity {
@@ -30,5 +30,5 @@ export enum ItemRarity {
   UNCOMMON = 'UNCOMMON',
   RARE = 'RARE',
   EPIC = 'EPIC',
-  LEGENDARY = 'LEGENDARY'
+  LEGENDARY = 'LEGENDARY',
 }

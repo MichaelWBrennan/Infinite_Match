@@ -28,7 +28,11 @@ const COUNTRY_TO_CURRENCY = {
 };
 
 export class PricingService {
-  constructor(tiersPath = 'config/pricing/tiers.json', overridesPath = AppConfig.payments?.pricing?.countryOverridesPath || 'config/pricing/overrides.json') {
+  constructor(
+    tiersPath = 'config/pricing/tiers.json',
+    overridesPath = AppConfig.payments?.pricing?.countryOverridesPath ||
+      'config/pricing/overrides.json',
+  ) {
     this.tiersPath = tiersPath;
     this.overridesPath = overridesPath;
   }

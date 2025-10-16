@@ -24,19 +24,11 @@ export function registerServices() {
   container.register(
     'economyService',
     (c) =>
-      new EconomyService(
-        c.get('dataLoader'),
-        c.get('economyValidator'),
-        c.get('cacheManager')
-      ),
-    true
+      new EconomyService(c.get('dataLoader'), c.get('economyValidator'), c.get('cacheManager')),
+    true,
   );
 
-  container.register(
-    'unityService',
-    (c) => new HeadlessUnityService(c.get('cacheManager')),
-    true
-  );
+  container.register('unityService', (c) => new HeadlessUnityService(c.get('cacheManager')), true);
 
   // Register configuration
   container.registerInstance('config', AppConfig);
