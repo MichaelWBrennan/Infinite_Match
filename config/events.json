@@ -19,6 +19,31 @@
       "end": "03-21",
       "name": "st_patrick",
       "start": "03-15"
+    },
+    {
+      "end": "06-20",
+      "name": "spring",
+      "start": "03-20"
+    },
+    {
+      "end": "09-22",
+      "name": "summer",
+      "start": "06-21"
+    },
+    {
+      "end": "12-20",
+      "name": "autumn",
+      "start": "09-23"
+    },
+    {
+      "end": "03-19",
+      "name": "winter",
+      "start": "12-21"
+    },
+    {
+      "end": "01-07",
+      "name": "holiday",
+      "start": "12-01"
     }
   ]
 }
