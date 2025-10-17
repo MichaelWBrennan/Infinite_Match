@@ -127,61 +127,8 @@ namespace Evergreen.UI
             if (interactButton != null)
                 interactButton.onClick.AddListener(() => InteractWithCharacter5StarUX());
             
-            // Auto-wire all buttons in scene
-            WireAllButtonsInScene();
-            
             // Add hover effects for 5/5 UX
             AddHoverEffectsToButtons();
-        }
-
-        private void WireAllButtonsInScene()
-        {
-            Button[] allButtons = FindObjectsOfType<Button>();
-            foreach (Button button in allButtons)
-            {
-                // Skip if already wired
-                if (button.onClick.GetPersistentEventCount() > 0) continue;
-                
-                string buttonName = button.name.ToLower();
-                
-                // Wire buttons based on name patterns
-                if (buttonName.Contains("play") || buttonName.Contains("start") || buttonName.Contains("game"))
-                {
-                    button.onClick.AddListener(() => StartGameWith5StarUX());
-                }
-                else if (buttonName.Contains("meta") || buttonName.Contains("room"))
-                {
-                    button.onClick.AddListener(() => ShowPanelWith5StarUX(metaGamePanel));
-                }
-                else if (buttonName.Contains("social") || buttonName.Contains("leaderboard") || buttonName.Contains("friends"))
-                {
-                    button.onClick.AddListener(() => ShowPanelWith5StarUX(socialPanel));
-                }
-                else if (buttonName.Contains("event") || buttonName.Contains("daily") || buttonName.Contains("tournament"))
-                {
-                    button.onClick.AddListener(() => ShowPanelWith5StarUX(eventsPanel));
-                }
-                else if (buttonName.Contains("achievement") || buttonName.Contains("reward"))
-                {
-                    button.onClick.AddListener(() => ShowPanelWith5StarUX(achievementsPanel));
-                }
-                else if (buttonName.Contains("character") || buttonName.Contains("interact"))
-                {
-                    button.onClick.AddListener(() => ShowPanelWith5StarUX(characterPanel));
-                }
-                else if (buttonName.Contains("settings"))
-                {
-                    button.onClick.AddListener(() => ShowSettingsWith5StarUX());
-                }
-                else if (buttonName.Contains("back") || buttonName.Contains("return") || buttonName.Contains("menu"))
-                {
-                    button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.GoToMainMenu());
-                }
-                else if (buttonName.Contains("shop"))
-                {
-                    button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.OpenShop());
-                }
-            }
         }
         
         private void ShowPanel(GameObject panel)

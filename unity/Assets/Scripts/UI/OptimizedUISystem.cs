@@ -118,7 +118,6 @@ namespace Evergreen.UI
         {
             ShowMainMenu();
             StartBatchUpdates();
-            WireAllButtonsInScene();
         }
         
         #region Initialization
@@ -253,103 +252,6 @@ namespace Evergreen.UI
                     panel.SetActive(false);
                 }
             }
-        }
-        
-        #endregion
-        
-        #region Button Wiring
-        
-        private void WireAllButtonsInScene()
-        {
-            Button[] allButtons = FindObjectsOfType<Button>();
-            foreach (Button button in allButtons)
-            {
-                // Skip if already wired
-                if (button.onClick.GetPersistentEventCount() > 0) continue;
-                
-                string buttonName = button.name.ToLower();
-                
-                // Wire buttons based on name patterns
-                if (buttonName.Contains("play") || buttonName.Contains("start") || buttonName.Contains("game"))
-                {
-                    button.onClick.AddListener(() => StartGameplay());
-                }
-                else if (buttonName.Contains("main") || buttonName.Contains("menu"))
-                {
-                    button.onClick.AddListener(() => ShowMainMenu());
-                }
-                else if (buttonName.Contains("settings"))
-                {
-                    button.onClick.AddListener(() => ShowSettings());
-                }
-                else if (buttonName.Contains("shop"))
-                {
-                    button.onClick.AddListener(() => ShowShop());
-                }
-                else if (buttonName.Contains("social") || buttonName.Contains("leaderboard") || buttonName.Contains("friends"))
-                {
-                    button.onClick.AddListener(() => ShowLeaderboard());
-                }
-                else if (buttonName.Contains("event") || buttonName.Contains("daily") || buttonName.Contains("tournament"))
-                {
-                    button.onClick.AddListener(() => ShowEvents());
-                }
-                else if (buttonName.Contains("achievement") || buttonName.Contains("reward"))
-                {
-                    button.onClick.AddListener(() => ShowAchievements());
-                }
-                else if (buttonName.Contains("pause"))
-                {
-                    button.onClick.AddListener(() => ShowPause());
-                }
-                else if (buttonName.Contains("back") || buttonName.Contains("return"))
-                {
-                    button.onClick.AddListener(() => ShowMainMenu());
-                }
-                else if (buttonName.Contains("castle") || buttonName.Contains("view"))
-                {
-                    button.onClick.AddListener(() => ShowCastleView());
-                }
-                else if (buttonName.Contains("economy") || buttonName.Contains("currency"))
-                {
-                    button.onClick.AddListener(() => ShowEconomy());
-                }
-                else if (buttonName.Contains("premium") || buttonName.Contains("upgrade"))
-                {
-                    button.onClick.AddListener(() => ShowPremium());
-                }
-                
-                // Add hover effects
-                AddButtonHoverEffects(button);
-            }
-        }
-        
-        private void AddButtonHoverEffects(Button button)
-        {
-            var eventTrigger = button.gameObject.GetComponent<UnityEngine.EventSystems.EventTrigger>();
-            if (eventTrigger == null)
-            {
-                eventTrigger = button.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
-            }
-            
-            // Pointer enter event
-            var pointerEnter = new UnityEngine.EventSystems.EventTrigger.Entry();
-            pointerEnter.eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter;
-            pointerEnter.callback.AddListener((data) => { PlayButtonHoverEffect(button); });
-            eventTrigger.triggers.Add(pointerEnter);
-            
-            // Pointer exit event
-            var pointerExit = new UnityEngine.EventSystems.EventTrigger.Entry();
-            pointerExit.eventID = UnityEngine.EventSystems.EventTriggerType.PointerExit;
-            pointerExit.callback.AddListener((data) => { OnButtonHoverExit(button); });
-            eventTrigger.triggers.Add(pointerExit);
-        }
-        
-        private void OnButtonHoverExit(Button button)
-        {
-            // Reset button scale
-            var rectTransform = button.GetComponent<RectTransform>();
-            rectTransform.localScale = Vector3.one;
         }
         
         #endregion

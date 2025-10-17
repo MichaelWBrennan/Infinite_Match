@@ -7,6 +7,7 @@ public class GameplayUI : MonoBehaviour
 {
     [SerializeField] private Transform gridRoot;
     [SerializeField] private GameObject tilePrefab;
+    [SerializeField] private Button pauseButton;
 
     private Board _board;
 
@@ -14,12 +15,36 @@ public class GameplayUI : MonoBehaviour
     {
         EnsureGridRoot();
         EnsureTilePrefab();
+        InitializeUI();
 
         var lm = OptimizedGameSystem.Instance;
         if (lm == null) { var go = new GameObject("LevelManager"); lm = go.AddComponent<LevelManager>(); }
         lm.LoadLevel(GameState.CurrentLevel);
         _board = new Board(lm.BoardSize, lm.NumColors);
         BuildGrid();
+    }
+
+    private void InitializeUI()
+    {
+        // Setup button listeners
+        if (pauseButton != null)
+        {
+            pauseButton.onClick.AddListener(OnPauseButtonClicked);
+        }
+    }
+
+    public void OnPauseButtonClicked()
+    {
+        try
+        {
+            // Pause game logic here
+            Debug.Log("Game paused");
+            Logger.Info("Game paused", "Gameplay");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "Gameplay");
+        }
     }
 
     private void BuildGrid()
@@ -78,5 +103,14 @@ public class GameplayUI : MonoBehaviour
         var rt = go.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(64, 64);
         tilePrefab = go;
+    }
+
+    void OnDestroy()
+    {
+        // Clean up button listeners
+        if (pauseButton != null)
+        {
+            pauseButton.onClick.RemoveListener(OnPauseButtonClicked);
+        }
     }
 }
