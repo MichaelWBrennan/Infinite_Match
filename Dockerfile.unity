@@ -1,5 +1,5 @@
 # Unity WebGL Builder Docker Image
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -55,12 +55,12 @@ WORKDIR /opt/unity
 RUN wget -q https://public-cdn.cloud.unity3d.com/hub/prod/UnityHub.AppImage -O UnityHub.AppImage \
     && chmod +x UnityHub.AppImage
 
-# Download Unity Editor (2022.3.21f1)
-RUN wget -q https://download.unity3d.com/download_unity/8e5c7b4b5b5f/UnitySetup-2022.3.21f1 \
-    && chmod +x UnitySetup-2022.3.21f1
+# Download Unity Editor (2025.1.0f1)
+RUN wget -q https://download.unity3d.com/download_unity/8e5c7b4b5b5f/UnitySetup-2025.1.0f1 \
+    && chmod +x UnitySetup-2025.1.0f1
 
 # Install Unity Editor
-RUN ./UnitySetup-2022.3.21f1 --unattended --install-location=/opt/Unity/Editor --components=Unity,WebGL
+RUN ./UnitySetup-2025.1.0f1 --unattended --install-location=/opt/Unity/Editor --components=Unity,WebGL
 
 # Set up environment
 ENV PATH="/opt/Unity/Editor:${PATH}"
