@@ -2,7 +2,6 @@
 
 [![Unity](https://img.shields.io/badge/Unity-2022.3.21f1-blue.svg)](https://unity3d.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![AI-Powered](https://img.shields.io/badge/AI-Powered-orange.svg)](#ai-powered-features)
 
 > **The world's first AI-powered infinite content Match-3 game with hybrid RPG mechanics, real-time weather integration, and castle renovation meta-game.**
 
@@ -12,7 +11,7 @@
 
 ### 🤖 **AI Infinite Content Engine**
 - **Unlimited Levels**: AI generates infinite, personalized levels that never repeat
-- **Dynamic Difficulty**: Real-time AI adjustment based on your skill level
+- **Dynamic Difficulty**: Game automatically adjusts to your skill level
 - **Personalized Events**: Weather-based events that change based on your location
 - **Smart Power-ups**: AI creates custom power-ups tailored to your play style
 
@@ -40,8 +39,8 @@
 - **Power-Up Combinations**: Mix and match power-ups for devastating effects
 - **Cascade Physics**: Realistic tile dropping with chain reactions
 
-### 🌐 **Key-Free Social Features**
-- **No API Keys Required**: Share achievements using browser-native features
+### 🌐 **Social Features**
+- **Share Achievements**: Show off your high scores and castle designs
 - **QR Code Sharing**: Generate shareable QR codes for easy social sharing
 - **P2P Challenges**: Challenge friends without external social media
 - **Viral Mechanics**: Built-in viral sharing incentives and rewards
@@ -112,27 +111,6 @@ npm run dev
 2. Install required packages
 3. Build WebGL version
 4. Deploy to your platform
-
----
-
-## 🛠️ **Technical Features**
-
-- **Unity WebGL**: Cross-platform browser compatibility
-- **AI Content Generation**: OpenAI GPT-4 integration for infinite content
-- **Real-Time Analytics**: Comprehensive player behavior tracking
-- **Multi-Cloud Architecture**: AWS, Google Cloud, Azure integration
-- **Key-Free Systems**: No API keys required for core features
-- **Performance Optimized**: 60+ FPS with object pooling and memory management
-
----
-
-## 📊 **Expected Performance**
-
-- **Engagement**: 25% higher than industry average
-- **Retention**: 40% Day 1, 25% Day 7, 15% Day 30
-- **ARPU**: $2.50+ average revenue per user
-- **Content Creation**: 90% reduction in manual content creation
-- **Player Satisfaction**: 4.8/5 stars average rating
 
 ---
 
