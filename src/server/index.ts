@@ -68,7 +68,7 @@ class GameServer {
     this.universalAPI = new UniversalAPI();
     this.webglMiddleware = new WebGLMiddleware();
     this.platformBuildConfig = new PlatformBuildConfig();
-    
+
     this.initializeSocketIO();
     this.initializeServices();
     this.setupMiddleware();
@@ -209,16 +209,18 @@ class GameServer {
     this.setupPlatformRoutes();
 
     // Serve static files for WebGL build with platform optimization
-    this.app.use(express.static('webgl', {
-      setHeaders: (res, path) => {
-        // Set platform-specific headers
-        const platform = this.platformDetector.getCurrentPlatform();
-        if (platform) {
-          res.setHeader('X-Platform', platform.name);
-          res.setHeader('X-Platform-Type', platform.type);
-        }
-      }
-    }));
+    this.app.use(
+      express.static('webgl', {
+        setHeaders: (res, path) => {
+          // Set platform-specific headers
+          const platform = this.platformDetector.getCurrentPlatform();
+          if (platform) {
+            res.setHeader('X-Platform', platform.name);
+            res.setHeader('X-Platform-Type', platform.type);
+          }
+        },
+      }),
+    );
 
     // Serve Unity WebGL build with platform detection
     this.app.get('/', (req: Request, res: Response) => {
@@ -261,7 +263,7 @@ class GameServer {
         const platform = this.platformDetector.getCurrentPlatform();
         const capabilities = this.universalAPI.getPlatformCapabilities();
         const config = this.universalAPI.getPlatformConfig();
-        
+
         res.json({
           success: true,
           data: {
@@ -269,14 +271,14 @@ class GameServer {
             type: platform?.type || 'unknown',
             capabilities: capabilities.data,
             config: config.data,
-            recommendations: this.universalAPI.getPlatformRecommendations()
-          }
+            recommendations: this.universalAPI.getPlatformRecommendations(),
+          },
         });
       } catch (error) {
         this.logger.error('Platform detection error:', error);
         res.status(500).json({
           success: false,
-          error: 'Platform detection failed'
+          error: 'Platform detection failed',
         });
       }
     });
@@ -290,7 +292,7 @@ class GameServer {
         this.logger.error('Platform capabilities error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to get platform capabilities'
+          error: 'Failed to get platform capabilities',
         });
       }
     });
@@ -301,13 +303,13 @@ class GameServer {
         const buildConfig = await this.platformBuildConfig.getOptimizedBuildConfig();
         res.json({
           success: true,
-          data: buildConfig
+          data: buildConfig,
         });
       } catch (error) {
         this.logger.error('Build config error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to get build configuration'
+          error: 'Failed to get build configuration',
         });
       }
     });
@@ -321,7 +323,7 @@ class GameServer {
         this.logger.error('Show ad error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to show advertisement'
+          error: 'Failed to show advertisement',
         });
       }
     });
@@ -334,7 +336,7 @@ class GameServer {
         this.logger.error('Show rewarded ad error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to show rewarded advertisement'
+          error: 'Failed to show rewarded advertisement',
         });
       }
     });
@@ -347,7 +349,7 @@ class GameServer {
         this.logger.error('Get user info error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to get user information'
+          error: 'Failed to get user information',
         });
       }
     });
@@ -361,7 +363,7 @@ class GameServer {
         this.logger.error('Track event error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to track event'
+          error: 'Failed to track event',
         });
       }
     });
@@ -374,7 +376,7 @@ class GameServer {
         this.logger.error('Gameplay start error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to handle gameplay start'
+          error: 'Failed to handle gameplay start',
         });
       }
     });
@@ -387,7 +389,7 @@ class GameServer {
         this.logger.error('Gameplay stop error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to handle gameplay stop'
+          error: 'Failed to handle gameplay stop',
         });
       }
     });
@@ -399,13 +401,13 @@ class GameServer {
 
       // Get platform info
       const platform = this.platformDetector.getCurrentPlatform();
-      
+
       // Track connection with platform info
       this.analyticsService.trackGameEvent('websocket_connected', {
         socket_id: socket.id,
         ip_address: socket.handshake.address,
         platform: platform?.name || 'unknown',
-        platform_type: platform?.type || 'unknown'
+        platform_type: platform?.type || 'unknown',
       });
 
       // Handle game events
@@ -414,7 +416,7 @@ class GameServer {
           await this.analyticsService.trackGameEvent(
             data.event_name,
             data.properties,
-            data.user_id
+            data.user_id,
           );
 
           // Broadcast to other clients if needed
@@ -434,7 +436,7 @@ class GameServer {
             unit: data.unit,
             level: data.level,
             deviceInfo: data.device_info,
-            platform: platform?.name || 'unknown'
+            platform: platform?.name || 'unknown',
           });
         } catch (error) {
           this.logger.error('Error handling performance metric:', error);
@@ -462,7 +464,7 @@ class GameServer {
 
         this.analyticsService.trackGameEvent('websocket_disconnected', {
           socket_id: socket.id,
-          platform: platform?.name || 'unknown'
+          platform: platform?.name || 'unknown',
         });
       });
     });
@@ -471,7 +473,7 @@ class GameServer {
   private setupErrorHandling(): void {
     // Sentry error handler
     this.app.use(Sentry.errorHandler());
-    
+
     // Custom error tracking middleware
     this.app.use(errorTrackingMiddleware);
 
@@ -510,8 +512,12 @@ class GameServer {
 
     this.server.listen(this.config.port, this.config.host, () => {
       this.logger.info(`🚀 Match 3 Game Server running on port ${this.config.port}`);
-      this.logger.info(`📊 Analytics: ${this.analyticsService.isInitialized ? 'Enabled' : 'Disabled'}`);
-      this.logger.info(`☁️  Cloud Services: ${this.cloudServices.isInitialized ? 'Enabled' : 'Disabled'}`);
+      this.logger.info(
+        `📊 Analytics: ${this.analyticsService.isInitialized ? 'Enabled' : 'Disabled'}`,
+      );
+      this.logger.info(
+        `☁️  Cloud Services: ${this.cloudServices.isInitialized ? 'Enabled' : 'Disabled'}`,
+      );
       this.logger.info('🌐 WebSocket: Enabled');
       this.logger.info('📈 Monitoring: Sentry, OpenTelemetry, New Relic');
     });

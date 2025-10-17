@@ -8,7 +8,16 @@ import { AppConfig } from '../config/index.js';
 
 export interface PlatformInfo {
   type: 'web' | 'mobile' | 'desktop' | 'console';
-  name: 'webgl' | 'android' | 'ios' | 'kongregate' | 'poki' | 'gamecrazy' | 'itch' | 'steam' | 'unknown';
+  name:
+    | 'webgl'
+    | 'android'
+    | 'ios'
+    | 'kongregate'
+    | 'poki'
+    | 'gamecrazy'
+    | 'itch'
+    | 'steam'
+    | 'unknown';
   version?: string;
   capabilities: PlatformCapabilities;
   sdk?: any;
@@ -22,7 +31,7 @@ export interface PlatformCapabilities {
   wasm: boolean;
   webWorkers: boolean;
   serviceWorkers: boolean;
-  
+
   // Platform-specific features
   ads: boolean;
   iap: boolean;
@@ -33,13 +42,13 @@ export interface PlatformCapabilities {
   leaderboards: boolean;
   cloudSave: boolean;
   pushNotifications: boolean;
-  
+
   // Performance capabilities
   maxMemory: number;
   maxTextureSize: number;
   maxVertexUniforms: number;
   maxFragmentUniforms: number;
-  
+
   // Input capabilities
   touch: boolean;
   keyboard: boolean;
@@ -106,20 +115,20 @@ export class PlatformDetector {
         keyboard: true,
         gamepad: true,
         accelerometer: true,
-        gyroscope: true
+        gyroscope: true,
       },
       optimization: {
         compression: 'gzip',
         memorySize: 256,
         textureFormat: 'astc',
-        audioFormat: 'mp3'
+        audioFormat: 'mp3',
       },
       build: {
         target: 'webgl',
         architecture: 'wasm32',
-        optimization: 'release'
+        optimization: 'release',
       },
-      api: {}
+      api: {},
     });
 
     // Kongregate Platform
@@ -149,18 +158,18 @@ export class PlatformDetector {
         keyboard: true,
         gamepad: false,
         accelerometer: false,
-        gyroscope: false
+        gyroscope: false,
       },
       optimization: {
         compression: 'gzip',
         memorySize: 128,
         textureFormat: 'dxt',
-        audioFormat: 'mp3'
+        audioFormat: 'mp3',
       },
       build: {
         target: 'webgl',
         architecture: 'wasm32',
-        optimization: 'release'
+        optimization: 'release',
       },
       api: {
         showAd: 'kongregate.services.showAd',
@@ -171,8 +180,8 @@ export class PlatformDetector {
         isAdBlocked: 'kongregate.services.isAdBlocked',
         isAdFree: 'kongregate.services.isAdFree',
         showLeaderboard: 'kongregate.stats.showLeaderboard',
-        showAchievements: 'kongregate.stats.showAchievements'
-      }
+        showAchievements: 'kongregate.stats.showAchievements',
+      },
     });
 
     // Poki Platform
@@ -202,18 +211,18 @@ export class PlatformDetector {
         keyboard: true,
         gamepad: false,
         accelerometer: false,
-        gyroscope: false
+        gyroscope: false,
       },
       optimization: {
         compression: 'brotli',
         memorySize: 64,
         textureFormat: 'etc2',
-        audioFormat: 'ogg'
+        audioFormat: 'ogg',
       },
       build: {
         target: 'webgl',
         architecture: 'wasm32',
-        optimization: 'release'
+        optimization: 'release',
       },
       api: {
         showAd: 'pokiSDK.showAd',
@@ -224,8 +233,8 @@ export class PlatformDetector {
         isAdBlocked: 'pokiSDK.getAdBlocked',
         isAdFree: 'pokiSDK.getAdFree',
         gameplayStart: 'pokiSDK.gameplayStart',
-        gameplayStop: 'pokiSDK.gameplayStop'
-      }
+        gameplayStop: 'pokiSDK.gameplayStop',
+      },
     });
 
     // Game Crazy Platform
@@ -255,18 +264,18 @@ export class PlatformDetector {
         keyboard: true,
         gamepad: false,
         accelerometer: false,
-        gyroscope: false
+        gyroscope: false,
       },
       optimization: {
         compression: 'gzip',
         memorySize: 32,
         textureFormat: 'dxt',
-        audioFormat: 'mp3'
+        audioFormat: 'mp3',
       },
       build: {
         target: 'webgl',
         architecture: 'wasm32',
-        optimization: 'release'
+        optimization: 'release',
       },
       api: {
         showAd: 'gameCrazy.showAd',
@@ -275,8 +284,8 @@ export class PlatformDetector {
         trackEvent: 'gameCrazy.trackEvent',
         getUserInfo: 'gameCrazy.getUserInfo',
         isAdBlocked: 'gameCrazy.isAdBlocked',
-        isAdFree: 'gameCrazy.isAdFree'
-      }
+        isAdFree: 'gameCrazy.isAdFree',
+      },
     });
 
     // Android Platform
@@ -305,20 +314,20 @@ export class PlatformDetector {
         keyboard: false,
         gamepad: true,
         accelerometer: true,
-        gyroscope: true
+        gyroscope: true,
       },
       optimization: {
         compression: 'none',
         memorySize: 512,
         textureFormat: 'astc',
-        audioFormat: 'mp3'
+        audioFormat: 'mp3',
       },
       build: {
         target: 'android',
         architecture: 'arm64',
-        optimization: 'release'
+        optimization: 'release',
       },
-      api: {}
+      api: {},
     });
 
     // iOS Platform
@@ -347,20 +356,20 @@ export class PlatformDetector {
         keyboard: false,
         gamepad: true,
         accelerometer: true,
-        gyroscope: true
+        gyroscope: true,
       },
       optimization: {
         compression: 'none',
         memorySize: 256,
         textureFormat: 'astc',
-        audioFormat: 'mp3'
+        audioFormat: 'mp3',
       },
       build: {
         target: 'ios',
         architecture: 'arm64',
-        optimization: 'release'
+        optimization: 'release',
       },
-      api: {}
+      api: {},
     });
   }
 
@@ -372,11 +381,12 @@ export class PlatformDetector {
       this.logger.info('Detecting platform...');
 
       const platformName = this.detectPlatformName();
-      const platformConfig = this.platformConfigs.get(platformName) || this.platformConfigs.get('webgl')!;
-      
+      const platformConfig =
+        this.platformConfigs.get(platformName) || this.platformConfigs.get('webgl')!;
+
       // Detect capabilities
       const capabilities = await this.detectCapabilities(platformConfig);
-      
+
       // Load platform SDK if available
       const sdk = await this.loadPlatformSDK(platformConfig);
 
@@ -385,7 +395,7 @@ export class PlatformDetector {
         name: platformName as any,
         capabilities,
         sdk,
-        config: platformConfig
+        config: platformConfig,
       };
 
       this.logger.info(`Platform detected: ${this.currentPlatform.config.name}`);
@@ -410,23 +420,25 @@ export class PlatformDetector {
     const userAgent = navigator.userAgent.toLowerCase();
 
     // Check for Kongregate
-    if (hostname.includes('kongregate.com') || 
-        referrer.includes('kongregate.com') ||
-        window.kongregateAPI) {
+    if (
+      hostname.includes('kongregate.com') ||
+      referrer.includes('kongregate.com') ||
+      window.kongregateAPI
+    ) {
       return 'kongregate';
     }
-    
+
     // Check for Poki
-    if (hostname.includes('poki.com') || 
-        referrer.includes('poki.com') ||
-        window.pokiSDK) {
+    if (hostname.includes('poki.com') || referrer.includes('poki.com') || window.pokiSDK) {
       return 'poki';
     }
-    
+
     // Check for Game Crazy
-    if (hostname.includes('gamecrazy.com') || 
-        referrer.includes('gamecrazy.com') ||
-        window.gameCrazyAPI) {
+    if (
+      hostname.includes('gamecrazy.com') ||
+      referrer.includes('gamecrazy.com') ||
+      window.gameCrazyAPI
+    ) {
       return 'gamecrazy';
     }
 
@@ -434,15 +446,17 @@ export class PlatformDetector {
     if (userAgent.includes('android')) {
       return 'android';
     }
-    
+
     if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
       return 'ios';
     }
 
     // Check for local development
-    if (hostname.includes('localhost') || 
-        hostname.includes('127.0.0.1') ||
-        hostname.includes('vercel.app')) {
+    if (
+      hostname.includes('localhost') ||
+      hostname.includes('127.0.0.1') ||
+      hostname.includes('vercel.app')
+    ) {
       return 'webgl';
     }
 
@@ -459,11 +473,11 @@ export class PlatformDetector {
       // Detect WebGL capabilities
       const canvas = document.createElement('canvas');
       const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-      
+
       if (gl) {
         capabilities.webgl = true;
         capabilities.webgl2 = !!canvas.getContext('webgl2');
-        
+
         // Get WebGL limits
         capabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
         capabilities.maxVertexUniforms = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS);
@@ -544,7 +558,7 @@ export class PlatformDetector {
       type: 'web',
       name: 'webgl',
       capabilities: config.features,
-      config
+      config,
     };
   }
 
@@ -591,7 +605,7 @@ export class PlatformDetector {
   private resolveAPIPath(path: string): any {
     const parts = path.split('.');
     let current: any = window;
-    
+
     for (const part of parts) {
       if (current && current[part]) {
         current = current[part];
@@ -599,7 +613,7 @@ export class PlatformDetector {
         return null;
       }
     }
-    
+
     return current;
   }
 
@@ -634,7 +648,7 @@ export class PlatformDetector {
       isAdFree: () => {
         this.logger.debug('Mock: Check ad free');
         return false;
-      }
+      },
     };
   }
 

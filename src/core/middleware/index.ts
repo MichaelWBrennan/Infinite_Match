@@ -12,7 +12,8 @@ const logger = new Logger('Middleware');
 
 // Request ID middleware
 export const requestIdMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  req.requestId = req.headers['x-request-id'] as string || 
+  req.requestId =
+    (req.headers['x-request-id'] as string) ||
     `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   res.setHeader('X-Request-ID', req.requestId);
   next();
@@ -21,12 +22,12 @@ export const requestIdMiddleware = (req: Request, res: Response, next: NextFunct
 // Request logging middleware
 export const requestLoggingMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const startTime = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     logger.request(req, res, duration);
   });
-  
+
   next();
 };
 
@@ -35,40 +36,44 @@ export const errorHandlingMiddleware = (
   error: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void => {
   logger.error('Unhandled error in middleware chain:', error);
-  
+
   const errorInfo = ErrorHandler.handle(error, {
     requestId: req.requestId,
     method: req.method,
     url: req.url,
     userAgent: req.get('User-Agent'),
   });
-  
+
   const response = ApiResponseBuilder.error(
     errorInfo.context?.code || 'INTERNAL_ERROR',
     errorInfo.message,
     errorInfo.type,
     errorInfo.recoverable,
     errorInfo.action,
-    errorInfo.context
+    errorInfo.context,
   );
-  
+
   res.status(errorInfo.context?.statusCode || 500).json(response);
 };
 
 // Security headers middleware
-export const securityHeadersMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const securityHeadersMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   // Remove X-Powered-By header
   res.removeHeader('X-Powered-By');
-  
+
   // Add security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
+
   next();
 };
 
@@ -82,7 +87,11 @@ export const corsPreflightMiddleware = (req: Request, res: Response, next: NextF
 };
 
 // Rate limiting response middleware
-export const rateLimitResponseMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const rateLimitResponseMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   // This will be handled by express-rate-limit, but we can customize the response
   next();
 };
@@ -99,34 +108,42 @@ export const healthCheckMiddleware = (req: Request, res: Response, next: NextFun
 
 // API versioning middleware
 export const apiVersioningMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const apiVersion = req.headers['api-version'] as string || 'v1';
+  const apiVersion = (req.headers['api-version'] as string) || 'v1';
   req.apiVersion = apiVersion;
   res.setHeader('API-Version', apiVersion);
   next();
 };
 
 // Request size validation middleware
-export const requestSizeValidationMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const requestSizeValidationMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   const contentLength = parseInt(req.get('content-length') || '0');
   const maxSize = 10 * 1024 * 1024; // 10MB
-  
+
   if (contentLength > maxSize) {
     const response = ApiResponseBuilder.error(
       'REQUEST_TOO_LARGE',
       'Request body too large',
       'validation',
       false,
-      'reduce_request_size'
+      'reduce_request_size',
     );
     res.status(413).json(response);
     return;
   }
-  
+
   next();
 };
 
 // Content type validation middleware
-export const contentTypeValidationMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const contentTypeValidationMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
     const contentType = req.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
@@ -135,13 +152,13 @@ export const contentTypeValidationMiddleware = (req: Request, res: Response, nex
         'Content-Type must be application/json',
         'validation',
         true,
-        'use_json_content_type'
+        'use_json_content_type',
       );
       res.status(400).json(response);
       return;
     }
   }
-  
+
   next();
 };
 
@@ -155,15 +172,15 @@ export const requestTimeoutMiddleware = (timeoutMs: number = 30000) => {
           'Request timeout',
           'timeout',
           true,
-          'retry_request'
+          'retry_request',
         );
         res.status(408).json(response);
       }
     }, timeoutMs);
-    
+
     res.on('finish', () => clearTimeout(timeout));
     res.on('close', () => clearTimeout(timeout));
-    
+
     next();
   };
 };
@@ -171,12 +188,12 @@ export const requestTimeoutMiddleware = (timeoutMs: number = 30000) => {
 // Middleware chain builder
 export class MiddlewareChain {
   private middlewares: Array<(req: Request, res: Response, next: NextFunction) => void> = [];
-  
+
   add(middleware: (req: Request, res: Response, next: NextFunction) => void): MiddlewareChain {
     this.middlewares.push(middleware);
     return this;
   }
-  
+
   build(): Array<(req: Request, res: Response, next: NextFunction) => void> {
     return this.middlewares;
   }
@@ -201,6 +218,5 @@ export const createApiChain = (): MiddlewareChain => {
 };
 
 export const createErrorChain = (): MiddlewareChain => {
-  return new MiddlewareChain()
-    .add(errorHandlingMiddleware);
+  return new MiddlewareChain().add(errorHandlingMiddleware);
 };

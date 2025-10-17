@@ -27,9 +27,7 @@ describe('Game Server', () => {
 
   describe('Health Check', () => {
     test('GET /health should return 200 with server status', async () => {
-      const response = await request(app)
-        .get('/health')
-        .expect(200);
+      const response = await request(app).get('/health').expect(200);
 
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
@@ -46,13 +44,10 @@ describe('Game Server', () => {
         const gameData = {
           level: 1,
           difficulty: 'easy',
-          platform: 'web'
+          platform: 'web',
         };
 
-        const response = await request(app)
-          .post('/api/game/start')
-          .send(gameData)
-          .expect(200);
+        const response = await request(app).post('/api/game/start').send(gameData).expect(200);
 
         expect(response.body).toHaveProperty('success', true);
         expect(response.body).toHaveProperty('data');
@@ -64,13 +59,10 @@ describe('Game Server', () => {
       test('should return 400 for invalid data', async () => {
         const invalidData = {
           level: 'invalid',
-          difficulty: 'invalid'
+          difficulty: 'invalid',
         };
 
-        const response = await request(app)
-          .post('/api/game/start')
-          .send(invalidData)
-          .expect(400);
+        const response = await request(app).post('/api/game/start').send(invalidData).expect(400);
 
         expect(response.body).toHaveProperty('success', false);
         expect(response.body).toHaveProperty('error');
@@ -79,7 +71,7 @@ describe('Game Server', () => {
 
       test('should return 400 for missing required fields', async () => {
         const incompleteData = {
-          level: 1
+          level: 1,
           // missing difficulty
         };
 
@@ -101,7 +93,7 @@ describe('Game Server', () => {
           timeSpent: 120,
           movesUsed: 15,
           starsEarned: 3,
-          powerupsUsed: []
+          powerupsUsed: [],
         };
 
         const response = await request(app)
@@ -119,7 +111,7 @@ describe('Game Server', () => {
         const invalidData = {
           level: -1,
           score: 'invalid',
-          timeSpent: -10
+          timeSpent: -10,
         };
 
         const response = await request(app)
@@ -139,7 +131,7 @@ describe('Game Server', () => {
           piecesMatched: 3,
           position: { x: 1, y: 2 },
           level: 1,
-          scoreGained: 100
+          scoreGained: 100,
         };
 
         const response = await request(app)
@@ -159,7 +151,7 @@ describe('Game Server', () => {
           type: 'bomb',
           level: 1,
           position: { x: 2, y: 3 },
-          cost: 50
+          cost: 50,
         };
 
         const response = await request(app)
@@ -179,7 +171,7 @@ describe('Game Server', () => {
           currency: 'USD',
           amount: 0.99,
           transactionId: 'txn_123456',
-          platform: 'web'
+          platform: 'web',
         };
 
         const response = await request(app)
@@ -200,13 +192,10 @@ describe('Game Server', () => {
           message: 'Invalid move detected',
           code: 'INVALID_MOVE',
           level: 1,
-          stackTrace: 'Error: Invalid move\n    at GameEngine.validateMove'
+          stackTrace: 'Error: Invalid move\n    at GameEngine.validateMove',
         };
 
-        const response = await request(app)
-          .post('/api/game/error')
-          .send(errorData)
-          .expect(200);
+        const response = await request(app).post('/api/game/error').send(errorData).expect(200);
 
         expect(response.body).toHaveProperty('success', true);
       });
@@ -214,9 +203,7 @@ describe('Game Server', () => {
 
     describe('GET /api/game/analytics/summary', () => {
       test('should return analytics summary', async () => {
-        const response = await request(app)
-          .get('/api/game/analytics/summary')
-          .expect(200);
+        const response = await request(app).get('/api/game/analytics/summary').expect(200);
 
         expect(response.body).toHaveProperty('success', true);
         expect(response.body).toHaveProperty('data');
@@ -235,8 +222,8 @@ describe('Game Server', () => {
           deviceInfo: {
             platform: 'web',
             browser: 'Chrome',
-            version: '91.0'
-          }
+            version: '91.0',
+          },
         };
 
         const response = await request(app)
@@ -251,9 +238,7 @@ describe('Game Server', () => {
 
   describe('Error Handling', () => {
     test('should return 404 for unknown routes', async () => {
-      const response = await request(app)
-        .get('/api/unknown-route')
-        .expect(404);
+      const response = await request(app).get('/api/unknown-route').expect(404);
 
       expect(response.body).toHaveProperty('success', false);
       expect(response.body).toHaveProperty('error');
@@ -268,8 +253,7 @@ describe('Game Server', () => {
 
   describe('Security', () => {
     test('should include security headers', async () => {
-      const response = await request(app)
-        .get('/health');
+      const response = await request(app).get('/health');
 
       expect(response.headers).toHaveProperty('x-content-type-options', 'nosniff');
       expect(response.headers).toHaveProperty('x-frame-options', 'DENY');
@@ -277,9 +261,7 @@ describe('Game Server', () => {
     });
 
     test('should handle CORS preflight requests', async () => {
-      const response = await request(app)
-        .options('/api/game/start')
-        .expect(200);
+      const response = await request(app).options('/api/game/start').expect(200);
     });
 
     test('should enforce rate limiting', async () => {

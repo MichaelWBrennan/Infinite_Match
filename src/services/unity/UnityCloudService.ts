@@ -62,7 +62,7 @@ export class UnityCloudService {
       streamingAssetsUrl: '/StreamingAssets',
       companyName: 'Your Company',
       productName: 'Match 3 Game',
-      productVersion: '1.0.0'
+      productVersion: '1.0.0',
     };
   }
 
@@ -72,22 +72,24 @@ export class UnityCloudService {
   async initialize(): Promise<void> {
     try {
       this.logger.info('Initializing Unity Cloud Service...');
-      
+
       // Initialize API client with Unity credentials
       this.apiClient = {
         projectId: AppConfig.unity.projectId,
         environmentId: AppConfig.unity.environmentId,
         clientId: AppConfig.unity.clientId,
-        clientSecret: AppConfig.unity.clientSecret
+        clientSecret: AppConfig.unity.clientSecret,
       };
 
       // Validate Unity credentials
       await this.validateCredentials();
-      
+
       this.logger.info('Unity Cloud Service initialized successfully');
     } catch (error) {
       this.logger.error('Failed to initialize Unity Cloud Service:', error);
-      throw new ServiceError('Unity Cloud Service initialization failed', 'UnityCloudService', { error });
+      throw new ServiceError('Unity Cloud Service initialization failed', 'UnityCloudService', {
+        error,
+      });
     }
   }
 
@@ -131,7 +133,7 @@ export class UnityCloudService {
         buildName: config.buildName,
         buildNumber: config.buildNumber,
         developmentBuild: config.developmentBuild,
-        customBuildTarget: config.customBuildTarget
+        customBuildTarget: config.customBuildTarget,
       });
 
       // Cache build status
@@ -147,7 +149,7 @@ export class UnityCloudService {
         errorInfo.type,
         errorInfo.recoverable,
         errorInfo.action,
-        errorInfo.context
+        errorInfo.context,
       );
     }
   }
@@ -165,21 +167,24 @@ export class UnityCloudService {
 
       // Fetch from Unity Cloud API
       const buildStatus = await this.callUnityCloudAPI('build-status', { buildId });
-      
+
       // Update cache
       this.buildCache.set(buildId, buildStatus);
 
       return ApiResponseBuilder.success(buildStatus);
     } catch (error) {
       this.logger.error('Failed to get Unity Cloud Build status:', error);
-      const errorInfo = ErrorHandler.handle(error as Error, { operation: 'getBuildStatus', buildId });
+      const errorInfo = ErrorHandler.handle(error as Error, {
+        operation: 'getBuildStatus',
+        buildId,
+      });
       return ApiResponseBuilder.error(
         errorInfo.context?.code || 'UNITY_BUILD_STATUS_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
         errorInfo.action,
-        errorInfo.context
+        errorInfo.context,
       );
     }
   }
@@ -187,7 +192,10 @@ export class UnityCloudService {
   /**
    * Download Unity Cloud Build
    */
-  async downloadBuild(buildId: string, targetPath: string): Promise<ApiResponse<{ downloadUrl: string; localPath: string }>> {
+  async downloadBuild(
+    buildId: string,
+    targetPath: string,
+  ): Promise<ApiResponse<{ downloadUrl: string; localPath: string }>> {
     try {
       this.logger.info(`Downloading Unity Cloud Build: ${buildId}`);
 
@@ -211,18 +219,22 @@ export class UnityCloudService {
 
       return ApiResponseBuilder.success({
         downloadUrl: buildStatus.downloadUrl,
-        localPath
+        localPath,
       });
     } catch (error) {
       this.logger.error('Failed to download Unity Cloud Build:', error);
-      const errorInfo = ErrorHandler.handle(error as Error, { operation: 'downloadBuild', buildId, targetPath });
+      const errorInfo = ErrorHandler.handle(error as Error, {
+        operation: 'downloadBuild',
+        buildId,
+        targetPath,
+      });
       return ApiResponseBuilder.error(
         errorInfo.context?.code || 'UNITY_BUILD_DOWNLOAD_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
         errorInfo.action,
-        errorInfo.context
+        errorInfo.context,
       );
     }
   }
@@ -244,14 +256,17 @@ export class UnityCloudService {
       return ApiResponseBuilder.success(this.webglConfig);
     } catch (error) {
       this.logger.error('Failed to update Unity WebGL configuration:', error);
-      const errorInfo = ErrorHandler.handle(error as Error, { operation: 'updateWebGLConfig', config });
+      const errorInfo = ErrorHandler.handle(error as Error, {
+        operation: 'updateWebGLConfig',
+        config,
+      });
       return ApiResponseBuilder.error(
         errorInfo.context?.code || 'UNITY_WEBGL_CONFIG_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
         errorInfo.action,
-        errorInfo.context
+        errorInfo.context,
       );
     }
   }
@@ -259,7 +274,9 @@ export class UnityCloudService {
   /**
    * Optimize Unity WebGL build for serving
    */
-  async optimizeWebGLBuild(buildPath: string): Promise<ApiResponse<{ optimized: boolean; optimizations: string[] }>> {
+  async optimizeWebGLBuild(
+    buildPath: string,
+  ): Promise<ApiResponse<{ optimized: boolean; optimizations: string[] }>> {
     try {
       this.logger.info(`Optimizing Unity WebGL build: ${buildPath}`);
 
@@ -285,18 +302,21 @@ export class UnityCloudService {
 
       return ApiResponseBuilder.success({
         optimized: true,
-        optimizations
+        optimizations,
       });
     } catch (error) {
       this.logger.error('Failed to optimize Unity WebGL build:', error);
-      const errorInfo = ErrorHandler.handle(error as Error, { operation: 'optimizeWebGLBuild', buildPath });
+      const errorInfo = ErrorHandler.handle(error as Error, {
+        operation: 'optimizeWebGLBuild',
+        buildPath,
+      });
       return ApiResponseBuilder.error(
         errorInfo.context?.code || 'UNITY_WEBGL_OPTIMIZATION_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
         errorInfo.action,
-        errorInfo.context
+        errorInfo.context,
       );
     }
   }
@@ -313,12 +333,12 @@ export class UnityCloudService {
         services: {
           cloudBuild: { status: 'healthy', message: 'Unity Cloud Build accessible' },
           gamingServices: { status: 'healthy', message: 'Unity Gaming Services accessible' },
-          webgl: { status: 'healthy', message: 'WebGL build serving optimized' }
+          webgl: { status: 'healthy', message: 'WebGL build serving optimized' },
         },
         buildCache: {
           size: this.buildCache.size,
-          maxSize: 100
-        }
+          maxSize: 100,
+        },
       };
 
       return ApiResponseBuilder.success(health);
@@ -331,7 +351,7 @@ export class UnityCloudService {
         errorInfo.type,
         errorInfo.recoverable,
         errorInfo.action,
-        errorInfo.context
+        errorInfo.context,
       );
     }
   }
@@ -359,15 +379,15 @@ export class UnityCloudService {
   private async callUnityCloudAPI(endpoint: string, data: any): Promise<any> {
     // Mock implementation - would call actual Unity Cloud API
     this.logger.debug(`Calling Unity Cloud API: ${endpoint}`, data);
-    
+
     // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     return {
       buildId: `build_${Date.now()}`,
       status: 'queued',
       progress: 0,
-      buildStartTime: new Date().toISOString()
+      buildStartTime: new Date().toISOString(),
     };
   }
 
@@ -377,10 +397,10 @@ export class UnityCloudService {
   private async downloadFile(url: string, targetPath: string): Promise<string> {
     // Mock implementation - would download actual file
     this.logger.debug(`Downloading file from ${url} to ${targetPath}`);
-    
+
     // Simulate download
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     return targetPath;
   }
 

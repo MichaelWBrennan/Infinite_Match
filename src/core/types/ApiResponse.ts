@@ -61,7 +61,7 @@ export class ApiResponseBuilder {
     type: string = 'unknown',
     recoverable: boolean = false,
     action: string = 'investigate',
-    context?: Record<string, any>
+    context?: Record<string, any>,
   ): ApiResponse {
     return {
       success: false,
@@ -85,10 +85,10 @@ export class ApiResponseBuilder {
     page: number,
     limit: number,
     total: number,
-    meta?: Partial<ApiResponse['meta']>
+    meta?: Partial<ApiResponse['meta']>,
   ): PaginatedResponse<T> {
     const totalPages = Math.ceil(total / limit);
-    
+
     return {
       success: true,
       data,

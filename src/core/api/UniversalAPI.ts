@@ -63,13 +63,13 @@ export class UniversalAPI {
   async initialize(): Promise<void> {
     try {
       this.logger.info('Initializing Universal API...');
-      
+
       // Detect platform
       this.currentPlatform = await this.platformDetector.detectPlatform();
-      
+
       // Get platform-specific API
       this.platformAPI = this.platformDetector.getPlatformAPI();
-      
+
       this.logger.info(`Universal API initialized for platform: ${this.currentPlatform.name}`);
     } catch (error) {
       this.logger.error('Failed to initialize Universal API:', error);
@@ -80,7 +80,9 @@ export class UniversalAPI {
   /**
    * Show advertisement
    */
-  async showAd(config: AdConfig): Promise<UniversalAPIResponse<{ shown: boolean; revenue?: number }>> {
+  async showAd(
+    config: AdConfig,
+  ): Promise<UniversalAPIResponse<{ shown: boolean; revenue?: number }>> {
     try {
       this.logger.info(`Showing ${config.type} ad on ${this.currentPlatform?.name}`);
 
@@ -89,23 +91,23 @@ export class UniversalAPI {
         return {
           success: false,
           error: 'Ad API not available',
-          platform: this.currentPlatform?.name
+          platform: this.currentPlatform?.name,
         };
       }
 
       const result = await this.platformAPI.showAd(config.type);
-      
+
       return {
         success: true,
         data: { shown: true, revenue: result?.revenue },
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error showing ad:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -113,7 +115,9 @@ export class UniversalAPI {
   /**
    * Show rewarded advertisement
    */
-  async showRewardedAd(): Promise<UniversalAPIResponse<{ shown: boolean; rewarded: boolean; reward?: any }>> {
+  async showRewardedAd(): Promise<
+    UniversalAPIResponse<{ shown: boolean; rewarded: boolean; reward?: any }>
+  > {
     try {
       this.logger.info(`Showing rewarded ad on ${this.currentPlatform?.name}`);
 
@@ -122,27 +126,27 @@ export class UniversalAPI {
         return {
           success: false,
           error: 'Rewarded ad API not available',
-          platform: this.currentPlatform?.name
+          platform: this.currentPlatform?.name,
         };
       }
 
       const result = await this.platformAPI.showRewardedAd();
-      
+
       return {
         success: true,
-        data: { 
-          shown: true, 
+        data: {
+          shown: true,
           rewarded: result?.rewarded || false,
-          reward: result?.reward
+          reward: result?.reward,
         },
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error showing rewarded ad:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -159,23 +163,23 @@ export class UniversalAPI {
         return {
           success: false,
           error: 'Interstitial ad API not available',
-          platform: this.currentPlatform?.name
+          platform: this.currentPlatform?.name,
         };
       }
 
       await this.platformAPI.showInterstitialAd();
-      
+
       return {
         success: true,
         data: { shown: true },
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error showing interstitial ad:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -196,14 +200,14 @@ export class UniversalAPI {
             name: 'Guest User',
             platform: this.currentPlatform?.name || 'unknown',
             isGuest: true,
-            isPremium: false
+            isPremium: false,
           },
-          platform: this.currentPlatform?.name
+          platform: this.currentPlatform?.name,
         };
       }
 
       const userInfo = await this.platformAPI.getUserInfo();
-      
+
       return {
         success: true,
         data: {
@@ -212,16 +216,16 @@ export class UniversalAPI {
           avatar: userInfo.avatar,
           platform: this.currentPlatform?.name || 'unknown',
           isGuest: userInfo.isGuest || false,
-          isPremium: userInfo.isPremium || false
+          isPremium: userInfo.isPremium || false,
         },
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error getting user info:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -229,7 +233,10 @@ export class UniversalAPI {
   /**
    * Track analytics event
    */
-  async trackEvent(eventName: string, parameters: Record<string, any> = {}): Promise<UniversalAPIResponse<void>> {
+  async trackEvent(
+    eventName: string,
+    parameters: Record<string, any> = {},
+  ): Promise<UniversalAPIResponse<void>> {
     try {
       this.logger.info(`Tracking event: ${eventName} on ${this.currentPlatform?.name}`);
 
@@ -237,7 +244,7 @@ export class UniversalAPI {
         eventName,
         parameters,
         timestamp: Date.now(),
-        platform: this.currentPlatform?.name || 'unknown'
+        platform: this.currentPlatform?.name || 'unknown',
       };
 
       // Track via platform API if available
@@ -247,17 +254,17 @@ export class UniversalAPI {
 
       // Always track internally for analytics
       await this.trackInternalEvent(event);
-      
+
       return {
         success: true,
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error tracking event:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -271,23 +278,23 @@ export class UniversalAPI {
         return {
           success: true,
           data: false,
-          platform: this.currentPlatform?.name
+          platform: this.currentPlatform?.name,
         };
       }
 
       const isBlocked = await this.platformAPI.isAdBlocked();
-      
+
       return {
         success: true,
         data: isBlocked,
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error checking ad block status:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -301,23 +308,23 @@ export class UniversalAPI {
         return {
           success: true,
           data: false,
-          platform: this.currentPlatform?.name
+          platform: this.currentPlatform?.name,
         };
       }
 
       const isAdFree = await this.platformAPI.isAdFree();
-      
+
       return {
         success: true,
         data: isAdFree,
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error checking ad-free status:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -336,19 +343,19 @@ export class UniversalAPI {
       // Track gameplay start event
       await this.trackEvent('gameplay_started', {
         platform: this.currentPlatform?.name,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
-      
+
       return {
         success: true,
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error handling gameplay start:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -367,19 +374,19 @@ export class UniversalAPI {
       // Track gameplay stop event
       await this.trackEvent('gameplay_stopped', {
         platform: this.currentPlatform?.name,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
-      
+
       return {
         success: true,
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     } catch (error) {
       this.logger.error('Error handling gameplay stop:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name
+        platform: this.currentPlatform?.name,
       };
     }
   }
@@ -392,7 +399,7 @@ export class UniversalAPI {
       return {
         success: false,
         error: 'Platform not detected',
-        platform: 'unknown'
+        platform: 'unknown',
       };
     }
 
@@ -402,9 +409,9 @@ export class UniversalAPI {
         platform: this.currentPlatform.name,
         type: this.currentPlatform.type,
         capabilities: this.currentPlatform.capabilities,
-        features: this.currentPlatform.config.features
+        features: this.currentPlatform.config.features,
       },
-      platform: this.currentPlatform.name
+      platform: this.currentPlatform.name,
     };
   }
 
@@ -416,7 +423,7 @@ export class UniversalAPI {
       return {
         success: false,
         error: 'Platform not detected',
-        platform: 'unknown'
+        platform: 'unknown',
       };
     }
 
@@ -425,9 +432,9 @@ export class UniversalAPI {
       data: {
         platform: this.currentPlatform.name,
         optimization: this.currentPlatform.config.optimization,
-        build: this.currentPlatform.config.build
+        build: this.currentPlatform.config.build,
       },
-      platform: this.currentPlatform.name
+      platform: this.currentPlatform.name,
     };
   }
 
@@ -438,7 +445,7 @@ export class UniversalAPI {
     try {
       // This would integrate with your analytics service
       this.logger.debug('Tracking internal event:', event);
-      
+
       // Example: Send to analytics service
       // await analyticsService.trackEvent(event.eventName, event.parameters);
     } catch (error) {

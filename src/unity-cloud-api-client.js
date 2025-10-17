@@ -55,7 +55,7 @@ class UnityGamingServicesAPIClient {
         optimization: 'release',
         memorySize: 256,
         compression: 'gzip',
-        textureFormat: 'astc'
+        textureFormat: 'astc',
       },
       kongregate: {
         target: 'WebGL',
@@ -63,7 +63,7 @@ class UnityGamingServicesAPIClient {
         optimization: 'release',
         memorySize: 128,
         compression: 'gzip',
-        textureFormat: 'dxt'
+        textureFormat: 'dxt',
       },
       poki: {
         target: 'WebGL',
@@ -71,7 +71,7 @@ class UnityGamingServicesAPIClient {
         optimization: 'release',
         memorySize: 64,
         compression: 'brotli',
-        textureFormat: 'etc2'
+        textureFormat: 'etc2',
       },
       gamecrazy: {
         target: 'WebGL',
@@ -79,7 +79,7 @@ class UnityGamingServicesAPIClient {
         optimization: 'release',
         memorySize: 32,
         compression: 'gzip',
-        textureFormat: 'dxt'
+        textureFormat: 'dxt',
       },
       android: {
         target: 'Android',
@@ -87,7 +87,7 @@ class UnityGamingServicesAPIClient {
         optimization: 'release',
         memorySize: 512,
         compression: 'none',
-        textureFormat: 'astc'
+        textureFormat: 'astc',
       },
       ios: {
         target: 'iOS',
@@ -95,10 +95,10 @@ class UnityGamingServicesAPIClient {
         optimization: 'release',
         memorySize: 256,
         compression: 'none',
-        textureFormat: 'astc'
-      }
+        textureFormat: 'astc',
+      },
     };
-    
+
     return configs[platform] || configs.webgl;
   }
 
@@ -801,7 +801,7 @@ class UnityGamingServicesAPIClient {
   async triggerBuild(buildTarget, gitRef = 'main', buildName = null) {
     try {
       console.log(`🚀 Triggering Unity Cloud Build for ${buildTarget}...`);
-      
+
       if (!this.accessToken) {
         await this.authenticate();
       }
@@ -815,14 +815,14 @@ class UnityGamingServicesAPIClient {
         allowDebugging: false,
         scriptDebugging: false,
         il2cpp: true,
-        managedStrippingLevel: 'high'
+        managedStrippingLevel: 'high',
       };
 
       const response = await this.makeRequest('/builds', {
         method: 'POST',
-        body: JSON.stringify(buildConfig)
+        body: JSON.stringify(buildConfig),
       });
-      
+
       if (response.success) {
         console.log(`✅ Build triggered successfully: ${response.buildId}`);
         return response;
@@ -841,10 +841,10 @@ class UnityGamingServicesAPIClient {
   async triggerPlatformOptimizedBuild(platform, gitRef = 'main', buildName = null) {
     try {
       console.log(`🚀 Triggering platform-optimized build for ${platform}...`);
-      
+
       const platformConfig = this.getPlatformBuildConfig(platform);
       const buildTarget = platformConfig.target;
-      
+
       if (!this.accessToken) {
         await this.authenticate();
       }
@@ -864,15 +864,15 @@ class UnityGamingServicesAPIClient {
           memorySize: platformConfig.memorySize,
           compression: platformConfig.compression,
           textureFormat: platformConfig.textureFormat,
-          architecture: platformConfig.architecture
-        }
+          architecture: platformConfig.architecture,
+        },
       };
 
       const response = await this.makeRequest('/builds', {
         method: 'POST',
-        body: JSON.stringify(buildConfig)
+        body: JSON.stringify(buildConfig),
       });
-      
+
       if (response.success) {
         console.log(`✅ Platform-optimized build triggered: ${response.buildId}`);
         console.log(`📊 Platform: ${platform}`);
@@ -895,15 +895,15 @@ class UnityGamingServicesAPIClient {
   async getBuildStatus(buildId) {
     try {
       console.log(`📊 Getting build status for ${buildId}...`);
-      
+
       if (!this.accessToken) {
         await this.authenticate();
       }
 
       const response = await this.makeRequest(`/builds/${buildId}`, {
-        method: 'GET'
+        method: 'GET',
       });
-      
+
       if (response.success) {
         console.log(`✅ Build status: ${response.status}`);
         return response;
@@ -922,15 +922,15 @@ class UnityGamingServicesAPIClient {
   async downloadBuild(buildId, targetPath = './builds') {
     try {
       console.log(`📥 Downloading build ${buildId}...`);
-      
+
       if (!this.accessToken) {
         await this.authenticate();
       }
 
       const response = await this.makeRequest(`/builds/${buildId}/download`, {
-        method: 'GET'
+        method: 'GET',
       });
-      
+
       if (response.success) {
         console.log(`✅ Build downloaded to: ${targetPath}`);
         return response;

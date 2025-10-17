@@ -43,10 +43,10 @@ export class WebGLMiddleware {
   async initialize(): Promise<void> {
     try {
       this.logger.info('Initializing WebGL middleware...');
-      
+
       // Detect platform
       await this.platformDetector.detectPlatform();
-      
+
       this.logger.info('WebGL middleware initialized successfully');
     } catch (error) {
       this.logger.error('Failed to initialize WebGL middleware:', error);
@@ -57,7 +57,11 @@ export class WebGLMiddleware {
   /**
    * Main WebGL serving middleware
    */
-  webglServingMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  webglServingMiddleware = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const platform = this.platformDetector.getCurrentPlatform();
       if (!platform) {
@@ -104,15 +108,19 @@ export class WebGLMiddleware {
   private async serveWebGLFile(req: Request, res: Response, platform: PlatformInfo): Promise<void> {
     try {
       const filePath = this.getWebGLFilePath(req.path);
-      
+
       if (!existsSync(filePath)) {
-        res.status(404).json(ApiResponseBuilder.error(
-          'WEBGL_FILE_NOT_FOUND',
-          'WebGL file not found',
-          'not_found',
-          false,
-          'check_build_files'
-        ));
+        res
+          .status(404)
+          .json(
+            ApiResponseBuilder.error(
+              'WEBGL_FILE_NOT_FOUND',
+              'WebGL file not found',
+              'not_found',
+              false,
+              'check_build_files',
+            ),
+          );
         return;
       }
 
@@ -139,16 +147,19 @@ export class WebGLMiddleware {
         const stream = createReadStream(filePath);
         stream.pipe(res);
       }
-
     } catch (error) {
       this.logger.error('Error serving WebGL file:', error);
-      res.status(500).json(ApiResponseBuilder.error(
-        'WEBGL_SERVE_ERROR',
-        'Failed to serve WebGL file',
-        'server_error',
-        true,
-        'retry_request'
-      ));
+      res
+        .status(500)
+        .json(
+          ApiResponseBuilder.error(
+            'WEBGL_SERVE_ERROR',
+            'Failed to serve WebGL file',
+            'server_error',
+            true,
+            'retry_request',
+          ),
+        );
     }
   }
 
@@ -163,7 +174,12 @@ export class WebGLMiddleware {
   /**
    * Optimize response for specific platform
    */
-  private async optimizeForPlatform(req: Request, res: Response, filePath: string, platform: PlatformInfo): Promise<boolean> {
+  private async optimizeForPlatform(
+    req: Request,
+    res: Response,
+    filePath: string,
+    platform: PlatformInfo,
+  ): Promise<boolean> {
     const optimization = platform.config.optimization;
 
     // Memory optimization for mobile platforms
@@ -250,10 +266,15 @@ export class WebGLMiddleware {
   /**
    * Serve compressed file
    */
-  private async serveCompressedFile(req: Request, res: Response, filePath: string, compression: 'gzip' | 'brotli'): Promise<void> {
+  private async serveCompressedFile(
+    req: Request,
+    res: Response,
+    filePath: string,
+    compression: 'gzip' | 'brotli',
+  ): Promise<void> {
     try {
       const cacheKey = `${filePath}_${compression}`;
-      
+
       // Check cache first
       if (this.compressionCache.has(cacheKey)) {
         const compressedData = this.compressionCache.get(cacheKey)!;
@@ -266,7 +287,7 @@ export class WebGLMiddleware {
       // Read and compress file
       const fs = await import('fs');
       const fileData = await fs.promises.readFile(filePath);
-      
+
       let compressedData: Buffer;
       if (compression === 'brotli') {
         compressedData = await brotliCompressAsync(fileData);
@@ -293,7 +314,11 @@ export class WebGLMiddleware {
   /**
    * Serve WebGL configuration
    */
-  private async serveWebGLConfig(req: Request, res: Response, platform: PlatformInfo): Promise<void> {
+  private async serveWebGLConfig(
+    req: Request,
+    res: Response,
+    platform: PlatformInfo,
+  ): Promise<void> {
     try {
       const config: WebGLBuildInfo = {
         dataUrl: '/Build/WebGL.data',
@@ -303,26 +328,34 @@ export class WebGLMiddleware {
         memorySize: platform.config.optimization.memorySize,
         compressionFormat: platform.config.optimization.compression,
         platform: platform.name,
-        optimization: platform.config.build.optimization
+        optimization: platform.config.build.optimization,
       };
 
       res.json(ApiResponseBuilder.success(config));
     } catch (error) {
       this.logger.error('Error serving WebGL config:', error);
-      res.status(500).json(ApiResponseBuilder.error(
-        'WEBGL_CONFIG_ERROR',
-        'Failed to serve WebGL configuration',
-        'server_error',
-        true,
-        'retry_request'
-      ));
+      res
+        .status(500)
+        .json(
+          ApiResponseBuilder.error(
+            'WEBGL_CONFIG_ERROR',
+            'Failed to serve WebGL configuration',
+            'server_error',
+            true,
+            'retry_request',
+          ),
+        );
     }
   }
 
   /**
    * Handle platform-specific optimization requests
    */
-  private async handlePlatformOptimization(req: Request, res: Response, platform: PlatformInfo): Promise<void> {
+  private async handlePlatformOptimization(
+    req: Request,
+    res: Response,
+    platform: PlatformInfo,
+  ): Promise<void> {
     try {
       const optimization = {
         platform: platform.name,
@@ -330,19 +363,23 @@ export class WebGLMiddleware {
         capabilities: platform.capabilities,
         optimization: platform.config.optimization,
         build: platform.config.build,
-        recommendations: this.getOptimizationRecommendations(platform)
+        recommendations: this.getOptimizationRecommendations(platform),
       };
 
       res.json(ApiResponseBuilder.success(optimization));
     } catch (error) {
       this.logger.error('Error handling platform optimization:', error);
-      res.status(500).json(ApiResponseBuilder.error(
-        'PLATFORM_OPTIMIZATION_ERROR',
-        'Failed to handle platform optimization',
-        'server_error',
-        true,
-        'retry_request'
-      ));
+      res
+        .status(500)
+        .json(
+          ApiResponseBuilder.error(
+            'PLATFORM_OPTIMIZATION_ERROR',
+            'Failed to handle platform optimization',
+            'server_error',
+            true,
+            'retry_request',
+          ),
+        );
     }
   }
 
@@ -398,7 +435,7 @@ export class WebGLMiddleware {
     return {
       buildCacheSize: this.buildCache.size,
       compressionCacheSize: this.compressionCache.size,
-      platform: this.platformDetector.getCurrentPlatform()?.name || 'unknown'
+      platform: this.platformDetector.getCurrentPlatform()?.name || 'unknown',
     };
   }
 }

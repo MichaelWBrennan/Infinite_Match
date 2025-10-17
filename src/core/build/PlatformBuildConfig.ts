@@ -85,14 +85,14 @@ export class PlatformBuildConfig {
         ads: false,
         iap: false,
         analytics: true,
-        social: false
+        social: false,
       },
       buildSettings: {
         developmentBuild: false,
         allowDebugging: false,
         scriptDebugging: false,
         il2cpp: true,
-        managedStrippingLevel: 'high'
+        managedStrippingLevel: 'high',
       },
       playerSettings: {
         companyName: 'Your Company',
@@ -100,7 +100,7 @@ export class PlatformBuildConfig {
         productVersion: '1.0.0',
         bundleIdentifier: 'com.yourcompany.match3game',
         targetSdkVersion: 'latest',
-        minSdkVersion: 'latest'
+        minSdkVersion: 'latest',
       },
       qualitySettings: {
         pixelLightCount: 4,
@@ -111,8 +111,8 @@ export class PlatformBuildConfig {
         anisotropicFiltering: 'enable',
         antiAliasing: 2,
         softVegetation: false,
-        realtimeReflectionProbes: false
-      }
+        realtimeReflectionProbes: false,
+      },
     });
 
     // Kongregate Configuration
@@ -132,14 +132,14 @@ export class PlatformBuildConfig {
         ads: true,
         iap: true,
         analytics: true,
-        social: true
+        social: true,
       },
       buildSettings: {
         developmentBuild: false,
         allowDebugging: false,
         scriptDebugging: false,
         il2cpp: true,
-        managedStrippingLevel: 'high'
+        managedStrippingLevel: 'high',
       },
       playerSettings: {
         companyName: 'Your Company',
@@ -147,7 +147,7 @@ export class PlatformBuildConfig {
         productVersion: '1.0.0',
         bundleIdentifier: 'com.yourcompany.match3game.kongregate',
         targetSdkVersion: 'latest',
-        minSdkVersion: 'latest'
+        minSdkVersion: 'latest',
       },
       qualitySettings: {
         pixelLightCount: 2,
@@ -158,8 +158,8 @@ export class PlatformBuildConfig {
         anisotropicFiltering: 'disable',
         antiAliasing: 0,
         softVegetation: false,
-        realtimeReflectionProbes: false
-      }
+        realtimeReflectionProbes: false,
+      },
     });
 
     // Poki Configuration
@@ -179,14 +179,14 @@ export class PlatformBuildConfig {
         ads: true,
         iap: true,
         analytics: true,
-        social: true
+        social: true,
       },
       buildSettings: {
         developmentBuild: false,
         allowDebugging: false,
         scriptDebugging: false,
         il2cpp: true,
-        managedStrippingLevel: 'high'
+        managedStrippingLevel: 'high',
       },
       playerSettings: {
         companyName: 'Your Company',
@@ -194,7 +194,7 @@ export class PlatformBuildConfig {
         productVersion: '1.0.0',
         bundleIdentifier: 'com.yourcompany.match3game.poki',
         targetSdkVersion: 'latest',
-        minSdkVersion: 'latest'
+        minSdkVersion: 'latest',
       },
       qualitySettings: {
         pixelLightCount: 1,
@@ -205,8 +205,8 @@ export class PlatformBuildConfig {
         anisotropicFiltering: 'disable',
         antiAliasing: 0,
         softVegetation: false,
-        realtimeReflectionProbes: false
-      }
+        realtimeReflectionProbes: false,
+      },
     });
 
     // Game Crazy Configuration
@@ -226,14 +226,14 @@ export class PlatformBuildConfig {
         ads: true,
         iap: true,
         analytics: true,
-        social: false
+        social: false,
       },
       buildSettings: {
         developmentBuild: false,
         allowDebugging: false,
         scriptDebugging: false,
         il2cpp: true,
-        managedStrippingLevel: 'high'
+        managedStrippingLevel: 'high',
       },
       playerSettings: {
         companyName: 'Your Company',
@@ -241,7 +241,7 @@ export class PlatformBuildConfig {
         productVersion: '1.0.0',
         bundleIdentifier: 'com.yourcompany.match3game.gamecrazy',
         targetSdkVersion: 'latest',
-        minSdkVersion: 'latest'
+        minSdkVersion: 'latest',
       },
       qualitySettings: {
         pixelLightCount: 1,
@@ -252,8 +252,8 @@ export class PlatformBuildConfig {
         anisotropicFiltering: 'disable',
         antiAliasing: 0,
         softVegetation: false,
-        realtimeReflectionProbes: false
-      }
+        realtimeReflectionProbes: false,
+      },
     });
 
     // Android Configuration
@@ -273,14 +273,14 @@ export class PlatformBuildConfig {
         ads: true,
         iap: true,
         analytics: true,
-        social: true
+        social: true,
       },
       buildSettings: {
         developmentBuild: false,
         allowDebugging: false,
         scriptDebugging: false,
         il2cpp: true,
-        managedStrippingLevel: 'high'
+        managedStrippingLevel: 'high',
       },
       playerSettings: {
         companyName: 'Your Company',
@@ -288,7 +288,7 @@ export class PlatformBuildConfig {
         productVersion: '1.0.0',
         bundleIdentifier: 'com.yourcompany.match3game',
         targetSdkVersion: '33',
-        minSdkVersion: '21'
+        minSdkVersion: '21',
       },
       qualitySettings: {
         pixelLightCount: 8,
@@ -299,8 +299,8 @@ export class PlatformBuildConfig {
         anisotropicFiltering: 'forceEnable',
         antiAliasing: 4,
         softVegetation: true,
-        realtimeReflectionProbes: true
-      }
+        realtimeReflectionProbes: true,
+      },
     });
 
     // iOS Configuration
@@ -320,14 +320,14 @@ export class PlatformBuildConfig {
         ads: true,
         iap: true,
         analytics: true,
-        social: true
+        social: true,
       },
       buildSettings: {
         developmentBuild: false,
         allowDebugging: false,
         scriptDebugging: false,
         il2cpp: true,
-        managedStrippingLevel: 'high'
+        managedStrippingLevel: 'high',
       },
       playerSettings: {
         companyName: 'Your Company',
@@ -335,7 +335,7 @@ export class PlatformBuildConfig {
         productVersion: '1.0.0',
         bundleIdentifier: 'com.yourcompany.match3game',
         targetSdkVersion: 'latest',
-        minSdkVersion: '12.0'
+        minSdkVersion: '12.0',
       },
       qualitySettings: {
         pixelLightCount: 6,
@@ -346,8 +346,8 @@ export class PlatformBuildConfig {
         anisotropicFiltering: 'forceEnable',
         antiAliasing: 2,
         softVegetation: true,
-        realtimeReflectionProbes: true
-      }
+        realtimeReflectionProbes: true,
+      },
     });
   }
 
@@ -365,15 +365,17 @@ export class PlatformBuildConfig {
     try {
       const platform = await this.platformDetector.detectPlatform();
       const baseConfig = this.buildConfigs.get(platform.name);
-      
+
       if (!baseConfig) {
-        this.logger.warn(`No build config found for platform: ${platform.name}, using WebGL default`);
+        this.logger.warn(
+          `No build config found for platform: ${platform.name}, using WebGL default`,
+        );
         return this.buildConfigs.get('webgl')!;
       }
 
       // Optimize configuration based on platform capabilities
       const optimizedConfig = this.optimizeConfigForPlatform(baseConfig, platform);
-      
+
       this.logger.info(`Generated optimized build config for platform: ${platform.name}`);
       return optimizedConfig;
     } catch (error) {
@@ -385,13 +387,18 @@ export class PlatformBuildConfig {
   /**
    * Optimize configuration for specific platform capabilities
    */
-  private optimizeConfigForPlatform(config: BuildConfiguration, platform: PlatformInfo): BuildConfiguration {
+  private optimizeConfigForPlatform(
+    config: BuildConfiguration,
+    platform: PlatformInfo,
+  ): BuildConfiguration {
     const optimized = { ...config };
 
     // Memory optimization
     if (platform.capabilities.maxMemory < config.memorySize) {
       optimized.memorySize = Math.min(platform.capabilities.maxMemory, config.memorySize);
-      this.logger.info(`Reduced memory size to ${optimized.memorySize}MB for platform capabilities`);
+      this.logger.info(
+        `Reduced memory size to ${optimized.memorySize}MB for platform capabilities`,
+      );
     }
 
     // Texture optimization
@@ -402,7 +409,10 @@ export class PlatformBuildConfig {
 
     // Quality optimization for mobile
     if (platform.type === 'mobile') {
-      optimized.qualitySettings.pixelLightCount = Math.min(4, optimized.qualitySettings.pixelLightCount);
+      optimized.qualitySettings.pixelLightCount = Math.min(
+        4,
+        optimized.qualitySettings.pixelLightCount,
+      );
       optimized.qualitySettings.shadowResolution = 'medium';
       optimized.qualitySettings.antiAliasing = 0; // Disable AA on mobile for performance
       this.logger.info('Optimized quality settings for mobile platform');
@@ -484,22 +494,26 @@ export class PlatformBuildConfig {
    * Generate build configuration file
    */
   generateBuildConfigFile(config: BuildConfiguration): string {
-    return JSON.stringify({
-      platform: config.platform,
-      target: config.target,
-      architecture: config.architecture,
-      optimization: config.optimization,
-      compression: config.compression,
-      memorySize: config.memorySize,
-      textureFormat: config.textureFormat,
-      audioFormat: config.audioFormat,
-      features: config.features,
-      buildSettings: config.buildSettings,
-      playerSettings: config.playerSettings,
-      qualitySettings: config.qualitySettings,
-      generatedAt: new Date().toISOString(),
-      version: '1.0.0'
-    }, null, 2);
+    return JSON.stringify(
+      {
+        platform: config.platform,
+        target: config.target,
+        architecture: config.architecture,
+        optimization: config.optimization,
+        compression: config.compression,
+        memorySize: config.memorySize,
+        textureFormat: config.textureFormat,
+        audioFormat: config.audioFormat,
+        features: config.features,
+        buildSettings: config.buildSettings,
+        playerSettings: config.playerSettings,
+        qualitySettings: config.qualitySettings,
+        generatedAt: new Date().toISOString(),
+        version: '1.0.0',
+      },
+      null,
+      2,
+    );
   }
 
   /**
@@ -546,7 +560,7 @@ export class PlatformBuildConfig {
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -564,10 +578,10 @@ export class PlatformBuildConfig {
     const stats = {
       totalConfigs: this.buildConfigs.size,
       platforms: Array.from(this.buildConfigs.keys()),
-      memorySizes: Array.from(this.buildConfigs.values()).map(c => c.memorySize),
-      textureFormats: Array.from(this.buildConfigs.values()).map(c => c.textureFormat),
-      audioFormats: Array.from(this.buildConfigs.values()).map(c => c.audioFormat),
-      compressions: Array.from(this.buildConfigs.values()).map(c => c.compression)
+      memorySizes: Array.from(this.buildConfigs.values()).map((c) => c.memorySize),
+      textureFormats: Array.from(this.buildConfigs.values()).map((c) => c.textureFormat),
+      audioFormats: Array.from(this.buildConfigs.values()).map((c) => c.audioFormat),
+      compressions: Array.from(this.buildConfigs.values()).map((c) => c.compression),
     };
 
     return stats;

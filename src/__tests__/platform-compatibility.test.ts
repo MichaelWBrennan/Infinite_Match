@@ -23,7 +23,7 @@ describe('Platform Compatibility', () => {
   describe('Platform Detection', () => {
     test('should detect platform correctly', async () => {
       const platform = await platformDetector.detectPlatform();
-      
+
       expect(platform).toBeDefined();
       expect(platform.name).toBeDefined();
       expect(platform.type).toBeDefined();
@@ -33,7 +33,7 @@ describe('Platform Compatibility', () => {
 
     test('should have valid platform capabilities', async () => {
       const platform = await platformDetector.detectPlatform();
-      
+
       expect(platform.capabilities).toHaveProperty('webgl');
       expect(platform.capabilities).toHaveProperty('wasm');
       expect(platform.capabilities).toHaveProperty('touch');
@@ -45,7 +45,7 @@ describe('Platform Compatibility', () => {
     test('should provide platform-specific optimizations', async () => {
       const platform = await platformDetector.detectPlatform();
       const optimization = platformDetector.getOptimizationConfig();
-      
+
       expect(optimization).toBeDefined();
       expect(optimization).toHaveProperty('compression');
       expect(optimization).toHaveProperty('memorySize');
@@ -65,7 +65,7 @@ describe('Platform Compatibility', () => {
 
     test('should get platform capabilities', () => {
       const capabilities = universalAPI.getPlatformCapabilities();
-      
+
       expect(capabilities.success).toBe(true);
       expect(capabilities.data).toBeDefined();
       expect(capabilities.data.platform).toBeDefined();
@@ -74,7 +74,7 @@ describe('Platform Compatibility', () => {
 
     test('should get platform configuration', () => {
       const config = universalAPI.getPlatformConfig();
-      
+
       expect(config.success).toBe(true);
       expect(config.data).toBeDefined();
       expect(config.data.platform).toBeDefined();
@@ -84,14 +84,14 @@ describe('Platform Compatibility', () => {
 
     test('should track events successfully', async () => {
       const result = await universalAPI.trackEvent('test_event', { test: true });
-      
+
       expect(result.success).toBe(true);
       expect(result.platform).toBeDefined();
     });
 
     test('should get user info', async () => {
       const result = await universalAPI.getUserInfo();
-      
+
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data.id).toBeDefined();
@@ -101,7 +101,7 @@ describe('Platform Compatibility', () => {
     test('should handle gameplay start/stop', async () => {
       const startResult = await universalAPI.gameplayStart();
       expect(startResult.success).toBe(true);
-      
+
       const stopResult = await universalAPI.gameplayStop();
       expect(stopResult.success).toBe(true);
     });
@@ -110,7 +110,7 @@ describe('Platform Compatibility', () => {
       const adBlockedResult = await universalAPI.isAdBlocked();
       expect(adBlockedResult.success).toBe(true);
       expect(typeof adBlockedResult.data).toBe('boolean');
-      
+
       const adFreeResult = await universalAPI.isAdFree();
       expect(adFreeResult.success).toBe(true);
       expect(typeof adFreeResult.data).toBe('boolean');
@@ -118,7 +118,7 @@ describe('Platform Compatibility', () => {
 
     test('should provide platform recommendations', () => {
       const recommendations = universalAPI.getPlatformRecommendations();
-      
+
       expect(Array.isArray(recommendations)).toBe(true);
     });
 
@@ -136,8 +136,8 @@ describe('Platform Compatibility', () => {
   describe('Platform Build Configuration', () => {
     test('should get build configuration for all platforms', () => {
       const platforms = ['webgl', 'kongregate', 'poki', 'gamecrazy', 'android', 'ios'];
-      
-      platforms.forEach(platform => {
+
+      platforms.forEach((platform) => {
         const config = platformBuildConfig.getBuildConfig(platform);
         expect(config).toBeDefined();
         expect(config.platform).toBe(platform);
@@ -157,7 +157,7 @@ describe('Platform Compatibility', () => {
 
     test('should get optimized build configuration', async () => {
       const config = await platformBuildConfig.getOptimizedBuildConfig();
-      
+
       expect(config).toBeDefined();
       expect(config.platform).toBeDefined();
       expect(config.target).toBeDefined();
@@ -169,7 +169,7 @@ describe('Platform Compatibility', () => {
       const config = platformBuildConfig.getBuildConfig('webgl');
       if (config) {
         const command = platformBuildConfig.generateBuildCommand(config);
-        
+
         expect(command).toBeDefined();
         expect(typeof command).toBe('string');
         expect(command).toContain('Unity.exe');
@@ -183,10 +183,10 @@ describe('Platform Compatibility', () => {
       const config = platformBuildConfig.getBuildConfig('webgl');
       if (config) {
         const configFile = platformBuildConfig.generateBuildConfigFile(config);
-        
+
         expect(configFile).toBeDefined();
         expect(typeof configFile).toBe('string');
-        
+
         const parsed = JSON.parse(configFile);
         expect(parsed.platform).toBe(config.platform);
         expect(parsed.generatedAt).toBeDefined();
@@ -198,7 +198,7 @@ describe('Platform Compatibility', () => {
       const config = platformBuildConfig.getBuildConfig('webgl');
       if (config) {
         const validation = platformBuildConfig.validateBuildConfig(config);
-        
+
         expect(validation.valid).toBe(true);
         expect(validation.errors).toBeDefined();
         expect(Array.isArray(validation.errors)).toBe(true);
@@ -207,7 +207,7 @@ describe('Platform Compatibility', () => {
 
     test('should get build configuration statistics', () => {
       const stats = platformBuildConfig.getBuildConfigStats();
-      
+
       expect(stats).toBeDefined();
       expect(stats.totalConfigs).toBeGreaterThan(0);
       expect(stats.platforms).toBeDefined();
@@ -220,7 +220,7 @@ describe('Platform Compatibility', () => {
   describe('Cross-Platform Compatibility', () => {
     test('should work on all supported platforms', async () => {
       const platforms = ['webgl', 'kongregate', 'poki', 'gamecrazy', 'android', 'ios'];
-      
+
       for (const platformName of platforms) {
         // Mock platform detection
         const mockPlatform = {
@@ -236,16 +236,16 @@ describe('Platform Compatibility', () => {
             ads: true,
             iap: true,
             analytics: true,
-            social: true
+            social: true,
           },
           config: {
             optimization: {
               compression: 'gzip',
               memorySize: 256,
               textureFormat: 'astc',
-              audioFormat: 'mp3'
-            }
-          }
+              audioFormat: 'mp3',
+            },
+          },
         };
 
         // Test platform detection
@@ -257,11 +257,11 @@ describe('Platform Compatibility', () => {
 
     test('should handle platform-specific features gracefully', async () => {
       const platform = await platformDetector.detectPlatform();
-      
+
       // Test feature availability
       const features = ['ads', 'iap', 'social', 'analytics', 'webgl', 'wasm'];
-      
-      features.forEach(feature => {
+
+      features.forEach((feature) => {
         const supported = universalAPI.isFeatureSupported(feature as any);
         expect(typeof supported).toBe('boolean');
       });
@@ -272,7 +272,7 @@ describe('Platform Compatibility', () => {
       const adResult = await universalAPI.showAd({ type: 'banner', placement: 'top' });
       expect(adResult.success).toBeDefined();
       expect(adResult.platform).toBeDefined();
-      
+
       // Test IAP functionality with fallback
       const iapResult = await universalAPI.trackEvent('purchase_attempt', { productId: 'test' });
       expect(iapResult.success).toBeDefined();
@@ -284,30 +284,30 @@ describe('Platform Compatibility', () => {
     test('should optimize for platform capabilities', async () => {
       const platform = await platformDetector.detectPlatform();
       const optimization = platformDetector.getOptimizationConfig();
-      
+
       // Check memory optimization
       expect(optimization.memorySize).toBeLessThanOrEqual(platform.capabilities.maxMemory);
-      
+
       // Check texture optimization
       expect(optimization.textureFormat).toBeDefined();
-      
+
       // Check compression optimization
       expect(optimization.compression).toBeDefined();
     });
 
     test('should provide performance recommendations', () => {
       const recommendations = universalAPI.getPlatformRecommendations();
-      
+
       expect(Array.isArray(recommendations)).toBe(true);
-      
+
       // Check for common recommendations
-      const hasMemoryRecommendation = recommendations.some(rec => 
-        rec.toLowerCase().includes('memory')
+      const hasMemoryRecommendation = recommendations.some((rec) =>
+        rec.toLowerCase().includes('memory'),
       );
-      const hasPerformanceRecommendation = recommendations.some(rec => 
-        rec.toLowerCase().includes('performance')
+      const hasPerformanceRecommendation = recommendations.some((rec) =>
+        rec.toLowerCase().includes('performance'),
       );
-      
+
       // At least one recommendation should be present
       expect(hasMemoryRecommendation || hasPerformanceRecommendation).toBe(true);
     });
@@ -320,9 +320,9 @@ describe('Platform Compatibility', () => {
         name: 'invalid',
         type: 'unknown',
         capabilities: {},
-        config: {}
+        config: {},
       };
-      
+
       expect(invalidPlatform).toBeDefined();
       expect(invalidPlatform.name).toBe('invalid');
     });

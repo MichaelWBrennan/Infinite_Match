@@ -19,7 +19,11 @@ export class ServiceContainer {
   /**
    * Register a service factory
    */
-  register<T>(name: string, factory: (container: ServiceContainer) => T, singleton: boolean = false): void {
+  register<T>(
+    name: string,
+    factory: (container: ServiceContainer) => T,
+    singleton: boolean = false,
+  ): void {
     this.services.set(name, { factory, singleton });
     logger.debug(`Registered service: ${name} (singleton: ${singleton})`);
   }
@@ -44,7 +48,7 @@ export class ServiceContainer {
     const service = this.services.get(name);
     if (!service) {
       throw new Error(
-        `Service '${name}' not found. Available services: ${Array.from(this.services.keys()).join(', ')}`
+        `Service '${name}' not found. Available services: ${Array.from(this.services.keys()).join(', ')}`,
       );
     }
 

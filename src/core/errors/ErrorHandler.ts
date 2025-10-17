@@ -44,12 +44,7 @@ export class AppError extends Error {
   public readonly context: ErrorContext;
   public readonly timestamp: string;
 
-  constructor(
-    message: string,
-    code: string,
-    statusCode: number = 500,
-    context: ErrorContext = {}
-  ) {
+  constructor(message: string, code: string, statusCode: number = 500, context: ErrorContext = {}) {
     super(message);
     this.name = this.constructor.name;
     this.code = code;
@@ -195,7 +190,7 @@ export class ErrorHandler {
    */
   static wrapAsync<T extends (...args: any[]) => Promise<any>>(
     fn: T,
-    context: ErrorContext = {}
+    context: ErrorContext = {},
   ): T {
     return (async (...args: any[]) => {
       try {
@@ -206,7 +201,7 @@ export class ErrorHandler {
           errorInfo.message,
           errorInfo.context?.code || 'WRAPPED_ERROR',
           errorInfo.context?.statusCode || 500,
-          errorInfo.context
+          errorInfo.context,
         );
       }
     }) as T;
