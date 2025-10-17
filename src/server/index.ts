@@ -10,6 +10,10 @@ import { AppConfig } from '../core/config/index.js';
 import { Logger } from '../core/logger/index.js';
 import { ErrorHandler } from '../core/errors/ErrorHandler.js';
 import { ServiceContainer } from '../core/container/ServiceContainer.js';
+import { PlatformDetector } from '../core/platform/PlatformDetector.js';
+import { UniversalAPI } from '../core/api/UniversalAPI.js';
+import WebGLMiddleware from '../core/middleware/WebGLMiddleware.js';
+import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
 import { AnalyticsService } from '../services/analytics-service.js';
 import { CloudServices } from '../services/cloud-services.js';
 import gameRoutes from '../routes/game-routes.js';
@@ -42,6 +46,10 @@ class GameServer {
   private logger: Logger;
   private errorHandler: ErrorHandler;
   private serviceContainer: ServiceContainer;
+  private platformDetector: PlatformDetector;
+  private universalAPI: UniversalAPI;
+  private webglMiddleware: WebGLMiddleware;
+  private platformBuildConfig: PlatformBuildConfig;
   private analyticsService: AnalyticsService;
   private cloudServices: CloudServices;
 
@@ -56,6 +64,10 @@ class GameServer {
     this.logger = new Logger('GameServer');
     this.errorHandler = new ErrorHandler();
     this.serviceContainer = new ServiceContainer();
+    this.platformDetector = new PlatformDetector();
+    this.universalAPI = new UniversalAPI();
+    this.webglMiddleware = new WebGLMiddleware();
+    this.platformBuildConfig = new PlatformBuildConfig();
     
     this.initializeSocketIO();
     this.initializeServices();
@@ -77,6 +89,18 @@ class GameServer {
   private async initializeServices(): Promise<void> {
     try {
       this.logger.info('Initializing services...');
+
+      // Initialize platform detection
+      await this.platformDetector.detectPlatform();
+      this.logger.info('Platform detection initialized');
+
+      // Initialize universal API
+      await this.universalAPI.initialize();
+      this.logger.info('Universal API initialized');
+
+      // Initialize WebGL middleware
+      await this.webglMiddleware.initialize();
+      this.logger.info('WebGL middleware initialized');
 
       // Initialize analytics service
       this.analyticsService = this.serviceContainer.get<AnalyticsService>('analytics');
@@ -169,6 +193,9 @@ class GameServer {
 
     // Analytics middleware
     this.app.use(analyticsMiddleware);
+
+    // WebGL middleware for platform-specific optimizations
+    this.app.use(this.webglMiddleware.webglServingMiddleware);
   }
 
   private setupRoutes(): void {
@@ -178,11 +205,28 @@ class GameServer {
     // API routes
     this.app.use('/api/game', gameRoutes);
 
-    // Serve static files for WebGL build
-    this.app.use(express.static('webgl'));
+    // Platform-specific API routes
+    this.setupPlatformRoutes();
 
-    // Serve Unity WebGL build
+    // Serve static files for WebGL build with platform optimization
+    this.app.use(express.static('webgl', {
+      setHeaders: (res, path) => {
+        // Set platform-specific headers
+        const platform = this.platformDetector.getCurrentPlatform();
+        if (platform) {
+          res.setHeader('X-Platform', platform.name);
+          res.setHeader('X-Platform-Type', platform.type);
+        }
+      }
+    }));
+
+    // Serve Unity WebGL build with platform detection
     this.app.get('/', (req: Request, res: Response) => {
+      const platform = this.platformDetector.getCurrentPlatform();
+      if (platform) {
+        res.setHeader('X-Platform', platform.name);
+        res.setHeader('X-Platform-Type', platform.type);
+      }
       res.sendFile('index.html', { root: 'webgl' });
     });
 
@@ -210,14 +254,158 @@ class GameServer {
     }
   }
 
+  private setupPlatformRoutes(): void {
+    // Platform detection endpoint
+    this.app.get('/api/platform/detect', async (req: Request, res: Response) => {
+      try {
+        const platform = this.platformDetector.getCurrentPlatform();
+        const capabilities = this.universalAPI.getPlatformCapabilities();
+        const config = this.universalAPI.getPlatformConfig();
+        
+        res.json({
+          success: true,
+          data: {
+            platform: platform?.name || 'unknown',
+            type: platform?.type || 'unknown',
+            capabilities: capabilities.data,
+            config: config.data,
+            recommendations: this.universalAPI.getPlatformRecommendations()
+          }
+        });
+      } catch (error) {
+        this.logger.error('Platform detection error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Platform detection failed'
+        });
+      }
+    });
+
+    // Platform capabilities endpoint
+    this.app.get('/api/platform/capabilities', async (req: Request, res: Response) => {
+      try {
+        const capabilities = this.universalAPI.getPlatformCapabilities();
+        res.json(capabilities);
+      } catch (error) {
+        this.logger.error('Platform capabilities error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to get platform capabilities'
+        });
+      }
+    });
+
+    // Build configuration endpoint
+    this.app.get('/api/platform/build-config', async (req: Request, res: Response) => {
+      try {
+        const buildConfig = await this.platformBuildConfig.getOptimizedBuildConfig();
+        res.json({
+          success: true,
+          data: buildConfig
+        });
+      } catch (error) {
+        this.logger.error('Build config error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to get build configuration'
+        });
+      }
+    });
+
+    // Universal API endpoints
+    this.app.post('/api/platform/show-ad', async (req: Request, res: Response) => {
+      try {
+        const result = await this.universalAPI.showAd(req.body);
+        res.json(result);
+      } catch (error) {
+        this.logger.error('Show ad error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to show advertisement'
+        });
+      }
+    });
+
+    this.app.post('/api/platform/show-rewarded-ad', async (req: Request, res: Response) => {
+      try {
+        const result = await this.universalAPI.showRewardedAd();
+        res.json(result);
+      } catch (error) {
+        this.logger.error('Show rewarded ad error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to show rewarded advertisement'
+        });
+      }
+    });
+
+    this.app.get('/api/platform/user-info', async (req: Request, res: Response) => {
+      try {
+        const result = await this.universalAPI.getUserInfo();
+        res.json(result);
+      } catch (error) {
+        this.logger.error('Get user info error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to get user information'
+        });
+      }
+    });
+
+    this.app.post('/api/platform/track-event', async (req: Request, res: Response) => {
+      try {
+        const { eventName, parameters } = req.body;
+        const result = await this.universalAPI.trackEvent(eventName, parameters);
+        res.json(result);
+      } catch (error) {
+        this.logger.error('Track event error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to track event'
+        });
+      }
+    });
+
+    this.app.post('/api/platform/gameplay-start', async (req: Request, res: Response) => {
+      try {
+        const result = await this.universalAPI.gameplayStart();
+        res.json(result);
+      } catch (error) {
+        this.logger.error('Gameplay start error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to handle gameplay start'
+        });
+      }
+    });
+
+    this.app.post('/api/platform/gameplay-stop', async (req: Request, res: Response) => {
+      try {
+        const result = await this.universalAPI.gameplayStop();
+        res.json(result);
+      } catch (error) {
+        this.logger.error('Gameplay stop error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to handle gameplay stop'
+        });
+      }
+    });
+  }
+
   private setupWebSocketHandlers(): void {
     this.io.on('connection', (socket) => {
       this.logger.info('Client connected:', socket.id);
 
-      // Track connection
+      // Get platform info
+      const platform = this.platformDetector.getCurrentPlatform();
+      
+      // Track connection with platform info
       this.analyticsService.trackGameEvent('websocket_connected', {
         socket_id: socket.id,
         ip_address: socket.handshake.address,
+        platform: platform?.name || 'unknown',
+        platform_type: platform?.type || 'unknown'
       });
 
       // Handle game events
@@ -246,9 +434,25 @@ class GameServer {
             unit: data.unit,
             level: data.level,
             deviceInfo: data.device_info,
+            platform: platform?.name || 'unknown'
           });
         } catch (error) {
           this.logger.error('Error handling performance metric:', error);
+        }
+      });
+
+      // Handle platform-specific events
+      socket.on('platform_event', async (data) => {
+        try {
+          // Handle platform-specific events through Universal API
+          if (data.type === 'show_ad') {
+            await this.universalAPI.showAd(data.config);
+          } else if (data.type === 'track_event') {
+            await this.universalAPI.trackEvent(data.eventName, data.parameters);
+          }
+        } catch (error) {
+          this.logger.error('Error handling platform event:', error);
+          socket.emit('error', { message: 'Failed to process platform event' });
         }
       });
 
@@ -258,6 +462,7 @@ class GameServer {
 
         this.analyticsService.trackGameEvent('websocket_disconnected', {
           socket_id: socket.id,
+          platform: platform?.name || 'unknown'
         });
       });
     });
