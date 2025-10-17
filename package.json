@@ -173,6 +173,11 @@
     "platform:detect": "node -e \"console.log('Platform detection available at /api/platform/detect')\"",
     "platform:build": "npm run platform:optimize && npm run build",
     "platform:test": "npm run platform:optimize && npm run test",
+    "platform:deploy": "npm run platform:optimize && npm run build && npm run deploy:vercel",
+    "platform:optimize": "node scripts/optimize-platforms.js",
+    "platform:detect": "node -e \"console.log('Platform detection available at /api/platform/detect')\"",
+    "platform:build": "npm run platform:optimize && npm run build",
+    "platform:test": "npm run platform:optimize && npm run test",
     "platform:deploy": "npm run platform:optimize && npm run build && npm run deploy:vercel"
   },
   "type": "module",

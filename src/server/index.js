@@ -13,6 +13,8 @@ import {
   analyticsMiddleware,
   errorTrackingMiddleware,
 } from '../middleware/analytics-middleware.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const app = express();
 const server = createServer(app);
@@ -24,6 +26,53 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Platform detection utility
+function detectPlatform(req) {
+  const hostname = req.hostname.toLowerCase();
+  const referrer = req.get('referer')?.toLowerCase() || '';
+  const userAgent = req.get('user-agent')?.toLowerCase() || '';
+  
+  // Check for Kongregate
+  if (hostname.includes('kongregate.com') || referrer.includes('kongregate.com')) {
+    return 'kongregate';
+  }
+  
+  // Check for Game Crazy
+  if (hostname.includes('gamecrazy.com') || referrer.includes('gamecrazy.com')) {
+    return 'gamecrazy';
+  }
+  
+  // Check for Poki
+  if (hostname.includes('poki.com') || referrer.includes('poki.com')) {
+    return 'poki';
+  }
+  
+  // Check for mobile platforms
+  if (userAgent.includes('android')) {
+    return 'android';
+  }
+  
+  if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+    return 'ios';
+  }
+  
+  return 'webgl'; // Default to WebGL
+}
+
+// Platform-specific optimizations
+function getPlatformOptimizations(platform) {
+  const optimizations = {
+    webgl: { memorySize: 256, compression: 'gzip', textureFormat: 'astc' },
+    kongregate: { memorySize: 128, compression: 'gzip', textureFormat: 'dxt' },
+    poki: { memorySize: 64, compression: 'brotli', textureFormat: 'etc2' },
+    gamecrazy: { memorySize: 32, compression: 'gzip', textureFormat: 'dxt' },
+    android: { memorySize: 512, compression: 'none', textureFormat: 'astc' },
+    ios: { memorySize: 256, compression: 'none', textureFormat: 'astc' }
+  };
+  
+  return optimizations[platform] || optimizations.webgl;
+}
 
 // Initialize services
 async function initializeServices() {
@@ -136,11 +185,72 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/game', gameRoutes);
 
-// Serve static files for WebGL build
-app.use(express.static('webgl'));
+// Platform detection endpoint
+app.get('/api/platform/detect', (req, res) => {
+  const platform = detectPlatform(req);
+  const optimizations = getPlatformOptimizations(platform);
+  
+  res.json({
+    success: true,
+    data: {
+      platform,
+      optimizations,
+      capabilities: {
+        webgl: true,
+        wasm: true,
+        touch: req.get('user-agent')?.includes('Mobile') || false,
+        mobile: platform === 'android' || platform === 'ios'
+      }
+    }
+  });
+});
 
-// Serve Unity WebGL build
+// Platform optimization endpoint
+app.get('/api/platform/optimize', (req, res) => {
+  const platform = detectPlatform(req);
+  const optimizations = getPlatformOptimizations(platform);
+  
+  res.json({
+    success: true,
+    data: {
+      platform,
+      optimizations,
+      recommendations: [
+        `Optimized for ${platform} platform`,
+        `Memory size: ${optimizations.memorySize}MB`,
+        `Compression: ${optimizations.compression}`,
+        `Texture format: ${optimizations.textureFormat}`
+      ]
+    }
+  });
+});
+
+// Serve static files for WebGL build with platform optimization
+app.use(express.static('webgl', {
+  setHeaders: (res, path) => {
+    // Set platform-specific headers
+    res.setHeader('X-Platform', 'webgl');
+    res.setHeader('X-WebGL-Optimized', 'true');
+    
+    // Set compression headers
+    if (path.endsWith('.wasm')) {
+      res.setHeader('Content-Type', 'application/wasm');
+      res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    }
+  }
+}));
+
+// Serve Unity WebGL build with platform detection
 app.get('/', (req, res) => {
+  const platform = detectPlatform(req);
+  const optimizations = getPlatformOptimizations(platform);
+  
+  // Set platform-specific headers
+  res.setHeader('X-Platform', platform);
+  res.setHeader('X-Platform-Type', platform === 'android' || platform === 'ios' ? 'mobile' : 'web');
+  res.setHeader('X-WebGL-Optimized', 'true');
+  
   res.sendFile('index.html', { root: 'webgl' });
 });
 
