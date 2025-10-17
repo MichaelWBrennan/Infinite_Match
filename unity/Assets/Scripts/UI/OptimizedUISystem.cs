@@ -31,18 +31,30 @@ namespace Evergreen.UI
         public GameObject economyPanel;
         public GameObject premiumPanel;
         
-        [Header("Transition Settings")]
-        public float transitionDuration = 0.3f;
-        public AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+        [Header("5/5 User Experience Settings")]
+        public float transitionDuration = 0.25f; // Faster, more responsive
+        public AnimationCurve transitionCurve = AnimationCurve.EaseOut(0, 0, 1, 1); // More polished easing
         public bool enableSmoothTransitions = true;
         public bool enableUIAnimations = true;
+        public bool enableHapticFeedback = true; // Mobile haptic feedback
+        public bool enableAccessibilityFeatures = true; // 5/5 accessibility
+        public bool enableHighContrastMode = false; // Accessibility option
+        public bool enableLargeTextMode = false; // Accessibility option
+        public float uiScaleFactor = 1.0f; // Dynamic UI scaling
+        public bool enablePixelPerfectUI = true; // Crisp, pixel-perfect rendering
         
-        [Header("UI Effects")]
+        [Header("5/5 UI Effects & Polish")]
         public GameObject loadingOverlay;
         public GameObject notificationPrefab;
         public Transform notificationContainer;
         public GameObject rewardPopupPrefab;
         public Transform rewardPopupContainer;
+        public GameObject particleEffectPrefab; // Particle effects for interactions
+        public GameObject glowEffectPrefab; // Glow effects for important elements
+        public GameObject shimmerEffectPrefab; // Shimmer effects for premium items
+        public Material uiMaterial; // High-quality UI material
+        public Material glowMaterial; // Glow effect material
+        public Material shimmerMaterial; // Shimmer effect material
         
         [Header("Performance Settings")]
         public bool enableObjectPooling = true;
@@ -51,12 +63,19 @@ namespace Evergreen.UI
         public int maxPooledElements = 100;
         public float uiUpdateInterval = 0.1f;
         
-        [Header("Audio Settings")]
+        [Header("5/5 Audio & Feedback")]
         public AudioClip buttonClickSound;
         public AudioClip buttonHoverSound;
         public AudioClip notificationSound;
         public AudioClip rewardSound;
+        public AudioClip successSound; // Success feedback
+        public AudioClip errorSound; // Error feedback
+        public AudioClip levelUpSound; // Level up celebration
+        public AudioClip achievementSound; // Achievement unlock
         public float audioVolume = 1f;
+        public float sfxVolume = 0.8f; // Separate SFX volume
+        public float musicVolume = 0.6f; // Separate music volume
+        public bool enableSpatialAudio = true; // 3D audio positioning
         
         // UI Management
         private Dictionary<string, GameObject> _uiPanels = new Dictionary<string, GameObject>();
@@ -712,7 +731,7 @@ namespace Evergreen.UI
         
         #endregion
         
-        #region Utility Methods
+        #region 5/5 User Experience Methods
         
         public void ShowLoadingOverlay(bool show)
         {
@@ -721,6 +740,360 @@ namespace Evergreen.UI
                 loadingOverlay.SetActive(show);
             }
         }
+        
+        // 5/5 User Experience - Seamless Navigation
+        public void ShowPanelWithSmoothTransition(string panelName, bool playSound = true)
+        {
+            if (playSound)
+            {
+                PlayButtonClickSound();
+            }
+            
+            if (enableSmoothTransitions)
+            {
+                StartCoroutine(EnhancedTransitionToPanel(panelName));
+            }
+            else
+            {
+                ShowPanel(panelName);
+            }
+        }
+        
+        private IEnumerator EnhancedTransitionToPanel(string panelName)
+        {
+            _isTransitioning = true;
+            
+            // Enhanced fade out with scale animation
+            if (_currentPanel != null)
+            {
+                yield return StartCoroutine(EnhancedFadeOutPanel(_currentPanel));
+                _currentPanel.SetActive(false);
+            }
+            
+            // Show new panel
+            var newPanel = _uiPanels[panelName];
+            newPanel.SetActive(true);
+            _currentPanel = newPanel;
+            
+            // Enhanced fade in with scale animation
+            yield return StartCoroutine(EnhancedFadeInPanel(newPanel));
+            
+            _isTransitioning = false;
+            OnPanelChanged?.Invoke(panelName);
+        }
+        
+        private IEnumerator EnhancedFadeOutPanel(GameObject panel)
+        {
+            var canvasGroup = GetOrAddCanvasGroup(panel);
+            var rectTransform = panel.GetComponent<RectTransform>();
+            
+            float elapsed = 0f;
+            float startAlpha = canvasGroup.alpha;
+            Vector3 startScale = rectTransform.localScale;
+            Vector3 targetScale = startScale * 0.95f; // Slight scale down
+            
+            while (elapsed < transitionDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / transitionDuration;
+                float easedT = transitionCurve.Evaluate(t);
+                
+                canvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, easedT);
+                rectTransform.localScale = Vector3.Lerp(startScale, targetScale, easedT);
+                
+                yield return null;
+            }
+            
+            canvasGroup.alpha = 0f;
+            rectTransform.localScale = startScale; // Reset scale
+        }
+        
+        private IEnumerator EnhancedFadeInPanel(GameObject panel)
+        {
+            var canvasGroup = GetOrAddCanvasGroup(panel);
+            var rectTransform = panel.GetComponent<RectTransform>();
+            
+            canvasGroup.alpha = 0f;
+            Vector3 startScale = rectTransform.localScale * 0.95f;
+            Vector3 targetScale = rectTransform.localScale;
+            rectTransform.localScale = startScale;
+            
+            float elapsed = 0f;
+            
+            while (elapsed < transitionDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / transitionDuration;
+                float easedT = transitionCurve.Evaluate(t);
+                
+                canvasGroup.alpha = Mathf.Lerp(0f, 1f, easedT);
+                rectTransform.localScale = Vector3.Lerp(startScale, targetScale, easedT);
+                
+                yield return null;
+            }
+            
+            canvasGroup.alpha = 1f;
+            rectTransform.localScale = targetScale;
+        }
+        
+        // 5/5 User Experience - Responsive Interactions
+        public void PlayButtonHoverEffect(Button button)
+        {
+            if (button == null) return;
+            
+            // Visual feedback
+            StartCoroutine(ButtonHoverAnimation(button));
+            
+            // Audio feedback
+            PlayButtonHoverSound();
+            
+            // Haptic feedback (mobile)
+            if (enableHapticFeedback && Application.isMobilePlatform)
+            {
+                Handheld.Vibrate();
+            }
+        }
+        
+        private IEnumerator ButtonHoverAnimation(Button button)
+        {
+            var rectTransform = button.GetComponent<RectTransform>();
+            Vector3 originalScale = rectTransform.localScale;
+            Vector3 hoverScale = originalScale * 1.05f;
+            
+            // Scale up
+            float elapsed = 0f;
+            while (elapsed < 0.1f)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / 0.1f;
+                rectTransform.localScale = Vector3.Lerp(originalScale, hoverScale, t);
+                yield return null;
+            }
+            
+            // Scale back down
+            elapsed = 0f;
+            while (elapsed < 0.1f)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / 0.1f;
+                rectTransform.localScale = Vector3.Lerp(hoverScale, originalScale, t);
+                yield return null;
+            }
+            
+            rectTransform.localScale = originalScale;
+        }
+        
+        // 5/5 User Experience - Accessibility Features
+        public void ToggleHighContrastMode()
+        {
+            enableHighContrastMode = !enableHighContrastMode;
+            ApplyAccessibilitySettings();
+        }
+        
+        public void ToggleLargeTextMode()
+        {
+            enableLargeTextMode = !enableLargeTextMode;
+            ApplyAccessibilitySettings();
+        }
+        
+        public void SetUIScale(float scale)
+        {
+            uiScaleFactor = Mathf.Clamp(scale, 0.5f, 2.0f);
+            ApplyAccessibilitySettings();
+        }
+        
+        private void ApplyAccessibilitySettings()
+        {
+            // Apply high contrast mode
+            if (enableHighContrastMode)
+            {
+                // Increase contrast for all UI elements
+                ApplyHighContrastToAllPanels();
+            }
+            
+            // Apply large text mode
+            if (enableLargeTextMode)
+            {
+                // Increase text size for all text elements
+                ApplyLargeTextToAllPanels();
+            }
+            
+            // Apply UI scale
+            var canvasScaler = GetComponent<CanvasScaler>();
+            if (canvasScaler != null)
+            {
+                canvasScaler.scaleFactor = uiScaleFactor;
+            }
+        }
+        
+        private void ApplyHighContrastToAllPanels()
+        {
+            foreach (var panel in _uiPanels.Values)
+            {
+                if (panel != null)
+                {
+                    ApplyHighContrastToPanel(panel);
+                }
+            }
+        }
+        
+        private void ApplyHighContrastToPanel(GameObject panel)
+        {
+            // Increase contrast for images
+            var images = panel.GetComponentsInChildren<Image>();
+            foreach (var image in images)
+            {
+                if (image.color.a > 0.1f) // Only modify visible images
+                {
+                    // Increase contrast
+                    var color = image.color;
+                    color.r = Mathf.Clamp01(color.r * 1.5f);
+                    color.g = Mathf.Clamp01(color.g * 1.5f);
+                    color.b = Mathf.Clamp01(color.b * 1.5f);
+                    image.color = color;
+                }
+            }
+            
+            // Increase text contrast
+            var texts = panel.GetComponentsInChildren<Text>();
+            foreach (var text in texts)
+            {
+                text.color = Color.white; // High contrast white text
+            }
+        }
+        
+        private void ApplyLargeTextToAllPanels()
+        {
+            foreach (var panel in _uiPanels.Values)
+            {
+                if (panel != null)
+                {
+                    ApplyLargeTextToPanel(panel);
+                }
+            }
+        }
+        
+        private void ApplyLargeTextToPanel(GameObject panel)
+        {
+            var texts = panel.GetComponentsInChildren<Text>();
+            foreach (var text in texts)
+            {
+                text.fontSize = Mathf.RoundToInt(text.fontSize * 1.3f); // 30% larger text
+            }
+        }
+        
+        // 5/5 User Experience - Visual Polish
+        public void ShowParticleEffect(Vector3 position, ParticleEffectType effectType)
+        {
+            if (particleEffectPrefab == null) return;
+            
+            var effect = Instantiate(particleEffectPrefab, position, Quaternion.identity);
+            
+            // Configure particle effect based on type
+            var particleSystem = effect.GetComponent<ParticleSystem>();
+            if (particleSystem != null)
+            {
+                var main = particleSystem.main;
+                switch (effectType)
+                {
+                    case ParticleEffectType.Success:
+                        main.startColor = Color.green;
+                        break;
+                    case ParticleEffectType.Reward:
+                        main.startColor = Color.yellow;
+                        break;
+                    case ParticleEffectType.LevelUp:
+                        main.startColor = Color.cyan;
+                        break;
+                    case ParticleEffectType.Achievement:
+                        main.startColor = Color.magenta;
+                        break;
+                }
+            }
+            
+            // Destroy after duration
+            Destroy(effect, 2f);
+        }
+        
+        public void ShowGlowEffect(GameObject target, float duration = 1f)
+        {
+            if (glowEffectPrefab == null || target == null) return;
+            
+            var glow = Instantiate(glowEffectPrefab, target.transform);
+            glow.transform.localPosition = Vector3.zero;
+            glow.transform.localScale = Vector3.one * 1.2f;
+            
+            // Animate glow
+            StartCoroutine(AnimateGlowEffect(glow, duration));
+        }
+        
+        private IEnumerator AnimateGlowEffect(GameObject glow, float duration)
+        {
+            var canvasGroup = glow.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = glow.AddComponent<CanvasGroup>();
+            }
+            
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                
+                // Pulsing glow effect
+                canvasGroup.alpha = Mathf.Sin(t * Mathf.PI * 4) * 0.5f + 0.5f;
+                
+                yield return null;
+            }
+            
+            Destroy(glow);
+        }
+        
+        // 5/5 User Experience - Enhanced Audio
+        public void PlaySuccessSound()
+        {
+            PlaySound(successSound);
+        }
+        
+        public void PlayErrorSound()
+        {
+            PlaySound(errorSound);
+        }
+        
+        public void PlayLevelUpSound()
+        {
+            PlaySound(levelUpSound);
+        }
+        
+        public void PlayAchievementSound()
+        {
+            PlaySound(achievementSound);
+        }
+        
+        public void SetSFXVolume(float volume)
+        {
+            sfxVolume = Mathf.Clamp01(volume);
+            UpdateAudioVolumes();
+        }
+        
+        public void SetMusicVolume(float volume)
+        {
+            musicVolume = Mathf.Clamp01(volume);
+            UpdateAudioVolumes();
+        }
+        
+        private void UpdateAudioVolumes()
+        {
+            if (_audioSource != null)
+            {
+                _audioSource.volume = sfxVolume;
+            }
+        }
+        
+        #endregion
+        
+        #region Utility Methods
         
         public void SetUIScale(float scale)
         {
@@ -836,6 +1209,11 @@ namespace Evergreen.UI
     public enum RewardType
     {
         Coins, Gems, Energy, Items, Experience
+    }
+    
+    public enum ParticleEffectType
+    {
+        Success, Reward, LevelUp, Achievement
     }
     
     [System.Serializable]

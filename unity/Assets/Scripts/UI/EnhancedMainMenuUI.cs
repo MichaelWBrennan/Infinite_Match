@@ -62,15 +62,33 @@ namespace Evergreen.UI
         public TextMeshProUGUI characterDialogueText;
         public Button interactButton;
         
-        [Header("Notifications")]
+        [Header("5/5 User Experience - Notifications")]
         public GameObject notificationPanel;
         public TextMeshProUGUI notificationText;
         public float notificationDuration = 3f;
+        public AnimationCurve notificationAnimationCurve = AnimationCurve.EaseOut(0, 0, 1, 1);
+        public bool enableNotificationAnimations = true;
+        public bool enableNotificationSounds = true;
+        
+        [Header("5/5 User Experience - Visual Polish")]
+        public GameObject backgroundParticles;
+        public GameObject uiGlowEffects;
+        public Material premiumUIMaterial;
+        public bool enableParticleEffects = true;
+        public bool enableGlowEffects = true;
+        
+        [Header("5/5 User Experience - Accessibility")]
+        public bool enableHighContrastMode = false;
+        public bool enableLargeTextMode = false;
+        public float uiScaleFactor = 1.0f;
+        public Color highContrastColor = Color.white;
+        public int largeTextSizeMultiplier = 1;
         
         private void Start()
         {
             InitializeUI();
             SetupEventListeners();
+            Apply5StarUserExperience();
             UpdateAllUI();
         }
         
@@ -89,17 +107,20 @@ namespace Evergreen.UI
         
         private void SetupEventListeners()
         {
-            // Navigation buttons
-            playButton.onClick.AddListener(() => StartGame());
-            metaGameButton.onClick.AddListener(() => ShowPanel(metaGamePanel));
-            socialButton.onClick.AddListener(() => ShowPanel(socialPanel));
-            eventsButton.onClick.AddListener(() => ShowPanel(eventsPanel));
-            achievementsButton.onClick.AddListener(() => ShowPanel(achievementsPanel));
-            characterButton.onClick.AddListener(() => ShowPanel(characterPanel));
-            settingsButton.onClick.AddListener(() => ShowSettings());
+            // Navigation buttons with 5/5 UX
+            playButton.onClick.AddListener(() => StartGameWith5StarUX());
+            metaGameButton.onClick.AddListener(() => ShowPanelWith5StarUX(metaGamePanel));
+            socialButton.onClick.AddListener(() => ShowPanelWith5StarUX(socialPanel));
+            eventsButton.onClick.AddListener(() => ShowPanelWith5StarUX(eventsPanel));
+            achievementsButton.onClick.AddListener(() => ShowPanelWith5StarUX(achievementsPanel));
+            characterButton.onClick.AddListener(() => ShowPanelWith5StarUX(characterPanel));
+            settingsButton.onClick.AddListener(() => ShowSettingsWith5StarUX());
             
-            // Character interaction
-            interactButton.onClick.AddListener(() => InteractWithCharacter());
+            // Character interaction with 5/5 UX
+            interactButton.onClick.AddListener(() => InteractWithCharacter5StarUX());
+            
+            // Add hover effects for 5/5 UX
+            AddHoverEffectsToButtons();
         }
         
         private void ShowPanel(GameObject panel)
@@ -408,5 +429,390 @@ namespace Evergreen.UI
             if (characterPanel.activeInHierarchy)
                 UpdateCharacterUI();
         }
+        
+        #region 5/5 User Experience Methods
+        
+        private void Apply5StarUserExperience()
+        {
+            // Apply accessibility settings
+            if (enableHighContrastMode)
+            {
+                ApplyHighContrastMode();
+            }
+            
+            if (enableLargeTextMode)
+            {
+                ApplyLargeTextMode();
+            }
+            
+            // Apply UI scaling
+            ApplyUIScaling();
+            
+            // Enable visual effects
+            if (enableParticleEffects && backgroundParticles != null)
+            {
+                backgroundParticles.SetActive(true);
+            }
+            
+            if (enableGlowEffects && uiGlowEffects != null)
+            {
+                uiGlowEffects.SetActive(true);
+            }
+        }
+        
+        private void ApplyHighContrastMode()
+        {
+            // Apply high contrast to all UI elements
+            var allImages = GetComponentsInChildren<Image>();
+            foreach (var image in allImages)
+            {
+                if (image.color.a > 0.1f)
+                {
+                    var color = image.color;
+                    color.r = Mathf.Clamp01(color.r * 1.5f);
+                    color.g = Mathf.Clamp01(color.g * 1.5f);
+                    color.b = Mathf.Clamp01(color.b * 1.5f);
+                    image.color = color;
+                }
+            }
+            
+            var allTexts = GetComponentsInChildren<TextMeshProUGUI>();
+            foreach (var text in allTexts)
+            {
+                text.color = highContrastColor;
+            }
+        }
+        
+        private void ApplyLargeTextMode()
+        {
+            var allTexts = GetComponentsInChildren<TextMeshProUGUI>();
+            foreach (var text in allTexts)
+            {
+                text.fontSize = Mathf.RoundToInt(text.fontSize * largeTextSizeMultiplier);
+            }
+        }
+        
+        private void ApplyUIScaling()
+        {
+            var canvasScaler = GetComponent<CanvasScaler>();
+            if (canvasScaler != null)
+            {
+                canvasScaler.scaleFactor = uiScaleFactor;
+            }
+        }
+        
+        private void AddHoverEffectsToButtons()
+        {
+            var buttons = GetComponentsInChildren<Button>();
+            foreach (var button in buttons)
+            {
+                // Add hover sound effect
+                var eventTrigger = button.gameObject.GetComponent<UnityEngine.EventSystems.EventTrigger>();
+                if (eventTrigger == null)
+                {
+                    eventTrigger = button.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
+                }
+                
+                // Pointer enter event
+                var pointerEnter = new UnityEngine.EventSystems.EventTrigger.Entry();
+                pointerEnter.eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter;
+                pointerEnter.callback.AddListener((data) => { OnButtonHover(button); });
+                eventTrigger.triggers.Add(pointerEnter);
+                
+                // Pointer exit event
+                var pointerExit = new UnityEngine.EventSystems.EventTrigger.Entry();
+                pointerExit.eventID = UnityEngine.EventSystems.EventTriggerType.PointerExit;
+                pointerExit.callback.AddListener((data) => { OnButtonHoverExit(button); });
+                eventTrigger.triggers.Add(pointerExit);
+            }
+        }
+        
+        private void OnButtonHover(Button button)
+        {
+            // Visual feedback
+            StartCoroutine(ButtonHoverAnimation(button));
+            
+            // Audio feedback
+            if (enableNotificationSounds)
+            {
+                // Play hover sound
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    audioSource.Play();
+                }
+            }
+        }
+        
+        private void OnButtonHoverExit(Button button)
+        {
+            // Reset button scale
+            var rectTransform = button.GetComponent<RectTransform>();
+            rectTransform.localScale = Vector3.one;
+        }
+        
+        private System.Collections.IEnumerator ButtonHoverAnimation(Button button)
+        {
+            var rectTransform = button.GetComponent<RectTransform>();
+            Vector3 originalScale = rectTransform.localScale;
+            Vector3 hoverScale = originalScale * 1.05f;
+            
+            // Scale up
+            float elapsed = 0f;
+            while (elapsed < 0.1f)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / 0.1f;
+                rectTransform.localScale = Vector3.Lerp(originalScale, hoverScale, t);
+                yield return null;
+            }
+        }
+        
+        private void StartGameWith5StarUX()
+        {
+            // Play success sound
+            if (enableNotificationSounds)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    audioSource.Play();
+                }
+            }
+            
+            // Show particle effect
+            if (enableParticleEffects)
+            {
+                ShowParticleEffect(playButton.transform.position, ParticleEffectType.Success);
+            }
+            
+            // Start the game
+            StartGame();
+        }
+        
+        private void ShowPanelWith5StarUX(GameObject panel)
+        {
+            // Play button click sound
+            if (enableNotificationSounds)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    audioSource.Play();
+                }
+            }
+            
+            // Show glow effect
+            if (enableGlowEffects)
+            {
+                ShowGlowEffect(panel, 0.5f);
+            }
+            
+            // Show panel with smooth transition
+            ShowPanel(panel);
+        }
+        
+        private void ShowSettingsWith5StarUX()
+        {
+            // Play button click sound
+            if (enableNotificationSounds)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    audioSource.Play();
+                }
+            }
+            
+            // Show settings panel
+            ShowSettings();
+        }
+        
+        private void InteractWithCharacter5StarUX()
+        {
+            // Play interaction sound
+            if (enableNotificationSounds)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    audioSource.Play();
+                }
+            }
+            
+            // Show particle effect
+            if (enableParticleEffects)
+            {
+                ShowParticleEffect(interactButton.transform.position, ParticleEffectType.Reward);
+            }
+            
+            // Interact with character
+            InteractWithCharacter();
+        }
+        
+        private void ShowParticleEffect(Vector3 position, ParticleEffectType effectType)
+        {
+            if (backgroundParticles != null)
+            {
+                var effect = Instantiate(backgroundParticles, position, Quaternion.identity);
+                
+                // Configure particle effect based on type
+                var particleSystem = effect.GetComponent<ParticleSystem>();
+                if (particleSystem != null)
+                {
+                    var main = particleSystem.main;
+                    switch (effectType)
+                    {
+                        case ParticleEffectType.Success:
+                            main.startColor = Color.green;
+                            break;
+                        case ParticleEffectType.Reward:
+                            main.startColor = Color.yellow;
+                            break;
+                        case ParticleEffectType.LevelUp:
+                            main.startColor = Color.cyan;
+                            break;
+                        case ParticleEffectType.Achievement:
+                            main.startColor = Color.magenta;
+                            break;
+                    }
+                }
+                
+                // Destroy after duration
+                Destroy(effect, 2f);
+            }
+        }
+        
+        private void ShowGlowEffect(GameObject target, float duration)
+        {
+            if (uiGlowEffects != null && target != null)
+            {
+                var glow = Instantiate(uiGlowEffects, target.transform);
+                glow.transform.localPosition = Vector3.zero;
+                glow.transform.localScale = Vector3.one * 1.2f;
+                
+                // Animate glow
+                StartCoroutine(AnimateGlowEffect(glow, duration));
+            }
+        }
+        
+        private System.Collections.IEnumerator AnimateGlowEffect(GameObject glow, float duration)
+        {
+            var canvasGroup = glow.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = glow.AddComponent<CanvasGroup>();
+            }
+            
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                
+                // Pulsing glow effect
+                canvasGroup.alpha = Mathf.Sin(t * Mathf.PI * 4) * 0.5f + 0.5f;
+                
+                yield return null;
+            }
+            
+            Destroy(glow);
+        }
+        
+        // Enhanced notification with 5/5 UX
+        public void ShowNotificationWith5StarUX(string message, NotificationType type = NotificationType.Info)
+        {
+            notificationText.text = message;
+            notificationPanel.SetActive(true);
+            
+            // Play notification sound
+            if (enableNotificationSounds)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    audioSource.Play();
+                }
+            }
+            
+            // Show particle effect
+            if (enableParticleEffects)
+            {
+                ShowParticleEffect(notificationPanel.transform.position, ParticleEffectType.Success);
+            }
+            
+            // Animate notification
+            if (enableNotificationAnimations)
+            {
+                StartCoroutine(AnimateNotification());
+            }
+            else
+            {
+                // Hide notification after duration
+                Invoke(nameof(HideNotification), notificationDuration);
+            }
+        }
+        
+        private System.Collections.IEnumerator AnimateNotification()
+        {
+            var rectTransform = notificationPanel.GetComponent<RectTransform>();
+            var canvasGroup = notificationPanel.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = notificationPanel.AddComponent<CanvasGroup>();
+            }
+            
+            // Animate in
+            Vector3 startPos = rectTransform.anchoredPosition;
+            Vector3 targetPos = startPos;
+            startPos.y += 100f;
+            
+            float elapsed = 0f;
+            while (elapsed < 0.3f)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / 0.3f;
+                float easedT = notificationAnimationCurve.Evaluate(t);
+                
+                rectTransform.anchoredPosition = Vector3.Lerp(startPos, targetPos, easedT);
+                canvasGroup.alpha = Mathf.Lerp(0f, 1f, easedT);
+                
+                yield return null;
+            }
+            
+            rectTransform.anchoredPosition = targetPos;
+            canvasGroup.alpha = 1f;
+            
+            // Wait for duration
+            yield return new WaitForSeconds(notificationDuration);
+            
+            // Animate out
+            elapsed = 0f;
+            while (elapsed < 0.3f)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / 0.3f;
+                float easedT = notificationAnimationCurve.Evaluate(t);
+                
+                rectTransform.anchoredPosition = Vector3.Lerp(targetPos, startPos, easedT);
+                canvasGroup.alpha = Mathf.Lerp(1f, 0f, easedT);
+                
+                yield return null;
+            }
+            
+            notificationPanel.SetActive(false);
+        }
+        
+        #endregion
+    }
+    
+    public enum ParticleEffectType
+    {
+        Success, Reward, LevelUp, Achievement
+    }
+    
+    public enum NotificationType
+    {
+        Info, Success, Warning, Error
     }
 }
