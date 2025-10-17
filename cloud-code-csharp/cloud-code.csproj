@@ -1,16 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Unity.Services.CloudCode" Version="3.0.0" />
-    <PackageReference Include="Unity.Services.Economy" Version="3.0.0" />
-    <PackageReference Include="Unity.Services.Authentication" Version="3.0.0" />
-    <PackageReference Include="Unity.Services.Core" Version="2.0.0" />
+    <PackageReference Include="Unity.Services.CloudCode" Version="3.5.0" />
+    <PackageReference Include="Unity.Services.Economy" Version="3.5.0" />
+    <PackageReference Include="Unity.Services.Authentication" Version="3.5.0" />
+    <PackageReference Include="Unity.Services.Core" Version="2.5.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
