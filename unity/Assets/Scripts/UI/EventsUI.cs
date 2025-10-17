@@ -10,6 +10,23 @@ namespace Evergreen.UI
         [SerializeField] private Button backButton;
         [SerializeField] private Button dailyEventButton;
         [SerializeField] private Button tournamentButton;
+        
+        [Header("Event Asset References")]
+        [SerializeField] private GameObject dailyEventPanel;
+        [SerializeField] private GameObject tournamentPanel;
+        [SerializeField] private GameObject seasonalEventPanel;
+        [SerializeField] private GameObject holidayEventPanel;
+        
+        [Header("Event Visual Assets")]
+        [SerializeField] private Sprite dailyEventIcon;
+        [SerializeField] private Sprite tournamentIcon;
+        [SerializeField] private Sprite seasonalEventIcon;
+        [SerializeField] private Sprite holidayEventIcon;
+        
+        [Header("Event Audio Assets")]
+        [SerializeField] private AudioClip buttonClickAudioClip;
+        [SerializeField] private AudioClip eventOpenAudioClip;
+        [SerializeField] private AudioClip eventCloseAudioClip;
 
         void Start()
         {
@@ -54,6 +71,15 @@ namespace Evergreen.UI
             {
                 // Daily event logic here
                 Logger.Info("Opening daily event", "Events");
+                
+                // Show daily event panel with proper assets
+                if (dailyEventPanel != null)
+                {
+                    dailyEventPanel.SetActive(true);
+                }
+                
+                // Play audio feedback
+                PlayEventAudio(eventOpenAudioClip);
             }
             catch (System.Exception e)
             {
@@ -67,10 +93,32 @@ namespace Evergreen.UI
             {
                 // Tournament logic here
                 Logger.Info("Opening tournament", "Events");
+                
+                // Show tournament panel with proper assets
+                if (tournamentPanel != null)
+                {
+                    tournamentPanel.SetActive(true);
+                }
+                
+                // Play audio feedback
+                PlayEventAudio(eventOpenAudioClip);
             }
             catch (System.Exception e)
             {
                 Logger.LogException(e, "Events");
+            }
+        }
+        
+        private void PlayEventAudio(AudioClip audioClip)
+        {
+            if (audioClip != null)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource == null)
+                {
+                    audioSource = gameObject.AddComponent<AudioSource>();
+                }
+                audioSource.PlayOneShot(audioClip);
             }
         }
 

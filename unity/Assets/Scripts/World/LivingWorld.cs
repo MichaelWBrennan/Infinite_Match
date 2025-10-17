@@ -174,6 +174,39 @@ namespace Evergreen.World
         public bool enableDayNightCycle = true;
         public bool enableSeasonalChanges = true;
         
+        [Header("Seasonal Asset References")]
+        [SerializeField] private GameObject springEnvironmentPrefab;
+        [SerializeField] private GameObject summerEnvironmentPrefab;
+        [SerializeField] private GameObject autumnEnvironmentPrefab;
+        [SerializeField] private GameObject winterEnvironmentPrefab;
+        
+        [Header("Holiday Asset References")]
+        [SerializeField] private GameObject christmasEnvironmentPrefab;
+        [SerializeField] private GameObject halloweenEnvironmentPrefab;
+        [SerializeField] private GameObject easterEnvironmentPrefab;
+        [SerializeField] private GameObject valentineEnvironmentPrefab;
+        [SerializeField] private GameObject thanksgivingEnvironmentPrefab;
+        [SerializeField] private GameObject newYearEnvironmentPrefab;
+        
+        [Header("Weather Asset References")]
+        [SerializeField] private GameObject sunnyEnvironmentPrefab;
+        [SerializeField] private GameObject rainyEnvironmentPrefab;
+        [SerializeField] private GameObject snowyEnvironmentPrefab;
+        [SerializeField] private GameObject stormyEnvironmentPrefab;
+        [SerializeField] private GameObject foggyEnvironmentPrefab;
+        
+        [Header("Time of Day Asset References")]
+        [SerializeField] private GameObject dawnEnvironmentPrefab;
+        [SerializeField] private GameObject morningEnvironmentPrefab;
+        [SerializeField] private GameObject noonEnvironmentPrefab;
+        [SerializeField] private GameObject eveningEnvironmentPrefab;
+        [SerializeField] private GameObject nightEnvironmentPrefab;
+        
+        [Header("Event Asset References")]
+        [SerializeField] private GameObject festivalEnvironmentPrefab;
+        [SerializeField] private GameObject celebrationEnvironmentPrefab;
+        [SerializeField] private GameObject specialEventEnvironmentPrefab;
+        
         [Header("Weather Settings")]
         public float weatherChangeInterval = 300f; // 5 minutes
         public float weatherTransitionSpeed = 1f;

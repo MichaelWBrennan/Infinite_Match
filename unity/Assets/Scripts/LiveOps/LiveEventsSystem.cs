@@ -27,6 +27,35 @@ namespace Evergreen.LiveOps
         public bool enableSeasonalThemes = true;
         public bool enableSpecialOffers = true;
         public bool enableCommunityEvents = true;
+        
+        [Header("Seasonal Asset References")]
+        [SerializeField] private GameObject springThemePrefab;
+        [SerializeField] private GameObject summerThemePrefab;
+        [SerializeField] private GameObject autumnThemePrefab;
+        [SerializeField] private GameObject winterThemePrefab;
+        [SerializeField] private GameObject holidayThemePrefab;
+        
+        [Header("Holiday Asset References")]
+        [SerializeField] private GameObject christmasThemePrefab;
+        [SerializeField] private GameObject halloweenThemePrefab;
+        [SerializeField] private GameObject easterThemePrefab;
+        [SerializeField] private GameObject valentineThemePrefab;
+        [SerializeField] private GameObject thanksgivingThemePrefab;
+        [SerializeField] private GameObject newYearThemePrefab;
+        
+        [Header("Event UI Assets")]
+        [SerializeField] private GameObject tournamentUIPrefab;
+        [SerializeField] private GameObject limitedTimeEventUIPrefab;
+        [SerializeField] private GameObject seasonalEventUIPrefab;
+        [SerializeField] private GameObject specialOfferUIPrefab;
+        [SerializeField] private GameObject communityEventUIPrefab;
+        
+        [Header("Event Audio Assets")]
+        [SerializeField] private AudioClip tournamentAudioClip;
+        [SerializeField] private AudioClip eventStartAudioClip;
+        [SerializeField] private AudioClip eventEndAudioClip;
+        [SerializeField] private AudioClip rewardClaimedAudioClip;
+        [SerializeField] private AudioClip seasonalMusicClip;
 
         [Header("Content Management")]
         public bool enableContentRotation = true;
@@ -456,6 +485,59 @@ namespace Evergreen.LiveOps
             CreateSeasonalTheme("autumn_2024", "Autumn Harvest", Season.Autumn, new DateTime(2024, 9, 23), new DateTime(2024, 12, 20));
             CreateSeasonalTheme("winter_2024", "Winter Wonderland", Season.Winter, new DateTime(2024, 12, 21), new DateTime(2025, 3, 19));
             CreateSeasonalTheme("holiday_2024", "Holiday Celebration", Season.Holiday, new DateTime(2024, 12, 1), new DateTime(2025, 1, 7));
+            
+            // Load holiday themes
+            LoadHolidayThemes();
+        }
+        
+        private void LoadHolidayThemes()
+        {
+            // Christmas Theme
+            CreateHolidayTheme("christmas_2024", "Christmas Celebration", 
+                new DateTime(2024, 12, 20), new DateTime(2024, 12, 26), christmasThemePrefab);
+            
+            // Halloween Theme
+            CreateHolidayTheme("halloween_2024", "Halloween Spooktacular", 
+                new DateTime(2024, 10, 25), new DateTime(2024, 11, 2), halloweenThemePrefab);
+            
+            // Easter Theme
+            CreateHolidayTheme("easter_2024", "Easter Celebration", 
+                new DateTime(2024, 3, 30), new DateTime(2024, 4, 6), easterThemePrefab);
+            
+            // Valentine's Day Theme
+            CreateHolidayTheme("valentine_2024", "Valentine's Day", 
+                new DateTime(2024, 2, 10), new DateTime(2024, 2, 16), valentineThemePrefab);
+            
+            // Thanksgiving Theme
+            CreateHolidayTheme("thanksgiving_2024", "Thanksgiving Feast", 
+                new DateTime(2024, 11, 20), new DateTime(2024, 11, 26), thanksgivingThemePrefab);
+            
+            // New Year Theme
+            CreateHolidayTheme("newyear_2025", "New Year Celebration", 
+                new DateTime(2024, 12, 30), new DateTime(2025, 1, 5), newYearThemePrefab);
+        }
+        
+        private void CreateHolidayTheme(string themeId, string themeName, DateTime startDate, DateTime endDate, GameObject themePrefab)
+        {
+            var theme = new SeasonalTheme
+            {
+                themeId = themeId,
+                themeName = themeName,
+                season = Season.Special,
+                startDate = startDate,
+                endDate = endDate,
+                visualAssets = new Dictionary<string, object>
+                {
+                    {"themePrefab", themePrefab},
+                    {"isHoliday", true}
+                },
+                audioAssets = new Dictionary<string, object>(),
+                gameplayModifiers = new Dictionary<string, object>(),
+                associatedEvents = new List<string>(),
+                isActive = DateTime.Now >= startDate && DateTime.Now <= endDate
+            };
+
+            _seasonalThemes[themeId] = theme;
         }
 
         private void CreateSeasonalTheme(string themeId, string themeName, Season season, DateTime startDate, DateTime endDate)
@@ -513,8 +595,57 @@ namespace Evergreen.LiveOps
         private void ActivateSeasonalTheme(SeasonalTheme theme)
         {
             Logger.Info($"Activated seasonal theme: {theme.themeName}", "LiveEvents");
-            // Apply visual and audio assets
-            // Apply gameplay modifiers
+            
+            // Apply visual and audio assets based on season
+            switch (theme.season)
+            {
+                case Season.Spring:
+                    if (springThemePrefab != null)
+                    {
+                        var springTheme = Instantiate(springThemePrefab);
+                        theme.visualAssets["themeObject"] = springTheme;
+                    }
+                    break;
+                case Season.Summer:
+                    if (summerThemePrefab != null)
+                    {
+                        var summerTheme = Instantiate(summerThemePrefab);
+                        theme.visualAssets["themeObject"] = summerTheme;
+                    }
+                    break;
+                case Season.Autumn:
+                    if (autumnThemePrefab != null)
+                    {
+                        var autumnTheme = Instantiate(autumnThemePrefab);
+                        theme.visualAssets["themeObject"] = autumnTheme;
+                    }
+                    break;
+                case Season.Winter:
+                    if (winterThemePrefab != null)
+                    {
+                        var winterTheme = Instantiate(winterThemePrefab);
+                        theme.visualAssets["themeObject"] = winterTheme;
+                    }
+                    break;
+                case Season.Holiday:
+                    if (holidayThemePrefab != null)
+                    {
+                        var holidayTheme = Instantiate(holidayThemePrefab);
+                        theme.visualAssets["themeObject"] = holidayTheme;
+                    }
+                    break;
+            }
+            
+            // Apply seasonal music
+            if (seasonalMusicClip != null)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource != null)
+                {
+                    audioSource.clip = seasonalMusicClip;
+                    audioSource.Play();
+                }
+            }
         }
 
         private void DeactivateSeasonalTheme(SeasonalTheme theme)
