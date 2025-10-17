@@ -49,6 +49,55 @@ public class MainMenuUI : MonoBehaviour
         {
             chatButton.onClick.AddListener(OnOpenChat);
         }
+
+        // Auto-wire all buttons in scene
+        WireAllButtonsInScene();
+    }
+
+    private void WireAllButtonsInScene()
+    {
+        Button[] allButtons = FindObjectsOfType<Button>();
+        foreach (Button button in allButtons)
+        {
+            // Skip if already wired
+            if (button.onClick.GetPersistentEventCount() > 0) continue;
+            
+            string buttonName = button.name.ToLower();
+            
+            // Wire buttons based on name patterns
+            if (buttonName.Contains("play") || buttonName.Contains("start") || buttonName.Contains("game"))
+            {
+                button.onClick.AddListener(OnStartGame);
+            }
+            else if (buttonName.Contains("chat"))
+            {
+                button.onClick.AddListener(OnOpenChat);
+            }
+            else if (buttonName.Contains("settings"))
+            {
+                button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.OpenSettings());
+            }
+            else if (buttonName.Contains("shop"))
+            {
+                button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.OpenShop());
+            }
+            else if (buttonName.Contains("social"))
+            {
+                button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.OpenSocial());
+            }
+            else if (buttonName.Contains("events"))
+            {
+                button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.OpenEvents());
+            }
+            else if (buttonName.Contains("collections"))
+            {
+                button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.OpenCollections());
+            }
+            else if (buttonName.Contains("back") || buttonName.Contains("return") || buttonName.Contains("menu"))
+            {
+                button.onClick.AddListener(() => Evergreen.Core.SceneManager.Instance.GoToMainMenu());
+            }
+        }
     }
 
     private void CreateChatButtonIfNeeded()
