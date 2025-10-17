@@ -565,5 +565,141 @@ namespace Core
             }
             return new string[0];
         }
+        
+        #region Migration Helper Methods
+        
+        /// <summary>
+        /// Migrates File.ReadAllText calls to use RobustFileManager
+        /// Provides easy-to-use methods that match existing patterns
+        /// </summary>
+        public static string ReadAllTextSafe(string filePath)
+        {
+            try
+            {
+                // Determine location based on path
+                FileLocation location = DetermineFileLocation(filePath);
+                string fileName = Path.GetFileName(filePath);
+                string subDirectory = GetSubDirectory(filePath, location);
+                
+                return ReadTextFile(fileName, location, subDirectory);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[RobustFileManager] Failed to read file {filePath}: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Migrates File.ReadAllBytes calls to use RobustFileManager
+        /// </summary>
+        public static byte[] ReadAllBytesSafe(string filePath)
+        {
+            try
+            {
+                FileLocation location = DetermineFileLocation(filePath);
+                string fileName = Path.GetFileName(filePath);
+                string subDirectory = GetSubDirectory(filePath, location);
+                
+                return ReadBinaryFile(fileName, location, subDirectory);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[RobustFileManager] Failed to read binary file {filePath}: {ex.Message}");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Migrates File.Exists calls to use RobustFileManager
+        /// </summary>
+        public static bool ExistsSafe(string filePath)
+        {
+            try
+            {
+                FileLocation location = DetermineFileLocation(filePath);
+                string fileName = Path.GetFileName(filePath);
+                string subDirectory = GetSubDirectory(filePath, location);
+                
+                return FileExists(fileName, location, subDirectory);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[RobustFileManager] Failed to check file existence {filePath}: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Migrates Directory.GetFiles calls to use RobustFileManager
+        /// </summary>
+        public static string[] GetFilesSafe(string directoryPath, string searchPattern = "*")
+        {
+            try
+            {
+                FileLocation location = DetermineFileLocation(directoryPath);
+                string subDirectory = GetSubDirectory(directoryPath, location);
+                
+                return ListFiles(subDirectory, location, searchPattern);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[RobustFileManager] Failed to list files {directoryPath}: {ex.Message}");
+                return new string[0];
+            }
+        }
+        
+        /// <summary>
+        /// Determines file location based on path
+        /// </summary>
+        private static FileLocation DetermineFileLocation(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return FileLocation.StreamingAssets;
+                
+            if (filePath.Contains(Application.streamingAssetsPath))
+                return FileLocation.StreamingAssets;
+            else if (filePath.Contains(Application.persistentDataPath))
+                return FileLocation.PersistentData;
+            else if (filePath.Contains(Application.dataPath))
+                return FileLocation.DataPath;
+            else
+                return FileLocation.StreamingAssets; // Default fallback
+        }
+        
+        /// <summary>
+        /// Gets subdirectory from full path
+        /// </summary>
+        private static string GetSubDirectory(string filePath, FileLocation location)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return "";
+                
+            string basePath = "";
+            switch (location)
+            {
+                case FileLocation.StreamingAssets:
+                    basePath = Application.streamingAssetsPath;
+                    break;
+                case FileLocation.PersistentData:
+                    basePath = Application.persistentDataPath;
+                    break;
+                case FileLocation.DataPath:
+                    basePath = Application.dataPath;
+                    break;
+            }
+            
+            if (string.IsNullOrEmpty(basePath) || !filePath.StartsWith(basePath))
+                return "";
+                
+            string relativePath = filePath.Substring(basePath.Length);
+            if (relativePath.StartsWith(Path.DirectorySeparatorChar.ToString()))
+                relativePath = relativePath.Substring(1);
+                
+            string directory = Path.GetDirectoryName(relativePath);
+            return directory ?? "";
+        }
+        
+        #endregion
     }
 }
