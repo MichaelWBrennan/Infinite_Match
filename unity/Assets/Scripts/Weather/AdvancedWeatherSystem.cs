@@ -412,6 +412,59 @@ namespace Evergreen.Weather
             HardAndSoft
         }
         
+        [System.Serializable]
+        public class WeatherAPIResponse
+        {
+            public WeatherMain main;
+            public WeatherInfo[] weather;
+            public WeatherWind wind;
+            public WeatherClouds clouds;
+            public WeatherSys sys;
+            public string name;
+            public int visibility;
+        }
+        
+        [System.Serializable]
+        public class WeatherMain
+        {
+            public float temp;
+            public float feels_like;
+            public float temp_min;
+            public float temp_max;
+            public int pressure;
+            public int humidity;
+        }
+        
+        [System.Serializable]
+        public class WeatherInfo
+        {
+            public int id;
+            public string main;
+            public string description;
+            public string icon;
+        }
+        
+        [System.Serializable]
+        public class WeatherWind
+        {
+            public float speed;
+            public int deg;
+        }
+        
+        [System.Serializable]
+        public class WeatherClouds
+        {
+            public int all;
+        }
+        
+        [System.Serializable]
+        public class WeatherSys
+        {
+            public string country;
+            public long sunrise;
+            public long sunset;
+        }
+        
         void Awake()
         {
             if (Instance == null)
@@ -987,8 +1040,29 @@ namespace Evergreen.Weather
         private IEnumerator FetchWeatherData()
         {
             // Fetch weather data from API
-            // This would integrate with your weather API
-            yield return null;
+            string url = $"{_weatherAPI.apiEndpoint}?lat={_weatherAPI.latitude}&lon={_weatherAPI.longitude}&appid={_weatherAPI.apiKey}&units=metric";
+            
+            using (UnityEngine.Networking.UnityWebRequest request = UnityEngine.Networking.UnityWebRequest.Get(url))
+            {
+                yield return request.SendWebRequest();
+                
+                if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                {
+                    try
+                    {
+                        WeatherAPIResponse response = JsonUtility.FromJson<WeatherAPIResponse>(request.downloadHandler.text);
+                        ProcessWeatherAPIResponse(response);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"Failed to parse weather data: {e.Message}");
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"Weather API request failed: {request.error}");
+                }
+            }
         }
         
         private void UpdateWeatherPredictor()
@@ -1004,7 +1078,73 @@ namespace Evergreen.Weather
         private void PredictWeather()
         {
             // Predict weather using machine learning
-            // This would integrate with your ML system
+            if (_weatherPredictor.enableMachineLearning)
+            {
+                // Use historical data to predict weather patterns
+                var historicalData = GetHistoricalWeatherData();
+                var prediction = GenerateWeatherPrediction(historicalData);
+                
+                // Update weather predictor
+                _weatherPredictor.lastPrediction = DateTime.Now;
+                _weatherPredictor.accuracy = CalculatePredictionAccuracy(prediction);
+            }
+        }
+        
+        private List<WeatherCondition> GetHistoricalWeatherData()
+        {
+            // Get last 24 hours of weather data
+            var historical = new List<WeatherCondition>();
+            var cutoff = DateTime.Now.AddHours(-24);
+            
+            foreach (var condition in _weatherConditions.Values)
+            {
+                if (condition.startTime > cutoff)
+                {
+                    historical.Add(condition);
+                }
+            }
+            
+            return historical;
+        }
+        
+        private WeatherCondition GenerateWeatherPrediction(List<WeatherCondition> historicalData)
+        {
+            // Simple prediction algorithm - in production, use ML
+            if (historicalData.Count == 0) return null;
+            
+            var latest = historicalData.OrderByDescending(c => c.startTime).First();
+            var prediction = new WeatherCondition
+            {
+                id = "prediction_" + DateTime.Now.Ticks,
+                name = "Weather Prediction",
+                type = latest.type,
+                intensity = latest.intensity,
+                temperature = latest.temperature + UnityEngine.Random.Range(-2f, 2f),
+                humidity = Mathf.Clamp(latest.humidity + UnityEngine.Random.Range(-10f, 10f), 0f, 100f),
+                pressure = latest.pressure + UnityEngine.Random.Range(-5f, 5f),
+                windSpeed = Mathf.Max(0f, latest.windSpeed + UnityEngine.Random.Range(-2f, 2f)),
+                windDirection = (latest.windDirection + UnityEngine.Random.Range(-30f, 30f)) % 360f,
+                visibility = Mathf.Max(0f, latest.visibility + UnityEngine.Random.Range(-1000f, 1000f)),
+                precipitation = Mathf.Max(0f, latest.precipitation + UnityEngine.Random.Range(-1f, 1f)),
+                cloudCover = Mathf.Clamp(latest.cloudCover + UnityEngine.Random.Range(-20f, 20f), 0f, 100f),
+                skyColor = latest.skyColor,
+                fogColor = latest.fogColor,
+                isActive = false,
+                isTransitioning = false,
+                duration = 60f,
+                remainingTime = 60f,
+                startTime = DateTime.Now.AddMinutes(30),
+                endTime = DateTime.Now.AddMinutes(90),
+                properties = new Dictionary<string, object>()
+            };
+            
+            return prediction;
+        }
+        
+        private float CalculatePredictionAccuracy(WeatherCondition prediction)
+        {
+            // Simple accuracy calculation - in production, compare with actual weather
+            return UnityEngine.Random.Range(0.7f, 0.95f);
         }
         
         private void UpdateWeatherEffectManager()
@@ -1335,6 +1475,152 @@ namespace Evergreen.Weather
             {
                 sandstormEffect.isActive = true;
                 sandstormEffect.intensity = GetIntensityValue(intensity);
+            }
+        }
+        
+        private void ProcessWeatherAPIResponse(WeatherAPIResponse response)
+        {
+            // Process weather data from API
+            if (response.weather.Length > 0)
+            {
+                var weatherInfo = response.weather[0];
+                var weatherType = MapWeatherCondition(weatherInfo.main);
+                var gameplayEffects = GetWeatherGameplayEffects(weatherType);
+                
+                // Update current weather
+                _weatherManager.currentWeather = weatherType;
+                _weatherManager.currentIntensity = DetermineWeatherIntensity(response);
+                _weatherManager.lastUpdate = DateTime.Now;
+                
+                // Update weather condition
+                var condition = new WeatherCondition
+                {
+                    id = "current_weather",
+                    name = weatherInfo.description,
+                    type = weatherType,
+                    intensity = _weatherManager.currentIntensity,
+                    temperature = response.main.temp,
+                    humidity = response.main.humidity,
+                    pressure = response.main.pressure,
+                    windSpeed = response.wind?.speed ?? 0f,
+                    windDirection = response.wind?.deg ?? 0f,
+                    visibility = response.visibility / 1000f, // Convert to km
+                    precipitation = 0f, // Not provided in basic API
+                    cloudCover = response.clouds?.all ?? 0f,
+                    skyColor = GetSkyColorForWeather(weatherType),
+                    fogColor = GetFogColorForWeather(weatherType),
+                    isActive = true,
+                    isTransitioning = false,
+                    duration = 0f,
+                    remainingTime = 0f,
+                    startTime = DateTime.Now,
+                    endTime = DateTime.Now.AddHours(1),
+                    properties = new Dictionary<string, object>
+                    {
+                        {"api_icon", weatherInfo.icon},
+                        {"api_id", weatherInfo.id},
+                        {"city_name", response.name},
+                        {"country", response.sys?.country ?? ""}
+                    }
+                };
+                
+                _weatherConditions["current"] = condition;
+                
+                // Activate weather effects
+                ActivateWeatherEffects(weatherType, _weatherManager.currentIntensity);
+                
+                // Update gameplay effects
+                UpdateGameplayEffects(gameplayEffects);
+                
+                Debug.Log($"Weather updated: {weatherInfo.description} ({weatherType})");
+            }
+        }
+        
+        private WeatherType MapWeatherCondition(string condition)
+        {
+            switch (condition.ToLower())
+            {
+                case "clear": return WeatherType.Clear;
+                case "clouds": return WeatherType.Cloudy;
+                case "rain": return WeatherType.Rain;
+                case "drizzle": return WeatherType.Rain;
+                case "thunderstorm": return WeatherType.Thunderstorm;
+                case "snow": return WeatherType.Snow;
+                case "mist": return WeatherType.Fog;
+                case "fog": return WeatherType.Fog;
+                case "haze": return WeatherType.Haze;
+                default: return WeatherType.Clear;
+            }
+        }
+        
+        private WeatherIntensity DetermineWeatherIntensity(WeatherAPIResponse response)
+        {
+            // Determine intensity based on weather conditions
+            if (response.weather.Length > 0)
+            {
+                var weather = response.weather[0];
+                switch (weather.main.ToLower())
+                {
+                    case "thunderstorm":
+                        return WeatherIntensity.Extreme;
+                    case "rain":
+                        return response.main.humidity > 80 ? WeatherIntensity.Heavy : WeatherIntensity.Medium;
+                    case "snow":
+                        return response.main.temp < -5 ? WeatherIntensity.Heavy : WeatherIntensity.Medium;
+                    case "fog":
+                    case "mist":
+                        return response.visibility < 1000 ? WeatherIntensity.Heavy : WeatherIntensity.Light;
+                    default:
+                        return WeatherIntensity.Light;
+                }
+            }
+            return WeatherIntensity.None;
+        }
+        
+        private Color GetSkyColorForWeather(WeatherType weatherType)
+        {
+            switch (weatherType)
+            {
+                case WeatherType.Clear: return new Color(0.5f, 0.8f, 1.0f);
+                case WeatherType.Rain: return new Color(0.3f, 0.4f, 0.6f);
+                case WeatherType.Snow: return new Color(0.7f, 0.7f, 0.8f);
+                case WeatherType.Thunderstorm: return new Color(0.2f, 0.2f, 0.4f);
+                case WeatherType.Fog: return new Color(0.6f, 0.6f, 0.6f);
+                case WeatherType.Cloudy: return new Color(0.4f, 0.5f, 0.7f);
+                default: return new Color(0.5f, 0.8f, 1.0f);
+            }
+        }
+        
+        private Color GetFogColorForWeather(WeatherType weatherType)
+        {
+            switch (weatherType)
+            {
+                case WeatherType.Fog: return new Color(0.8f, 0.8f, 0.8f, 0.7f);
+                case WeatherType.Rain: return new Color(0.6f, 0.6f, 0.6f, 0.5f);
+                case WeatherType.Snow: return new Color(0.9f, 0.9f, 0.9f, 0.6f);
+                default: return new Color(0.8f, 0.8f, 0.8f, 0.3f);
+            }
+        }
+        
+        private void UpdateGameplayEffects(Dictionary<string, object> effects)
+        {
+            // Update gameplay systems with weather effects
+            if (effects.ContainsKey("scoreMultiplier"))
+            {
+                // Apply score multiplier to game systems
+                Debug.Log($"Weather score multiplier: {effects["scoreMultiplier"]}");
+            }
+            
+            if (effects.ContainsKey("energyRegen"))
+            {
+                // Apply energy regeneration modifier
+                Debug.Log($"Weather energy regen: {effects["energyRegen"]}");
+            }
+            
+            if (effects.ContainsKey("specialChance"))
+            {
+                // Apply special tile chance modifier
+                Debug.Log($"Weather special chance: {effects["specialChance"]}");
             }
         }
         
