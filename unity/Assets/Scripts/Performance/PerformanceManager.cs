@@ -24,6 +24,16 @@ namespace Evergreen.Performance
         public float textureMemory;
         public float meshMemory;
         public DateTime timestamp;
+        
+        // Business Performance Metrics - 100% Performance Targets
+        public float engagementScore = 0f; // Target: 75% (25% higher than industry)
+        public float day1Retention = 0f; // Target: 40%
+        public float day7Retention = 0f; // Target: 25%
+        public float day30Retention = 0f; // Target: 15%
+        public float arpu = 0f; // Target: $2.50+
+        public float contentEfficiency = 0f; // Target: 90% reduction in manual content
+        public float playerSatisfaction = 0f; // Target: 4.8/5 stars
+        public float overallPerformance = 0f; // Target: 100%
     }
     
     [System.Serializable]
