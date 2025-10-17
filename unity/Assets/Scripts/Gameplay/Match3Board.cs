@@ -44,9 +44,13 @@ namespace Evergreen.Gameplay
         private int moves = 30;
         private int targetScore = 1000;
         
-        // AI Integration
+        // AI Integration - Cache references to avoid FindObjectOfType
         private AIInfiniteContentManager aiContentManager;
         private GameAnalyticsManager analyticsManager;
+        
+        // Object pooling for better performance
+        private Queue<Match3Tile> tilePool = new Queue<Match3Tile>();
+        private List<Match3Tile> activeTiles = new List<Match3Tile>();
         
         // Events
         public System.Action<int> OnScoreChanged;
@@ -69,12 +73,17 @@ namespace Evergreen.Gameplay
         /// </summary>
         private void InitializeBoard()
         {
-            // Get AI and analytics managers
-            aiContentManager = FindObjectOfType<AIInfiniteContentManager>();
-            analyticsManager = FindObjectOfType<GameAnalyticsManager>();
+            // Cache AI and analytics managers to avoid FindObjectOfType calls
+            if (aiContentManager == null)
+                aiContentManager = FindObjectOfType<AIInfiniteContentManager>();
+            if (analyticsManager == null)
+                analyticsManager = FindObjectOfType<GameAnalyticsManager>();
             
             // Create board array
             board = new Match3Tile[boardWidth, boardHeight];
+            
+            // Initialize object pool
+            InitializeTilePool();
             
             // Generate initial board
             GenerateInitialBoard();
@@ -85,7 +94,7 @@ namespace Evergreen.Gameplay
                 aiContentManager.StartAIContentGeneration();
             }
             
-            Debug.Log("🎮 Match-3 Board initialized with AI integration");
+            Debug.Log("🎮 Match-3 Board initialized with AI integration and object pooling");
         }
         
         /// <summary>
@@ -106,6 +115,68 @@ namespace Evergreen.Gameplay
         }
         
         /// <summary>
+        /// Initialize tile object pool
+        /// </summary>
+        private void InitializeTilePool()
+        {
+            // Pre-create tiles for pooling
+            int poolSize = boardWidth * boardHeight * 2; // Extra tiles for animations
+            
+            for (int i = 0; i < poolSize; i++)
+            {
+                GameObject tileObj = Instantiate(tilePrefabs[0], Vector3.zero, Quaternion.identity, transform);
+                Match3Tile tile = tileObj.GetComponent<Match3Tile>();
+                if (tile == null)
+                {
+                    tile = tileObj.AddComponent<Match3Tile>();
+                }
+                
+                tileObj.SetActive(false);
+                tilePool.Enqueue(tile);
+            }
+        }
+        
+        /// <summary>
+        /// Get tile from pool or create new one
+        /// </summary>
+        private Match3Tile GetTileFromPool()
+        {
+            if (tilePool.Count > 0)
+            {
+                Match3Tile tile = tilePool.Dequeue();
+                tile.gameObject.SetActive(true);
+                activeTiles.Add(tile);
+                return tile;
+            }
+            else
+            {
+                // Pool exhausted, create new tile
+                GameObject tileObj = Instantiate(tilePrefabs[0], Vector3.zero, Quaternion.identity, transform);
+                Match3Tile tile = tileObj.GetComponent<Match3Tile>();
+                if (tile == null)
+                {
+                    tile = tileObj.AddComponent<Match3Tile>();
+                }
+                activeTiles.Add(tile);
+                return tile;
+            }
+        }
+        
+        /// <summary>
+        /// Return tile to pool
+        /// </summary>
+        private void ReturnTileToPool(Match3Tile tile)
+        {
+            if (tile != null)
+            {
+                activeTiles.Remove(tile);
+                tile.gameObject.SetActive(false);
+                tile.Reset();
+                tilePool.Enqueue(tile);
+            }
+        }
+        
+        /// <summary>
         /// Create a tile at specified position
         /// </summary>
         private void CreateTile(int x, int y)
@@ -113,18 +184,11 @@ namespace Evergreen.Gameplay
             // Get random tile type
             int tileType = GetRandomTileType(x, y);
             
-            // Create tile GameObject
-            GameObject tilePrefab = tilePrefabs[tileType];
-            Vector3 position = GetWorldPosition(x, y);
-            GameObject tileObj = Instantiate(tilePrefab, position, Quaternion.identity, transform);
+            // Get tile from pool
+            Match3Tile tile = GetTileFromPool();
             
-            // Setup tile component
-            Match3Tile tile = tileObj.GetComponent<Match3Tile>();
-            if (tile == null)
-            {
-                tile = tileObj.AddComponent<Match3Tile>();
-            }
-            
+            // Setup tile
+            tile.transform.position = GetWorldPosition(x, y);
             tile.Initialize(x, y, tileType, this);
             board[x, y] = tile;
         }
@@ -357,30 +421,36 @@ namespace Evergreen.Gameplay
         }
         
         /// <summary>
-        /// Find all matches on the board
+        /// Find all matches on the board - Optimized version
         /// </summary>
         private List<Match3Tile> FindAllMatches()
         {
-            List<Match3Tile> allMatches = new List<Match3Tile>();
+            // Use HashSet for O(1) contains check instead of List.Contains which is O(n)
+            var allMatches = new HashSet<Match3Tile>();
             
             // Find horizontal matches
             for (int y = 0; y < boardHeight; y++)
             {
                 for (int x = 0; x < boardWidth - 2; x++)
                 {
-                    if (board[x, y] != null && board[x + 1, y] != null && board[x + 2, y] != null)
+                    var tile1 = board[x, y];
+                    var tile2 = board[x + 1, y];
+                    var tile3 = board[x + 2, y];
+                    
+                    if (tile1 != null && tile2 != null && tile3 != null &&
+                        tile1.TileType == tile2.TileType && tile2.TileType == tile3.TileType)
                     {
-                        if (board[x, y].TileType == board[x + 1, y].TileType && 
-                            board[x + 1, y].TileType == board[x + 2, y].TileType)
+                        // Found horizontal match - add all consecutive matching tiles
+                        for (int i = x; i < boardWidth; i++)
                         {
-                            // Found horizontal match
-                            for (int i = x; i < boardWidth && board[i, y] != null && 
-                                 board[i, y].TileType == board[x, y].TileType; i++)
+                            var currentTile = board[i, y];
+                            if (currentTile != null && currentTile.TileType == tile1.TileType)
                             {
-                                if (!allMatches.Contains(board[i, y]))
-                                {
-                                    allMatches.Add(board[i, y]);
-                                }
+                                allMatches.Add(currentTile);
+                            }
+                            else
+                            {
+                                break;
                             }
                         }
                     }
@@ -392,26 +462,31 @@ namespace Evergreen.Gameplay
             {
                 for (int y = 0; y < boardHeight - 2; y++)
                 {
-                    if (board[x, y] != null && board[x, y + 1] != null && board[x, y + 2] != null)
+                    var tile1 = board[x, y];
+                    var tile2 = board[x, y + 1];
+                    var tile3 = board[x, y + 2];
+                    
+                    if (tile1 != null && tile2 != null && tile3 != null &&
+                        tile1.TileType == tile2.TileType && tile2.TileType == tile3.TileType)
                     {
-                        if (board[x, y].TileType == board[x, y + 1].TileType && 
-                            board[x, y + 1].TileType == board[x, y + 2].TileType)
+                        // Found vertical match - add all consecutive matching tiles
+                        for (int i = y; i < boardHeight; i++)
                         {
-                            // Found vertical match
-                            for (int i = y; i < boardHeight && board[x, i] != null && 
-                                 board[x, i].TileType == board[x, y].TileType; i++)
+                            var currentTile = board[x, i];
+                            if (currentTile != null && currentTile.TileType == tile1.TileType)
                             {
-                                if (!allMatches.Contains(board[x, i]))
-                                {
-                                    allMatches.Add(board[x, i]);
-                                }
+                                allMatches.Add(currentTile);
+                            }
+                            else
+                            {
+                                break;
                             }
                         }
                     }
                 }
             }
             
-            return allMatches;
+            return new List<Match3Tile>(allMatches);
         }
         
         /// <summary>
@@ -446,7 +521,7 @@ namespace Evergreen.Gameplay
             foreach (Match3Tile tile in matches)
             {
                 board[tile.X, tile.Y] = null;
-                tile.Destroy();
+                ReturnTileToPool(tile);
             }
             
             // Play match effect

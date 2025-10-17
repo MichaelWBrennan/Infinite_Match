@@ -37,6 +37,7 @@ namespace Evergreen.Gameplay
         private bool isSelected = false;
         private bool isMoving = false;
         private bool isHighlighted = false;
+        private bool needsVisualUpdate = true;
         
         // Animation
         private Vector3 targetPosition;
@@ -82,8 +83,12 @@ namespace Evergreen.Gameplay
         
         void Update()
         {
-            // Update visual state
-            UpdateVisuals();
+            // Only update visuals when needed to reduce Update() overhead
+            if (needsVisualUpdate)
+            {
+                UpdateVisuals();
+                needsVisualUpdate = false;
+            }
         }
         
         /// <summary>
@@ -122,7 +127,7 @@ namespace Evergreen.Gameplay
         public void ChangeType(int newType)
         {
             tileType = newType;
-            UpdateVisuals();
+            needsVisualUpdate = true;
         }
         
         /// <summary>
@@ -146,6 +151,7 @@ namespace Evergreen.Gameplay
         public void Highlight()
         {
             isHighlighted = true;
+            needsVisualUpdate = true;
             
             if (animator != null)
             {
@@ -165,6 +171,7 @@ namespace Evergreen.Gameplay
         public void Select()
         {
             isSelected = true;
+            needsVisualUpdate = true;
             
             if (animator != null)
             {
@@ -184,6 +191,7 @@ namespace Evergreen.Gameplay
         public void Deselect()
         {
             isSelected = false;
+            needsVisualUpdate = true;
             
             if (animator != null)
             {
@@ -211,6 +219,7 @@ namespace Evergreen.Gameplay
         {
             this.specialType = specialType;
             this.isSpecial = true;
+            needsVisualUpdate = true;
             
             // Update visual based on special type
             switch (specialType)
@@ -228,8 +237,6 @@ namespace Evergreen.Gameplay
                     // Add star visual
                     break;
             }
-            
-            UpdateVisuals();
         }
         
         /// <summary>
@@ -510,11 +517,10 @@ namespace Evergreen.Gameplay
             isHighlighted = false;
             isSpecial = false;
             specialType = TileSpecialType.Normal;
+            needsVisualUpdate = true;
             
             targetScale = Vector3.one;
             transform.localScale = Vector3.one;
-            
-            UpdateVisuals();
         }
     }
 }
