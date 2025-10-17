@@ -56,7 +56,7 @@ namespace Evergreen.Examples
         
         private void ExampleEnergySystem()
         {
-            var energySystem = EnergySystem.Instance;
+            var energySystem = OptimizedGameSystem.Instance;
             if (energySystem != null)
             {
                 Debug.Log($"[ARPU Example] Energy System - Current: {energySystem.GetCurrentEnergy()}/{energySystem.GetMaxEnergy()}");
@@ -185,7 +185,7 @@ namespace Evergreen.Examples
         // Example methods for UI integration
         public void OnEnergyButtonClicked()
         {
-            var energySystem = EnergySystem.Instance;
+            var energySystem = OptimizedGameSystem.Instance;
             if (energySystem != null)
             {
                 if (energySystem.CanWatchEnergyAd())

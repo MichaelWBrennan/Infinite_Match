@@ -332,7 +332,7 @@ namespace Evergreen.Retention
         
         private void AwardStreakRewards(string playerId, StreakReward reward)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return;
             
             foreach (var rewardString in reward.rewards)
@@ -364,7 +364,7 @@ namespace Evergreen.Retention
         
         private void ShowStreakRewardUI(StreakReward reward)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🔥 {reward.milestone} day streak! {reward.multiplier}x rewards earned!";
@@ -444,7 +444,7 @@ namespace Evergreen.Retention
         
         private void ShowComebackOfferUI(ComebackOffer offer)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🎉 Welcome back! You've been away for {offer.daysAway} days. Special rewards await!";
@@ -510,7 +510,7 @@ namespace Evergreen.Retention
         
         private void AwardTaskReward(string playerId, DailyTask task)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return;
             
             var reward = Mathf.RoundToInt(task.reward * dailyRewardMultiplier);
@@ -537,7 +537,7 @@ namespace Evergreen.Retention
         
         private void ShowTaskCompletionUI(DailyTask task)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"✅ Daily task completed: {task.description} - +{task.reward} reward!";
@@ -572,7 +572,7 @@ namespace Evergreen.Retention
         
         private void ShowHabitFormationNotification(string action)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🎯 Habit formed! You've been {action.Replace("_", " ")} for {habitFormationDays} days!";
@@ -712,7 +712,7 @@ namespace Evergreen.Retention
         
         private void ShowRetentionCampaignUI(RetentionCampaign campaign)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🎯 {campaign.name}: {campaign.description}";

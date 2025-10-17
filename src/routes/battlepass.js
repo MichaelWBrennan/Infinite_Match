@@ -1,7 +1,7 @@
 import express from 'express';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { Logger } from 'core/logger/index.js';
+import { Logger } from '../core/logger/index.js';
 import { requireEntitlement } from '../middleware/entitlements.js';
 
 const router = express.Router();

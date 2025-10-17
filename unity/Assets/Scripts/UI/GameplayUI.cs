@@ -15,7 +15,7 @@ public class GameplayUI : MonoBehaviour
         EnsureGridRoot();
         EnsureTilePrefab();
 
-        var lm = FindObjectOfType<LevelManager>();
+        var lm = OptimizedGameSystem.Instance;
         if (lm == null) { var go = new GameObject("LevelManager"); lm = go.AddComponent<LevelManager>(); }
         lm.LoadLevel(GameState.CurrentLevel);
         _board = new Board(lm.BoardSize, lm.NumColors);

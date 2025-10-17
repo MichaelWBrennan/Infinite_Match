@@ -1,6 +1,6 @@
 import express from 'express';
-import { Logger } from 'core/logger/index.js';
-import ConsentService from 'services/consent/ConsentService.js';
+import { Logger } from '../core/logger/index.js';
+import ConsentService from '../services/consent/ConsentService.js';
 
 const router = express.Router();
 const logger = new Logger('ConsentRoutes');

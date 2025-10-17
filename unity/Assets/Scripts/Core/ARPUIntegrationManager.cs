@@ -92,7 +92,7 @@ namespace Evergreen.Core
         private void CheckSystemAvailability()
         {
             // Check Energy System
-            var energySystem = EnergySystem.Instance;
+            var energySystem = OptimizedGameSystem.Instance;
             _systemStatus["energy_system"] = energySystem != null && enableEnergySystem;
             
             // Check Subscription System
@@ -131,7 +131,7 @@ namespace Evergreen.Core
             // Energy System Optimization
             if ((bool)_systemStatus["energy_system"])
             {
-                var energySystem = EnergySystem.Instance;
+                var energySystem = OptimizedGameSystem.Instance;
                 if (energySystem != null)
                 {
                     optimizationData["energy_level"] = energySystem.GetCurrentEnergy();

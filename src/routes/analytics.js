@@ -2,9 +2,9 @@ import express from 'express';
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import PurchaseLedgerDb from 'services/payments/PurchaseLedgerDb.js';
-import security from 'core/security/index.js';
-import { Logger } from 'core/logger/index.js';
+import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import security from '../core/security/index.js';
+import { Logger } from '../core/logger/index.js';
 
 const logger = new Logger('AnalyticsRoutes');
 const router = express.Router();

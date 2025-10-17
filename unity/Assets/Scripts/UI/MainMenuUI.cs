@@ -34,7 +34,7 @@ public class MainMenuUI : MonoBehaviour
         }
 
         // Get ads manager from service locator
-        _adsManager = ServiceLocator.Get<UnityAdsManager>();
+        _adsManager = OptimizedCoreSystem.Instance.Resolve<UnityAdsManager>();
 
         // Create chat button if it doesn't exist
         CreateChatButtonIfNeeded();

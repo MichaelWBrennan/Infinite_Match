@@ -53,7 +53,7 @@ public class Bootstrap : MonoBehaviour
         try
         {
             // Create GameManager if it doesn't exist
-            var gameManager = FindObjectOfType<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null)
             {
                 var go = new GameObject("GameManager");

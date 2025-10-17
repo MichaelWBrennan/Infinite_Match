@@ -14,7 +14,7 @@ import hpp from 'hpp';
 import xss from 'xss';
 import mongoSanitize from 'express-mongo-sanitize';
 import { AppConfig } from '../config/index.js';
-import { securityLogger } from 'logger/index.js';
+import { securityLogger } from '../logger/index.js';
 import { rbacProvider, ROLES, PERMISSIONS } from './rbac.js';
 
 // In-memory stores for security tracking

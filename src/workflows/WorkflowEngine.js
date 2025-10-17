@@ -3,8 +3,8 @@
  * Manages execution of workflow steps with state management
  */
 
-import { Logger } from 'core/logger/index.js';
-import { ErrorHandler } from 'core/errors/ErrorHandler.js';
+import { Logger } from '../core/logger/index.js';
+import { ErrorHandler } from '../core/errors/ErrorHandler.js';
 
 const logger = new Logger('WorkflowEngine');
 

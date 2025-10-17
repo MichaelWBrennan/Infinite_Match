@@ -283,7 +283,7 @@ namespace Evergreen.Monetization
             {
                 case "energy_multiplier":
                     // Apply energy regeneration multiplier
-                    var energySystem = EnergySystem.Instance;
+                    var energySystem = OptimizedGameSystem.Instance;
                     if (energySystem != null)
                     {
                         // This would modify energy regeneration rate
@@ -304,7 +304,7 @@ namespace Evergreen.Monetization
                     // Grant unlimited energy
                     if (benefit.value > 0)
                     {
-                        var energy = EnergySystem.Instance;
+                        var energy = OptimizedGameSystem.Instance;
                         if (energy != null)
                         {
                             energy.AddEnergy(999);

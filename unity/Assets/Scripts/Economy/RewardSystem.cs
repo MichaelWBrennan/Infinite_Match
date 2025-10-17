@@ -500,7 +500,7 @@ namespace Evergreen.Economy
             if (reward.isClaimed) return false;
             
             // Award items
-            var currencyManager = ServiceLocator.Get<CurrencyManager>();
+            var currencyManager = OptimizedCoreSystem.Instance.Resolve<CurrencyManager>();
             if (currencyManager != null)
             {
                 foreach (var item in reward.actualItems)
@@ -628,7 +628,7 @@ namespace Evergreen.Economy
                 multiplier *= progress.currentMultiplier;
                 
                 // Apply subscription multipliers
-                var gameManager = GameManager.Instance;
+                var gameManager = OptimizedCoreSystem.Instance;
                 if (gameManager != null)
                 {
                     var coinMultiplier = gameManager.GetSubscriptionMultiplier(progress.playerId, "coins_multiplier");
@@ -732,7 +732,7 @@ namespace Evergreen.Economy
             if (dailyReward == null) return false;
             
             // Award items
-            var currencyManager = ServiceLocator.Get<CurrencyManager>();
+            var currencyManager = OptimizedCoreSystem.Instance.Resolve<CurrencyManager>();
             if (currencyManager != null)
             {
                 foreach (var item in dailyReward.items)
@@ -768,7 +768,7 @@ namespace Evergreen.Economy
                 achievement.unlockedTime = DateTime.Now;
                 
                 // Award achievement rewards
-                var currencyManager = ServiceLocator.Get<CurrencyManager>();
+                var currencyManager = OptimizedCoreSystem.Instance.Resolve<CurrencyManager>();
                 if (currencyManager != null)
                 {
                     foreach (var item in achievement.rewards)

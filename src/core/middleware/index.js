@@ -3,7 +3,7 @@
  * Common middleware functions used across the application
  */
 
-import { Logger } from 'logger/index.js';
+import { Logger } from '../logger/index.js';
 import { ErrorHandler } from 'errors/ErrorHandler.js';
 
 const logger = new Logger('Middleware');

@@ -286,7 +286,7 @@ namespace Evergreen.Addiction
         private void ShowNearMissUI(NearMiss nearMiss)
         {
             // Show "Almost!" popup with encouraging message
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 uiSystem.ShowNotification("So close! " + (nearMiss.progress * 100).ToString("F0") + "% complete!", 
@@ -322,7 +322,7 @@ namespace Evergreen.Addiction
             OnSocialProofShown?.Invoke(socialProof);
             
             // Show social proof UI
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 uiSystem.ShowNotification(socialProof.message, NotificationType.Info, 5f);
@@ -379,7 +379,7 @@ namespace Evergreen.Addiction
         
         private void ShowFOMOOfferUI(FOMOOffer offer)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🔥 {offer.name} - {offer.description} Only {offer.remainingTime:F0} minutes left!";
@@ -399,7 +399,7 @@ namespace Evergreen.Addiction
                 {
                     offer.isActive = false;
                     // Show "Offer expired" message
-                    var uiSystem = AdvancedUISystem.Instance;
+                    var uiSystem = OptimizedUISystem.Instance;
                     if (uiSystem != null)
                     {
                         uiSystem.ShowNotification("Offer expired! Better luck next time!", NotificationType.Error, 3f);
@@ -422,7 +422,7 @@ namespace Evergreen.Addiction
                 
                 // Show investment reward
                 var reward = Mathf.RoundToInt(amount * investmentMultiplier);
-                var uiSystem = AdvancedUISystem.Instance;
+                var uiSystem = OptimizedUISystem.Instance;
                 if (uiSystem != null)
                 {
                     uiSystem.ShowNotification($"Investment bonus! +{reward} {currency}", NotificationType.Success, 3f);
@@ -469,7 +469,7 @@ namespace Evergreen.Addiction
         private void ShowDopamineEffect(DopamineHit hit)
         {
             // Show visual effect
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 uiSystem.ShowNotification("🎉 " + hit.reason, NotificationType.Success, hit.duration);
@@ -508,7 +508,7 @@ namespace Evergreen.Addiction
         private void AwardReward(string playerId, VariableReward reward)
         {
             // Award the reward through the economy system
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager != null)
             {
                 switch (reward.id)

@@ -507,7 +507,7 @@ namespace Evergreen.Monetization
                         economyManager.AddCurrency("gems", reward.Value);
                         break;
                     case "energy":
-                        var energySystem = EnergySystem.Instance;
+                        var energySystem = OptimizedGameSystem.Instance;
                         if (energySystem != null)
                         {
                             energySystem.AddEnergy(reward.Value);

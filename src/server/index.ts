@@ -17,6 +17,8 @@ import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
 import { AnalyticsService } from '../services/analytics-service.js';
 import { CloudServices } from '../services/cloud-services.js';
 import gameRoutes from '../routes/game-routes.js';
+import aiContentRoutes from '../routes/ai-content.js';
+import realtimeRoutes from '../routes/realtime.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -204,6 +206,8 @@ class GameServer {
 
     // API routes
     this.app.use('/api/game', gameRoutes);
+    this.app.use('/api/ai', aiContentRoutes);
+    this.app.use('/api/realtime', realtimeRoutes);
 
     // Platform-specific API routes
     this.setupPlatformRoutes();

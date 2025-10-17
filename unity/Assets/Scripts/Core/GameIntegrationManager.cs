@@ -60,12 +60,12 @@ namespace Evergreen.Core
             Debug.Log("Initializing game system integration...");
             
             // Get system references
-            castleSystem = ServiceLocator.Get<CastleRenovationSystem>();
-            energySystem = ServiceLocator.Get<EnergySystem>();
-            characterSystem = ServiceLocator.Get<CharacterSystem>();
-            matchEffects = ServiceLocator.Get<EnhancedMatchEffects>();
-            audioManager = ServiceLocator.Get<EnhancedAudioManager>();
-            uiManager = ServiceLocator.Get<EnhancedUIManager>();
+            castleSystem = OptimizedCoreSystem.Instance.Resolve<CastleRenovationSystem>();
+            energySystem = OptimizedCoreSystem.Instance.Resolve<EnergySystem>();
+            characterSystem = OptimizedCoreSystem.Instance.Resolve<CharacterSystem>();
+            matchEffects = OptimizedCoreSystem.Instance.Resolve<EnhancedMatchEffects>();
+            audioManager = OptimizedCoreSystem.Instance.Resolve<EnhancedAudioManager>();
+            uiManager = OptimizedCoreSystem.Instance.Resolve<EnhancedUIManager>();
             
             // Setup system integrations
             SetupCastleIntegration();

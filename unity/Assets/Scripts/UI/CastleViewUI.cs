@@ -84,7 +84,7 @@ namespace Evergreen.UI
         
         private void RefreshCurrencyDisplay()
         {
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager != null)
             {
                 coinsText.text = gameManager.GetCurrency("coins").ToString();
@@ -230,7 +230,7 @@ namespace Evergreen.UI
         
         private void ShowPurchaseDialog(Decoration decoration)
         {
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager == null) return;
             
             int currentAmount = gameManager.GetCurrency(decoration.currencyType);

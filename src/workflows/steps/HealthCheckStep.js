@@ -3,8 +3,8 @@
  * Validates system health before proceeding
  */
 
-import { Logger } from 'core/logger/index.js';
-import { getService } from 'core/services/ServiceRegistry.js';
+import { Logger } from '../../core/logger/index.js';
+import { getService } from '../../core/services/ServiceRegistry.js';
 
 const logger = new Logger('HealthCheckStep');
 

@@ -159,9 +159,9 @@ namespace Evergreen.UI
             yield return new WaitForSeconds(slideOutDuration);
             
             // Destroy this notification
-            if (AdvancedUISystem.Instance != null)
+            if (OptimizedUISystem.Instance != null)
             {
-                AdvancedUISystem.Instance.OnNotificationHidden?.Invoke(_notification);
+                OptimizedUISystem.Instance.OnNotificationHidden?.Invoke(_notification);
             }
             
             Destroy(gameObject);

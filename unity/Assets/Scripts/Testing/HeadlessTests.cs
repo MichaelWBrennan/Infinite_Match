@@ -58,7 +58,7 @@ namespace Evergreen.Testing
 
             // Act & Assert
             Assert.IsNotNull(gameManager);
-            Assert.IsNotNull(GameManager.Instance);
+            Assert.IsNotNull(OptimizedCoreSystem.Instance);
         }
 
         [Test]
@@ -69,8 +69,8 @@ namespace Evergreen.Testing
             var gameManager2 = new GameObject("GameManager2").AddComponent<GameManager>();
 
             // Act & Assert
-            Assert.AreEqual(gameManager1, GameManager.Instance);
-            Assert.AreNotEqual(gameManager2, GameManager.Instance);
+            Assert.AreEqual(gameManager1, OptimizedCoreSystem.Instance);
+            Assert.AreNotEqual(gameManager2, OptimizedCoreSystem.Instance);
         }
 
         [UnityTest]

@@ -1,7 +1,7 @@
 import express from 'express';
-import security from 'core/security/index.js';
-import { Logger } from 'core/logger/index.js';
-import AdEventDb from 'services/ads/AdEventDb.js';
+import security from '../core/security/index.js';
+import { Logger } from '../core/logger/index.js';
+import AdEventDb from '../services/ads/AdEventDb.js';
 
 const router = express.Router();
 const logger = new Logger('AdsRoutes');

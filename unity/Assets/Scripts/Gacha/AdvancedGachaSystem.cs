@@ -436,7 +436,7 @@ namespace Evergreen.Gacha
         
         private void ShowGachaReward(GachaReward reward)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🎁 {reward.item.name} ({reward.rarity.name}) earned!";
@@ -465,7 +465,7 @@ namespace Evergreen.Gacha
         
         private void ShowNearMissAnimation()
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 uiSystem.ShowNotification("So close! Almost got a rare item!", NotificationType.Warning, 3f);
@@ -476,7 +476,7 @@ namespace Evergreen.Gacha
         #region Reward System
         private void AwardGachaReward(string playerId, GachaReward reward)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return;
             
             // Award the item based on type
@@ -532,7 +532,7 @@ namespace Evergreen.Gacha
         #region Currency Management
         private bool CanAffordPull(string playerId, GachaBox box, int pullCount)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return false;
             
             var totalCost = box.price * pullCount;
@@ -543,7 +543,7 @@ namespace Evergreen.Gacha
         
         private bool DeductCurrency(string playerId, GachaBox box, int pullCount)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return false;
             
             var totalCost = box.price * pullCount;

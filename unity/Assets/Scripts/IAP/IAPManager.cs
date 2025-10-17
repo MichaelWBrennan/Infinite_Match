@@ -74,11 +74,11 @@ public class IAPManager : MonoBehaviour, IStoreListener
         _grants["gems_ultimate"] = () => GameState.AddGems(3500);
         _grants["vip_sub_annual"] = () => { /* VIP flags annual */ };
         // Energy system grants
-        _grants["energy_small"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(10);
-        _grants["energy_medium"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(25);
-        _grants["energy_large"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(50);
-        _grants["energy_ultimate"] = () => Evergreen.Economy.EnergySystem.Instance?.AddEnergy(999);
-        _grants["energy_refill"] = () => Evergreen.Economy.EnergySystem.Instance?.RefillEnergyWithGems();
+        _grants["energy_small"] = () => Evergreen.Economy.OptimizedGameSystem.Instance?.AddEnergy(10);
+        _grants["energy_medium"] = () => Evergreen.Economy.OptimizedGameSystem.Instance?.AddEnergy(25);
+        _grants["energy_large"] = () => Evergreen.Economy.OptimizedGameSystem.Instance?.AddEnergy(50);
+        _grants["energy_ultimate"] = () => Evergreen.Economy.OptimizedGameSystem.Instance?.AddEnergy(999);
+        _grants["energy_refill"] = () => Evergreen.Economy.OptimizedGameSystem.Instance?.RefillEnergyWithGems();
         // Subscription grants
         _grants["energy_sub_monthly"] = () => { 
             var subscriptionSystem = SubscriptionSystem.Instance;

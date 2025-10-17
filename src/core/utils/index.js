@@ -4,7 +4,7 @@
  */
 
 import crypto from 'crypto';
-import { Logger } from 'logger/index.js';
+import { Logger } from '../logger/index.js';
 
 const logger = new Logger('Utils');
 

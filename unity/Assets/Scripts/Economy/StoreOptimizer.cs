@@ -223,7 +223,7 @@ namespace Evergreen.Economy
         
         public List<ShopItem> GetOptimizedItems(string playerId, int maxItems = 6)
         {
-            var shopSystem = ServiceLocator.Get<ShopSystem>();
+            var shopSystem = OptimizedCoreSystem.Instance.Resolve<ShopSystem>();
             if (shopSystem == null) return new List<ShopItem>();
             
             var availableItems = shopSystem.GetAvailableItems(playerId);

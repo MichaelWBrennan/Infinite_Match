@@ -314,10 +314,10 @@ namespace Evergreen.MetaGame
             {
                 int gemsEarned = 5;
                 totalGemsEarned += gemsEarned;
-                ServiceLocator.Get<GameManager>()?.AddCurrency("gems", gemsEarned);
+                OptimizedCoreSystem.Instance.Resolve<GameManager>()?.AddCurrency("gems", gemsEarned);
             }
             
-            ServiceLocator.Get<GameManager>()?.AddCurrency("coins", coinsEarned);
+            OptimizedCoreSystem.Instance.Resolve<GameManager>()?.AddCurrency("coins", coinsEarned);
             
             UpdateAllTasks();
             CheckRoomUnlocks();
@@ -452,11 +452,11 @@ namespace Evergreen.MetaGame
             switch (reward.type)
             {
                 case "coins":
-                    ServiceLocator.Get<GameManager>()?.AddCurrency("coins", reward.amount);
+                    OptimizedCoreSystem.Instance.Resolve<GameManager>()?.AddCurrency("coins", reward.amount);
                     totalCoinsEarned += reward.amount;
                     break;
                 case "gems":
-                    ServiceLocator.Get<GameManager>()?.AddCurrency("gems", reward.amount);
+                    OptimizedCoreSystem.Instance.Resolve<GameManager>()?.AddCurrency("gems", reward.amount);
                     totalGemsEarned += reward.amount;
                     break;
                 case "decoration":
@@ -512,7 +512,7 @@ namespace Evergreen.MetaGame
             if (decoration.isPurchased)
                 return false;
                 
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager == null)
                 return false;
                 

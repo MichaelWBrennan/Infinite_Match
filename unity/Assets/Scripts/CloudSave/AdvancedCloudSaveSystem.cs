@@ -725,7 +725,7 @@ namespace Evergreen.CloudSave
                     if (ShouldSave(playerId))
                     {
                         // Trigger auto-save
-                        var gameManager = ServiceLocator.Get<GameManager>();
+                        var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
                         if (gameManager != null)
                         {
                             // Get current game data and save

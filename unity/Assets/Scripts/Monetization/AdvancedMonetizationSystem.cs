@@ -411,7 +411,7 @@ namespace Evergreen.Monetization
         private void ApplySubscriptionBenefits(string playerId, Subscription subscription)
         {
             // Apply subscription benefits to player
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager != null)
             {
                 // Apply 2x XP and coins multiplier
@@ -421,7 +421,7 @@ namespace Evergreen.Monetization
         
         private void NotifySubscriptionExpiry(Subscription subscription)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 uiSystem.ShowNotification($"Your {subscription.name} has expired! Renew now for continued benefits!", 
@@ -490,7 +490,7 @@ namespace Evergreen.Monetization
             }
             
             // Show level up notification
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 uiSystem.ShowNotification($"Battle Pass Level {newLevel} reached! Check your rewards!", 
@@ -500,7 +500,7 @@ namespace Evergreen.Monetization
         
         private void AwardBattlePassReward(string playerId, BattlePassReward reward)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return;
             
             foreach (var rewardString in reward.rewards)
@@ -604,7 +604,7 @@ namespace Evergreen.Monetization
         
         private void ShowImpulseOfferUI(ImpulseOffer offer)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"⚡ IMPULSE DEAL! {offer.itemId} - {offer.impulsePrice} coins (was {offer.originalPrice})! Only {offer.remainingTime:F0}s left!";
@@ -665,7 +665,7 @@ namespace Evergreen.Monetization
         
         private void ShowLimitedOfferUI(LimitedOffer offer)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🔥 LIMITED TIME! {offer.name} - {offer.limitedPrice} coins (was {offer.originalPrice})! Only {offer.remainingTime:F0}s left!";
@@ -720,7 +720,7 @@ namespace Evergreen.Monetization
         
         private void ShowVIPStatusUpdate(VIPStatus vipStatus)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🎉 VIP {vipStatus.tier.ToUpper()} achieved! New benefits unlocked!";

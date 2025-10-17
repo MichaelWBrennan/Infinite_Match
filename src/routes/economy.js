@@ -5,11 +5,11 @@
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from 'core/security/index.js';
-import { Logger } from 'core/logger/index.js';
-import PricingService from 'services/pricing/PricingService.js';
-import EconomyService from 'services/economy/index.js';
-import UnityService from 'services/unity/index.js';
+import security from '../core/security/index.js';
+import { Logger } from '../core/logger/index.js';
+import PricingService from '../services/pricing/PricingService.js';
+import EconomyService from '../services/economy/index.js';
+import UnityService from '../services/unity/index.js';
 
 const router = express.Router();
 const logger = new Logger('EconomyRoutes');
