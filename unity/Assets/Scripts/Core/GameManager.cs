@@ -1,62 +1,83 @@
+using System.Collections;
 using UnityEngine;
-using Evergreen.Game;
-using Evergreen.Performance;
-using Evergreen.Ads;
-using Evergreen.Social;
-using Evergreen.MetaGame;
-using Evergreen.Economy;
-using Evergreen.Monetization;
+using UnityEngine.SceneManagement;
+using System;
+using Evergreen.Core;
+using Evergreen.AI;
 using Evergreen.Analytics;
-using System.Collections.Generic;
+using Evergreen.Social;
+using Evergreen.LiveOps;
+using Evergreen.Collections;
+using Evergreen.ARPU;
+using Evergreen.Retention;
+using Evergreen.Addiction;
 
 namespace Evergreen.Core
 {
     /// <summary>
-    /// Central game manager that initializes and coordinates all game systems
+    /// Main Game Manager - Central hub for all game systems
+    /// Coordinates all game systems and ensures proper initialization order
     /// </summary>
     public class GameManager : MonoBehaviour
     {
-        [Header("System Initialization")]
-        [SerializeField] private bool initializeOnAwake = true;
-        [SerializeField] private bool enablePerformanceMonitoring = true;
-        [SerializeField] private bool enableARPUSystems = true;
+        [Header("Game Configuration")]
+        public bool enableAI = true;
+        public bool enableAnalytics = true;
+        public bool enableSocial = true;
+        public bool enableLiveOps = true;
+        public bool enableCollections = true;
+        public bool enableARPU = true;
+        public bool enableRetention = true;
+        public bool enableAddictionMechanics = true;
         
-        [Header("Industry Leader ARPU Targets")]
-        [SerializeField] private float targetARPU = 3.50f; // Industry average for top games
-        [SerializeField] private float targetARPPU = 25.00f; // Industry average for top games
-        [SerializeField] private float targetConversionRate = 0.08f; // 8% conversion rate
-        [SerializeField] private float targetRetentionD1 = 0.40f; // 40% Day 1 retention
-        [SerializeField] private float targetRetentionD7 = 0.20f; // 20% Day 7 retention
-        [SerializeField] private float targetRetentionD30 = 0.10f; // 10% Day 30 retention
+        [Header("Initialization Settings")]
+        public float initializationDelay = 0.1f;
+        public bool initializeOnAwake = true;
+        public bool showInitializationLogs = true;
         
-        [Header("Currency Settings")]
-        [SerializeField] private int startingCoins = 1000;
-        [SerializeField] private int startingGems = 50;
+        [Header("Game State")]
+        public GameState currentState = GameState.Initializing;
+        public string currentLevel = "1";
+        public int playerScore = 0;
+        public int playerCoins = 1000;
+        public int playerGems = 50;
         
-        [Header("Industry Leader Strategies")]
-        [SerializeField] private bool enableKingStrategies = true; // Candy Crush strategies
-        [SerializeField] private bool enableSupercellStrategies = true; // Clash of Clans strategies
-        [SerializeField] private bool enableNianticStrategies = true; // Pokemon GO strategies
-        [SerializeField] private bool enableEpicStrategies = true; // Fortnite strategies
-        [SerializeField] private bool enableRobloxStrategies = true; // Roblox strategies
+        // System References
+        private SceneManager _sceneManager;
+        private AIInfiniteContentManager _aiContentManager;
+        private GameAnalyticsManager _analyticsManager;
+        private AdvancedSocialSystem _socialSystem;
+        private LiveEventsSystem _liveEventsSystem;
+        private AchievementSystem _achievementSystem;
+        private CompleteARPUManager _arpuManager;
+        private AdvancedRetentionSystem _retentionSystem;
+        private AddictionMechanics _addictionMechanics;
         
-        [Header("🚀 Google Play Compliant ARPU Systems")]
-        [SerializeField] private bool enableCompliantARPU = true;
-        [SerializeField] private bool enableOneClickARPU = true;
-        [SerializeField] private bool enableAutoARPUOptimization = true;
-        [SerializeField] private bool enableTransparentARPU = true;
-        [SerializeField] private bool enableHonestARPU = true;
-        
-        [Header("🌐 Platform Management")]
-        [SerializeField] private bool enablePlatformManagement = true;
-        [SerializeField] private bool enablePlatformValidation = true;
-        [SerializeField] private bool enableComplianceChecks = true;
-        [SerializeField] private bool showPlatformInfo = true;
+        // Events
+        public static event Action<GameState> OnGameStateChanged;
+        public static event Action<int> OnScoreChanged;
+        public static event Action<int> OnCoinsChanged;
+        public static event Action<int> OnGemsChanged;
+        public static event Action<string> OnLevelChanged;
+        public static event Action OnGameInitialized;
         
         public static GameManager Instance { get; private set; }
         
-        private bool _isInitialized = false;
-        private Dictionary<string, int> _currencies = new Dictionary<string, int>();
+        public enum GameState
+        {
+            Initializing,
+            MainMenu,
+            Loading,
+            Gameplay,
+            Paused,
+            Settings,
+            Shop,
+            Social,
+            Events,
+            Collections,
+            GameOver,
+            Quitting
+        }
         
         void Awake()
         {
@@ -67,7 +88,7 @@ namespace Evergreen.Core
                 
                 if (initializeOnAwake)
                 {
-                    InitializeGame();
+                    StartCoroutine(InitializeGame());
                 }
             }
             else
@@ -76,732 +97,494 @@ namespace Evergreen.Core
             }
         }
         
+        void Start()
+        {
+            if (!initializeOnAwake)
+            {
+                StartCoroutine(InitializeGame());
+            }
+        }
+        
         /// <summary>
         /// Initialize all game systems
         /// </summary>
-        public void InitializeGame()
+        private IEnumerator InitializeGame()
         {
-            if (_isInitialized)
+            if (showInitializationLogs)
+                Debug.Log("🎮 Starting Game Initialization...");
+            
+            SetGameState(GameState.Initializing);
+            
+            // Initialize core systems first
+            yield return StartCoroutine(InitializeCoreSystems());
+            
+            // Initialize game systems
+            yield return StartCoroutine(InitializeGameSystems());
+            
+            // Initialize AI systems
+            if (enableAI)
             {
-                Debug.LogWarning("Game already initialized");
-                return;
+                yield return StartCoroutine(InitializeAISystems());
             }
             
-            Debug.Log("Initializing game systems...");
-            
-            try
+            // Initialize analytics
+            if (enableAnalytics)
             {
-                // Initialize core systems first
-                InitializeCoreSystems();
+                yield return StartCoroutine(InitializeAnalytics());
+            }
+            
+            // Initialize social systems
+            if (enableSocial)
+            {
+                yield return StartCoroutine(InitializeSocialSystems());
+            }
+            
+            // Initialize live operations
+            if (enableLiveOps)
+            {
+                yield return StartCoroutine(InitializeLiveOps());
+            }
+            
+            // Initialize collections
+            if (enableCollections)
+            {
+                yield return StartCoroutine(InitializeCollections());
+            }
+            
+            // Initialize monetization
+            if (enableARPU)
+            {
+                yield return StartCoroutine(InitializeARPU());
+            }
+            
+            // Initialize retention
+            if (enableRetention)
+            {
+                yield return StartCoroutine(InitializeRetention());
+            }
+            
+            // Initialize addiction mechanics
+            if (enableAddictionMechanics)
+            {
+                yield return StartCoroutine(InitializeAddictionMechanics());
+            }
+            
+            // Finalize initialization
+            yield return StartCoroutine(FinalizeInitialization());
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Game Initialization Complete!");
+            
+            OnGameInitialized?.Invoke();
+        }
+        
+        /// <summary>
+        /// Initialize core systems
+        /// </summary>
+        private IEnumerator InitializeCoreSystems()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🔧 Initializing Core Systems...");
+            
+            // Initialize Scene Manager
+            _sceneManager = SceneManager.Instance;
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Core Systems Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize game systems
+        /// </summary>
+        private IEnumerator InitializeGameSystems()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🎯 Initializing Game Systems...");
+            
+            // Load player data
+            LoadPlayerData();
+            
+            // Initialize game state
+            SetGameState(GameState.MainMenu);
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Game Systems Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize AI systems
+        /// </summary>
+        private IEnumerator InitializeAISystems()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🤖 Initializing AI Systems...");
+            
+            _aiContentManager = FindObjectOfType<AIInfiniteContentManager>();
+            if (_aiContentManager == null)
+            {
+                GameObject aiGO = new GameObject("AIInfiniteContentManager");
+                _aiContentManager = aiGO.AddComponent<AIInfiniteContentManager>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ AI Systems Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize analytics
+        /// </summary>
+        private IEnumerator InitializeAnalytics()
+        {
+            if (showInitializationLogs)
+                Debug.Log("📊 Initializing Analytics...");
+            
+            _analyticsManager = FindObjectOfType<GameAnalyticsManager>();
+            if (_analyticsManager == null)
+            {
+                GameObject analyticsGO = new GameObject("GameAnalyticsManager");
+                _analyticsManager = analyticsGO.AddComponent<GameAnalyticsManager>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Analytics Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize social systems
+        /// </summary>
+        private IEnumerator InitializeSocialSystems()
+        {
+            if (showInitializationLogs)
+                Debug.Log("👥 Initializing Social Systems...");
+            
+            _socialSystem = FindObjectOfType<AdvancedSocialSystem>();
+            if (_socialSystem == null)
+            {
+                GameObject socialGO = new GameObject("AdvancedSocialSystem");
+                _socialSystem = socialGO.AddComponent<AdvancedSocialSystem>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Social Systems Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize live operations
+        /// </summary>
+        private IEnumerator InitializeLiveOps()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🎪 Initializing Live Operations...");
+            
+            _liveEventsSystem = FindObjectOfType<LiveEventsSystem>();
+            if (_liveEventsSystem == null)
+            {
+                GameObject liveOpsGO = new GameObject("LiveEventsSystem");
+                _liveEventsSystem = liveOpsGO.AddComponent<LiveEventsSystem>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Live Operations Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize collections
+        /// </summary>
+        private IEnumerator InitializeCollections()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🏆 Initializing Collections...");
+            
+            _achievementSystem = FindObjectOfType<AchievementSystem>();
+            if (_achievementSystem == null)
+            {
+                GameObject collectionsGO = new GameObject("AchievementSystem");
+                _achievementSystem = collectionsGO.AddComponent<AchievementSystem>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Collections Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize ARPU systems
+        /// </summary>
+        private IEnumerator InitializeARPU()
+        {
+            if (showInitializationLogs)
+                Debug.Log("💰 Initializing ARPU Systems...");
+            
+            _arpuManager = FindObjectOfType<CompleteARPUManager>();
+            if (_arpuManager == null)
+            {
+                GameObject arpuGO = new GameObject("CompleteARPUManager");
+                _arpuManager = arpuGO.AddComponent<CompleteARPUManager>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ ARPU Systems Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize retention systems
+        /// </summary>
+        private IEnumerator InitializeRetention()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🔄 Initializing Retention Systems...");
+            
+            _retentionSystem = FindObjectOfType<AdvancedRetentionSystem>();
+            if (_retentionSystem == null)
+            {
+                GameObject retentionGO = new GameObject("AdvancedRetentionSystem");
+                _retentionSystem = retentionGO.AddComponent<AdvancedRetentionSystem>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Retention Systems Initialized");
+        }
+        
+        /// <summary>
+        /// Initialize addiction mechanics
+        /// </summary>
+        private IEnumerator InitializeAddictionMechanics()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🎯 Initializing Addiction Mechanics...");
+            
+            _addictionMechanics = FindObjectOfType<AddictionMechanics>();
+            if (_addictionMechanics == null)
+            {
+                GameObject addictionGO = new GameObject("AddictionMechanics");
+                _addictionMechanics = addictionGO.AddComponent<AddictionMechanics>();
+            }
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("✅ Addiction Mechanics Initialized");
+        }
+        
+        /// <summary>
+        /// Finalize initialization
+        /// </summary>
+        private IEnumerator FinalizeInitialization()
+        {
+            if (showInitializationLogs)
+                Debug.Log("🎉 Finalizing Game Initialization...");
+            
+            // Set initial game state
+            SetGameState(GameState.MainMenu);
+            
+            // Start background systems
+            StartBackgroundSystems();
+            
+            yield return new WaitForSeconds(initializationDelay);
+            
+            if (showInitializationLogs)
+                Debug.Log("🎮 Game Ready!");
+        }
+        
+        /// <summary>
+        /// Start background systems
+        /// </summary>
+        private void StartBackgroundSystems()
+        {
+            // Start AI content generation
+            if (_aiContentManager != null)
+            {
+                _aiContentManager.StartAIContentGeneration();
+            }
+            
+            // Start analytics tracking
+            if (_analyticsManager != null)
+            {
+                // Analytics will start automatically
+            }
+            
+            // Start social systems
+            if (_socialSystem != null)
+            {
+                // Social systems will start automatically
+            }
+            
+            // Start live events
+            if (_liveEventsSystem != null)
+            {
+                // Live events will start automatically
+            }
+        }
+        
+        /// <summary>
+        /// Set game state
+        /// </summary>
+        public void SetGameState(GameState newState)
+        {
+            if (currentState != newState)
+            {
+                GameState previousState = currentState;
+                currentState = newState;
                 
-                // Initialize game systems
-                InitializeGameSystems();
+                OnGameStateChanged?.Invoke(newState);
                 
-                // Initialize UI systems
-                InitializeUISystems();
-                
-                // Initialize performance monitoring
-                if (enablePerformanceMonitoring)
-                {
-                    InitializePerformanceSystems();
-                }
-                
-                // Initialize ARPU systems
-                if (enableARPUSystems)
-                {
-                    InitializeARPUSystems();
-                }
-                
-                // Initialize Google Play Compliant ARPU systems
-                if (enableCompliantARPU)
-                {
-                    InitializeCompliantARPUSystems();
-                }
-                
-                // Initialize Platform Management
-                if (enablePlatformManagement)
-                {
-                    InitializePlatformManagement();
-                }
-                
-                // Apply industry leader strategies
-                ApplyIndustryLeaderStrategies();
-                
-                _isInitialized = true;
-                Debug.Log("Game initialization completed successfully");
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"Game initialization failed: {e.Message}");
-                throw;
-            }
-        }
-        
-        private void InitializeCoreSystems()
-        {
-            // Load remote config
-            RemoteConfigService.Load();
-            
-            // Load game state
-            GameState.Load();
-            
-            // Initialize currencies
-            InitializeCurrencies();
-            
-            Debug.Log("Core systems initialized");
-        }
-        
-        private void InitializeCurrencies()
-        {
-            _currencies["coins"] = startingCoins;
-            _currencies["gems"] = startingGems;
-            
-            // Load saved currencies
-            LoadCurrencies();
-        }
-        
-        private void InitializeGameSystems()
-        {
-            // Register IAP Manager
-            ServiceLocator.RegisterFactory<IAPManager>(() => 
-            {
-                var go = new GameObject("IAPManager");
-                return go.AddComponent<IAPManager>();
-            });
-            
-            // Register Ad Mediation
-            ServiceLocator.RegisterFactory<AdMediation>(() => 
-            {
-                var go = new GameObject("AdMediation");
-                return go.AddComponent<AdMediation>();
-            });
-            
-            // Register Cloud Save
-            ServiceLocator.RegisterFactory<CloudSavePlayFab>(() => 
-            {
-                var go = new GameObject("CloudSavePlayFab");
-                return go.AddComponent<CloudSavePlayFab>();
-            });
-            
-            // Register Unity Ads Manager
-            ServiceLocator.RegisterFactory<UnityAdsManager>(() => 
-            {
-                var go = new GameObject("UnityAdsManager");
-                return go.AddComponent<UnityAdsManager>();
-            });
-            
-            // Register Energy System
-            ServiceLocator.RegisterFactory<EnergySystem>(() => 
-            {
-                var go = new GameObject("EnergySystem");
-                return go.AddComponent<EnergySystem>();
-            });
-            
-            // Register Castle Renovation System
-            ServiceLocator.RegisterFactory<CastleRenovationSystem>(() => 
-            {
-                var go = new GameObject("CastleRenovationSystem");
-                return go.AddComponent<CastleRenovationSystem>();
-            });
-            
-            // Register Character System
-            ServiceLocator.RegisterFactory<CharacterSystem>(() => 
-            {
-                var go = new GameObject("CharacterSystem");
-                return go.AddComponent<CharacterSystem>();
-            });
-            
-            // Register Enhanced Match Effects
-            ServiceLocator.RegisterFactory<EnhancedMatchEffects>(() => 
-            {
-                var go = new GameObject("EnhancedMatchEffects");
-                return go.AddComponent<EnhancedMatchEffects>();
-            });
-            
-            // Register Enhanced Audio Manager
-            ServiceLocator.RegisterFactory<EnhancedAudioManager>(() => 
-            {
-                var go = new GameObject("EnhancedAudioManager");
-                return go.AddComponent<EnhancedAudioManager>();
-            });
-            
-            // Register Enhanced UI Manager
-            ServiceLocator.RegisterFactory<EnhancedUIManager>(() => 
-            {
-                var go = new GameObject("EnhancedUIManager");
-                return go.AddComponent<EnhancedUIManager>();
-            });
-            
-            // Register Game Integration Manager
-            ServiceLocator.RegisterFactory<GameIntegrationManager>(() => 
-            {
-                var go = new GameObject("GameIntegrationManager");
-                return go.AddComponent<GameIntegrationManager>();
-            });
-            
-            // Register Dynamic Offer System
-            ServiceLocator.RegisterFactory<DynamicOfferSystem>(() => 
-            {
-                var go = new GameObject("DynamicOfferSystem");
-                return go.AddComponent<DynamicOfferSystem>();
-            });
-            
-            // Register Social System
-            ServiceLocator.RegisterFactory<SocialSystem>(() => 
-            {
-                var go = new GameObject("SocialSystem");
-                return go.AddComponent<SocialSystem>();
-            });
-            
-            // Register Advanced Live Ops System
-            ServiceLocator.RegisterFactory<AdvancedLiveOpsSystem>(() => 
-            {
-                var go = new GameObject("AdvancedLiveOpsSystem");
-                return go.AddComponent<AdvancedLiveOpsSystem>();
-            });
-            
-            // Register Advanced Analytics System
-            ServiceLocator.RegisterFactory<AdvancedAnalyticsSystem>(() => 
-            {
-                var go = new GameObject("AdvancedAnalyticsSystem");
-                return go.AddComponent<AdvancedAnalyticsSystem>();
-            });
-            
-            // Register AI Personalization System
-            ServiceLocator.RegisterFactory<AIPersonalizationSystem>(() => 
-            {
-                var go = new GameObject("AIPersonalizationSystem");
-                return go.AddComponent<AIPersonalizationSystem>();
-            });
-            
-            // Register Advanced Cloud Save System
-            ServiceLocator.RegisterFactory<AdvancedCloudSaveSystem>(() => 
-            {
-                var go = new GameObject("AdvancedCloudSaveSystem");
-                return go.AddComponent<AdvancedCloudSaveSystem>();
-            });
-            
-            // Register Economy Service
-            ServiceLocator.RegisterFactory<EconomyService>(() => 
-            {
-                var go = new GameObject("EconomyService");
-                return go.AddComponent<EconomyService>();
-            });
-            
-            Debug.Log("Game systems initialized");
-        }
-        
-        private void InitializeUISystems()
-        {
-            // Initialize main menu UI
-            MainMenuUI.Show();
-            
-            Debug.Log("UI systems initialized");
-        }
-        
-        private void InitializePerformanceSystems()
-        {
-            // Register Performance Manager
-            ServiceLocator.RegisterFactory<PerformanceManager>(() => 
-            {
-                var go = new GameObject("PerformanceManager");
-                return go.AddComponent<PerformanceManager>();
-            });
-            
-            Debug.Log("Performance systems initialized");
-        }
-        
-        private void InitializeARPUSystems()
-        {
-            // Register Energy System
-            ServiceLocator.RegisterFactory<EnergySystem>(() => 
-            {
-                var go = new GameObject("EnergySystem");
-                return go.AddComponent<EnergySystem>();
-            });
-            
-            // Register Subscription System
-            ServiceLocator.RegisterFactory<SubscriptionSystem>(() => 
-            {
-                var go = new GameObject("SubscriptionSystem");
-                return go.AddComponent<SubscriptionSystem>();
-            });
-            
-            // Register Personalized Offer System
-            ServiceLocator.RegisterFactory<PersonalizedOfferSystem>(() => 
-            {
-                var go = new GameObject("PersonalizedOfferSystem");
-                return go.AddComponent<PersonalizedOfferSystem>();
-            });
-            
-            // Register Social Competition System
-            ServiceLocator.RegisterFactory<SocialCompetitionSystem>(() => 
-            {
-                var go = new GameObject("SocialCompetitionSystem");
-                return go.AddComponent<SocialCompetitionSystem>();
-            });
-            
-            // Register Unity Analytics ARPU Helper
-            ServiceLocator.RegisterFactory<UnityAnalyticsARPUHelper>(() => 
-            {
-                var go = new GameObject("UnityAnalyticsARPUHelper");
-                return go.AddComponent<UnityAnalyticsARPUHelper>();
-            });
-            
-            // Register Advanced Retention System
-            ServiceLocator.RegisterFactory<AdvancedRetentionSystem>(() => 
-            {
-                var go = new GameObject("AdvancedRetentionSystem");
-                return go.AddComponent<AdvancedRetentionSystem>();
-            });
-            
-            // Register ARPU Integration Manager
-            ServiceLocator.RegisterFactory<ARPUIntegrationManager>(() => 
-            {
-                var go = new GameObject("ARPUIntegrationManager");
-                return go.AddComponent<ARPUIntegrationManager>();
-            });
-            
-            Debug.Log("ARPU systems initialized");
-        }
-        
-        /// <summary>
-        /// Get a service from the service locator
-        /// </summary>
-        public T GetService<T>() where T : class
-        {
-            return ServiceLocator.Get<T>();
-        }
-        
-        /// <summary>
-        /// Check if a service is available
-        /// </summary>
-        public bool HasService<T>() where T : class
-        {
-            return ServiceLocator.IsRegistered<T>();
-        }
-        
-        /// <summary>
-        /// Get currency amount
-        /// </summary>
-        public int GetCurrency(string currencyType)
-        {
-            return _currencies.ContainsKey(currencyType) ? _currencies[currencyType] : 0;
-        }
-        
-        /// <summary>
-        /// Add currency
-        /// </summary>
-        public void AddCurrency(string currencyType, int amount)
-        {
-            if (!_currencies.ContainsKey(currencyType))
-                _currencies[currencyType] = 0;
-                
-            _currencies[currencyType] += amount;
-            SaveCurrencies();
-        }
-        
-        /// <summary>
-        /// Spend currency
-        /// </summary>
-        public bool SpendCurrency(string currencyType, int amount)
-        {
-            if (!_currencies.ContainsKey(currencyType) || _currencies[currencyType] < amount)
-                return false;
-                
-            _currencies[currencyType] -= amount;
-            SaveCurrencies();
-            return true;
-        }
-        
-        /// <summary>
-        /// Set currency amount
-        /// </summary>
-        public void SetCurrency(string currencyType, int amount)
-        {
-            _currencies[currencyType] = amount;
-            SaveCurrencies();
-        }
-        
-        /// <summary>
-        /// Check if player can play level (energy check)
-        /// </summary>
-        public bool CanPlayLevel()
-        {
-            var energySystem = GetService<EnergySystem>();
-            return energySystem != null ? energySystem.CanPlayLevel() : true;
-        }
-        
-        /// <summary>
-        /// Try to consume energy for level play
-        /// </summary>
-        public bool TryConsumeEnergy(int amount = 1)
-        {
-            var energySystem = GetService<EnergySystem>();
-            return energySystem != null ? energySystem.TryConsumeEnergy(amount) : true;
-        }
-        
-        /// <summary>
-        /// Get current energy level
-        /// </summary>
-        public int GetCurrentEnergy()
-        {
-            var energySystem = GetService<EnergySystem>();
-            return energySystem != null ? energySystem.GetCurrentEnergy() : 30;
-        }
-        
-        /// <summary>
-        /// Get max energy level
-        /// </summary>
-        public int GetMaxEnergy()
-        {
-            var energySystem = GetService<EnergySystem>();
-            return energySystem != null ? energySystem.GetMaxEnergy() : 30;
-        }
-        
-        /// <summary>
-        /// Check if player has active subscription
-        /// </summary>
-        public bool HasActiveSubscription(string playerId)
-        {
-            var subscriptionSystem = GetService<SubscriptionSystem>();
-            return subscriptionSystem != null ? subscriptionSystem.HasActiveSubscription(playerId) : false;
-        }
-        
-        /// <summary>
-        /// Get subscription multiplier for rewards
-        /// </summary>
-        public float GetSubscriptionMultiplier(string playerId, string multiplierType)
-        {
-            var subscriptionSystem = GetService<SubscriptionSystem>();
-            return subscriptionSystem != null ? subscriptionSystem.GetSubscriptionMultiplier(playerId, multiplierType) : 1f;
-        }
-        
-        /// <summary>
-        /// Get personalized offers for player
-        /// </summary>
-        public System.Collections.Generic.List<PersonalizedOffer> GetPersonalizedOffers(string playerId)
-        {
-            var offerSystem = GetService<PersonalizedOfferSystem>();
-            return offerSystem != null ? offerSystem.GetOffersForPlayer(playerId) : new System.Collections.Generic.List<PersonalizedOffer>();
-        }
-        
-        /// <summary>
-        /// Track revenue event using Unity Analytics
-        /// </summary>
-        public void TrackRevenue(string playerId, float amount, RevenueSource source, string itemId = "")
-        {
-            var helper = UnityAnalyticsARPUHelper.Instance;
-            if (helper != null)
-            {
-                helper.TrackRevenue(playerId, amount, source.ToString(), itemId);
+                if (showInitializationLogs)
+                    Debug.Log($"Game State: {previousState} -> {newState}");
             }
         }
         
         /// <summary>
-        /// Track player action using Unity Analytics
+        /// Update player score
         /// </summary>
-        public void TrackPlayerAction(string playerId, string action, System.Collections.Generic.Dictionary<string, object> parameters = null)
+        public void UpdateScore(int newScore)
         {
-            var helper = UnityAnalyticsARPUHelper.Instance;
-            if (helper != null)
+            playerScore = newScore;
+            OnScoreChanged?.Invoke(playerScore);
+        }
+        
+        /// <summary>
+        /// Add score
+        /// </summary>
+        public void AddScore(int points)
+        {
+            UpdateScore(playerScore + points);
+        }
+        
+        /// <summary>
+        /// Update player coins
+        /// </summary>
+        public void UpdateCoins(int newCoins)
+        {
+            playerCoins = newCoins;
+            OnCoinsChanged?.Invoke(playerCoins);
+        }
+        
+        /// <summary>
+        /// Add coins
+        /// </summary>
+        public void AddCoins(int coins)
+        {
+            UpdateCoins(playerCoins + coins);
+        }
+        
+        /// <summary>
+        /// Update player gems
+        /// </summary>
+        public void UpdateGems(int newGems)
+        {
+            playerGems = newGems;
+            OnGemsChanged?.Invoke(playerGems);
+        }
+        
+        /// <summary>
+        /// Add gems
+        /// </summary>
+        public void AddGems(int gems)
+        {
+            UpdateGems(playerGems + gems);
+        }
+        
+        /// <summary>
+        /// Update current level
+        /// </summary>
+        public void UpdateLevel(string newLevel)
+        {
+            currentLevel = newLevel;
+            OnLevelChanged?.Invoke(currentLevel);
+        }
+        
+        /// <summary>
+        /// Load player data
+        /// </summary>
+        private void LoadPlayerData()
+        {
+            playerScore = PlayerPrefs.GetInt("PlayerScore", 0);
+            playerCoins = PlayerPrefs.GetInt("PlayerCoins", 1000);
+            playerGems = PlayerPrefs.GetInt("PlayerGems", 50);
+            currentLevel = PlayerPrefs.GetString("CurrentLevel", "1");
+        }
+        
+        /// <summary>
+        /// Save player data
+        /// </summary>
+        public void SavePlayerData()
+        {
+            PlayerPrefs.SetInt("PlayerScore", playerScore);
+            PlayerPrefs.SetInt("PlayerCoins", playerCoins);
+            PlayerPrefs.SetInt("PlayerGems", playerGems);
+            PlayerPrefs.SetString("CurrentLevel", currentLevel);
+            PlayerPrefs.Save();
+        }
+        
+        /// <summary>
+        /// Start new game
+        /// </summary>
+        public void StartNewGame()
+        {
+            SetGameState(GameState.Loading);
+            _sceneManager?.LoadScene("Gameplay");
+        }
+        
+        /// <summary>
+        /// Pause game
+        /// </summary>
+        public void PauseGame()
+        {
+            if (currentState == GameState.Gameplay)
             {
-                helper.TrackPlayerAction(playerId, action, parameters);
+                SetGameState(GameState.Paused);
+                Time.timeScale = 0f;
             }
         }
         
         /// <summary>
-        /// Get current ARPU metrics (using Unity Analytics data)
+        /// Resume game
         /// </summary>
-        public System.Collections.Generic.Dictionary<string, object> GetARPUReport()
+        public void ResumeGame()
         {
-            var helper = UnityAnalyticsARPUHelper.Instance;
-            if (helper != null)
+            if (currentState == GameState.Paused)
             {
-                return helper.GetARPUReport();
-            }
-            
-            return new System.Collections.Generic.Dictionary<string, object>();
-        }
-        
-        /// <summary>
-        /// Check if ARPU targets are being met
-        /// </summary>
-        public bool AreARPUTargetsMet()
-        {
-            var helper = UnityAnalyticsARPUHelper.Instance;
-            if (helper != null)
-            {
-                return helper.AreARPUTargetsMet();
-            }
-            
-            return false;
-        }
-        
-        /// <summary>
-        /// Get ARPU performance vs industry targets
-        /// </summary>
-        public System.Collections.Generic.Dictionary<string, float> GetARPUPerformance()
-        {
-            var helper = UnityAnalyticsARPUHelper.Instance;
-            if (helper != null)
-            {
-                return helper.GetARPUPerformance();
-            }
-            
-            return new System.Collections.Generic.Dictionary<string, float>();
-        }
-        
-        /// <summary>
-        /// Apply industry leader strategies
-        /// </summary>
-        public void ApplyIndustryLeaderStrategies()
-        {
-            if (enableKingStrategies)
-            {
-                ApplyKingStrategies();
-            }
-            
-            if (enableSupercellStrategies)
-            {
-                ApplySupercellStrategies();
-            }
-            
-            if (enableNianticStrategies)
-            {
-                ApplyNianticStrategies();
-            }
-            
-            if (enableEpicStrategies)
-            {
-                ApplyEpicStrategies();
-            }
-            
-            if (enableRobloxStrategies)
-            {
-                ApplyRobloxStrategies();
+                SetGameState(GameState.Gameplay);
+                Time.timeScale = 1f;
             }
         }
         
         /// <summary>
-        /// Initialize Google Play Compliant ARPU systems
+        /// Quit game
         /// </summary>
-        private void InitializeCompliantARPUSystems()
+        public void QuitGame()
         {
-            Debug.Log("🚀 Initializing Google Play Compliant ARPU systems...");
+            SetGameState(GameState.Quitting);
+            SavePlayerData();
             
-            try
-            {
-                // Add CompliantARPUInitializer component
-                var initializer = gameObject.AddComponent<Evergreen.ARPU.CompliantARPUInitializer>();
-                if (initializer != null)
-                {
-                    Debug.Log("✅ CompliantARPUInitializer added successfully");
-                    
-                    // Configure initializer
-                    initializer.enableAutoInitialization = enableOneClickARPU;
-                    initializer.enableOneClickSetup = enableOneClickARPU;
-                    initializer.enableOptimalConfiguration = enableAutoARPUOptimization;
-                    initializer.enableGooglePlayCompliance = enableTransparentARPU;
-                    initializer.enableTransparentSetup = enableHonestARPU;
-                    
-                    // Set optimal targets
-                    initializer.targetARPU = 15.00f; // 5x industry average
-                    initializer.targetARPPU = 125.00f; // 5x industry average
-                    initializer.targetConversionRate = 0.40f; // 5x industry average
-                    initializer.targetRetentionD1 = 0.80f; // 2x industry average
-                    initializer.targetRetentionD7 = 0.60f; // 2x industry average
-                    initializer.targetRetentionD30 = 0.40f; // 2x industry average
-                    
-                    Debug.Log("🚀 Google Play Compliant ARPU systems initialized successfully!");
-                }
-                else
-                {
-                    Debug.LogError("❌ Failed to add CompliantARPUInitializer");
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"❌ Error initializing Compliant ARPU systems: {e.Message}");
-            }
-        }
-        
-        /// <summary>
-        /// Initialize Platform Management system
-        /// </summary>
-        private void InitializePlatformManagement()
-        {
-            Debug.Log("🌐 Initializing Platform Management...");
-            
-            try
-            {
-                // Add PlatformManager component
-                var platformManager = gameObject.AddComponent<Evergreen.Platform.PlatformManager>();
-                if (platformManager != null)
-                {
-                    Debug.Log("✅ PlatformManager added successfully");
-                    
-                    // Configure platform manager
-                    platformManager.enablePlatformValidation = enablePlatformValidation;
-                    platformManager.enableComplianceChecks = enableComplianceChecks;
-                    
-                    Debug.Log("🌐 Platform Management initialized successfully!");
-                }
-                else
-                {
-                    Debug.LogError("❌ Failed to add PlatformManager");
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"❌ Error initializing Platform Management: {e.Message}");
-            }
-        }
-        
-        private void ApplyKingStrategies()
-        {
-            // King (Candy Crush) strategies
-            Debug.Log("Applying King (Candy Crush) strategies...");
-            
-            // Energy monetization
-            var energySystem = GetService<EnergySystem>();
-            if (energySystem != null)
-            {
-                // Implement King-style energy system
-                energySystem.maxEnergy = 5; // King uses 5 lives
-                energySystem.energyRefillTime = 1800f; // 30 minutes per life
-                energySystem.energyRefillCost = 1; // 1 gem per life
-            }
-            
-            // Boosters system
-            var offerSystem = GetService<PersonalizedOfferSystem>();
-            if (offerSystem != null)
-            {
-                // Add King-style boosters
-                var boosters = new[]
-                {
-                    "color_bomb", "striped_candy", "wrapped_candy", "coconut_wheel", "fish"
-                };
-                
-                foreach (var booster in boosters)
-                {
-                    // Add booster to offer system
-                }
-            }
-        }
-        
-        private void ApplySupercellStrategies()
-        {
-            // Supercell (Clash of Clans) strategies
-            Debug.Log("Applying Supercell (Clash of Clans) strategies...");
-            
-            // Gems system
-            var economyService = GetService<EconomyService>();
-            if (economyService != null)
-            {
-                // Implement Supercell-style gems
-                AddCurrency("gems", 500); // Starting gems
-            }
-            
-            // Clan system
-            var socialSystem = GetService<SocialSystem>();
-            if (socialSystem != null)
-            {
-                // Implement Supercell-style clan features
-            }
-        }
-        
-        private void ApplyNianticStrategies()
-        {
-            // Niantic (Pokemon GO) strategies
-            Debug.Log("Applying Niantic (Pokemon GO) strategies...");
-            
-            // Location-based features
-            var liveOpsSystem = GetService<AdvancedLiveOpsSystem>();
-            if (liveOpsSystem != null)
-            {
-                // Implement Niantic-style location-based events
-            }
-        }
-        
-        private void ApplyEpicStrategies()
-        {
-            // Epic (Fortnite) strategies
-            Debug.Log("Applying Epic (Fortnite) strategies...");
-            
-            // Battle pass system
-            var subscriptionSystem = GetService<SubscriptionSystem>();
-            if (subscriptionSystem != null)
-            {
-                // Implement Epic-style battle pass
-            }
-        }
-        
-        private void ApplyRobloxStrategies()
-        {
-            // Roblox strategies
-            Debug.Log("Applying Roblox strategies...");
-            
-            // User-generated content
-            var personalizationSystem = GetService<AIPersonalizationSystem>();
-            if (personalizationSystem != null)
-            {
-                // Implement Roblox-style UGC features
-            }
-        }
-        
-        private void LoadCurrencies()
-        {
-            string path = Application.persistentDataPath + "/currencies.json";
-            if (System.IO.File.Exists(path))
-            {
-                string json = System.IO.File.ReadAllText(path);
-                var currencyData = JsonUtility.FromJson<CurrencyData>(json);
-                
-                _currencies["coins"] = currencyData.coins;
-                _currencies["gems"] = currencyData.gems;
-            }
-        }
-        
-        private void SaveCurrencies()
-        {
-            var currencyData = new CurrencyData
-            {
-                coins = GetCurrency("coins"),
-                gems = GetCurrency("gems")
-            };
-            
-            string json = JsonUtility.ToJson(currencyData, true);
-            System.IO.File.WriteAllText(Application.persistentDataPath + "/currencies.json", json);
-        }
-        
-        /// <summary>
-        /// Shutdown all systems
-        /// </summary>
-        public void Shutdown()
-        {
-            if (!_isInitialized) return;
-            
-            Debug.Log("Shutting down game systems...");
-            
-            // Save game state
-            GameState.Save();
-            
-            // Save currencies
-            SaveCurrencies();
-            
-            // Clear service locator
-            ServiceLocator.Clear();
-            
-            _isInitialized = false;
-            Debug.Log("Game shutdown completed");
+            #if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+            #else
+                Application.Quit();
+            #endif
         }
         
         void OnApplicationPause(bool pauseStatus)
         {
             if (pauseStatus)
             {
-                GameState.Save();
+                SavePlayerData();
             }
         }
         
@@ -809,23 +592,13 @@ namespace Evergreen.Core
         {
             if (!hasFocus)
             {
-                GameState.Save();
+                SavePlayerData();
             }
         }
         
         void OnDestroy()
         {
-            if (Instance == this)
-            {
-                Shutdown();
-            }
+            SavePlayerData();
         }
-    }
-    
-    [System.Serializable]
-    public class CurrencyData
-    {
-        public int coins;
-        public int gems;
     }
 }
