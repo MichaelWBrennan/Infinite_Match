@@ -9,340 +9,343 @@ import { v4 as uuidv4 } from 'uuid';
  * Provides real-time analysis, predictive modeling, and automated optimization recommendations
  */
 class AIAnalyticsEngine {
-    constructor() {
-        this.logger = new Logger('AIAnalyticsEngine');
-        
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY
-        });
-        
-        this.supabase = createClient(
-            process.env.SUPABASE_URL,
-            process.env.SUPABASE_ANON_KEY
-        );
-        
-        this.analyticsData = new Map();
-        this.predictions = new Map();
-        this.insights = new Map();
-        this.optimizationRecommendations = new Map();
-        
-        this.initializeAnalytics();
+  constructor() {
+    this.logger = new Logger('AIAnalyticsEngine');
+
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+    this.analyticsData = new Map();
+    this.predictions = new Map();
+    this.insights = new Map();
+    this.optimizationRecommendations = new Map();
+
+    this.initializeAnalytics();
+  }
+
+  /**
+   * Analyze player behavior with AI insights
+   */
+  async analyzePlayerBehavior(playerId, timeRange = '7d') {
+    try {
+      const playerData = await this.getPlayerData(playerId, timeRange);
+      const prompt = this.buildBehaviorAnalysisPrompt(playerData);
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert game analyst specializing in player behavior analysis. Analyze the provided data and return detailed insights with actionable recommendations in JSON format.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content);
+
+      // Store analysis
+      await this.storeBehaviorAnalysis(playerId, analysis);
+
+      this.logger.info(`Analyzed player behavior for ${playerId}`);
+      return analysis;
+    } catch (error) {
+      this.logger.error('Failed to analyze player behavior', { error: error.message });
+      throw new ServiceError('AI_BEHAVIOR_ANALYSIS_FAILED', 'Failed to analyze player behavior');
     }
+  }
 
-    /**
-     * Analyze player behavior with AI insights
-     */
-    async analyzePlayerBehavior(playerId, timeRange = '7d') {
-        try {
-            const playerData = await this.getPlayerData(playerId, timeRange);
-            const prompt = this.buildBehaviorAnalysisPrompt(playerData);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert game analyst specializing in player behavior analysis. Analyze the provided data and return detailed insights with actionable recommendations in JSON format."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.3,
-                max_tokens: 2000
-            });
+  /**
+   * Predict player lifetime value (LTV)
+   */
+  async predictPlayerLTV(playerId) {
+    try {
+      const playerData = await this.getPlayerData(playerId, '30d');
+      const marketData = await this.getMarketData();
 
-            const analysis = JSON.parse(response.choices[0].message.content);
-            
-            // Store analysis
-            await this.storeBehaviorAnalysis(playerId, analysis);
-            
-            this.logger.info(`Analyzed player behavior for ${playerId}`);
-            return analysis;
-            
-        } catch (error) {
-            this.logger.error('Failed to analyze player behavior', { error: error.message });
-            throw new ServiceError('AI_BEHAVIOR_ANALYSIS_FAILED', 'Failed to analyze player behavior');
-        }
+      const prompt = this.buildLTVPredictionPrompt(playerData, marketData);
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert in player lifetime value prediction for mobile games. Analyze player data and market conditions to predict LTV with confidence intervals and recommendations.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 1000,
+      });
+
+      const ltvPrediction = JSON.parse(response.choices[0].message.content);
+
+      // Store prediction
+      await this.storeLTVPrediction(playerId, ltvPrediction);
+
+      this.logger.info(`Predicted LTV for player ${playerId}`, { ltv: ltvPrediction.predictedLTV });
+      return ltvPrediction;
+    } catch (error) {
+      this.logger.error('Failed to predict player LTV', { error: error.message });
+      throw new ServiceError('AI_LTV_PREDICTION_FAILED', 'Failed to predict LTV');
     }
+  }
 
-    /**
-     * Predict player lifetime value (LTV)
-     */
-    async predictPlayerLTV(playerId) {
-        try {
-            const playerData = await this.getPlayerData(playerId, '30d');
-            const marketData = await this.getMarketData();
-            
-            const prompt = this.buildLTVPredictionPrompt(playerData, marketData);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert in player lifetime value prediction for mobile games. Analyze player data and market conditions to predict LTV with confidence intervals and recommendations."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.2,
-                max_tokens: 1000
-            });
+  /**
+   * Predict churn risk with AI
+   */
+  async predictChurnRisk(playerId) {
+    try {
+      const playerData = await this.getPlayerData(playerId, '14d');
+      const prompt = this.buildChurnPredictionPrompt(playerData);
 
-            const ltvPrediction = JSON.parse(response.choices[0].message.content);
-            
-            // Store prediction
-            await this.storeLTVPrediction(playerId, ltvPrediction);
-            
-            this.logger.info(`Predicted LTV for player ${playerId}`, { ltv: ltvPrediction.predictedLTV });
-            return ltvPrediction;
-            
-        } catch (error) {
-            this.logger.error('Failed to predict player LTV', { error: error.message });
-            throw new ServiceError('AI_LTV_PREDICTION_FAILED', 'Failed to predict LTV');
-        }
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert in player churn prediction for mobile games. Analyze player behavior patterns to predict churn risk with high accuracy and provide prevention strategies.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 1200,
+      });
+
+      const churnPrediction = JSON.parse(response.choices[0].message.content);
+
+      // Store prediction
+      await this.storeChurnPrediction(playerId, churnPrediction);
+
+      this.logger.info(`Predicted churn risk for player ${playerId}`, {
+        risk: churnPrediction.churnProbability,
+      });
+      return churnPrediction;
+    } catch (error) {
+      this.logger.error('Failed to predict churn risk', { error: error.message });
+      throw new ServiceError('AI_CHURN_PREDICTION_FAILED', 'Failed to predict churn risk');
     }
+  }
 
-    /**
-     * Predict churn risk with AI
-     */
-    async predictChurnRisk(playerId) {
-        try {
-            const playerData = await this.getPlayerData(playerId, '14d');
-            const prompt = this.buildChurnPredictionPrompt(playerData);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert in player churn prediction for mobile games. Analyze player behavior patterns to predict churn risk with high accuracy and provide prevention strategies."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.2,
-                max_tokens: 1200
-            });
+  /**
+   * Analyze content performance with AI
+   */
+  async analyzeContentPerformance(contentId, contentType) {
+    try {
+      const contentData = await this.getContentData(contentId, contentType);
+      const prompt = this.buildContentAnalysisPrompt(contentData);
 
-            const churnPrediction = JSON.parse(response.choices[0].message.content);
-            
-            // Store prediction
-            await this.storeChurnPrediction(playerId, churnPrediction);
-            
-            this.logger.info(`Predicted churn risk for player ${playerId}`, { risk: churnPrediction.churnProbability });
-            return churnPrediction;
-            
-        } catch (error) {
-            this.logger.error('Failed to predict churn risk', { error: error.message });
-            throw new ServiceError('AI_CHURN_PREDICTION_FAILED', 'Failed to predict churn risk');
-        }
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert in content performance analysis for mobile games. Analyze content metrics to identify strengths, weaknesses, and optimization opportunities.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content);
+
+      // Store analysis
+      await this.storeContentAnalysis(contentId, analysis);
+
+      this.logger.info(`Analyzed content performance for ${contentId}`);
+      return analysis;
+    } catch (error) {
+      this.logger.error('Failed to analyze content performance', { error: error.message });
+      throw new ServiceError('AI_CONTENT_ANALYSIS_FAILED', 'Failed to analyze content performance');
     }
+  }
 
-    /**
-     * Analyze content performance with AI
-     */
-    async analyzeContentPerformance(contentId, contentType) {
-        try {
-            const contentData = await this.getContentData(contentId, contentType);
-            const prompt = this.buildContentAnalysisPrompt(contentData);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert in content performance analysis for mobile games. Analyze content metrics to identify strengths, weaknesses, and optimization opportunities."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.3,
-                max_tokens: 1500
-            });
+  /**
+   * Generate optimization recommendations
+   */
+  async generateOptimizationRecommendations(gameArea) {
+    try {
+      const gameData = await this.getGameData(gameArea);
+      const marketData = await this.getMarketData();
+      const prompt = this.buildOptimizationPrompt(gameData, marketData, gameArea);
 
-            const analysis = JSON.parse(response.choices[0].message.content);
-            
-            // Store analysis
-            await this.storeContentAnalysis(contentId, analysis);
-            
-            this.logger.info(`Analyzed content performance for ${contentId}`);
-            return analysis;
-            
-        } catch (error) {
-            this.logger.error('Failed to analyze content performance', { error: error.message });
-            throw new ServiceError('AI_CONTENT_ANALYSIS_FAILED', 'Failed to analyze content performance');
-        }
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert game optimization consultant. Analyze game data and market conditions to provide actionable optimization recommendations that will improve player engagement and revenue.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.4,
+        max_tokens: 2000,
+      });
+
+      const recommendations = JSON.parse(response.choices[0].message.content);
+
+      // Store recommendations
+      await this.storeOptimizationRecommendations(gameArea, recommendations);
+
+      this.logger.info(`Generated optimization recommendations for ${gameArea}`);
+      return recommendations;
+    } catch (error) {
+      this.logger.error('Failed to generate optimization recommendations', {
+        error: error.message,
+      });
+      throw new ServiceError('AI_OPTIMIZATION_FAILED', 'Failed to generate recommendations');
     }
+  }
 
-    /**
-     * Generate optimization recommendations
-     */
-    async generateOptimizationRecommendations(gameArea) {
-        try {
-            const gameData = await this.getGameData(gameArea);
-            const marketData = await this.getMarketData();
-            const prompt = this.buildOptimizationPrompt(gameData, marketData, gameArea);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert game optimization consultant. Analyze game data and market conditions to provide actionable optimization recommendations that will improve player engagement and revenue."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.4,
-                max_tokens: 2000
-            });
+  /**
+   * Analyze market trends with AI
+   */
+  async analyzeMarketTrends() {
+    try {
+      const marketData = await this.getMarketData();
+      const competitorData = await this.getCompetitorData();
+      const prompt = this.buildMarketAnalysisPrompt(marketData, competitorData);
 
-            const recommendations = JSON.parse(response.choices[0].message.content);
-            
-            // Store recommendations
-            await this.storeOptimizationRecommendations(gameArea, recommendations);
-            
-            this.logger.info(`Generated optimization recommendations for ${gameArea}`);
-            return recommendations;
-            
-        } catch (error) {
-            this.logger.error('Failed to generate optimization recommendations', { error: error.message });
-            throw new ServiceError('AI_OPTIMIZATION_FAILED', 'Failed to generate recommendations');
-        }
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert market analyst specializing in mobile gaming. Analyze market trends and competitor data to identify opportunities and threats.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 1800,
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content);
+
+      // Store analysis
+      await this.storeMarketAnalysis(analysis);
+
+      this.logger.info('Analyzed market trends with AI');
+      return analysis;
+    } catch (error) {
+      this.logger.error('Failed to analyze market trends', { error: error.message });
+      throw new ServiceError('AI_MARKET_ANALYSIS_FAILED', 'Failed to analyze market trends');
     }
+  }
 
-    /**
-     * Analyze market trends with AI
-     */
-    async analyzeMarketTrends() {
-        try {
-            const marketData = await this.getMarketData();
-            const competitorData = await this.getCompetitorData();
-            const prompt = this.buildMarketAnalysisPrompt(marketData, competitorData);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert market analyst specializing in mobile gaming. Analyze market trends and competitor data to identify opportunities and threats."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.3,
-                max_tokens: 1800
-            });
+  /**
+   * Predict revenue with AI
+   */
+  async predictRevenue(timeRange = '30d') {
+    try {
+      const historicalData = await this.getHistoricalRevenueData(timeRange);
+      const marketData = await this.getMarketData();
+      const prompt = this.buildRevenuePredictionPrompt(historicalData, marketData);
 
-            const analysis = JSON.parse(response.choices[0].message.content);
-            
-            // Store analysis
-            await this.storeMarketAnalysis(analysis);
-            
-            this.logger.info('Analyzed market trends with AI');
-            return analysis;
-            
-        } catch (error) {
-            this.logger.error('Failed to analyze market trends', { error: error.message });
-            throw new ServiceError('AI_MARKET_ANALYSIS_FAILED', 'Failed to analyze market trends');
-        }
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert in revenue prediction for mobile games. Analyze historical data and market conditions to predict future revenue with confidence intervals.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 1000,
+      });
+
+      const prediction = JSON.parse(response.choices[0].message.content);
+
+      // Store prediction
+      await this.storeRevenuePrediction(prediction);
+
+      this.logger.info('Predicted revenue with AI', {
+        predictedRevenue: prediction.predictedRevenue,
+      });
+      return prediction;
+    } catch (error) {
+      this.logger.error('Failed to predict revenue', { error: error.message });
+      throw new ServiceError('AI_REVENUE_PREDICTION_FAILED', 'Failed to predict revenue');
     }
+  }
 
-    /**
-     * Predict revenue with AI
-     */
-    async predictRevenue(timeRange = '30d') {
-        try {
-            const historicalData = await this.getHistoricalRevenueData(timeRange);
-            const marketData = await this.getMarketData();
-            const prompt = this.buildRevenuePredictionPrompt(historicalData, marketData);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert in revenue prediction for mobile games. Analyze historical data and market conditions to predict future revenue with confidence intervals."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.2,
-                max_tokens: 1000
-            });
+  /**
+   * Generate real-time insights
+   */
+  async generateRealTimeInsights() {
+    try {
+      const realTimeData = await this.getRealTimeData();
+      const prompt = this.buildRealTimeInsightsPrompt(realTimeData);
 
-            const prediction = JSON.parse(response.choices[0].message.content);
-            
-            // Store prediction
-            await this.storeRevenuePrediction(prediction);
-            
-            this.logger.info('Predicted revenue with AI', { predictedRevenue: prediction.predictedRevenue });
-            return prediction;
-            
-        } catch (error) {
-            this.logger.error('Failed to predict revenue', { error: error.message });
-            throw new ServiceError('AI_REVENUE_PREDICTION_FAILED', 'Failed to predict revenue');
-        }
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert in real-time game analytics. Analyze live data to identify immediate opportunities and issues that require attention.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+      });
+
+      const insights = JSON.parse(response.choices[0].message.content);
+
+      // Store insights
+      await this.storeRealTimeInsights(insights);
+
+      this.logger.info('Generated real-time insights');
+      return insights;
+    } catch (error) {
+      this.logger.error('Failed to generate real-time insights', { error: error.message });
+      throw new ServiceError('AI_INSIGHTS_FAILED', 'Failed to generate insights');
     }
+  }
 
-    /**
-     * Generate real-time insights
-     */
-    async generateRealTimeInsights() {
-        try {
-            const realTimeData = await this.getRealTimeData();
-            const prompt = this.buildRealTimeInsightsPrompt(realTimeData);
-            
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert in real-time game analytics. Analyze live data to identify immediate opportunities and issues that require attention."
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.3,
-                max_tokens: 1500
-            });
-
-            const insights = JSON.parse(response.choices[0].message.content);
-            
-            // Store insights
-            await this.storeRealTimeInsights(insights);
-            
-            this.logger.info('Generated real-time insights');
-            return insights;
-            
-        } catch (error) {
-            this.logger.error('Failed to generate real-time insights', { error: error.message });
-            throw new ServiceError('AI_INSIGHTS_FAILED', 'Failed to generate insights');
-        }
-    }
-
-    /**
-     * Build behavior analysis prompt
-     */
-    buildBehaviorAnalysisPrompt(playerData) {
-        return `
+  /**
+   * Build behavior analysis prompt
+   */
+  buildBehaviorAnalysisPrompt(playerData) {
+    return `
 Analyze this player behavior data and provide detailed insights:
 - Session Data: ${JSON.stringify(playerData.sessions || [])}
 - Purchase History: ${JSON.stringify(playerData.purchases || [])}
@@ -384,13 +387,13 @@ Return JSON with:
     }
   ]
 }`;
-    }
+  }
 
-    /**
-     * Build LTV prediction prompt
-     */
-    buildLTVPredictionPrompt(playerData, marketData) {
-        return `
+  /**
+   * Build LTV prediction prompt
+   */
+  buildLTVPredictionPrompt(playerData, marketData) {
+    return `
 Predict player lifetime value based on:
 Player Data: ${JSON.stringify(playerData, null, 2)}
 Market Data: ${JSON.stringify(marketData, null, 2)}
@@ -418,13 +421,13 @@ Return JSON with:
     }
   ]
 }`;
-    }
+  }
 
-    /**
-     * Build churn prediction prompt
-     */
-    buildChurnPredictionPrompt(playerData) {
-        return `
+  /**
+   * Build churn prediction prompt
+   */
+  buildChurnPredictionPrompt(playerData) {
+    return `
 Predict churn risk based on player data:
 ${JSON.stringify(playerData, null, 2)}
 
@@ -453,13 +456,13 @@ Return JSON with:
     }
   ]
 }`;
-    }
+  }
 
-    /**
-     * Build content analysis prompt
-     */
-    buildContentAnalysisPrompt(contentData) {
-        return `
+  /**
+   * Build content analysis prompt
+   */
+  buildContentAnalysisPrompt(contentData) {
+    return `
 Analyze content performance:
 ${JSON.stringify(contentData, null, 2)}
 
@@ -487,13 +490,13 @@ Return JSON with:
     "belowAverage": ["metric1", "metric2"]
   }
 }`;
-    }
+  }
 
-    /**
-     * Build optimization prompt
-     */
-    buildOptimizationPrompt(gameData, marketData, gameArea) {
-        return `
+  /**
+   * Build optimization prompt
+   */
+  buildOptimizationPrompt(gameData, marketData, gameArea) {
+    return `
 Generate optimization recommendations for ${gameArea}:
 Game Data: ${JSON.stringify(gameData, null, 2)}
 Market Data: ${JSON.stringify(marketData, null, 2)}
@@ -531,13 +534,13 @@ Return JSON with:
     "successMetrics": ["metric1", "metric2"]
   }
 }`;
-    }
+  }
 
-    /**
-     * Build market analysis prompt
-     */
-    buildMarketAnalysisPrompt(marketData, competitorData) {
-        return `
+  /**
+   * Build market analysis prompt
+   */
+  buildMarketAnalysisPrompt(marketData, competitorData) {
+    return `
 Analyze market trends and competitor data:
 Market Data: ${JSON.stringify(marketData, null, 2)}
 Competitor Data: ${JSON.stringify(competitorData, null, 2)}
@@ -573,13 +576,13 @@ Return JSON with:
     }
   ]
 }`;
-    }
+  }
 
-    /**
-     * Build revenue prediction prompt
-     */
-    buildRevenuePredictionPrompt(historicalData, marketData) {
-        return `
+  /**
+   * Build revenue prediction prompt
+   */
+  buildRevenuePredictionPrompt(historicalData, marketData) {
+    return `
 Predict revenue based on:
 Historical Data: ${JSON.stringify(historicalData, null, 2)}
 Market Data: ${JSON.stringify(marketData, null, 2)}
@@ -607,13 +610,13 @@ Return JSON with:
     }
   ]
 }`;
-    }
+  }
 
-    /**
-     * Build real-time insights prompt
-     */
-    buildRealTimeInsightsPrompt(realTimeData) {
-        return `
+  /**
+   * Build real-time insights prompt
+   */
+  buildRealTimeInsightsPrompt(realTimeData) {
+    return `
 Analyze real-time data for immediate insights:
 ${JSON.stringify(realTimeData, null, 2)}
 
@@ -650,86 +653,86 @@ Return JSON with:
     }
   ]
 }`;
-    }
+  }
 
-    // Helper methods for data retrieval and storage
-    async getPlayerData(playerId, timeRange) {
-        // This would fetch player data from your database
-        return {
-            sessions: [],
-            purchases: [],
-            progress: {},
-            social: {},
-            engagement: {}
-        };
-    }
+  // Helper methods for data retrieval and storage
+  async getPlayerData(playerId, timeRange) {
+    // This would fetch player data from your database
+    return {
+      sessions: [],
+      purchases: [],
+      progress: {},
+      social: {},
+      engagement: {},
+    };
+  }
 
-    async getMarketData() {
-        // This would fetch market data
-        return {};
-    }
+  async getMarketData() {
+    // This would fetch market data
+    return {};
+  }
 
-    async getCompetitorData() {
-        // This would fetch competitor data
-        return {};
-    }
+  async getCompetitorData() {
+    // This would fetch competitor data
+    return {};
+  }
 
-    async getContentData(contentId, contentType) {
-        // This would fetch content data
-        return {};
-    }
+  async getContentData(contentId, contentType) {
+    // This would fetch content data
+    return {};
+  }
 
-    async getGameData(gameArea) {
-        // This would fetch game data for specific area
-        return {};
-    }
+  async getGameData(gameArea) {
+    // This would fetch game data for specific area
+    return {};
+  }
 
-    async getHistoricalRevenueData(timeRange) {
-        // This would fetch historical revenue data
-        return {};
-    }
+  async getHistoricalRevenueData(timeRange) {
+    // This would fetch historical revenue data
+    return {};
+  }
 
-    async getRealTimeData() {
-        // This would fetch real-time data
-        return {};
-    }
+  async getRealTimeData() {
+    // This would fetch real-time data
+    return {};
+  }
 
-    // Storage methods
-    async storeBehaviorAnalysis(playerId, analysis) {
-        // Store behavior analysis
-    }
+  // Storage methods
+  async storeBehaviorAnalysis(playerId, analysis) {
+    // Store behavior analysis
+  }
 
-    async storeLTVPrediction(playerId, prediction) {
-        // Store LTV prediction
-    }
+  async storeLTVPrediction(playerId, prediction) {
+    // Store LTV prediction
+  }
 
-    async storeChurnPrediction(playerId, prediction) {
-        // Store churn prediction
-    }
+  async storeChurnPrediction(playerId, prediction) {
+    // Store churn prediction
+  }
 
-    async storeContentAnalysis(contentId, analysis) {
-        // Store content analysis
-    }
+  async storeContentAnalysis(contentId, analysis) {
+    // Store content analysis
+  }
 
-    async storeOptimizationRecommendations(gameArea, recommendations) {
-        // Store optimization recommendations
-    }
+  async storeOptimizationRecommendations(gameArea, recommendations) {
+    // Store optimization recommendations
+  }
 
-    async storeMarketAnalysis(analysis) {
-        // Store market analysis
-    }
+  async storeMarketAnalysis(analysis) {
+    // Store market analysis
+  }
 
-    async storeRevenuePrediction(prediction) {
-        // Store revenue prediction
-    }
+  async storeRevenuePrediction(prediction) {
+    // Store revenue prediction
+  }
 
-    async storeRealTimeInsights(insights) {
-        // Store real-time insights
-    }
+  async storeRealTimeInsights(insights) {
+    // Store real-time insights
+  }
 
-    initializeAnalytics() {
-        this.logger.info('AI Analytics Engine initialized');
-    }
+  initializeAnalytics() {
+    this.logger.info('AI Analytics Engine initialized');
+  }
 }
 
 export { AIAnalyticsEngine };
