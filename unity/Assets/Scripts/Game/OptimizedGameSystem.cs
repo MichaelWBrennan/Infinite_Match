@@ -520,7 +520,11 @@ namespace Evergreen.Game
             var tiles = new List<Tile>();
             var tileType = _board[startX, y]?.tileType;
             
-            if (tileType == null) return null;
+            if (tileType == null) 
+            {
+                Debug.LogWarning($"OptimizedGameSystem: Tile type is null at position ({startX}, {y})");
+                return new List<Vector2Int>();
+            }
             
             for (int x = startX; x < boardWidth; x++)
             {
@@ -543,7 +547,11 @@ namespace Evergreen.Game
             var tiles = new List<Tile>();
             var tileType = _board[x, startY]?.tileType;
             
-            if (tileType == null) return null;
+            if (tileType == null) 
+            {
+                Debug.LogWarning($"OptimizedGameSystem: Tile type is null at position ({x}, {startY})");
+                return new List<Vector2Int>();
+            }
             
             for (int y = startY; y < boardHeight; y++)
             {

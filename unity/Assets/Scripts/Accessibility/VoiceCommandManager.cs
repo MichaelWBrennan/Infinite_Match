@@ -1030,7 +1030,11 @@ namespace Evergreen.Accessibility
         // Text-to-Speech Management
         public TextToSpeech SpeakText(string text, TTSLanguage language = TTSLanguage.English, TTSEmotion emotion = TTSEmotion.Neutral, float speed = 1.0f, float volume = 1.0f)
         {
-            if (!enableTextToSpeech || ttsEngine == null) return null;
+            if (!enableTextToSpeech || ttsEngine == null) 
+            {
+                Debug.LogWarning("VoiceCommandManager: TTS engine not available, creating fallback");
+                return CreateFallbackTTS(text, language, emotion, speed, volume);
+            }
             
             var tts = new TextToSpeech
             {
@@ -1069,7 +1073,11 @@ namespace Evergreen.Accessibility
         // Screen Reader Management
         public ScreenReader CreateScreenReader(string content, ScreenReaderType readerType, int priority = 0)
         {
-            if (!enableScreenReader || screenReaderEngine == null) return null;
+            if (!enableScreenReader || screenReaderEngine == null) 
+            {
+                Debug.LogWarning("VoiceCommandManager: Screen reader engine not available, creating fallback");
+                return CreateFallbackScreenReader(content, readerType, priority);
+            }
             
             var reader = new ScreenReader
             {
@@ -1106,7 +1114,11 @@ namespace Evergreen.Accessibility
         // Haptic Feedback Management
         public HapticFeedback TriggerHaptic(HapticType hapticType, HapticPattern pattern, float intensity = 0.5f, float duration = 0.1f)
         {
-            if (!enableHapticFeedback || hapticEngine == null) return null;
+            if (!enableHapticFeedback || hapticEngine == null) 
+            {
+                Debug.LogWarning("VoiceCommandManager: Haptic engine not available, creating fallback");
+                return CreateFallbackHaptic(hapticType, pattern, intensity, duration);
+            }
             
             var haptic = new HapticFeedback
             {
@@ -1128,7 +1140,11 @@ namespace Evergreen.Accessibility
         // Audio Cue Management
         public AudioCue CreateAudioCue(string name, AudioClip audioClip, AudioCueType cueType, float volume = 1.0f, float pitch = 1.0f, bool is3D = false, Vector3 position = default)
         {
-            if (!enableAudioCues || audioCueEngine == null) return null;
+            if (!enableAudioCues || audioCueEngine == null) 
+            {
+                Debug.LogWarning("VoiceCommandManager: Audio cue engine not available, creating fallback");
+                return CreateFallbackAudioCue(name, audioClip, cueType, volume, pitch, is3D, position);
+            }
             
             var cue = new AudioCue
             {
@@ -1167,7 +1183,11 @@ namespace Evergreen.Accessibility
         // Visual Cue Management
         public VisualCue CreateVisualCue(string name, VisualCueType cueType, Color color, float size = 1.0f, float duration = 1.0f, Vector3 position = default, bool isAnimated = false)
         {
-            if (!enableVisualCues || visualCueEngine == null) return null;
+            if (!enableVisualCues || visualCueEngine == null) 
+            {
+                Debug.LogWarning("VoiceCommandManager: Visual cue engine not available, creating fallback");
+                return CreateFallbackVisualCue(name, cueType, color, size, duration, position, isAnimated);
+            }
             
             var cue = new VisualCue
             {
@@ -1291,6 +1311,97 @@ namespace Evergreen.Accessibility
                 {"total_haptic_feedbacks", hapticFeedbacks.Count},
                 {"total_audio_cues", audioCues.Count},
                 {"total_visual_cues", visualCues.Count}
+            };
+        }
+        
+        private TextToSpeech CreateFallbackTTS(string text, TTSLanguage language, TTSEmotion emotion, float speed, float volume)
+        {
+            // Create a simple fallback TTS that just logs the text
+            Debug.Log($"[TTS Fallback] {text}");
+            
+            return new TextToSpeech
+            {
+                ttsId = Guid.NewGuid().ToString(),
+                text = text,
+                voice = "fallback",
+                speed = speed,
+                volume = volume,
+                pitch = 1.0f,
+                language = language,
+                emotion = emotion,
+                isPlaying = false,
+                startTime = DateTime.Now,
+                endTime = DateTime.Now
+            };
+        }
+        
+        private ScreenReader CreateFallbackScreenReader(string content, ScreenReaderType readerType, int priority)
+        {
+            Debug.Log($"[Screen Reader Fallback] {content}");
+            
+            return new ScreenReader
+            {
+                readerId = Guid.NewGuid().ToString(),
+                content = content,
+                readerType = readerType,
+                priority = priority,
+                isActive = true,
+                created = DateTime.Now
+            };
+        }
+        
+        private HapticFeedback CreateFallbackHaptic(HapticType hapticType, HapticPattern pattern, float intensity, float duration)
+        {
+            Debug.Log($"[Haptic Fallback] {hapticType} - {pattern} (intensity: {intensity}, duration: {duration})");
+            
+            return new HapticFeedback
+            {
+                hapticId = Guid.NewGuid().ToString(),
+                hapticType = hapticType,
+                intensity = intensity,
+                duration = duration,
+                pattern = pattern,
+                isActive = true,
+                startTime = DateTime.Now
+            };
+        }
+        
+        private AudioCue CreateFallbackAudioCue(string name, AudioClip audioClip, AudioCueType cueType, float volume, float pitch, bool is3D, Vector3 position)
+        {
+            Debug.Log($"[Audio Cue Fallback] {name} - {cueType}");
+            
+            return new AudioCue
+            {
+                cueId = Guid.NewGuid().ToString(),
+                name = name,
+                audioClip = audioClip,
+                cueType = cueType,
+                volume = volume,
+                pitch = pitch,
+                is3D = is3D,
+                position = position,
+                isLooping = false,
+                isActive = true,
+                created = DateTime.Now
+            };
+        }
+        
+        private VisualCue CreateFallbackVisualCue(string name, VisualCueType cueType, Color color, float size, float duration, Vector3 position, bool isAnimated)
+        {
+            Debug.Log($"[Visual Cue Fallback] {name} - {cueType}");
+            
+            return new VisualCue
+            {
+                cueId = Guid.NewGuid().ToString(),
+                name = name,
+                cueType = cueType,
+                color = color,
+                size = size,
+                duration = duration,
+                position = position,
+                isAnimated = isAnimated,
+                isActive = true,
+                created = DateTime.Now
             };
         }
         

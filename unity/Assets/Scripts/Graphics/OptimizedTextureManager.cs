@@ -330,7 +330,11 @@ namespace Evergreen.Graphics
 
             // Optimize texture
             var optimizedTexture = OptimizeTexture(originalTexture, compress);
-            if (optimizedTexture == null) return null;
+            if (optimizedTexture == null) 
+            {
+                Debug.LogWarning("OptimizedTextureManager: Failed to optimize texture, returning original");
+                return originalTexture;
+            }
 
             // Cache texture
             _textureCache[texturePath] = optimizedTexture;
@@ -394,7 +398,11 @@ namespace Evergreen.Graphics
         /// </summary>
         private Texture2D OptimizeTexture(Texture2D original, bool compress)
         {
-            if (original == null) return null;
+            if (original == null) 
+            {
+                Debug.LogError("OptimizedTextureManager: Cannot optimize null texture");
+                return null;
+            }
 
             // Resize if too large
             var resizedTexture = ResizeTextureIfNeeded(original);

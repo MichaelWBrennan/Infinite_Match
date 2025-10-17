@@ -520,10 +520,18 @@ namespace Evergreen.Social
         public Content CreateContent(string creatorId, ContentType contentType, string title, string description, string data, List<string> tags = null)
         {
             var profile = GetSocialProfile(creatorId);
-            if (profile == null) return null;
+            if (profile == null) 
+            {
+                Debug.LogError($"SocialRevolution: Profile not found for creator {creatorId}");
+                return null;
+            }
             
             // Check content limit
-            if (profile.createdContent.Count >= maxContentPerUser) return null;
+            if (profile.createdContent.Count >= maxContentPerUser) 
+            {
+                Debug.LogWarning($"SocialRevolution: Content limit reached for user {creatorId}");
+                return null;
+            }
             
             var content = new Content
             {
@@ -676,7 +684,11 @@ namespace Evergreen.Social
         public Comment AddComment(string playerId, string contentId, string commentText, string parentCommentId = null)
         {
             var content = GetContent(contentId);
-            if (content == null) return null;
+            if (content == null) 
+            {
+                Debug.LogError($"SocialRevolution: Content not found for ID {contentId}");
+                return null;
+            }
             
             var comment = new Comment
             {
@@ -728,10 +740,18 @@ namespace Evergreen.Social
         public Guild CreateGuild(string ownerId, string name, string description, GuildType guildType)
         {
             var profile = GetSocialProfile(ownerId);
-            if (profile == null) return null;
+            if (profile == null) 
+            {
+                Debug.LogError($"SocialRevolution: Profile not found for owner {ownerId}");
+                return null;
+            }
             
             // Check guild limit
-            if (profile.guilds.Count >= maxGuildsPerUser) return null;
+            if (profile.guilds.Count >= maxGuildsPerUser) 
+            {
+                Debug.LogWarning($"SocialRevolution: Guild limit reached for user {ownerId}");
+                return null;
+            }
             
             var guild = new Guild
             {

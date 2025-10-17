@@ -416,20 +416,24 @@ namespace Evergreen.UI
                     
                 case AnimationType.Sparkle:
                     PlaySparkleEffect(target.transform.position);
-                    return null;
+                    return CreateSparkleTween(target, duration);
                     
                 case AnimationType.Confetti:
                     PlayConfettiEffect(target.transform.position);
-                    return null;
+                    return CreateConfettiTween(target, duration);
                     
                 default:
-                    return null;
+                    return CreateDefaultTween(target, duration);
             }
         }
         
         private Tween CreateGlowEffect(GameObject target, float duration)
         {
-            if (glowEffect == null) return null;
+            if (glowEffect == null) 
+            {
+                // Create a simple glow effect if none is assigned
+                return CreateSimpleGlowTween(target, duration);
+            }
             
             glowEffect.SetActive(true);
             glowEffect.transform.position = target.transform.position;
@@ -450,7 +454,11 @@ namespace Evergreen.UI
         
         private Tween CreateRippleEffect(GameObject target, float duration)
         {
-            if (rippleEffect == null) return null;
+            if (rippleEffect == null) 
+            {
+                // Create a simple ripple effect if none is assigned
+                return CreateSimpleRippleTween(target, duration);
+            }
             
             rippleEffect.SetActive(true);
             rippleEffect.transform.position = target.transform.position;
@@ -669,6 +677,69 @@ namespace Evergreen.UI
             enableParticleEffects = particles;
             enableScreenShake = screenShake;
             enableGlowEffects = glow;
+        }
+        
+        private Tween CreateSparkleTween(GameObject target, float duration)
+        {
+            if (target == null) return null;
+            
+            var sequence = DOTween.Sequence();
+            sequence.Append(target.transform.DOScale(1.1f, duration * 0.3f))
+                   .Append(target.transform.DOScale(1f, duration * 0.7f))
+                   .SetEase(Ease.OutBounce);
+            
+            return sequence;
+        }
+        
+        private Tween CreateConfettiTween(GameObject target, float duration)
+        {
+            if (target == null) return null;
+            
+            var sequence = DOTween.Sequence();
+            sequence.Append(target.transform.DORotate(new Vector3(0, 0, 360), duration, RotateMode.FastBeyond360))
+                   .SetEase(Ease.OutCubic);
+            
+            return sequence;
+        }
+        
+        private Tween CreateDefaultTween(GameObject target, float duration)
+        {
+            if (target == null) return null;
+            
+            return target.transform.DOScale(1.05f, duration * 0.5f)
+                   .SetLoops(2, LoopType.Yoyo)
+                   .SetEase(Ease.OutQuad);
+        }
+        
+        private Tween CreateSimpleGlowTween(GameObject target, float duration)
+        {
+            if (target == null) return null;
+            
+            var renderer = target.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                var material = renderer.material;
+                var originalColor = material.color;
+                var glowColor = Color.Lerp(originalColor, Color.white, 0.5f);
+                
+                return DOTween.To(() => material.color, x => material.color = x, glowColor, duration * 0.5f)
+                       .SetLoops(2, LoopType.Yoyo)
+                       .SetEase(Ease.InOutSine);
+            }
+            
+            return null;
+        }
+        
+        private Tween CreateSimpleRippleTween(GameObject target, float duration)
+        {
+            if (target == null) return null;
+            
+            var sequence = DOTween.Sequence();
+            sequence.Append(target.transform.DOScale(1.2f, duration * 0.3f))
+                   .Append(target.transform.DOScale(1f, duration * 0.7f))
+                   .SetEase(Ease.OutQuad);
+            
+            return sequence;
         }
         
         void OnDestroy()

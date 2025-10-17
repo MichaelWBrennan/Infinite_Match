@@ -1199,7 +1199,34 @@ namespace Evergreen.Weather
         private WeatherCondition GenerateWeatherPrediction(List<WeatherCondition> historicalData)
         {
             // Simple prediction algorithm - in production, use ML
-            if (historicalData.Count == 0) return null;
+            if (historicalData.Count == 0) 
+            {
+                // Return a default clear weather condition if no historical data
+                return new WeatherCondition
+                {
+                    id = "default_prediction",
+                    name = "Default Weather",
+                    type = WeatherType.Clear,
+                    intensity = WeatherIntensity.Light,
+                    temperature = 20.0f,
+                    humidity = 50.0f,
+                    pressure = 1013.25f,
+                    windSpeed = 5.0f,
+                    windDirection = 0.0f,
+                    visibility = 10000.0f,
+                    precipitation = 0.0f,
+                    cloudCover = 0.0f,
+                    skyColor = new Color(0.5f, 0.8f, 1.0f),
+                    fogColor = new Color(0.8f, 0.8f, 0.8f),
+                    isActive = false,
+                    isTransitioning = false,
+                    duration = 60f,
+                    remainingTime = 60f,
+                    startTime = DateTime.Now.AddMinutes(30),
+                    endTime = DateTime.Now.AddMinutes(90),
+                    properties = new Dictionary<string, object>()
+                };
+            }
             
             var latest = historicalData.OrderByDescending(c => c.startTime).First();
             var prediction = new WeatherCondition

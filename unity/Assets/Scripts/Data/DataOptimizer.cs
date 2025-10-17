@@ -114,7 +114,11 @@ namespace Evergreen.Data
         /// </summary>
         public byte[] SerializeObject<T>(T obj)
         {
-            if (obj == null) return null;
+            if (obj == null) 
+            {
+                Debug.LogWarning("DataOptimizer: Attempting to serialize null object");
+                return new byte[0];
+            }
 
             try
             {
