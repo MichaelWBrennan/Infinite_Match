@@ -92,7 +92,7 @@ namespace Evergreen.Integration
             Debug.Log("🔗 Game Integration Manager initializing...");
             
             // Get system references
-            gameManager = GameManager.Instance;
+            gameManager = OptimizedCoreSystem.Instance;
             match3Board = FindObjectOfType<Match3Board>();
             aiContentManager = FindObjectOfType<AIInfiniteContentManager>();
             analyticsManager = FindObjectOfType<GameAnalyticsManager>();

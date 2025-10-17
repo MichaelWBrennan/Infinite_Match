@@ -76,7 +76,7 @@ namespace Evergreen.Economy
             Debug.Log("Economy Service initialized");
             
             // Get reference to GameManager
-            _gameManager = GameManager.Instance;
+            _gameManager = OptimizedCoreSystem.Instance;
             if (_gameManager == null)
             {
                 Debug.LogError("GameManager not found! EconomyService requires GameManager to be initialized first.");

@@ -285,7 +285,7 @@ namespace Evergreen.Social
         
         private void NotifyGuildLevelUp(Guild guild)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🎉 {guild.name} reached level {guild.level}! Max members increased to {guild.maxMembers}!";
@@ -430,7 +430,7 @@ namespace Evergreen.Social
         
         private void AwardChallengeReward(string playerId, SocialChallenge challenge)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return;
             
             var reward = Mathf.RoundToInt(challenge.reward * challengeRewardMultiplier);
@@ -451,7 +451,7 @@ namespace Evergreen.Social
         
         private void ShowChallengeCompletion(SocialChallenge challenge)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"🎯 Challenge completed! {challenge.name} - +{challenge.reward} {challenge.type}!";
@@ -520,7 +520,7 @@ namespace Evergreen.Social
         
         private void AwardGift(Gift gift)
         {
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null) return;
             
             switch (gift.itemType)
@@ -559,7 +559,7 @@ namespace Evergreen.Social
         
         private void ShowViralSharePrompt(string playerId, string message)
         {
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 uiSystem.ShowNotification($"Share your achievement: {message}", NotificationType.Info, 10f);
@@ -589,7 +589,7 @@ namespace Evergreen.Social
             OnSocialProofShown?.Invoke(socialProof);
             
             // Show social proof UI
-            var uiSystem = AdvancedUISystem.Instance;
+            var uiSystem = OptimizedUISystem.Instance;
             if (uiSystem != null)
             {
                 var message = $"{socialProof.playerName} {socialProof.action} {socialProof.value}!";

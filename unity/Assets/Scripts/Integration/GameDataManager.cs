@@ -287,12 +287,12 @@ namespace Evergreen.Integration
         private void ApplyGameData()
         {
             // Update GameManager
-            if (GameManager.Instance != null)
+            if (OptimizedCoreSystem.Instance != null)
             {
-                GameManager.Instance.UpdateScore(currentGameData.score);
-                GameManager.Instance.UpdateCoins(currentGameData.coins);
-                GameManager.Instance.UpdateGems(currentGameData.gems);
-                GameManager.Instance.UpdateLevel(currentGameData.level.ToString());
+                OptimizedCoreSystem.Instance.UpdateScore(currentGameData.score);
+                OptimizedCoreSystem.Instance.UpdateCoins(currentGameData.coins);
+                OptimizedCoreSystem.Instance.UpdateGems(currentGameData.gems);
+                OptimizedCoreSystem.Instance.UpdateLevel(currentGameData.level.ToString());
             }
             
             // Update AI content manager
@@ -354,12 +354,12 @@ namespace Evergreen.Integration
         private void UpdateCurrentData()
         {
             // Update from GameManager
-            if (GameManager.Instance != null)
+            if (OptimizedCoreSystem.Instance != null)
             {
-                currentGameData.score = GameManager.Instance.playerScore;
-                currentGameData.coins = GameManager.Instance.playerCoins;
-                currentGameData.gems = GameManager.Instance.playerGems;
-                currentGameData.level = int.Parse(GameManager.Instance.currentLevel);
+                currentGameData.score = OptimizedCoreSystem.Instance.playerScore;
+                currentGameData.coins = OptimizedCoreSystem.Instance.playerCoins;
+                currentGameData.gems = OptimizedCoreSystem.Instance.playerGems;
+                currentGameData.level = int.Parse(OptimizedCoreSystem.Instance.currentLevel);
             }
             
             // Update play time

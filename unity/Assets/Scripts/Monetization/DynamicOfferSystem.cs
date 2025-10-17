@@ -565,7 +565,7 @@ namespace Evergreen.Monetization
                 case "time_since_last_purchase":
                     return (int)(DateTime.Now - behavior.lastPurchaseTime).TotalHours;
                 case "currency_balance":
-                    var gameManager = ServiceLocator.Get<GameManager>();
+                    var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
                     return gameManager?.GetCurrency(condition.currencyType) ?? 0;
                 case "streak":
                     return behavior.currentStreak;
@@ -620,7 +620,7 @@ namespace Evergreen.Monetization
             }
             
             // Check currency needs
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager != null)
             {
                 foreach (var reward in offer.rewards)
@@ -755,7 +755,7 @@ namespace Evergreen.Monetization
             offer.currentPurchases++;
             
             // Award rewards
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager != null)
             {
                 foreach (var reward in offer.rewards)
@@ -789,11 +789,11 @@ namespace Evergreen.Monetization
                     gameManager.AddCurrency("gems", reward.amount);
                     break;
                 case "energy":
-                    var energySystem = ServiceLocator.Get<EnergySystem>();
+                    var energySystem = OptimizedCoreSystem.Instance.Resolve<EnergySystem>();
                     energySystem?.AddEnergy(reward.amount);
                     break;
                 case "decoration":
-                    var castleSystem = ServiceLocator.Get<CastleRenovationSystem>();
+                    var castleSystem = OptimizedCoreSystem.Instance.Resolve<CastleRenovationSystem>();
                     if (castleSystem != null && !string.IsNullOrEmpty(reward.itemId))
                     {
                         castleSystem.PurchaseDecoration(reward.itemId);

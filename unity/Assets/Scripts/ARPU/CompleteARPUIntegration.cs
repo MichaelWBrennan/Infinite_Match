@@ -94,7 +94,7 @@ namespace Evergreen.ARPU
         {
             if (!integrateWithGameManager) return;
             
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager == null)
             {
                 if (showIntegrationLogs)
@@ -134,7 +134,7 @@ namespace Evergreen.ARPU
         {
             if (!integrateWithLevelManager) return;
             
-            var levelManager = FindObjectOfType<LevelManager>();
+            var levelManager = OptimizedGameSystem.Instance;
             if (levelManager == null)
             {
                 if (showIntegrationLogs)
@@ -241,7 +241,7 @@ namespace Evergreen.ARPU
         {
             // This would require more complex reflection or patching
             // For now, we'll add a component that extends GameManager functionality
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager != null)
             {
                 var gameManagerHook = gameManager.gameObject.AddComponent<GameManagerARPUHook>();
@@ -253,7 +253,7 @@ namespace Evergreen.ARPU
         {
             // This would require more complex reflection or patching
             // For now, we'll add a component that extends GameManager functionality
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager != null)
             {
                 var gameManagerHook = gameManager.gameObject.AddComponent<GameManagerARPUHook>();
@@ -265,7 +265,7 @@ namespace Evergreen.ARPU
         {
             // This would require more complex reflection or patching
             // For now, we'll add a component that extends GameManager functionality
-            var gameManager = GameManager.Instance;
+            var gameManager = OptimizedCoreSystem.Instance;
             if (gameManager != null)
             {
                 var gameManagerHook = gameManager.gameObject.AddComponent<GameManagerARPUHook>();

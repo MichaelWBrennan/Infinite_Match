@@ -112,7 +112,7 @@ namespace Evergreen.Social
         {
             // Get references
             socialManager = SocialMediaManager.Instance;
-            gameManager = GameManager.Instance;
+            gameManager = OptimizedCoreSystem.Instance;
             
             // Initialize platform buttons
             InitializePlatformButtons();

@@ -169,7 +169,7 @@ namespace Evergreen.Social
         {
             // Get references
             socialManager = SocialMediaManager.Instance;
-            gameManager = GameManager.Instance;
+            gameManager = OptimizedCoreSystem.Instance;
             aiContentManager = FindObjectOfType<AIInfiniteContentManager>();
             analyticsManager = FindObjectOfType<GameAnalyticsManager>();
             backendConnector = BackendConnector.Instance;

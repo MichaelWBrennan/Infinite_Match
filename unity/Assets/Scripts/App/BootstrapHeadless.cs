@@ -92,11 +92,11 @@ namespace Evergreen.App
         
         private void InitializeGameManager()
         {
-            var gameManager = FindObjectOfType<Evergreen.Core.GameManager>();
+            var gameManager = FindObjectOfType<Evergreen.Core.OptimizedCoreSystem>();
             if (gameManager == null)
             {
                 var go = new GameObject("GameManager");
-                gameManager = go.AddComponent<Evergreen.Core.GameManager>();
+                gameManager = go.AddComponent<Evergreen.Core.OptimizedCoreSystem>();
                 Debug.Log("[BootstrapHeadless] Created GameManager");
             }
             else
@@ -161,7 +161,7 @@ namespace Evergreen.App
             Debug.Log("[BootstrapHeadless] Running integration tests...");
             
             // Test basic game functionality
-            var gameManager = FindObjectOfType<Evergreen.Core.GameManager>();
+            var gameManager = FindObjectOfType<Evergreen.Core.OptimizedCoreSystem>();
             if (gameManager != null)
             {
                 Debug.Log("[BootstrapHeadless] GameManager integration test: PASSED");
@@ -189,11 +189,11 @@ namespace Evergreen.App
             Debug.LogWarning("[BootstrapHeadless] Using fallback initialization...");
             
             // Minimal initialization for headless builds
-            var gameManager = FindObjectOfType<Evergreen.Core.GameManager>();
+            var gameManager = FindObjectOfType<Evergreen.Core.OptimizedCoreSystem>();
             if (gameManager == null)
             {
                 var go = new GameObject("GameManager");
-                go.AddComponent<Evergreen.Core.GameManager>();
+                go.AddComponent<Evergreen.Core.OptimizedCoreSystem>();
             }
             
             _initializationComplete = true;

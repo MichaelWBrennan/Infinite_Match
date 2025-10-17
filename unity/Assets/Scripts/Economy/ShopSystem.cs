@@ -644,7 +644,7 @@ namespace Evergreen.Economy
         
         public bool CanAffordItem(ShopItem item, string playerId)
         {
-            var currencyManager = ServiceLocator.Get<CurrencyManager>();
+            var currencyManager = OptimizedCoreSystem.Instance.Resolve<CurrencyManager>();
             if (currencyManager == null) return false;
             
             foreach (var cost in item.costs)
@@ -663,7 +663,7 @@ namespace Evergreen.Economy
             if (!item.isAvailable) return false;
             
             // Check level requirements
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager != null)
             {
                 int playerLevel = gameManager.GetCurrency("level"); // Assuming level is stored as currency
@@ -695,7 +695,7 @@ namespace Evergreen.Economy
         
         private bool ProcessPurchase(ShopItem item, string playerId)
         {
-            var currencyManager = ServiceLocator.Get<CurrencyManager>();
+            var currencyManager = OptimizedCoreSystem.Instance.Resolve<CurrencyManager>();
             if (currencyManager == null) return false;
             
             // Spend currencies
@@ -715,7 +715,7 @@ namespace Evergreen.Economy
         
         private void AwardItemRewards(ShopItem item, string playerId)
         {
-            var currencyManager = ServiceLocator.Get<CurrencyManager>();
+            var currencyManager = OptimizedCoreSystem.Instance.Resolve<CurrencyManager>();
             if (currencyManager == null) return;
             
             foreach (var reward in item.rewards)

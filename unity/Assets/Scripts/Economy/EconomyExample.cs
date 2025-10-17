@@ -20,7 +20,7 @@ namespace Evergreen.Economy
         void Start()
         {
             // Get the economy service
-            _economyService = ServiceLocator.Get<EconomyService>();
+            _economyService = OptimizedCoreSystem.Instance.Resolve<EconomyService>();
             if (_economyService == null)
             {
                 Debug.LogError("EconomyService not found! Make sure it's registered in GameManager.");
@@ -123,7 +123,7 @@ namespace Evergreen.Economy
             Debug.Log("--- Shop System ---");
             
             // Get available shop items
-            var shopSystem = ServiceLocator.Get<ShopSystem>();
+            var shopSystem = OptimizedCoreSystem.Instance.Resolve<ShopSystem>();
             if (shopSystem != null)
             {
                 var items = shopSystem.GetAvailableItems(playerId);
@@ -146,7 +146,7 @@ namespace Evergreen.Economy
             Debug.Log("--- Economy Analytics ---");
             
             // Track some economy events
-            var analytics = ServiceLocator.Get<EconomyAnalytics>();
+            var analytics = OptimizedCoreSystem.Instance.Resolve<EconomyAnalytics>();
             if (analytics != null)
             {
                 // Track a purchase event
@@ -207,7 +207,7 @@ namespace Evergreen.Economy
                     
                 case 3:
                     // Random shop purchase attempt
-                    var shopSystem = ServiceLocator.Get<ShopSystem>();
+                    var shopSystem = OptimizedCoreSystem.Instance.Resolve<ShopSystem>();
                     if (shopSystem != null)
                     {
                         var items = shopSystem.GetAvailableItems(playerId);
@@ -276,7 +276,7 @@ namespace Evergreen.Economy
         [ContextMenu("Show Economy Report")]
         public void ShowEconomyReport()
         {
-            var analytics = ServiceLocator.Get<EconomyAnalytics>();
+            var analytics = OptimizedCoreSystem.Instance.Resolve<EconomyAnalytics>();
             if (analytics != null)
             {
                 string report = analytics.GetReport();

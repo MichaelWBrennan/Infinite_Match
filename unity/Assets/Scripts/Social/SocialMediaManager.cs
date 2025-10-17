@@ -909,10 +909,10 @@ namespace Evergreen.Social
             int gems = Mathf.RoundToInt(shareRewardGems * viralMultiplier);
             
             // Update player data
-            if (GameManager.Instance != null)
+            if (OptimizedCoreSystem.Instance != null)
             {
-                GameManager.Instance.AddCoins(coins);
-                GameManager.Instance.AddGems(gems);
+                OptimizedCoreSystem.Instance.AddCoins(coins);
+                OptimizedCoreSystem.Instance.AddGems(gems);
             }
             
             // Track viral event

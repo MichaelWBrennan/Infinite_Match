@@ -36,7 +36,7 @@ namespace Evergreen.UI
         
         void Start()
         {
-            _gameManager = GameManager.Instance;
+            _gameManager = OptimizedCoreSystem.Instance;
             
             // Setup button listeners
             if (playButton != null)
@@ -122,7 +122,7 @@ namespace Evergreen.UI
         
         private void OnEnergyButtonClicked()
         {
-            var energySystem = EnergySystem.Instance;
+            var energySystem = OptimizedGameSystem.Instance;
             if (energySystem != null)
             {
                 if (energySystem.CanWatchEnergyAd())
@@ -180,7 +180,7 @@ namespace Evergreen.UI
         
         private void ShowEnergyPacks()
         {
-            var energySystem = EnergySystem.Instance;
+            var energySystem = OptimizedGameSystem.Instance;
             if (energySystem != null)
             {
                 var packs = energySystem.GetAvailableEnergyPacks();

@@ -52,7 +52,7 @@ namespace Evergreen.Economy
         private void InitializeUI()
         {
             // Get economy service
-            _economyService = ServiceLocator.Get<EconomyService>();
+            _economyService = OptimizedCoreSystem.Instance.Resolve<EconomyService>();
             if (_economyService == null)
             {
                 Debug.LogError("EconomyService not found! Make sure it's registered in GameManager.");
@@ -109,7 +109,7 @@ namespace Evergreen.Economy
             }
             
             // Get all currencies from economy service
-            var currencyManager = ServiceLocator.Get<CurrencyManager>();
+            var currencyManager = OptimizedCoreSystem.Instance.Resolve<CurrencyManager>();
             if (currencyManager != null)
             {
                 var currencies = currencyManager.GetAllCurrencies();
@@ -224,7 +224,7 @@ namespace Evergreen.Economy
             _shopItemObjects.Clear();
             
             // Get available shop items
-            var shopSystem = ServiceLocator.Get<ShopSystem>();
+            var shopSystem = OptimizedCoreSystem.Instance.Resolve<ShopSystem>();
             if (shopSystem != null)
             {
                 var items = shopSystem.GetAvailableItems("player1"); // Replace with actual player ID
@@ -272,7 +272,7 @@ namespace Evergreen.Economy
         
         private void PurchaseItem(string itemId)
         {
-            var shopSystem = ServiceLocator.Get<ShopSystem>();
+            var shopSystem = OptimizedCoreSystem.Instance.Resolve<ShopSystem>();
             if (shopSystem != null)
             {
                 bool success = shopSystem.PurchaseItem(itemId, "player1"); // Replace with actual player ID
@@ -321,7 +321,7 @@ namespace Evergreen.Economy
             _rewardObjects.Clear();
             
             // Get player rewards
-            var rewardSystem = ServiceLocator.Get<RewardSystem>();
+            var rewardSystem = OptimizedCoreSystem.Instance.Resolve<RewardSystem>();
             if (rewardSystem != null)
             {
                 var rewards = rewardSystem.GetPlayerRewards("player1", true); // Replace with actual player ID
@@ -353,7 +353,7 @@ namespace Evergreen.Economy
         
         private void ClaimReward(string rewardId)
         {
-            var rewardSystem = ServiceLocator.Get<RewardSystem>();
+            var rewardSystem = OptimizedCoreSystem.Instance.Resolve<RewardSystem>();
             if (rewardSystem != null)
             {
                 bool success = rewardSystem.ClaimReward(rewardId);
@@ -393,7 +393,7 @@ namespace Evergreen.Economy
         {
             if (reportText == null) return;
             
-            var economyAnalytics = ServiceLocator.Get<EconomyAnalytics>();
+            var economyAnalytics = OptimizedCoreSystem.Instance.Resolve<EconomyAnalytics>();
             if (economyAnalytics != null)
             {
                 reportText.text = economyAnalytics.GetReport();

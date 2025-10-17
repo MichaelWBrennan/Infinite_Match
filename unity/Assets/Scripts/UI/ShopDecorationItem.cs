@@ -46,7 +46,7 @@ namespace Evergreen.UI
             rarityBackground.color = rarityColor;
             
             // Update button interactability based on affordability
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager != null)
             {
                 int currentAmount = gameManager.GetCurrency(_decoration.currencyType);

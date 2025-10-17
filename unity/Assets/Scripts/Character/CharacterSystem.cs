@@ -457,7 +457,7 @@ namespace Evergreen.Character
             var ability = _abilityLookup[abilityId];
             if (ability.isUnlocked) return false;
             
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager == null) return false;
             
             int currentAmount = gameManager.GetCurrency(ability.currencyType);

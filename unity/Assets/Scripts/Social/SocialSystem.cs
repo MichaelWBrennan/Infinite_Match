@@ -405,7 +405,7 @@ namespace Evergreen.Social
         // Team Management
         public bool CreateTeam(string playerId, string teamName, string description, bool isPublic = true)
         {
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager == null) return false;
             
             // Check if player has enough coins
@@ -740,7 +740,7 @@ namespace Evergreen.Social
             var gift = gifts.Find(g => g.id == giftId && g.receiverId == playerId);
             if (gift == null || gift.isClaimed || gift.isExpired) return false;
             
-            var gameManager = ServiceLocator.Get<GameManager>();
+            var gameManager = OptimizedCoreSystem.Instance.Resolve<GameManager>();
             if (gameManager == null) return false;
             
             // Award gift
@@ -753,7 +753,7 @@ namespace Evergreen.Social
                     gameManager.AddCurrency("gems", gift.amount);
                     break;
                 case GiftType.Energy:
-                    var energySystem = ServiceLocator.Get<EnergySystem>();
+                    var energySystem = OptimizedCoreSystem.Instance.Resolve<EnergySystem>();
                     energySystem?.AddEnergy(gift.amount);
                     break;
             }

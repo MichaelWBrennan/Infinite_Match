@@ -463,7 +463,7 @@ namespace Evergreen.Social
                     economyManager.AddCurrency("gems", gift.quantity);
                     break;
                 case GiftType.Energy:
-                    var energySystem = EnergySystem.Instance;
+                    var energySystem = OptimizedGameSystem.Instance;
                     if (energySystem != null)
                     {
                         energySystem.AddEnergy(gift.quantity);
