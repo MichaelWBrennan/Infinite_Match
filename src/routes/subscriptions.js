@@ -1,6 +1,6 @@
 import express from 'express';
-import { Logger } from 'core/logger/index.js';
-import PurchaseLedger from 'services/payments/PurchaseLedger.js';
+import { Logger } from '../core/logger/index.js';
+import PurchaseLedger from '../services/payments/PurchaseLedger.js';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const router = express.Router();

@@ -3,8 +3,8 @@
  * Deploys economy data to Unity Services
  */
 
-import { Logger } from 'core/logger/index.js';
-import { getService } from 'core/services/ServiceRegistry.js';
+import { Logger } from '../../core/logger/index.js';
+import { getService } from '../../core/services/ServiceRegistry.js';
 
 const logger = new Logger('EconomyDeployStep');
 

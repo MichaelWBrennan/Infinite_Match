@@ -1,6 +1,6 @@
 import express from 'express';
-import { Logger } from 'core/logger/index.js';
-import DeviceTokenDb from 'services/push/DeviceTokenDb.js';
+import { Logger } from '../core/logger/index.js';
+import DeviceTokenDb from '../services/push/DeviceTokenDb.js';
 
 let admin = null;
 try {

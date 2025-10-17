@@ -2,7 +2,7 @@ import express from 'express';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createHash } from 'crypto';
-import { Logger } from 'core/logger/index.js';
+import { Logger } from '../core/logger/index.js';
 
 const router = express.Router();
 const logger = new Logger('ExperimentsRoutes');

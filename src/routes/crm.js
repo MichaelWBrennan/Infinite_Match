@@ -1,5 +1,5 @@
 import express from 'express';
-import { Logger } from 'core/logger/index.js';
+import { Logger } from '../core/logger/index.js';
 
 const router = express.Router();
 const logger = new Logger('CRMRoutes');
