@@ -33,6 +33,28 @@ namespace Evergreen.Realtime
         [SerializeField] private bool enableTournaments = true;
         [SerializeField] private bool enableSeasonalEvents = true;
         
+        [Header("Calendar Event Assets")]
+        [SerializeField] private GameObject gameEventUIPrefab;
+        [SerializeField] private GameObject weatherEventUIPrefab;
+        [SerializeField] private GameObject maintenanceEventUIPrefab;
+        [SerializeField] private GameObject specialOfferUIPrefab;
+        [SerializeField] private GameObject tournamentUIPrefab;
+        [SerializeField] private GameObject seasonalEventUIPrefab;
+        
+        [Header("Holiday Calendar Assets")]
+        [SerializeField] private GameObject christmasCalendarPrefab;
+        [SerializeField] private GameObject halloweenCalendarPrefab;
+        [SerializeField] private GameObject easterCalendarPrefab;
+        [SerializeField] private GameObject valentineCalendarPrefab;
+        [SerializeField] private GameObject thanksgivingCalendarPrefab;
+        [SerializeField] private GameObject newYearCalendarPrefab;
+        
+        [Header("Calendar Audio Assets")]
+        [SerializeField] private AudioClip eventNotificationAudioClip;
+        [SerializeField] private AudioClip eventStartAudioClip;
+        [SerializeField] private AudioClip eventEndAudioClip;
+        [SerializeField] private AudioClip calendarUpdateAudioClip;
+        
         // Singleton
         public static RealtimeCalendarManager Instance { get; private set; }
         
@@ -262,11 +284,20 @@ namespace Evergreen.Realtime
                         {
                             OnEventStarted?.Invoke(evt);
                             Debug.Log($"Calendar event started: {evt.title}");
+                            
+                            // Load appropriate event assets
+                            LoadEventAssets(evt);
+                            
+                            // Play event start audio
+                            PlayEventAudio(eventStartAudioClip);
                         }
                         else if (cachedEvent.isOngoing && !evt.isOngoing)
                         {
                             OnEventEnded?.Invoke(evt);
                             Debug.Log($"Calendar event ended: {evt.title}");
+                            
+                            // Play event end audio
+                            PlayEventAudio(eventEndAudioClip);
                         }
                     }
                     
@@ -432,6 +463,78 @@ namespace Evergreen.Realtime
             if (enabled && enableCalendarSystem)
             {
                 StartCoroutine(CalendarUpdateLoop());
+            }
+        }
+        
+        private void LoadEventAssets(CalendarEvent evt)
+        {
+            // Load appropriate UI prefab based on event type
+            GameObject eventUIPrefab = null;
+            
+            switch (evt.eventType.ToLower())
+            {
+                case "game":
+                    eventUIPrefab = gameEventUIPrefab;
+                    break;
+                case "weather":
+                    eventUIPrefab = weatherEventUIPrefab;
+                    break;
+                case "maintenance":
+                    eventUIPrefab = maintenanceEventUIPrefab;
+                    break;
+                case "special_offer":
+                    eventUIPrefab = specialOfferUIPrefab;
+                    break;
+                case "tournament":
+                    eventUIPrefab = tournamentUIPrefab;
+                    break;
+                case "seasonal":
+                    eventUIPrefab = seasonalEventUIPrefab;
+                    break;
+                case "christmas":
+                    eventUIPrefab = christmasCalendarPrefab;
+                    break;
+                case "halloween":
+                    eventUIPrefab = halloweenCalendarPrefab;
+                    break;
+                case "easter":
+                    eventUIPrefab = easterCalendarPrefab;
+                    break;
+                case "valentine":
+                    eventUIPrefab = valentineCalendarPrefab;
+                    break;
+                case "thanksgiving":
+                    eventUIPrefab = thanksgivingCalendarPrefab;
+                    break;
+                case "new_year":
+                    eventUIPrefab = newYearCalendarPrefab;
+                    break;
+            }
+            
+            if (eventUIPrefab != null)
+            {
+                var eventUI = Instantiate(eventUIPrefab);
+                // Configure the event UI with event data
+                ConfigureEventUI(eventUI, evt);
+            }
+        }
+        
+        private void ConfigureEventUI(GameObject eventUI, CalendarEvent evt)
+        {
+            // Configure the event UI with the event data
+            // This would set up the UI elements with the event information
+        }
+        
+        private void PlayEventAudio(AudioClip audioClip)
+        {
+            if (audioClip != null)
+            {
+                var audioSource = GetComponent<AudioSource>();
+                if (audioSource == null)
+                {
+                    audioSource = gameObject.AddComponent<AudioSource>();
+                }
+                audioSource.PlayOneShot(audioClip);
             }
         }
         

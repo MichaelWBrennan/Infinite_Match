@@ -122,7 +122,11 @@ namespace Evergreen.UI
         
         private Sprite GetNotificationIcon(NotificationType type)
         {
-            if (NotificationManager.Instance == null) return null;
+            if (NotificationManager.Instance == null) 
+            {
+                // Return a default icon if notification manager is not available
+                return Resources.Load<Sprite>("UI/Icons/DefaultNotification");
+            }
             
             switch (type)
             {

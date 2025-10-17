@@ -133,7 +133,11 @@ namespace Evergreen.Audio
 
             // Optimize audio clip
             var optimizedClip = OptimizeAudioClip(originalClip, compress);
-            if (optimizedClip == null) return null;
+            if (optimizedClip == null) 
+            {
+                Debug.LogWarning("OptimizedAudioManager: Failed to optimize audio clip, returning original");
+                return originalClip;
+            }
 
             // Cache audio clip
             _audioCache[audioPath] = optimizedClip;
@@ -197,7 +201,11 @@ namespace Evergreen.Audio
         /// </summary>
         private AudioClip OptimizeAudioClip(AudioClip original, bool compress)
         {
-            if (original == null) return null;
+            if (original == null) 
+            {
+                Debug.LogError("OptimizedAudioManager: Cannot optimize null audio clip");
+                return null;
+            }
 
             if (!compress || !enableAudioCompression)
             {

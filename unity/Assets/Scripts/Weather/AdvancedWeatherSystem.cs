@@ -51,6 +51,39 @@ namespace Evergreen.Weather
         [SerializeField] private bool enableSandstormEffects = true;
         [SerializeField] private bool enableBlizzardEffects = true;
         
+        [Header("Weather Asset References")]
+        [SerializeField] private GameObject rainEffectPrefab;
+        [SerializeField] private GameObject snowEffectPrefab;
+        [SerializeField] private GameObject fogEffectPrefab;
+        [SerializeField] private GameObject windEffectPrefab;
+        [SerializeField] private GameObject thunderEffectPrefab;
+        [SerializeField] private GameObject hailEffectPrefab;
+        [SerializeField] private GameObject sandstormEffectPrefab;
+        [SerializeField] private GameObject blizzardEffectPrefab;
+        
+        [Header("Weather Audio Assets")]
+        [SerializeField] private AudioClip rainAudioClip;
+        [SerializeField] private AudioClip snowAudioClip;
+        [SerializeField] private AudioClip windAudioClip;
+        [SerializeField] private AudioClip thunderAudioClip;
+        [SerializeField] private AudioClip hailAudioClip;
+        [SerializeField] private AudioClip sandstormAudioClip;
+        [SerializeField] private AudioClip blizzardAudioClip;
+        
+        [Header("Weather Particle Systems")]
+        [SerializeField] private ParticleSystem rainParticleSystem;
+        [SerializeField] private ParticleSystem snowParticleSystem;
+        [SerializeField] private ParticleSystem hailParticleSystem;
+        [SerializeField] private ParticleSystem sandParticleSystem;
+        [SerializeField] private ParticleSystem dustParticleSystem;
+        [SerializeField] private ParticleSystem ashParticleSystem;
+        
+        [Header("Weather Lighting Assets")]
+        [SerializeField] private Light sunLight;
+        [SerializeField] private Light moonLight;
+        [SerializeField] private Light lightningLight;
+        [SerializeField] private Light fireLight;
+        
         [Header("Weather Audio")]
         [SerializeField] private bool enableWeatherAudio = true;
         [SerializeField] private bool enable3DWeatherAudio = true;
@@ -864,8 +897,64 @@ namespace Evergreen.Weather
         
         private void SetupWeatherEffect(WeatherEffect effect)
         {
-            // Setup individual weather effect
-            // This would integrate with your effect system
+            // Setup individual weather effect with proper asset references
+            switch (effect.type)
+            {
+                case WeatherEffectType.Rain:
+                    if (rainEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(rainEffectPrefab);
+                        effect.particleSystem = effect.effectObject.GetComponent<ParticleSystem>();
+                    }
+                    break;
+                case WeatherEffectType.Snow:
+                    if (snowEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(snowEffectPrefab);
+                        effect.particleSystem = effect.effectObject.GetComponent<ParticleSystem>();
+                    }
+                    break;
+                case WeatherEffectType.Fog:
+                    if (fogEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(fogEffectPrefab);
+                    }
+                    break;
+                case WeatherEffectType.Wind:
+                    if (windEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(windEffectPrefab);
+                    }
+                    break;
+                case WeatherEffectType.Thunder:
+                    if (thunderEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(thunderEffectPrefab);
+                        effect.lightSource = effect.effectObject.GetComponent<Light>();
+                    }
+                    break;
+                case WeatherEffectType.Hail:
+                    if (hailEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(hailEffectPrefab);
+                        effect.particleSystem = effect.effectObject.GetComponent<ParticleSystem>();
+                    }
+                    break;
+                case WeatherEffectType.Sandstorm:
+                    if (sandstormEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(sandstormEffectPrefab);
+                        effect.particleSystem = effect.effectObject.GetComponent<ParticleSystem>();
+                    }
+                    break;
+                case WeatherEffectType.Blizzard:
+                    if (blizzardEffectPrefab != null)
+                    {
+                        effect.effectObject = Instantiate(blizzardEffectPrefab);
+                        effect.particleSystem = effect.effectObject.GetComponent<ParticleSystem>();
+                    }
+                    break;
+            }
         }
         
         private void SetupWeatherAudio()
@@ -1110,7 +1199,34 @@ namespace Evergreen.Weather
         private WeatherCondition GenerateWeatherPrediction(List<WeatherCondition> historicalData)
         {
             // Simple prediction algorithm - in production, use ML
-            if (historicalData.Count == 0) return null;
+            if (historicalData.Count == 0) 
+            {
+                // Return a default clear weather condition if no historical data
+                return new WeatherCondition
+                {
+                    id = "default_prediction",
+                    name = "Default Weather",
+                    type = WeatherType.Clear,
+                    intensity = WeatherIntensity.Light,
+                    temperature = 20.0f,
+                    humidity = 50.0f,
+                    pressure = 1013.25f,
+                    windSpeed = 5.0f,
+                    windDirection = 0.0f,
+                    visibility = 10000.0f,
+                    precipitation = 0.0f,
+                    cloudCover = 0.0f,
+                    skyColor = new Color(0.5f, 0.8f, 1.0f),
+                    fogColor = new Color(0.8f, 0.8f, 0.8f),
+                    isActive = false,
+                    isTransitioning = false,
+                    duration = 60f,
+                    remainingTime = 60f,
+                    startTime = DateTime.Now.AddMinutes(30),
+                    endTime = DateTime.Now.AddMinutes(90),
+                    properties = new Dictionary<string, object>()
+                };
+            }
             
             var latest = historicalData.OrderByDescending(c => c.startTime).First();
             var prediction = new WeatherCondition

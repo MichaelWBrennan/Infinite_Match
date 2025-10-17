@@ -108,16 +108,24 @@ namespace Evergreen.UI
         private void SetupEventListeners()
         {
             // Navigation buttons with 5/5 UX
-            playButton.onClick.AddListener(() => StartGameWith5StarUX());
-            metaGameButton.onClick.AddListener(() => ShowPanelWith5StarUX(metaGamePanel));
-            socialButton.onClick.AddListener(() => ShowPanelWith5StarUX(socialPanel));
-            eventsButton.onClick.AddListener(() => ShowPanelWith5StarUX(eventsPanel));
-            achievementsButton.onClick.AddListener(() => ShowPanelWith5StarUX(achievementsPanel));
-            characterButton.onClick.AddListener(() => ShowPanelWith5StarUX(characterPanel));
-            settingsButton.onClick.AddListener(() => ShowSettingsWith5StarUX());
+            if (playButton != null)
+                playButton.onClick.AddListener(() => StartGameWith5StarUX());
+            if (metaGameButton != null)
+                metaGameButton.onClick.AddListener(() => ShowPanelWith5StarUX(metaGamePanel));
+            if (socialButton != null)
+                socialButton.onClick.AddListener(() => ShowPanelWith5StarUX(socialPanel));
+            if (eventsButton != null)
+                eventsButton.onClick.AddListener(() => ShowPanelWith5StarUX(eventsPanel));
+            if (achievementsButton != null)
+                achievementsButton.onClick.AddListener(() => ShowPanelWith5StarUX(achievementsPanel));
+            if (characterButton != null)
+                characterButton.onClick.AddListener(() => ShowPanelWith5StarUX(characterPanel));
+            if (settingsButton != null)
+                settingsButton.onClick.AddListener(() => ShowSettingsWith5StarUX());
             
             // Character interaction with 5/5 UX
-            interactButton.onClick.AddListener(() => InteractWithCharacter5StarUX());
+            if (interactButton != null)
+                interactButton.onClick.AddListener(() => InteractWithCharacter5StarUX());
             
             // Add hover effects for 5/5 UX
             AddHoverEffectsToButtons();

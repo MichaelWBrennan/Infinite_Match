@@ -188,7 +188,18 @@ namespace Evergreen.Social
         public LeaderboardEntry GetPlayerEntry(string leaderboardId)
         {
             var leaderboard = GetLeaderboard(leaderboardId);
-            if (leaderboard == null) return null;
+            if (leaderboard == null) 
+            {
+                Debug.LogError($"LeaderboardSystem: Leaderboard not found for ID {leaderboardId}");
+                return new LeaderboardEntry
+                {
+                    playerId = "unknown",
+                    playerName = "Unknown Player",
+                    score = 0,
+                    rank = 0,
+                    timestamp = DateTime.Now
+                };
+            }
             
             var playerId = GetPlayerId();
             return leaderboard.entries.Find(e => e.playerId == playerId);

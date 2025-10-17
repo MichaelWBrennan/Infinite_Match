@@ -1207,6 +1207,387 @@ namespace Evergreen.Core
         
         #endregion
         
+        #region Diagnostic and Testing Tools
+        
+        [ContextMenu("Run Asset Diagnostic")]
+        public void RunAssetDiagnostic()
+        {
+            StartCoroutine(RunComprehensiveAssetDiagnostic());
+        }
+        
+        [ContextMenu("Test File Reading")]
+        public void TestFileReading()
+        {
+            StartCoroutine(TestFileReadingSystem());
+        }
+        
+        [ContextMenu("Run Quick Tests")]
+        public void RunQuickTests()
+        {
+            StartCoroutine(RunQuickTestSuite());
+        }
+        
+        [ContextMenu("Validate File Reading")]
+        public void ValidateFileReading()
+        {
+            StartCoroutine(ValidateFileReadingSystem());
+        }
+        
+        private IEnumerator RunComprehensiveAssetDiagnostic()
+        {
+            Log("=== COMPREHENSIVE ASSET DIAGNOSTIC ===");
+            Log($"Platform: {Application.platform}");
+            Log($"Unity Version: {Application.unityVersion}");
+            Log($"StreamingAssets Path: {Application.streamingAssetsPath}");
+            Log($"Persistent Data Path: {Application.persistentDataPath}");
+            
+            int totalAssetsTested = 0;
+            int assetsLoadedSuccessfully = 0;
+            int assetsFailedToLoad = 0;
+            
+            // Test basic StreamingAssets access
+            yield return StartCoroutine(TestStreamingAssetsAccess());
+            
+            // Test configuration files
+            string[] configFiles = { "unity_services_config.json", "economy_data.json" };
+            foreach (string configFile in configFiles)
+            {
+                yield return StartCoroutine(TestSingleFile(configFile, totalAssetsTested, assetsLoadedSuccessfully, assetsFailedToLoad));
+            }
+            
+            // Test level files
+            yield return StartCoroutine(TestLevelFiles(totalAssetsTested, assetsLoadedSuccessfully, assetsFailedToLoad));
+            
+            // Generate diagnostic report
+            Log($"=== DIAGNOSTIC REPORT ===");
+            Log($"Total Assets Tested: {totalAssetsTested}");
+            Log($"Successfully Loaded: {assetsLoadedSuccessfully}");
+            Log($"Failed to Load: {assetsFailedToLoad}");
+            Log($"Success Rate: {(float)assetsLoadedSuccessfully / totalAssetsTested * 100:F1}%");
+        }
+        
+        private IEnumerator TestStreamingAssetsAccess()
+        {
+            try
+            {
+                string streamingPath = Application.streamingAssetsPath;
+                if (string.IsNullOrEmpty(streamingPath))
+                {
+                    LogError("StreamingAssets path is null or empty!");
+                    yield break;
+                }
+                
+                Log($"✓ StreamingAssets path accessible: {streamingPath}");
+                
+                // Test directory listing
+                string[] files = Directory.GetFiles(streamingPath);
+                Log($"✓ Found {files?.Length ?? 0} files in StreamingAssets root");
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"StreamingAssets access failed: {ex.Message}");
+            }
+            
+            yield return null;
+        }
+        
+        private IEnumerator TestSingleFile(string fileName, int totalAssetsTested, int assetsLoadedSuccessfully, int assetsFailedToLoad)
+        {
+            totalAssetsTested++;
+            
+            try
+            {
+                Log($"Testing file: {fileName}");
+                
+                string filePath = Path.Combine(Application.streamingAssetsPath, fileName);
+                bool exists = File.Exists(filePath);
+                
+                if (!exists)
+                {
+                    LogError($"File does not exist: {fileName}");
+                    assetsFailedToLoad++;
+                    yield break;
+                }
+                
+                string content = File.ReadAllText(filePath);
+                if (string.IsNullOrEmpty(content))
+                {
+                    LogError($"Failed to read file: {fileName}");
+                    assetsFailedToLoad++;
+                    yield break;
+                }
+                
+                assetsLoadedSuccessfully++;
+                Log($"✓ Successfully loaded: {fileName} ({content.Length} characters)");
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"Exception loading {fileName}: {ex.Message}");
+                assetsFailedToLoad++;
+            }
+            
+            yield return null;
+        }
+        
+        private IEnumerator TestLevelFiles(int totalAssetsTested, int assetsLoadedSuccessfully, int assetsFailedToLoad)
+        {
+            try
+            {
+                string levelsPath = Path.Combine(Application.streamingAssetsPath, "levels");
+                if (Directory.Exists(levelsPath))
+                {
+                    string[] levelFiles = Directory.GetFiles(levelsPath, "level_*.json");
+                    Log($"Found {levelFiles.Length} level files to test:");
+                    
+                    foreach (string levelFile in levelFiles)
+                    {
+                        string fileName = Path.GetFileName(levelFile);
+                        yield return StartCoroutine(TestSingleFile(Path.Combine("levels", fileName), totalAssetsTested, assetsLoadedSuccessfully, assetsFailedToLoad));
+                    }
+                }
+                else
+                {
+                    LogError("Levels directory not found!");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"Level files test failed: {ex.Message}");
+            }
+            
+            yield return null;
+        }
+        
+        private IEnumerator TestFileReadingSystem()
+        {
+            Log("=== Testing File Reading System ===");
+            
+            try
+            {
+                // Test config file reading
+                string configPath = Path.Combine(Application.streamingAssetsPath, "unity_services_config.json");
+                if (File.Exists(configPath))
+                {
+                    string content = File.ReadAllText(configPath);
+                    Log($"✓ Config file read successfully ({content.Length} characters)");
+                }
+                else
+                {
+                    LogError("❌ Config file not found");
+                }
+                
+                // Test level file reading
+                string levelPath = Path.Combine(Application.streamingAssetsPath, "levels", "level_1.json");
+                if (File.Exists(levelPath))
+                {
+                    string content = File.ReadAllText(levelPath);
+                    Log($"✓ Level file read successfully ({content.Length} characters)");
+                }
+                else
+                {
+                    LogError("❌ Level file not found");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"❌ File reading test failed: {ex.Message}");
+            }
+            
+            yield return null;
+        }
+        
+        private IEnumerator RunQuickTestSuite()
+        {
+            Log("=== Running Quick Test Suite ===");
+            
+            // Test 1: Basic file reading
+            yield return StartCoroutine(TestFileReadingSystem());
+            
+            // Test 2: System integration
+            yield return StartCoroutine(TestSystemIntegration());
+            
+            // Test 3: Performance check
+            yield return StartCoroutine(TestBasicPerformance());
+            
+            Log("=== Quick Test Suite Complete ===");
+        }
+        
+        private IEnumerator TestSystemIntegration()
+        {
+            Log("🔗 Testing system integration...");
+            
+            // Test core system
+            Assert(Instance != null, "Core system should be available");
+            
+            // Test service locator
+            Assert(IsRegistered<ILogger>(), "Logger should be registered");
+            Assert(IsRegistered<IMemoryManager>(), "Memory manager should be registered");
+            
+            Log("✅ System integration test passed");
+            yield return null;
+        }
+        
+        private IEnumerator TestBasicPerformance()
+        {
+            Log("⚡ Testing basic performance...");
+            
+            long initialMemory = GC.GetTotalMemory(false);
+            float startTime = Time.realtimeSinceStartup;
+            
+            // Perform some operations
+            for (int i = 0; i < 100; i++)
+            {
+                SetGameState(GameState.MainMenu);
+                AddScore(1);
+            }
+            
+            float endTime = Time.realtimeSinceStartup;
+            long finalMemory = GC.GetTotalMemory(false);
+            
+            float totalTime = endTime - startTime;
+            long memoryUsed = finalMemory - initialMemory;
+            
+            Log($"✓ Performance test: {totalTime:F4}s for 100 operations");
+            Log($"✓ Memory usage: {memoryUsed / 1024}KB");
+            
+            yield return null;
+        }
+        
+        private IEnumerator ValidateFileReadingSystem()
+        {
+            Log("=== Validating File Reading System ===");
+            
+            bool streamingAssetsAccessible = false;
+            bool levelFilesReadable = false;
+            bool configFilesReadable = false;
+            int totalFilesFound = 0;
+            int filesSuccessfullyRead = 0;
+            
+            // Test 1: Check StreamingAssets accessibility
+            try
+            {
+                string streamingPath = Application.streamingAssetsPath;
+                if (!string.IsNullOrEmpty(streamingPath) && Directory.Exists(streamingPath))
+                {
+                    streamingAssetsAccessible = true;
+                    Log("✓ StreamingAssets is accessible");
+                }
+                else
+                {
+                    LogError("❌ StreamingAssets is not accessible");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"❌ StreamingAssets access failed: {ex.Message}");
+            }
+            
+            // Test 2: Check level files
+            try
+            {
+                string[] levelFiles = Directory.GetFiles(Path.Combine(Application.streamingAssetsPath, "levels"), "level_*.json");
+                totalFilesFound += levelFiles.Length;
+                
+                if (levelFiles.Length > 0)
+                {
+                    levelFilesReadable = true;
+                    Log($"✓ Found {levelFiles.Length} level files");
+                    
+                    // Test reading a few level files
+                    foreach (string levelFile in levelFiles)
+                    {
+                        try
+                        {
+                            string content = File.ReadAllText(levelFile);
+                            if (!string.IsNullOrEmpty(content))
+                            {
+                                filesSuccessfullyRead++;
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            LogError($"❌ Failed to read level file {Path.GetFileName(levelFile)}: {ex.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    LogError("❌ No level files found");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"❌ Level files validation failed: {ex.Message}");
+            }
+            
+            // Test 3: Check config files
+            try
+            {
+                string[] configFiles = { "unity_services_config.json", "economy_data.json" };
+                
+                foreach (string configFile in configFiles)
+                {
+                    string configPath = Path.Combine(Application.streamingAssetsPath, configFile);
+                    if (File.Exists(configPath))
+                    {
+                        totalFilesFound++;
+                        try
+                        {
+                            string content = File.ReadAllText(configPath);
+                            if (!string.IsNullOrEmpty(content))
+                            {
+                                filesSuccessfullyRead++;
+                                configFilesReadable = true;
+                                Log($"✓ Config file {configFile} is readable");
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            LogError($"❌ Failed to read config file {configFile}: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        LogError($"❌ Config file {configFile} not found");
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"❌ Config files validation failed: {ex.Message}");
+            }
+            
+            // Generate validation report
+            Log("=== File Reading Validation Report ===");
+            Log($"StreamingAssets Accessible: {(streamingAssetsAccessible ? "✅ Yes" : "❌ No")}");
+            Log($"Level Files Readable: {(levelFilesReadable ? "✅ Yes" : "❌ No")}");
+            Log($"Config Files Readable: {(configFilesReadable ? "✅ Yes" : "❌ No")}");
+            Log($"Total Files Found: {totalFilesFound}");
+            Log($"Files Successfully Read: {filesSuccessfullyRead}");
+            Log($"Success Rate: {(totalFilesFound > 0 ? (float)filesSuccessfullyRead / totalFilesFound * 100f : 0f):F1}%");
+            
+            if (streamingAssetsAccessible && levelFilesReadable && configFilesReadable)
+            {
+                Log("🎉 File reading system is working perfectly!");
+            }
+            else
+            {
+                LogError("⚠️ File reading system has issues that need attention.");
+            }
+            
+            yield return null;
+        }
+        
+        private void Assert(bool condition, string message)
+        {
+            if (!condition)
+            {
+                throw new System.Exception($"Assertion failed: {message}");
+            }
+        }
+        
+        #endregion
+        
         #region Unity Lifecycle
         
         void OnApplicationPause(bool pauseStatus)

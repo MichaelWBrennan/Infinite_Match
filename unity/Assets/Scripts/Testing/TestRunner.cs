@@ -38,7 +38,7 @@ namespace Evergreen.Testing
         // Test State
         private bool _isRunningTests = false;
         private int _currentTestPhase = 0;
-        private string[] _testPhases = { "System Tests", "Scene Tests", "Integration Tests", "Performance Tests", "Key-Free Tests" };
+        private string[] _testPhases = { "System Tests", "Scene Tests", "Integration Tests", "Game Logic Tests", "Performance Tests", "Key-Free Tests" };
         
         // Events
         public static event Action<string> OnTestPhaseStarted;
@@ -70,6 +70,7 @@ namespace Evergreen.Testing
             yield return StartCoroutine(RunSystemTests());
             yield return StartCoroutine(RunSceneTests());
             yield return StartCoroutine(RunIntegrationTests());
+            yield return StartCoroutine(RunGameLogicTests());
             yield return StartCoroutine(RunPerformanceTests());
             yield return StartCoroutine(RunKeyFreeTests());
             
@@ -371,6 +372,51 @@ namespace Evergreen.Testing
             yield return new WaitForSeconds(1f);
         }
         
+        private IEnumerator RunGameLogicTests()
+        {
+            var phaseName = "Game Logic Tests";
+            OnTestPhaseStarted?.Invoke(phaseName);
+            Log($"🎮 Starting {phaseName}...");
+            
+            var phaseResult = new PhaseResult
+            {
+                phaseName = phaseName,
+                startTime = DateTime.Now,
+                success = false,
+                details = new List<string>()
+            };
+            
+            try
+            {
+                // Run game logic tests
+                yield return StartCoroutine(TestGameLogic());
+                
+                phaseResult.success = true;
+                phaseResult.details.Add("Board logic working");
+                phaseResult.details.Add("Game state logic working");
+                phaseResult.details.Add("Scoring logic working");
+                
+                Log($"✅ {phaseName} completed - Success: {phaseResult.success}");
+            }
+            catch (Exception ex)
+            {
+                phaseResult.success = false;
+                phaseResult.details.Add($"Exception: {ex.Message}");
+                LogError($"❌ {phaseName} failed: {ex.Message}");
+            }
+            
+            phaseResult.endTime = DateTime.Now;
+            phaseResult.duration = (phaseResult.endTime - phaseResult.startTime).TotalMilliseconds;
+            
+            masterResults.phaseResults.Add(phaseResult);
+            masterResults.completedPhases++;
+            if (phaseResult.success) masterResults.successfulPhases++;
+            else masterResults.failedPhases++;
+            
+            OnTestPhaseCompleted?.Invoke(phaseName, phaseResult.success);
+            yield return new WaitForSeconds(1f);
+        }
+        
         private IEnumerator RunKeyFreeTests()
         {
             var phaseName = "Key-Free Tests";
@@ -451,6 +497,82 @@ namespace Evergreen.Testing
             Assert(unifiedManager != null, "Unified manager should be available");
             
             Log("✅ System integration test passed");
+            yield return null;
+        }
+        
+        private IEnumerator TestGameLogic()
+        {
+            Log("🎮 Testing game logic...");
+            
+            // Test board functionality
+            yield return StartCoroutine(TestBoardLogic());
+            
+            // Test game state management
+            yield return StartCoroutine(TestGameStateLogic());
+            
+            // Test scoring system
+            yield return StartCoroutine(TestScoringLogic());
+            
+            Log("✅ Game logic tests passed");
+            yield return null;
+        }
+        
+        private IEnumerator TestBoardLogic()
+        {
+            Log("🧩 Testing board logic...");
+            
+            // Test board creation
+            var board = new Board(8, 6);
+            Assert(board != null, "Board should be created");
+            Assert(board.Size.x == 8, "Board width should be 8");
+            Assert(board.Size.y == 6, "Board height should be 6");
+            
+            // Test board operations
+            board.SetTile(0, 0, 1);
+            Assert(board.GetTile(0, 0) == 1, "Tile should be set correctly");
+            
+            Log("✅ Board logic tests passed");
+            yield return null;
+        }
+        
+        private IEnumerator TestGameStateLogic()
+        {
+            Log("🎯 Testing game state logic...");
+            
+            var coreSystem = FindObjectOfType<OptimizedCoreSystem>();
+            if (coreSystem != null)
+            {
+                // Test state transitions
+                coreSystem.SetGameState(OptimizedCoreSystem.GameState.MainMenu);
+                Assert(coreSystem.currentState == OptimizedCoreSystem.GameState.MainMenu, "State should be MainMenu");
+                
+                coreSystem.SetGameState(OptimizedCoreSystem.GameState.Gameplay);
+                Assert(coreSystem.currentState == OptimizedCoreSystem.GameState.Gameplay, "State should be Gameplay");
+            }
+            
+            Log("✅ Game state logic tests passed");
+            yield return null;
+        }
+        
+        private IEnumerator TestScoringLogic()
+        {
+            Log("🏆 Testing scoring logic...");
+            
+            var coreSystem = FindObjectOfType<OptimizedCoreSystem>();
+            if (coreSystem != null)
+            {
+                // Test score updates
+                int initialScore = coreSystem.playerScore;
+                coreSystem.AddScore(100);
+                Assert(coreSystem.playerScore == initialScore + 100, "Score should be updated correctly");
+                
+                // Test coin updates
+                int initialCoins = coreSystem.playerCoins;
+                coreSystem.AddCoins(50);
+                Assert(coreSystem.playerCoins == initialCoins + 50, "Coins should be updated correctly");
+            }
+            
+            Log("✅ Scoring logic tests passed");
             yield return null;
         }
         

@@ -85,9 +85,24 @@ namespace Evergreen.UI
         
         private Sprite GetDefaultAvatar()
         {
-            // Return a default avatar sprite
-            // In a real implementation, this would load from Resources or Addressables
-            return null;
+            // Load default avatar from Resources
+            var defaultAvatar = Resources.Load<Sprite>("UI/Avatars/DefaultAvatar");
+            if (defaultAvatar != null)
+            {
+                return defaultAvatar;
+            }
+            
+            // Fallback: create a simple colored circle sprite
+            var texture = new Texture2D(64, 64);
+            var colors = new Color[64 * 64];
+            for (int i = 0; i < colors.Length; i++)
+            {
+                colors[i] = Color.gray;
+            }
+            texture.SetPixels(colors);
+            texture.Apply();
+            
+            return Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f));
         }
         
         public void OnEntryClicked()

@@ -11,6 +11,10 @@ public class MainMenuUI : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private Button startGameButton;
     [SerializeField] private Button chatButton;
+    [SerializeField] private Button playButton;
+    [SerializeField] private Button settingsButton;
+    [SerializeField] private Button shopButton;
+    [SerializeField] private Button socialButton;
     [SerializeField] private Text coinsText;
     [SerializeField] private Text gemsText;
     [SerializeField] private Text energyText;
@@ -45,9 +49,29 @@ public class MainMenuUI : MonoBehaviour
             startGameButton.onClick.AddListener(OnStartGame);
         }
 
+        if (playButton != null)
+        {
+            playButton.onClick.AddListener(OnStartGame);
+        }
+
         if (chatButton != null)
         {
             chatButton.onClick.AddListener(OnOpenChat);
+        }
+
+        if (settingsButton != null)
+        {
+            settingsButton.onClick.AddListener(OnOpenSettings);
+        }
+
+        if (shopButton != null)
+        {
+            shopButton.onClick.AddListener(OnOpenShop);
+        }
+
+        if (socialButton != null)
+        {
+            socialButton.onClick.AddListener(OnOpenSocial);
         }
     }
 
@@ -136,6 +160,45 @@ public class MainMenuUI : MonoBehaviour
         }
     }
 
+    public void OnOpenSettings()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenSettings();
+            Logger.Info("Opening settings", "MainMenu");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "MainMenu");
+        }
+    }
+
+    public void OnOpenShop()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenShop();
+            Logger.Info("Opening shop", "MainMenu");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "MainMenu");
+        }
+    }
+
+    public void OnOpenSocial()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenSocial();
+            Logger.Info("Opening social", "MainMenu");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "MainMenu");
+        }
+    }
+
     private void UpdateUI()
     {
         if (coinsText != null)
@@ -171,9 +234,29 @@ public class MainMenuUI : MonoBehaviour
             startGameButton.onClick.RemoveListener(OnStartGame);
         }
 
+        if (playButton != null)
+        {
+            playButton.onClick.RemoveListener(OnStartGame);
+        }
+
         if (chatButton != null)
         {
             chatButton.onClick.RemoveListener(OnOpenChat);
+        }
+
+        if (settingsButton != null)
+        {
+            settingsButton.onClick.RemoveListener(OnOpenSettings);
+        }
+
+        if (shopButton != null)
+        {
+            shopButton.onClick.RemoveListener(OnOpenShop);
+        }
+
+        if (socialButton != null)
+        {
+            socialButton.onClick.RemoveListener(OnOpenSocial);
         }
     }
 }

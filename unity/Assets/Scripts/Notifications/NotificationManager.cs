@@ -219,7 +219,12 @@ namespace Evergreen.Notifications
         
         private GameObject CreateNotificationUI(Notification notification)
         {
-            if (notificationPrefab == null || notificationContainer == null) return null;
+            if (notificationPrefab == null || notificationContainer == null) 
+            {
+                Debug.LogError("NotificationManager: Missing notification prefab or container");
+                // Create a simple text-based notification as fallback
+                return CreateFallbackNotification(notification);
+            }
             
             var notificationUI = Instantiate(notificationPrefab, notificationContainer);
             var notificationScript = notificationUI.GetComponent<NotificationUI>();
@@ -589,6 +594,26 @@ namespace Evergreen.Notifications
             {
                 CheckScheduledNotifications();
             }
+        }
+        
+        private GameObject CreateFallbackNotification(Notification notification)
+        {
+            var fallbackObject = new GameObject($"Notification_{notification.id}");
+            var canvas = fallbackObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 1000;
+            
+            var text = fallbackObject.AddComponent<UnityEngine.UI.Text>();
+            text.text = notification.title;
+            text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            text.fontSize = 16;
+            text.color = Color.white;
+            
+            var rectTransform = fallbackObject.GetComponent<RectTransform>();
+            rectTransform.sizeDelta = new Vector2(300, 50);
+            rectTransform.anchoredPosition = new Vector2(0, 200);
+            
+            return fallbackObject;
         }
     }
 }
