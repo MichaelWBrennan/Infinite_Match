@@ -1,0 +1,95 @@
+{
+  "timestamp": "2025-10-17T01:59:48.772Z",
+  "platforms": [
+    "webgl",
+    "kongregate",
+    "poki",
+    "gamecrazy",
+    "android",
+    "ios"
+  ],
+  "optimizations": [
+    "Platform detection optimized",
+    "Server platform detection configured",
+    "Unity Cloud API client optimized"
+  ],
+  "summary": {
+    "totalOptimizations": 3,
+    "platformsSupported": 6,
+    "successRate": 100
+  },
+  "platformCapabilities": {
+    "webgl": {
+      "memorySize": 256,
+      "compression": "gzip",
+      "textureFormat": "astc",
+      "features": [
+        "webgl",
+        "wasm",
+        "analytics"
+      ]
+    },
+    "kongregate": {
+      "memorySize": 128,
+      "compression": "gzip",
+      "textureFormat": "dxt",
+      "features": [
+        "webgl",
+        "wasm",
+        "ads",
+        "iap",
+        "social",
+        "analytics"
+      ]
+    },
+    "poki": {
+      "memorySize": 64,
+      "compression": "brotli",
+      "textureFormat": "etc2",
+      "features": [
+        "webgl",
+        "wasm",
+        "ads",
+        "iap",
+        "social",
+        "analytics"
+      ]
+    },
+    "gamecrazy": {
+      "memorySize": 32,
+      "compression": "gzip",
+      "textureFormat": "dxt",
+      "features": [
+        "webgl",
+        "wasm",
+        "ads",
+        "iap",
+        "analytics"
+      ]
+    },
+    "android": {
+      "memorySize": 512,
+      "compression": "none",
+      "textureFormat": "astc",
+      "features": [
+        "native",
+        "ads",
+        "iap",
+        "social",
+        "analytics"
+      ]
+    },
+    "ios": {
+      "memorySize": 256,
+      "compression": "none",
+      "textureFormat": "astc",
+      "features": [
+        "native",
+        "ads",
+        "iap",
+        "social",
+        "analytics"
+      ]
+    }
+  }
+}

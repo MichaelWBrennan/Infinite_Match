@@ -45,6 +45,64 @@ class UnityGamingServicesAPIClient {
   }
 
   /**
+   * Get platform-specific build configuration
+   */
+  getPlatformBuildConfig(platform) {
+    const configs = {
+      webgl: {
+        target: 'WebGL',
+        architecture: 'wasm32',
+        optimization: 'release',
+        memorySize: 256,
+        compression: 'gzip',
+        textureFormat: 'astc'
+      },
+      kongregate: {
+        target: 'WebGL',
+        architecture: 'wasm32',
+        optimization: 'release',
+        memorySize: 128,
+        compression: 'gzip',
+        textureFormat: 'dxt'
+      },
+      poki: {
+        target: 'WebGL',
+        architecture: 'wasm32',
+        optimization: 'release',
+        memorySize: 64,
+        compression: 'brotli',
+        textureFormat: 'etc2'
+      },
+      gamecrazy: {
+        target: 'WebGL',
+        architecture: 'wasm32',
+        optimization: 'release',
+        memorySize: 32,
+        compression: 'gzip',
+        textureFormat: 'dxt'
+      },
+      android: {
+        target: 'Android',
+        architecture: 'arm64',
+        optimization: 'release',
+        memorySize: 512,
+        compression: 'none',
+        textureFormat: 'astc'
+      },
+      ios: {
+        target: 'iOS',
+        architecture: 'arm64',
+        optimization: 'release',
+        memorySize: 256,
+        compression: 'none',
+        textureFormat: 'astc'
+      }
+    };
+    
+    return configs[platform] || configs.webgl;
+  }
+
+  /**
    * Authenticate with Unity Cloud using client credentials
    */
   async authenticate() {
@@ -735,6 +793,154 @@ class UnityGamingServicesAPIClient {
     }
 
     return report;
+  }
+
+  /**
+   * Trigger a Unity Cloud Build
+   */
+  async triggerBuild(buildTarget, gitRef = 'main', buildName = null) {
+    try {
+      console.log(`🚀 Triggering Unity Cloud Build for ${buildTarget}...`);
+      
+      if (!this.accessToken) {
+        await this.authenticate();
+      }
+
+      const buildConfig = {
+        buildTarget,
+        gitRef,
+        buildName: buildName || `Build-${buildTarget}-${Date.now()}`,
+        cleanBuild: true,
+        developmentBuild: false,
+        allowDebugging: false,
+        scriptDebugging: false,
+        il2cpp: true,
+        managedStrippingLevel: 'high'
+      };
+
+      const response = await this.makeRequest('/builds', {
+        method: 'POST',
+        body: JSON.stringify(buildConfig)
+      });
+      
+      if (response.success) {
+        console.log(`✅ Build triggered successfully: ${response.buildId}`);
+        return response;
+      } else {
+        throw new Error(`Build trigger failed: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error triggering build:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Trigger a platform-optimized Unity Cloud Build
+   */
+  async triggerPlatformOptimizedBuild(platform, gitRef = 'main', buildName = null) {
+    try {
+      console.log(`🚀 Triggering platform-optimized build for ${platform}...`);
+      
+      const platformConfig = this.getPlatformBuildConfig(platform);
+      const buildTarget = platformConfig.target;
+      
+      if (!this.accessToken) {
+        await this.authenticate();
+      }
+
+      const buildConfig = {
+        buildTarget,
+        gitRef,
+        buildName: buildName || `Build-${platform}-${Date.now()}`,
+        cleanBuild: true,
+        developmentBuild: false,
+        allowDebugging: false,
+        scriptDebugging: false,
+        il2cpp: true,
+        managedStrippingLevel: 'high',
+        // Platform-specific optimizations
+        platformOptimizations: {
+          memorySize: platformConfig.memorySize,
+          compression: platformConfig.compression,
+          textureFormat: platformConfig.textureFormat,
+          architecture: platformConfig.architecture
+        }
+      };
+
+      const response = await this.makeRequest('/builds', {
+        method: 'POST',
+        body: JSON.stringify(buildConfig)
+      });
+      
+      if (response.success) {
+        console.log(`✅ Platform-optimized build triggered: ${response.buildId}`);
+        console.log(`📊 Platform: ${platform}`);
+        console.log(`⚡ Memory: ${platformConfig.memorySize}MB`);
+        console.log(`🗜️ Compression: ${platformConfig.compression}`);
+        console.log(`🖼️ Texture Format: ${platformConfig.textureFormat}`);
+        return response;
+      } else {
+        throw new Error(`Platform-optimized build trigger failed: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error triggering platform-optimized build:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get build status
+   */
+  async getBuildStatus(buildId) {
+    try {
+      console.log(`📊 Getting build status for ${buildId}...`);
+      
+      if (!this.accessToken) {
+        await this.authenticate();
+      }
+
+      const response = await this.makeRequest(`/builds/${buildId}`, {
+        method: 'GET'
+      });
+      
+      if (response.success) {
+        console.log(`✅ Build status: ${response.status}`);
+        return response;
+      } else {
+        throw new Error(`Failed to get build status: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error getting build status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download build
+   */
+  async downloadBuild(buildId, targetPath = './builds') {
+    try {
+      console.log(`📥 Downloading build ${buildId}...`);
+      
+      if (!this.accessToken) {
+        await this.authenticate();
+      }
+
+      const response = await this.makeRequest(`/builds/${buildId}/download`, {
+        method: 'GET'
+      });
+      
+      if (response.success) {
+        console.log(`✅ Build downloaded to: ${targetPath}`);
+        return response;
+      } else {
+        throw new Error(`Failed to download build: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error downloading build:', error);
+      throw error;
+    }
   }
 }
 

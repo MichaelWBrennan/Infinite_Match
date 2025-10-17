@@ -12,6 +12,7 @@ class PlatformDetector {
     detectPlatform() {
         const hostname = window.location.hostname.toLowerCase();
         const referrer = document.referrer.toLowerCase();
+        const userAgent = navigator.userAgent.toLowerCase();
         
         // Check for Kongregate
         if (hostname.includes('kongregate.com') || 
@@ -34,29 +35,81 @@ class PlatformDetector {
             return 'poki';
         }
         
+        // Check for mobile platforms
+        if (userAgent.includes('android')) {
+            return 'android';
+        }
+        
+        if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+            return 'ios';
+        }
+        
         // Check for local development or direct access
         if (hostname.includes('localhost') || 
             hostname.includes('127.0.0.1') ||
             hostname.includes('vercel.app')) {
-            return 'local';
+            return 'webgl';
         }
         
-        return 'unknown';
+        return 'webgl'; // Default to WebGL for web platforms
     }
 
     // Get platform configuration
     getPlatformConfig(platform) {
         const configs = {
+            webgl: {
+                name: 'WebGL',
+                sdkUrl: null,
+                features: {
+                    webgl: true,
+                    wasm: true,
+                    ads: false,
+                    iap: false,
+                    social: false,
+                    analytics: true,
+                    achievements: false,
+                    chat: false,
+                    touch: 'ontouchstart' in window,
+                    keyboard: true,
+                    gamepad: 'getGamepads' in navigator
+                },
+                optimization: {
+                    memorySize: 256,
+                    compression: 'gzip',
+                    textureFormat: 'astc',
+                    audioFormat: 'mp3'
+                },
+                api: {
+                    showAd: null,
+                    showRewardedAd: null,
+                    showInterstitialAd: null,
+                    trackEvent: null,
+                    getUserInfo: null,
+                    isAdBlocked: null,
+                    isAdFree: null
+                }
+            },
             kongregate: {
                 name: 'Kongregate',
                 sdkUrl: 'https://cdn1.kongregate.com/javascripts/kongregate_api.js',
                 features: {
+                    webgl: true,
+                    wasm: true,
                     ads: true,
                     iap: true,
                     social: true,
                     analytics: true,
                     achievements: true,
-                    chat: true
+                    chat: true,
+                    touch: 'ontouchstart' in window,
+                    keyboard: true,
+                    gamepad: false
+                },
+                optimization: {
+                    memorySize: 128,
+                    compression: 'gzip',
+                    textureFormat: 'dxt',
+                    audioFormat: 'mp3'
                 },
                 api: {
                     showAd: 'kongregate.services.showAd',
@@ -72,12 +125,23 @@ class PlatformDetector {
                 name: 'Game Crazy',
                 sdkUrl: 'https://cdn.gamecrazy.com/sdk/gamecrazy-sdk.js',
                 features: {
+                    webgl: true,
+                    wasm: true,
                     ads: true,
                     iap: true,
                     social: false,
                     analytics: true,
                     achievements: false,
-                    chat: false
+                    chat: false,
+                    touch: 'ontouchstart' in window,
+                    keyboard: true,
+                    gamepad: false
+                },
+                optimization: {
+                    memorySize: 32,
+                    compression: 'gzip',
+                    textureFormat: 'dxt',
+                    audioFormat: 'mp3'
                 },
                 api: {
                     showAd: 'gameCrazy.showAd',
@@ -93,12 +157,23 @@ class PlatformDetector {
                 name: 'Poki',
                 sdkUrl: 'https://game-cdn.poki.com/scripts/poki-sdk.js',
                 features: {
+                    webgl: true,
+                    wasm: true,
                     ads: true,
                     iap: true,
                     social: true,
                     analytics: true,
                     achievements: false,
-                    chat: false
+                    chat: false,
+                    touch: 'ontouchstart' in window,
+                    keyboard: true,
+                    gamepad: false
+                },
+                optimization: {
+                    memorySize: 64,
+                    compression: 'brotli',
+                    textureFormat: 'etc2',
+                    audioFormat: 'ogg'
                 },
                 api: {
                     showAd: 'pokiSDK.showAd',
@@ -110,16 +185,59 @@ class PlatformDetector {
                     isAdFree: 'pokiSDK.getAdFree'
                 }
             },
-            local: {
-                name: 'Local Development',
+            android: {
+                name: 'Android',
                 sdkUrl: null,
                 features: {
-                    ads: false,
-                    iap: false,
-                    social: false,
-                    analytics: false,
-                    achievements: false,
-                    chat: false
+                    webgl: false,
+                    wasm: false,
+                    ads: true,
+                    iap: true,
+                    social: true,
+                    analytics: true,
+                    achievements: true,
+                    chat: true,
+                    touch: true,
+                    keyboard: false,
+                    gamepad: true
+                },
+                optimization: {
+                    memorySize: 512,
+                    compression: 'none',
+                    textureFormat: 'astc',
+                    audioFormat: 'mp3'
+                },
+                api: {
+                    showAd: null,
+                    showRewardedAd: null,
+                    showInterstitialAd: null,
+                    trackEvent: null,
+                    getUserInfo: null,
+                    isAdBlocked: null,
+                    isAdFree: null
+                }
+            },
+            ios: {
+                name: 'iOS',
+                sdkUrl: null,
+                features: {
+                    webgl: false,
+                    wasm: false,
+                    ads: true,
+                    iap: true,
+                    social: true,
+                    analytics: true,
+                    achievements: true,
+                    chat: true,
+                    touch: true,
+                    keyboard: false,
+                    gamepad: true
+                },
+                optimization: {
+                    memorySize: 256,
+                    compression: 'none',
+                    textureFormat: 'astc',
+                    audioFormat: 'mp3'
                 },
                 api: {
                     showAd: null,
@@ -133,7 +251,7 @@ class PlatformDetector {
             }
         };
 
-        return configs[platform] || configs.local;
+        return configs[platform] || configs.webgl;
     }
 
     // Initialize platform detection and SDK loading
@@ -141,7 +259,12 @@ class PlatformDetector {
         this.currentPlatform = this.detectPlatform();
         this.platformConfig = this.getPlatformConfig(this.currentPlatform);
         
+        // Detect platform capabilities
+        this.platformConfig.capabilities = await this.detectCapabilities();
+        
         console.log(`🎮 Platform detected: ${this.platformConfig.name}`);
+        console.log(`🔧 Capabilities:`, this.platformConfig.capabilities);
+        console.log(`⚡ Optimization:`, this.platformConfig.optimization);
         
         // Load platform-specific SDK if available
         if (this.platformConfig.sdkUrl) {
@@ -153,8 +276,79 @@ class PlatformDetector {
         return {
             platform: this.currentPlatform,
             config: this.platformConfig,
-            sdk: this.sdk
+            sdk: this.sdk,
+            capabilities: this.platformConfig.capabilities
         };
+    }
+
+    // Detect platform capabilities
+    async detectCapabilities() {
+        const capabilities = { ...this.platformConfig.features };
+        
+        // Detect WebGL capabilities
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        
+        if (gl) {
+            capabilities.webgl = true;
+            capabilities.webgl2 = !!canvas.getContext('webgl2');
+            capabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+            capabilities.maxVertexUniforms = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS);
+            capabilities.maxFragmentUniforms = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS);
+        }
+
+        // Detect WASM support
+        capabilities.wasm = typeof WebAssembly !== 'undefined';
+
+        // Detect Web Workers
+        capabilities.webWorkers = typeof Worker !== 'undefined';
+
+        // Detect Service Workers
+        capabilities.serviceWorkers = 'serviceWorker' in navigator;
+
+        // Detect touch support
+        capabilities.touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Detect accelerometer and gyroscope
+        capabilities.accelerometer = 'DeviceMotionEvent' in window;
+        capabilities.gyroscope = 'DeviceOrientationEvent' in window;
+
+        // Detect gamepad support
+        capabilities.gamepad = 'getGamepads' in navigator;
+
+        return capabilities;
+    }
+
+    // Get platform optimization recommendations
+    getOptimizationRecommendations() {
+        const recommendations = [];
+        const capabilities = this.platformConfig.capabilities;
+
+        // Memory recommendations
+        if (capabilities.maxMemory && capabilities.maxMemory < 512) {
+            recommendations.push('Consider reducing memory usage for better performance');
+        }
+
+        // Texture recommendations
+        if (capabilities.maxTextureSize && capabilities.maxTextureSize < 2048) {
+            recommendations.push('Use smaller texture sizes for better compatibility');
+        }
+
+        // Mobile-specific recommendations
+        if (this.currentPlatform === 'android' || this.currentPlatform === 'ios') {
+            recommendations.push('Optimize for touch input and battery usage');
+        }
+
+        // Web platform recommendations
+        if (this.currentPlatform === 'webgl' || this.currentPlatform === 'kongregate' || 
+            this.currentPlatform === 'poki' || this.currentPlatform === 'gamecrazy') {
+            recommendations.push('Enable service worker for offline support');
+            if (capabilities.webgl2) {
+                recommendations.push('Use WebGL2 features for better performance');
+            }
+        }
+
+        return recommendations;
     }
 
     // Load platform-specific SDK

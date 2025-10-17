@@ -164,7 +164,21 @@
     "build:webgl:webgl": "./build-webgl-webgl.sh",
     "build:webgl:poki": "./build-webgl-poki.sh",
     "build:webgl:all": "./build-all-webgl.sh",
-    "configure:webgl": "./configure-webgl-build-paths.sh"
+    "configure:webgl": "./configure-webgl-build-paths.sh",
+    "refactor:lint": "node scripts/refactor-lint.js",
+    "refactor:check": "npm run lint && npm run format:check && npm run test",
+    "refactor:fix": "npm run lint:fix && npm run format && npm run build",
+    "refactor:full": "npm run refactor:fix && npm run refactor:lint && npm run test:coverage",
+    "platform:optimize": "node scripts/optimize-platforms.js",
+    "platform:detect": "node -e \"console.log('Platform detection available at /api/platform/detect')\"",
+    "platform:build": "npm run platform:optimize && npm run build",
+    "platform:test": "npm run platform:optimize && npm run test",
+    "platform:deploy": "npm run platform:optimize && npm run build && npm run deploy:vercel",
+    "platform:optimize": "node scripts/optimize-platforms.js",
+    "platform:detect": "node -e \"console.log('Platform detection available at /api/platform/detect')\"",
+    "platform:build": "npm run platform:optimize && npm run build",
+    "platform:test": "npm run platform:optimize && npm run test",
+    "platform:deploy": "npm run platform:optimize && npm run build && npm run deploy:vercel"
   },
   "type": "module",
   "version": "1.0.0"
