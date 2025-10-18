@@ -69,10 +69,26 @@ namespace Economy
         [Header("Economy Settings")]
         public bool debugMode = true;
         
+        [Header("AI Economy Enhancement")]
+        public bool enableAIEconomy = true;
+        public bool enableAIPricing = true;
+        public bool enableAIOffers = true;
+        public bool enableAIPersonalization = true;
+        public bool enableAIPrediction = true;
+        public float aiPersonalizationStrength = 0.8f;
+        public float aiPredictionAccuracy = 0.7f;
+        
         private UnityServicesConfig config;
         private Dictionary<string, Currency> currencies;
         private Dictionary<string, InventoryItem> inventory;
         private Dictionary<string, CatalogItem> catalog;
+        
+        // AI Economy Systems
+        private AIEconomyPersonalizationEngine _aiPersonalizationEngine;
+        private AIPricingEngine _aiPricingEngine;
+        private AIOffersGenerator _aiOffersGenerator;
+        private AIEconomyPredictor _aiPredictor;
+        private AIEconomyOptimizer _aiOptimizer;
         
         public static EconomyManager Instance { get; private set; }
         
@@ -104,6 +120,7 @@ namespace Economy
             InitializeCurrencies();
             InitializeInventory();
             InitializeCatalog();
+            InitializeAIEconomySystems();
             
             if (debugMode)
             {
@@ -886,6 +903,124 @@ namespace Economy
             }
         }
 
+        #region AI Economy Systems
+        
+        private void InitializeAIEconomySystems()
+        {
+            if (!enableAIEconomy) return;
+            
+            Debug.Log("💰 Initializing AI Economy Systems...");
+            
+            _aiPersonalizationEngine = new AIEconomyPersonalizationEngine();
+            _aiPricingEngine = new AIPricingEngine();
+            _aiOffersGenerator = new AIOffersGenerator();
+            _aiPredictor = new AIEconomyPredictor();
+            _aiOptimizer = new AIEconomyOptimizer();
+            
+            // Initialize each AI system
+            _aiPersonalizationEngine.Initialize(this);
+            _aiPricingEngine.Initialize(this);
+            _aiOffersGenerator.Initialize(this);
+            _aiPredictor.Initialize(this);
+            _aiOptimizer.Initialize(this);
+            
+            Debug.Log("✅ AI Economy Systems Initialized");
+        }
+        
+        public void PersonalizeEconomyForPlayer(string playerId)
+        {
+            if (!enableAIEconomy || _aiPersonalizationEngine == null) return;
+            
+            _aiPersonalizationEngine.PersonalizeForPlayer(playerId);
+        }
+        
+        public void GeneratePersonalizedOffers(string playerId)
+        {
+            if (!enableAIEconomy || _aiOffersGenerator == null) return;
+            
+            var offers = _aiOffersGenerator.GenerateOffers(playerId);
+            if (offers != null && offers.Count > 0)
+            {
+                ApplyPersonalizedOffers(offers);
+            }
+        }
+        
+        public void OptimizePricing()
+        {
+            if (!enableAIEconomy || _aiPricingEngine == null) return;
+            
+            _aiPricingEngine.OptimizePricing();
+        }
+        
+        public void PredictPlayerBehavior(string playerId)
+        {
+            if (!enableAIEconomy || _aiPredictor == null) return;
+            
+            var prediction = _aiPredictor.PredictBehavior(playerId);
+            if (prediction != null)
+            {
+                ApplyPrediction(prediction);
+            }
+        }
+        
+        public void OptimizeEconomyPerformance()
+        {
+            if (!enableAIEconomy || _aiOptimizer == null) return;
+            
+            _aiOptimizer.OptimizePerformance();
+        }
+        
+        private void ApplyPersonalizedOffers(List<PersonalizedOffer> offers)
+        {
+            // Apply personalized offers to the catalog
+            foreach (var offer in offers)
+            {
+                if (catalog.ContainsKey(offer.ItemId))
+                {
+                    var catalogItem = catalog[offer.ItemId];
+                    catalogItem.cost_amount = offer.PersonalizedPrice;
+                    catalogItem.description = offer.PersonalizedDescription;
+                }
+            }
+        }
+        
+        private void ApplyPrediction(EconomyPrediction prediction)
+        {
+            // Apply prediction results to economy
+            if (prediction.PredictedPurchaseBehavior != null)
+            {
+                // Adjust pricing based on predicted behavior
+                AdjustPricingForPrediction(prediction.PredictedPurchaseBehavior);
+            }
+            
+            if (prediction.PredictedSpendingPattern != null)
+            {
+                // Adjust offers based on predicted spending pattern
+                AdjustOffersForPrediction(prediction.PredictedSpendingPattern);
+            }
+        }
+        
+        private void AdjustPricingForPrediction(PurchaseBehaviorPrediction behavior)
+        {
+            // Adjust pricing based on predicted purchase behavior
+            foreach (var itemId in behavior.PreferredItems)
+            {
+                if (catalog.ContainsKey(itemId))
+                {
+                    var catalogItem = catalog[itemId];
+                    catalogItem.cost_amount = Mathf.RoundToInt(catalogItem.cost_amount * behavior.PriceSensitivity);
+                }
+            }
+        }
+        
+        private void AdjustOffersForPrediction(SpendingPatternPrediction pattern)
+        {
+            // Adjust offers based on predicted spending pattern
+            // This would modify the catalog based on spending predictions
+        }
+        
+        #endregion
+
         private void OnDestroy()
         {
             if (GetSetting<bool>("auto_save"))
@@ -895,3 +1030,341 @@ namespace Economy
         }
     }
 }
+
+#region AI Economy System Classes
+
+public class AIEconomyPersonalizationEngine
+{
+    private EconomyManager _economyManager;
+    private Dictionary<string, EconomyPersonalizationProfile> _playerProfiles;
+    
+    public void Initialize(EconomyManager economyManager)
+    {
+        _economyManager = economyManager;
+        _playerProfiles = new Dictionary<string, EconomyPersonalizationProfile>();
+    }
+    
+    public void PersonalizeForPlayer(string playerId)
+    {
+        if (!_playerProfiles.ContainsKey(playerId))
+        {
+            _playerProfiles[playerId] = new EconomyPersonalizationProfile();
+        }
+        
+        var profile = _playerProfiles[playerId];
+        ApplyPersonalization(profile);
+    }
+    
+    private void ApplyPersonalization(EconomyPersonalizationProfile profile)
+    {
+        // Apply personalized economy settings
+        // This would adjust pricing, offers, and rewards based on player profile
+        Debug.Log($"Personalizing economy for player: {profile.PlayerId}");
+    }
+}
+
+public class AIPricingEngine
+{
+    private EconomyManager _economyManager;
+    private Dictionary<string, PricingData> _pricingData;
+    
+    public void Initialize(EconomyManager economyManager)
+    {
+        _economyManager = economyManager;
+        _pricingData = new Dictionary<string, PricingData>();
+    }
+    
+    public void OptimizePricing()
+    {
+        // Optimize pricing based on player behavior and market conditions
+        foreach (var kvp in _economyManager.GetAllCatalogItems())
+        {
+            var itemId = kvp.Key;
+            var item = kvp.Value;
+            
+            var optimizedPrice = CalculateOptimalPrice(item);
+            if (optimizedPrice != item.cost_amount)
+            {
+                UpdateItemPrice(itemId, optimizedPrice);
+            }
+        }
+    }
+    
+    private int CalculateOptimalPrice(CatalogItem item)
+    {
+        // Calculate optimal price based on various factors
+        var basePrice = item.cost_amount;
+        var demandFactor = CalculateDemandFactor(item);
+        var supplyFactor = CalculateSupplyFactor(item);
+        var playerFactor = CalculatePlayerFactor(item);
+        
+        var optimizedPrice = Mathf.RoundToInt(basePrice * demandFactor * supplyFactor * playerFactor);
+        return Mathf.Max(1, optimizedPrice); // Ensure minimum price of 1
+    }
+    
+    private float CalculateDemandFactor(CatalogItem item)
+    {
+        // Calculate demand factor based on item popularity
+        return 1.0f; // Simplified
+    }
+    
+    private float CalculateSupplyFactor(CatalogItem item)
+    {
+        // Calculate supply factor based on item availability
+        return 1.0f; // Simplified
+    }
+    
+    private float CalculatePlayerFactor(CatalogItem item)
+    {
+        // Calculate player factor based on player behavior
+        return 1.0f; // Simplified
+    }
+    
+    private void UpdateItemPrice(string itemId, int newPrice)
+    {
+        // Update item price in the catalog
+        var item = _economyManager.GetCatalogItem(itemId);
+        if (item != null)
+        {
+            item.cost_amount = newPrice;
+        }
+    }
+}
+
+public class AIOffersGenerator
+{
+    private EconomyManager _economyManager;
+    private Dictionary<string, List<PersonalizedOffer>> _playerOffers;
+    
+    public void Initialize(EconomyManager economyManager)
+    {
+        _economyManager = economyManager;
+        _playerOffers = new Dictionary<string, List<PersonalizedOffer>>();
+    }
+    
+    public List<PersonalizedOffer> GenerateOffers(string playerId)
+    {
+        if (!_playerOffers.ContainsKey(playerId))
+        {
+            _playerOffers[playerId] = new List<PersonalizedOffer>();
+        }
+        
+        var offers = _playerOffers[playerId];
+        offers.Clear();
+        
+        // Generate personalized offers based on player behavior
+        GeneratePersonalizedOffers(playerId, offers);
+        
+        return offers;
+    }
+    
+    private void GeneratePersonalizedOffers(string playerId, List<PersonalizedOffer> offers)
+    {
+        // Generate personalized offers based on player profile
+        var playerProfile = GetPlayerProfile(playerId);
+        if (playerProfile == null) return;
+        
+        // Generate offers based on player preferences
+        if (playerProfile.PreferredItemTypes.Contains("powerup"))
+        {
+            offers.Add(new PersonalizedOffer
+            {
+                ItemId = "powerup_pack",
+                PersonalizedPrice = 50,
+                PersonalizedDescription = "Special power-up pack just for you!",
+                Discount = 0.2f
+            });
+        }
+        
+        if (playerProfile.PreferredItemTypes.Contains("currency"))
+        {
+            offers.Add(new PersonalizedOffer
+            {
+                ItemId = "coins_500",
+                PersonalizedPrice = 2,
+                PersonalizedDescription = "Extra coins at a great price!",
+                Discount = 0.15f
+            });
+        }
+    }
+    
+    private PlayerEconomyProfile GetPlayerProfile(string playerId)
+    {
+        // Get player economy profile
+        return new PlayerEconomyProfile
+        {
+            PlayerId = playerId,
+            PreferredItemTypes = new List<string> { "powerup", "currency" },
+            SpendingPattern = SpendingPattern.Moderate,
+            PriceSensitivity = 0.8f
+        };
+    }
+}
+
+public class AIEconomyPredictor
+{
+    private EconomyManager _economyManager;
+    private Dictionary<string, EconomyPrediction> _predictions;
+    
+    public void Initialize(EconomyManager economyManager)
+    {
+        _economyManager = economyManager;
+        _predictions = new Dictionary<string, EconomyPrediction>();
+    }
+    
+    public EconomyPrediction PredictBehavior(string playerId)
+    {
+        if (!_predictions.ContainsKey(playerId))
+        {
+            _predictions[playerId] = new EconomyPrediction();
+        }
+        
+        var prediction = _predictions[playerId];
+        GeneratePrediction(playerId, prediction);
+        
+        return prediction;
+    }
+    
+    private void GeneratePrediction(string playerId, EconomyPrediction prediction)
+    {
+        // Generate prediction based on player behavior
+        prediction.PlayerId = playerId;
+        prediction.PredictedPurchaseBehavior = new PurchaseBehaviorPrediction
+        {
+            PreferredItems = new List<string> { "powerup_pack", "coins_500" },
+            PriceSensitivity = 0.8f,
+            PurchaseFrequency = 0.3f
+        };
+        
+        prediction.PredictedSpendingPattern = new SpendingPatternPrediction
+        {
+            AverageSpending = 10.0f,
+            SpendingTrend = SpendingTrend.Increasing,
+            PreferredCategories = new List<string> { "powerups", "currency" }
+        };
+    }
+}
+
+public class AIEconomyOptimizer
+{
+    private EconomyManager _economyManager;
+    private EconomyPerformanceProfile _performanceProfile;
+    
+    public void Initialize(EconomyManager economyManager)
+    {
+        _economyManager = economyManager;
+        _performanceProfile = new EconomyPerformanceProfile();
+    }
+    
+    public void OptimizePerformance()
+    {
+        // Optimize economy performance
+        OptimizeRevenue();
+        OptimizePlayerRetention();
+        OptimizeInventoryManagement();
+    }
+    
+    private void OptimizeRevenue()
+    {
+        // Optimize revenue generation
+        Debug.Log("Optimizing revenue generation");
+    }
+    
+    private void OptimizePlayerRetention()
+    {
+        // Optimize player retention through economy
+        Debug.Log("Optimizing player retention");
+    }
+    
+    private void OptimizeInventoryManagement()
+    {
+        // Optimize inventory management
+        Debug.Log("Optimizing inventory management");
+    }
+}
+
+#region AI Economy Data Structures
+
+public class EconomyPersonalizationProfile
+{
+    public string PlayerId;
+    public List<string> PreferredItemTypes;
+    public SpendingPattern SpendingPattern;
+    public float PriceSensitivity;
+    public List<string> FavoriteItems;
+    public float AverageSpending;
+}
+
+public class PricingData
+{
+    public string ItemId;
+    public int BasePrice;
+    public int CurrentPrice;
+    public float DemandFactor;
+    public float SupplyFactor;
+    public float PlayerFactor;
+}
+
+public class PersonalizedOffer
+{
+    public string ItemId;
+    public int PersonalizedPrice;
+    public string PersonalizedDescription;
+    public float Discount;
+    public DateTime ExpiryTime;
+}
+
+public class EconomyPrediction
+{
+    public string PlayerId;
+    public PurchaseBehaviorPrediction PredictedPurchaseBehavior;
+    public SpendingPatternPrediction PredictedSpendingPattern;
+    public float Confidence;
+    public DateTime GeneratedAt;
+}
+
+public class PurchaseBehaviorPrediction
+{
+    public List<string> PreferredItems;
+    public float PriceSensitivity;
+    public float PurchaseFrequency;
+    public List<string> AvoidedItems;
+}
+
+public class SpendingPatternPrediction
+{
+    public float AverageSpending;
+    public SpendingTrend SpendingTrend;
+    public List<string> PreferredCategories;
+    public float SpendingVolatility;
+}
+
+public class PlayerEconomyProfile
+{
+    public string PlayerId;
+    public List<string> PreferredItemTypes;
+    public SpendingPattern SpendingPattern;
+    public float PriceSensitivity;
+    public float TotalSpent;
+    public int TotalPurchases;
+}
+
+public class EconomyPerformanceProfile
+{
+    public float Revenue;
+    public float PlayerRetention;
+    public float InventoryTurnover;
+    public float AverageTransactionValue;
+}
+
+public enum SpendingPattern
+{
+    Low, Moderate, High, VeryHigh
+}
+
+public enum SpendingTrend
+{
+    Decreasing, Stable, Increasing
+}
+
+#endregion

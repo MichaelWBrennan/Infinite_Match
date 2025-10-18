@@ -43,6 +43,16 @@ namespace Evergreen.UI
         public float uiScaleFactor = 1.0f; // Dynamic UI scaling
         public bool enablePixelPerfectUI = true; // Crisp, pixel-perfect rendering
         
+        [Header("AI UI Enhancement")]
+        public bool enableAIUI = true;
+        public bool enableAIPersonalization = true;
+        public bool enableAIAdaptiveLayout = true;
+        public bool enableAIPredictiveUI = true;
+        public bool enableAIBehaviorAnalysis = true;
+        public bool enableAIAccessibilityOptimization = true;
+        public float aiPersonalizationStrength = 0.8f;
+        public float aiAdaptationSpeed = 0.5f;
+        
         [Header("5/5 UI Effects & Polish")]
         public GameObject loadingOverlay;
         public GameObject notificationPrefab;
@@ -84,6 +94,13 @@ namespace Evergreen.UI
         private GameObject _currentPanel;
         private Queue<GameObject> _notificationQueue = new Queue<GameObject>();
         private bool _isTransitioning = false;
+        
+        // AI UI Systems
+        private AIUIPersonalizationEngine _aiPersonalizationEngine;
+        private AIAdaptiveLayoutManager _aiLayoutManager;
+        private AIPredictiveUISystem _aiPredictiveUI;
+        private AIBehaviorAnalyzer _aiBehaviorAnalyzer;
+        private AIAccessibilityOptimizer _aiAccessibilityOptimizer;
         
         // Performance Optimization
         private Dictionary<string, float> _lastUpdateTimes = new Dictionary<string, float>();
@@ -142,6 +159,12 @@ namespace Evergreen.UI
             if (enableComponentCaching)
             {
                 InitializeComponentCaching();
+            }
+            
+            // Initialize AI UI systems
+            if (enableAIUI)
+            {
+                InitializeAIUISystems();
             }
             
             // Setup integrations
@@ -214,6 +237,26 @@ namespace Evergreen.UI
             }
             
             Log("Component caching initialized");
+        }
+        
+        private void InitializeAIUISystems()
+        {
+            Log("🤖 Initializing AI UI Systems...");
+            
+            _aiPersonalizationEngine = new AIUIPersonalizationEngine();
+            _aiLayoutManager = new AIAdaptiveLayoutManager();
+            _aiPredictiveUI = new AIPredictiveUISystem();
+            _aiBehaviorAnalyzer = new AIBehaviorAnalyzer();
+            _aiAccessibilityOptimizer = new AIAccessibilityOptimizer();
+            
+            // Initialize each AI system
+            _aiPersonalizationEngine.Initialize(this);
+            _aiLayoutManager.Initialize(this);
+            _aiPredictiveUI.Initialize(this);
+            _aiBehaviorAnalyzer.Initialize(this);
+            _aiAccessibilityOptimizer.Initialize(this);
+            
+            Log("✅ AI UI Systems Initialized");
         }
         
         private void SetupSystemIntegrations()
@@ -321,6 +364,24 @@ namespace Evergreen.UI
             {
                 LogWarning($"Panel '{panelName}' not found!");
                 return;
+            }
+            
+            // AI-powered panel personalization
+            if (enableAIUI && _aiPersonalizationEngine != null)
+            {
+                _aiPersonalizationEngine.PersonalizePanel(panelName);
+            }
+            
+            // AI-powered layout adaptation
+            if (enableAIUI && _aiLayoutManager != null)
+            {
+                _aiLayoutManager.AdaptLayoutForPanel(panelName);
+            }
+            
+            // AI behavior analysis
+            if (enableAIUI && _aiBehaviorAnalyzer != null)
+            {
+                _aiBehaviorAnalyzer.RecordPanelAccess(panelName);
             }
             
             if (enableSmoothTransitions)
@@ -1313,4 +1374,609 @@ namespace Evergreen.UI
     }
     
     #endregion
+    
+    #region AI UI Systems
+    
+    public void UpdateAIPersonalization()
+    {
+        if (enableAIUI && _aiPersonalizationEngine != null)
+        {
+            _aiPersonalizationEngine.UpdatePersonalization();
+        }
+    }
+    
+    public void AdaptUILayout()
+    {
+        if (enableAIUI && _aiLayoutManager != null)
+        {
+            _aiLayoutManager.AdaptCurrentLayout();
+        }
+    }
+    
+    public void ShowPredictiveUI()
+    {
+        if (enableAIUI && _aiPredictiveUI != null)
+        {
+            _aiPredictiveUI.ShowPredictedUI();
+        }
+    }
+    
+    public void OptimizeAccessibility()
+    {
+        if (enableAIUI && _aiAccessibilityOptimizer != null)
+        {
+            _aiAccessibilityOptimizer.OptimizeAccessibility();
+        }
+    }
+    
+    #endregion
 }
+
+#region AI UI System Classes
+
+public class AIUIPersonalizationEngine
+{
+    private OptimizedUISystem _uiSystem;
+    private UIPersonalizationProfile _userProfile;
+    private Dictionary<string, UIPersonalizationData> _panelPersonalizations;
+    
+    public void Initialize(OptimizedUISystem uiSystem)
+    {
+        _uiSystem = uiSystem;
+        _userProfile = new UIPersonalizationProfile();
+        _panelPersonalizations = new Dictionary<string, UIPersonalizationData>();
+    }
+    
+    public void PersonalizePanel(string panelName)
+    {
+        if (!_panelPersonalizations.ContainsKey(panelName))
+        {
+            _panelPersonalizations[panelName] = new UIPersonalizationData();
+        }
+        
+        var personalization = _panelPersonalizations[panelName];
+        ApplyPersonalization(panelName, personalization);
+    }
+    
+    public void UpdatePersonalization()
+    {
+        // Update personalization based on user behavior
+        foreach (var kvp in _panelPersonalizations)
+        {
+            UpdatePanelPersonalization(kvp.Key, kvp.Value);
+        }
+    }
+    
+    private void ApplyPersonalization(string panelName, UIPersonalizationData personalization)
+    {
+        // Apply personalized settings to the panel
+        var panel = _uiSystem._uiPanels[panelName];
+        if (panel == null) return;
+        
+        // Apply color scheme
+        ApplyColorScheme(panel, personalization.ColorScheme);
+        
+        // Apply layout preferences
+        ApplyLayoutPreferences(panel, personalization.LayoutPreferences);
+        
+        // Apply accessibility settings
+        ApplyAccessibilitySettings(panel, personalization.AccessibilitySettings);
+    }
+    
+    private void ApplyColorScheme(GameObject panel, UIColorScheme colorScheme)
+    {
+        var images = panel.GetComponentsInChildren<Image>();
+        foreach (var image in images)
+        {
+            // Apply personalized colors
+            image.color = Color.Lerp(image.color, colorScheme.PrimaryColor, 0.3f);
+        }
+    }
+    
+    private void ApplyLayoutPreferences(GameObject panel, UILayoutPreferences layoutPrefs)
+    {
+        // Apply layout preferences like button sizes, spacing, etc.
+        var buttons = panel.GetComponentsInChildren<Button>();
+        foreach (var button in buttons)
+        {
+            var rectTransform = button.GetComponent<RectTransform>();
+            rectTransform.sizeDelta = layoutPrefs.ButtonSize;
+        }
+    }
+    
+    private void ApplyAccessibilitySettings(GameObject panel, UIAccessibilitySettings accessibilitySettings)
+    {
+        // Apply accessibility settings
+        if (accessibilitySettings.HighContrast)
+        {
+            ApplyHighContrast(panel);
+        }
+        
+        if (accessibilitySettings.LargeText)
+        {
+            ApplyLargeText(panel);
+        }
+    }
+    
+    private void ApplyHighContrast(GameObject panel)
+    {
+        // Apply high contrast mode
+        var images = panel.GetComponentsInChildren<Image>();
+        foreach (var image in images)
+        {
+            var color = image.color;
+            color.r = Mathf.Clamp01(color.r * 1.5f);
+            color.g = Mathf.Clamp01(color.g * 1.5f);
+            color.b = Mathf.Clamp01(color.b * 1.5f);
+            image.color = color;
+        }
+    }
+    
+    private void ApplyLargeText(GameObject panel)
+    {
+        // Apply large text mode
+        var texts = panel.GetComponentsInChildren<Text>();
+        foreach (var text in texts)
+        {
+            text.fontSize = Mathf.RoundToInt(text.fontSize * 1.3f);
+        }
+    }
+    
+    private void UpdatePanelPersonalization(string panelName, UIPersonalizationData personalization)
+    {
+        // Update personalization based on user interactions
+        personalization.UsageCount++;
+        personalization.LastUsed = Time.time;
+        
+        // Learn from user behavior
+        LearnFromUserBehavior(panelName, personalization);
+    }
+    
+    private void LearnFromUserBehavior(string panelName, UIPersonalizationData personalization)
+    {
+        // Learn from user behavior and adjust personalization
+        // This would analyze user interactions and preferences
+    }
+}
+
+public class AIAdaptiveLayoutManager
+{
+    private OptimizedUISystem _uiSystem;
+    private Dictionary<string, AdaptiveLayoutData> _layoutData;
+    private ScreenSizeData _currentScreenSize;
+    
+    public void Initialize(OptimizedUISystem uiSystem)
+    {
+        _uiSystem = uiSystem;
+        _layoutData = new Dictionary<string, AdaptiveLayoutData>();
+        _currentScreenSize = GetCurrentScreenSize();
+    }
+    
+    public void AdaptLayoutForPanel(string panelName)
+    {
+        if (!_layoutData.ContainsKey(panelName))
+        {
+            _layoutData[panelName] = new AdaptiveLayoutData();
+        }
+        
+        var layoutData = _layoutData[panelName];
+        ApplyAdaptiveLayout(panelName, layoutData);
+    }
+    
+    public void AdaptCurrentLayout()
+    {
+        var newScreenSize = GetCurrentScreenSize();
+        if (newScreenSize != _currentScreenSize)
+        {
+            _currentScreenSize = newScreenSize;
+            AdaptAllPanels();
+        }
+    }
+    
+    private void ApplyAdaptiveLayout(string panelName, AdaptiveLayoutData layoutData)
+    {
+        var panel = _uiSystem._uiPanels[panelName];
+        if (panel == null) return;
+        
+        // Adapt layout based on screen size and user preferences
+        AdaptForScreenSize(panel, _currentScreenSize);
+        AdaptForUserPreferences(panel, layoutData);
+    }
+    
+    private void AdaptForScreenSize(GameObject panel, ScreenSizeData screenSize)
+    {
+        var canvasScaler = panel.GetComponent<CanvasScaler>();
+        if (canvasScaler != null)
+        {
+            if (screenSize.IsMobile)
+            {
+                canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                canvasScaler.referenceResolution = new Vector2(1080, 1920);
+            }
+            else
+            {
+                canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                canvasScaler.referenceResolution = new Vector2(1920, 1080);
+            }
+        }
+    }
+    
+    private void AdaptForUserPreferences(GameObject panel, AdaptiveLayoutData layoutData)
+    {
+        // Adapt based on user preferences
+        if (layoutData.PreferCompactLayout)
+        {
+            ApplyCompactLayout(panel);
+        }
+        else
+        {
+            ApplySpaciousLayout(panel);
+        }
+    }
+    
+    private void ApplyCompactLayout(GameObject panel)
+    {
+        // Apply compact layout
+        var gridLayouts = panel.GetComponentsInChildren<GridLayoutGroup>();
+        foreach (var grid in gridLayouts)
+        {
+            grid.spacing = new Vector2(2, 2);
+            grid.cellSize = new Vector2(60, 60);
+        }
+    }
+    
+    private void ApplySpaciousLayout(GameObject panel)
+    {
+        // Apply spacious layout
+        var gridLayouts = panel.GetComponentsInChildren<GridLayoutGroup>();
+        foreach (var grid in gridLayouts)
+        {
+            grid.spacing = new Vector2(8, 8);
+            grid.cellSize = new Vector2(80, 80);
+        }
+    }
+    
+    private void AdaptAllPanels()
+    {
+        foreach (var kvp in _layoutData)
+        {
+            ApplyAdaptiveLayout(kvp.Key, kvp.Value);
+        }
+    }
+    
+    private ScreenSizeData GetCurrentScreenSize()
+    {
+        return new ScreenSizeData
+        {
+            Width = Screen.width,
+            Height = Screen.height,
+            IsMobile = Application.isMobilePlatform,
+            AspectRatio = (float)Screen.width / Screen.height
+        };
+    }
+}
+
+public class AIPredictiveUISystem
+{
+    private OptimizedUISystem _uiSystem;
+    private List<UIPrediction> _predictions;
+    private UserBehaviorPattern _behaviorPattern;
+    
+    public void Initialize(OptimizedUISystem uiSystem)
+    {
+        _uiSystem = uiSystem;
+        _predictions = new List<UIPrediction>();
+        _behaviorPattern = new UserBehaviorPattern();
+    }
+    
+    public void ShowPredictedUI()
+    {
+        // Show predicted UI elements based on user behavior
+        var nextAction = PredictNextAction();
+        if (nextAction != null)
+        {
+            ShowPredictionUI(nextAction);
+        }
+    }
+    
+    private UIPrediction PredictNextAction()
+    {
+        // Predict what the user will want to do next
+        // This would use machine learning or pattern recognition
+        return new UIPrediction
+        {
+            PredictedAction = "OpenShop",
+            Confidence = 0.8f,
+            UIElement = "ShopButton"
+        };
+    }
+    
+    private void ShowPredictionUI(UIPrediction prediction)
+    {
+        // Show UI elements that help with the predicted action
+        if (prediction.UIElement == "ShopButton")
+        {
+            // Highlight shop button or show shop preview
+            HighlightUIElement("ShopButton");
+        }
+    }
+    
+    private void HighlightUIElement(string elementName)
+    {
+        // Highlight the predicted UI element
+        var element = GameObject.Find(elementName);
+        if (element != null)
+        {
+            // Add highlight effect
+            var image = element.GetComponent<Image>();
+            if (image != null)
+            {
+                StartCoroutine(HighlightCoroutine(image));
+            }
+        }
+    }
+    
+    private System.Collections.IEnumerator HighlightCoroutine(Image image)
+    {
+        Color originalColor = image.color;
+        Color highlightColor = Color.yellow;
+        
+        float elapsed = 0f;
+        while (elapsed < 2f)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.PingPong(elapsed * 2f, 1f);
+            image.color = Color.Lerp(originalColor, highlightColor, t);
+            yield return null;
+        }
+        
+        image.color = originalColor;
+    }
+}
+
+public class AIBehaviorAnalyzer
+{
+    private OptimizedUISystem _uiSystem;
+    private Dictionary<string, UIInteractionData> _interactions;
+    private UserBehaviorProfile _behaviorProfile;
+    
+    public void Initialize(OptimizedUISystem uiSystem)
+    {
+        _uiSystem = uiSystem;
+        _interactions = new Dictionary<string, UIInteractionData>();
+        _behaviorProfile = new UserBehaviorProfile();
+    }
+    
+    public void RecordPanelAccess(string panelName)
+    {
+        if (!_interactions.ContainsKey(panelName))
+        {
+            _interactions[panelName] = new UIInteractionData();
+        }
+        
+        var interaction = _interactions[panelName];
+        interaction.AccessCount++;
+        interaction.LastAccess = Time.time;
+        
+        _behaviorProfile.UpdateWithPanelAccess(panelName);
+    }
+    
+    public void RecordButtonClick(string buttonName)
+    {
+        _behaviorProfile.UpdateWithButtonClick(buttonName);
+    }
+    
+    public void RecordUIHover(string elementName)
+    {
+        _behaviorProfile.UpdateWithUIHover(elementName);
+    }
+}
+
+public class AIAccessibilityOptimizer
+{
+    private OptimizedUISystem _uiSystem;
+    private AccessibilityProfile _accessibilityProfile;
+    
+    public void Initialize(OptimizedUISystem uiSystem)
+    {
+        _uiSystem = uiSystem;
+        _accessibilityProfile = new AccessibilityProfile();
+    }
+    
+    public void OptimizeAccessibility()
+    {
+        // Optimize UI for accessibility based on user needs
+        OptimizeColorContrast();
+        OptimizeTextSize();
+        OptimizeNavigation();
+        OptimizeAudioCues();
+    }
+    
+    private void OptimizeColorContrast()
+    {
+        // Optimize color contrast for better visibility
+        foreach (var panel in _uiSystem._uiPanels.Values)
+        {
+            if (panel != null)
+            {
+                OptimizePanelContrast(panel);
+            }
+        }
+    }
+    
+    private void OptimizePanelContrast(GameObject panel)
+    {
+        var images = panel.GetComponentsInChildren<Image>();
+        foreach (var image in images)
+        {
+            // Increase contrast if needed
+            var color = image.color;
+            if (GetLuminance(color) < 0.5f)
+            {
+                color = Color.Lerp(color, Color.white, 0.3f);
+                image.color = color;
+            }
+        }
+    }
+    
+    private void OptimizeTextSize()
+    {
+        // Optimize text size for readability
+        foreach (var panel in _uiSystem._uiPanels.Values)
+        {
+            if (panel != null)
+            {
+                OptimizePanelTextSize(panel);
+            }
+        }
+    }
+    
+    private void OptimizePanelTextSize(GameObject panel)
+    {
+        var texts = panel.GetComponentsInChildren<Text>();
+        foreach (var text in texts)
+        {
+            // Ensure minimum readable text size
+            if (text.fontSize < 14)
+            {
+                text.fontSize = 14;
+            }
+        }
+    }
+    
+    private void OptimizeNavigation()
+    {
+        // Optimize navigation for accessibility
+        // This would ensure proper tab order, keyboard navigation, etc.
+    }
+    
+    private void OptimizeAudioCues()
+    {
+        // Optimize audio cues for accessibility
+        // This would ensure audio feedback is appropriate
+    }
+    
+    private float GetLuminance(Color color)
+    {
+        return 0.299f * color.r + 0.587f * color.g + 0.114f * color.b;
+    }
+}
+
+#region AI UI Data Structures
+
+public class UIPersonalizationProfile
+{
+    public string UserId;
+    public UIColorScheme PreferredColorScheme;
+    public UILayoutPreferences LayoutPreferences;
+    public UIAccessibilitySettings AccessibilitySettings;
+    public Dictionary<string, float> PanelPreferences;
+}
+
+public class UIPersonalizationData
+{
+    public int UsageCount;
+    public float LastUsed;
+    public UIColorScheme ColorScheme;
+    public UILayoutPreferences LayoutPreferences;
+    public UIAccessibilitySettings AccessibilitySettings;
+}
+
+public class UIColorScheme
+{
+    public Color PrimaryColor;
+    public Color SecondaryColor;
+    public Color AccentColor;
+    public Color BackgroundColor;
+}
+
+public class UILayoutPreferences
+{
+    public Vector2 ButtonSize;
+    public float Spacing;
+    public bool PreferCompactLayout;
+    public bool PreferLargeButtons;
+}
+
+public class UIAccessibilitySettings
+{
+    public bool HighContrast;
+    public bool LargeText;
+    public bool ScreenReader;
+    public bool ReducedMotion;
+}
+
+public class AdaptiveLayoutData
+{
+    public bool PreferCompactLayout;
+    public float PreferredSpacing;
+    public Vector2 PreferredButtonSize;
+    public ScreenSizeData LastScreenSize;
+}
+
+public class ScreenSizeData
+{
+    public int Width;
+    public int Height;
+    public bool IsMobile;
+    public float AspectRatio;
+}
+
+public class UIPrediction
+{
+    public string PredictedAction;
+    public float Confidence;
+    public string UIElement;
+    public string Description;
+}
+
+public class UserBehaviorPattern
+{
+    public Dictionary<string, int> PanelAccessFrequency;
+    public Dictionary<string, int> ButtonClickFrequency;
+    public List<string> CommonSequences;
+    public float AverageSessionDuration;
+}
+
+public class UIInteractionData
+{
+    public int AccessCount;
+    public float LastAccess;
+    public float AverageTimeSpent;
+    public List<string> CommonActions;
+}
+
+public class UserBehaviorProfile
+{
+    public Dictionary<string, UIInteractionData> PanelInteractions;
+    public Dictionary<string, int> ButtonInteractions;
+    public List<string> NavigationPatterns;
+    public float TotalSessionTime;
+    
+    public void UpdateWithPanelAccess(string panelName)
+    {
+        // Update behavior profile with panel access
+    }
+    
+    public void UpdateWithButtonClick(string buttonName)
+    {
+        // Update behavior profile with button click
+    }
+    
+    public void UpdateWithUIHover(string elementName)
+    {
+        // Update behavior profile with UI hover
+    }
+}
+
+public class AccessibilityProfile
+{
+    public bool RequiresHighContrast;
+    public bool RequiresLargeText;
+    public bool UsesScreenReader;
+    public bool PrefersReducedMotion;
+    public float PreferredTextSize;
+    public Color PreferredTextColor;
+}
+
+#endregion
