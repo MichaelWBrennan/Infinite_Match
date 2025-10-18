@@ -20,6 +20,14 @@ namespace Evergreen.Game
         public float difficultyProgression = 0.1f;
         public bool enableAIAdjustment = true;
         public bool enablePlayerFeedback = true;
+        
+        [Header("AI Enhancement Settings")]
+        public bool enableAIContentVariety = true;
+        public bool enableAIPersonalization = true;
+        public bool enableAIQualityOptimization = true;
+        public bool enableAIPerformancePrediction = true;
+        public float aiPersonalizationStrength = 0.8f;
+        public float aiQualityThreshold = 0.7f;
 
         [Header("Level Templates")]
         public LevelTemplate[] levelTemplates;
@@ -36,6 +44,10 @@ namespace Evergreen.Game
         private LevelAnalyzer _levelAnalyzer;
         private DifficultyCalculator _difficultyCalculator;
         private VarietyEngine _varietyEngine;
+        private AIContentVarietyEngine _aiContentVarietyEngine;
+        private AIPersonalizationEngine _aiPersonalizationEngine;
+        private AIQualityOptimizer _aiQualityOptimizer;
+        private AIPerformancePredictor _aiPerformancePredictor;
 
         public class GeneratedLevel
         {
@@ -164,9 +176,13 @@ namespace Evergreen.Game
             _levelAnalyzer = new LevelAnalyzer();
             _difficultyCalculator = new DifficultyCalculator();
             _varietyEngine = new VarietyEngine();
+            _aiContentVarietyEngine = new AIContentVarietyEngine();
+            _aiPersonalizationEngine = new AIPersonalizationEngine();
+            _aiQualityOptimizer = new AIQualityOptimizer();
+            _aiPerformancePredictor = new AIPerformancePredictor();
 
             LoadTemplates();
-            Logger.Info("Procedural Level Generator initialized", "LevelGenerator");
+            Logger.Info("AI-Enhanced Procedural Level Generator initialized", "LevelGenerator");
         }
 
         private void LoadTemplates()
@@ -269,6 +285,24 @@ namespace Evergreen.Game
             if (enableAIAdjustment && !string.IsNullOrEmpty(playerId))
             {
                 ApplyAIAdjustments(level, playerId);
+            }
+
+            // Apply AI content variety enhancement
+            if (enableAIContentVariety && !string.IsNullOrEmpty(playerId))
+            {
+                ApplyAIContentVariety(level, playerId);
+            }
+
+            // Apply AI personalization
+            if (enableAIPersonalization && !string.IsNullOrEmpty(playerId))
+            {
+                ApplyAIPersonalization(level, playerId);
+            }
+
+            // Apply AI quality optimization
+            if (enableAIQualityOptimization)
+            {
+                ApplyAIQualityOptimization(level);
             }
 
             // Validate and refine level
@@ -454,6 +488,143 @@ namespace Evergreen.Game
                 availablePositions.Remove(position);
             }
         }
+
+        private void ApplyAIContentVariety(GeneratedLevel level, string playerId)
+        {
+            if (_aiContentVarietyEngine == null) return;
+
+            var varietyEnhancement = _aiContentVarietyEngine.GenerateContentVariety(level, playerId);
+            
+            // Apply AI-generated variety enhancements
+            if (varietyEnhancement.ObstacleVariety > 0)
+            {
+                AddAIObstacleVariety(level, varietyEnhancement.ObstacleVariety);
+            }
+            
+            if (varietyEnhancement.SpecialPieceVariety > 0)
+            {
+                AddAISpecialPieceVariety(level, varietyEnhancement.SpecialPieceVariety);
+            }
+            
+            if (varietyEnhancement.GoalVariety > 0)
+            {
+                AddAIGoalVariety(level, varietyEnhancement.GoalVariety);
+            }
+        }
+
+        private void ApplyAIPersonalization(GeneratedLevel level, string playerId)
+        {
+            if (_aiPersonalizationEngine == null) return;
+
+            var personalizationData = _aiPersonalizationEngine.GeneratePersonalizationData(level, playerId);
+            
+            // Apply AI personalization
+            level.difficulty = Mathf.Lerp(level.difficulty, personalizationData.OptimalDifficulty, aiPersonalizationStrength);
+            level.numColors = Mathf.RoundToInt(Mathf.Lerp(level.numColors, personalizationData.OptimalColors, aiPersonalizationStrength));
+            level.moveLimit = Mathf.RoundToInt(Mathf.Lerp(level.moveLimit, personalizationData.OptimalMoves, aiPersonalizationStrength));
+        }
+
+        private void ApplyAIQualityOptimization(GeneratedLevel level)
+        {
+            if (_aiQualityOptimizer == null) return;
+
+            var qualityScore = _aiQualityOptimizer.CalculateQualityScore(level);
+            
+            if (qualityScore < aiQualityThreshold)
+            {
+                var optimizations = _aiQualityOptimizer.GenerateOptimizations(level, qualityScore);
+                ApplyQualityOptimizations(level, optimizations);
+            }
+        }
+
+        private void AddAIObstacleVariety(GeneratedLevel level, float varietyStrength)
+        {
+            var additionalObstacles = Mathf.RoundToInt(varietyStrength * 3);
+            var availablePositions = GetAvailablePositions(level);
+            
+            for (int i = 0; i < additionalObstacles && availablePositions.Count > 0; i++)
+            {
+                var position = availablePositions[UnityEngine.Random.Range(0, availablePositions.Count)];
+                var obstacleType = _aiContentVarietyEngine.SelectOptimalObstacleType(level, position);
+                
+                level.obstacles[position] = obstacleType;
+                availablePositions.Remove(position);
+            }
+        }
+
+        private void AddAISpecialPieceVariety(GeneratedLevel level, float varietyStrength)
+        {
+            var additionalSpecialPieces = Mathf.RoundToInt(varietyStrength * 2);
+            var availablePositions = GetAvailablePositions(level);
+            
+            for (int i = 0; i < additionalSpecialPieces && availablePositions.Count > 0; i++)
+            {
+                var position = availablePositions[UnityEngine.Random.Range(0, availablePositions.Count)];
+                var specialPieceType = _aiContentVarietyEngine.SelectOptimalSpecialPieceType(level, position);
+                
+                level.specialPieces[position] = specialPieceType;
+                availablePositions.Remove(position);
+            }
+        }
+
+        private void AddAIGoalVariety(GeneratedLevel level, float varietyStrength)
+        {
+            var additionalGoals = Mathf.RoundToInt(varietyStrength * 2);
+            var goalTypes = GetAvailableGoalTypes(level);
+            
+            for (int i = 0; i < additionalGoals; i++)
+            {
+                var goalType = _aiContentVarietyEngine.SelectOptimalGoalType(level, goalTypes);
+                var goal = CreateGoal(goalType, level);
+                level.goals.Add(goal);
+            }
+        }
+
+        private void ApplyQualityOptimizations(GeneratedLevel level, List<QualityOptimization> optimizations)
+        {
+            foreach (var optimization in optimizations)
+            {
+                switch (optimization.Type)
+                {
+                    case "difficulty_balance":
+                        level.moveLimit = Mathf.RoundToInt(level.moveLimit * optimization.Value);
+                        break;
+                    case "obstacle_distribution":
+                        OptimizeObstacleDistribution(level, optimization.Value);
+                        break;
+                    case "goal_balance":
+                        OptimizeGoalBalance(level, optimization.Value);
+                        break;
+                }
+            }
+        }
+
+        private void OptimizeObstacleDistribution(GeneratedLevel level, float optimizationValue)
+        {
+            // AI-driven obstacle distribution optimization
+            var obstaclesToRemove = Mathf.RoundToInt(level.obstacles.Count * (1 - optimizationValue));
+            var obstacleKeys = new List<Vector2Int>(level.obstacles.Keys);
+            
+            for (int i = 0; i < obstaclesToRemove && obstacleKeys.Count > 0; i++)
+            {
+                var randomIndex = UnityEngine.Random.Range(0, obstacleKeys.Count);
+                level.obstacles.Remove(obstacleKeys[randomIndex]);
+                obstacleKeys.RemoveAt(randomIndex);
+            }
+        }
+
+        private void OptimizeGoalBalance(GeneratedLevel level, float optimizationValue)
+        {
+            // AI-driven goal balance optimization
+            if (level.goals.Count > 0)
+            {
+                var goalsToKeep = Mathf.RoundToInt(level.goals.Count * optimizationValue);
+                if (goalsToKeep < level.goals.Count)
+                {
+                    level.goals = level.goals.Take(goalsToKeep).ToList();
+                }
+            }
+        }
         #endregion
 
         #region Helper Methods
@@ -634,8 +805,111 @@ namespace Evergreen.Game
                 {"average_quality", _generatedLevels.Values.Average(l => l.quality)},
                 {"enable_procedural_generation", enableProceduralGeneration},
                 {"enable_ai_adjustment", enableAIAdjustment},
+                {"enable_ai_content_variety", enableAIContentVariety},
+                {"enable_ai_personalization", enableAIPersonalization},
+                {"enable_ai_quality_optimization", enableAIQualityOptimization},
+                {"enable_ai_performance_prediction", enableAIPerformancePrediction},
                 {"max_levels", maxLevels}
             };
+        }
+
+        // AI Content Optimization Methods
+        public void OptimizeLevelContent(GeneratedLevel level, string playerId = null)
+        {
+            if (_aiQualityOptimizer == null) return;
+
+            var qualityScore = _aiQualityOptimizer.CalculateQualityScore(level);
+            if (qualityScore < aiQualityThreshold)
+            {
+                var optimizations = _aiQualityOptimizer.GenerateOptimizations(level, qualityScore);
+                ApplyQualityOptimizations(level, optimizations);
+                
+                Debug.Log($"[ProceduralLevelGenerator] Applied AI quality optimizations to level {level.levelId}, " +
+                         $"quality improved from {qualityScore:F2} to {_aiQualityOptimizer.CalculateQualityScore(level):F2}");
+            }
+        }
+
+        public PerformancePrediction PredictLevelPerformance(GeneratedLevel level, string playerId = null)
+        {
+            if (_aiPerformancePredictor == null) return null;
+
+            return _aiPerformancePredictor.PredictLevelPerformance(level, playerId);
+        }
+
+        public void UpdateLevelPerformance(GeneratedLevel level, string playerId, LevelPerformanceData performance)
+        {
+            // Update AI systems with performance data
+            if (_aiPersonalizationEngine != null)
+            {
+                // This would integrate with the AIPersonalizationSystem
+                var personalizationSystem = AIPersonalizationSystem.Instance;
+                if (personalizationSystem != null)
+                {
+                    personalizationSystem.UpdateLevelPerformance(playerId, level.levelId, performance);
+                }
+            }
+
+            // Update level quality based on performance
+            if (_aiQualityOptimizer != null)
+            {
+                var qualityAdjustment = CalculateQualityAdjustment(performance);
+                level.quality = Mathf.Clamp01(level.quality + qualityAdjustment);
+            }
+
+            Debug.Log($"[ProceduralLevelGenerator] Updated performance data for level {level.levelId}, " +
+                     $"player {playerId}, completed: {performance.Completed}");
+        }
+
+        private float CalculateQualityAdjustment(LevelPerformanceData performance)
+        {
+            var adjustment = 0f;
+            
+            if (performance.Completed)
+            {
+                // Positive adjustment for completion
+                adjustment += 0.1f;
+                
+                // Additional adjustment for good performance
+                if (performance.Score > 1000)
+                    adjustment += 0.05f;
+                
+                if (performance.MovesUsed < performance.MoveLimit * 0.5f)
+                    adjustment += 0.05f;
+            }
+            else
+            {
+                // Negative adjustment for failure
+                adjustment -= 0.05f;
+            }
+            
+            return adjustment;
+        }
+
+        public List<GeneratedLevel> GenerateLevelSequence(int startLevel, int count, string playerId = null)
+        {
+            var levels = new List<GeneratedLevel>();
+            
+            for (int i = 0; i < count; i++)
+            {
+                var levelId = startLevel + i;
+                var level = GenerateLevel(levelId, playerId);
+                
+                // Apply AI optimizations
+                OptimizeLevelContent(level, playerId);
+                
+                // Predict performance
+                var prediction = PredictLevelPerformance(level, playerId);
+                if (prediction != null)
+                {
+                    Debug.Log($"[ProceduralLevelGenerator] Generated level {levelId} with predicted " +
+                             $"completion rate: {prediction.PredictedCompletionRate:F2}, " +
+                             $"engagement: {prediction.PredictedEngagement:F2}");
+                }
+                
+                levels.Add(level);
+            }
+            
+            return levels;
         }
         #endregion
     }
@@ -742,5 +1016,365 @@ namespace Evergreen.Game
 
             return Mathf.Clamp01(variety);
         }
+    }
+
+    /// <summary>
+    /// AI Content Variety Engine for enhanced level variety
+    /// </summary>
+    public class AIContentVarietyEngine
+    {
+        public ContentVarietyEnhancement GenerateContentVariety(GeneratedLevel level, string playerId)
+        {
+            return new ContentVarietyEnhancement
+            {
+                ObstacleVariety = CalculateObstacleVariety(level),
+                SpecialPieceVariety = CalculateSpecialPieceVariety(level),
+                GoalVariety = CalculateGoalVariety(level)
+            };
+        }
+
+        public ObstacleType SelectOptimalObstacleType(GeneratedLevel level, Vector2Int position)
+        {
+            // AI-driven obstacle type selection based on level context
+            var obstacleTypes = System.Enum.GetValues(typeof(ObstacleType)).Cast<ObstacleType>().ToList();
+            var weights = CalculateObstacleWeights(level, position);
+            
+            return SelectWeightedRandom(obstacleTypes, weights);
+        }
+
+        public SpecialPieceType SelectOptimalSpecialPieceType(GeneratedLevel level, Vector2Int position)
+        {
+            // AI-driven special piece type selection
+            var specialPieceTypes = System.Enum.GetValues(typeof(SpecialPieceType)).Cast<SpecialPieceType>().ToList();
+            var weights = CalculateSpecialPieceWeights(level, position);
+            
+            return SelectWeightedRandom(specialPieceTypes, weights);
+        }
+
+        public GoalType SelectOptimalGoalType(GeneratedLevel level, List<GoalType> availableTypes)
+        {
+            // AI-driven goal type selection
+            var weights = CalculateGoalWeights(level, availableTypes);
+            return SelectWeightedRandom(availableTypes, weights);
+        }
+
+        private float CalculateObstacleVariety(GeneratedLevel level)
+        {
+            var currentVariety = level.obstacles.Values.Distinct().Count() / 8f;
+            return Mathf.Clamp01(1.0f - currentVariety);
+        }
+
+        private float CalculateSpecialPieceVariety(GeneratedLevel level)
+        {
+            var currentVariety = level.specialPieces.Values.Distinct().Count() / 5f;
+            return Mathf.Clamp01(1.0f - currentVariety);
+        }
+
+        private float CalculateGoalVariety(GeneratedLevel level)
+        {
+            var currentVariety = level.goals.Select(g => g.type).Distinct().Count() / 5f;
+            return Mathf.Clamp01(1.0f - currentVariety);
+        }
+
+        private List<float> CalculateObstacleWeights(GeneratedLevel level, Vector2Int position)
+        {
+            // AI-driven obstacle weight calculation
+            var weights = new List<float>();
+            var obstacleTypes = System.Enum.GetValues(typeof(ObstacleType)).Cast<ObstacleType>().ToList();
+            
+            foreach (var type in obstacleTypes)
+            {
+                float weight = 1.0f;
+                
+                // Adjust weight based on level difficulty
+                if (level.difficulty > 0.7f && (type == ObstacleType.Lock || type == ObstacleType.Crate))
+                    weight *= 1.5f;
+                
+                // Adjust weight based on position
+                if (IsCornerPosition(position) && type == ObstacleType.Ice)
+                    weight *= 0.5f;
+                
+                weights.Add(weight);
+            }
+            
+            return weights;
+        }
+
+        private List<float> CalculateSpecialPieceWeights(GeneratedLevel level, Vector2Int position)
+        {
+            var weights = new List<float>();
+            var specialPieceTypes = System.Enum.GetValues(typeof(SpecialPieceType)).Cast<SpecialPieceType>().ToList();
+            
+            foreach (var type in specialPieceTypes)
+            {
+                float weight = 1.0f;
+                
+                // Adjust weight based on level difficulty
+                if (level.difficulty > 0.8f && type == SpecialPieceType.ColorBomb)
+                    weight *= 1.3f;
+                
+                weights.Add(weight);
+            }
+            
+            return weights;
+        }
+
+        private List<float> CalculateGoalWeights(GeneratedLevel level, List<GoalType> availableTypes)
+        {
+            var weights = new List<float>();
+            
+            foreach (var type in availableTypes)
+            {
+                float weight = 1.0f;
+                
+                // Adjust weight based on level content
+                if (type == GoalType.ClearJelly && level.obstacles.ContainsValue(ObstacleType.Jelly))
+                    weight *= 1.5f;
+                
+                weights.Add(weight);
+            }
+            
+            return weights;
+        }
+
+        private T SelectWeightedRandom<T>(List<T> items, List<float> weights)
+        {
+            if (items.Count != weights.Count || items.Count == 0)
+                return items[UnityEngine.Random.Range(0, items.Count)];
+            
+            float totalWeight = weights.Sum();
+            float randomValue = UnityEngine.Random.Range(0f, totalWeight);
+            
+            float currentWeight = 0f;
+            for (int i = 0; i < items.Count; i++)
+            {
+                currentWeight += weights[i];
+                if (randomValue <= currentWeight)
+                    return items[i];
+            }
+            
+            return items[items.Count - 1];
+        }
+
+        private bool IsCornerPosition(Vector2Int position)
+        {
+            return (position.x == 0 || position.x == 8) && (position.y == 0 || position.y == 8);
+        }
+    }
+
+    /// <summary>
+    /// AI Personalization Engine for player-specific level customization
+    /// </summary>
+    public class AIPersonalizationEngine
+    {
+        public PersonalizationData GeneratePersonalizationData(GeneratedLevel level, string playerId)
+        {
+            // Simplified AI personalization - in a real system, this would use machine learning
+            return new PersonalizationData
+            {
+                OptimalDifficulty = CalculateOptimalDifficulty(level, playerId),
+                OptimalColors = CalculateOptimalColors(level, playerId),
+                OptimalMoves = CalculateOptimalMoves(level, playerId),
+                PreferredMechanics = GetPreferredMechanics(playerId),
+                EngagementTriggers = GetEngagementTriggers(playerId)
+            };
+        }
+
+        private float CalculateOptimalDifficulty(GeneratedLevel level, string playerId)
+        {
+            // AI-driven difficulty calculation
+            return Mathf.Clamp01(level.difficulty + UnityEngine.Random.Range(-0.2f, 0.2f));
+        }
+
+        private int CalculateOptimalColors(GeneratedLevel level, string playerId)
+        {
+            // AI-driven color count optimization
+            return Mathf.Clamp(level.numColors + UnityEngine.Random.Range(-1, 2), 3, 7);
+        }
+
+        private int CalculateOptimalMoves(GeneratedLevel level, string playerId)
+        {
+            // AI-driven move limit optimization
+            return Mathf.Clamp(level.moveLimit + UnityEngine.Random.Range(-3, 4), 5, 50);
+        }
+
+        private List<string> GetPreferredMechanics(string playerId)
+        {
+            // AI-driven mechanic preference detection
+            return new List<string> { "matching", "combos", "special_pieces" };
+        }
+
+        private List<string> GetEngagementTriggers(string playerId)
+        {
+            // AI-driven engagement trigger identification
+            return new List<string> { "challenge", "variety", "progression" };
+        }
+    }
+
+    /// <summary>
+    /// AI Quality Optimizer for level quality enhancement
+    /// </summary>
+    public class AIQualityOptimizer
+    {
+        public float CalculateQualityScore(GeneratedLevel level)
+        {
+            var quality = 0f;
+            
+            // Goal balance quality
+            quality += CalculateGoalBalanceQuality(level) * 0.3f;
+            
+            // Difficulty progression quality
+            quality += CalculateDifficultyProgressionQuality(level) * 0.2f;
+            
+            // Obstacle distribution quality
+            quality += CalculateObstacleDistributionQuality(level) * 0.2f;
+            
+            // Solvability quality
+            quality += CalculateSolvabilityQuality(level) * 0.3f;
+            
+            return Mathf.Clamp01(quality);
+        }
+
+        public List<QualityOptimization> GenerateOptimizations(GeneratedLevel level, float currentQuality)
+        {
+            var optimizations = new List<QualityOptimization>();
+            
+            if (currentQuality < 0.5f)
+            {
+                optimizations.Add(new QualityOptimization
+                {
+                    Type = "difficulty_balance",
+                    Value = 1.2f,
+                    Description = "Improve difficulty balance"
+                });
+            }
+            
+            if (level.obstacles.Count > level.size.x * level.size.y / 2)
+            {
+                optimizations.Add(new QualityOptimization
+                {
+                    Type = "obstacle_distribution",
+                    Value = 0.7f,
+                    Description = "Reduce obstacle density"
+                });
+            }
+            
+            if (level.goals.Count < 2)
+            {
+                optimizations.Add(new QualityOptimization
+                {
+                    Type = "goal_balance",
+                    Value = 1.5f,
+                    Description = "Add more goals"
+                });
+            }
+            
+            return optimizations;
+        }
+
+        private float CalculateGoalBalanceQuality(GeneratedLevel level)
+        {
+            if (level.goals.Count == 0) return 0f;
+            return Mathf.Clamp01(level.goals.Count / 3f);
+        }
+
+        private float CalculateDifficultyProgressionQuality(GeneratedLevel level)
+        {
+            return Mathf.Clamp01(level.difficulty);
+        }
+
+        private float CalculateObstacleDistributionQuality(GeneratedLevel level)
+        {
+            var obstacleDensity = level.obstacles.Count / (float)(level.size.x * level.size.y);
+            return Mathf.Clamp01(1.0f - Mathf.Abs(obstacleDensity - 0.3f) * 2f);
+        }
+
+        private float CalculateSolvabilityQuality(GeneratedLevel level)
+        {
+            return level.moveLimit > 5 ? 1f : 0f;
+        }
+    }
+
+    /// <summary>
+    /// AI Performance Predictor for level performance forecasting
+    /// </summary>
+    public class AIPerformancePredictor
+    {
+        public PerformancePrediction PredictLevelPerformance(GeneratedLevel level, string playerId)
+        {
+            return new PerformancePrediction
+            {
+                PredictedCompletionRate = CalculateCompletionRate(level, playerId),
+                PredictedEngagement = CalculateEngagement(level, playerId),
+                PredictedRetention = CalculateRetention(level, playerId),
+                PredictedDifficulty = CalculateDifficulty(level, playerId)
+            };
+        }
+
+        private float CalculateCompletionRate(GeneratedLevel level, string playerId)
+        {
+            // AI-driven completion rate prediction
+            var baseRate = 0.8f;
+            var difficultyPenalty = level.difficulty * 0.3f;
+            var moveBonus = Mathf.Clamp01((level.moveLimit - 10) / 20f) * 0.2f;
+            
+            return Mathf.Clamp01(baseRate - difficultyPenalty + moveBonus);
+        }
+
+        private float CalculateEngagement(GeneratedLevel level, string playerId)
+        {
+            // AI-driven engagement prediction
+            var varietyScore = (level.obstacles.Count + level.specialPieces.Count) / 20f;
+            var goalScore = level.goals.Count / 3f;
+            
+            return Mathf.Clamp01((varietyScore + goalScore) / 2f);
+        }
+
+        private float CalculateRetention(GeneratedLevel level, string playerId)
+        {
+            // AI-driven retention prediction
+            var completionRate = CalculateCompletionRate(level, playerId);
+            var engagement = CalculateEngagement(level, playerId);
+            
+            return Mathf.Clamp01((completionRate + engagement) / 2f);
+        }
+
+        private float CalculateDifficulty(GeneratedLevel level, string playerId)
+        {
+            // AI-driven difficulty prediction
+            return level.difficulty;
+        }
+    }
+
+    // Data Structures
+    public class ContentVarietyEnhancement
+    {
+        public float ObstacleVariety;
+        public float SpecialPieceVariety;
+        public float GoalVariety;
+    }
+
+    public class PersonalizationData
+    {
+        public float OptimalDifficulty;
+        public int OptimalColors;
+        public int OptimalMoves;
+        public List<string> PreferredMechanics;
+        public List<string> EngagementTriggers;
+    }
+
+    public class QualityOptimization
+    {
+        public string Type;
+        public float Value;
+        public string Description;
+    }
+
+    public class PerformancePrediction
+    {
+        public float PredictedCompletionRate;
+        public float PredictedEngagement;
+        public float PredictedRetention;
+        public float PredictedDifficulty;
     }
 }
