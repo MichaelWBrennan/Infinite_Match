@@ -78,6 +78,21 @@ namespace Economy
         public float aiPersonalizationStrength = 0.8f;
         public float aiPredictionAccuracy = 0.7f;
         
+        [Header("ARPU/ARPPU Optimization")]
+        public bool enableARPUOptimization = true;
+        public bool enableARPPUOptimization = true;
+        public bool enableSpendingPrediction = true;
+        public bool enableRetentionOptimization = true;
+        public bool enablePersonalizedPricing = true;
+        public bool enableDynamicOffers = true;
+        public bool enableLTVOptimization = true;
+        public float targetARPU = 5.0f;
+        public float targetARPPU = 25.0f;
+        public float minConversionRate = 0.05f;
+        public float maxPriceIncrease = 0.3f;
+        public float spendingThreshold = 10.0f;
+        public float retentionThreshold = 0.7f;
+        
         private UnityServicesConfig config;
         private Dictionary<string, Currency> currencies;
         private Dictionary<string, InventoryItem> inventory;
@@ -85,6 +100,12 @@ namespace Economy
         
         // AI Economy Systems
         private UnifiedAIAPIService _aiService;
+        
+        // ARPU/ARPPU Tracking
+        private Dictionary<string, PlayerRevenueData> _playerRevenueData = new Dictionary<string, PlayerRevenueData>();
+        private Dictionary<string, PlayerEngagementData> _playerEngagementData = new Dictionary<string, PlayerEngagementData>();
+        private EconomyMetrics _currentMetrics = new EconomyMetrics();
+        private List<RevenueOptimization> _activeOptimizations = new List<RevenueOptimization>();
         
         public static EconomyManager Instance { get; private set; }
         
@@ -1114,6 +1135,492 @@ namespace Economy
             // Create personalized offer
             Debug.Log($"AI Personalized Offer: {offerType} with {discount:P0} discount");
         }
+        
+        #region ARPU/ARPPU Optimization
+        
+        public void OptimizeARPU()
+        {
+            if (!enableARPUOptimization || _aiService == null) return;
+            
+            var context = new EconomyContext
+            {
+                EconomyAction = "optimize_arpu",
+                PlayerState = "system",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["current_arpu"] = _currentMetrics.ARPU,
+                    ["target_arpu"] = targetARPU,
+                    ["total_users"] = _playerRevenueData.Count,
+                    ["paying_users"] = GetPayingUserCount(),
+                    ["conversion_rate"] = GetConversionRate(),
+                    ["retention_rate"] = GetRetentionRate()
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplyARPUOptimization(response);
+                }
+            });
+        }
+        
+        public void OptimizeARPPU()
+        {
+            if (!enableARPPUOptimization || _aiService == null) return;
+            
+            var context = new EconomyContext
+            {
+                EconomyAction = "optimize_arppu",
+                PlayerState = "system",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["current_arppu"] = _currentMetrics.ARPPU,
+                    ["target_arppu"] = targetARPPU,
+                    ["paying_users"] = GetPayingUserCount(),
+                    ["avg_spend_per_user"] = GetAverageSpendPerPayingUser(),
+                    ["high_value_users"] = GetHighValueUserCount(),
+                    ["spending_distribution"] = GetSpendingDistribution()
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplyARPPUOptimization(response);
+                }
+            });
+        }
+        
+        public void PredictPlayerSpending(string playerId)
+        {
+            if (!enableSpendingPrediction || _aiService == null) return;
+            
+            var playerData = GetPlayerRevenueData(playerId);
+            var context = new EconomyContext
+            {
+                EconomyAction = "predict_spending",
+                PlayerState = "analyzing",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["historical_spend"] = playerData.TotalSpent,
+                    ["session_count"] = playerData.SessionCount,
+                    ["last_purchase_days"] = playerData.DaysSinceLastPurchase,
+                    ["engagement_score"] = GetPlayerEngagementScore(playerId),
+                    ["level_progression"] = GetPlayerLevelProgression(playerId),
+                    ["time_in_game"] = playerData.TotalPlayTime
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplySpendingPrediction(playerId, response);
+                }
+            });
+        }
+        
+        public void OptimizeRetention(string playerId)
+        {
+            if (!enableRetentionOptimization || _aiService == null) return;
+            
+            var playerData = GetPlayerEngagementData(playerId);
+            var context = new EconomyContext
+            {
+                EconomyAction = "optimize_retention",
+                PlayerState = "at_risk",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["retention_score"] = playerData.RetentionScore,
+                    ["engagement_trend"] = playerData.EngagementTrend,
+                    ["churn_risk"] = playerData.ChurnRisk,
+                    ["last_session_days"] = playerData.DaysSinceLastSession,
+                    ["preferred_content"] = playerData.PreferredContentTypes,
+                    ["spending_behavior"] = GetPlayerSpendingBehavior(playerId)
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyRetentionOptimization(playerId, response);
+                }
+            });
+        }
+        
+        public void GeneratePersonalizedPricing(string playerId)
+        {
+            if (!enablePersonalizedPricing || _aiService == null) return;
+            
+            var playerData = GetPlayerRevenueData(playerId);
+            var context = new EconomyContext
+            {
+                EconomyAction = "personalized_pricing",
+                PlayerState = "shopping",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["spending_capacity"] = playerData.SpendingCapacity,
+                    ["price_sensitivity"] = playerData.PriceSensitivity,
+                    ["preferred_items"] = playerData.PreferredItemTypes,
+                    ["purchase_frequency"] = playerData.PurchaseFrequency,
+                    ["current_currency"] = GetPlayerCurrencyAmount(playerId, "gems")
+                },
+                Currency = "gems",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyPersonalizedPricing(playerId, response);
+                }
+            });
+        }
+        
+        public void GenerateDynamicOffers(string playerId)
+        {
+            if (!enableDynamicOffers || _aiService == null) return;
+            
+            var playerData = GetPlayerRevenueData(playerId);
+            var context = new EconomyContext
+            {
+                EconomyAction = "dynamic_offers",
+                PlayerState = "active",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["current_level"] = GetPlayerLevel(playerId),
+                    ["spending_pattern"] = playerData.SpendingPattern,
+                    ["time_since_last_purchase"] = playerData.DaysSinceLastPurchase,
+                    ["engagement_level"] = GetPlayerEngagementScore(playerId),
+                    ["preferred_offer_types"] = playerData.PreferredOfferTypes
+                },
+                Currency = "gems",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyDynamicOffers(playerId, response);
+                }
+            });
+        }
+        
+        public void OptimizeLTV(string playerId)
+        {
+            if (!enableLTVOptimization || _aiService == null) return;
+            
+            var playerData = GetPlayerRevenueData(playerId);
+            var context = new EconomyContext
+            {
+                EconomyAction = "optimize_ltv",
+                PlayerState = "long_term",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["current_ltv"] = playerData.LifetimeValue,
+                    ["predicted_ltv"] = playerData.PredictedLTV,
+                    ["retention_probability"] = playerData.RetentionProbability,
+                    ["spending_growth_potential"] = playerData.SpendingGrowthPotential,
+                    ["engagement_quality"] = GetPlayerEngagementScore(playerId)
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyLTVOptimization(playerId, response);
+                }
+            });
+        }
+        
+        #endregion
+        
+        #region ARPU/ARPPU Helper Methods
+        
+        private void ApplyARPUOptimization(EconomyAIResponse response)
+        {
+            // Apply ARPU optimization strategies
+            if (response.PriceAdjustment != 1.0f)
+            {
+                AdjustPricingForARPU(response.PriceAdjustment);
+            }
+            
+            if (!string.IsNullOrEmpty(response.OfferType))
+            {
+                CreateARPUOptimizedOffers(response.OfferType, response.Discount);
+            }
+            
+            Debug.Log($"ARPU Optimization Applied: Target ARPU {targetARPU}, Current ARPU {_currentMetrics.ARPU}");
+        }
+        
+        private void ApplyARPPUOptimization(EconomyAIResponse response)
+        {
+            // Apply ARPPU optimization strategies
+            if (response.PriceAdjustment != 1.0f)
+            {
+                AdjustPricingForARPPU(response.PriceAdjustment);
+            }
+            
+            if (!string.IsNullOrEmpty(response.OfferType))
+            {
+                CreateARPPUOptimizedOffers(response.OfferType, response.Discount);
+            }
+            
+            Debug.Log($"ARPPU Optimization Applied: Target ARPPU {targetARPPU}, Current ARPPU {_currentMetrics.ARPPU}");
+        }
+        
+        private void ApplySpendingPrediction(string playerId, EconomyAIResponse response)
+        {
+            // Apply spending prediction and targeting
+            var playerData = GetPlayerRevenueData(playerId);
+            playerData.PredictedSpending = response.Amount;
+            playerData.SpendingProbability = response.Confidence;
+            
+            if (response.Amount > spendingThreshold)
+            {
+                // Target high-value potential players
+                GenerateTargetedOffers(playerId, response.Amount);
+            }
+            
+            Debug.Log($"Spending Prediction for {playerId}: ${response.Amount:F2} (Confidence: {response.Confidence:P0})");
+        }
+        
+        private void ApplyRetentionOptimization(string playerId, EconomyAIResponse response)
+        {
+            // Apply retention optimization strategies
+            if (!string.IsNullOrEmpty(response.OfferType))
+            {
+                CreateRetentionOffer(playerId, response.OfferType, response.Discount);
+            }
+            
+            Debug.Log($"Retention Optimization Applied for {playerId}");
+        }
+        
+        private void ApplyPersonalizedPricing(string playerId, EconomyAIResponse response)
+        {
+            // Apply personalized pricing
+            if (response.PriceAdjustment != 1.0f)
+            {
+                SetPlayerPersonalizedPricing(playerId, response.PriceAdjustment);
+            }
+            
+            Debug.Log($"Personalized Pricing Applied for {playerId}: {response.PriceAdjustment:P0} adjustment");
+        }
+        
+        private void ApplyDynamicOffers(string playerId, EconomyAIResponse response)
+        {
+            // Apply dynamic offers
+            if (!string.IsNullOrEmpty(response.OfferType))
+            {
+                CreateDynamicOffer(playerId, response.OfferType, response.Discount);
+            }
+            
+            Debug.Log($"Dynamic Offer Applied for {playerId}: {response.OfferType}");
+        }
+        
+        private void ApplyLTVOptimization(string playerId, EconomyAIResponse response)
+        {
+            // Apply LTV optimization strategies
+            if (response.PriceAdjustment != 1.0f)
+            {
+                AdjustPricingForLTV(playerId, response.PriceAdjustment);
+            }
+            
+            Debug.Log($"LTV Optimization Applied for {playerId}");
+        }
+        
+        private void AdjustPricingForARPU(float adjustment)
+        {
+            // Adjust pricing to optimize ARPU
+            foreach (var item in catalog.Values)
+            {
+                var newPrice = Mathf.RoundToInt(item.cost_amount * adjustment);
+                item.cost_amount = Mathf.Clamp(newPrice, 1, Mathf.RoundToInt(item.cost_amount * (1 + maxPriceIncrease)));
+            }
+        }
+        
+        private void AdjustPricingForARPPU(float adjustment)
+        {
+            // Adjust pricing to optimize ARPPU
+            foreach (var item in catalog.Values)
+            {
+                var newPrice = Mathf.RoundToInt(item.cost_amount * adjustment);
+                item.cost_amount = Mathf.Clamp(newPrice, 1, Mathf.RoundToInt(item.cost_amount * (1 + maxPriceIncrease)));
+            }
+        }
+        
+        private void CreateARPUOptimizedOffers(string offerType, float discount)
+        {
+            // Create offers optimized for ARPU
+            Debug.Log($"ARPU Optimized Offer: {offerType} with {discount:P0} discount");
+        }
+        
+        private void CreateARPPUOptimizedOffers(string offerType, float discount)
+        {
+            // Create offers optimized for ARPPU
+            Debug.Log($"ARPPU Optimized Offer: {offerType} with {discount:P0} discount");
+        }
+        
+        private void GenerateTargetedOffers(string playerId, float predictedSpending)
+        {
+            // Generate targeted offers for high-value potential players
+            Debug.Log($"Targeted Offers Generated for {playerId} (Predicted: ${predictedSpending:F2})");
+        }
+        
+        private void CreateRetentionOffer(string playerId, string offerType, float discount)
+        {
+            // Create retention-focused offers
+            Debug.Log($"Retention Offer for {playerId}: {offerType} with {discount:P0} discount");
+        }
+        
+        private void SetPlayerPersonalizedPricing(string playerId, float adjustment)
+        {
+            // Set personalized pricing for specific player
+            Debug.Log($"Personalized Pricing for {playerId}: {adjustment:P0} adjustment");
+        }
+        
+        private void CreateDynamicOffer(string playerId, string offerType, float discount)
+        {
+            // Create dynamic offers based on real-time data
+            Debug.Log($"Dynamic Offer for {playerId}: {offerType} with {discount:P0} discount");
+        }
+        
+        private void AdjustPricingForLTV(string playerId, float adjustment)
+        {
+            // Adjust pricing to optimize LTV for specific player
+            Debug.Log($"LTV Pricing Adjustment for {playerId}: {adjustment:P0}");
+        }
+        
+        #endregion
+        
+        #region Metrics and Data Collection
+        
+        private int GetPayingUserCount()
+        {
+            return _playerRevenueData.Values.Count(p => p.TotalSpent > 0);
+        }
+        
+        private float GetConversionRate()
+        {
+            var totalUsers = _playerRevenueData.Count;
+            if (totalUsers == 0) return 0f;
+            return (float)GetPayingUserCount() / totalUsers;
+        }
+        
+        private float GetRetentionRate()
+        {
+            var activeUsers = _playerEngagementData.Values.Count(p => p.DaysSinceLastSession <= 7);
+            var totalUsers = _playerEngagementData.Count;
+            if (totalUsers == 0) return 0f;
+            return (float)activeUsers / totalUsers;
+        }
+        
+        private float GetAverageSpendPerPayingUser()
+        {
+            var payingUsers = _playerRevenueData.Values.Where(p => p.TotalSpent > 0).ToList();
+            if (payingUsers.Count == 0) return 0f;
+            return payingUsers.Average(p => p.TotalSpent);
+        }
+        
+        private int GetHighValueUserCount()
+        {
+            return _playerRevenueData.Values.Count(p => p.TotalSpent > targetARPPU);
+        }
+        
+        private Dictionary<string, float> GetSpendingDistribution()
+        {
+            var distribution = new Dictionary<string, float>();
+            var spendingRanges = new[] { "0-5", "5-15", "15-30", "30-50", "50+" };
+            var counts = new int[spendingRanges.Length];
+            
+            foreach (var player in _playerRevenueData.Values)
+            {
+                if (player.TotalSpent <= 5) counts[0]++;
+                else if (player.TotalSpent <= 15) counts[1]++;
+                else if (player.TotalSpent <= 30) counts[2]++;
+                else if (player.TotalSpent <= 50) counts[3]++;
+                else counts[4]++;
+            }
+            
+            var total = counts.Sum();
+            for (int i = 0; i < spendingRanges.Length; i++)
+            {
+                distribution[spendingRanges[i]] = total > 0 ? (float)counts[i] / total : 0f;
+            }
+            
+            return distribution;
+        }
+        
+        private PlayerRevenueData GetPlayerRevenueData(string playerId)
+        {
+            if (!_playerRevenueData.ContainsKey(playerId))
+            {
+                _playerRevenueData[playerId] = new PlayerRevenueData { PlayerId = playerId };
+            }
+            return _playerRevenueData[playerId];
+        }
+        
+        private PlayerEngagementData GetPlayerEngagementData(string playerId)
+        {
+            if (!_playerEngagementData.ContainsKey(playerId))
+            {
+                _playerEngagementData[playerId] = new PlayerEngagementData { PlayerId = playerId };
+            }
+            return _playerEngagementData[playerId];
+        }
+        
+        private float GetPlayerEngagementScore(string playerId)
+        {
+            var data = GetPlayerEngagementData(playerId);
+            return data.EngagementScore;
+        }
+        
+        private int GetPlayerLevel(string playerId)
+        {
+            // Get player level - simplified
+            return 1;
+        }
+        
+        private float GetPlayerLevelProgression(string playerId)
+        {
+            // Get player level progression - simplified
+            return 0.5f;
+        }
+        
+        private Dictionary<string, object> GetPlayerSpendingBehavior(string playerId)
+        {
+            var data = GetPlayerRevenueData(playerId);
+            return new Dictionary<string, object>
+            {
+                ["total_spent"] = data.TotalSpent,
+                ["purchase_frequency"] = data.PurchaseFrequency,
+                ["avg_purchase_value"] = data.AveragePurchaseValue,
+                ["preferred_items"] = data.PreferredItemTypes
+            };
+        }
+        
+        private int GetPlayerCurrencyAmount(string playerId, string currency)
+        {
+            // Get player currency amount - simplified
+            return 100;
+        }
+        
+        #endregion
         
         private void ApplyPersonalizedOffers(List<PersonalizedOffer> offers)
         {
