@@ -10,7 +10,7 @@ namespace Evergreen.ARPU
     /// Advanced ARPU Maximization - Advanced strategies for maximum revenue
     /// Implements psychological triggers, advanced monetization, and revenue optimization
     /// </summary>
-    public class AdvancedARPUMaximization : MonoBehaviour
+    public class OptimizedARPUMaximization : MonoBehaviour
     {
         [Header("Advanced Monetization")]
         public bool enablePsychologicalTriggers = true;
