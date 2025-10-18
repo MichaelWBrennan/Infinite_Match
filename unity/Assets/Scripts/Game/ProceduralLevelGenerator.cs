@@ -28,6 +28,13 @@ namespace Evergreen.Game
         public bool enableAIPerformancePrediction = true;
         public float aiPersonalizationStrength = 0.8f;
         public float aiQualityThreshold = 0.7f;
+        
+        [Header("Web AI Settings")]
+        public bool enableWebAI = true;
+        public bool enableAlgorithmicAI = true;
+        public bool enableDataDrivenAI = true;
+        public string webAIServiceUrl = ""; // Optional web AI service
+        public bool useFallbackAI = true;
 
         [Header("Level Templates")]
         public LevelTemplate[] levelTemplates;
@@ -48,6 +55,8 @@ namespace Evergreen.Game
         private AIPersonalizationEngine _aiPersonalizationEngine;
         private AIQualityOptimizer _aiQualityOptimizer;
         private AIPerformancePredictor _aiPerformancePredictor;
+        private WebAIAdapter _webAIAdapter;
+        private AlgorithmicAIEngine _algorithmicAIEngine;
 
         public class GeneratedLevel
         {
@@ -180,9 +189,11 @@ namespace Evergreen.Game
             _aiPersonalizationEngine = new AIPersonalizationEngine();
             _aiQualityOptimizer = new AIQualityOptimizer();
             _aiPerformancePredictor = new AIPerformancePredictor();
+            _webAIAdapter = new WebAIAdapter();
+            _algorithmicAIEngine = new AlgorithmicAIEngine();
 
             LoadTemplates();
-            Logger.Info("AI-Enhanced Procedural Level Generator initialized", "LevelGenerator");
+            Logger.Info("Web-Compatible AI-Enhanced Procedural Level Generator initialized", "LevelGenerator");
         }
 
         private void LoadTemplates()
@@ -493,7 +504,23 @@ namespace Evergreen.Game
         {
             if (_aiContentVarietyEngine == null) return;
 
-            var varietyEnhancement = _aiContentVarietyEngine.GenerateContentVariety(level, playerId);
+            ContentVarietyEnhancement varietyEnhancement;
+            
+            // Try web AI first, fallback to algorithmic AI
+            if (enableWebAI && !string.IsNullOrEmpty(webAIServiceUrl))
+            {
+                varietyEnhancement = _webAIAdapter?.GenerateContentVariety(level, playerId) ?? 
+                                   _aiContentVarietyEngine.GenerateContentVariety(level, playerId);
+            }
+            else if (enableAlgorithmicAI)
+            {
+                varietyEnhancement = _algorithmicAIEngine?.GenerateContentVariety(level, playerId) ?? 
+                                   _aiContentVarietyEngine.GenerateContentVariety(level, playerId);
+            }
+            else
+            {
+                varietyEnhancement = _aiContentVarietyEngine.GenerateContentVariety(level, playerId);
+            }
             
             // Apply AI-generated variety enhancements
             if (varietyEnhancement.ObstacleVariety > 0)
@@ -516,7 +543,23 @@ namespace Evergreen.Game
         {
             if (_aiPersonalizationEngine == null) return;
 
-            var personalizationData = _aiPersonalizationEngine.GeneratePersonalizationData(level, playerId);
+            PersonalizationData personalizationData;
+            
+            // Try web AI first, fallback to algorithmic AI
+            if (enableWebAI && !string.IsNullOrEmpty(webAIServiceUrl))
+            {
+                personalizationData = _webAIAdapter?.GeneratePersonalizationData(level, playerId) ?? 
+                                    _aiPersonalizationEngine.GeneratePersonalizationData(level, playerId);
+            }
+            else if (enableAlgorithmicAI)
+            {
+                personalizationData = _algorithmicAIEngine?.GeneratePersonalizationData(level, playerId) ?? 
+                                    _aiPersonalizationEngine.GeneratePersonalizationData(level, playerId);
+            }
+            else
+            {
+                personalizationData = _aiPersonalizationEngine.GeneratePersonalizationData(level, playerId);
+            }
             
             // Apply AI personalization
             level.difficulty = Mathf.Lerp(level.difficulty, personalizationData.OptimalDifficulty, aiPersonalizationStrength);
@@ -1376,5 +1419,249 @@ namespace Evergreen.Game
         public float PredictedEngagement;
         public float PredictedRetention;
         public float PredictedDifficulty;
+    }
+
+    /// <summary>
+    /// Web AI Adapter for external AI services (optional)
+    /// </summary>
+    public class WebAIAdapter
+    {
+        private string _serviceUrl;
+        private bool _isAvailable;
+
+        public WebAIAdapter(string serviceUrl = "")
+        {
+            _serviceUrl = serviceUrl;
+            _isAvailable = !string.IsNullOrEmpty(serviceUrl);
+        }
+
+        public ContentVarietyEnhancement GenerateContentVariety(GeneratedLevel level, string playerId)
+        {
+            if (!_isAvailable) return null;
+
+            try
+            {
+                // In a real implementation, this would make HTTP requests to web AI services
+                // For now, return null to use fallback
+                return null;
+            }
+            catch (System.Exception)
+            {
+                return null;
+            }
+        }
+
+        public PersonalizationData GeneratePersonalizationData(GeneratedLevel level, string playerId)
+        {
+            if (!_isAvailable) return null;
+
+            try
+            {
+                // In a real implementation, this would make HTTP requests to web AI services
+                // For now, return null to use fallback
+                return null;
+            }
+            catch (System.Exception)
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Algorithmic AI Engine - Pure algorithmic approach for web compatibility
+    /// </summary>
+    public class AlgorithmicAIEngine
+    {
+        private Dictionary<string, PlayerBehaviorPattern> _playerPatterns;
+        private Dictionary<string, LevelPerformanceHistory> _levelHistory;
+
+        public AlgorithmicAIEngine()
+        {
+            _playerPatterns = new Dictionary<string, PlayerBehaviorPattern>();
+            _levelHistory = new Dictionary<string, LevelPerformanceHistory>();
+        }
+
+        public ContentVarietyEnhancement GenerateContentVariety(GeneratedLevel level, string playerId)
+        {
+            var pattern = GetPlayerBehaviorPattern(playerId);
+            var levelHistory = GetLevelPerformanceHistory(level.levelId.ToString());
+
+            return new ContentVarietyEnhancement
+            {
+                ObstacleVariety = CalculateAlgorithmicObstacleVariety(level, pattern, levelHistory),
+                SpecialPieceVariety = CalculateAlgorithmicSpecialPieceVariety(level, pattern, levelHistory),
+                GoalVariety = CalculateAlgorithmicGoalVariety(level, pattern, levelHistory)
+            };
+        }
+
+        public PersonalizationData GeneratePersonalizationData(GeneratedLevel level, string playerId)
+        {
+            var pattern = GetPlayerBehaviorPattern(playerId);
+            var levelHistory = GetLevelPerformanceHistory(level.levelId.ToString());
+
+            return new PersonalizationData
+            {
+                OptimalDifficulty = CalculateAlgorithmicDifficulty(level, pattern, levelHistory),
+                OptimalColors = CalculateAlgorithmicColors(level, pattern, levelHistory),
+                OptimalMoves = CalculateAlgorithmicMoves(level, pattern, levelHistory),
+                PreferredMechanics = GetAlgorithmicPreferredMechanics(pattern),
+                EngagementTriggers = GetAlgorithmicEngagementTriggers(pattern)
+            };
+        }
+
+        private PlayerBehaviorPattern GetPlayerBehaviorPattern(string playerId)
+        {
+            if (!_playerPatterns.ContainsKey(playerId))
+            {
+                _playerPatterns[playerId] = new PlayerBehaviorPattern
+                {
+                    AverageScore = 1000f,
+                    AverageMoves = 20f,
+                    CompletionRate = 0.8f,
+                    PreferredDifficulty = 0.5f,
+                    ColorPreference = 5,
+                    EngagementLevel = 0.7f
+                };
+            }
+            return _playerPatterns[playerId];
+        }
+
+        private LevelPerformanceHistory GetLevelPerformanceHistory(string levelId)
+        {
+            if (!_levelHistory.ContainsKey(levelId))
+            {
+                _levelHistory[levelId] = new LevelPerformanceHistory
+                {
+                    AverageCompletionRate = 0.8f,
+                    AverageEngagement = 0.7f,
+                    DifficultyRating = 0.5f,
+                    PopularityScore = 0.5f
+                };
+            }
+            return _levelHistory[levelId];
+        }
+
+        private float CalculateAlgorithmicObstacleVariety(GeneratedLevel level, PlayerBehaviorPattern pattern, LevelPerformanceHistory history)
+        {
+            // Algorithmic calculation based on player patterns and level history
+            var baseVariety = 0.5f;
+            var playerAdjustment = pattern.EngagementLevel * 0.3f;
+            var levelAdjustment = (1f - history.DifficultyRating) * 0.2f;
+            
+            return Mathf.Clamp01(baseVariety + playerAdjustment + levelAdjustment);
+        }
+
+        private float CalculateAlgorithmicSpecialPieceVariety(GeneratedLevel level, PlayerBehaviorPattern pattern, LevelPerformanceHistory history)
+        {
+            var baseVariety = 0.4f;
+            var playerAdjustment = pattern.CompletionRate * 0.4f;
+            var levelAdjustment = history.PopularityScore * 0.2f;
+            
+            return Mathf.Clamp01(baseVariety + playerAdjustment + levelAdjustment);
+        }
+
+        private float CalculateAlgorithmicGoalVariety(GeneratedLevel level, PlayerBehaviorPattern pattern, LevelPerformanceHistory history)
+        {
+            var baseVariety = 0.6f;
+            var playerAdjustment = pattern.AverageScore / 2000f;
+            var levelAdjustment = history.AverageEngagement * 0.3f;
+            
+            return Mathf.Clamp01(baseVariety + playerAdjustment + levelAdjustment);
+        }
+
+        private float CalculateAlgorithmicDifficulty(GeneratedLevel level, PlayerBehaviorPattern pattern, LevelPerformanceHistory history)
+        {
+            var baseDifficulty = level.difficulty;
+            var playerAdjustment = (pattern.PreferredDifficulty - 0.5f) * 0.3f;
+            var performanceAdjustment = (pattern.CompletionRate - 0.8f) * 0.2f;
+            
+            return Mathf.Clamp01(baseDifficulty + playerAdjustment + performanceAdjustment);
+        }
+
+        private int CalculateAlgorithmicColors(GeneratedLevel level, PlayerBehaviorPattern pattern, LevelPerformanceHistory history)
+        {
+            var baseColors = level.numColors;
+            var playerAdjustment = pattern.ColorPreference - 5;
+            var performanceAdjustment = pattern.AverageScore > 1500 ? 1 : 0;
+            
+            return Mathf.Clamp(baseColors + playerAdjustment + performanceAdjustment, 3, 7);
+        }
+
+        private int CalculateAlgorithmicMoves(GeneratedLevel level, PlayerBehaviorPattern pattern, LevelPerformanceHistory history)
+        {
+            var baseMoves = level.moveLimit;
+            var playerAdjustment = Mathf.RoundToInt((pattern.AverageMoves - 20f) * 0.5f);
+            var performanceAdjustment = pattern.CompletionRate < 0.7f ? 3 : 0;
+            
+            return Mathf.Clamp(baseMoves + playerAdjustment + performanceAdjustment, 5, 50);
+        }
+
+        private List<string> GetAlgorithmicPreferredMechanics(PlayerBehaviorPattern pattern)
+        {
+            var mechanics = new List<string>();
+            
+            if (pattern.AverageScore > 1200)
+                mechanics.Add("combos");
+            if (pattern.CompletionRate > 0.8f)
+                mechanics.Add("matching");
+            if (pattern.EngagementLevel > 0.7f)
+                mechanics.Add("special_pieces");
+            
+            return mechanics;
+        }
+
+        private List<string> GetAlgorithmicEngagementTriggers(PlayerBehaviorPattern pattern)
+        {
+            var triggers = new List<string>();
+            
+            if (pattern.EngagementLevel > 0.8f)
+                triggers.Add("challenge");
+            if (pattern.AverageScore > 1000)
+                triggers.Add("progression");
+            if (pattern.CompletionRate > 0.9f)
+                triggers.Add("variety");
+            
+            return triggers;
+        }
+
+        public void UpdatePlayerPattern(string playerId, LevelPerformanceData performance)
+        {
+            var pattern = GetPlayerBehaviorPattern(playerId);
+            
+            // Update pattern based on performance
+            pattern.AverageScore = Mathf.Lerp(pattern.AverageScore, performance.Score, 0.1f);
+            pattern.AverageMoves = Mathf.Lerp(pattern.AverageMoves, performance.MovesUsed, 0.1f);
+            pattern.CompletionRate = Mathf.Lerp(pattern.CompletionRate, performance.Completed ? 1f : 0f, 0.1f);
+            
+            // Update difficulty preference
+            if (performance.Completed && performance.MovesUsed < performance.MoveLimit * 0.5f)
+            {
+                pattern.PreferredDifficulty = Mathf.Min(1f, pattern.PreferredDifficulty + 0.05f);
+            }
+            else if (!performance.Completed)
+            {
+                pattern.PreferredDifficulty = Mathf.Max(0.1f, pattern.PreferredDifficulty - 0.05f);
+            }
+        }
+    }
+
+    // Data structures for algorithmic AI
+    public class PlayerBehaviorPattern
+    {
+        public float AverageScore;
+        public float AverageMoves;
+        public float CompletionRate;
+        public float PreferredDifficulty;
+        public int ColorPreference;
+        public float EngagementLevel;
+    }
+
+    public class LevelPerformanceHistory
+    {
+        public float AverageCompletionRate;
+        public float AverageEngagement;
+        public float DifficultyRating;
+        public float PopularityScore;
     }
 }
