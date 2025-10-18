@@ -515,7 +515,7 @@ class GameServer {
     await this.initializeServices();
 
     this.server.listen(this.config.port, this.config.host, () => {
-      this.logger.info(`🚀 Match 3 Game Server running on port ${this.config.port}`);
+      this.logger.info(`🚀 Infinite Match Game Server running on port ${this.config.port}`);
       this.logger.info(
         `📊 Analytics: ${this.analyticsService.isInitialized ? 'Enabled' : 'Disabled'}`,
       );

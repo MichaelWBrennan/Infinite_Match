@@ -1,4 +1,4 @@
-Title: Idle Tap Cash: Evergreen
+Title: Idle Tap Cash: Infinite Match
 Subtitle: Watch ads, earn bonuses, grow forever.
 
 Short description:

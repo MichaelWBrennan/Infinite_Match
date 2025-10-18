@@ -23,7 +23,7 @@ export class MongoService {
     }
     async connect() {
         try {
-            const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/evergreen-match3';
+            const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/infinite-match';
             await mongoose.connect(mongoUri, {
                 maxPoolSize: 10,
                 serverSelectionTimeoutMS: 5000,

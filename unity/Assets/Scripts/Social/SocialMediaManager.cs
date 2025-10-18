@@ -48,11 +48,11 @@ namespace Evergreen.Social
         public string steamApiKey = "your_steam_api_key";
         
         [Header("Sharing Configuration")]
-        public string gameTitle = "Evergreen Match-3";
-        public string gameDescription = "The ultimate match-3 puzzle game with AI-powered content!";
+        public string gameTitle = "Infinite Match";
+        public string gameDescription = "The ultimate Infinite Match puzzle game with AI-powered content!";
         public string gameUrl = "https://your-game.com";
-        public string gameHashtag = "#EvergreenMatch3";
-        public string[] viralHashtags = { "#Match3", "#PuzzleGame", "#AIGaming", "#MobileGame" };
+        public string gameHashtag = "#InfiniteMatch";
+        public string[] viralHashtags = { "#InfiniteMatch", "#PuzzleGame", "#AIGaming", "#MobileGame" };
         
         [Header("Viral Mechanics")]
         public bool enableViralSharing = true;

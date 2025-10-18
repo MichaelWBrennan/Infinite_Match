@@ -11,10 +11,10 @@
 #     https://docs.fastlane.tools/advanced/#appfile
 
 # Android configuration
-android_package_name("com.evergreen.match3")
+android_package_name("com.infinitematch.game")
 
 # iOS configuration
-ios_app_identifier("com.evergreen.match3")
+ios_app_identifier("com.infinitematch.game")
 ios_team_id(ENV["APPLE_TEAM_ID"])
 
 # App Store Connect API Key (for iOS)

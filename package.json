@@ -113,7 +113,7 @@
   ],
   "license": "MIT",
   "main": "src/server/index.js",
-  "name": "evergreen-match3-unity",
+  "name": "infinite-match-unity",
   "scripts": {
     "automation": "node scripts/refactored-automation.js",
     "automation:legacy": "node scripts/automation.js",

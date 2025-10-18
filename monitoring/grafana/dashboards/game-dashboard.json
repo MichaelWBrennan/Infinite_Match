@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Evergreen Match-3 Game Dashboard",
+    "title": "Infinite Match Game Dashboard",
     "tags": ["game", "match3", "mobile"],
     "style": "dark",
     "timezone": "browser",

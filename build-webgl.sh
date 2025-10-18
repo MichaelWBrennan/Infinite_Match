@@ -57,7 +57,7 @@ $UNITY_PATH \
     -batchmode \
     -quit \
     -projectPath "$(pwd)/unity" \
-    -executeMethod Evergreen.Editor.HeadlessWebGLBuilder.BuildWebGLHeadless \
+    -executeMethod InfiniteMatch.Editor.HeadlessWebGLBuilder.BuildWebGLHeadless \
     -platform "$PLATFORM" \
     -buildPath "$BUILD_PATH" \
     -development "$DEVELOPMENT" \
