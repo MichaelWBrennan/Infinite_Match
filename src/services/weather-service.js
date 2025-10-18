@@ -277,19 +277,202 @@ class WeatherService {
   }
 
   /**
-   * Get local weather data (fallback)
+   * Get real weather data from multiple sources (fallback)
    */
   async getLocalWeatherData(latitude, longitude) {
-    // Generate realistic weather data based on location and time
+    try {
+      // Try to get real weather data from multiple free sources
+      const weatherData = await this.fetchRealWeatherData(latitude, longitude);
+      return weatherData;
+    } catch (error) {
+      this.logger.warn('All weather sources failed, using cached data', error);
+      
+      // Try to get cached weather data
+      const cachedData = await this.getCachedWeatherData(latitude, longitude);
+      if (cachedData) {
+        return cachedData;
+      }
+      
+      // Last resort: generate realistic weather based on location and time
+      return this.generateRealisticWeatherData(latitude, longitude);
+    }
+  }
+
+  /**
+   * Fetch real weather data from multiple sources
+   */
+  async fetchRealWeatherData(latitude, longitude) {
+    const sources = [
+      () => this.fetchFromOpenMeteo(latitude, longitude),
+      () => this.fetchFromOpenWeatherMap(latitude, longitude),
+      () => this.fetchFromWeatherAPI(latitude, longitude),
+      () => this.fetchFromWeatherGov(latitude, longitude),
+      () => this.fetchFromAccuWeather(latitude, longitude)
+    ];
+
+    for (const source of sources) {
+      try {
+        const data = await source();
+        if (data && data.main && data.main.temp !== undefined) {
+          return data;
+        }
+      } catch (error) {
+        this.logger.warn('Weather source failed, trying next', error.message);
+        continue;
+      }
+    }
+    
+    throw new Error('All weather sources failed');
+  }
+
+  /**
+   * Fetch from Weather.gov (US only, completely free)
+   */
+  async fetchFromWeatherGov(latitude, longitude) {
+    // Check if coordinates are in US
+    if (latitude < 24.0 || latitude > 71.0 || longitude < -179.0 || longitude > -66.0) {
+      throw new Error('Weather.gov only covers US territories');
+    }
+
+    const url = 'https://api.weather.gov/points/' + latitude + ',' + longitude;
+    const response = await axios.get(url, { timeout: 10000 });
+    
+    if (response.data && response.data.properties) {
+      const forecastUrl = response.data.properties.forecast;
+      const forecastResponse = await axios.get(forecastUrl, { timeout: 10000 });
+      
+      if (forecastResponse.data && forecastResponse.data.properties) {
+        const periods = forecastResponse.data.properties.periods;
+        const current = periods[0];
+        
+        return {
+          name: 'Weather.gov',
+          coord: { lat: latitude, lon: longitude },
+          weather: [{
+            main: this.mapWeatherGovCondition(current.shortForecast),
+            description: current.detailedForecast,
+            icon: this.getWeatherIconFromCondition(current.shortForecast)
+          }],
+          main: {
+            temp: this.fahrenheitToCelsius(current.temperature),
+            feels_like: this.fahrenheitToCelsius(current.temperature),
+            humidity: 50, // Weather.gov doesn't provide humidity in this endpoint
+            pressure: 1013
+          },
+          visibility: 10000,
+          wind: {
+            speed: this.mphToMps(current.windSpeed?.split(' ')[0] || 0),
+            deg: this.getWindDirection(current.windDirection)
+          },
+          clouds: { all: this.getCloudCoverFromCondition(current.shortForecast) },
+          uvi: 5, // Default UV index
+          sys: {
+            country: 'US'
+          }
+        };
+      }
+    }
+    
+    throw new Error('Invalid response from Weather.gov');
+  }
+
+  /**
+   * Fetch from AccuWeather (free tier)
+   */
+  async fetchFromAccuWeather(latitude, longitude) {
+    if (!this.accuWeatherApiKey) {
+      throw new Error('AccuWeather API key not available');
+    }
+
+    // First get location key
+    const locationUrl = 'http://dataservice.accuweather.com/locations/v1/cities/geoposition/search';
+    const locationParams = {
+      apikey: this.accuWeatherApiKey,
+      q: `${latitude},${longitude}`
+    };
+    
+    const locationResponse = await axios.get(locationUrl, { params: locationParams, timeout: 10000 });
+    const locationKey = locationResponse.data.Key;
+
+    // Get current conditions
+    const conditionsUrl = `http://dataservice.accuweather.com/currentconditions/v1/${locationKey}`;
+    const conditionsParams = { apikey: this.accuWeatherApiKey };
+    
+    const conditionsResponse = await axios.get(conditionsUrl, { params: conditionsParams, timeout: 10000 });
+    const current = conditionsResponse.data[0];
+
+    return {
+      name: 'AccuWeather',
+      coord: { lat: latitude, lon: longitude },
+      weather: [{
+        main: this.mapAccuWeatherCondition(current.WeatherText),
+        description: current.WeatherText,
+        icon: this.getWeatherIconFromAccuWeather(current.WeatherIcon)
+      }],
+      main: {
+        temp: current.Temperature.Metric.Value,
+        feels_like: current.RealFeelTemperature.Metric.Value,
+        humidity: current.RelativeHumidity,
+        pressure: current.Pressure.Metric.Value
+      },
+      visibility: current.Visibility.Metric.Value * 1000, // Convert to meters
+      wind: {
+        speed: current.Wind.Speed.Metric.Value,
+        deg: current.Wind.Direction.Degrees
+      },
+      clouds: { all: current.CloudCover },
+      uvi: current.UVIndex || 5,
+      sys: {
+        country: locationResponse.data.Country.ID
+      }
+    };
+  }
+
+  /**
+   * Get cached weather data
+   */
+  async getCachedWeatherData(latitude, longitude) {
+    try {
+      const cacheKey = `weather_${latitude.toFixed(2)}_${longitude.toFixed(2)}`;
+      const cached = await this.getFromCache(cacheKey);
+      
+      if (cached && cached.timestamp) {
+        const age = Date.now() - cached.timestamp;
+        if (age < 30 * 60 * 1000) { // 30 minutes
+          return cached.data;
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to get cached weather data', error);
+    }
+    return null;
+  }
+
+  /**
+   * Generate realistic weather data based on location and time
+   */
+  generateRealisticWeatherData(latitude, longitude) {
     const season = this.getSeason(new Date());
     const timeOfDay = new Date().getHours();
+    const month = new Date().getMonth();
     
-    // Simple weather simulation based on location and time
+    // Get realistic weather based on location and season
     const weatherTypes = this.getWeatherTypesForLocation(latitude, longitude, season);
     const randomWeather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
     
+    // Calculate realistic temperature based on latitude, season, and time
+    const baseTemp = this.getBaseTemperatureForLatitude(latitude, season);
+    const timeModifier = this.getTimeOfDayModifier(timeOfDay);
+    const temp = baseTemp + timeModifier + (Math.random() * 4 - 2);
+    
+    // Calculate realistic humidity based on season and weather
+    const humidity = this.getRealisticHumidity(season, randomWeather, latitude);
+    
+    // Calculate realistic pressure based on weather and season
+    const pressure = this.getRealisticPressure(season, randomWeather, latitude);
+    
     return {
-      name: 'Local Weather',
+      name: 'Realistic Weather',
       coord: { lat: latitude, lon: longitude },
       weather: [{
         main: randomWeather,
@@ -297,20 +480,20 @@ class WeatherService {
         icon: this.getWeatherIcon(randomWeather)
       }],
       main: {
-        temp: this.getTemperatureForSeason(season, timeOfDay),
-        feels_like: this.getTemperatureForSeason(season, timeOfDay) + Math.random() * 2 - 1,
-        humidity: 50 + Math.random() * 30,
-        pressure: 1013 + Math.random() * 20 - 10,
+        temp: Math.round(temp * 10) / 10,
+        feels_like: Math.round((temp + (Math.random() * 2 - 1)) * 10) / 10,
+        humidity: Math.round(humidity),
+        pressure: Math.round(pressure)
       },
-      visibility: 10000,
+      visibility: this.getRealisticVisibility(randomWeather),
       wind: {
-        speed: Math.random() * 10,
-        deg: Math.random() * 360
+        speed: this.getRealisticWindSpeed(randomWeather, season),
+        deg: Math.floor(Math.random() * 360)
       },
-      clouds: { all: Math.random() * 100 },
-      uvi: Math.random() * 10,
+      clouds: { all: this.getRealisticCloudCover(randomWeather) },
+      uvi: this.getRealisticUVIndex(latitude, month, timeOfDay),
       sys: {
-        country: 'XX'
+        country: this.getCountryFromCoordinates(latitude, longitude)
       }
     };
   }
@@ -397,16 +580,382 @@ class WeatherService {
    * Get weather types for location and season
    */
   getWeatherTypesForLocation(latitude, longitude, season) {
-    // Simple weather simulation based on location and season
-    if (season === 'winter') {
-      return ['clear', 'clouds', 'snow', 'fog'];
-    } else if (season === 'summer') {
-      return ['clear', 'clouds', 'rain', 'thunderstorm'];
-    } else if (season === 'spring') {
-      return ['clear', 'clouds', 'rain', 'fog'];
-    } else { // autumn
-      return ['clear', 'clouds', 'rain', 'fog'];
+    const isTropical = latitude > -30 && latitude < 30;
+    const isPolar = latitude > 60 || latitude < -60;
+    const isDesert = this.isDesertRegion(latitude, longitude);
+    
+    if (isTropical) {
+      return ['Clear', 'Clouds', 'Rain', 'Thunderstorm'];
+    } else if (isPolar) {
+      return ['Clear', 'Clouds', 'Snow'];
+    } else if (isDesert) {
+      return ['Clear', 'Clouds', 'Dust'];
+    } else {
+      // Temperate regions
+      if (season === 'spring') {
+        return ['Clear', 'Clouds', 'Rain', 'Drizzle'];
+      } else if (season === 'summer') {
+        return ['Clear', 'Clouds', 'Rain', 'Thunderstorm'];
+      } else if (season === 'autumn') {
+        return ['Clear', 'Clouds', 'Rain', 'Fog'];
+      } else { // winter
+        return ['Clear', 'Clouds', 'Snow', 'Rain'];
+      }
     }
+  }
+
+  /**
+   * Get base temperature for latitude and season
+   */
+  getBaseTemperatureForLatitude(latitude, season) {
+    const absLat = Math.abs(latitude);
+    let baseTemp;
+    
+    if (absLat < 10) {
+      baseTemp = 28; // Tropical
+    } else if (absLat < 20) {
+      baseTemp = 25; // Subtropical
+    } else if (absLat < 30) {
+      baseTemp = 22; // Warm temperate
+    } else if (absLat < 40) {
+      baseTemp = 18; // Temperate
+    } else if (absLat < 50) {
+      baseTemp = 12; // Cool temperate
+    } else if (absLat < 60) {
+      baseTemp = 6; // Subarctic
+    } else {
+      baseTemp = 0; // Arctic/Antarctic
+    }
+    
+    // Adjust for season
+    const seasonAdjustment = {
+      'spring': 0,
+      'summer': 8,
+      'autumn': 0,
+      'winter': -8
+    };
+    
+    return baseTemp + seasonAdjustment[season];
+  }
+
+  /**
+   * Get time of day temperature modifier
+   */
+  getTimeOfDayModifier(timeOfDay) {
+    // Temperature varies by time of day (warmer during day, cooler at night)
+    const hour = timeOfDay;
+    if (hour >= 6 && hour < 12) {
+      return (hour - 6) * 0.5; // Warming up in morning
+    } else if (hour >= 12 && hour < 18) {
+      return 3 - (hour - 12) * 0.3; // Peak heat around 2-3 PM
+    } else if (hour >= 18 && hour < 24) {
+      return -1 - (hour - 18) * 0.4; // Cooling in evening
+    } else {
+      return -2 - (hour + 6) * 0.2; // Coldest around 4-6 AM
+    }
+  }
+
+  /**
+   * Get realistic humidity based on conditions
+   */
+  getRealisticHumidity(season, weatherType, latitude) {
+    let baseHumidity = 50;
+    
+    // Adjust for latitude (tropical = more humid)
+    if (Math.abs(latitude) < 20) {
+      baseHumidity += 20;
+    } else if (Math.abs(latitude) > 50) {
+      baseHumidity -= 10;
+    }
+    
+    // Adjust for season
+    if (season === 'summer') {
+      baseHumidity += 10;
+    } else if (season === 'winter') {
+      baseHumidity -= 10;
+    }
+    
+    // Adjust for weather type
+    if (weatherType === 'Rain' || weatherType === 'Thunderstorm') {
+      baseHumidity += 30;
+    } else if (weatherType === 'Clear') {
+      baseHumidity -= 10;
+    } else if (weatherType === 'Fog') {
+      baseHumidity += 40;
+    }
+    
+    return Math.max(10, Math.min(100, baseHumidity + (Math.random() * 20 - 10)));
+  }
+
+  /**
+   * Get realistic pressure based on conditions
+   */
+  getRealisticPressure(season, weatherType, latitude) {
+    let basePressure = 1013;
+    
+    // Adjust for altitude (simplified)
+    if (Math.abs(latitude) > 60) {
+      basePressure -= 20; // Higher altitude
+    }
+    
+    // Adjust for weather type
+    if (weatherType === 'Clear') {
+      basePressure += 10;
+    } else if (weatherType === 'Rain' || weatherType === 'Thunderstorm') {
+      basePressure -= 15;
+    } else if (weatherType === 'Snow') {
+      basePressure -= 5;
+    }
+    
+    // Add some variation
+    basePressure += (Math.random() * 10 - 5);
+    
+    return Math.round(basePressure);
+  }
+
+  /**
+   * Get realistic visibility based on weather
+   */
+  getRealisticVisibility(weatherType) {
+    const visibilityMap = {
+      'Clear': 15000,
+      'Clouds': 12000,
+      'Rain': 8000,
+      'Drizzle': 10000,
+      'Thunderstorm': 5000,
+      'Snow': 6000,
+      'Fog': 2000,
+      'Dust': 4000,
+      'Mist': 5000
+    };
+    
+    const baseVisibility = visibilityMap[weatherType] || 10000;
+    return baseVisibility + (Math.random() * 2000 - 1000);
+  }
+
+  /**
+   * Get realistic wind speed based on weather and season
+   */
+  getRealisticWindSpeed(weatherType, season) {
+    let baseSpeed = 5;
+    
+    if (weatherType === 'Thunderstorm') {
+      baseSpeed = 15 + Math.random() * 10;
+    } else if (weatherType === 'Rain') {
+      baseSpeed = 8 + Math.random() * 5;
+    } else if (weatherType === 'Clear') {
+      baseSpeed = 3 + Math.random() * 3;
+    } else if (weatherType === 'Snow') {
+      baseSpeed = 6 + Math.random() * 4;
+    }
+    
+    // Adjust for season (winter = windier)
+    if (season === 'winter') {
+      baseSpeed += 2;
+    }
+    
+    return Math.round(baseSpeed * 10) / 10;
+  }
+
+  /**
+   * Get realistic cloud cover based on weather
+   */
+  getRealisticCloudCover(weatherType) {
+    const cloudMap = {
+      'Clear': 0,
+      'Clouds': 60 + Math.random() * 30,
+      'Rain': 80 + Math.random() * 15,
+      'Drizzle': 70 + Math.random() * 20,
+      'Thunderstorm': 90 + Math.random() * 10,
+      'Snow': 75 + Math.random() * 20,
+      'Fog': 100,
+      'Dust': 30 + Math.random() * 20,
+      'Mist': 60 + Math.random() * 30
+    };
+    
+    return Math.round(cloudMap[weatherType] || 50);
+  }
+
+  /**
+   * Get realistic UV index based on location and time
+   */
+  getRealisticUVIndex(latitude, month, hour) {
+    // UV index is highest at noon, in summer, near equator
+    let baseUV = 3;
+    
+    // Adjust for latitude (higher near equator)
+    if (Math.abs(latitude) < 20) {
+      baseUV = 8;
+    } else if (Math.abs(latitude) < 40) {
+      baseUV = 6;
+    } else if (Math.abs(latitude) < 60) {
+      baseUV = 4;
+    }
+    
+    // Adjust for month (summer = higher UV)
+    if (month >= 5 && month <= 8) { // Northern summer
+      baseUV += 2;
+    } else if (month >= 11 || month <= 2) { // Northern winter
+      baseUV -= 2;
+    }
+    
+    // Adjust for time of day (highest at noon)
+    const hourAdjustment = Math.cos((hour - 12) * Math.PI / 12) * 0.5;
+    baseUV += hourAdjustment;
+    
+    return Math.max(0, Math.min(11, Math.round(baseUV)));
+  }
+
+  /**
+   * Get country from coordinates (simplified)
+   */
+  getCountryFromCoordinates(latitude, longitude) {
+    // Simplified country detection based on coordinates
+    if (latitude >= 24.0 && latitude <= 71.0 && longitude >= -179.0 && longitude <= -66.0) {
+      return 'US';
+    } else if (latitude >= 35.0 && latitude <= 71.0 && longitude >= -10.0 && longitude <= 40.0) {
+      return 'EU';
+    } else if (latitude >= 35.0 && latitude <= 54.0 && longitude >= 73.0 && longitude <= 135.0) {
+      return 'CN';
+    } else if (latitude >= -10.0 && latitude <= 5.0 && longitude >= 95.0 && longitude <= 141.0) {
+      return 'ID';
+    } else if (latitude >= -44.0 && latitude <= -10.0 && longitude >= 113.0 && longitude <= 154.0) {
+      return 'AU';
+    } else {
+      return 'XX';
+    }
+  }
+
+  /**
+   * Map Weather.gov conditions to OpenWeatherMap format
+   */
+  mapWeatherGovCondition(condition) {
+    const conditionMap = {
+      'Sunny': 'Clear',
+      'Clear': 'Clear',
+      'Mostly Clear': 'Clear',
+      'Partly Cloudy': 'Clouds',
+      'Mostly Cloudy': 'Clouds',
+      'Cloudy': 'Clouds',
+      'Overcast': 'Clouds',
+      'Rain': 'Rain',
+      'Showers': 'Rain',
+      'Thunderstorms': 'Thunderstorm',
+      'Snow': 'Snow',
+      'Fog': 'Fog',
+      'Haze': 'Mist'
+    };
+    
+    return conditionMap[condition] || 'Clouds';
+  }
+
+  /**
+   * Get weather icon from Weather.gov condition
+   */
+  getWeatherIconFromCondition(condition) {
+    const iconMap = {
+      'Sunny': '01d',
+      'Clear': '01d',
+      'Mostly Clear': '02d',
+      'Partly Cloudy': '03d',
+      'Mostly Cloudy': '04d',
+      'Cloudy': '04d',
+      'Overcast': '04d',
+      'Rain': '10d',
+      'Showers': '09d',
+      'Thunderstorms': '11d',
+      'Snow': '13d',
+      'Fog': '50d',
+      'Haze': '50d'
+    };
+    
+    return iconMap[condition] || '02d';
+  }
+
+  /**
+   * Map AccuWeather conditions to OpenWeatherMap format
+   */
+  mapAccuWeatherCondition(condition) {
+    const conditionMap = {
+      'Sunny': 'Clear',
+      'Clear': 'Clear',
+      'Mostly Clear': 'Clear',
+      'Partly Cloudy': 'Clouds',
+      'Mostly Cloudy': 'Clouds',
+      'Cloudy': 'Clouds',
+      'Overcast': 'Clouds',
+      'Rain': 'Rain',
+      'Showers': 'Rain',
+      'Thunderstorms': 'Thunderstorm',
+      'Snow': 'Snow',
+      'Fog': 'Fog',
+      'Haze': 'Mist'
+    };
+    
+    return conditionMap[condition] || 'Clouds';
+  }
+
+  /**
+   * Get weather icon from AccuWeather
+   */
+  getWeatherIconFromAccuWeather(iconNumber) {
+    const iconMap = {
+      1: '01d', 2: '02d', 3: '03d', 4: '04d',
+      5: '50d', 6: '50d', 7: '50d', 8: '50d',
+      11: '50d', 12: '09d', 13: '09d', 14: '09d',
+      18: '09d', 19: '09d', 20: '09d', 21: '09d',
+      22: '09d', 23: '09d', 24: '09d', 25: '09d',
+      26: '09d', 29: '09d', 30: '10d', 31: '10d',
+      32: '10d', 33: '10d', 34: '10d', 35: '10d',
+      36: '10d', 37: '11d', 38: '11d', 39: '11d',
+      40: '11d', 41: '11d', 42: '11d', 43: '11d',
+      44: '13d'
+    };
+    
+    return iconMap[iconNumber] || '02d';
+  }
+
+  /**
+   * Get wind direction from text
+   */
+  getWindDirection(direction) {
+    const directionMap = {
+      'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
+      'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
+      'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
+      'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
+    };
+    
+    return directionMap[direction] || 0;
+  }
+
+  /**
+   * Get cloud cover from condition
+   */
+  getCloudCoverFromCondition(condition) {
+    const cloudMap = {
+      'Sunny': 0, 'Clear': 0, 'Mostly Clear': 25,
+      'Partly Cloudy': 50, 'Mostly Cloudy': 75,
+      'Cloudy': 90, 'Overcast': 100,
+      'Rain': 85, 'Showers': 80, 'Thunderstorms': 95,
+      'Snow': 80, 'Fog': 100, 'Haze': 60
+    };
+    
+    return cloudMap[condition] || 50;
+  }
+
+  /**
+   * Convert Fahrenheit to Celsius
+   */
+  fahrenheitToCelsius(fahrenheit) {
+    return Math.round(((fahrenheit - 32) * 5 / 9) * 10) / 10;
+  }
+
+  /**
+   * Convert MPH to m/s
+   */
+  mphToMps(mph) {
+    return Math.round(mph * 0.44704 * 10) / 10;
   }
 
   /**

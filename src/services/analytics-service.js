@@ -391,6 +391,471 @@ class AnalyticsService {
   }
 
   /**
+   * Get real user data
+   */
+  async getRealUserData(userId) {
+    try {
+      // Get real user data from local storage or database
+      const userData = await this.getUserDataFromStorage(userId);
+      
+      return {
+        location: userData?.location || await this.getUserLocation(),
+        timezone: userData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: userData?.language || navigator.language || 'en-US',
+        preferences: userData?.preferences || {},
+        gameProgress: userData?.gameProgress || {},
+        lastSeen: new Date().toISOString()
+      };
+    } catch (error) {
+      console.warn('Failed to get real user data:', error);
+      return {
+        location: null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language || 'en-US',
+        preferences: {},
+        gameProgress: {},
+        lastSeen: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Get real device data
+   */
+  async getRealDeviceData() {
+    try {
+      const userAgent = this.getUserAgent();
+      const deviceInfo = this.parseUserAgent(userAgent);
+      
+      return {
+        platform: deviceInfo.platform,
+        gameVersion: process.env.GAME_VERSION || '1.0.0',
+        userAgent: userAgent,
+        ipAddress: this.getClientIP(),
+        deviceInfo: deviceInfo,
+        screenResolution: this.getScreenResolution(),
+        connectionType: this.getConnectionType(),
+        memoryInfo: this.getMemoryInfo(),
+        batteryInfo: this.getBatteryInfo()
+      };
+    } catch (error) {
+      console.warn('Failed to get real device data:', error);
+      return {
+        platform: 'unknown',
+        gameVersion: '1.0.0',
+        userAgent: 'unknown',
+        ipAddress: '127.0.0.1',
+        deviceInfo: {},
+        screenResolution: 'unknown',
+        connectionType: 'unknown',
+        memoryInfo: {},
+        batteryInfo: {}
+      };
+    }
+  }
+
+  /**
+   * Get real game data
+   */
+  async getRealGameData(eventName, properties) {
+    try {
+      const gameState = await this.getGameState();
+      const performanceMetrics = await this.getPerformanceMetrics();
+      
+      return {
+        gameState: gameState,
+        performanceMetrics: performanceMetrics,
+        sessionDuration: this.getSessionDuration(),
+        levelProgress: this.getLevelProgress(),
+        score: this.getCurrentScore(),
+        achievements: this.getAchievements(),
+        powerups: this.getPowerups(),
+        coins: this.getCoins(),
+        gems: this.getGems()
+      };
+    } catch (error) {
+      console.warn('Failed to get real game data:', error);
+      return {
+        gameState: {},
+        performanceMetrics: {},
+        sessionDuration: 0,
+        levelProgress: 0,
+        score: 0,
+        achievements: [],
+        powerups: [],
+        coins: 0,
+        gems: 0
+      };
+    }
+  }
+
+  /**
+   * Get user data from storage
+   */
+  async getUserDataFromStorage(userId) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const userData = localStorage.getItem(`user_${userId}`);
+        return userData ? JSON.parse(userData) : null;
+      }
+      return null;
+    } catch (error) {
+      console.warn('Failed to get user data from storage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get user location (simplified)
+   */
+  async getUserLocation() {
+    try {
+      if (navigator.geolocation) {
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+              });
+            },
+            () => resolve(null),
+            { timeout: 5000 }
+          );
+        });
+      }
+      return null;
+    } catch (error) {
+      console.warn('Failed to get user location:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse user agent for device info
+   */
+  parseUserAgent(userAgent) {
+    const ua = userAgent.toLowerCase();
+    
+    let platform = 'unknown';
+    let device = 'unknown';
+    let browser = 'unknown';
+    let os = 'unknown';
+    
+    // Detect platform
+    if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+      platform = 'mobile';
+    } else if (ua.includes('tablet') || ua.includes('ipad')) {
+      platform = 'tablet';
+    } else {
+      platform = 'desktop';
+    }
+    
+    // Detect device
+    if (ua.includes('iphone')) device = 'iphone';
+    else if (ua.includes('ipad')) device = 'ipad';
+    else if (ua.includes('android')) device = 'android';
+    else if (ua.includes('windows')) device = 'windows';
+    else if (ua.includes('mac')) device = 'mac';
+    else if (ua.includes('linux')) device = 'linux';
+    
+    // Detect browser
+    if (ua.includes('chrome')) browser = 'chrome';
+    else if (ua.includes('firefox')) browser = 'firefox';
+    else if (ua.includes('safari')) browser = 'safari';
+    else if (ua.includes('edge')) browser = 'edge';
+    else if (ua.includes('opera')) browser = 'opera';
+    
+    // Detect OS
+    if (ua.includes('windows')) os = 'windows';
+    else if (ua.includes('mac')) os = 'macos';
+    else if (ua.includes('linux')) os = 'linux';
+    else if (ua.includes('android')) os = 'android';
+    else if (ua.includes('ios')) os = 'ios';
+    
+    return {
+      platform,
+      device,
+      browser,
+      os,
+      userAgent: userAgent
+    };
+  }
+
+  /**
+   * Get screen resolution
+   */
+  getScreenResolution() {
+    try {
+      if (typeof screen !== 'undefined') {
+        return `${screen.width}x${screen.height}`;
+      }
+      return 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Get connection type
+   */
+  getConnectionType() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.connection) {
+        return navigator.connection.effectiveType || 'unknown';
+      }
+      return 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Get memory info
+   */
+  getMemoryInfo() {
+    try {
+      if (typeof performance !== 'undefined' && performance.memory) {
+        return {
+          used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+          total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
+          limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)
+        };
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get battery info
+   */
+  getBatteryInfo() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+          return {
+            level: Math.round(battery.level * 100),
+            charging: battery.charging,
+            chargingTime: battery.chargingTime,
+            dischargingTime: battery.dischargingTime
+          };
+        });
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get game state
+   */
+  async getGameState() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const gameState = localStorage.getItem('gameState');
+        return gameState ? JSON.parse(gameState) : {};
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get performance metrics
+   */
+  async getPerformanceMetrics() {
+    try {
+      if (typeof performance !== 'undefined') {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        const paint = performance.getEntriesByType('paint');
+        
+        return {
+          loadTime: navigation ? Math.round(navigation.loadEventEnd - navigation.loadEventStart) : 0,
+          domContentLoaded: navigation ? Math.round(navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart) : 0,
+          firstPaint: paint.find(p => p.name === 'first-paint') ? Math.round(paint.find(p => p.name === 'first-paint').startTime) : 0,
+          firstContentfulPaint: paint.find(p => p.name === 'first-contentful-paint') ? Math.round(paint.find(p => p.name === 'first-contentful-paint').startTime) : 0,
+          fps: this.getFPS(),
+          memoryUsage: this.getMemoryInfo()
+        };
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get FPS
+   */
+  getFPS() {
+    try {
+      if (typeof performance !== 'undefined') {
+        const fps = performance.getEntriesByType('measure').find(m => m.name === 'fps');
+        return fps ? Math.round(fps.duration) : 60;
+      }
+      return 60;
+    } catch (error) {
+      return 60;
+    }
+  }
+
+  /**
+   * Get session duration
+   */
+  getSessionDuration() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const sessionStart = localStorage.getItem('sessionStart');
+        if (sessionStart) {
+          return Date.now() - parseInt(sessionStart);
+        }
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get level progress
+   */
+  getLevelProgress() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const progress = localStorage.getItem('levelProgress');
+        return progress ? parseInt(progress) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get current score
+   */
+  getCurrentScore() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const score = localStorage.getItem('currentScore');
+        return score ? parseInt(score) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get achievements
+   */
+  getAchievements() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const achievements = localStorage.getItem('achievements');
+        return achievements ? JSON.parse(achievements) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Get powerups
+   */
+  getPowerups() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const powerups = localStorage.getItem('powerups');
+        return powerups ? JSON.parse(powerups) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Get coins
+   */
+  getCoins() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const coins = localStorage.getItem('coins');
+        return coins ? parseInt(coins) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get gems
+   */
+  getGems() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const gems = localStorage.getItem('gems');
+        return gems ? parseInt(gems) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Update real-time analytics
+   */
+  async updateRealTimeAnalytics(eventName, eventData) {
+    try {
+      // Update real-time counters
+      const analytics = this.localData.get('analytics');
+      analytics.total_events++;
+      
+      // Update event counters
+      if (!analytics.event_counts) {
+        analytics.event_counts = {};
+      }
+      analytics.event_counts[eventName] = (analytics.event_counts[eventName] || 0) + 1;
+      
+      // Update session data
+      analytics.last_event_time = Date.now();
+      analytics.is_active = true;
+      
+      // Update user data
+      if (eventData.user_id) {
+        if (!analytics.user_data) {
+          analytics.user_data = {};
+        }
+        analytics.user_data[eventData.user_id] = {
+          last_seen: Date.now(),
+          event_count: (analytics.user_data[eventData.user_id]?.event_count || 0) + 1,
+          last_event: eventName
+        };
+      }
+      
+      // Update platform data
+      if (eventData.platform) {
+        if (!analytics.platform_data) {
+          analytics.platform_data = {};
+        }
+        analytics.platform_data[eventData.platform] = (analytics.platform_data[eventData.platform] || 0) + 1;
+      }
+      
+    } catch (error) {
+      console.warn('Failed to update real-time analytics:', error);
+    }
+  }
+
+  /**
    * Get analytics summary
    */
   getAnalyticsSummary() {

@@ -88,38 +88,160 @@ export class UniversalAPI {
    * Initialize local data storage
    */
   private initializeLocalData() {
-    // Initialize with default values
-    this.localData.set('user_info', {
-      id: 'local-user-' + Math.random().toString(36).substr(2, 9),
-      name: 'Local User',
-      platform: 'local',
-      isGuest: false,
-      isPremium: false,
-      source: 'local'
-    });
-
-    this.localData.set('ad_settings', {
-      banner_enabled: true,
-      interstitial_enabled: true,
-      rewarded_enabled: true,
-      ad_frequency: 3, // Show ad every 3 levels
-      last_ad_shown: 0
-    });
-
-    this.localData.set('analytics', {
-      events: [],
-      session_start: Date.now(),
-      total_events: 0
-    });
-
-    this.localData.set('purchases', {
-      items: [],
-      total_spent: 0,
-      currency: 'USD'
-    });
+    // Load real user data from storage
+    this.loadRealUserData();
+    this.loadRealAdSettings();
+    this.loadRealAnalytics();
+    this.loadRealPurchases();
+    this.loadRealGameData();
 
     // Initialize mock data for testing
     this.initializeMockData();
+  }
+
+  /**
+   * Load real user data from storage
+   */
+  private loadRealUserData() {
+    try {
+      const userData = this.getFromLocalStorage('user_info');
+      if (userData) {
+        this.localData.set('user_info', userData);
+      } else {
+        // Create new user with real data
+        const newUser = {
+          id: this.generateUserId(),
+          name: this.getRealUserName(),
+          platform: this.getRealPlatform(),
+          isGuest: false,
+          isPremium: this.checkPremiumStatus(),
+          source: 'local',
+          created_at: new Date().toISOString(),
+          last_seen: new Date().toISOString(),
+          preferences: this.getUserPreferences(),
+          game_progress: this.getGameProgress(),
+          achievements: this.getUserAchievements()
+        };
+        this.localData.set('user_info', newUser);
+        this.saveToLocalStorage('user_info', newUser);
+      }
+    } catch (error) {
+      console.warn('Failed to load real user data:', error);
+      this.createDefaultUser();
+    }
+  }
+
+  /**
+   * Load real ad settings
+   */
+  private loadRealAdSettings() {
+    try {
+      const adSettings = this.getFromLocalStorage('ad_settings');
+      if (adSettings) {
+        this.localData.set('ad_settings', adSettings);
+      } else {
+        const defaultSettings = {
+          banner_enabled: true,
+          interstitial_enabled: true,
+          rewarded_enabled: true,
+          ad_frequency: 3,
+          last_ad_shown: 0,
+          ad_revenue: 0,
+          ads_shown_today: 0,
+          last_reset_date: new Date().toDateString(),
+          user_preferences: this.getAdPreferences()
+        };
+        this.localData.set('ad_settings', defaultSettings);
+        this.saveToLocalStorage('ad_settings', defaultSettings);
+      }
+    } catch (error) {
+      console.warn('Failed to load real ad settings:', error);
+      this.createDefaultAdSettings();
+    }
+  }
+
+  /**
+   * Load real analytics data
+   */
+  private loadRealAnalytics() {
+    try {
+      const analytics = this.getFromLocalStorage('analytics');
+      if (analytics) {
+        this.localData.set('analytics', analytics);
+      } else {
+        const defaultAnalytics = {
+          events: [],
+          session_start: Date.now(),
+          total_events: 0,
+          daily_events: 0,
+          last_reset_date: new Date().toDateString(),
+          user_engagement: this.calculateUserEngagement(),
+          performance_metrics: this.getPerformanceMetrics(),
+          error_logs: []
+        };
+        this.localData.set('analytics', defaultAnalytics);
+        this.saveToLocalStorage('analytics', defaultAnalytics);
+      }
+    } catch (error) {
+      console.warn('Failed to load real analytics:', error);
+      this.createDefaultAnalytics();
+    }
+  }
+
+  /**
+   * Load real purchases data
+   */
+  private loadRealPurchases() {
+    try {
+      const purchases = this.getFromLocalStorage('purchases');
+      if (purchases) {
+        this.localData.set('purchases', purchases);
+      } else {
+        const defaultPurchases = {
+          items: [],
+          total_spent: 0,
+          currency: 'USD',
+          purchase_history: [],
+          refunds: [],
+          subscription_status: this.getSubscriptionStatus(),
+          payment_methods: this.getPaymentMethods()
+        };
+        this.localData.set('purchases', defaultPurchases);
+        this.saveToLocalStorage('purchases', defaultPurchases);
+      }
+    } catch (error) {
+      console.warn('Failed to load real purchases:', error);
+      this.createDefaultPurchases();
+    }
+  }
+
+  /**
+   * Load real game data
+   */
+  private loadRealGameData() {
+    try {
+      const gameData = this.getFromLocalStorage('game_data');
+      if (gameData) {
+        this.localData.set('game_data', gameData);
+      } else {
+        const defaultGameData = {
+          level: 1,
+          score: 0,
+          coins: 100,
+          gems: 10,
+          powerups: [],
+          achievements: [],
+          settings: this.getGameSettings(),
+          statistics: this.getGameStatistics(),
+          progress: this.getGameProgress()
+        };
+        this.localData.set('game_data', defaultGameData);
+        this.saveToLocalStorage('game_data', defaultGameData);
+      }
+    } catch (error) {
+      console.warn('Failed to load real game data:', error);
+      this.createDefaultGameData();
+    }
   }
 
   /**
@@ -668,6 +790,464 @@ export class UniversalAPI {
   private simulateAdBlockDetection(): boolean {
     // Simulate ad block detection (10% chance of being blocked)
     return Math.random() < 0.1;
+  }
+
+  /**
+   * Real data helper methods
+   */
+  private generateUserId(): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substr(2, 5);
+    return `user_${timestamp}_${random}`;
+  }
+
+  private getRealUserName(): string {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const savedName = localStorage.getItem('user_name');
+        if (savedName) return savedName;
+      }
+      
+      // Generate a realistic username
+      const adjectives = ['Cool', 'Amazing', 'Super', 'Epic', 'Awesome', 'Fantastic', 'Incredible', 'Brilliant'];
+      const nouns = ['Player', 'Gamer', 'Champion', 'Hero', 'Master', 'Legend', 'Pro', 'Expert'];
+      const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const noun = nouns[Math.floor(Math.random() * nouns.length)];
+      const number = Math.floor(Math.random() * 999) + 1;
+      
+      return `${adjective}${noun}${number}`;
+    } catch (error) {
+      return 'Player' + Math.floor(Math.random() * 9999) + 1;
+    }
+  }
+
+  private getRealPlatform(): string {
+    try {
+      if (typeof navigator !== 'undefined') {
+        const userAgent = navigator.userAgent.toLowerCase();
+        if (userAgent.includes('mobile') || userAgent.includes('android') || userAgent.includes('iphone')) {
+          return 'mobile';
+        } else if (userAgent.includes('tablet') || userAgent.includes('ipad')) {
+          return 'tablet';
+        } else {
+          return 'desktop';
+        }
+      }
+      return 'web';
+    } catch (error) {
+      return 'web';
+    }
+  }
+
+  private checkPremiumStatus(): boolean {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const premiumStatus = localStorage.getItem('premium_status');
+        return premiumStatus === 'true';
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private getUserPreferences(): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const preferences = localStorage.getItem('user_preferences');
+        return preferences ? JSON.parse(preferences) : {
+          theme: 'dark',
+          sound_enabled: true,
+          music_enabled: true,
+          notifications: true,
+          language: navigator.language || 'en-US'
+        };
+      }
+      return {
+        theme: 'dark',
+        sound_enabled: true,
+        music_enabled: true,
+        notifications: true,
+        language: 'en-US'
+      };
+    } catch (error) {
+      return {
+        theme: 'dark',
+        sound_enabled: true,
+        music_enabled: true,
+        notifications: true,
+        language: 'en-US'
+      };
+    }
+  }
+
+  private getGameProgress(): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const progress = localStorage.getItem('game_progress');
+        return progress ? JSON.parse(progress) : {
+          current_level: 1,
+          levels_completed: 0,
+          total_score: 0,
+          play_time: 0,
+          last_played: new Date().toISOString()
+        };
+      }
+      return {
+        current_level: 1,
+        levels_completed: 0,
+        total_score: 0,
+        play_time: 0,
+        last_played: new Date().toISOString()
+      };
+    } catch (error) {
+      return {
+        current_level: 1,
+        levels_completed: 0,
+        total_score: 0,
+        play_time: 0,
+        last_played: new Date().toISOString()
+      };
+    }
+  }
+
+  private getUserAchievements(): any[] {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const achievements = localStorage.getItem('user_achievements');
+        return achievements ? JSON.parse(achievements) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  private getAdPreferences(): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const adPrefs = localStorage.getItem('ad_preferences');
+        return adPrefs ? JSON.parse(adPrefs) : {
+          frequency: 'normal',
+          types: ['banner', 'interstitial', 'rewarded'],
+          personalized: true
+        };
+      }
+      return {
+        frequency: 'normal',
+        types: ['banner', 'interstitial', 'rewarded'],
+        personalized: true
+      };
+    } catch (error) {
+      return {
+        frequency: 'normal',
+        types: ['banner', 'interstitial', 'rewarded'],
+        personalized: true
+      };
+    }
+  }
+
+  private calculateUserEngagement(): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const sessionData = localStorage.getItem('session_data');
+        if (sessionData) {
+          const data = JSON.parse(sessionData);
+          return {
+            total_sessions: data.total_sessions || 0,
+            average_session_duration: data.average_session_duration || 0,
+            last_session_duration: data.last_session_duration || 0,
+            engagement_score: this.calculateEngagementScore(data)
+          };
+        }
+      }
+      return {
+        total_sessions: 0,
+        average_session_duration: 0,
+        last_session_duration: 0,
+        engagement_score: 0
+      };
+    } catch (error) {
+      return {
+        total_sessions: 0,
+        average_session_duration: 0,
+        last_session_duration: 0,
+        engagement_score: 0
+      };
+    }
+  }
+
+  private calculateEngagementScore(data: any): number {
+    const sessions = data.total_sessions || 0;
+    const avgDuration = data.average_session_duration || 0;
+    const lastDuration = data.last_session_duration || 0;
+    
+    // Simple engagement score calculation
+    let score = 0;
+    if (sessions > 0) score += Math.min(sessions * 10, 50);
+    if (avgDuration > 0) score += Math.min(avgDuration / 60, 30);
+    if (lastDuration > 0) score += Math.min(lastDuration / 60, 20);
+    
+    return Math.min(score, 100);
+  }
+
+  private getPerformanceMetrics(): any {
+    try {
+      if (typeof performance !== 'undefined') {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        const paint = performance.getEntriesByType('paint');
+        
+        return {
+          load_time: navigation ? Math.round(navigation.loadEventEnd - navigation.loadEventStart) : 0,
+          dom_content_loaded: navigation ? Math.round(navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart) : 0,
+          first_paint: paint.find(p => p.name === 'first-paint') ? Math.round(paint.find(p => p.name === 'first-paint').startTime) : 0,
+          first_contentful_paint: paint.find(p => p.name === 'first-contentful-paint') ? Math.round(paint.find(p => p.name === 'first-contentful-paint').startTime) : 0,
+          memory_usage: this.getMemoryUsage(),
+          fps: this.getFPS()
+        };
+      }
+      return {
+        load_time: 0,
+        dom_content_loaded: 0,
+        first_paint: 0,
+        first_contentful_paint: 0,
+        memory_usage: 0,
+        fps: 60
+      };
+    } catch (error) {
+      return {
+        load_time: 0,
+        dom_content_loaded: 0,
+        first_paint: 0,
+        first_contentful_paint: 0,
+        memory_usage: 0,
+        fps: 60
+      };
+    }
+  }
+
+  private getMemoryUsage(): number {
+    try {
+      if (typeof performance !== 'undefined' && performance.memory) {
+        return Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  private getFPS(): number {
+    try {
+      if (typeof performance !== 'undefined') {
+        const fps = performance.getEntriesByType('measure').find(m => m.name === 'fps');
+        return fps ? Math.round(fps.duration) : 60;
+      }
+      return 60;
+    } catch (error) {
+      return 60;
+    }
+  }
+
+  private getSubscriptionStatus(): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const subscription = localStorage.getItem('subscription_status');
+        return subscription ? JSON.parse(subscription) : {
+          active: false,
+          type: 'none',
+          expires_at: null,
+          auto_renew: false
+        };
+      }
+      return {
+        active: false,
+        type: 'none',
+        expires_at: null,
+        auto_renew: false
+      };
+    } catch (error) {
+      return {
+        active: false,
+        type: 'none',
+        expires_at: null,
+        auto_renew: false
+      };
+    }
+  }
+
+  private getPaymentMethods(): any[] {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const paymentMethods = localStorage.getItem('payment_methods');
+        return paymentMethods ? JSON.parse(paymentMethods) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  private getGameSettings(): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const settings = localStorage.getItem('game_settings');
+        return settings ? JSON.parse(settings) : {
+          sound_volume: 0.8,
+          music_volume: 0.6,
+          graphics_quality: 'high',
+          controls: 'touch',
+          language: navigator.language || 'en-US'
+        };
+      }
+      return {
+        sound_volume: 0.8,
+        music_volume: 0.6,
+        graphics_quality: 'high',
+        controls: 'touch',
+        language: 'en-US'
+      };
+    } catch (error) {
+      return {
+        sound_volume: 0.8,
+        music_volume: 0.6,
+        graphics_quality: 'high',
+        controls: 'touch',
+        language: 'en-US'
+      };
+    }
+  }
+
+  private getGameStatistics(): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const stats = localStorage.getItem('game_statistics');
+        return stats ? JSON.parse(stats) : {
+          total_play_time: 0,
+          levels_completed: 0,
+          total_score: 0,
+          matches_made: 0,
+          powerups_used: 0,
+          coins_earned: 0,
+          gems_earned: 0
+        };
+      }
+      return {
+        total_play_time: 0,
+        levels_completed: 0,
+        total_score: 0,
+        matches_made: 0,
+        powerups_used: 0,
+        coins_earned: 0,
+        gems_earned: 0
+      };
+    } catch (error) {
+      return {
+        total_play_time: 0,
+        levels_completed: 0,
+        total_score: 0,
+        matches_made: 0,
+        powerups_used: 0,
+        coins_earned: 0,
+        gems_earned: 0
+      };
+    }
+  }
+
+  private getFromLocalStorage(key: string): any {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : null;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private saveToLocalStorage(key: string, data: any): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(data));
+      }
+    } catch (error) {
+      console.warn('Failed to save to localStorage:', error);
+    }
+  }
+
+  private createDefaultUser(): void {
+    const defaultUser = {
+      id: this.generateUserId(),
+      name: 'Player',
+      platform: 'web',
+      isGuest: false,
+      isPremium: false,
+      source: 'local',
+      created_at: new Date().toISOString(),
+      last_seen: new Date().toISOString(),
+      preferences: this.getUserPreferences(),
+      game_progress: this.getGameProgress(),
+      achievements: []
+    };
+    this.localData.set('user_info', defaultUser);
+  }
+
+  private createDefaultAdSettings(): void {
+    const defaultSettings = {
+      banner_enabled: true,
+      interstitial_enabled: true,
+      rewarded_enabled: true,
+      ad_frequency: 3,
+      last_ad_shown: 0,
+      ad_revenue: 0,
+      ads_shown_today: 0,
+      last_reset_date: new Date().toDateString(),
+      user_preferences: this.getAdPreferences()
+    };
+    this.localData.set('ad_settings', defaultSettings);
+  }
+
+  private createDefaultAnalytics(): void {
+    const defaultAnalytics = {
+      events: [],
+      session_start: Date.now(),
+      total_events: 0,
+      daily_events: 0,
+      last_reset_date: new Date().toDateString(),
+      user_engagement: this.calculateUserEngagement(),
+      performance_metrics: this.getPerformanceMetrics(),
+      error_logs: []
+    };
+    this.localData.set('analytics', defaultAnalytics);
+  }
+
+  private createDefaultPurchases(): void {
+    const defaultPurchases = {
+      items: [],
+      total_spent: 0,
+      currency: 'USD',
+      purchase_history: [],
+      refunds: [],
+      subscription_status: this.getSubscriptionStatus(),
+      payment_methods: []
+    };
+    this.localData.set('purchases', defaultPurchases);
+  }
+
+  private createDefaultGameData(): void {
+    const defaultGameData = {
+      level: 1,
+      score: 0,
+      coins: 100,
+      gems: 10,
+      powerups: [],
+      achievements: [],
+      settings: this.getGameSettings(),
+      statistics: this.getGameStatistics(),
+      progress: this.getGameProgress()
+    };
+    this.localData.set('game_data', defaultGameData);
   }
 
   /**

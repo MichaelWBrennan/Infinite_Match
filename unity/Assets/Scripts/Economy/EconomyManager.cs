@@ -149,63 +149,352 @@ namespace Economy
                 licenseType = "free",
                 cloudServicesAvailable = false,
                 localDataEnabled = true,
-                economy = new EconomyData
+                economy = LoadRealEconomyData(),
+                settings = LoadRealSettings()
+            };
+        }
+
+        private EconomyData LoadRealEconomyData()
+        {
+            try
+            {
+                // Try to load existing economy data
+                var existingData = LoadEconomyDataFromFile();
+                if (existingData != null)
                 {
-                    currencies = new List<Currency>
-                    {
-                        new Currency
-                        {
-                            id = "coins",
-                            name = "Coins",
-                            type = "soft_currency",
-                            initial = 1000,
-                            maximum = 999999,
-                            description = "Basic currency for purchases"
-                        },
-                        new Currency
-                        {
-                            id = "gems",
-                            name = "Gems",
-                            type = "premium_currency",
-                            initial = 50,
-                            maximum = 99999,
-                            description = "Premium currency for special items"
-                        }
-                    },
-                    inventory = new List<InventoryItem>
-                    {
-                        new InventoryItem
-                        {
-                            id = "powerup_rocket",
-                            name = "Rocket Power-up",
-                            type = "powerup",
-                            tradable = true,
-                            stackable = true,
-                            rarity = "common",
-                            description = "Clears a row or column"
-                        }
-                    },
-                    catalog = new List<CatalogItem>
-                    {
-                        new CatalogItem
-                        {
-                            id = "coins_100",
-                            name = "100 Coins",
-                            cost_currency = "gems",
-                            cost_amount = 1,
-                            rewards = "coins:100",
-                            description = "Purchase 100 coins"
-                        }
-                    }
+                    return existingData;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to load existing economy data: {e.Message}");
+            }
+
+            // Create new economy data with real game values
+            return new EconomyData
+            {
+                currencies = CreateRealCurrencies(),
+                inventory = CreateRealInventory(),
+                catalog = CreateRealCatalog()
+            };
+        }
+
+        private EconomyData LoadEconomyDataFromFile()
+        {
+            string dataPath = Path.Combine(Application.persistentDataPath, "EconomyData");
+            string filePath = Path.Combine(dataPath, "economy_config.json");
+
+            if (File.Exists(filePath))
+            {
+                string jsonData = File.ReadAllText(filePath);
+                return JsonConvert.DeserializeObject<EconomyData>(jsonData);
+            }
+            return null;
+        }
+
+        private List<Currency> CreateRealCurrencies()
+        {
+            return new List<Currency>
+            {
+                new Currency
+                {
+                    id = "coins",
+                    name = "Coins",
+                    type = "soft_currency",
+                    initial = GetPlayerCoins(),
+                    maximum = 999999,
+                    description = "Basic currency for purchases",
+                    icon = "coin_icon",
+                    color = "#FFD700"
                 },
-                settings = new Dictionary<string, object>
+                new Currency
                 {
-                    { "auto_save", true },
-                    { "save_interval", 300 },
-                    { "max_backups", 10 },
-                    { "compression_enabled", true }
+                    id = "gems",
+                    name = "Gems",
+                    type = "premium_currency",
+                    initial = GetPlayerGems(),
+                    maximum = 99999,
+                    description = "Premium currency for special items",
+                    icon = "gem_icon",
+                    color = "#00BFFF"
+                },
+                new Currency
+                {
+                    id = "stars",
+                    name = "Stars",
+                    type = "achievement_currency",
+                    initial = GetPlayerStars(),
+                    maximum = 9999,
+                    description = "Earned by completing levels with high scores",
+                    icon = "star_icon",
+                    color = "#FFA500"
+                },
+                new Currency
+                {
+                    id = "xp",
+                    name = "Experience Points",
+                    type = "progression_currency",
+                    initial = GetPlayerXP(),
+                    maximum = 999999,
+                    description = "Experience points for leveling up",
+                    icon = "xp_icon",
+                    color = "#32CD32"
                 }
             };
+        }
+
+        private List<InventoryItem> CreateRealInventory()
+        {
+            var inventory = new List<InventoryItem>();
+
+            // Load existing inventory items
+            var existingItems = GetExistingInventoryItems();
+            inventory.AddRange(existingItems);
+
+            // Add default items if inventory is empty
+            if (inventory.Count == 0)
+            {
+                inventory.AddRange(new List<InventoryItem>
+                {
+                    new InventoryItem
+                    {
+                        id = "powerup_rocket",
+                        name = "Rocket Power-up",
+                        type = "powerup",
+                        quantity = GetPlayerPowerupCount("powerup_rocket"),
+                        tradable = true,
+                        stackable = true,
+                        rarity = "common",
+                        description = "Clears a row or column",
+                        icon = "rocket_icon",
+                        value = 10
+                    },
+                    new InventoryItem
+                    {
+                        id = "powerup_bomb",
+                        name = "Bomb Power-up",
+                        type = "powerup",
+                        quantity = GetPlayerPowerupCount("powerup_bomb"),
+                        tradable = true,
+                        stackable = true,
+                        rarity = "common",
+                        description = "Explodes and clears surrounding pieces",
+                        icon = "bomb_icon",
+                        value = 15
+                    },
+                    new InventoryItem
+                    {
+                        id = "powerup_rainbow",
+                        name = "Rainbow Power-up",
+                        type = "powerup",
+                        quantity = GetPlayerPowerupCount("powerup_rainbow"),
+                        tradable = true,
+                        stackable = true,
+                        rarity = "rare",
+                        description = "Clears all pieces of one color",
+                        icon = "rainbow_icon",
+                        value = 50
+                    }
+                });
+            }
+
+            return inventory;
+        }
+
+        private List<CatalogItem> CreateRealCatalog()
+        {
+            return new List<CatalogItem>
+            {
+                new CatalogItem
+                {
+                    id = "coins_100",
+                    name = "100 Coins",
+                    cost_currency = "gems",
+                    cost_amount = 1,
+                    rewards = "coins:100",
+                    description = "Purchase 100 coins",
+                    icon = "coins_100_icon",
+                    category = "currency"
+                },
+                new CatalogItem
+                {
+                    id = "coins_500",
+                    name = "500 Coins",
+                    cost_currency = "gems",
+                    cost_amount = 4,
+                    rewards = "coins:500",
+                    description = "Purchase 500 coins",
+                    icon = "coins_500_icon",
+                    category = "currency"
+                },
+                new CatalogItem
+                {
+                    id = "gems_10",
+                    name = "10 Gems",
+                    cost_currency = "real_money",
+                    cost_amount = 0.99f,
+                    rewards = "gems:10",
+                    description = "Purchase 10 gems",
+                    icon = "gems_10_icon",
+                    category = "currency"
+                },
+                new CatalogItem
+                {
+                    id = "powerup_pack",
+                    name = "Power-up Pack",
+                    cost_currency = "gems",
+                    cost_amount = 5,
+                    rewards = "powerup_rocket:3,powerup_bomb:2",
+                    description = "Get a variety of power-ups",
+                    icon = "powerup_pack_icon",
+                    category = "powerups"
+                },
+                new CatalogItem
+                {
+                    id = "premium_pass",
+                    name = "Premium Pass",
+                    cost_currency = "real_money",
+                    cost_amount = 9.99f,
+                    rewards = "gems:100,coins:1000,powerup_rainbow:1",
+                    description = "Unlock premium features and rewards",
+                    icon = "premium_pass_icon",
+                    category = "subscription"
+                }
+            };
+        }
+
+        private Dictionary<string, object> LoadRealSettings()
+        {
+            try
+            {
+                string settingsPath = Path.Combine(Application.persistentDataPath, "EconomyData", "settings.json");
+                if (File.Exists(settingsPath))
+                {
+                    string jsonData = File.ReadAllText(settingsPath);
+                    return JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to load settings: {e.Message}");
+            }
+
+            return new Dictionary<string, object>
+            {
+                { "auto_save", true },
+                { "save_interval", 300 },
+                { "max_backups", 10 },
+                { "compression_enabled", true },
+                { "currency_format", "USD" },
+                { "localization", "en-US" },
+                { "analytics_enabled", true },
+                { "debug_mode", false }
+            };
+        }
+
+        private int GetPlayerCoins()
+        {
+            try
+            {
+                if (PlayerPrefs.HasKey("player_coins"))
+                {
+                    return PlayerPrefs.GetInt("player_coins");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to get player coins: {e.Message}");
+            }
+            return 1000; // Default starting coins
+        }
+
+        private int GetPlayerGems()
+        {
+            try
+            {
+                if (PlayerPrefs.HasKey("player_gems"))
+                {
+                    return PlayerPrefs.GetInt("player_gems");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to get player gems: {e.Message}");
+            }
+            return 50; // Default starting gems
+        }
+
+        private int GetPlayerStars()
+        {
+            try
+            {
+                if (PlayerPrefs.HasKey("player_stars"))
+                {
+                    return PlayerPrefs.GetInt("player_stars");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to get player stars: {e.Message}");
+            }
+            return 0; // Default starting stars
+        }
+
+        private int GetPlayerXP()
+        {
+            try
+            {
+                if (PlayerPrefs.HasKey("player_xp"))
+                {
+                    return PlayerPrefs.GetInt("player_xp");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to get player XP: {e.Message}");
+            }
+            return 0; // Default starting XP
+        }
+
+        private int GetPlayerPowerupCount(string powerupId)
+        {
+            try
+            {
+                if (PlayerPrefs.HasKey($"powerup_{powerupId}"))
+                {
+                    return PlayerPrefs.GetInt($"powerup_{powerupId}");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to get powerup count for {powerupId}: {e.Message}");
+            }
+            return 0; // Default powerup count
+        }
+
+        private List<InventoryItem> GetExistingInventoryItems()
+        {
+            var items = new List<InventoryItem>();
+            
+            try
+            {
+                string inventoryPath = Path.Combine(Application.persistentDataPath, "EconomyData", "inventory.json");
+                if (File.Exists(inventoryPath))
+                {
+                    string jsonData = File.ReadAllText(inventoryPath);
+                    var inventoryData = JsonConvert.DeserializeObject<List<InventoryItem>>(jsonData);
+                    if (inventoryData != null)
+                    {
+                        items.AddRange(inventoryData);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EconomyManager] Failed to load existing inventory: {e.Message}");
+            }
+            
+            return items;
         }
 
         private void InitializeCurrencies()
