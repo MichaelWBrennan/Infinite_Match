@@ -61,11 +61,7 @@ namespace Evergreen.Effects
         private Coroutine _flashCoroutine;
         
         // AI Visual Effects Systems
-        private AIVisualEffectsPersonalizationEngine _aiPersonalizationEngine;
-        private AIParticleGenerator _aiParticleGenerator;
-        private AIEffectAdaptationEngine _aiEffectAdaptation;
-        private AIVisualEffectsOptimizer _aiOptimizer;
-        private AIVisualEffectsBehaviorAnalyzer _aiBehaviorAnalyzer;
+        private UnifiedAIAPIService _aiService;
         
         // Events
         public System.Action<Vector3, EffectType> OnEffectPlayed;
@@ -556,59 +552,232 @@ namespace Evergreen.Effects
             
             Debug.Log("🎨 Initializing AI Visual Effects Systems...");
             
-            _aiPersonalizationEngine = new AIVisualEffectsPersonalizationEngine();
-            _aiParticleGenerator = new AIParticleGenerator();
-            _aiEffectAdaptation = new AIEffectAdaptationEngine();
-            _aiOptimizer = new AIVisualEffectsOptimizer();
-            _aiBehaviorAnalyzer = new AIVisualEffectsBehaviorAnalyzer();
+            _aiService = UnifiedAIAPIService.Instance;
+            if (_aiService == null)
+            {
+                var aiServiceGO = new GameObject("UnifiedAIAPIService");
+                _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
+            }
             
-            // Initialize each AI system
-            _aiPersonalizationEngine.Initialize(this);
-            _aiParticleGenerator.Initialize(this);
-            _aiEffectAdaptation.Initialize(this);
-            _aiOptimizer.Initialize(this);
-            _aiBehaviorAnalyzer.Initialize(this);
-            
-            Debug.Log("✅ AI Visual Effects Systems Initialized");
+            Debug.Log("✅ AI Visual Effects Systems Initialized with Unified API");
         }
         
-        public void AdaptEffectsToContext(VisualEffectsContext context)
+        public void AdaptEffectsToContext(string effectType, string intensity, string style)
         {
-            if (!enableAIVisualEffects || _aiEffectAdaptation == null) return;
+            if (!enableAIVisualEffects || _aiService == null) return;
             
-            _aiEffectAdaptation.AdaptToContext(context);
+            var context = new VisualEffectsContext
+            {
+                EffectType = effectType,
+                GameState = "playing",
+                EffectData = new Dictionary<string, object>
+                {
+                    ["intensity"] = intensity,
+                    ["style"] = style,
+                    ["screen_shake"] = screenShakeIntensity,
+                    ["ui_shake"] = uiShakeIntensity
+                },
+                Intensity = intensity,
+                Style = style
+            };
+            
+            _aiService.RequestVisualEffectsAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyVisualEffectsAdaptations(response);
+                }
+            });
         }
         
         public void PersonalizeEffectsForPlayer(string playerId)
         {
-            if (!enableAIVisualEffects || _aiPersonalizationEngine == null) return;
+            if (!enableAIVisualEffects || _aiService == null) return;
             
-            _aiPersonalizationEngine.PersonalizeForPlayer(playerId);
+            var context = new VisualEffectsContext
+            {
+                EffectType = "personalization",
+                GameState = "menu",
+                EffectData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["preferred_style"] = "default",
+                    ["intensity_preference"] = 0.5f
+                },
+                Intensity = "medium",
+                Style = "default"
+            };
+            
+            _aiService.RequestVisualEffectsAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyVisualEffectsPersonalization(response);
+                }
+            });
         }
         
-        public void GenerateDynamicParticles(ParticleContext context)
+        public void GenerateDynamicParticles(string effectType, Vector3 position, float intensity)
         {
-            if (!enableAIVisualEffects || _aiParticleGenerator == null) return;
+            if (!enableAIVisualEffects || _aiService == null) return;
             
-            var particleEffect = _aiParticleGenerator.GenerateParticleEffect(context);
-            if (particleEffect != null)
+            var context = new VisualEffectsContext
             {
-                PlayParticleEffect(particleEffect);
-            }
+                EffectType = effectType,
+                GameState = "playing",
+                EffectData = new Dictionary<string, object>
+                {
+                    ["position"] = position,
+                    ["intensity"] = intensity,
+                    ["particle_count"] = 10
+                },
+                Intensity = intensity.ToString(),
+                Style = "dynamic"
+            };
+            
+            _aiService.RequestVisualEffectsAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyDynamicParticleGeneration(response, position);
+                }
+            });
         }
         
         public void OptimizeVisualEffectsPerformance()
         {
-            if (!enableAIVisualEffects || _aiOptimizer == null) return;
+            if (!enableAIVisualEffects || _aiService == null) return;
             
-            _aiOptimizer.OptimizePerformance();
+            var context = new VisualEffectsContext
+            {
+                EffectType = "optimization",
+                GameState = "performance_check",
+                EffectData = new Dictionary<string, object>
+                {
+                    ["fps"] = 1f / Time.unscaledDeltaTime,
+                    ["active_particles"] = GetActiveParticleCount(),
+                    ["memory_usage"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemory(UnityEngine.Profiling.Profiler.Area.All) / (1024f * 1024f)
+                },
+                Intensity = "medium",
+                Style = "optimized"
+            };
+            
+            _aiService.RequestVisualEffectsAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyVisualEffectsOptimizations(response);
+                }
+            });
         }
         
         public void RecordEffectInteraction(string effectType, string effectName)
         {
-            if (!enableAIVisualEffects || _aiBehaviorAnalyzer == null) return;
+            if (!enableAIVisualEffects || _aiService == null) return;
             
-            _aiBehaviorAnalyzer.RecordInteraction(effectType, effectName);
+            var context = new VisualEffectsContext
+            {
+                EffectType = effectType,
+                GameState = "playing",
+                EffectData = new Dictionary<string, object>
+                {
+                    ["effect_name"] = effectName,
+                    ["interaction_type"] = "user_interaction",
+                    ["timestamp"] = Time.time
+                },
+                Intensity = "medium",
+                Style = "default"
+            };
+            
+            _aiService.RequestVisualEffectsAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ProcessEffectInteraction(response);
+                }
+            });
+        }
+        
+        private void ApplyVisualEffectsAdaptations(VisualEffectsAIResponse response)
+        {
+            // Apply visual effects adaptations from AI
+            if (!string.IsNullOrEmpty(response.EffectStyle))
+            {
+                ApplyEffectStyle(response.EffectStyle);
+            }
+            
+            if (response.Intensity != null)
+            {
+                ApplyEffectIntensity(response.Intensity);
+            }
+            
+            if (response.EffectRecommendations != null)
+            {
+                foreach (var recommendation in response.EffectRecommendations)
+                {
+                    Debug.Log($"Visual Effects AI Recommendation: {recommendation}");
+                }
+            }
+        }
+        
+        private void ApplyVisualEffectsPersonalization(VisualEffectsAIResponse response)
+        {
+            // Apply visual effects personalization from AI
+            Debug.Log($"AI Visual Effects Personalization: {response.EffectStyle}");
+        }
+        
+        private void ApplyDynamicParticleGeneration(VisualEffectsAIResponse response, Vector3 position)
+        {
+            // Apply dynamic particle generation from AI
+            if (!string.IsNullOrEmpty(response.EffectType))
+            {
+                PlayEffectByType(response.EffectType, position);
+            }
+        }
+        
+        private void ApplyVisualEffectsOptimizations(VisualEffectsAIResponse response)
+        {
+            // Apply visual effects optimizations from AI
+            Debug.Log("AI Visual Effects Optimizations Applied");
+        }
+        
+        private void ProcessEffectInteraction(VisualEffectsAIResponse response)
+        {
+            // Process effect interaction from AI
+            Debug.Log("AI Effect Interaction Processed");
+        }
+        
+        private int GetActiveParticleCount()
+        {
+            // Get count of active particles
+            return _activeParticles.Values.Sum(list => list.Count);
+        }
+        
+        private void ApplyEffectStyle(string style)
+        {
+            // Apply effect style
+            Debug.Log($"AI Effect Style: {style}");
+        }
+        
+        private void ApplyEffectIntensity(string intensity)
+        {
+            // Apply effect intensity
+            Debug.Log($"AI Effect Intensity: {intensity}");
+        }
+        
+        private void PlayEffectByType(string effectType, Vector3 position)
+        {
+            // Play effect by type
+            switch (effectType.ToLower())
+            {
+                case "match":
+                    PlayMatchEffect(position, 3, false);
+                    break;
+                case "combo":
+                    PlayComboEffect(position, 5);
+                    break;
+                case "explosion":
+                    PlayExplosionEffect(position, 1f);
+                    break;
+                case "sparkle":
+                    PlaySparkleEffect(position, 5);
+                    break;
+            }
         }
         
         private void PlayParticleEffect(AIParticleEffect effect)

@@ -22,10 +22,7 @@ public class GameplayUI : MonoBehaviour
     public float aiAdaptationStrength = 0.8f;
 
     private Board _board;
-    private AIGameplayAssistant _aiAssistant;
-    private AIPerformanceOptimizer _aiOptimizer;
-    private AIHintSystem _aiHintSystem;
-    private AIDifficultyManager _aiDifficultyManager;
+    private UnifiedAIAPIService _aiService;
 
     void Start()
     {
@@ -133,69 +130,104 @@ public class GameplayUI : MonoBehaviour
     {
         if (!enableAIGameplay) return;
         
-        _aiAssistant = new AIGameplayAssistant();
-        _aiOptimizer = new AIPerformanceOptimizer();
-        _aiHintSystem = new AIHintSystem();
-        _aiDifficultyManager = new AIDifficultyManager();
+        _aiService = UnifiedAIAPIService.Instance;
+        if (_aiService == null)
+        {
+            var aiServiceGO = new GameObject("UnifiedAIAPIService");
+            _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
+        }
         
-        Debug.Log("AI Gameplay Systems initialized");
+        Debug.Log("AI Gameplay Systems initialized with Unified API");
     }
     
     private void StartAIGameplaySystems()
     {
-        if (_aiAssistant != null)
-        {
-            _aiAssistant.Initialize(_board);
-        }
-        
-        if (_aiOptimizer != null)
-        {
-            _aiOptimizer.StartOptimization();
-        }
-        
-        if (_aiHintSystem != null)
+        if (_aiService != null)
         {
             StartCoroutine(AIHintCoroutine());
-        }
-        
-        if (_aiDifficultyManager != null)
-        {
-            _aiDifficultyManager.StartDifficultyMonitoring();
+            StartCoroutine(AIDifficultyAdaptationCoroutine());
         }
     }
     
     private IEnumerator AIHintCoroutine()
     {
-        while (enableAIHints && _aiHintSystem != null)
+        while (enableAIHints && _aiService != null)
         {
             yield return new WaitForSeconds(1f / aiHintFrequency);
             
-            if (_aiHintSystem.ShouldShowHint())
+            // Request AI hint from unified API
+            var context = new GameplayContext
             {
-                var hint = _aiHintSystem.GenerateHint(_board);
-                if (hint != null)
+                GameState = "playing",
+                PlayerAction = "hint_request",
+                GameData = new Dictionary<string, object>
                 {
-                    ShowAIHint(hint);
+                    ["board_state"] = GetBoardState(),
+                    ["player_level"] = GameState.CurrentLevel,
+                    ["moves_remaining"] = GetMovesRemaining()
+                },
+                Difficulty = "medium",
+                Performance = GetCurrentPerformance()
+            };
+            
+            _aiService.RequestGameplayAI("player_1", context, (response) => {
+                if (response != null && !string.IsNullOrEmpty(response.Hint))
+                {
+                    ShowAIHint(response.Hint, response.Strategy);
                 }
-            }
+            });
         }
     }
     
-    private void ShowAIHint(AIHint hint)
+    private IEnumerator AIDifficultyAdaptationCoroutine()
     {
-        // Show visual hint on the board
-        if (hint.Type == AIHintType.MoveSuggestion)
+        while (enableAIDifficultyAdaptation && _aiService != null)
         {
-            HighlightSuggestedMove(hint.Position, hint.TargetPosition);
+            yield return new WaitForSeconds(5f); // Check every 5 seconds
+            
+            // Request difficulty adaptation from unified API
+            var context = new GameplayContext
+            {
+                GameState = "playing",
+                PlayerAction = "difficulty_check",
+                GameData = new Dictionary<string, object>
+                {
+                    ["recent_performance"] = GetRecentPerformance(),
+                    ["level_completion_time"] = GetLevelCompletionTime(),
+                    ["mistakes_count"] = GetMistakesCount()
+                },
+                Difficulty = "medium",
+                Performance = GetCurrentPerformance()
+            };
+            
+            _aiService.RequestGameplayAI("player_1", context, (response) => {
+                if (response != null && response.DifficultyAdjustment != 0)
+                {
+                    ApplyDifficultyAdjustment(response.DifficultyAdjustment);
+                }
+            });
         }
-        else if (hint.Type == AIHintType.PatternRecognition)
+    }
+    
+    private void ShowAIHint(string hint, string strategy)
+    {
+        // Show AI hint and strategy
+        if (!string.IsNullOrEmpty(hint))
         {
-            HighlightPattern(hint.Positions);
+            ShowHintMessage(hint);
         }
-        else if (hint.Type == AIHintType.StrategyAdvice)
+        
+        if (!string.IsNullOrEmpty(strategy))
         {
-            ShowStrategyAdvice(hint.Message);
+            ShowStrategyAdvice(strategy);
         }
+    }
+    
+    private void ShowHintMessage(string message)
+    {
+        // Show hint message to player
+        Debug.Log($"AI Hint: {message}");
+        // You can show this in a UI popup or notification
     }
     
     private void HighlightSuggestedMove(Vector2Int from, Vector2Int to)
@@ -264,19 +296,30 @@ public class GameplayUI : MonoBehaviour
     
     public void OnPlayerMove(Vector2Int from, Vector2Int to)
     {
-        if (_aiAssistant != null)
+        if (_aiService != null)
         {
-            _aiAssistant.RecordPlayerMove(from, to);
-        }
-        
-        if (_aiOptimizer != null)
-        {
-            _aiOptimizer.AnalyzeMove(from, to);
-        }
-        
-        if (_aiDifficultyManager != null)
-        {
-            _aiDifficultyManager.UpdateDifficultyBasedOnMove(from, to);
+            // Request AI analysis of the move
+            var context = new GameplayContext
+            {
+                GameState = "playing",
+                PlayerAction = "move",
+                GameData = new Dictionary<string, object>
+                {
+                    ["from_position"] = from,
+                    ["to_position"] = to,
+                    ["board_state"] = GetBoardState(),
+                    ["move_timestamp"] = Time.time
+                },
+                Difficulty = "medium",
+                Performance = GetCurrentPerformance()
+            };
+            
+            _aiService.RequestGameplayAI("player_1", context, (response) => {
+                if (response != null && response.Recommendations != null)
+                {
+                    ProcessAIRecommendations(response.Recommendations);
+                }
+            });
         }
     }
     
@@ -295,14 +338,101 @@ public class GameplayUI : MonoBehaviour
     
     public void OnLevelComplete(int score, int moves, float time)
     {
-        if (_aiAssistant != null)
+        if (_aiService != null)
         {
-            _aiAssistant.RecordLevelCompletion(score, moves, time);
+            // Request AI analysis of level completion
+            var context = new GameplayContext
+            {
+                GameState = "level_complete",
+                PlayerAction = "level_complete",
+                GameData = new Dictionary<string, object>
+                {
+                    ["score"] = score,
+                    ["moves"] = moves,
+                    ["time"] = time,
+                    ["level_id"] = GameState.CurrentLevel
+                },
+                Difficulty = "medium",
+                Performance = GetCurrentPerformance()
+            };
+            
+            _aiService.RequestGameplayAI("player_1", context, (response) => {
+                if (response != null && response.Recommendations != null)
+                {
+                    ProcessLevelCompleteRecommendations(response.Recommendations);
+                }
+            });
         }
-        
-        if (_aiDifficultyManager != null)
+    }
+    
+    // Helper methods for AI integration
+    private Dictionary<string, object> GetBoardState()
+    {
+        // Get current board state for AI analysis
+        return new Dictionary<string, object>
         {
-            _aiDifficultyManager.AdjustDifficultyForNextLevel(score, moves, time);
+            ["size"] = _board.Size,
+            ["colors"] = _board.NumColors,
+            ["tiles"] = "board_data" // Simplified
+        };
+    }
+    
+    private int GetMovesRemaining()
+    {
+        // Get remaining moves
+        return 10; // Simplified
+    }
+    
+    private float GetCurrentPerformance()
+    {
+        // Get current performance metric
+        return 1f / Time.unscaledDeltaTime / 60f; // FPS-based performance
+    }
+    
+    private Dictionary<string, object> GetRecentPerformance()
+    {
+        // Get recent performance data
+        return new Dictionary<string, object>
+        {
+            ["avg_fps"] = GetCurrentPerformance(),
+            ["memory_usage"] = 50f,
+            ["cpu_usage"] = 30f
+        };
+    }
+    
+    private float GetLevelCompletionTime()
+    {
+        // Get level completion time
+        return Time.time; // Simplified
+    }
+    
+    private int GetMistakesCount()
+    {
+        // Get mistakes count
+        return 0; // Simplified
+    }
+    
+    private void ApplyDifficultyAdjustment(float adjustment)
+    {
+        // Apply difficulty adjustment
+        Debug.Log($"AI adjusted difficulty by: {adjustment:F2}");
+    }
+    
+    private void ProcessAIRecommendations(List<string> recommendations)
+    {
+        // Process AI recommendations
+        foreach (var recommendation in recommendations)
+        {
+            Debug.Log($"AI Recommendation: {recommendation}");
+        }
+    }
+    
+    private void ProcessLevelCompleteRecommendations(List<string> recommendations)
+    {
+        // Process level complete recommendations
+        foreach (var recommendation in recommendations)
+        {
+            Debug.Log($"AI Level Complete Recommendation: {recommendation}");
         }
     }
     
@@ -316,21 +446,7 @@ public class GameplayUI : MonoBehaviour
             pauseButton.onClick.RemoveListener(OnPauseButtonClicked);
         }
         
-        // Clean up AI systems
-        if (_aiAssistant != null)
-        {
-            _aiAssistant.Cleanup();
-        }
-        
-        if (_aiOptimizer != null)
-        {
-            _aiOptimizer.StopOptimization();
-        }
-        
-        if (_aiDifficultyManager != null)
-        {
-            _aiDifficultyManager.StopDifficultyMonitoring();
-        }
+        // AI service cleanup is handled by the singleton
     }
 }
 

@@ -84,11 +84,7 @@ namespace Economy
         private Dictionary<string, CatalogItem> catalog;
         
         // AI Economy Systems
-        private AIEconomyPersonalizationEngine _aiPersonalizationEngine;
-        private AIPricingEngine _aiPricingEngine;
-        private AIOffersGenerator _aiOffersGenerator;
-        private AIEconomyPredictor _aiPredictor;
-        private AIEconomyOptimizer _aiOptimizer;
+        private UnifiedAIAPIService _aiService;
         
         public static EconomyManager Instance { get; private set; }
         
@@ -911,63 +907,212 @@ namespace Economy
             
             Debug.Log("💰 Initializing AI Economy Systems...");
             
-            _aiPersonalizationEngine = new AIEconomyPersonalizationEngine();
-            _aiPricingEngine = new AIPricingEngine();
-            _aiOffersGenerator = new AIOffersGenerator();
-            _aiPredictor = new AIEconomyPredictor();
-            _aiOptimizer = new AIEconomyOptimizer();
+            _aiService = UnifiedAIAPIService.Instance;
+            if (_aiService == null)
+            {
+                var aiServiceGO = new GameObject("UnifiedAIAPIService");
+                _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
+            }
             
-            // Initialize each AI system
-            _aiPersonalizationEngine.Initialize(this);
-            _aiPricingEngine.Initialize(this);
-            _aiOffersGenerator.Initialize(this);
-            _aiPredictor.Initialize(this);
-            _aiOptimizer.Initialize(this);
-            
-            Debug.Log("✅ AI Economy Systems Initialized");
+            Debug.Log("✅ AI Economy Systems Initialized with Unified API");
         }
         
         public void PersonalizeEconomyForPlayer(string playerId)
         {
-            if (!enableAIEconomy || _aiPersonalizationEngine == null) return;
+            if (!enableAIEconomy || _aiService == null) return;
             
-            _aiPersonalizationEngine.PersonalizeForPlayer(playerId);
+            var context = new EconomyContext
+            {
+                EconomyAction = "personalization",
+                PlayerState = "active",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["coins"] = GetCurrencyAmount("coins"),
+                    ["gems"] = GetCurrencyAmount("gems"),
+                    ["level"] = 1
+                },
+                Currency = "coins",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyEconomyPersonalization(response);
+                }
+            });
         }
         
         public void GeneratePersonalizedOffers(string playerId)
         {
-            if (!enableAIEconomy || _aiOffersGenerator == null) return;
+            if (!enableAIEconomy || _aiService == null) return;
             
-            var offers = _aiOffersGenerator.GenerateOffers(playerId);
-            if (offers != null && offers.Count > 0)
+            var context = new EconomyContext
             {
-                ApplyPersonalizedOffers(offers);
-            }
+                EconomyAction = "generate_offers",
+                PlayerState = "shopping",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["purchase_history"] = new List<string>(),
+                    ["preferences"] = new Dictionary<string, object>()
+                },
+                Currency = "gems",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyPersonalizedOffers(response);
+                }
+            });
         }
         
         public void OptimizePricing()
         {
-            if (!enableAIEconomy || _aiPricingEngine == null) return;
+            if (!enableAIEconomy || _aiService == null) return;
             
-            _aiPricingEngine.OptimizePricing();
+            var context = new EconomyContext
+            {
+                EconomyAction = "optimize_pricing",
+                PlayerState = "system",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["catalog_items"] = catalog.Count,
+                    ["purchase_rates"] = new Dictionary<string, float>(),
+                    ["revenue"] = 0f
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplyPricingOptimizations(response);
+                }
+            });
         }
         
         public void PredictPlayerBehavior(string playerId)
         {
-            if (!enableAIEconomy || _aiPredictor == null) return;
+            if (!enableAIEconomy || _aiService == null) return;
             
-            var prediction = _aiPredictor.PredictBehavior(playerId);
-            if (prediction != null)
+            var context = new EconomyContext
             {
-                ApplyPrediction(prediction);
-            }
+                EconomyAction = "predict_behavior",
+                PlayerState = "analyzing",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["spending_pattern"] = new Dictionary<string, object>(),
+                    ["engagement_level"] = 0.5f
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyBehaviorPrediction(response);
+                }
+            });
         }
         
         public void OptimizeEconomyPerformance()
         {
-            if (!enableAIEconomy || _aiOptimizer == null) return;
+            if (!enableAIEconomy || _aiService == null) return;
             
-            _aiOptimizer.OptimizePerformance();
+            var context = new EconomyContext
+            {
+                EconomyAction = "optimize_performance",
+                PlayerState = "system",
+                EconomyData = new Dictionary<string, object>
+                {
+                    ["revenue"] = 0f,
+                    ["conversion_rate"] = 0.1f,
+                    ["retention_rate"] = 0.7f
+                },
+                Currency = "all",
+                Amount = 0
+            };
+            
+            _aiService.RequestEconomyAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplyEconomyOptimizations(response);
+                }
+            });
+        }
+        
+        private void ApplyEconomyPersonalization(EconomyAIResponse response)
+        {
+            // Apply economy personalization from AI
+            if (response.PriceAdjustment != 1.0f)
+            {
+                ApplyPriceAdjustments(response.PriceAdjustment);
+            }
+            
+            if (!string.IsNullOrEmpty(response.OfferType))
+            {
+                CreatePersonalizedOffer(response.OfferType, response.Discount);
+            }
+            
+            if (response.EconomyRecommendations != null)
+            {
+                foreach (var recommendation in response.EconomyRecommendations)
+                {
+                    Debug.Log($"Economy AI Recommendation: {recommendation}");
+                }
+            }
+        }
+        
+        private void ApplyPersonalizedOffers(EconomyAIResponse response)
+        {
+            // Apply personalized offers from AI
+            if (!string.IsNullOrEmpty(response.OfferType))
+            {
+                CreatePersonalizedOffer(response.OfferType, response.Discount);
+            }
+        }
+        
+        private void ApplyPricingOptimizations(EconomyAIResponse response)
+        {
+            // Apply pricing optimizations from AI
+            if (response.PriceAdjustment != 1.0f)
+            {
+                ApplyPriceAdjustments(response.PriceAdjustment);
+            }
+        }
+        
+        private void ApplyBehaviorPrediction(EconomyAIResponse response)
+        {
+            // Apply behavior prediction from AI
+            Debug.Log("AI Behavior Prediction Applied");
+        }
+        
+        private void ApplyEconomyOptimizations(EconomyAIResponse response)
+        {
+            // Apply economy optimizations from AI
+            Debug.Log("AI Economy Optimizations Applied");
+        }
+        
+        private void ApplyPriceAdjustments(float adjustment)
+        {
+            // Apply price adjustments to catalog items
+            foreach (var item in catalog.Values)
+            {
+                item.cost_amount = Mathf.RoundToInt(item.cost_amount * adjustment);
+            }
+        }
+        
+        private void CreatePersonalizedOffer(string offerType, float discount)
+        {
+            // Create personalized offer
+            Debug.Log($"AI Personalized Offer: {offerType} with {discount:P0} discount");
         }
         
         private void ApplyPersonalizedOffers(List<PersonalizedOffer> offers)

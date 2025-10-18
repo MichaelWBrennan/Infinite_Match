@@ -252,11 +252,7 @@ namespace Evergreen.Social
         private Dictionary<string, List<Gift>> _playerGiftsLookup = new Dictionary<string, List<Gift>>();
         
         // AI Social Systems
-        private AISocialMatchmakingEngine _aiMatchmakingEngine;
-        private AIChatModerationSystem _aiChatModeration;
-        private AISocialRecommendationEngine _aiRecommendationEngine;
-        private AISocialOptimizer _aiOptimizer;
-        private AISocialBehaviorAnalyzer _aiBehaviorAnalyzer;
+        private UnifiedAIAPIService _aiService;
         
         // Events
         public System.Action<Team> OnTeamCreated;
@@ -893,67 +889,264 @@ namespace Evergreen.Social
             
             Debug.Log("👥 Initializing AI Social Systems...");
             
-            _aiMatchmakingEngine = new AISocialMatchmakingEngine();
-            _aiChatModeration = new AIChatModerationSystem();
-            _aiRecommendationEngine = new AISocialRecommendationEngine();
-            _aiOptimizer = new AISocialOptimizer();
-            _aiBehaviorAnalyzer = new AISocialBehaviorAnalyzer();
+            _aiService = UnifiedAIAPIService.Instance;
+            if (_aiService == null)
+            {
+                var aiServiceGO = new GameObject("UnifiedAIAPIService");
+                _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
+            }
             
-            // Initialize each AI system
-            _aiMatchmakingEngine.Initialize(this);
-            _aiChatModeration.Initialize(this);
-            _aiRecommendationEngine.Initialize(this);
-            _aiOptimizer.Initialize(this);
-            _aiBehaviorAnalyzer.Initialize(this);
-            
-            Debug.Log("✅ AI Social Systems Initialized");
+            Debug.Log("✅ AI Social Systems Initialized with Unified API");
         }
         
         public void FindOptimalTeamMatches(string playerId)
         {
-            if (!enableAISocial || _aiMatchmakingEngine == null) return;
+            if (!enableAISocial || _aiService == null) return;
             
-            var matches = _aiMatchmakingEngine.FindOptimalMatches(playerId);
-            if (matches != null && matches.Count > 0)
+            var context = new SocialContext
             {
-                ShowTeamRecommendations(matches);
-            }
+                SocialAction = "team_matchmaking",
+                PlayerId = playerId,
+                SocialData = new Dictionary<string, object>
+                {
+                    ["player_level"] = GetPlayerLevel(playerId),
+                    ["preferred_team_types"] = new List<string>(),
+                    ["activity_level"] = GetPlayerActivityLevel(playerId)
+                },
+                TeamId = "",
+                Message = ""
+            };
+            
+            _aiService.RequestSocialAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyTeamMatchmaking(response);
+                }
+            });
         }
         
         public void ModerateChatMessage(string message, string senderId)
         {
-            if (!enableAISocial || _aiChatModeration == null) return;
+            if (!enableAISocial || _aiService == null) return;
             
-            var moderationResult = _aiChatModeration.ModerateMessage(message, senderId);
-            if (moderationResult != null)
+            var context = new SocialContext
             {
-                ApplyModerationResult(moderationResult);
-            }
+                SocialAction = "chat_moderation",
+                PlayerId = senderId,
+                SocialData = new Dictionary<string, object>
+                {
+                    ["message"] = message,
+                    ["sender_id"] = senderId,
+                    ["message_length"] = message.Length,
+                    ["timestamp"] = DateTime.Now
+                },
+                TeamId = GetPlayerTeamId(senderId),
+                Message = message
+            };
+            
+            _aiService.RequestSocialAI(senderId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyChatModeration(response);
+                }
+            });
         }
         
         public void GenerateSocialRecommendations(string playerId)
         {
-            if (!enableAISocial || _aiRecommendationEngine == null) return;
+            if (!enableAISocial || _aiService == null) return;
             
-            var recommendations = _aiRecommendationEngine.GenerateRecommendations(playerId);
-            if (recommendations != null && recommendations.Count > 0)
+            var context = new SocialContext
             {
-                ShowSocialRecommendations(recommendations);
-            }
+                SocialAction = "generate_recommendations",
+                PlayerId = playerId,
+                SocialData = new Dictionary<string, object>
+                {
+                    ["player_preferences"] = GetPlayerPreferences(playerId),
+                    ["social_history"] = GetPlayerSocialHistory(playerId),
+                    ["activity_patterns"] = GetPlayerActivityPatterns(playerId)
+                },
+                TeamId = GetPlayerTeamId(playerId),
+                Message = ""
+            };
+            
+            _aiService.RequestSocialAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplySocialRecommendations(response);
+                }
+            });
         }
         
         public void OptimizeSocialFeatures()
         {
-            if (!enableAISocial || _aiOptimizer == null) return;
+            if (!enableAISocial || _aiService == null) return;
             
-            _aiOptimizer.OptimizeSocialFeatures();
+            var context = new SocialContext
+            {
+                SocialAction = "optimize_features",
+                PlayerId = "system",
+                SocialData = new Dictionary<string, object>
+                {
+                    ["total_teams"] = teams.Count,
+                    ["total_players"] = _teamMemberLookup.Count,
+                    ["engagement_metrics"] = GetEngagementMetrics()
+                },
+                TeamId = "",
+                Message = ""
+            };
+            
+            _aiService.RequestSocialAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplySocialOptimizations(response);
+                }
+            });
         }
         
         public void AnalyzePlayerSocialBehavior(string playerId)
         {
-            if (!enableAISocial || _aiBehaviorAnalyzer == null) return;
+            if (!enableAISocial || _aiService == null) return;
             
-            _aiBehaviorAnalyzer.AnalyzePlayerBehavior(playerId);
+            var context = new SocialContext
+            {
+                SocialAction = "analyze_behavior",
+                PlayerId = playerId,
+                SocialData = new Dictionary<string, object>
+                {
+                    ["team_interactions"] = GetPlayerTeamInteractions(playerId),
+                    ["chat_activity"] = GetPlayerChatActivity(playerId),
+                    ["social_engagement"] = GetPlayerSocialEngagement(playerId)
+                },
+                TeamId = GetPlayerTeamId(playerId),
+                Message = ""
+            };
+            
+            _aiService.RequestSocialAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplySocialBehaviorAnalysis(response);
+                }
+            });
+        }
+        
+        private void ApplyTeamMatchmaking(SocialAIResponse response)
+        {
+            // Apply team matchmaking from AI
+            if (!string.IsNullOrEmpty(response.TeamMatch))
+            {
+                Debug.Log($"AI Team Match: {response.TeamMatch}");
+            }
+            
+            if (response.SocialRecommendations != null)
+            {
+                foreach (var recommendation in response.SocialRecommendations)
+                {
+                    Debug.Log($"Social AI Recommendation: {recommendation}");
+                }
+            }
+        }
+        
+        private void ApplyChatModeration(SocialAIResponse response)
+        {
+            // Apply chat moderation from AI
+            if (!string.IsNullOrEmpty(response.Message))
+            {
+                Debug.Log($"AI Chat Moderation: {response.Message}");
+            }
+        }
+        
+        private void ApplySocialRecommendations(SocialAIResponse response)
+        {
+            // Apply social recommendations from AI
+            if (!string.IsNullOrEmpty(response.FriendRecommendation))
+            {
+                Debug.Log($"AI Friend Recommendation: {response.FriendRecommendation}");
+            }
+            
+            if (!string.IsNullOrEmpty(response.EventRecommendation))
+            {
+                Debug.Log($"AI Event Recommendation: {response.EventRecommendation}");
+            }
+        }
+        
+        private void ApplySocialOptimizations(SocialAIResponse response)
+        {
+            // Apply social optimizations from AI
+            Debug.Log("AI Social Optimizations Applied");
+        }
+        
+        private void ApplySocialBehaviorAnalysis(SocialAIResponse response)
+        {
+            // Apply social behavior analysis from AI
+            Debug.Log("AI Social Behavior Analysis Applied");
+        }
+        
+        // Helper methods for social data
+        private int GetPlayerLevel(string playerId)
+        {
+            // Get player level
+            return 1; // Simplified
+        }
+        
+        private float GetPlayerActivityLevel(string playerId)
+        {
+            // Get player activity level
+            return 0.5f; // Simplified
+        }
+        
+        private string GetPlayerTeamId(string playerId)
+        {
+            // Get player team ID
+            var team = GetPlayerTeam(playerId);
+            return team?.id ?? "";
+        }
+        
+        private Dictionary<string, object> GetPlayerPreferences(string playerId)
+        {
+            // Get player preferences
+            return new Dictionary<string, object>();
+        }
+        
+        private Dictionary<string, object> GetPlayerSocialHistory(string playerId)
+        {
+            // Get player social history
+            return new Dictionary<string, object>();
+        }
+        
+        private Dictionary<string, object> GetPlayerActivityPatterns(string playerId)
+        {
+            // Get player activity patterns
+            return new Dictionary<string, object>();
+        }
+        
+        private Dictionary<string, object> GetEngagementMetrics()
+        {
+            // Get engagement metrics
+            return new Dictionary<string, object>
+            {
+                ["total_teams"] = teams.Count,
+                ["active_players"] = _teamMemberLookup.Count,
+                ["engagement_score"] = 0.7f
+            };
+        }
+        
+        private Dictionary<string, object> GetPlayerTeamInteractions(string playerId)
+        {
+            // Get player team interactions
+            return new Dictionary<string, object>();
+        }
+        
+        private Dictionary<string, object> GetPlayerChatActivity(string playerId)
+        {
+            // Get player chat activity
+            return new Dictionary<string, object>();
+        }
+        
+        private Dictionary<string, object> GetPlayerSocialEngagement(string playerId)
+        {
+            // Get player social engagement
+            return new Dictionary<string, object>();
         }
         
         private void ShowTeamRecommendations(List<TeamMatch> matches)

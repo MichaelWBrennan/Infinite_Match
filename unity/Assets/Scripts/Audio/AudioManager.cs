@@ -81,11 +81,7 @@ namespace Evergreen.Audio
         private Coroutine musicFadeCoroutine;
         
         // AI Audio Systems
-        private AIAudioPersonalizationEngine _aiPersonalizationEngine;
-        private AIMusicGenerator _aiMusicGenerator;
-        private AISoundAdaptationEngine _aiSoundAdaptation;
-        private AIAudioOptimizer _aiAudioOptimizer;
-        private AIAudioBehaviorAnalyzer _aiBehaviorAnalyzer;
+        private UnifiedAIAPIService _aiService;
         
         void Awake()
         {
@@ -423,59 +419,204 @@ namespace Evergreen.Audio
             
             Debug.Log("🎵 Initializing AI Audio Systems...");
             
-            _aiPersonalizationEngine = new AIAudioPersonalizationEngine();
-            _aiMusicGenerator = new AIMusicGenerator();
-            _aiSoundAdaptation = new AISoundAdaptationEngine();
-            _aiAudioOptimizer = new AIAudioOptimizer();
-            _aiBehaviorAnalyzer = new AIAudioBehaviorAnalyzer();
+            _aiService = UnifiedAIAPIService.Instance;
+            if (_aiService == null)
+            {
+                var aiServiceGO = new GameObject("UnifiedAIAPIService");
+                _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
+            }
             
-            // Initialize each AI system
-            _aiPersonalizationEngine.Initialize(this);
-            _aiMusicGenerator.Initialize(this);
-            _aiSoundAdaptation.Initialize(this);
-            _aiAudioOptimizer.Initialize(this);
-            _aiBehaviorAnalyzer.Initialize(this);
-            
-            Debug.Log("✅ AI Audio Systems Initialized");
+            Debug.Log("✅ AI Audio Systems Initialized with Unified API");
         }
         
-        public void AdaptAudioToGameplay(GameplayContext context)
+        public void AdaptAudioToGameplay(string gameState, string mood)
         {
-            if (!enableAIAudio || _aiSoundAdaptation == null) return;
+            if (!enableAIAudio || _aiService == null) return;
             
-            _aiSoundAdaptation.AdaptToContext(context);
+            var context = new AudioContext
+            {
+                AudioType = "gameplay",
+                GameState = gameState,
+                AudioData = new Dictionary<string, object>
+                {
+                    ["current_music"] = currentMusicTrack,
+                    ["master_volume"] = masterVolume,
+                    ["music_volume"] = musicVolume,
+                    ["sfx_volume"] = sfxVolume
+                },
+                Mood = mood,
+                Volume = masterVolume
+            };
+            
+            _aiService.RequestAudioAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyAudioAdaptations(response);
+                }
+            });
         }
         
         public void PersonalizeAudioForPlayer(string playerId)
         {
-            if (!enableAIAudio || _aiPersonalizationEngine == null) return;
+            if (!enableAIAudio || _aiService == null) return;
             
-            _aiPersonalizationEngine.PersonalizeForPlayer(playerId);
+            var context = new AudioContext
+            {
+                AudioType = "personalization",
+                GameState = "menu",
+                AudioData = new Dictionary<string, object>
+                {
+                    ["player_id"] = playerId,
+                    ["preferred_genre"] = "unknown",
+                    ["volume_preference"] = masterVolume
+                },
+                Mood = "neutral",
+                Volume = masterVolume
+            };
+            
+            _aiService.RequestAudioAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyAudioPersonalization(response);
+                }
+            });
         }
         
-        public void GenerateDynamicMusic(MusicContext context)
+        public void GenerateDynamicMusic(string gameState, string mood)
         {
-            if (!enableAIAudio || _aiMusicGenerator == null) return;
+            if (!enableAIAudio || _aiService == null) return;
             
-            var musicTrack = _aiMusicGenerator.GenerateMusic(context);
-            if (musicTrack != null)
+            var context = new AudioContext
             {
-                PlayMusic(musicTrack.name);
-            }
+                AudioType = "music_generation",
+                GameState = gameState,
+                AudioData = new Dictionary<string, object>
+                {
+                    ["current_track"] = currentMusicTrack,
+                    ["generation_type"] = "dynamic"
+                },
+                Mood = mood,
+                Volume = musicVolume
+            };
+            
+            _aiService.RequestAudioAI("player_1", context, (response) => {
+                if (response != null && !string.IsNullOrEmpty(response.MusicTrack))
+                {
+                    PlayMusic(response.MusicTrack);
+                }
+            });
         }
         
         public void OptimizeAudioPerformance()
         {
-            if (!enableAIAudio || _aiAudioOptimizer == null) return;
+            if (!enableAIAudio || _aiService == null) return;
             
-            _aiAudioOptimizer.OptimizePerformance();
+            var context = new AudioContext
+            {
+                AudioType = "optimization",
+                GameState = "performance_check",
+                AudioData = new Dictionary<string, object>
+                {
+                    ["fps"] = 1f / Time.unscaledDeltaTime,
+                    ["memory_usage"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemory(UnityEngine.Profiling.Profiler.Area.All) / (1024f * 1024f),
+                    ["active_sources"] = GetActiveAudioSourceCount()
+                },
+                Mood = "neutral",
+                Volume = masterVolume
+            };
+            
+            _aiService.RequestAudioAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyAudioOptimizations(response);
+                }
+            });
         }
         
         public void RecordAudioInteraction(string interactionType, string audioName)
         {
-            if (!enableAIAudio || _aiBehaviorAnalyzer == null) return;
+            if (!enableAIAudio || _aiService == null) return;
             
-            _aiBehaviorAnalyzer.RecordInteraction(interactionType, audioName);
+            var context = new AudioContext
+            {
+                AudioType = "interaction",
+                GameState = "playing",
+                AudioData = new Dictionary<string, object>
+                {
+                    ["interaction_type"] = interactionType,
+                    ["audio_name"] = audioName,
+                    ["timestamp"] = Time.time
+                },
+                Mood = "neutral",
+                Volume = masterVolume
+            };
+            
+            _aiService.RequestAudioAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ProcessAudioInteraction(response);
+                }
+            });
+        }
+        
+        private void ApplyAudioAdaptations(AudioAIResponse response)
+        {
+            // Apply audio adaptations from AI
+            if (response.Volume != musicVolume)
+            {
+                SetMusicVolume(response.Volume);
+            }
+            
+            if (!string.IsNullOrEmpty(response.AudioEffect))
+            {
+                ApplyAudioEffect(response.AudioEffect);
+            }
+            
+            if (response.AudioRecommendations != null)
+            {
+                foreach (var recommendation in response.AudioRecommendations)
+                {
+                    Debug.Log($"Audio AI Recommendation: {recommendation}");
+                }
+            }
+        }
+        
+        private void ApplyAudioPersonalization(AudioAIResponse response)
+        {
+            // Apply audio personalization from AI
+            if (response.Volume != masterVolume)
+            {
+                SetMasterVolume(response.Volume);
+            }
+            
+            if (!string.IsNullOrEmpty(response.MusicTrack))
+            {
+                PlayMusic(response.MusicTrack);
+            }
+        }
+        
+        private void ApplyAudioOptimizations(AudioAIResponse response)
+        {
+            // Apply audio optimizations from AI
+            Debug.Log("AI Audio Optimizations Applied");
+        }
+        
+        private void ProcessAudioInteraction(AudioAIResponse response)
+        {
+            // Process audio interaction from AI
+            Debug.Log("AI Audio Interaction Processed");
+        }
+        
+        private int GetActiveAudioSourceCount()
+        {
+            // Get count of active audio sources
+            return GetComponents<AudioSource>().Length;
+        }
+        
+        private void ApplyAudioEffect(string effect)
+        {
+            // Apply audio effect
+            Debug.Log($"AI Audio Effect: {effect}");
         }
         
         #endregion

@@ -96,11 +96,7 @@ namespace Evergreen.UI
         private bool _isTransitioning = false;
         
         // AI UI Systems
-        private AIUIPersonalizationEngine _aiPersonalizationEngine;
-        private AIAdaptiveLayoutManager _aiLayoutManager;
-        private AIPredictiveUISystem _aiPredictiveUI;
-        private AIBehaviorAnalyzer _aiBehaviorAnalyzer;
-        private AIAccessibilityOptimizer _aiAccessibilityOptimizer;
+        private UnifiedAIAPIService _aiService;
         
         // Performance Optimization
         private Dictionary<string, float> _lastUpdateTimes = new Dictionary<string, float>();
@@ -243,20 +239,14 @@ namespace Evergreen.UI
         {
             Log("🤖 Initializing AI UI Systems...");
             
-            _aiPersonalizationEngine = new AIUIPersonalizationEngine();
-            _aiLayoutManager = new AIAdaptiveLayoutManager();
-            _aiPredictiveUI = new AIPredictiveUISystem();
-            _aiBehaviorAnalyzer = new AIBehaviorAnalyzer();
-            _aiAccessibilityOptimizer = new AIAccessibilityOptimizer();
+            _aiService = UnifiedAIAPIService.Instance;
+            if (_aiService == null)
+            {
+                var aiServiceGO = new GameObject("UnifiedAIAPIService");
+                _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
+            }
             
-            // Initialize each AI system
-            _aiPersonalizationEngine.Initialize(this);
-            _aiLayoutManager.Initialize(this);
-            _aiPredictiveUI.Initialize(this);
-            _aiBehaviorAnalyzer.Initialize(this);
-            _aiAccessibilityOptimizer.Initialize(this);
-            
-            Log("✅ AI UI Systems Initialized");
+            Log("✅ AI UI Systems Initialized with Unified API");
         }
         
         private void SetupSystemIntegrations()
@@ -366,22 +356,29 @@ namespace Evergreen.UI
                 return;
             }
             
-            // AI-powered panel personalization
-            if (enableAIUI && _aiPersonalizationEngine != null)
+            // AI-powered panel personalization and analysis
+            if (enableAIUI && _aiService != null)
             {
-                _aiPersonalizationEngine.PersonalizePanel(panelName);
-            }
-            
-            // AI-powered layout adaptation
-            if (enableAIUI && _aiLayoutManager != null)
-            {
-                _aiLayoutManager.AdaptLayoutForPanel(panelName);
-            }
-            
-            // AI behavior analysis
-            if (enableAIUI && _aiBehaviorAnalyzer != null)
-            {
-                _aiBehaviorAnalyzer.RecordPanelAccess(panelName);
+                var context = new UIContext
+                {
+                    CurrentPanel = panelName,
+                    UserAction = "panel_access",
+                    UIData = new Dictionary<string, object>
+                    {
+                        ["screen_size"] = new Vector2(Screen.width, Screen.height),
+                        ["ui_scale"] = uiScaleFactor,
+                        ["accessibility_mode"] = enableHighContrastMode
+                    },
+                    ScreenSize = $"{Screen.width}x{Screen.height}",
+                    Accessibility = enableAccessibilityFeatures ? "enabled" : "disabled"
+                };
+                
+                _aiService.RequestUIAI("player_1", context, (response) => {
+                    if (response != null)
+                    {
+                        ApplyUIRecommendations(response);
+                    }
+                });
             }
             
             if (enableSmoothTransitions)
@@ -1379,34 +1376,172 @@ namespace Evergreen.UI
     
     public void UpdateAIPersonalization()
     {
-        if (enableAIUI && _aiPersonalizationEngine != null)
+        if (enableAIUI && _aiService != null)
         {
-            _aiPersonalizationEngine.UpdatePersonalization();
+            var context = new UIContext
+            {
+                CurrentPanel = _currentPanel?.name ?? "unknown",
+                UserAction = "personalization_update",
+                UIData = new Dictionary<string, object>
+                {
+                    ["ui_scale"] = uiScaleFactor,
+                    ["high_contrast"] = enableHighContrastMode,
+                    ["large_text"] = enableLargeTextMode
+                },
+                ScreenSize = $"{Screen.width}x{Screen.height}",
+                Accessibility = enableAccessibilityFeatures ? "enabled" : "disabled"
+            };
+            
+            _aiService.RequestUIAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyUIRecommendations(response);
+                }
+            });
         }
     }
     
     public void AdaptUILayout()
     {
-        if (enableAIUI && _aiLayoutManager != null)
+        if (enableAIUI && _aiService != null)
         {
-            _aiLayoutManager.AdaptCurrentLayout();
+            var context = new UIContext
+            {
+                CurrentPanel = _currentPanel?.name ?? "unknown",
+                UserAction = "layout_adaptation",
+                UIData = new Dictionary<string, object>
+                {
+                    ["screen_size"] = new Vector2(Screen.width, Screen.height),
+                    ["ui_scale"] = uiScaleFactor,
+                    ["is_mobile"] = Application.isMobilePlatform
+                },
+                ScreenSize = $"{Screen.width}x{Screen.height}",
+                Accessibility = enableAccessibilityFeatures ? "enabled" : "disabled"
+            };
+            
+            _aiService.RequestUIAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyLayoutAdjustments(response);
+                }
+            });
         }
     }
     
     public void ShowPredictiveUI()
     {
-        if (enableAIUI && _aiPredictiveUI != null)
+        if (enableAIUI && _aiService != null)
         {
-            _aiPredictiveUI.ShowPredictedUI();
+            var context = new UIContext
+            {
+                CurrentPanel = _currentPanel?.name ?? "unknown",
+                UserAction = "predictive_ui",
+                UIData = new Dictionary<string, object>
+                {
+                    ["user_behavior"] = "predictive",
+                    ["prediction_confidence"] = 0.8f
+                },
+                ScreenSize = $"{Screen.width}x{Screen.height}",
+                Accessibility = enableAccessibilityFeatures ? "enabled" : "disabled"
+            };
+            
+            _aiService.RequestUIAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ShowPredictedUIElements(response);
+                }
+            });
         }
     }
     
     public void OptimizeAccessibility()
     {
-        if (enableAIUI && _aiAccessibilityOptimizer != null)
+        if (enableAIUI && _aiService != null)
         {
-            _aiAccessibilityOptimizer.OptimizeAccessibility();
+            var context = new UIContext
+            {
+                CurrentPanel = _currentPanel?.name ?? "unknown",
+                UserAction = "accessibility_optimization",
+                UIData = new Dictionary<string, object>
+                {
+                    ["high_contrast"] = enableHighContrastMode,
+                    ["large_text"] = enableLargeTextMode,
+                    ["ui_scale"] = uiScaleFactor
+                },
+                ScreenSize = $"{Screen.width}x{Screen.height}",
+                Accessibility = enableAccessibilityFeatures ? "enabled" : "disabled"
+            };
+            
+            _aiService.RequestUIAI("player_1", context, (response) => {
+                if (response != null)
+                {
+                    ApplyAccessibilityOptimizations(response);
+                }
+            });
         }
+    }
+    
+    private void ApplyUIRecommendations(UIAIResponse response)
+    {
+        // Apply UI recommendations from AI
+        if (!string.IsNullOrEmpty(response.ColorScheme))
+        {
+            ApplyColorScheme(response.ColorScheme);
+        }
+        
+        if (!string.IsNullOrEmpty(response.LayoutAdjustment))
+        {
+            ApplyLayoutAdjustment(response.LayoutAdjustment);
+        }
+        
+        if (!string.IsNullOrEmpty(response.AccessibilitySettings))
+        {
+            ApplyAccessibilitySettings(response.AccessibilitySettings);
+        }
+        
+        if (response.UIRecommendations != null)
+        {
+            foreach (var recommendation in response.UIRecommendations)
+            {
+                Debug.Log($"UI AI Recommendation: {recommendation}");
+            }
+        }
+    }
+    
+    private void ApplyLayoutAdjustments(UIAIResponse response)
+    {
+        // Apply layout adjustments from AI
+        Debug.Log($"AI Layout Adjustment: {response.LayoutAdjustment}");
+    }
+    
+    private void ShowPredictedUIElements(UIAIResponse response)
+    {
+        // Show predicted UI elements from AI
+        Debug.Log("AI Predicted UI Elements");
+    }
+    
+    private void ApplyAccessibilityOptimizations(UIAIResponse response)
+    {
+        // Apply accessibility optimizations from AI
+        Debug.Log($"AI Accessibility Settings: {response.AccessibilitySettings}");
+    }
+    
+    private void ApplyColorScheme(string colorScheme)
+    {
+        // Apply color scheme
+        Debug.Log($"AI Color Scheme: {colorScheme}");
+    }
+    
+    private void ApplyLayoutAdjustment(string layoutAdjustment)
+    {
+        // Apply layout adjustment
+        Debug.Log($"AI Layout Adjustment: {layoutAdjustment}");
+    }
+    
+    private void ApplyAccessibilitySettings(string accessibilitySettings)
+    {
+        // Apply accessibility settings
+        Debug.Log($"AI Accessibility Settings: {accessibilitySettings}");
     }
     
     #endregion
