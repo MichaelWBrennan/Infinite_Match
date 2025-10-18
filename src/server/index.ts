@@ -16,9 +16,12 @@ import WebGLMiddleware from '../core/middleware/WebGLMiddleware.js';
 import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
 import { AnalyticsService } from '../services/analytics-service.js';
 import { CloudServices } from '../services/cloud-services.js';
+import { PostHogAnalyticsService } from '../services/analytics/posthog-service.js';
+import { ASOOptimizationService } from '../services/aso-optimization-service.js';
 import gameRoutes from '../routes/game-routes.js';
 import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
+import asoRoutes from '../routes/aso-routes.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -54,6 +57,8 @@ class GameServer {
   private platformBuildConfig: PlatformBuildConfig;
   private analyticsService: AnalyticsService;
   private cloudServices: CloudServices;
+  private posthogAnalytics: PostHogAnalyticsService;
+  private asoOptimization: ASOOptimizationService;
 
   constructor() {
     this.app = express();
@@ -107,6 +112,14 @@ class GameServer {
       // Initialize analytics service
       this.analyticsService = this.serviceContainer.get<AnalyticsService>('analytics');
       await this.analyticsService.initialize();
+
+      // Initialize PostHog analytics
+      this.posthogAnalytics = new PostHogAnalyticsService();
+      this.logger.info('PostHog analytics initialized');
+
+      // Initialize ASO optimization service
+      this.asoOptimization = new ASOOptimizationService();
+      this.logger.info('ASO optimization service initialized');
 
       // Initialize cloud services
       this.cloudServices = this.serviceContainer.get<CloudServices>('cloud');
@@ -201,6 +214,10 @@ class GameServer {
   }
 
   private setupRoutes(): void {
+    // Make services available to routes
+    this.app.locals.asoOptimization = this.asoOptimization;
+    this.app.locals.posthogAnalytics = this.posthogAnalytics;
+    
     // Health check endpoint
     this.app.get('/health', this.handleHealthCheck.bind(this));
 
@@ -208,6 +225,7 @@ class GameServer {
     this.app.use('/api/game', gameRoutes);
     this.app.use('/api/ai', aiContentRoutes);
     this.app.use('/api/realtime', realtimeRoutes);
+    this.app.use('/api/aso', asoRoutes);
 
     // Platform-specific API routes
     this.setupPlatformRoutes();
