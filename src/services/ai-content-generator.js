@@ -3,10 +3,20 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import Redis from 'ioredis';
+import { LRUCache } from 'lru-cache';
 
 /**
  * AI Content Generator - Industry-leading infinite content creation system
  * Uses OpenAI GPT-4, DALL-E, and custom ML models for perpetual content generation
+ * 
+ * OPTIMIZATIONS:
+ * - Redis caching for AI responses
+ * - Request batching and queuing
+ * - Intelligent retry mechanisms
+ * - Performance monitoring
+ * - Memory optimization
+ * - Rate limiting and throttling
  */
 class AIContentGenerator {
   constructor() {
@@ -18,22 +28,82 @@ class AIContentGenerator {
     // Supabase for content storage and retrieval
     this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
+    // Redis for caching AI responses
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379,
+      password: process.env.REDIS_PASSWORD,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    });
+
+    // In-memory LRU cache for frequently accessed data
+    this.memoryCache = new LRUCache({
+      max: 1000,
+      ttl: 1000 * 60 * 30, // 30 minutes
+    });
+
+    // Request batching and queuing
+    this.requestQueue = [];
+    this.batchSize = 5;
+    this.batchTimeout = 100; // ms
+    this.isProcessingBatch = false;
+
+    // Performance monitoring
+    this.performanceMetrics = {
+      totalRequests: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      averageResponseTime: 0,
+      errorRate: 0,
+      lastReset: Date.now(),
+    };
+
+    // Rate limiting
+    this.rateLimiter = new Map();
+    this.maxRequestsPerMinute = 60;
+    this.maxRequestsPerHour = 1000;
+
     this.contentTemplates = new Map();
     this.generatedContent = new Map();
     this.playerPreferences = new Map();
     this.marketTrends = new Map();
 
     this.initializeContentTemplates();
+    this.startBatchProcessor();
+    this.startPerformanceMonitor();
   }
 
   /**
-   * Generate infinite levels using AI
+   * Generate infinite levels using AI with comprehensive optimizations
    */
   async generateLevel(levelNumber, difficulty, playerProfile) {
+    const startTime = Date.now();
+    const cacheKey = `level:${levelNumber}:${difficulty}:${playerProfile?.id || 'default'}`;
+    
     try {
+      // Check cache first
+      const cachedLevel = await this.getCachedContent(cacheKey);
+      if (cachedLevel) {
+        this.performanceMetrics.cacheHits++;
+        this.logger.info(`Level ${levelNumber} served from cache`);
+        return cachedLevel;
+      }
+
+      this.performanceMetrics.cacheMisses++;
+
+      // Rate limiting check
+      if (!this.checkRateLimit('level_generation')) {
+        throw new ServiceError('RATE_LIMIT_EXCEEDED', 'Too many requests');
+      }
+
+      // Build optimized prompt
       const prompt = this.buildLevelPrompt(levelNumber, difficulty, playerProfile);
 
-      const response = await this.openai.chat.completions.create({
+      // Use request batching for efficiency
+      const response = await this.processBatchedRequest({
+        type: 'level_generation',
         model: 'gpt-4-turbo-preview',
         messages: [
           {
@@ -52,16 +122,34 @@ class AIContentGenerator {
 
       const levelData = JSON.parse(response.choices[0].message.content);
 
-      // Validate and enhance level data
+      // Validate and enhance level data with ML
       const enhancedLevel = await this.enhanceLevelWithML(levelData, playerProfile);
 
-      // Store in database
-      await this.storeGeneratedContent('level', enhancedLevel);
+      // Store in database and cache
+      await Promise.all([
+        this.storeGeneratedContent('level', enhancedLevel),
+        this.setCachedContent(cacheKey, enhancedLevel, 3600), // 1 hour cache
+      ]);
 
-      this.logger.info(`Generated level ${levelNumber} with AI`, { levelId: enhancedLevel.id });
+      // Update performance metrics
+      const responseTime = Date.now() - startTime;
+      this.updatePerformanceMetrics(responseTime);
+
+      this.logger.info(`Generated level ${levelNumber} with AI`, { 
+        levelId: enhancedLevel.id,
+        responseTime: `${responseTime}ms`,
+        cacheKey 
+      });
+      
       return enhancedLevel;
     } catch (error) {
-      this.logger.error('Failed to generate level with AI', { error: error.message });
+      this.performanceMetrics.errorRate = (this.performanceMetrics.errorRate + 1) / 2;
+      this.logger.error('Failed to generate level with AI', { 
+        error: error.message,
+        levelNumber,
+        difficulty,
+        responseTime: Date.now() - startTime
+      });
       throw new ServiceError('AI_LEVEL_GENERATION_FAILED', 'Failed to generate level');
     }
   }
@@ -425,7 +513,308 @@ Create a ${assetType} for a match-3 mobile game:
     };
   }
 
-  // Additional helper methods would be implemented here...
+  // ==================== OPTIMIZATION METHODS ====================
+
+  /**
+   * Cache management methods
+   */
+  async getCachedContent(key) {
+    try {
+      // Check memory cache first
+      const memoryCached = this.memoryCache.get(key);
+      if (memoryCached) {
+        return memoryCached;
+      }
+
+      // Check Redis cache
+      const redisCached = await this.redis.get(key);
+      if (redisCached) {
+        const parsed = JSON.parse(redisCached);
+        this.memoryCache.set(key, parsed);
+        return parsed;
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.warn('Cache retrieval failed', { error: error.message, key });
+      return null;
+    }
+  }
+
+  async setCachedContent(key, content, ttlSeconds = 3600) {
+    try {
+      // Set in memory cache
+      this.memoryCache.set(key, content, { ttl: ttlSeconds * 1000 });
+
+      // Set in Redis cache
+      await this.redis.setex(key, ttlSeconds, JSON.stringify(content));
+    } catch (error) {
+      this.logger.warn('Cache storage failed', { error: error.message, key });
+    }
+  }
+
+  /**
+   * Request batching system
+   */
+  async processBatchedRequest(requestData) {
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push({ requestData, resolve, reject });
+      
+      if (!this.isProcessingBatch) {
+        this.processBatch();
+      }
+    });
+  }
+
+  async processBatch() {
+    if (this.isProcessingBatch || this.requestQueue.length === 0) return;
+
+    this.isProcessingBatch = true;
+    const batch = this.requestQueue.splice(0, this.batchSize);
+
+    try {
+      // Process batch requests
+      const promises = batch.map(({ requestData, resolve, reject }) => 
+        this.openai.chat.completions.create(requestData)
+          .then(resolve)
+          .catch(reject)
+      );
+
+      await Promise.allSettled(promises);
+    } catch (error) {
+      this.logger.error('Batch processing failed', { error: error.message });
+    } finally {
+      this.isProcessingBatch = false;
+      
+      // Process next batch if queue has items
+      if (this.requestQueue.length > 0) {
+        setTimeout(() => this.processBatch(), this.batchTimeout);
+      }
+    }
+  }
+
+  startBatchProcessor() {
+    setInterval(() => {
+      if (this.requestQueue.length > 0 && !this.isProcessingBatch) {
+        this.processBatch();
+      }
+    }, this.batchTimeout);
+  }
+
+  /**
+   * Rate limiting system
+   */
+  checkRateLimit(operation) {
+    const now = Date.now();
+    const minuteKey = `${operation}:${Math.floor(now / 60000)}`;
+    const hourKey = `${operation}:${Math.floor(now / 3600000)}`;
+
+    // Check minute rate limit
+    const minuteCount = this.rateLimiter.get(minuteKey) || 0;
+    if (minuteCount >= this.maxRequestsPerMinute) {
+      return false;
+    }
+
+    // Check hour rate limit
+    const hourCount = this.rateLimiter.get(hourKey) || 0;
+    if (hourCount >= this.maxRequestsPerHour) {
+      return false;
+    }
+
+    // Update counters
+    this.rateLimiter.set(minuteKey, minuteCount + 1);
+    this.rateLimiter.set(hourKey, hourCount + 1);
+
+    // Cleanup old entries
+    this.cleanupRateLimiter();
+
+    return true;
+  }
+
+  cleanupRateLimiter() {
+    const now = Date.now();
+    const cutoff = now - 3600000; // 1 hour ago
+
+    for (const [key, timestamp] of this.rateLimiter.entries()) {
+      if (timestamp < cutoff) {
+        this.rateLimiter.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Performance monitoring
+   */
+  updatePerformanceMetrics(responseTime) {
+    this.performanceMetrics.totalRequests++;
+    this.performanceMetrics.averageResponseTime = 
+      (this.performanceMetrics.averageResponseTime + responseTime) / 2;
+  }
+
+  startPerformanceMonitor() {
+    setInterval(() => {
+      this.logPerformanceMetrics();
+    }, 60000); // Every minute
+  }
+
+  logPerformanceMetrics() {
+    const metrics = {
+      ...this.performanceMetrics,
+      cacheHitRate: this.performanceMetrics.cacheHits / 
+        (this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses) || 0,
+      uptime: Date.now() - this.performanceMetrics.lastReset,
+    };
+
+    this.logger.info('AI Content Generator Performance', metrics);
+
+    // Reset metrics every hour
+    if (Date.now() - this.performanceMetrics.lastReset > 3600000) {
+      this.resetPerformanceMetrics();
+    }
+  }
+
+  resetPerformanceMetrics() {
+    this.performanceMetrics = {
+      totalRequests: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      averageResponseTime: 0,
+      errorRate: 0,
+      lastReset: Date.now(),
+    };
+  }
+
+  /**
+   * Memory optimization
+   */
+  optimizeMemory() {
+    // Clear old cached content
+    const cutoff = Date.now() - 3600000; // 1 hour ago
+    for (const [key, content] of this.generatedContent.entries()) {
+      if (content.generatedAt && new Date(content.generatedAt).getTime() < cutoff) {
+        this.generatedContent.delete(key);
+      }
+    }
+
+    // Clear old player preferences
+    for (const [key, preferences] of this.playerPreferences.entries()) {
+      if (preferences.lastUpdated && new Date(preferences.lastUpdated).getTime() < cutoff) {
+        this.playerPreferences.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Error handling and retry mechanisms
+   */
+  async withRetry(operation, maxRetries = 3, delay = 1000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw error;
+        }
+
+        this.logger.warn(`Operation failed, retrying (${attempt}/${maxRetries})`, {
+          error: error.message,
+          attempt,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, delay * attempt));
+      }
+    }
+  }
+
+  /**
+   * Intelligent content generation with ML optimization
+   */
+  async generateOptimizedContent(type, parameters) {
+    const cacheKey = `${type}:${JSON.stringify(parameters)}`;
+    
+    // Check cache first
+    const cached = await this.getCachedContent(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Generate with ML optimization
+    const content = await this.withRetry(async () => {
+      const prompt = this.buildOptimizedPrompt(type, parameters);
+      
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content: this.getSystemPrompt(type),
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: this.getOptimalTemperature(type),
+        max_tokens: this.getOptimalMaxTokens(type),
+      });
+
+      return JSON.parse(response.choices[0].message.content);
+    });
+
+    // Cache the result
+    await this.setCachedContent(cacheKey, content, 7200); // 2 hours
+
+    return content;
+  }
+
+  buildOptimizedPrompt(type, parameters) {
+    const basePrompt = this.getBasePrompt(type);
+    const optimizationHints = this.getOptimizationHints(type, parameters);
+    
+    return `${basePrompt}\n\nOptimization Parameters:\n${JSON.stringify(parameters, null, 2)}\n\n${optimizationHints}`;
+  }
+
+  getSystemPrompt(type) {
+    const prompts = {
+      level: 'You are an expert game designer creating match-3 levels. Generate JSON data for levels that are engaging, progressively challenging, and optimized for player retention.',
+      event: 'You are a live operations expert creating engaging game events. Generate JSON data for events that maximize player engagement and revenue.',
+      visual: 'You are a professional game artist creating visual assets. Generate high-quality, mobile-optimized game art.',
+    };
+    
+    return prompts[type] || 'You are an AI assistant specialized in content generation.';
+  }
+
+  getOptimalTemperature(type) {
+    const temperatures = {
+      level: 0.7,
+      event: 0.8,
+      visual: 0.6,
+    };
+    
+    return temperatures[type] || 0.7;
+  }
+
+  getOptimalMaxTokens(type) {
+    const maxTokens = {
+      level: 2000,
+      event: 1500,
+      visual: 1000,
+    };
+    
+    return maxTokens[type] || 1500;
+  }
+
+  getOptimizationHints(type, parameters) {
+    const hints = {
+      level: `Focus on: difficulty curve (${parameters.difficulty}), player skill (${parameters.playerSkill}), engagement factors (${parameters.engagementFactors})`,
+      event: `Focus on: market trends (${parameters.marketTrends}), player segments (${parameters.playerSegments}), revenue optimization (${parameters.revenueOptimization})`,
+      visual: `Focus on: style consistency (${parameters.style}), mobile optimization (${parameters.mobileOptimized}), brand alignment (${parameters.brandAlignment})`,
+    };
+    
+    return hints[type] || 'Generate optimized content based on the provided parameters.';
+  }
+
+  // ==================== EXISTING HELPER METHODS ====================
   async predictEngagement(levelData, playerProfile) {
     return 0.8;
   }

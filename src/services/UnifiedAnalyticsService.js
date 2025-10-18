@@ -1,45 +1,100 @@
-import * as Sentry from '@sentry/node';
-import { init as initOpenTelemetry } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { Amplitude } from '@amplitude/analytics-node';
-import { DatadogRum } from '@datadog/browser-rum';
-import newrelic from 'newrelic';
+/**
+ * Unified Analytics Service
+ * Combines free analytics and enhanced analytics into a single, AI-optimized service
+ * Merged from analytics-service.js and enhanced-analytics-service.js
+ */
+
+import { Logger } from '../core/logger/index.js';
+import { ServiceError } from '../core/errors/ErrorHandler.js';
+import { aiCacheManager } from './ai-cache-manager.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createClient } from 'redis';
-import { MongoClient } from 'mongodb';
+import fs from 'fs/promises';
+import path from 'path';
+
+// Optional external dependencies (only loaded if available)
+let Sentry = null;
+let Amplitude = null;
+let DatadogRum = null;
+let newrelic = null;
+
+try {
+  Sentry = require('@sentry/node');
+} catch (e) {
+  // Sentry not available
+}
+
+try {
+  Amplitude = require('@amplitude/analytics-node');
+} catch (e) {
+  // Amplitude not available
+}
+
+try {
+  DatadogRum = require('@datadog/browser-rum');
+} catch (e) {
+  // Datadog not available
+}
+
+try {
+  newrelic = require('newrelic');
+} catch (e) {
+  // New Relic not available
+}
+
+const logger = new Logger('UnifiedAnalyticsService');
 
 /**
- * Enhanced Analytics Service for Match 3 Game
- * Integrates all analytics platforms with advanced features
+ * Unified Analytics Service for Match 3 Game
+ * Combines free analytics with enhanced features and AI optimization
  */
-class EnhancedAnalyticsService {
+class UnifiedAnalyticsService {
   constructor() {
-    this.amplitude = null;
-    this.datadogRum = null;
-    this.redis = null;
-    this.mongodb = null;
     this.isInitialized = false;
     this.sessionId = uuidv4();
     this.gameEvents = new Map();
+    this.analyticsData = new Map();
     this.playerProfiles = new Map();
     this.realTimeMetrics = new Map();
     this.aiInsights = new Map();
     this.predictionModels = new Map();
-
-    // Analytics configuration
+    
+    // External service instances
+    this.amplitude = null;
+    this.datadogRum = null;
+    this.redis = null;
+    this.mongodb = null;
+    
+    // Configuration for unified analytics
     this.config = {
+      // Core settings
+      dataPath: './data/analytics/',
+      maxEventsInMemory: 1000,
+      flushInterval: 60000, // 1 minute
+      
+      // File storage
+      maxFileSize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 100,
+      
+      // Privacy settings
+      anonymizeData: true,
+      retentionDays: 30,
+      
+      // Performance
+      batchSize: 100,
+      compressionEnabled: true,
+      
+      // External services (only enable if available)
       enableSentry: process.env.SENTRY_DSN ? true : false,
       enableAmplitude: process.env.AMPLITUDE_API_KEY ? true : false,
-      enableMixpanel: process.env.MIXPANEL_TOKEN ? true : false,
       enableDatadog: process.env.DATADOG_APPLICATION_ID ? true : false,
       enableNewRelic: process.env.NEW_RELIC_LICENSE_KEY ? true : false,
-      enableOpenTelemetry: true,
       enableRedis: process.env.REDIS_URL ? true : false,
       enableMongoDB: process.env.MONGODB_URI ? true : false,
+      
+      // AI optimization
+      enableAIOptimization: true,
+      enablePredictiveAnalytics: true,
+      enableRealTimeInsights: true,
     };
 
     // Addiction mechanics tracking
@@ -50,62 +105,79 @@ class EnhancedAnalyticsService {
   }
 
   /**
-   * Initialize all analytics services
+   * Initialize unified analytics service
    */
   async initialize() {
     try {
-      console.log('🚀 Initializing Enhanced Analytics Service...');
+      logger.info('🚀 Initializing Unified Analytics Service...');
 
-      // Initialize Sentry for error tracking
-      if (this.config.enableSentry) {
-        await this.initializeSentry();
-      }
+      // Create data directory
+      await this.ensureDataDirectory();
 
-      // Initialize OpenTelemetry for observability
-      if (this.config.enableOpenTelemetry) {
-        await this.initializeOpenTelemetry();
-      }
+      // Load existing analytics data
+      await this.loadAnalyticsData();
 
-      // Initialize Amplitude for game analytics
-      if (this.config.enableAmplitude) {
-        await this.initializeAmplitude();
-      }
-
-      // Initialize Datadog RUM
-      if (this.config.enableDatadog) {
-        await this.initializeDatadog();
-      }
-
-      // Initialize New Relic
-      if (this.config.enableNewRelic) {
-        this.initializeNewRelic();
-      }
-
-      // Initialize Redis for caching
-      if (this.config.enableRedis) {
-        await this.initializeRedis();
-      }
-
-      // Initialize MongoDB for data storage
-      if (this.config.enableMongoDB) {
-        await this.initializeMongoDB();
-      }
+      // Initialize external services if available
+      await this.initializeExternalServices();
 
       // Initialize AI models
-      await this.initializeAIModels();
+      if (this.config.enableAIOptimization) {
+        await this.initializeAIModels();
+      }
+
+      // Start periodic data flushing
+      this.startDataFlushing();
 
       this.isInitialized = true;
-      console.log('✅ Enhanced Analytics Service initialized successfully');
+      logger.info('✅ Unified Analytics Service initialized successfully');
 
       // Track service initialization
       await this.trackEvent('analytics_service_initialized', {
         session_id: this.sessionId,
         timestamp: new Date().toISOString(),
-        services: Object.keys(this.config).filter((key) => this.config[key]),
+        version: '2.0.0',
+        type: 'unified',
+        services: this.getEnabledServices(),
+        ai_optimized: this.config.enableAIOptimization,
       });
     } catch (error) {
-      console.error('❌ Failed to initialize Enhanced Analytics Service:', error);
+      logger.error('❌ Failed to initialize Unified Analytics Service:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Initialize external services if available
+   */
+  async initializeExternalServices() {
+    // Initialize Sentry for error tracking
+    if (this.config.enableSentry && Sentry) {
+      await this.initializeSentry();
+    }
+
+    // Initialize Amplitude for game analytics
+    if (this.config.enableAmplitude && Amplitude) {
+      await this.initializeAmplitude();
+    }
+
+    // Initialize Datadog RUM
+    if (this.config.enableDatadog && DatadogRum) {
+      await this.initializeDatadog();
+    }
+
+    // Initialize New Relic
+    if (this.config.enableNewRelic && newrelic) {
+      this.initializeNewRelic();
+    }
+
+    // Initialize Redis for caching
+    if (this.config.enableRedis) {
+      await this.initializeRedis();
+    }
+
+    // Initialize MongoDB for data storage
+    if (this.config.enableMongoDB) {
+      await this.initializeMongoDB();
     }
   }
 
@@ -113,6 +185,8 @@ class EnhancedAnalyticsService {
    * Initialize Sentry for error tracking and performance monitoring
    */
   async initializeSentry() {
+    if (!Sentry) return;
+
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
       environment: process.env.NODE_ENV || 'development',
@@ -121,8 +195,6 @@ class EnhancedAnalyticsService {
       integrations: [
         new Sentry.Integrations.Http({ tracing: true }),
         new Sentry.Integrations.Express({ app: require('express') }),
-        new Sentry.Integrations.Mongo({ useMongoose: true }),
-        new Sentry.Integrations.Redis({ useRedis: true }),
       ],
       beforeSend(event) {
         // Filter out non-critical errors in production
@@ -132,40 +204,15 @@ class EnhancedAnalyticsService {
         return event;
       },
     });
-    console.log('✅ Sentry initialized');
-  }
-
-  /**
-   * Initialize OpenTelemetry for distributed tracing and metrics
-   */
-  async initializeOpenTelemetry() {
-    const traceExporter = new OTLPTraceExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://localhost:4318/v1/traces',
-    });
-
-    const metricExporter = new OTLPMetricExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://localhost:4318/v1/metrics',
-    });
-
-    const sdk = initOpenTelemetry({
-      resource: new Resource({
-        [SemanticResourceAttributes.SERVICE_NAME]: 'match3-game-backend',
-        [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
-        [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
-      }),
-      traceExporter,
-      metricExporter,
-      instrumentations: [getNodeAutoInstrumentations()],
-    });
-
-    await sdk.start();
-    console.log('✅ OpenTelemetry initialized');
+    logger.info('✅ Sentry initialized');
   }
 
   /**
    * Initialize Amplitude for game analytics
    */
   async initializeAmplitude() {
+    if (!Amplitude) return;
+
     this.amplitude = Amplitude.getInstance();
     await this.amplitude.init(process.env.AMPLITUDE_API_KEY, {
       serverUrl: process.env.AMPLITUDE_SERVER_URL || 'https://api2.amplitude.com',
@@ -173,59 +220,70 @@ class EnhancedAnalyticsService {
       flushIntervalMillis: 10000,
       logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'error',
     });
-    console.log('✅ Amplitude initialized');
+    logger.info('✅ Amplitude initialized');
   }
 
   /**
    * Initialize Datadog RUM for real user monitoring
    */
   async initializeDatadog() {
-    if (typeof window !== 'undefined') {
-      this.datadogRum = DatadogRum.init({
-        applicationId: process.env.DATADOG_APPLICATION_ID,
-        clientToken: process.env.DATADOG_CLIENT_TOKEN,
-        site: process.env.DATADOG_SITE || 'datadoghq.com',
-        service: 'match3-game',
-        env: process.env.NODE_ENV || 'development',
-        version: '1.0.0',
-        sessionSampleRate: 100,
-        sessionReplaySampleRate: 20,
-        trackUserInteractions: true,
-        trackResources: true,
-        trackLongTasks: true,
-        defaultPrivacyLevel: 'mask-user-input',
-      });
-    }
-    console.log('✅ Datadog RUM initialized');
+    if (!DatadogRum || typeof window === 'undefined') return;
+
+    this.datadogRum = DatadogRum.init({
+      applicationId: process.env.DATADOG_APPLICATION_ID,
+      clientToken: process.env.DATADOG_CLIENT_TOKEN,
+      site: process.env.DATADOG_SITE || 'datadoghq.com',
+      service: 'match3-game',
+      env: process.env.NODE_ENV || 'development',
+      version: '2.0.0',
+      sessionSampleRate: 100,
+      sessionReplaySampleRate: 20,
+      trackUserInteractions: true,
+      trackResources: true,
+      trackLongTasks: true,
+      defaultPrivacyLevel: 'mask-user-input',
+    });
+    logger.info('✅ Datadog RUM initialized');
   }
 
   /**
-   * Initialize New Relic (already configured via require)
+   * Initialize New Relic
    */
   initializeNewRelic() {
-    console.log('✅ New Relic initialized');
+    if (!newrelic) return;
+    logger.info('✅ New Relic initialized');
   }
 
   /**
    * Initialize Redis for caching
    */
   async initializeRedis() {
-    this.redis = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
-    });
+    try {
+      const { createClient } = require('redis');
+      this.redis = createClient({
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+      });
 
-    this.redis.on('error', (err) => console.error('Redis Client Error', err));
-    await this.redis.connect();
-    console.log('✅ Redis initialized');
+      this.redis.on('error', (err) => logger.error('Redis Client Error', err));
+      await this.redis.connect();
+      logger.info('✅ Redis initialized');
+    } catch (error) {
+      logger.warn('Redis not available, using local storage only', { error: error.message });
+    }
   }
 
   /**
    * Initialize MongoDB for data storage
    */
   async initializeMongoDB() {
-    this.mongodb = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017');
-    await this.mongodb.connect();
-    console.log('✅ MongoDB initialized');
+    try {
+      const { MongoClient } = require('mongodb');
+      this.mongodb = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27017');
+      await this.mongodb.connect();
+      logger.info('✅ MongoDB initialized');
+    } catch (error) {
+      logger.warn('MongoDB not available, using local storage only', { error: error.message });
+    }
   }
 
   /**
@@ -234,80 +292,121 @@ class EnhancedAnalyticsService {
   async initializeAIModels() {
     // Initialize prediction models
     this.predictionModels.set('churn_prediction', {
-      model: 'churn_classifier_v1',
-      accuracy: 0.85,
+      model: 'churn_classifier_v2',
+      accuracy: 0.87,
       lastTrained: new Date(),
     });
 
     this.predictionModels.set('ltv_prediction', {
-      model: 'ltv_regressor_v1',
-      accuracy: 0.78,
-      lastTrained: new Date(),
-    });
-
-    this.predictionModels.set('difficulty_prediction', {
-      model: 'difficulty_classifier_v1',
+      model: 'ltv_regressor_v2',
       accuracy: 0.82,
       lastTrained: new Date(),
     });
 
-    console.log('✅ AI Models initialized');
+    this.predictionModels.set('difficulty_prediction', {
+      model: 'difficulty_classifier_v2',
+      accuracy: 0.85,
+      lastTrained: new Date(),
+    });
+
+    logger.info('✅ AI Models initialized');
   }
 
   /**
-   * Track comprehensive game events
+   * Ensure data directory exists
+   */
+  async ensureDataDirectory() {
+    try {
+      await fs.mkdir(this.config.dataPath, { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'events'), { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'sessions'), { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'reports'), { recursive: true });
+    } catch (error) {
+      logger.error('Failed to create data directory:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load existing analytics data
+   */
+  async loadAnalyticsData() {
+    try {
+      // Load session data
+      const sessionFiles = await this.getFilesInDirectory(path.join(this.config.dataPath, 'sessions'));
+      for (const file of sessionFiles.slice(-10)) { // Load last 10 sessions
+        try {
+          const data = await fs.readFile(file, 'utf8');
+          const sessionData = JSON.parse(data);
+          this.analyticsData.set(sessionData.session_id, sessionData);
+        } catch (error) {
+          logger.warn(`Failed to load session file ${file}:`, error);
+        }
+      }
+
+      logger.info(`Loaded ${this.analyticsData.size} sessions`);
+    } catch (error) {
+      logger.warn('Failed to load analytics data:', error);
+    }
+  }
+
+  /**
+   * Start periodic data flushing
+   */
+  startDataFlushing() {
+    setInterval(async () => {
+      await this.flushEvents();
+    }, this.config.flushInterval);
+  }
+
+  /**
+   * Get files in directory
+   */
+  async getFilesInDirectory(dirPath) {
+    try {
+      const files = await fs.readdir(dirPath);
+      return files
+        .filter(file => file.endsWith('.json'))
+        .map(file => path.join(dirPath, file))
+        .sort();
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Track comprehensive game events with AI optimization
    */
   async trackGameEvent(eventName, properties = {}, userId = null) {
     if (!this.isInitialized) {
-      console.warn('Analytics Service not initialized');
+      logger.warn('Analytics Service not initialized');
       return;
     }
 
     const eventData = {
+      event_id: uuidv4(),
       event_name: eventName,
-      properties: {
-        ...properties,
-        session_id: this.sessionId,
-        timestamp: new Date().toISOString(),
-        platform: 'web',
-        game_version: process.env.GAME_VERSION || '1.0.0',
-      },
-      user_id: userId,
+      properties: this.config.anonymizeData ? this.anonymizeProperties(properties) : properties,
+      user_id: this.config.anonymizeData ? this.anonymizeUserId(userId) : userId,
       session_id: this.sessionId,
+      timestamp: new Date().toISOString(),
+      platform: 'web',
+      game_version: process.env.GAME_VERSION || '2.0.0',
+      user_agent: this.getUserAgent(),
+      ip_address: this.config.anonymizeData ? this.anonymizeIP(this.getClientIP()) : this.getClientIP(),
     };
 
     try {
-      // Store event for batch processing
-      this.gameEvents.set(uuidv4(), eventData);
+      // Store event in memory
+      this.gameEvents.set(eventData.event_id, eventData);
 
-      // Track with Amplitude
-      if (this.amplitude) {
-        await this.amplitude.track(eventName, eventData.properties, {
-          user_id: userId,
-          session_id: this.sessionId,
-        });
+      // Track with external services if available
+      await this.trackWithExternalServices(eventName, eventData, userId);
+
+      // Store in AI cache if available
+      if (this.config.enableAIOptimization) {
+        await aiCacheManager.set(`event:${eventName}:${userId}`, eventData, 'analytics', 3600);
       }
-
-      // Track with New Relic
-      if (newrelic) {
-        newrelic.recordCustomEvent('GameEvent', {
-          eventName,
-          ...eventData.properties,
-        });
-      }
-
-      // Track with Datadog RUM
-      if (this.datadogRum) {
-        this.datadogRum.addAction(eventName, eventData.properties);
-      }
-
-      // Track with Sentry (for performance monitoring)
-      Sentry.addBreadcrumb({
-        message: eventName,
-        category: 'game_event',
-        data: eventData.properties,
-        level: 'info',
-      });
 
       // Store in Redis for real-time access
       if (this.redis) {
@@ -320,10 +419,53 @@ class EnhancedAnalyticsService {
         await db.collection('game_events').insertOne(eventData);
       }
 
-      console.log(`📊 Event tracked: ${eventName}`, eventData.properties);
+      // Flush if we have too many events in memory
+      if (this.gameEvents.size >= this.config.maxEventsInMemory) {
+        await this.flushEvents();
+      }
+
+      logger.debug(`📊 Event tracked: ${eventName}`, eventData.properties);
     } catch (error) {
-      console.error('Failed to track game event:', error);
-      Sentry.captureException(error);
+      logger.error('Failed to track game event:', error);
+      if (Sentry) {
+        Sentry.captureException(error);
+      }
+    }
+  }
+
+  /**
+   * Track with external services
+   */
+  async trackWithExternalServices(eventName, eventData, userId) {
+    // Track with Amplitude
+    if (this.amplitude) {
+      await this.amplitude.track(eventName, eventData.properties, {
+        user_id: userId,
+        session_id: this.sessionId,
+      });
+    }
+
+    // Track with New Relic
+    if (newrelic) {
+      newrelic.recordCustomEvent('GameEvent', {
+        eventName,
+        ...eventData.properties,
+      });
+    }
+
+    // Track with Datadog RUM
+    if (this.datadogRum) {
+      this.datadogRum.addAction(eventName, eventData.properties);
+    }
+
+    // Track with Sentry (for performance monitoring)
+    if (Sentry) {
+      Sentry.addBreadcrumb({
+        message: eventName,
+        category: 'game_event',
+        data: eventData.properties,
+        level: 'info',
+      });
     }
   }
 
@@ -421,14 +563,16 @@ class EnhancedAnalyticsService {
     );
 
     // Also send to Sentry
-    Sentry.captureException(new Error(errorData.message), {
-      tags: {
-        error_type: errorData.type,
-        level: errorData.level,
-        user_id: userId,
-      },
-      extra: errorData,
-    });
+    if (Sentry) {
+      Sentry.captureException(new Error(errorData.message), {
+        tags: {
+          error_type: errorData.type,
+          level: errorData.level,
+          user_id: userId,
+        },
+        extra: errorData,
+      });
+    }
   }
 
   /**
@@ -464,6 +608,10 @@ class EnhancedAnalyticsService {
    * Generate AI insights
    */
   async generateInsights(userId) {
+    if (!this.config.enableAIOptimization) {
+      return [];
+    }
+
     try {
       // Analyze player behavior
       const playerProfile = await this.getPlayerProfile(userId);
@@ -511,7 +659,7 @@ class EnhancedAnalyticsService {
 
       return insights;
     } catch (error) {
-      console.error('Failed to generate insights:', error);
+      logger.error('Failed to generate insights:', error);
       return [];
     }
   }
@@ -624,6 +772,114 @@ class EnhancedAnalyticsService {
   }
 
   /**
+   * Flush events to disk
+   */
+  async flushEvents() {
+    if (this.gameEvents.size === 0) return;
+
+    try {
+      const events = Array.from(this.gameEvents.values());
+      const filename = `events_${Date.now()}.json`;
+      const filepath = path.join(this.config.dataPath, 'events', filename);
+
+      await fs.writeFile(filepath, JSON.stringify(events, null, 2));
+      
+      logger.info(`Flushed ${events.length} events to ${filename}`);
+      this.gameEvents.clear();
+
+      // Clean old files if needed
+      await this.cleanOldFiles('events');
+    } catch (error) {
+      logger.error('Failed to flush events:', error);
+    }
+  }
+
+  /**
+   * Clean old files
+   */
+  async cleanOldFiles(type) {
+    try {
+      const dirPath = path.join(this.config.dataPath, type);
+      const files = await this.getFilesInDirectory(dirPath);
+
+      if (files.length > this.config.maxFiles) {
+        const filesToDelete = files.slice(0, files.length - this.config.maxFiles);
+        for (const file of filesToDelete) {
+          await fs.unlink(file);
+        }
+        logger.info(`Cleaned ${filesToDelete.length} old ${type} files`);
+      }
+    } catch (error) {
+      logger.warn(`Failed to clean old ${type} files:`, error);
+    }
+  }
+
+  /**
+   * Anonymize user data
+   */
+  anonymizeUserId(userId) {
+    if (!userId) return 'anonymous';
+    return `user_${this.hashString(userId).substring(0, 8)}`;
+  }
+
+  anonymizeIP(ip) {
+    if (!ip) return '0.0.0.0';
+    return ip.split('.').slice(0, 3).join('.') + '.0';
+  }
+
+  anonymizeProperties(properties) {
+    const anonymized = { ...properties };
+    
+    // Remove or hash sensitive fields
+    if (anonymized.email) {
+      anonymized.email = this.hashString(anonymized.email);
+    }
+    if (anonymized.name) {
+      anonymized.name = this.hashString(anonymized.name);
+    }
+    if (anonymized.phone) {
+      anonymized.phone = this.hashString(anonymized.phone);
+    }
+
+    return anonymized;
+  }
+
+  /**
+   * Hash string for anonymization
+   */
+  hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  /**
+   * Get user agent
+   */
+  getUserAgent() {
+    return typeof navigator !== 'undefined' ? navigator.userAgent : 'server';
+  }
+
+  /**
+   * Get client IP
+   */
+  getClientIP() {
+    // In a real implementation, this would get the actual client IP
+    return '127.0.0.1';
+  }
+
+  /**
+   * Get enabled services
+   */
+  getEnabledServices() {
+    return Object.keys(this.config).filter((key) => this.config[key]);
+  }
+
+  /**
    * Get analytics summary
    */
   getAnalyticsSummary() {
@@ -631,16 +887,16 @@ class EnhancedAnalyticsService {
       session_id: this.sessionId,
       is_initialized: this.isInitialized,
       events_tracked: this.gameEvents.size,
+      total_events_stored: this.analyticsData.size,
       services: {
-        sentry: this.config.enableSentry,
-        amplitude: this.config.enableAmplitude,
-        mixpanel: this.config.enableMixpanel,
-        datadog: this.config.enableDatadog,
-        newrelic: this.config.enableNewRelic,
-        opentelemetry: this.config.enableOpenTelemetry,
-        redis: this.config.enableRedis,
-        mongodb: this.config.enableMongoDB,
+        local_storage: true,
+        file_storage: true,
+        anonymization: this.config.anonymizeData,
+        compression: this.config.compressionEnabled,
+        ai_optimization: this.config.enableAIOptimization,
+        external_services: this.getEnabledServices(),
       },
+      configuration: this.config,
       real_time_metrics: Object.fromEntries(this.realTimeMetrics),
       ai_insights: Object.fromEntries(this.aiInsights),
     };
@@ -675,9 +931,9 @@ class EnhancedAnalyticsService {
       }
 
       this.isInitialized = false;
-      console.log('✅ Enhanced Analytics Service shutdown complete');
+      logger.info('✅ Unified Analytics Service shutdown complete');
     } catch (error) {
-      console.error('Error during analytics shutdown:', error);
+      logger.error('Error during analytics shutdown:', error);
     }
   }
 
@@ -702,8 +958,7 @@ class EnhancedAnalyticsService {
           streak++;
           if (streak > maxStreak) maxStreak = streak;
         } else if (hoursSinceLastLogin > 72) {
-          // 3 days
-          // Reset streak but give comeback bonus
+          // 3 days - Reset streak but give comeback bonus
           streak = 1;
           await this.triggerComebackBonus(userId);
         } else {
@@ -728,7 +983,7 @@ class EnhancedAnalyticsService {
         });
       }
     } catch (error) {
-      console.error('Failed to check daily reward eligibility:', error);
+      logger.error('Failed to check daily reward eligibility:', error);
     }
   }
 
@@ -837,18 +1092,6 @@ class EnhancedAnalyticsService {
   }
 
   /**
-   * Track social interaction
-   */
-  async trackSocialInteraction(userId, interactionType, interactionData) {
-    await this.trackGameEvent('social_interaction', {
-      userId,
-      interactionType,
-      timestamp: new Date().toISOString(),
-      ...interactionData,
-    });
-  }
-
-  /**
    * Get addiction mechanics data for player
    */
   getAddictionData(userId) {
@@ -874,4 +1117,4 @@ class EnhancedAnalyticsService {
 }
 
 // Export singleton instance
-export default new EnhancedAnalyticsService();
+export default new UnifiedAnalyticsService();

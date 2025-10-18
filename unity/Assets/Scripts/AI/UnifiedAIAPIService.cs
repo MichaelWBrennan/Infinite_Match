@@ -29,10 +29,16 @@ namespace Evergreen.AI
         public bool enableAlgorithmicAI = true;
         
         [Header("Performance Settings")]
-        public int maxConcurrentRequests = 5;
+        public int maxConcurrentRequests = 10;
         public float requestTimeoutSeconds = 30f;
         public bool enableRequestBatching = true;
-        public float batchDelaySeconds = 0.1f;
+        public float batchDelaySeconds = 0.05f;
+        public bool enableRequestCompression = true;
+        public bool enableResponseCompression = true;
+        public int maxCacheSize = 1000;
+        public float cacheExpiryMinutes = 30f;
+        public bool enableMemoryOptimization = true;
+        public bool enablePerformanceMonitoring = true;
         
         // Singleton
         public static UnifiedAIAPIService Instance { get; private set; }
@@ -43,6 +49,21 @@ namespace Evergreen.AI
         private Dictionary<string, DateTime> _cacheTimestamps = new Dictionary<string, DateTime>();
         private int _activeRequests = 0;
         private Coroutine _requestProcessor;
+        
+        // Performance optimization
+        private Dictionary<string, float> _requestTimes = new Dictionary<string, float>();
+        private Dictionary<string, int> _requestCounts = new Dictionary<string, int>();
+        private float _averageResponseTime = 0f;
+        private int _totalRequests = 0;
+        private int _cacheHits = 0;
+        private int _cacheMisses = 0;
+        
+        // Memory optimization
+        private Queue<string> _cacheEvictionQueue = new Queue<string>();
+        private int _currentCacheSize = 0;
+        
+        // Compression
+        private Dictionary<string, byte[]> _compressedCache = new Dictionary<string, byte[]>();
         
         // Fallback systems
         private LocalAIFallback _localAIFallback;
@@ -74,7 +95,7 @@ namespace Evergreen.AI
         
         private void InitializeAIService()
         {
-            Debug.Log("🤖 Initializing Unified AI API Service...");
+            Debug.Log("🤖 Initializing Optimized Unified AI API Service...");
             
             // Initialize fallback systems
             if (enableFallback)
@@ -83,7 +104,19 @@ namespace Evergreen.AI
                 _algorithmicAIFallback = new AlgorithmicAIFallback();
             }
             
-            Debug.Log("✅ Unified AI API Service Initialized");
+            // Initialize performance monitoring
+            if (enablePerformanceMonitoring)
+            {
+                StartCoroutine(PerformanceMonitoring());
+            }
+            
+            // Initialize memory optimization
+            if (enableMemoryOptimization)
+            {
+                StartCoroutine(MemoryOptimization());
+            }
+            
+            Debug.Log("✅ Optimized Unified AI API Service Initialized");
         }
         
         private void StartRequestProcessor()
@@ -411,12 +444,286 @@ namespace Evergreen.AI
         
         #endregion
         
+        #region Optimization Methods
+        
+        /// <summary>
+        /// Performance monitoring coroutine
+        /// </summary>
+        private IEnumerator PerformanceMonitoring()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(60f); // Check every minute
+                
+                LogPerformanceMetrics();
+                OptimizeCache();
+            }
+        }
+        
+        /// <summary>
+        /// Memory optimization coroutine
+        /// </summary>
+        private IEnumerator MemoryOptimization()
+        {
+            while (true)
+            {
+                yield return new WaitForSeconds(300f); // Check every 5 minutes
+                
+                OptimizeMemory();
+                CleanupExpiredCache();
+            }
+        }
+        
+        /// <summary>
+        /// Log performance metrics
+        /// </summary>
+        private void LogPerformanceMetrics()
+        {
+            var hitRate = _totalRequests > 0 ? (float)_cacheHits / _totalRequests : 0f;
+            
+            Debug.Log($"[AI Performance] " +
+                     $"Total Requests: {_totalRequests}, " +
+                     $"Cache Hit Rate: {hitRate:P2}, " +
+                     $"Average Response Time: {_averageResponseTime:F2}ms, " +
+                     $"Active Requests: {_activeRequests}, " +
+                     $"Cache Size: {_currentCacheSize}");
+        }
+        
+        /// <summary>
+        /// Optimize cache based on usage patterns
+        /// </summary>
+        private void OptimizeCache()
+        {
+            if (_currentCacheSize > maxCacheSize)
+            {
+                // Evict least recently used items
+                var itemsToEvict = _currentCacheSize - maxCacheSize;
+                for (int i = 0; i < itemsToEvict && _cacheEvictionQueue.Count > 0; i++)
+                {
+                    var key = _cacheEvictionQueue.Dequeue();
+                    if (_responseCache.ContainsKey(key))
+                    {
+                        _responseCache.Remove(key);
+                        _cacheTimestamps.Remove(key);
+                        _compressedCache.Remove(key);
+                        _currentCacheSize--;
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Optimize memory usage
+        /// </summary>
+        private void OptimizeMemory()
+        {
+            // Force garbage collection if memory usage is high
+            if (System.GC.GetTotalMemory(false) > 100 * 1024 * 1024) // 100MB
+            {
+                System.GC.Collect();
+                Debug.Log("[AI Memory] Garbage collection triggered");
+            }
+        }
+        
+        /// <summary>
+        /// Clean up expired cache entries
+        /// </summary>
+        private void CleanupExpiredCache()
+        {
+            var expiredKeys = new List<string>();
+            var now = DateTime.Now;
+            
+            foreach (var kvp in _cacheTimestamps)
+            {
+                if (now - kvp.Value > TimeSpan.FromMinutes(cacheExpiryMinutes))
+                {
+                    expiredKeys.Add(kvp.Key);
+                }
+            }
+            
+            foreach (var key in expiredKeys)
+            {
+                _responseCache.Remove(key);
+                _cacheTimestamps.Remove(key);
+                _compressedCache.Remove(key);
+                _currentCacheSize--;
+            }
+            
+            if (expiredKeys.Count > 0)
+            {
+                Debug.Log($"[AI Cache] Cleaned up {expiredKeys.Count} expired entries");
+            }
+        }
+        
+        /// <summary>
+        /// Compress request data for better performance
+        /// </summary>
+        private byte[] CompressData(string data)
+        {
+            if (!enableRequestCompression) return System.Text.Encoding.UTF8.GetBytes(data);
+            
+            var bytes = System.Text.Encoding.UTF8.GetBytes(data);
+            using (var output = new System.IO.MemoryStream())
+            {
+                using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionMode.Compress))
+                {
+                    gzip.Write(bytes, 0, bytes.Length);
+                }
+                return output.ToArray();
+            }
+        }
+        
+        /// <summary>
+        /// Decompress response data
+        /// </summary>
+        private string DecompressData(byte[] compressedData)
+        {
+            if (!enableResponseCompression) return System.Text.Encoding.UTF8.GetString(compressedData);
+            
+            using (var input = new System.IO.MemoryStream(compressedData))
+            using (var gzip = new System.IO.Compression.GZipStream(input, System.IO.Compression.CompressionMode.Decompress))
+            using (var output = new System.IO.MemoryStream())
+            {
+                gzip.CopyTo(output);
+                return System.Text.Encoding.UTF8.GetString(output.ToArray());
+            }
+        }
+        
+        /// <summary>
+        /// Enhanced caching with compression
+        /// </summary>
+        private bool IsCached(AIRequest request)
+        {
+            var cacheKey = GenerateCacheKey(request);
+            return _responseCache.ContainsKey(cacheKey) && 
+                   _cacheTimestamps.ContainsKey(cacheKey) &&
+                   DateTime.Now - _cacheTimestamps[cacheKey] < TimeSpan.FromMinutes(cacheExpiryMinutes);
+        }
+        
+        private AIResponse GetCachedResponse(AIRequest request)
+        {
+            var cacheKey = GenerateCacheKey(request);
+            var response = _responseCache[cacheKey];
+            
+            // Move to end of eviction queue (LRU)
+            _cacheEvictionQueue.Enqueue(cacheKey);
+            
+            return response;
+        }
+        
+        private void CacheResponse(AIRequest request, AIResponse response)
+        {
+            var cacheKey = GenerateCacheKey(request);
+            
+            // Compress response data
+            if (enableResponseCompression)
+            {
+                var compressedData = CompressData(response.Data);
+                _compressedCache[cacheKey] = compressedData;
+            }
+            
+            _responseCache[cacheKey] = response;
+            _cacheTimestamps[cacheKey] = DateTime.Now;
+            _cacheEvictionQueue.Enqueue(cacheKey);
+            _currentCacheSize++;
+        }
+        
+        /// <summary>
+        /// Enhanced cache key generation
+        /// </summary>
+        private string GenerateCacheKey(AIRequest request)
+        {
+            var keyData = $"{request.Type}_{request.PlayerId}_{request.Context.GetHashCode()}";
+            return System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(keyData));
+        }
+        
+        /// <summary>
+        /// Request batching with priority
+        /// </summary>
+        private void QueueRequest(AIRequest request)
+        {
+            if (enableRequestBatching)
+            {
+                // Add priority based on request type
+                request.Priority = GetRequestPriority(request.Type);
+                _requestQueue.Enqueue(request);
+            }
+            else
+            {
+                ProcessRequest(request);
+            }
+        }
+        
+        private int GetRequestPriority(AIRequestType type)
+        {
+            switch (type)
+            {
+                case AIRequestType.Gameplay: return 1; // Highest priority
+                case AIRequestType.UI: return 2;
+                case AIRequestType.Audio: return 3;
+                case AIRequestType.VisualEffects: return 4;
+                case AIRequestType.Economy: return 5;
+                case AIRequestType.Analytics: return 6;
+                case AIRequestType.Social: return 7; // Lowest priority
+                default: return 5;
+            }
+        }
+        
+        /// <summary>
+        /// Enhanced request processing with performance tracking
+        /// </summary>
+        private IEnumerator ProcessRequest(AIRequest request)
+        {
+            var startTime = Time.realtimeSinceStartup;
+            _activeRequests++;
+            _totalRequests++;
+            
+            OnAIRequestStarted?.Invoke(request.Id);
+            
+            // Check cache first
+            if (enableCaching && IsCached(request))
+            {
+                var cachedResponse = GetCachedResponse(request);
+                request.Callback?.Invoke(cachedResponse);
+                _cacheHits++;
+                _activeRequests--;
+                yield break;
+            }
+            
+            _cacheMisses++;
+            
+            // Try API first
+            if (enableAPI)
+            {
+                yield return StartCoroutine(SendAPIRequest(request));
+            }
+            
+            // If API failed and fallback is enabled, use fallback
+            if (!request.IsCompleted && enableFallback)
+            {
+                yield return StartCoroutine(ProcessFallbackRequest(request));
+            }
+            
+            // Update performance metrics
+            var responseTime = (Time.realtimeSinceStartup - startTime) * 1000f; // Convert to milliseconds
+            _requestTimes[request.Type.ToString()] = responseTime;
+            _requestCounts[request.Type.ToString()] = (_requestCounts.ContainsKey(request.Type.ToString()) ? _requestCounts[request.Type.ToString()] : 0) + 1;
+            _averageResponseTime = (_averageResponseTime + responseTime) / 2f;
+            
+            _activeRequests--;
+        }
+        
+        #endregion
+        
         #region Utility Methods
         
         public void ClearCache()
         {
             _responseCache.Clear();
             _cacheTimestamps.Clear();
+            _compressedCache.Clear();
+            _cacheEvictionQueue.Clear();
+            _currentCacheSize = 0;
         }
         
         public int GetQueueSize()
@@ -437,6 +744,23 @@ namespace Evergreen.AI
         public void SetAPIKey(string key)
         {
             apiKey = key;
+        }
+        
+        public Dictionary<string, object> GetPerformanceStats()
+        {
+            return new Dictionary<string, object>
+            {
+                {"totalRequests", _totalRequests},
+                {"cacheHits", _cacheHits},
+                {"cacheMisses", _cacheMisses},
+                {"cacheHitRate", _totalRequests > 0 ? (float)_cacheHits / _totalRequests : 0f},
+                {"averageResponseTime", _averageResponseTime},
+                {"activeRequests", _activeRequests},
+                {"cacheSize", _currentCacheSize},
+                {"maxCacheSize", maxCacheSize},
+                {"requestTimes", _requestTimes},
+                {"requestCounts", _requestCounts}
+            };
         }
         
         #endregion
@@ -460,6 +784,10 @@ namespace Evergreen.AI
         public object Context;
         public System.Action<AIResponse> Callback;
         public bool IsCompleted = false;
+        public int Priority = 5; // Default priority
+        public float Timestamp = 0f;
+        public int RetryCount = 0;
+        public int MaxRetries = 3;
     }
     
     public class AIResponse
