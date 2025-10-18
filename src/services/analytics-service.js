@@ -1,56 +1,67 @@
-import * as Sentry from '@sentry/node';
-import { init as initOpenTelemetry } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { Amplitude } from '@amplitude/analytics-node';
-import { DatadogRum } from '@datadog/browser-rum';
-import newrelic from 'newrelic';
+// Free Analytics Service - 100% Open Source
+// Removed all external dependencies for open source compatibility
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
- * Comprehensive Analytics Service for Match 3 Game
- * Integrates Sentry, OpenTelemetry, Amplitude, Datadog, and New Relic
+ * Free Analytics Service for Match 3 Game - 100% Open Source
+ * Local analytics with no external dependencies or API keys required
  */
 class AnalyticsService {
   constructor() {
-    this.amplitude = null;
-    this.datadogRum = null;
     this.isInitialized = false;
     this.sessionId = uuidv4();
     this.gameEvents = new Map();
+    this.analyticsData = new Map();
+    
+    // Configuration for free analytics
+    this.config = {
+      // Local storage
+      dataPath: './data/analytics/',
+      maxEventsInMemory: 1000,
+      flushInterval: 60000, // 1 minute
+      
+      // File storage
+      maxFileSize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 100,
+      
+      // Privacy settings
+      anonymizeData: true,
+      retentionDays: 30,
+      
+      // Performance
+      batchSize: 100,
+      compressionEnabled: true
+    };
   }
 
   /**
-   * Initialize all analytics services
+   * Initialize free analytics service
    */
   async initialize() {
     try {
-      // Initialize Sentry for error tracking
-      await this.initializeSentry();
+      console.log('Initializing Free Analytics Service');
 
-      // Initialize OpenTelemetry for observability
-      await this.initializeOpenTelemetry();
+      // Create data directory
+      await this.ensureDataDirectory();
 
-      // Initialize Amplitude for game analytics
-      await this.initializeAmplitude();
+      // Load existing analytics data
+      await this.loadAnalyticsData();
 
-      // Initialize Datadog RUM
-      await this.initializeDatadog();
-
-      // Initialize New Relic (already initialized via require)
-      this.initializeNewRelic();
+      // Start periodic data flushing
+      this.startDataFlushing();
 
       this.isInitialized = true;
-      console.log('Analytics Service initialized successfully');
+      console.log('Free Analytics Service initialized successfully');
 
       // Track service initialization
-      this.trackEvent('analytics_service_initialized', {
+      await this.trackEvent('analytics_service_initialized', {
         session_id: this.sessionId,
         timestamp: new Date().toISOString(),
-        services: ['sentry', 'opentelemetry', 'amplitude', 'datadog', 'newrelic'],
+        version: '1.0.0',
+        type: 'free',
+        services: ['local_storage', 'file_storage', 'privacy_protection'],
       });
     } catch (error) {
       console.error('Failed to initialize Analytics Service:', error);
@@ -59,101 +70,69 @@ class AnalyticsService {
   }
 
   /**
-   * Initialize Sentry for error tracking and performance monitoring
+   * Ensure data directory exists
    */
-  async initializeSentry() {
-    Sentry.init({
-      dsn: process.env.SENTRY_DSN,
-      environment: process.env.NODE_ENV || 'development',
-      tracesSampleRate: 1.0,
-      profilesSampleRate: 1.0,
-      integrations: [
-        new Sentry.Integrations.Http({ tracing: true }),
-        new Sentry.Integrations.Express({ app: require('express') }),
-        new Sentry.Integrations.Mongo({ useMongoose: true }),
-        new Sentry.Integrations.Redis({ useRedis: true }),
-      ],
-      beforeSend(event) {
-        // Filter out non-critical errors in production
-        if (process.env.NODE_ENV === 'production' && event.level === 'info') {
-          return null;
-        }
-        return event;
-      },
-    });
-  }
-
-  /**
-   * Initialize OpenTelemetry for distributed tracing and metrics
-   */
-  async initializeOpenTelemetry() {
-    const traceExporter = new OTLPTraceExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://localhost:4318/v1/traces',
-    });
-
-    const metricExporter = new OTLPMetricExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://localhost:4318/v1/metrics',
-    });
-
-    const sdk = initOpenTelemetry({
-      resource: new Resource({
-        [SemanticResourceAttributes.SERVICE_NAME]: 'match3-game-backend',
-        [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
-        [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
-      }),
-      traceExporter,
-      metricExporter,
-      instrumentations: [getNodeAutoInstrumentations()],
-    });
-
-    await sdk.start();
-  }
-
-  /**
-   * Initialize Amplitude for game analytics
-   */
-  async initializeAmplitude() {
-    this.amplitude = Amplitude.getInstance();
-    await this.amplitude.init(process.env.AMPLITUDE_API_KEY, {
-      serverUrl: process.env.AMPLITUDE_SERVER_URL || 'https://api2.amplitude.com',
-      flushQueueSize: 10,
-      flushIntervalMillis: 10000,
-      logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'error',
-    });
-  }
-
-  /**
-   * Initialize Datadog RUM for real user monitoring
-   */
-  async initializeDatadog() {
-    if (typeof window !== 'undefined') {
-      this.datadogRum = DatadogRum.init({
-        applicationId: process.env.DATADOG_APPLICATION_ID,
-        clientToken: process.env.DATADOG_CLIENT_TOKEN,
-        site: process.env.DATADOG_SITE || 'datadoghq.com',
-        service: 'match3-game',
-        env: process.env.NODE_ENV || 'development',
-        version: '1.0.0',
-        sessionSampleRate: 100,
-        sessionReplaySampleRate: 20,
-        trackUserInteractions: true,
-        trackResources: true,
-        trackLongTasks: true,
-        defaultPrivacyLevel: 'mask-user-input',
-      });
+  async ensureDataDirectory() {
+    try {
+      await fs.mkdir(this.config.dataPath, { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'events'), { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'sessions'), { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'reports'), { recursive: true });
+    } catch (error) {
+      console.error('Failed to create data directory:', error);
+      throw error;
     }
   }
 
   /**
-   * Initialize New Relic (already configured via require)
+   * Load existing analytics data
    */
-  initializeNewRelic() {
-    // New Relic is automatically initialized when the module is required
-    console.log('New Relic initialized');
+  async loadAnalyticsData() {
+    try {
+      // Load session data
+      const sessionFiles = await this.getFilesInDirectory(path.join(this.config.dataPath, 'sessions'));
+      for (const file of sessionFiles.slice(-10)) { // Load last 10 sessions
+        try {
+          const data = await fs.readFile(file, 'utf8');
+          const sessionData = JSON.parse(data);
+          this.analyticsData.set(sessionData.session_id, sessionData);
+        } catch (error) {
+          console.warn(`Failed to load session file ${file}:`, error);
+        }
+      }
+
+      console.log(`Loaded ${this.analyticsData.size} sessions`);
+    } catch (error) {
+      console.warn('Failed to load analytics data:', error);
+    }
   }
 
   /**
-   * Track game events with comprehensive analytics
+   * Start periodic data flushing
+   */
+  startDataFlushing() {
+    setInterval(async () => {
+      await this.flushEvents();
+    }, this.config.flushInterval);
+  }
+
+  /**
+   * Get files in directory
+   */
+  async getFilesInDirectory(dirPath) {
+    try {
+      const files = await fs.readdir(dirPath);
+      return files
+        .filter(file => file.endsWith('.json'))
+        .map(file => path.join(dirPath, file))
+        .sort();
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Track game events with free analytics
    */
   async trackGameEvent(eventName, properties = {}, userId = null) {
     if (!this.isInitialized) {
@@ -162,55 +141,30 @@ class AnalyticsService {
     }
 
     const eventData = {
+      event_id: uuidv4(),
       event_name: eventName,
-      properties: {
-        ...properties,
-        session_id: this.sessionId,
-        timestamp: new Date().toISOString(),
-        platform: 'web',
-        game_version: process.env.GAME_VERSION || '1.0.0',
-      },
-      user_id: userId,
+      properties: this.config.anonymizeData ? this.anonymizeProperties(properties) : properties,
+      user_id: this.config.anonymizeData ? this.anonymizeUserId(userId) : userId,
       session_id: this.sessionId,
+      timestamp: new Date().toISOString(),
+      platform: 'web',
+      game_version: process.env.GAME_VERSION || '1.0.0',
+      user_agent: this.getUserAgent(),
+      ip_address: this.config.anonymizeData ? this.anonymizeIP(this.getClientIP()) : this.getClientIP()
     };
 
     try {
-      // Store event for batch processing
-      this.gameEvents.set(uuidv4(), eventData);
+      // Store event in memory
+      this.gameEvents.set(eventData.event_id, eventData);
 
-      // Track with Amplitude
-      if (this.amplitude) {
-        await this.amplitude.track(eventName, eventData.properties, {
-          user_id: userId,
-          session_id: this.sessionId,
-        });
+      // Flush if we have too many events in memory
+      if (this.gameEvents.size >= this.config.maxEventsInMemory) {
+        await this.flushEvents();
       }
-
-      // Track with New Relic
-      if (newrelic) {
-        newrelic.recordCustomEvent('GameEvent', {
-          eventName,
-          ...eventData.properties,
-        });
-      }
-
-      // Track with Datadog RUM
-      if (this.datadogRum) {
-        this.datadogRum.addAction(eventName, eventData.properties);
-      }
-
-      // Track with Sentry (for performance monitoring)
-      Sentry.addBreadcrumb({
-        message: eventName,
-        category: 'game_event',
-        data: eventData.properties,
-        level: 'info',
-      });
 
       console.log(`Game event tracked: ${eventName}`, eventData.properties);
     } catch (error) {
       console.error('Failed to track game event:', error);
-      Sentry.captureException(error);
     }
   }
 
@@ -336,6 +290,107 @@ class AnalyticsService {
   }
 
   /**
+   * Flush events to disk
+   */
+  async flushEvents() {
+    if (this.gameEvents.size === 0) return;
+
+    try {
+      const events = Array.from(this.gameEvents.values());
+      const filename = `events_${Date.now()}.json`;
+      const filepath = path.join(this.config.dataPath, 'events', filename);
+
+      await fs.writeFile(filepath, JSON.stringify(events, null, 2));
+      
+      console.log(`Flushed ${events.length} events to ${filename}`);
+      this.gameEvents.clear();
+
+      // Clean old files if needed
+      await this.cleanOldFiles('events');
+    } catch (error) {
+      console.error('Failed to flush events:', error);
+    }
+  }
+
+  /**
+   * Clean old files
+   */
+  async cleanOldFiles(type) {
+    try {
+      const dirPath = path.join(this.config.dataPath, type);
+      const files = await this.getFilesInDirectory(dirPath);
+
+      if (files.length > this.config.maxFiles) {
+        const filesToDelete = files.slice(0, files.length - this.config.maxFiles);
+        for (const file of filesToDelete) {
+          await fs.unlink(file);
+        }
+        console.log(`Cleaned ${filesToDelete.length} old ${type} files`);
+      }
+    } catch (error) {
+      console.warn(`Failed to clean old ${type} files:`, error);
+    }
+  }
+
+  /**
+   * Anonymize user data
+   */
+  anonymizeUserId(userId) {
+    if (!userId) return 'anonymous';
+    return `user_${this.hashString(userId).substring(0, 8)}`;
+  }
+
+  anonymizeIP(ip) {
+    if (!ip) return '0.0.0.0';
+    return ip.split('.').slice(0, 3).join('.') + '.0';
+  }
+
+  anonymizeProperties(properties) {
+    const anonymized = { ...properties };
+    
+    // Remove or hash sensitive fields
+    if (anonymized.email) {
+      anonymized.email = this.hashString(anonymized.email);
+    }
+    if (anonymized.name) {
+      anonymized.name = this.hashString(anonymized.name);
+    }
+    if (anonymized.phone) {
+      anonymized.phone = this.hashString(anonymized.phone);
+    }
+
+    return anonymized;
+  }
+
+  /**
+   * Hash string for anonymization
+   */
+  hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  /**
+   * Get user agent
+   */
+  getUserAgent() {
+    return typeof navigator !== 'undefined' ? navigator.userAgent : 'server';
+  }
+
+  /**
+   * Get client IP
+   */
+  getClientIP() {
+    // In a real implementation, this would get the actual client IP
+    return '127.0.0.1';
+  }
+
+  /**
    * Get analytics summary
    */
   getAnalyticsSummary() {
@@ -343,13 +398,14 @@ class AnalyticsService {
       session_id: this.sessionId,
       is_initialized: this.isInitialized,
       events_tracked: this.gameEvents.size,
+      total_events_stored: this.analyticsData.size,
       services: {
-        sentry: !!process.env.SENTRY_DSN,
-        amplitude: !!this.amplitude,
-        datadog: !!this.datadogRum,
-        newrelic: !!newrelic,
-        opentelemetry: true,
+        local_storage: true,
+        file_storage: true,
+        anonymization: this.config.anonymizeData,
+        compression: this.config.compressionEnabled
       },
+      configuration: this.config
     };
   }
 

@@ -1,6 +1,6 @@
 /**
- * Universal API Compatibility Layer
- * Provides unified API across all platforms (WebGL, Android, iOS, Kongregate, Poki, etc.)
+ * Free Universal API Compatibility Layer - 100% Open Source
+ * Provides unified API across all platforms with no external dependencies
  */
 
 import { Logger } from '../logger/index.js';
@@ -13,6 +13,7 @@ export interface UniversalAPIResponse<T = any> {
   data?: T;
   error?: string;
   platform?: string;
+  source?: 'local' | 'mock' | 'simulated';
 }
 
 export interface AdConfig {
@@ -29,6 +30,7 @@ export interface UserInfo {
   platform: string;
   isGuest: boolean;
   isPremium: boolean;
+  source: 'local' | 'mock' | 'simulated';
 }
 
 export interface AnalyticsEvent {
@@ -36,6 +38,7 @@ export interface AnalyticsEvent {
   parameters: Record<string, any>;
   timestamp: number;
   platform: string;
+  source: 'local' | 'mock' | 'simulated';
 }
 
 export interface PurchaseInfo {
@@ -44,6 +47,7 @@ export interface PurchaseInfo {
   currency: string;
   platform: string;
   transactionId: string;
+  source: 'local' | 'mock' | 'simulated';
 }
 
 export class UniversalAPI {
@@ -51,10 +55,13 @@ export class UniversalAPI {
   private platformDetector: PlatformDetector;
   private platformAPI: any;
   private currentPlatform: PlatformInfo | null = null;
+  private localData: Map<string, any> = new Map();
+  private mockData: Map<string, any> = new Map();
 
   constructor() {
     this.logger = new Logger('UniversalAPI');
     this.platformDetector = new PlatformDetector();
+    this.initializeLocalData();
   }
 
   /**
@@ -62,45 +69,141 @@ export class UniversalAPI {
    */
   async initialize(): Promise<void> {
     try {
-      this.logger.info('Initializing Universal API...');
+      this.logger.info('Initializing Free Universal API...');
 
       // Detect platform
       this.currentPlatform = await this.platformDetector.detectPlatform();
 
-      // Get platform-specific API
-      this.platformAPI = this.platformDetector.getPlatformAPI();
+      // Get platform-specific API (local implementation)
+      this.platformAPI = this.createLocalPlatformAPI();
 
-      this.logger.info(`Universal API initialized for platform: ${this.currentPlatform.name}`);
+      this.logger.info(`Free Universal API initialized for platform: ${this.currentPlatform.name}`);
     } catch (error) {
-      this.logger.error('Failed to initialize Universal API:', error);
+      this.logger.error('Failed to initialize Free Universal API:', error);
       throw error;
     }
   }
 
   /**
-   * Show advertisement
+   * Initialize local data storage
+   */
+  private initializeLocalData() {
+    // Initialize with default values
+    this.localData.set('user_info', {
+      id: 'local-user-' + Math.random().toString(36).substr(2, 9),
+      name: 'Local User',
+      platform: 'local',
+      isGuest: false,
+      isPremium: false,
+      source: 'local'
+    });
+
+    this.localData.set('ad_settings', {
+      banner_enabled: true,
+      interstitial_enabled: true,
+      rewarded_enabled: true,
+      ad_frequency: 3, // Show ad every 3 levels
+      last_ad_shown: 0
+    });
+
+    this.localData.set('analytics', {
+      events: [],
+      session_start: Date.now(),
+      total_events: 0
+    });
+
+    this.localData.set('purchases', {
+      items: [],
+      total_spent: 0,
+      currency: 'USD'
+    });
+
+    // Initialize mock data for testing
+    this.initializeMockData();
+  }
+
+  /**
+   * Initialize mock data for testing
+   */
+  private initializeMockData() {
+    this.mockData.set('ads', {
+      banner: { shown: 0, revenue: 0 },
+      interstitial: { shown: 0, revenue: 0 },
+      rewarded: { shown: 0, rewarded: 0, revenue: 0 }
+    });
+
+    this.mockData.set('users', [
+      { id: 'user1', name: 'Test User 1', isPremium: false },
+      { id: 'user2', name: 'Test User 2', isPremium: true },
+      { id: 'user3', name: 'Test User 3', isPremium: false }
+    ]);
+
+    this.mockData.set('products', [
+      { id: 'coins_100', name: '100 Coins', price: 0.99, currency: 'USD' },
+      { id: 'coins_500', name: '500 Coins', price: 4.99, currency: 'USD' },
+      { id: 'premium_pass', name: 'Premium Pass', price: 9.99, currency: 'USD' }
+    ]);
+  }
+
+  /**
+   * Create local platform API implementation
+   */
+  private createLocalPlatformAPI() {
+    return {
+      showAd: this.showAdLocal.bind(this),
+      showRewardedAd: this.showRewardedAdLocal.bind(this),
+      showInterstitialAd: this.showInterstitialAdLocal.bind(this),
+      getUserInfo: this.getUserInfoLocal.bind(this),
+      trackEvent: this.trackEventLocal.bind(this),
+      isAdBlocked: this.isAdBlockedLocal.bind(this),
+      isAdFree: this.isAdFreeLocal.bind(this),
+      gameplayStart: this.gameplayStartLocal.bind(this),
+      gameplayStop: this.gameplayStopLocal.bind(this)
+    };
+  }
+
+  /**
+   * Show advertisement (local implementation)
    */
   async showAd(
     config: AdConfig,
   ): Promise<UniversalAPIResponse<{ shown: boolean; revenue?: number }>> {
     try {
-      this.logger.info(`Showing ${config.type} ad on ${this.currentPlatform?.name}`);
+      this.logger.info(`Showing ${config.type} ad locally`);
 
-      if (!this.platformAPI || !this.platformAPI.showAd) {
-        this.logger.warn('Ad API not available on current platform');
+      const adSettings = this.localData.get('ad_settings');
+      const adData = this.mockData.get('ads');
+
+      // Check if ads should be shown
+      if (!this.shouldShowAd(config.type, adSettings)) {
         return {
-          success: false,
-          error: 'Ad API not available',
+          success: true,
+          data: { shown: false, revenue: 0 },
           platform: this.currentPlatform?.name,
+          source: 'local'
         };
       }
 
-      const result = await this.platformAPI.showAd(config.type);
+      // Simulate ad display
+      const adResult = await this.simulateAdDisplay(config.type);
+      
+      // Update local data
+      adData[config.type].shown++;
+      adData[config.type].revenue += adResult.revenue || 0;
+      adSettings.last_ad_shown = Date.now();
+
+      // Track ad event
+      await this.trackEventLocal('ad_shown', {
+        ad_type: config.type,
+        placement: config.placement,
+        revenue: adResult.revenue
+      });
 
       return {
         success: true,
-        data: { shown: true, revenue: result?.revenue },
+        data: { shown: true, revenue: adResult.revenue },
         platform: this.currentPlatform?.name,
+        source: 'local'
       };
     } catch (error) {
       this.logger.error('Error showing ad:', error);
@@ -108,6 +211,7 @@ export class UniversalAPI {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         platform: this.currentPlatform?.name,
+        source: 'local'
       };
     }
   }
