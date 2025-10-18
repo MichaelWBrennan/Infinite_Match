@@ -3,10 +3,20 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import Redis from 'ioredis';
+import { LRUCache } from 'lru-cache';
 
 /**
  * AI Personalization Engine - Advanced player personalization using ML and AI
  * Creates unique experiences for every player using behavioral analysis and predictive modeling
+ * 
+ * OPTIMIZATIONS:
+ * - Redis caching for player profiles and predictions
+ * - Real-time personalization updates
+ * - Machine learning model optimization
+ * - Performance monitoring and analytics
+ * - Intelligent recommendation algorithms
+ * - Memory optimization and garbage collection
  */
 class AIPersonalizationEngine {
   constructor() {
@@ -18,12 +28,57 @@ class AIPersonalizationEngine {
 
     this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
+    // Redis for caching player profiles and predictions
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379,
+      password: process.env.REDIS_PASSWORD,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    });
+
+    // In-memory LRU cache for frequently accessed profiles
+    this.profileCache = new LRUCache({
+      max: 5000,
+      ttl: 1000 * 60 * 15, // 15 minutes
+    });
+
+    // Prediction cache for ML model results
+    this.predictionCache = new LRUCache({
+      max: 10000,
+      ttl: 1000 * 60 * 5, // 5 minutes
+    });
+
+    // Real-time personalization updates
+    this.realTimeUpdates = new Map();
+    this.updateQueue = [];
+    this.isProcessingUpdates = false;
+
+    // Performance monitoring
+    this.performanceMetrics = {
+      totalPersonalizations: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      averagePersonalizationTime: 0,
+      predictionAccuracy: 0,
+      lastReset: Date.now(),
+    };
+
+    // Machine learning models
+    this.mlModels = new Map();
+    this.modelTrainingQueue = [];
+    this.isTrainingModels = false;
+
     this.playerProfiles = new Map();
     this.behaviorModels = new Map();
     this.personalizationRules = new Map();
     this.predictionModels = new Map();
 
     this.initializePersonalizationModels();
+    this.startRealTimeProcessor();
+    this.startModelTraining();
+    this.startPerformanceMonitor();
   }
 
   /**
@@ -613,6 +668,422 @@ Return JSON with:
   async storeRecommendations(playerId, type, recommendations) {}
   async storeDifficultyOptimization(optimization) {}
   async storeChurnPrediction(prediction) {}
+  // ==================== OPTIMIZATION METHODS ====================
+
+  /**
+   * Advanced caching system for player profiles and predictions
+   */
+  async getCachedProfile(playerId) {
+    try {
+      // Check memory cache first
+      const memoryCached = this.profileCache.get(playerId);
+      if (memoryCached) {
+        this.performanceMetrics.cacheHits++;
+        return memoryCached;
+      }
+
+      // Check Redis cache
+      const redisCached = await this.redis.get(`profile:${playerId}`);
+      if (redisCached) {
+        const parsed = JSON.parse(redisCached);
+        this.profileCache.set(playerId, parsed);
+        this.performanceMetrics.cacheHits++;
+        return parsed;
+      }
+
+      this.performanceMetrics.cacheMisses++;
+      return null;
+    } catch (error) {
+      this.logger.warn('Profile cache retrieval failed', { error: error.message, playerId });
+      return null;
+    }
+  }
+
+  async setCachedProfile(playerId, profile, ttlSeconds = 900) {
+    try {
+      // Set in memory cache
+      this.profileCache.set(playerId, profile, { ttl: ttlSeconds * 1000 });
+
+      // Set in Redis cache
+      await this.redis.setex(`profile:${playerId}`, ttlSeconds, JSON.stringify(profile));
+    } catch (error) {
+      this.logger.warn('Profile cache storage failed', { error: error.message, playerId });
+    }
+  }
+
+  async getCachedPrediction(predictionKey) {
+    try {
+      const cached = this.predictionCache.get(predictionKey);
+      if (cached) {
+        this.performanceMetrics.cacheHits++;
+        return cached;
+      }
+
+      const redisCached = await this.redis.get(`prediction:${predictionKey}`);
+      if (redisCached) {
+        const parsed = JSON.parse(redisCached);
+        this.predictionCache.set(predictionKey, parsed);
+        this.performanceMetrics.cacheHits++;
+        return parsed;
+      }
+
+      this.performanceMetrics.cacheMisses++;
+      return null;
+    } catch (error) {
+      this.logger.warn('Prediction cache retrieval failed', { error: error.message, predictionKey });
+      return null;
+    }
+  }
+
+  async setCachedPrediction(predictionKey, prediction, ttlSeconds = 300) {
+    try {
+      this.predictionCache.set(predictionKey, prediction, { ttl: ttlSeconds * 1000 });
+      await this.redis.setex(`prediction:${predictionKey}`, ttlSeconds, JSON.stringify(prediction));
+    } catch (error) {
+      this.logger.warn('Prediction cache storage failed', { error: error.message, predictionKey });
+    }
+  }
+
+  /**
+   * Real-time personalization updates
+   */
+  async updatePlayerProfileRealTime(playerId, behaviorData) {
+    const updateKey = `update:${playerId}:${Date.now()}`;
+    this.realTimeUpdates.set(updateKey, { playerId, behaviorData, timestamp: Date.now() });
+    
+    // Add to processing queue
+    this.updateQueue.push({ playerId, behaviorData, timestamp: Date.now() });
+    
+    if (!this.isProcessingUpdates) {
+      this.processRealTimeUpdates();
+    }
+  }
+
+  async processRealTimeUpdates() {
+    if (this.isProcessingUpdates || this.updateQueue.length === 0) return;
+
+    this.isProcessingUpdates = true;
+    const batch = this.updateQueue.splice(0, 10); // Process up to 10 updates at once
+
+    try {
+      const promises = batch.map(update => this.processSingleUpdate(update));
+      await Promise.allSettled(promises);
+    } catch (error) {
+      this.logger.error('Real-time update processing failed', { error: error.message });
+    } finally {
+      this.isProcessingUpdates = false;
+      
+      // Process next batch if queue has items
+      if (this.updateQueue.length > 0) {
+        setTimeout(() => this.processRealTimeUpdates(), 100);
+      }
+    }
+  }
+
+  async processSingleUpdate(update) {
+    const { playerId, behaviorData } = update;
+    
+    try {
+      // Get current profile
+      let profile = await this.getCachedProfile(playerId);
+      if (!profile) {
+        profile = await this.getPlayerProfile(playerId);
+      }
+
+      // Update profile with new behavior data
+      this.updateProfileFromBehavior(profile, behaviorData);
+
+      // Cache updated profile
+      await this.setCachedProfile(playerId, profile);
+
+      // Update ML models if needed
+      this.queueModelUpdate(playerId, behaviorData);
+
+      this.logger.debug('Real-time profile update processed', { playerId });
+    } catch (error) {
+      this.logger.error('Single update processing failed', { error: error.message, playerId });
+    }
+  }
+
+  startRealTimeProcessor() {
+    setInterval(() => {
+      if (this.updateQueue.length > 0 && !this.isProcessingUpdates) {
+        this.processRealTimeUpdates();
+      }
+    }, 1000); // Check every second
+  }
+
+  /**
+   * Machine learning model optimization
+   */
+  queueModelUpdate(playerId, behaviorData) {
+    this.modelTrainingQueue.push({ playerId, behaviorData, timestamp: Date.now() });
+    
+    // Start training if queue is large enough
+    if (this.modelTrainingQueue.length >= 100 && !this.isTrainingModels) {
+      this.startModelTraining();
+    }
+  }
+
+  async startModelTraining() {
+    if (this.isTrainingModels) return;
+
+    this.isTrainingModels = true;
+    const trainingData = this.modelTrainingQueue.splice(0, 100);
+
+    try {
+      await this.trainPersonalizationModels(trainingData);
+      this.logger.info('ML models updated successfully', { 
+        trainingSamples: trainingData.length 
+      });
+    } catch (error) {
+      this.logger.error('Model training failed', { error: error.message });
+    } finally {
+      this.isTrainingModels = false;
+      
+      // Continue training if more data available
+      if (this.modelTrainingQueue.length >= 100) {
+        setTimeout(() => this.startModelTraining(), 5000);
+      }
+    }
+  }
+
+  async trainPersonalizationModels(trainingData) {
+    // Train content recommendation model
+    await this.trainContentRecommendationModel(trainingData);
+    
+    // Train difficulty adjustment model
+    await this.trainDifficultyAdjustmentModel(trainingData);
+    
+    // Train churn prediction model
+    await this.trainChurnPredictionModel(trainingData);
+    
+    // Train offer recommendation model
+    await this.trainOfferRecommendationModel(trainingData);
+  }
+
+  async trainContentRecommendationModel(trainingData) {
+    const modelId = 'content_recommendation';
+    const features = this.extractFeatures(trainingData, 'content');
+    const labels = this.extractLabels(trainingData, 'content');
+    
+    // Update model weights using gradient descent
+    const model = this.mlModels.get(modelId) || { weights: {}, accuracy: 0 };
+    const updatedWeights = this.updateModelWeights(model.weights, features, labels);
+    
+    model.weights = updatedWeights;
+    model.accuracy = this.calculateModelAccuracy(features, labels, updatedWeights);
+    model.lastTrained = new Date();
+    
+    this.mlModels.set(modelId, model);
+  }
+
+  async trainDifficultyAdjustmentModel(trainingData) {
+    const modelId = 'difficulty_adjustment';
+    const features = this.extractFeatures(trainingData, 'difficulty');
+    const labels = this.extractLabels(trainingData, 'difficulty');
+    
+    const model = this.mlModels.get(modelId) || { weights: {}, accuracy: 0 };
+    const updatedWeights = this.updateModelWeights(model.weights, features, labels);
+    
+    model.weights = updatedWeights;
+    model.accuracy = this.calculateModelAccuracy(features, labels, updatedWeights);
+    model.lastTrained = new Date();
+    
+    this.mlModels.set(modelId, model);
+  }
+
+  async trainChurnPredictionModel(trainingData) {
+    const modelId = 'churn_prediction';
+    const features = this.extractFeatures(trainingData, 'churn');
+    const labels = this.extractLabels(trainingData, 'churn');
+    
+    const model = this.mlModels.get(modelId) || { weights: {}, accuracy: 0 };
+    const updatedWeights = this.updateModelWeights(model.weights, features, labels);
+    
+    model.weights = updatedWeights;
+    model.accuracy = this.calculateModelAccuracy(features, labels, updatedWeights);
+    model.lastTrained = new Date();
+    
+    this.mlModels.set(modelId, model);
+  }
+
+  async trainOfferRecommendationModel(trainingData) {
+    const modelId = 'offer_recommendation';
+    const features = this.extractFeatures(trainingData, 'offers');
+    const labels = this.extractLabels(trainingData, 'offers');
+    
+    const model = this.mlModels.get(modelId) || { weights: {}, accuracy: 0 };
+    const updatedWeights = this.updateModelWeights(model.weights, features, labels);
+    
+    model.weights = updatedWeights;
+    model.accuracy = this.calculateModelAccuracy(features, labels, updatedWeights);
+    model.lastTrained = new Date();
+    
+    this.mlModels.set(modelId, model);
+  }
+
+  extractFeatures(trainingData, modelType) {
+    return trainingData.map(data => {
+      const features = {};
+      
+      switch (modelType) {
+        case 'content':
+          features.level = data.behaviorData.level || 0;
+          features.completionRate = data.behaviorData.completionRate || 0;
+          features.sessionDuration = data.behaviorData.sessionDuration || 0;
+          features.engagementLevel = data.behaviorData.engagementLevel || 0;
+          break;
+        case 'difficulty':
+          features.currentDifficulty = data.behaviorData.difficulty || 0;
+          features.performance = data.behaviorData.performance || 0;
+          features.movesUsed = data.behaviorData.movesUsed || 0;
+          features.timeSpent = data.behaviorData.timeSpent || 0;
+          break;
+        case 'churn':
+          features.sessionFrequency = data.behaviorData.sessionFrequency || 0;
+          features.lastActive = data.behaviorData.lastActive || 0;
+          features.engagementDrop = data.behaviorData.engagementDrop || 0;
+          features.spendingDecrease = data.behaviorData.spendingDecrease || 0;
+          break;
+        case 'offers':
+          features.spendingTendency = data.behaviorData.spendingTendency || 0;
+          features.priceSensitivity = data.behaviorData.priceSensitivity || 0;
+          features.purchaseHistory = data.behaviorData.purchaseHistory || 0;
+          features.currencyBalance = data.behaviorData.currencyBalance || 0;
+          break;
+      }
+      
+      return features;
+    });
+  }
+
+  extractLabels(trainingData, modelType) {
+    return trainingData.map(data => {
+      switch (modelType) {
+        case 'content':
+          return data.behaviorData.contentPreference || 0;
+        case 'difficulty':
+          return data.behaviorData.optimalDifficulty || 0;
+        case 'churn':
+          return data.behaviorData.churnRisk || 0;
+        case 'offers':
+          return data.behaviorData.offerAcceptance || 0;
+        default:
+          return 0;
+      }
+    });
+  }
+
+  updateModelWeights(weights, features, labels) {
+    const learningRate = 0.01;
+    const updatedWeights = { ...weights };
+    
+    features.forEach((featureSet, index) => {
+      const prediction = this.predictWithWeights(updatedWeights, featureSet);
+      const error = labels[index] - prediction;
+      
+      Object.keys(featureSet).forEach(feature => {
+        if (!updatedWeights[feature]) {
+          updatedWeights[feature] = 0;
+        }
+        updatedWeights[feature] += learningRate * error * featureSet[feature];
+      });
+    });
+    
+    return updatedWeights;
+  }
+
+  predictWithWeights(weights, features) {
+    let prediction = 0;
+    Object.keys(features).forEach(feature => {
+      prediction += (weights[feature] || 0) * features[feature];
+    });
+    return Math.max(0, Math.min(1, prediction)); // Clamp between 0 and 1
+  }
+
+  calculateModelAccuracy(features, labels, weights) {
+    let correct = 0;
+    let total = features.length;
+    
+    features.forEach((featureSet, index) => {
+      const prediction = this.predictWithWeights(weights, featureSet);
+      const actual = labels[index];
+      
+      if (Math.abs(prediction - actual) < 0.1) {
+        correct++;
+      }
+    });
+    
+    return total > 0 ? correct / total : 0;
+  }
+
+  /**
+   * Performance monitoring
+   */
+  startPerformanceMonitor() {
+    setInterval(() => {
+      this.logPerformanceMetrics();
+    }, 60000); // Every minute
+  }
+
+  logPerformanceMetrics() {
+    const metrics = {
+      ...this.performanceMetrics,
+      cacheHitRate: this.performanceMetrics.cacheHits / 
+        (this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses) || 0,
+      modelCount: this.mlModels.size,
+      queueSize: this.updateQueue.length,
+      uptime: Date.now() - this.performanceMetrics.lastReset,
+    };
+
+    this.logger.info('AI Personalization Engine Performance', metrics);
+
+    // Reset metrics every hour
+    if (Date.now() - this.performanceMetrics.lastReset > 3600000) {
+      this.resetPerformanceMetrics();
+    }
+  }
+
+  resetPerformanceMetrics() {
+    this.performanceMetrics = {
+      totalPersonalizations: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      averagePersonalizationTime: 0,
+      predictionAccuracy: 0,
+      lastReset: Date.now(),
+    };
+  }
+
+  /**
+   * Memory optimization
+   */
+  optimizeMemory() {
+    // Clear old cached profiles
+    const cutoff = Date.now() - 3600000; // 1 hour ago
+    for (const [key, profile] of this.profileCache.entries()) {
+      if (profile.lastUpdated && new Date(profile.lastUpdated).getTime() < cutoff) {
+        this.profileCache.delete(key);
+      }
+    }
+
+    // Clear old predictions
+    for (const [key, prediction] of this.predictionCache.entries()) {
+      if (prediction.timestamp && prediction.timestamp < cutoff) {
+        this.predictionCache.delete(key);
+      }
+    }
+
+    // Clear old real-time updates
+    for (const [key, update] of this.realTimeUpdates.entries()) {
+      if (update.timestamp < cutoff) {
+        this.realTimeUpdates.delete(key);
+      }
+    }
+  }
+
+  // ==================== EXISTING HELPER METHODS ====================
   async storePersonalizedOffers(playerId, offers) {}
   async storeDifficultyOptimization(optimization) {}
   async storeChurnPrediction(prediction) {}
