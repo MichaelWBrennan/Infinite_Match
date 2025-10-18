@@ -114,7 +114,7 @@ class GameServer {
 
       this.logger.info('All services initialized successfully');
     } catch (error) {
-      this.logger.error('Failed to initialize services:', error);
+      this.logger.error('Failed to initialize services:', { error });
       process.exit(1);
     }
   }
@@ -146,22 +146,22 @@ class GameServer {
       helmet({
         contentSecurityPolicy: {
           directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            defaultSrc: ['\'self\''],
+            styleSrc: ['\'self\'', '\'unsafe-inline\''],
             scriptSrc: [
-              "'self'",
-              "'unsafe-inline'",
+              '\'self\'',
+              '\'unsafe-inline\'',
               'https://cdn.amplitude.com',
               'https://cdn.mxpnl.com',
             ],
             connectSrc: [
-              "'self'",
+              '\'self\'',
               'https://api2.amplitude.com',
               'https://api.mixpanel.com',
               'https://browser.sentry-cdn.com',
             ],
-            imgSrc: ["'self'", 'data:', 'https:'],
-            fontSrc: ["'self'", 'https:', 'data:'],
+            imgSrc: ['\'self\'', 'data:', 'https:'],
+            fontSrc: ['\'self\'', 'https:', 'data:'],
           },
         },
       }),
@@ -254,7 +254,7 @@ class GameServer {
     try {
       res.status(200).json(healthCheck);
     } catch (error) {
-      this.logger.error('Health check failed:', error);
+      this.logger.error('Health check failed:', { error });
       healthCheck.message = 'ERROR';
       res.status(503).json(healthCheck);
     }
@@ -279,7 +279,7 @@ class GameServer {
           },
         });
       } catch (error) {
-        this.logger.error('Platform detection error:', error);
+        this.logger.error('Platform detection error:', { error });
         res.status(500).json({
           success: false,
           error: 'Platform detection failed',
@@ -293,7 +293,7 @@ class GameServer {
         const capabilities = this.universalAPI.getPlatformCapabilities();
         res.json(capabilities);
       } catch (error) {
-        this.logger.error('Platform capabilities error:', error);
+        this.logger.error('Platform capabilities error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to get platform capabilities',
@@ -310,7 +310,7 @@ class GameServer {
           data: buildConfig,
         });
       } catch (error) {
-        this.logger.error('Build config error:', error);
+        this.logger.error('Build config error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to get build configuration',
@@ -324,7 +324,7 @@ class GameServer {
         const result = await this.universalAPI.showAd(req.body);
         res.json(result);
       } catch (error) {
-        this.logger.error('Show ad error:', error);
+        this.logger.error('Show ad error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to show advertisement',
@@ -337,7 +337,7 @@ class GameServer {
         const result = await this.universalAPI.showRewardedAd();
         res.json(result);
       } catch (error) {
-        this.logger.error('Show rewarded ad error:', error);
+        this.logger.error('Show rewarded ad error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to show rewarded advertisement',
@@ -350,7 +350,7 @@ class GameServer {
         const result = await this.universalAPI.getUserInfo();
         res.json(result);
       } catch (error) {
-        this.logger.error('Get user info error:', error);
+        this.logger.error('Get user info error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to get user information',
@@ -364,7 +364,7 @@ class GameServer {
         const result = await this.universalAPI.trackEvent(eventName, parameters);
         res.json(result);
       } catch (error) {
-        this.logger.error('Track event error:', error);
+        this.logger.error('Track event error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to track event',
@@ -377,7 +377,7 @@ class GameServer {
         const result = await this.universalAPI.gameplayStart();
         res.json(result);
       } catch (error) {
-        this.logger.error('Gameplay start error:', error);
+        this.logger.error('Gameplay start error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to handle gameplay start',
@@ -390,7 +390,7 @@ class GameServer {
         const result = await this.universalAPI.gameplayStop();
         res.json(result);
       } catch (error) {
-        this.logger.error('Gameplay stop error:', error);
+        this.logger.error('Gameplay stop error:', { error });
         res.status(500).json({
           success: false,
           error: 'Failed to handle gameplay stop',
@@ -426,7 +426,7 @@ class GameServer {
           // Broadcast to other clients if needed
           socket.broadcast.emit('game_event', data);
         } catch (error) {
-          this.logger.error('Error handling game event:', error);
+          this.logger.error('Error handling game event:', { error });
           socket.emit('error', { message: 'Failed to process game event' });
         }
       });
@@ -443,7 +443,7 @@ class GameServer {
             platform: platform?.name || 'unknown',
           });
         } catch (error) {
-          this.logger.error('Error handling performance metric:', error);
+          this.logger.error('Error handling performance metric:', { error });
         }
       });
 
@@ -457,7 +457,7 @@ class GameServer {
             await this.universalAPI.trackEvent(data.eventName, data.parameters);
           }
         } catch (error) {
-          this.logger.error('Error handling platform event:', error);
+          this.logger.error('Error handling platform event:', { error });
           socket.emit('error', { message: 'Failed to process platform event' });
         }
       });
@@ -502,7 +502,7 @@ class GameServer {
           process.exit(0);
         });
       } catch (error) {
-        this.logger.error('Error during shutdown:', error);
+        this.logger.error('Error during shutdown:', { error });
         process.exit(1);
       }
     };

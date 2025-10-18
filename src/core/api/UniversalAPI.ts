@@ -79,7 +79,7 @@ export class UniversalAPI {
 
       this.logger.info(`Free Universal API initialized for platform: ${this.currentPlatform.name}`);
     } catch (error) {
-      this.logger.error('Failed to initialize Free Universal API:', error);
+      this.logger.error('Failed to initialize Free Universal API:', { error });
       throw error;
     }
   }
@@ -301,7 +301,7 @@ export class UniversalAPI {
         return {
           success: true,
           data: { shown: false, revenue: 0 },
-          platform: this.currentPlatform?.name,
+          platform: this.currentPlatform?.name || 'unknown',
           source: 'local'
         };
       }
@@ -324,15 +324,15 @@ export class UniversalAPI {
       return {
         success: true,
         data: { shown: true, revenue: adResult.revenue },
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
         source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error showing ad:', error);
+      this.logger.error('Error showing ad:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
         source: 'local'
       };
     }
@@ -343,7 +343,7 @@ export class UniversalAPI {
    */
   async showRewardedAd(): Promise<
     UniversalAPIResponse<{ shown: boolean; rewarded: boolean; reward?: any }>
-  > {
+    > {
     try {
       this.logger.info(`Showing rewarded ad on ${this.currentPlatform?.name}`);
 
@@ -352,7 +352,8 @@ export class UniversalAPI {
         return {
           success: false,
           error: 'Rewarded ad API not available',
-          platform: this.currentPlatform?.name,
+          platform: this.currentPlatform?.name || 'unknown',
+          source: 'local'
         };
       }
 
@@ -365,14 +366,16 @@ export class UniversalAPI {
           rewarded: result?.rewarded || false,
           reward: result?.reward,
         },
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error showing rewarded ad:', error);
+      this.logger.error('Error showing rewarded ad:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -389,7 +392,7 @@ export class UniversalAPI {
         return {
           success: false,
           error: 'Interstitial ad API not available',
-          platform: this.currentPlatform?.name,
+          platform: this.currentPlatform?.name || 'unknown',
         };
       }
 
@@ -398,14 +401,16 @@ export class UniversalAPI {
       return {
         success: true,
         data: { shown: true },
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error showing interstitial ad:', error);
+      this.logger.error('Error showing interstitial ad:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -427,8 +432,9 @@ export class UniversalAPI {
             platform: this.currentPlatform?.name || 'unknown',
             isGuest: true,
             isPremium: false,
+            source: 'local'
           },
-          platform: this.currentPlatform?.name,
+          platform: this.currentPlatform?.name || 'unknown',
         };
       }
 
@@ -443,15 +449,18 @@ export class UniversalAPI {
           platform: this.currentPlatform?.name || 'unknown',
           isGuest: userInfo.isGuest || false,
           isPremium: userInfo.isPremium || false,
+          source: 'local'
         },
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error getting user info:', error);
+      this.logger.error('Error getting user info:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -471,6 +480,7 @@ export class UniversalAPI {
         parameters,
         timestamp: Date.now(),
         platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
 
       // Track via platform API if available
@@ -483,14 +493,16 @@ export class UniversalAPI {
 
       return {
         success: true,
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error tracking event:', error);
+      this.logger.error('Error tracking event:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -504,7 +516,7 @@ export class UniversalAPI {
         return {
           success: true,
           data: false,
-          platform: this.currentPlatform?.name,
+          platform: this.currentPlatform?.name || 'unknown',
         };
       }
 
@@ -513,14 +525,16 @@ export class UniversalAPI {
       return {
         success: true,
         data: isBlocked,
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error checking ad block status:', error);
+      this.logger.error('Error checking ad block status:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -534,7 +548,7 @@ export class UniversalAPI {
         return {
           success: true,
           data: false,
-          platform: this.currentPlatform?.name,
+          platform: this.currentPlatform?.name || 'unknown',
         };
       }
 
@@ -543,14 +557,16 @@ export class UniversalAPI {
       return {
         success: true,
         data: isAdFree,
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error checking ad-free status:', error);
+      this.logger.error('Error checking ad-free status:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -568,20 +584,22 @@ export class UniversalAPI {
 
       // Track gameplay start event
       await this.trackEvent('gameplay_started', {
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
         timestamp: Date.now(),
       });
 
       return {
         success: true,
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error handling gameplay start:', error);
+      this.logger.error('Error handling gameplay start:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -599,20 +617,22 @@ export class UniversalAPI {
 
       // Track gameplay stop event
       await this.trackEvent('gameplay_stopped', {
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
         timestamp: Date.now(),
       });
 
       return {
         success: true,
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     } catch (error) {
-      this.logger.error('Error handling gameplay stop:', error);
+      this.logger.error('Error handling gameplay stop:', { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        platform: this.currentPlatform?.name,
+        platform: this.currentPlatform?.name || 'unknown',
+        source: 'local'
       };
     }
   }
@@ -675,7 +695,7 @@ export class UniversalAPI {
       // Example: Send to analytics service
       // await analyticsService.trackEvent(event.eventName, event.parameters);
     } catch (error) {
-      this.logger.error('Error tracking internal event:', error);
+      this.logger.error('Error tracking internal event:', { error });
     }
   }
 
@@ -994,14 +1014,14 @@ export class UniversalAPI {
   private getPerformanceMetrics(): any {
     try {
       if (typeof performance !== 'undefined') {
-        const navigation = performance.getEntriesByType('navigation')[0];
+        const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
         const paint = performance.getEntriesByType('paint');
         
         return {
           load_time: navigation ? Math.round(navigation.loadEventEnd - navigation.loadEventStart) : 0,
           dom_content_loaded: navigation ? Math.round(navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart) : 0,
-          first_paint: paint.find(p => p.name === 'first-paint') ? Math.round(paint.find(p => p.name === 'first-paint').startTime) : 0,
-          first_contentful_paint: paint.find(p => p.name === 'first-contentful-paint') ? Math.round(paint.find(p => p.name === 'first-contentful-paint').startTime) : 0,
+          first_paint: paint.find(p => p.name === 'first-paint') ? Math.round(paint.find(p => p.name === 'first-paint')!.startTime) : 0,
+          first_contentful_paint: paint.find(p => p.name === 'first-contentful-paint') ? Math.round(paint.find(p => p.name === 'first-contentful-paint')!.startTime) : 0,
           memory_usage: this.getMemoryUsage(),
           fps: this.getFPS()
         };
@@ -1028,8 +1048,8 @@ export class UniversalAPI {
 
   private getMemoryUsage(): number {
     try {
-      if (typeof performance !== 'undefined' && performance.memory) {
-        return Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+      if (typeof performance !== 'undefined' && (performance as any).memory) {
+        return Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024);
       }
       return 0;
     } catch (error) {

@@ -49,7 +49,7 @@ export class WebGLMiddleware {
 
       this.logger.info('WebGL middleware initialized successfully');
     } catch (error) {
-      this.logger.error('Failed to initialize WebGL middleware:', error);
+      this.logger.error('Failed to initialize WebGL middleware:', { error });
       throw error;
     }
   }
@@ -89,7 +89,7 @@ export class WebGLMiddleware {
 
       next();
     } catch (error) {
-      this.logger.error('WebGL middleware error:', error);
+      this.logger.error('WebGL middleware error:', { error });
       next(error);
     }
   };
@@ -148,7 +148,7 @@ export class WebGLMiddleware {
         stream.pipe(res);
       }
     } catch (error) {
-      this.logger.error('Error serving WebGL file:', error);
+      this.logger.error('Error serving WebGL file:', { error });
       res
         .status(500)
         .json(
@@ -211,21 +211,21 @@ export class WebGLMiddleware {
 
     // Set MIME types
     switch (ext) {
-      case '.wasm':
-        res.setHeader('Content-Type', 'application/wasm');
-        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-        break;
-      case '.data':
-        res.setHeader('Content-Type', 'application/octet-stream');
-        break;
-      case '.framework.js':
-      case '.loader.js':
-        res.setHeader('Content-Type', 'application/javascript');
-        break;
-      case '.symbols.json':
-        res.setHeader('Content-Type', 'application/json');
-        break;
+    case '.wasm':
+      res.setHeader('Content-Type', 'application/wasm');
+      res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+      break;
+    case '.data':
+      res.setHeader('Content-Type', 'application/octet-stream');
+      break;
+    case '.framework.js':
+    case '.loader.js':
+      res.setHeader('Content-Type', 'application/javascript');
+      break;
+    case '.symbols.json':
+      res.setHeader('Content-Type', 'application/json');
+      break;
     }
 
     // Set caching headers
@@ -304,7 +304,7 @@ export class WebGLMiddleware {
 
       res.send(compressedData);
     } catch (error) {
-      this.logger.error('Error serving compressed file:', error);
+      this.logger.error('Error serving compressed file:', { error });
       // Fallback to uncompressed
       const stream = createReadStream(filePath);
       stream.pipe(res);
@@ -333,7 +333,7 @@ export class WebGLMiddleware {
 
       res.json(ApiResponseBuilder.success(config));
     } catch (error) {
-      this.logger.error('Error serving WebGL config:', error);
+      this.logger.error('Error serving WebGL config:', { error });
       res
         .status(500)
         .json(
