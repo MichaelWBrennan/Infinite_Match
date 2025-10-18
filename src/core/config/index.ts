@@ -110,11 +110,11 @@ export interface AppConfigType {
 export const AppConfig: AppConfigType = {
   // Server Configuration
   server: {
-    port: parseInt(process.env.PORT || '3030'),
-    host: process.env.HOST || '0.0.0.0',
-    environment: process.env.NODE_ENV || 'development',
+    port: parseInt(process.env['PORT'] || '3030'),
+    host: process.env['HOST'] || '0.0.0.0',
+    environment: process.env['NODE_ENV'] || 'development',
     cors: {
-      origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+      origin: process.env['CORS_ORIGIN']?.split(',') || ['http://localhost:3000'],
       credentials: true,
     },
   },
@@ -122,33 +122,33 @@ export const AppConfig: AppConfigType = {
   // Security Configuration
   security: {
     jwt: {
-      secret: process.env.JWT_SECRET || 'CHANGE_THIS_IN_PRODUCTION_USE_STRONG_SECRET_32_CHARS_MIN',
-      expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+      secret: process.env['JWT_SECRET'] || 'CHANGE_THIS_IN_PRODUCTION_USE_STRONG_SECRET_32_CHARS_MIN',
+      expiresIn: process.env['JWT_EXPIRES_IN'] || '24h',
     },
     bcrypt: {
-      rounds: parseInt(process.env.BCRYPT_ROUNDS || '12'),
+      rounds: parseInt(process.env['BCRYPT_ROUNDS'] || '12'),
     },
     rateLimit: {
-      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '900000'), // 15 minutes
-      max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
+      windowMs: parseInt(process.env['RATE_LIMIT_WINDOW'] || '900000'), // 15 minutes
+      max: parseInt(process.env['RATE_LIMIT_MAX'] || '100'),
     },
     encryption: {
       algorithm: 'aes-256-gcm',
-      key: process.env.ENCRYPTION_KEY || 'CHANGE_THIS_IN_PRODUCTION_USE_STRONG_32_CHAR_KEY',
+      key: process.env['ENCRYPTION_KEY'] || 'CHANGE_THIS_IN_PRODUCTION_USE_STRONG_32_CHAR_KEY',
     },
   },
 
   // Unity Services Configuration
   unity: {
-    projectId: process.env.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574',
-    environmentId: process.env.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d',
-    clientId: process.env.UNITY_CLIENT_ID || '',
-    clientSecret: process.env.UNITY_CLIENT_SECRET || '',
+    projectId: process.env['UNITY_PROJECT_ID'] || '0dd5a03e-7f23-49c4-964e-7919c48c0574',
+    environmentId: process.env['UNITY_ENV_ID'] || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d',
+    clientId: process.env['UNITY_CLIENT_ID'] || '',
+    clientSecret: process.env['UNITY_CLIENT_SECRET'] || '',
   },
 
   // Database Configuration
   database: {
-    url: process.env.DATABASE_URL || 'mongodb://localhost:27017/evergreen-match3',
+    url: process.env['DATABASE_URL'] || 'mongodb://localhost:27017/evergreen-match3',
     options: {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -157,36 +157,36 @@ export const AppConfig: AppConfigType = {
 
   // Logging Configuration
   logging: {
-    level: process.env.LOG_LEVEL || 'info',
-    format: process.env.LOG_FORMAT || 'json',
+    level: process.env['LOG_LEVEL'] || 'info',
+    format: process.env['LOG_FORMAT'] || 'json',
     file: {
-      enabled: process.env.LOG_FILE_ENABLED === 'true',
-      path: process.env.LOG_FILE_PATH || join(__dirname, 'logs'),
-      maxSize: process.env.LOG_MAX_SIZE || '20m',
-      maxFiles: process.env.LOG_MAX_FILES || '14d',
+      enabled: process.env['LOG_FILE_ENABLED'] === 'true',
+      path: process.env['LOG_FILE_PATH'] || join(__dirname, 'logs'),
+      maxSize: process.env['LOG_MAX_SIZE'] || '20m',
+      maxFiles: process.env['LOG_MAX_FILES'] || '14d',
     },
   },
 
   // Cache Configuration
   cache: {
     ttl: {
-      receipt: parseInt(process.env.CACHE_RECEIPT_TTL || '300000'), // 5 minutes
-      segments: parseInt(process.env.CACHE_SEGMENTS_TTL || '600000'), // 10 minutes
+      receipt: parseInt(process.env['CACHE_RECEIPT_TTL'] || '300000'), // 5 minutes
+      segments: parseInt(process.env['CACHE_SEGMENTS_TTL'] || '600000'), // 10 minutes
     },
-    maxSize: parseInt(process.env.CACHE_MAX_SIZE || '1000'),
+    maxSize: parseInt(process.env['CACHE_MAX_SIZE'] || '1000'),
   },
 
   // Payments / Monetization configuration
   payments: {
     apple: {
-      sharedSecret: process.env.APPLE_SHARED_SECRET || '',
+      sharedSecret: process.env['APPLE_SHARED_SECRET'] || '',
     },
     google: {
-      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || '',
+      serviceAccountKeyPath: process.env['GOOGLE_SERVICE_ACCOUNT_KEY_PATH'] || '',
     },
     pricing: {
-      defaultCurrency: process.env.DEFAULT_CURRENCY || 'USD',
-      countryOverridesPath: process.env.PRICING_OVERRIDES_PATH || '',
+      defaultCurrency: process.env['DEFAULT_CURRENCY'] || 'USD',
+      countryOverridesPath: process.env['PRICING_OVERRIDES_PATH'] || '',
     },
   },
 

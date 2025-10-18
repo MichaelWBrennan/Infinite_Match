@@ -33,6 +33,14 @@ export default [
         clearInterval: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        // Browser globals
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        localStorage: 'readonly',
+        performance: 'readonly',
+        PerformanceNavigationTiming: 'readonly',
+        URL: 'readonly',
       },
     },
     plugins: {
