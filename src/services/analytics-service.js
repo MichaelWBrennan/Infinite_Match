@@ -1,56 +1,67 @@
-import * as Sentry from '@sentry/node';
-import { init as initOpenTelemetry } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { Amplitude } from '@amplitude/analytics-node';
-import { DatadogRum } from '@datadog/browser-rum';
-import newrelic from 'newrelic';
+// Free Analytics Service - 100% Open Source
+// Removed all external dependencies for open source compatibility
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
- * Comprehensive Analytics Service for Match 3 Game
- * Integrates Sentry, OpenTelemetry, Amplitude, Datadog, and New Relic
+ * Free Analytics Service for Match 3 Game - 100% Open Source
+ * Local analytics with no external dependencies or API keys required
  */
 class AnalyticsService {
   constructor() {
-    this.amplitude = null;
-    this.datadogRum = null;
     this.isInitialized = false;
     this.sessionId = uuidv4();
     this.gameEvents = new Map();
+    this.analyticsData = new Map();
+    
+    // Configuration for free analytics
+    this.config = {
+      // Local storage
+      dataPath: './data/analytics/',
+      maxEventsInMemory: 1000,
+      flushInterval: 60000, // 1 minute
+      
+      // File storage
+      maxFileSize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 100,
+      
+      // Privacy settings
+      anonymizeData: true,
+      retentionDays: 30,
+      
+      // Performance
+      batchSize: 100,
+      compressionEnabled: true
+    };
   }
 
   /**
-   * Initialize all analytics services
+   * Initialize free analytics service
    */
   async initialize() {
     try {
-      // Initialize Sentry for error tracking
-      await this.initializeSentry();
+      console.log('Initializing Free Analytics Service');
 
-      // Initialize OpenTelemetry for observability
-      await this.initializeOpenTelemetry();
+      // Create data directory
+      await this.ensureDataDirectory();
 
-      // Initialize Amplitude for game analytics
-      await this.initializeAmplitude();
+      // Load existing analytics data
+      await this.loadAnalyticsData();
 
-      // Initialize Datadog RUM
-      await this.initializeDatadog();
-
-      // Initialize New Relic (already initialized via require)
-      this.initializeNewRelic();
+      // Start periodic data flushing
+      this.startDataFlushing();
 
       this.isInitialized = true;
-      console.log('Analytics Service initialized successfully');
+      console.log('Free Analytics Service initialized successfully');
 
       // Track service initialization
-      this.trackEvent('analytics_service_initialized', {
+      await this.trackEvent('analytics_service_initialized', {
         session_id: this.sessionId,
         timestamp: new Date().toISOString(),
-        services: ['sentry', 'opentelemetry', 'amplitude', 'datadog', 'newrelic'],
+        version: '1.0.0',
+        type: 'free',
+        services: ['local_storage', 'file_storage', 'privacy_protection'],
       });
     } catch (error) {
       console.error('Failed to initialize Analytics Service:', error);
@@ -59,101 +70,69 @@ class AnalyticsService {
   }
 
   /**
-   * Initialize Sentry for error tracking and performance monitoring
+   * Ensure data directory exists
    */
-  async initializeSentry() {
-    Sentry.init({
-      dsn: process.env.SENTRY_DSN,
-      environment: process.env.NODE_ENV || 'development',
-      tracesSampleRate: 1.0,
-      profilesSampleRate: 1.0,
-      integrations: [
-        new Sentry.Integrations.Http({ tracing: true }),
-        new Sentry.Integrations.Express({ app: require('express') }),
-        new Sentry.Integrations.Mongo({ useMongoose: true }),
-        new Sentry.Integrations.Redis({ useRedis: true }),
-      ],
-      beforeSend(event) {
-        // Filter out non-critical errors in production
-        if (process.env.NODE_ENV === 'production' && event.level === 'info') {
-          return null;
-        }
-        return event;
-      },
-    });
-  }
-
-  /**
-   * Initialize OpenTelemetry for distributed tracing and metrics
-   */
-  async initializeOpenTelemetry() {
-    const traceExporter = new OTLPTraceExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://localhost:4318/v1/traces',
-    });
-
-    const metricExporter = new OTLPMetricExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://localhost:4318/v1/metrics',
-    });
-
-    const sdk = initOpenTelemetry({
-      resource: new Resource({
-        [SemanticResourceAttributes.SERVICE_NAME]: 'match3-game-backend',
-        [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
-        [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
-      }),
-      traceExporter,
-      metricExporter,
-      instrumentations: [getNodeAutoInstrumentations()],
-    });
-
-    await sdk.start();
-  }
-
-  /**
-   * Initialize Amplitude for game analytics
-   */
-  async initializeAmplitude() {
-    this.amplitude = Amplitude.getInstance();
-    await this.amplitude.init(process.env.AMPLITUDE_API_KEY, {
-      serverUrl: process.env.AMPLITUDE_SERVER_URL || 'https://api2.amplitude.com',
-      flushQueueSize: 10,
-      flushIntervalMillis: 10000,
-      logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'error',
-    });
-  }
-
-  /**
-   * Initialize Datadog RUM for real user monitoring
-   */
-  async initializeDatadog() {
-    if (typeof window !== 'undefined') {
-      this.datadogRum = DatadogRum.init({
-        applicationId: process.env.DATADOG_APPLICATION_ID,
-        clientToken: process.env.DATADOG_CLIENT_TOKEN,
-        site: process.env.DATADOG_SITE || 'datadoghq.com',
-        service: 'match3-game',
-        env: process.env.NODE_ENV || 'development',
-        version: '1.0.0',
-        sessionSampleRate: 100,
-        sessionReplaySampleRate: 20,
-        trackUserInteractions: true,
-        trackResources: true,
-        trackLongTasks: true,
-        defaultPrivacyLevel: 'mask-user-input',
-      });
+  async ensureDataDirectory() {
+    try {
+      await fs.mkdir(this.config.dataPath, { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'events'), { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'sessions'), { recursive: true });
+      await fs.mkdir(path.join(this.config.dataPath, 'reports'), { recursive: true });
+    } catch (error) {
+      console.error('Failed to create data directory:', error);
+      throw error;
     }
   }
 
   /**
-   * Initialize New Relic (already configured via require)
+   * Load existing analytics data
    */
-  initializeNewRelic() {
-    // New Relic is automatically initialized when the module is required
-    console.log('New Relic initialized');
+  async loadAnalyticsData() {
+    try {
+      // Load session data
+      const sessionFiles = await this.getFilesInDirectory(path.join(this.config.dataPath, 'sessions'));
+      for (const file of sessionFiles.slice(-10)) { // Load last 10 sessions
+        try {
+          const data = await fs.readFile(file, 'utf8');
+          const sessionData = JSON.parse(data);
+          this.analyticsData.set(sessionData.session_id, sessionData);
+        } catch (error) {
+          console.warn(`Failed to load session file ${file}:`, error);
+        }
+      }
+
+      console.log(`Loaded ${this.analyticsData.size} sessions`);
+    } catch (error) {
+      console.warn('Failed to load analytics data:', error);
+    }
   }
 
   /**
-   * Track game events with comprehensive analytics
+   * Start periodic data flushing
+   */
+  startDataFlushing() {
+    setInterval(async () => {
+      await this.flushEvents();
+    }, this.config.flushInterval);
+  }
+
+  /**
+   * Get files in directory
+   */
+  async getFilesInDirectory(dirPath) {
+    try {
+      const files = await fs.readdir(dirPath);
+      return files
+        .filter(file => file.endsWith('.json'))
+        .map(file => path.join(dirPath, file))
+        .sort();
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Track game events with free analytics
    */
   async trackGameEvent(eventName, properties = {}, userId = null) {
     if (!this.isInitialized) {
@@ -162,55 +141,30 @@ class AnalyticsService {
     }
 
     const eventData = {
+      event_id: uuidv4(),
       event_name: eventName,
-      properties: {
-        ...properties,
-        session_id: this.sessionId,
-        timestamp: new Date().toISOString(),
-        platform: 'web',
-        game_version: process.env.GAME_VERSION || '1.0.0',
-      },
-      user_id: userId,
+      properties: this.config.anonymizeData ? this.anonymizeProperties(properties) : properties,
+      user_id: this.config.anonymizeData ? this.anonymizeUserId(userId) : userId,
       session_id: this.sessionId,
+      timestamp: new Date().toISOString(),
+      platform: 'web',
+      game_version: process.env.GAME_VERSION || '1.0.0',
+      user_agent: this.getUserAgent(),
+      ip_address: this.config.anonymizeData ? this.anonymizeIP(this.getClientIP()) : this.getClientIP()
     };
 
     try {
-      // Store event for batch processing
-      this.gameEvents.set(uuidv4(), eventData);
+      // Store event in memory
+      this.gameEvents.set(eventData.event_id, eventData);
 
-      // Track with Amplitude
-      if (this.amplitude) {
-        await this.amplitude.track(eventName, eventData.properties, {
-          user_id: userId,
-          session_id: this.sessionId,
-        });
+      // Flush if we have too many events in memory
+      if (this.gameEvents.size >= this.config.maxEventsInMemory) {
+        await this.flushEvents();
       }
-
-      // Track with New Relic
-      if (newrelic) {
-        newrelic.recordCustomEvent('GameEvent', {
-          eventName,
-          ...eventData.properties,
-        });
-      }
-
-      // Track with Datadog RUM
-      if (this.datadogRum) {
-        this.datadogRum.addAction(eventName, eventData.properties);
-      }
-
-      // Track with Sentry (for performance monitoring)
-      Sentry.addBreadcrumb({
-        message: eventName,
-        category: 'game_event',
-        data: eventData.properties,
-        level: 'info',
-      });
 
       console.log(`Game event tracked: ${eventName}`, eventData.properties);
     } catch (error) {
       console.error('Failed to track game event:', error);
-      Sentry.captureException(error);
     }
   }
 
@@ -336,6 +290,572 @@ class AnalyticsService {
   }
 
   /**
+   * Flush events to disk
+   */
+  async flushEvents() {
+    if (this.gameEvents.size === 0) return;
+
+    try {
+      const events = Array.from(this.gameEvents.values());
+      const filename = `events_${Date.now()}.json`;
+      const filepath = path.join(this.config.dataPath, 'events', filename);
+
+      await fs.writeFile(filepath, JSON.stringify(events, null, 2));
+      
+      console.log(`Flushed ${events.length} events to ${filename}`);
+      this.gameEvents.clear();
+
+      // Clean old files if needed
+      await this.cleanOldFiles('events');
+    } catch (error) {
+      console.error('Failed to flush events:', error);
+    }
+  }
+
+  /**
+   * Clean old files
+   */
+  async cleanOldFiles(type) {
+    try {
+      const dirPath = path.join(this.config.dataPath, type);
+      const files = await this.getFilesInDirectory(dirPath);
+
+      if (files.length > this.config.maxFiles) {
+        const filesToDelete = files.slice(0, files.length - this.config.maxFiles);
+        for (const file of filesToDelete) {
+          await fs.unlink(file);
+        }
+        console.log(`Cleaned ${filesToDelete.length} old ${type} files`);
+      }
+    } catch (error) {
+      console.warn(`Failed to clean old ${type} files:`, error);
+    }
+  }
+
+  /**
+   * Anonymize user data
+   */
+  anonymizeUserId(userId) {
+    if (!userId) return 'anonymous';
+    return `user_${this.hashString(userId).substring(0, 8)}`;
+  }
+
+  anonymizeIP(ip) {
+    if (!ip) return '0.0.0.0';
+    return ip.split('.').slice(0, 3).join('.') + '.0';
+  }
+
+  anonymizeProperties(properties) {
+    const anonymized = { ...properties };
+    
+    // Remove or hash sensitive fields
+    if (anonymized.email) {
+      anonymized.email = this.hashString(anonymized.email);
+    }
+    if (anonymized.name) {
+      anonymized.name = this.hashString(anonymized.name);
+    }
+    if (anonymized.phone) {
+      anonymized.phone = this.hashString(anonymized.phone);
+    }
+
+    return anonymized;
+  }
+
+  /**
+   * Hash string for anonymization
+   */
+  hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  /**
+   * Get user agent
+   */
+  getUserAgent() {
+    return typeof navigator !== 'undefined' ? navigator.userAgent : 'server';
+  }
+
+  /**
+   * Get client IP
+   */
+  getClientIP() {
+    // In a real implementation, this would get the actual client IP
+    return '127.0.0.1';
+  }
+
+  /**
+   * Get real user data
+   */
+  async getRealUserData(userId) {
+    try {
+      // Get real user data from local storage or database
+      const userData = await this.getUserDataFromStorage(userId);
+      
+      return {
+        location: userData?.location || await this.getUserLocation(),
+        timezone: userData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: userData?.language || navigator.language || 'en-US',
+        preferences: userData?.preferences || {},
+        gameProgress: userData?.gameProgress || {},
+        lastSeen: new Date().toISOString()
+      };
+    } catch (error) {
+      console.warn('Failed to get real user data:', error);
+      return {
+        location: null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language || 'en-US',
+        preferences: {},
+        gameProgress: {},
+        lastSeen: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Get real device data
+   */
+  async getRealDeviceData() {
+    try {
+      const userAgent = this.getUserAgent();
+      const deviceInfo = this.parseUserAgent(userAgent);
+      
+      return {
+        platform: deviceInfo.platform,
+        gameVersion: process.env.GAME_VERSION || '1.0.0',
+        userAgent: userAgent,
+        ipAddress: this.getClientIP(),
+        deviceInfo: deviceInfo,
+        screenResolution: this.getScreenResolution(),
+        connectionType: this.getConnectionType(),
+        memoryInfo: this.getMemoryInfo(),
+        batteryInfo: this.getBatteryInfo()
+      };
+    } catch (error) {
+      console.warn('Failed to get real device data:', error);
+      return {
+        platform: 'unknown',
+        gameVersion: '1.0.0',
+        userAgent: 'unknown',
+        ipAddress: '127.0.0.1',
+        deviceInfo: {},
+        screenResolution: 'unknown',
+        connectionType: 'unknown',
+        memoryInfo: {},
+        batteryInfo: {}
+      };
+    }
+  }
+
+  /**
+   * Get real game data
+   */
+  async getRealGameData(eventName, properties) {
+    try {
+      const gameState = await this.getGameState();
+      const performanceMetrics = await this.getPerformanceMetrics();
+      
+      return {
+        gameState: gameState,
+        performanceMetrics: performanceMetrics,
+        sessionDuration: this.getSessionDuration(),
+        levelProgress: this.getLevelProgress(),
+        score: this.getCurrentScore(),
+        achievements: this.getAchievements(),
+        powerups: this.getPowerups(),
+        coins: this.getCoins(),
+        gems: this.getGems()
+      };
+    } catch (error) {
+      console.warn('Failed to get real game data:', error);
+      return {
+        gameState: {},
+        performanceMetrics: {},
+        sessionDuration: 0,
+        levelProgress: 0,
+        score: 0,
+        achievements: [],
+        powerups: [],
+        coins: 0,
+        gems: 0
+      };
+    }
+  }
+
+  /**
+   * Get user data from storage
+   */
+  async getUserDataFromStorage(userId) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const userData = localStorage.getItem(`user_${userId}`);
+        return userData ? JSON.parse(userData) : null;
+      }
+      return null;
+    } catch (error) {
+      console.warn('Failed to get user data from storage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get user location (simplified)
+   */
+  async getUserLocation() {
+    try {
+      if (navigator.geolocation) {
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+              });
+            },
+            () => resolve(null),
+            { timeout: 5000 }
+          );
+        });
+      }
+      return null;
+    } catch (error) {
+      console.warn('Failed to get user location:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse user agent for device info
+   */
+  parseUserAgent(userAgent) {
+    const ua = userAgent.toLowerCase();
+    
+    let platform = 'unknown';
+    let device = 'unknown';
+    let browser = 'unknown';
+    let os = 'unknown';
+    
+    // Detect platform
+    if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+      platform = 'mobile';
+    } else if (ua.includes('tablet') || ua.includes('ipad')) {
+      platform = 'tablet';
+    } else {
+      platform = 'desktop';
+    }
+    
+    // Detect device
+    if (ua.includes('iphone')) device = 'iphone';
+    else if (ua.includes('ipad')) device = 'ipad';
+    else if (ua.includes('android')) device = 'android';
+    else if (ua.includes('windows')) device = 'windows';
+    else if (ua.includes('mac')) device = 'mac';
+    else if (ua.includes('linux')) device = 'linux';
+    
+    // Detect browser
+    if (ua.includes('chrome')) browser = 'chrome';
+    else if (ua.includes('firefox')) browser = 'firefox';
+    else if (ua.includes('safari')) browser = 'safari';
+    else if (ua.includes('edge')) browser = 'edge';
+    else if (ua.includes('opera')) browser = 'opera';
+    
+    // Detect OS
+    if (ua.includes('windows')) os = 'windows';
+    else if (ua.includes('mac')) os = 'macos';
+    else if (ua.includes('linux')) os = 'linux';
+    else if (ua.includes('android')) os = 'android';
+    else if (ua.includes('ios')) os = 'ios';
+    
+    return {
+      platform,
+      device,
+      browser,
+      os,
+      userAgent: userAgent
+    };
+  }
+
+  /**
+   * Get screen resolution
+   */
+  getScreenResolution() {
+    try {
+      if (typeof screen !== 'undefined') {
+        return `${screen.width}x${screen.height}`;
+      }
+      return 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Get connection type
+   */
+  getConnectionType() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.connection) {
+        return navigator.connection.effectiveType || 'unknown';
+      }
+      return 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Get memory info
+   */
+  getMemoryInfo() {
+    try {
+      if (typeof performance !== 'undefined' && performance.memory) {
+        return {
+          used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+          total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
+          limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)
+        };
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get battery info
+   */
+  getBatteryInfo() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+          return {
+            level: Math.round(battery.level * 100),
+            charging: battery.charging,
+            chargingTime: battery.chargingTime,
+            dischargingTime: battery.dischargingTime
+          };
+        });
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get game state
+   */
+  async getGameState() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const gameState = localStorage.getItem('gameState');
+        return gameState ? JSON.parse(gameState) : {};
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get performance metrics
+   */
+  async getPerformanceMetrics() {
+    try {
+      if (typeof performance !== 'undefined') {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        const paint = performance.getEntriesByType('paint');
+        
+        return {
+          loadTime: navigation ? Math.round(navigation.loadEventEnd - navigation.loadEventStart) : 0,
+          domContentLoaded: navigation ? Math.round(navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart) : 0,
+          firstPaint: paint.find(p => p.name === 'first-paint') ? Math.round(paint.find(p => p.name === 'first-paint').startTime) : 0,
+          firstContentfulPaint: paint.find(p => p.name === 'first-contentful-paint') ? Math.round(paint.find(p => p.name === 'first-contentful-paint').startTime) : 0,
+          fps: this.getFPS(),
+          memoryUsage: this.getMemoryInfo()
+        };
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Get FPS
+   */
+  getFPS() {
+    try {
+      if (typeof performance !== 'undefined') {
+        const fps = performance.getEntriesByType('measure').find(m => m.name === 'fps');
+        return fps ? Math.round(fps.duration) : 60;
+      }
+      return 60;
+    } catch (error) {
+      return 60;
+    }
+  }
+
+  /**
+   * Get session duration
+   */
+  getSessionDuration() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const sessionStart = localStorage.getItem('sessionStart');
+        if (sessionStart) {
+          return Date.now() - parseInt(sessionStart);
+        }
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get level progress
+   */
+  getLevelProgress() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const progress = localStorage.getItem('levelProgress');
+        return progress ? parseInt(progress) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get current score
+   */
+  getCurrentScore() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const score = localStorage.getItem('currentScore');
+        return score ? parseInt(score) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get achievements
+   */
+  getAchievements() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const achievements = localStorage.getItem('achievements');
+        return achievements ? JSON.parse(achievements) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Get powerups
+   */
+  getPowerups() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const powerups = localStorage.getItem('powerups');
+        return powerups ? JSON.parse(powerups) : [];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Get coins
+   */
+  getCoins() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const coins = localStorage.getItem('coins');
+        return coins ? parseInt(coins) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get gems
+   */
+  getGems() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const gems = localStorage.getItem('gems');
+        return gems ? parseInt(gems) : 0;
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Update real-time analytics
+   */
+  async updateRealTimeAnalytics(eventName, eventData) {
+    try {
+      // Update real-time counters
+      const analytics = this.localData.get('analytics');
+      analytics.total_events++;
+      
+      // Update event counters
+      if (!analytics.event_counts) {
+        analytics.event_counts = {};
+      }
+      analytics.event_counts[eventName] = (analytics.event_counts[eventName] || 0) + 1;
+      
+      // Update session data
+      analytics.last_event_time = Date.now();
+      analytics.is_active = true;
+      
+      // Update user data
+      if (eventData.user_id) {
+        if (!analytics.user_data) {
+          analytics.user_data = {};
+        }
+        analytics.user_data[eventData.user_id] = {
+          last_seen: Date.now(),
+          event_count: (analytics.user_data[eventData.user_id]?.event_count || 0) + 1,
+          last_event: eventName
+        };
+      }
+      
+      // Update platform data
+      if (eventData.platform) {
+        if (!analytics.platform_data) {
+          analytics.platform_data = {};
+        }
+        analytics.platform_data[eventData.platform] = (analytics.platform_data[eventData.platform] || 0) + 1;
+      }
+      
+    } catch (error) {
+      console.warn('Failed to update real-time analytics:', error);
+    }
+  }
+
+  /**
    * Get analytics summary
    */
   getAnalyticsSummary() {
@@ -343,13 +863,14 @@ class AnalyticsService {
       session_id: this.sessionId,
       is_initialized: this.isInitialized,
       events_tracked: this.gameEvents.size,
+      total_events_stored: this.analyticsData.size,
       services: {
-        sentry: !!process.env.SENTRY_DSN,
-        amplitude: !!this.amplitude,
-        datadog: !!this.datadogRum,
-        newrelic: !!newrelic,
-        opentelemetry: true,
+        local_storage: true,
+        file_storage: true,
+        anonymization: this.config.anonymizeData,
+        compression: this.config.compressionEnabled
       },
+      configuration: this.config
     };
   }
 

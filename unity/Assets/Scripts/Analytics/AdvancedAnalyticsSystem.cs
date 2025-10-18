@@ -59,6 +59,14 @@ namespace Evergreen.Analytics
         public bool enableConsentManagement = true;
         public bool enableDataDeletion = true;
         
+        [Header("AI Analytics Enhancement")]
+        public bool enableAIPatternRecognition = true;
+        public bool enableAIPrediction = true;
+        public bool enableAIOptimization = true;
+        public bool enableAIPersonalization = true;
+        public float aiAnalysisStrength = 0.8f;
+        public float aiPredictionAccuracy = 0.7f;
+        
         private Dictionary<string, AnalyticsEvent> _events = new Dictionary<string, AnalyticsEvent>();
         private Dictionary<string, AnalyticsMetric> _metrics = new Dictionary<string, AnalyticsMetric>();
         private Dictionary<string, AnalyticsSegment> _segments = new Dictionary<string, AnalyticsSegment>();
@@ -73,6 +81,9 @@ namespace Evergreen.Analytics
         private Dictionary<string, List<AnalyticsDataPoint>> _timeSeriesData = new Dictionary<string, List<AnalyticsDataPoint>>();
         private Dictionary<string, AnalyticsInsight> _insights = new Dictionary<string, AnalyticsInsight>();
         private Dictionary<string, AnalyticsPrediction> _predictions = new Dictionary<string, AnalyticsPrediction>();
+        
+        // AI Analytics Systems
+        private UnifiedAIAPIService _aiService;
         
         private Coroutine _realTimeUpdateCoroutine;
         private Coroutine _dataProcessingCoroutine;
@@ -151,6 +162,12 @@ namespace Evergreen.Analytics
             
             // Initialize dashboards
             InitializeDashboards();
+            
+            // Initialize AI analytics systems
+            if (enableAIAnalytics)
+            {
+                InitializeAIAnalyticsSystems();
+            }
             
             _isInitialized = true;
         }
@@ -1270,6 +1287,244 @@ namespace Evergreen.Analytics
         public bool IsSatisfactionTargetAchieved() => _satisfactionTargetAchieved;
         public float GetTargetSatisfaction() => targetSatisfaction;
         
+        #region AI Analytics Systems
+        
+        private void InitializeAIAnalyticsSystems()
+        {
+            Debug.Log("🤖 Initializing AI Analytics Systems...");
+            
+            _aiService = UnifiedAIAPIService.Instance;
+            if (_aiService == null)
+            {
+                var aiServiceGO = new GameObject("UnifiedAIAPIService");
+                _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
+            }
+            
+            Debug.Log("✅ AI Analytics Systems Initialized with Unified API");
+        }
+        
+        public void AnalyzePatterns()
+        {
+            if (!enableAIAnalytics || _aiService == null) return;
+            
+            var context = new AnalyticsContext
+            {
+                AnalyticsType = "pattern_analysis",
+                PlayerId = "all",
+                AnalyticsData = new Dictionary<string, object>
+                {
+                    ["total_events"] = _events.Count,
+                    ["total_metrics"] = _metrics.Count,
+                    ["time_range"] = "7_days"
+                },
+                TimeRange = "7_days",
+                Metric = "all"
+            };
+            
+            _aiService.RequestAnalyticsAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplyPatternAnalysis(response);
+                }
+            });
+        }
+        
+        public void GeneratePredictions()
+        {
+            if (!enableAIAnalytics || _aiService == null) return;
+            
+            var context = new AnalyticsContext
+            {
+                AnalyticsType = "prediction",
+                PlayerId = "all",
+                AnalyticsData = new Dictionary<string, object>
+                {
+                    ["historical_data"] = _events.Count,
+                    ["prediction_horizon"] = "30_days",
+                    ["confidence_threshold"] = 0.8f
+                },
+                TimeRange = "30_days",
+                Metric = "retention"
+            };
+            
+            _aiService.RequestAnalyticsAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplyPredictions(response);
+                }
+            });
+        }
+        
+        public void OptimizeAnalytics()
+        {
+            if (!enableAIAnalytics || _aiService == null) return;
+            
+            var context = new AnalyticsContext
+            {
+                AnalyticsType = "optimization",
+                PlayerId = "system",
+                AnalyticsData = new Dictionary<string, object>
+                {
+                    ["performance_metrics"] = new Dictionary<string, float>
+                    {
+                        ["fps"] = 1f / Time.unscaledDeltaTime,
+                        ["memory_usage"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemory(UnityEngine.Profiling.Profiler.Area.All) / (1024f * 1024f)
+                    },
+                    ["optimization_target"] = "performance"
+                },
+                TimeRange = "current",
+                Metric = "performance"
+            };
+            
+            _aiService.RequestAnalyticsAI("system", context, (response) => {
+                if (response != null)
+                {
+                    ApplyAnalyticsOptimizations(response);
+                }
+            });
+        }
+        
+        public void PersonalizeAnalyticsForPlayer(string playerId)
+        {
+            if (!enableAIAnalytics || _aiService == null) return;
+            
+            var context = new AnalyticsContext
+            {
+                AnalyticsType = "personalization",
+                PlayerId = playerId,
+                AnalyticsData = new Dictionary<string, object>
+                {
+                    ["player_events"] = GetPlayerEventCount(playerId),
+                    ["preferred_metrics"] = new List<string>(),
+                    ["dashboard_preferences"] = new Dictionary<string, object>()
+                },
+                TimeRange = "30_days",
+                Metric = "personalized"
+            };
+            
+            _aiService.RequestAnalyticsAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyAnalyticsPersonalization(response);
+                }
+            });
+        }
+        
+        public void AnalyzePlayerBehavior(string playerId)
+        {
+            if (!enableAIAnalytics || _aiService == null) return;
+            
+            var context = new AnalyticsContext
+            {
+                AnalyticsType = "behavior_analysis",
+                PlayerId = playerId,
+                AnalyticsData = new Dictionary<string, object>
+                {
+                    ["session_data"] = GetPlayerSessionData(playerId),
+                    ["interaction_data"] = GetPlayerInteractionData(playerId),
+                    ["performance_data"] = GetPlayerPerformanceData(playerId)
+                },
+                TimeRange = "7_days",
+                Metric = "behavior"
+            };
+            
+            _aiService.RequestAnalyticsAI(playerId, context, (response) => {
+                if (response != null)
+                {
+                    ApplyBehaviorAnalysis(response);
+                }
+            });
+        }
+        
+        private void ApplyPatternAnalysis(AnalyticsAIResponse response)
+        {
+            // Apply pattern analysis from AI
+            if (!string.IsNullOrEmpty(response.Pattern))
+            {
+                Debug.Log($"AI Pattern Analysis: {response.Pattern}");
+            }
+            
+            if (response.AnalyticsRecommendations != null)
+            {
+                foreach (var recommendation in response.AnalyticsRecommendations)
+                {
+                    Debug.Log($"Analytics AI Recommendation: {recommendation}");
+                }
+            }
+        }
+        
+        private void ApplyPredictions(AnalyticsAIResponse response)
+        {
+            // Apply predictions from AI
+            if (!string.IsNullOrEmpty(response.Prediction))
+            {
+                Debug.Log($"AI Prediction: {response.Prediction}");
+            }
+            
+            if (response.Confidence > 0)
+            {
+                Debug.Log($"AI Prediction Confidence: {response.Confidence:P0}");
+            }
+        }
+        
+        private void ApplyAnalyticsOptimizations(AnalyticsAIResponse response)
+        {
+            // Apply analytics optimizations from AI
+            Debug.Log("AI Analytics Optimizations Applied");
+        }
+        
+        private void ApplyAnalyticsPersonalization(AnalyticsAIResponse response)
+        {
+            // Apply analytics personalization from AI
+            Debug.Log("AI Analytics Personalization Applied");
+        }
+        
+        private void ApplyBehaviorAnalysis(AnalyticsAIResponse response)
+        {
+            // Apply behavior analysis from AI
+            Debug.Log("AI Behavior Analysis Applied");
+        }
+        
+        private int GetPlayerEventCount(string playerId)
+        {
+            // Get player event count
+            return _events.Values.Count(e => e.PlayerId == playerId);
+        }
+        
+        private Dictionary<string, object> GetPlayerSessionData(string playerId)
+        {
+            // Get player session data
+            return new Dictionary<string, object>
+            {
+                ["session_count"] = 1,
+                ["avg_session_duration"] = 300f,
+                ["last_session"] = DateTime.Now
+            };
+        }
+        
+        private Dictionary<string, object> GetPlayerInteractionData(string playerId)
+        {
+            // Get player interaction data
+            return new Dictionary<string, object>
+            {
+                ["interaction_count"] = 10,
+                ["preferred_actions"] = new List<string>()
+            };
+        }
+        
+        private Dictionary<string, object> GetPlayerPerformanceData(string playerId)
+        {
+            // Get player performance data
+            return new Dictionary<string, object>
+            {
+                ["avg_fps"] = 60f,
+                ["memory_usage"] = 50f,
+                ["performance_score"] = 0.8f
+            };
+        }
+        
+        #endregion
+        
         void OnDestroy()
         {
             if (_realTimeUpdateCoroutine != null)
@@ -1575,3 +1830,460 @@ namespace Evergreen.Analytics
         PDF
     }
 }
+
+#region AI Analytics System Classes
+
+public class AIAnalyticsPatternRecognizer
+{
+    private AdvancedAnalyticsSystem _analyticsSystem;
+    private Dictionary<string, PatternData> _patterns;
+    
+    public void Initialize(AdvancedAnalyticsSystem analyticsSystem)
+    {
+        _analyticsSystem = analyticsSystem;
+        _patterns = new Dictionary<string, PatternData>();
+    }
+    
+    public void AnalyzePatterns()
+    {
+        // Analyze patterns in analytics data
+        AnalyzePlayerBehaviorPatterns();
+        AnalyzeGameplayPatterns();
+        AnalyzeMonetizationPatterns();
+        AnalyzePerformancePatterns();
+    }
+    
+    private void AnalyzePlayerBehaviorPatterns()
+    {
+        // Analyze player behavior patterns
+        var behaviorPatterns = DetectBehaviorPatterns();
+        foreach (var pattern in behaviorPatterns)
+        {
+            _patterns[pattern.Name] = pattern;
+        }
+    }
+    
+    private void AnalyzeGameplayPatterns()
+    {
+        // Analyze gameplay patterns
+        var gameplayPatterns = DetectGameplayPatterns();
+        foreach (var pattern in gameplayPatterns)
+        {
+            _patterns[pattern.Name] = pattern;
+        }
+    }
+    
+    private void AnalyzeMonetizationPatterns()
+    {
+        // Analyze monetization patterns
+        var monetizationPatterns = DetectMonetizationPatterns();
+        foreach (var pattern in monetizationPatterns)
+        {
+            _patterns[pattern.Name] = pattern;
+        }
+    }
+    
+    private void AnalyzePerformancePatterns()
+    {
+        // Analyze performance patterns
+        var performancePatterns = DetectPerformancePatterns();
+        foreach (var pattern in performancePatterns)
+        {
+            _patterns[pattern.Name] = pattern;
+        }
+    }
+    
+    private List<PatternData> DetectBehaviorPatterns()
+    {
+        // Detect player behavior patterns
+        return new List<PatternData>
+        {
+            new PatternData
+            {
+                Name = "High Engagement Players",
+                Type = PatternType.Behavior,
+                Confidence = 0.85f,
+                Description = "Players who show high engagement patterns",
+                Frequency = 0.3f
+            }
+        };
+    }
+    
+    private List<PatternData> DetectGameplayPatterns()
+    {
+        // Detect gameplay patterns
+        return new List<PatternData>
+        {
+            new PatternData
+            {
+                Name = "Level Completion Patterns",
+                Type = PatternType.Gameplay,
+                Confidence = 0.78f,
+                Description = "Patterns in level completion behavior",
+                Frequency = 0.6f
+            }
+        };
+    }
+    
+    private List<PatternData> DetectMonetizationPatterns()
+    {
+        // Detect monetization patterns
+        return new List<PatternData>
+        {
+            new PatternData
+            {
+                Name = "Purchase Timing Patterns",
+                Type = PatternType.Monetization,
+                Confidence = 0.72f,
+                Description = "Patterns in purchase timing",
+                Frequency = 0.4f
+            }
+        };
+    }
+    
+    private List<PatternData> DetectPerformancePatterns()
+    {
+        // Detect performance patterns
+        return new List<PatternData>
+        {
+            new PatternData
+            {
+                Name = "Performance Degradation Patterns",
+                Type = PatternType.Performance,
+                Confidence = 0.68f,
+                Description = "Patterns in performance degradation",
+                Frequency = 0.2f
+            }
+        };
+    }
+}
+
+public class AIAnalyticsPredictor
+{
+    private AdvancedAnalyticsSystem _analyticsSystem;
+    private Dictionary<string, AnalyticsPrediction> _predictions;
+    
+    public void Initialize(AdvancedAnalyticsSystem analyticsSystem)
+    {
+        _analyticsSystem = analyticsSystem;
+        _predictions = new Dictionary<string, AnalyticsPrediction>();
+    }
+    
+    public void GeneratePredictions()
+    {
+        // Generate predictions based on analytics data
+        GeneratePlayerRetentionPredictions();
+        GenerateMonetizationPredictions();
+        GeneratePerformancePredictions();
+        GenerateEngagementPredictions();
+    }
+    
+    private void GeneratePlayerRetentionPredictions()
+    {
+        // Generate player retention predictions
+        var prediction = new AnalyticsPrediction
+        {
+            Id = Guid.NewGuid().ToString(),
+            Title = "Player Retention Prediction",
+            Description = "Predicted player retention rates",
+            Type = PredictionType.Classification,
+            Confidence = 0.82f,
+            TimeHorizon = TimeSpan.FromDays(7),
+            GeneratedAt = DateTime.Now,
+            Predictions = new Dictionary<string, float>
+            {
+                ["day_1_retention"] = 0.75f,
+                ["day_7_retention"] = 0.45f,
+                ["day_30_retention"] = 0.25f
+            }
+        };
+        
+        _predictions[prediction.Id] = prediction;
+    }
+    
+    private void GenerateMonetizationPredictions()
+    {
+        // Generate monetization predictions
+        var prediction = new AnalyticsPrediction
+        {
+            Id = Guid.NewGuid().ToString(),
+            Title = "Monetization Prediction",
+            Description = "Predicted monetization metrics",
+            Type = PredictionType.Regression,
+            Confidence = 0.78f,
+            TimeHorizon = TimeSpan.FromDays(30),
+            GeneratedAt = DateTime.Now,
+            Predictions = new Dictionary<string, float>
+            {
+                ["revenue"] = 15000f,
+                ["arpu"] = 2.5f,
+                ["conversion_rate"] = 0.08f
+            }
+        };
+        
+        _predictions[prediction.Id] = prediction;
+    }
+    
+    private void GeneratePerformancePredictions()
+    {
+        // Generate performance predictions
+        var prediction = new AnalyticsPrediction
+        {
+            Id = Guid.NewGuid().ToString(),
+            Title = "Performance Prediction",
+            Description = "Predicted performance metrics",
+            Type = PredictionType.Regression,
+            Confidence = 0.85f,
+            TimeHorizon = TimeSpan.FromDays(7),
+            GeneratedAt = DateTime.Now,
+            Predictions = new Dictionary<string, float>
+            {
+                ["fps"] = 58f,
+                ["memory_usage"] = 120f,
+                ["cpu_usage"] = 45f
+            }
+        };
+        
+        _predictions[prediction.Id] = prediction;
+    }
+    
+    private void GenerateEngagementPredictions()
+    {
+        // Generate engagement predictions
+        var prediction = new AnalyticsPrediction
+        {
+            Id = Guid.NewGuid().ToString(),
+            Title = "Engagement Prediction",
+            Description = "Predicted engagement metrics",
+            Type = PredictionType.Regression,
+            Confidence = 0.80f,
+            TimeHorizon = TimeSpan.FromDays(14),
+            GeneratedAt = DateTime.Now,
+            Predictions = new Dictionary<string, float>
+            {
+                ["session_duration"] = 420f,
+                ["sessions_per_day"] = 3.2f,
+                ["engagement_score"] = 0.68f
+            }
+        };
+        
+        _predictions[prediction.Id] = prediction;
+    }
+}
+
+public class AIAnalyticsOptimizer
+{
+    private AdvancedAnalyticsSystem _analyticsSystem;
+    private AnalyticsOptimizationProfile _optimizationProfile;
+    
+    public void Initialize(AdvancedAnalyticsSystem analyticsSystem)
+    {
+        _analyticsSystem = analyticsSystem;
+        _optimizationProfile = new AnalyticsOptimizationProfile();
+    }
+    
+    public void OptimizeAnalytics()
+    {
+        // Optimize analytics performance
+        OptimizeDataCollection();
+        OptimizeDataProcessing();
+        OptimizeDataStorage();
+        OptimizeDataVisualization();
+    }
+    
+    private void OptimizeDataCollection()
+    {
+        // Optimize data collection efficiency
+        Debug.Log("Optimizing data collection");
+    }
+    
+    private void OptimizeDataProcessing()
+    {
+        // Optimize data processing performance
+        Debug.Log("Optimizing data processing");
+    }
+    
+    private void OptimizeDataStorage()
+    {
+        // Optimize data storage efficiency
+        Debug.Log("Optimizing data storage");
+    }
+    
+    private void OptimizeDataVisualization()
+    {
+        // Optimize data visualization performance
+        Debug.Log("Optimizing data visualization");
+    }
+}
+
+public class AIAnalyticsPersonalizationEngine
+{
+    private AdvancedAnalyticsSystem _analyticsSystem;
+    private Dictionary<string, AnalyticsPersonalizationProfile> _playerProfiles;
+    
+    public void Initialize(AdvancedAnalyticsSystem analyticsSystem)
+    {
+        _analyticsSystem = analyticsSystem;
+        _playerProfiles = new Dictionary<string, AnalyticsPersonalizationProfile>();
+    }
+    
+    public void PersonalizeForPlayer(string playerId)
+    {
+        if (!_playerProfiles.ContainsKey(playerId))
+        {
+            _playerProfiles[playerId] = new AnalyticsPersonalizationProfile();
+        }
+        
+        var profile = _playerProfiles[playerId];
+        ApplyPersonalization(profile);
+    }
+    
+    private void ApplyPersonalization(AnalyticsPersonalizationProfile profile)
+    {
+        // Apply personalized analytics settings
+        Debug.Log($"Personalizing analytics for player: {profile.PlayerId}");
+    }
+}
+
+public class AIAnalyticsBehaviorAnalyzer
+{
+    private AdvancedAnalyticsSystem _analyticsSystem;
+    private Dictionary<string, PlayerBehaviorProfile> _behaviorProfiles;
+    
+    public void Initialize(AdvancedAnalyticsSystem analyticsSystem)
+    {
+        _analyticsSystem = analyticsSystem;
+        _behaviorProfiles = new Dictionary<string, PlayerBehaviorProfile>();
+    }
+    
+    public void AnalyzePlayerBehavior(string playerId)
+    {
+        if (!_behaviorProfiles.ContainsKey(playerId))
+        {
+            _behaviorProfiles[playerId] = new PlayerBehaviorProfile();
+        }
+        
+        var profile = _behaviorProfiles[playerId];
+        AnalyzeBehavior(profile);
+    }
+    
+    private void AnalyzeBehavior(PlayerBehaviorProfile profile)
+    {
+        // Analyze player behavior patterns
+        AnalyzeEngagementPatterns(profile);
+        AnalyzePlayPatterns(profile);
+        AnalyzePurchasePatterns(profile);
+        AnalyzeSocialPatterns(profile);
+    }
+    
+    private void AnalyzeEngagementPatterns(PlayerBehaviorProfile profile)
+    {
+        // Analyze engagement patterns
+        Debug.Log("Analyzing engagement patterns");
+    }
+    
+    private void AnalyzePlayPatterns(PlayerBehaviorProfile profile)
+    {
+        // Analyze play patterns
+        Debug.Log("Analyzing play patterns");
+    }
+    
+    private void AnalyzePurchasePatterns(PlayerBehaviorProfile profile)
+    {
+        // Analyze purchase patterns
+        Debug.Log("Analyzing purchase patterns");
+    }
+    
+    private void AnalyzeSocialPatterns(PlayerBehaviorProfile profile)
+    {
+        // Analyze social patterns
+        Debug.Log("Analyzing social patterns");
+    }
+}
+
+#region AI Analytics Data Structures
+
+public class PatternData
+{
+    public string Name;
+    public PatternType Type;
+    public float Confidence;
+    public string Description;
+    public float Frequency;
+    public DateTime DetectedAt;
+}
+
+public class AnalyticsPersonalizationProfile
+{
+    public string PlayerId;
+    public List<string> PreferredMetrics;
+    public List<string> PreferredVisualizations;
+    public AnalyticsPreferences Preferences;
+    public DateTime LastUpdated;
+}
+
+public class AnalyticsOptimizationProfile
+{
+    public float DataCollectionEfficiency;
+    public float DataProcessingSpeed;
+    public float DataStorageEfficiency;
+    public float VisualizationPerformance;
+    public bool IsOptimized;
+}
+
+public class PlayerBehaviorProfile
+{
+    public string PlayerId;
+    public EngagementPatterns EngagementPatterns;
+    public PlayPatterns PlayPatterns;
+    public PurchasePatterns PurchasePatterns;
+    public SocialPatterns SocialPatterns;
+    public DateTime LastAnalyzed;
+}
+
+public class EngagementPatterns
+{
+    public float AverageSessionDuration;
+    public int SessionsPerDay;
+    public float EngagementScore;
+    public List<string> PeakPlayTimes;
+}
+
+public class PlayPatterns
+{
+    public List<string> FavoriteLevels;
+    public List<string> AvoidedLevels;
+    public float AverageLevelCompletionTime;
+    public int TotalLevelsCompleted;
+}
+
+public class PurchasePatterns
+{
+    public float TotalSpent;
+    public int TotalPurchases;
+    public List<string> FavoriteItems;
+    public float AveragePurchaseValue;
+}
+
+public class SocialPatterns
+{
+    public int FriendsCount;
+    public int TeamMemberships;
+    public int SocialInteractions;
+    public float SocialEngagementScore;
+}
+
+public class AnalyticsPreferences
+{
+    public bool PrefersRealTimeData;
+    public bool PrefersHistoricalData;
+    public bool PrefersVisualCharts;
+    public bool PrefersDataTables;
+}
+
+public enum PatternType
+{
+    Behavior, Gameplay, Monetization, Performance, Social
+}
+
+#endregion

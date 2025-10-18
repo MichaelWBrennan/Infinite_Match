@@ -203,6 +203,12 @@ namespace Evergreen.AI
         public bool enableRecommendation = true;
         public bool enableDifficultyAdjustment = true;
         
+        [Header("Web AI Settings")]
+        public bool enableWebAI = false;
+        public bool enableAlgorithmicAI = true;
+        public string webAIServiceUrl = "";
+        public bool useLocalDataOnly = true;
+        
         [Header("Model Settings")]
         public float modelUpdateInterval = 3600f; // 1 hour
         public int minSamplesForTraining = 100;
@@ -221,6 +227,8 @@ namespace Evergreen.AI
         private Dictionary<string, PersonalizationModel> _personalizationModels = new Dictionary<string, PersonalizationModel>();
         private Dictionary<string, List<BehaviorMetric>> _behaviorHistory = new Dictionary<string, List<BehaviorMetric>>();
         private Dictionary<string, float> _featureImportance = new Dictionary<string, float>();
+        private WebAIPersonalizationAdapter _webAIAdapter;
+        private AlgorithmicPersonalizationEngine _algorithmicEngine;
         
         // Events
         public System.Action<PlayerProfile> OnProfileUpdated;
@@ -256,7 +264,18 @@ namespace Evergreen.AI
         {
             if (!enablePersonalization) return;
             
-            Debug.Log("AI Personalization System initialized");
+            // Initialize web-compatible AI components
+            if (enableWebAI && !string.IsNullOrEmpty(webAIServiceUrl))
+            {
+                _webAIAdapter = new WebAIPersonalizationAdapter(webAIServiceUrl);
+            }
+            
+            if (enableAlgorithmicAI)
+            {
+                _algorithmicEngine = new AlgorithmicPersonalizationEngine();
+            }
+            
+            Debug.Log("Web-Compatible AI Personalization System initialized");
         }
         
         private void CreateDefaultRules()
@@ -748,6 +767,331 @@ namespace Evergreen.AI
             var profile = GetPlayerProfile(playerId);
             return profile.difficultyPreference.preferredDifficulty;
         }
+
+        // AI Level Integration Methods
+        public LevelPersonalizationData GetLevelPersonalizationData(string playerId, int levelId)
+        {
+            var profile = GetPlayerProfile(playerId);
+            if (profile == null) return null;
+
+            LevelPersonalizationData personalizationData;
+
+            // Try web AI first, fallback to algorithmic AI
+            if (enableWebAI && _webAIAdapter != null)
+            {
+                personalizationData = _webAIAdapter?.GetLevelPersonalizationData(playerId, levelId, profile);
+            }
+            
+            if (personalizationData == null && enableAlgorithmicAI && _algorithmicEngine != null)
+            {
+                personalizationData = _algorithmicEngine?.GetLevelPersonalizationData(playerId, levelId, profile);
+            }
+
+            // Fallback to local calculation
+            if (personalizationData == null)
+            {
+                personalizationData = new LevelPersonalizationData
+                {
+                    PlayerId = playerId,
+                    LevelId = levelId,
+                    OptimalDifficulty = CalculateOptimalLevelDifficulty(profile, levelId),
+                    PreferredMechanics = GetPreferredMechanics(profile),
+                    EngagementTriggers = GetEngagementTriggers(profile),
+                    RetentionFactors = GetRetentionFactors(profile),
+                    PerformancePrediction = PredictLevelPerformance(profile, levelId),
+                    RecommendedAdjustments = GenerateRecommendedAdjustments(profile, levelId)
+                };
+            }
+
+            return personalizationData;
+        }
+
+        public void UpdateLevelPerformance(string playerId, int levelId, LevelPerformanceData performance)
+        {
+            if (!enableLearning) return;
+
+            var profile = GetPlayerProfile(playerId);
+            if (profile == null) return;
+
+            // Update performance metrics
+            UpdatePerformanceMetrics(profile, performance);
+
+            // Update difficulty preferences based on performance
+            UpdateDifficultyPreferences(profile, performance);
+
+            // Update content preferences
+            UpdateContentPreferences(profile, performance);
+
+            // Update engagement profile
+            UpdateEngagementProfile(profile, performance);
+
+            // Trigger real-time adaptations if needed
+            if (enableDifficultyAdjustment)
+            {
+                TriggerRealTimeAdaptations(profile, performance);
+            }
+
+            OnProfileUpdated?.Invoke(profile);
+        }
+
+        private float CalculateOptimalLevelDifficulty(PlayerProfile profile, int levelId)
+        {
+            var baseDifficulty = Mathf.Clamp01(levelId * 0.1f);
+            var skillAdjustment = (profile.performanceProfile.averageScore - 1000f) / 2000f;
+            var challengeSeeking = profile.difficultyPreference.challengeSeeking;
+            
+            return Mathf.Clamp01(baseDifficulty + skillAdjustment * 0.3f + challengeSeeking * 0.2f);
+        }
+
+        private List<string> GetPreferredMechanics(PlayerProfile profile)
+        {
+            var mechanics = new List<string>();
+            
+            if (profile.contentPreference.mechanics.ContainsKey("matching") && 
+                profile.contentPreference.mechanics["matching"] > 0.7f)
+                mechanics.Add("matching");
+            
+            if (profile.contentPreference.mechanics.ContainsKey("combos") && 
+                profile.contentPreference.mechanics["combos"] > 0.7f)
+                mechanics.Add("combos");
+            
+            if (profile.contentPreference.mechanics.ContainsKey("special_pieces") && 
+                profile.contentPreference.mechanics["special_pieces"] > 0.7f)
+                mechanics.Add("special_pieces");
+            
+            return mechanics;
+        }
+
+        private List<string> GetEngagementTriggers(PlayerProfile profile)
+        {
+            var triggers = new List<string>();
+            
+            if (profile.engagementProfile.socialEngagement > 0.6f)
+                triggers.Add("social_features");
+            
+            if (profile.engagementProfile.competitiveEngagement > 0.6f)
+                triggers.Add("competitive_features");
+            
+            if (profile.engagementProfile.explorationEngagement > 0.6f)
+                triggers.Add("exploration_features");
+            
+            return triggers;
+        }
+
+        private List<string> GetRetentionFactors(PlayerProfile profile)
+        {
+            var factors = new List<string>();
+            
+            if (profile.performanceProfile.completionRate > 0.8f)
+                factors.Add("achievement_satisfaction");
+            
+            if (profile.engagementProfile.sessionDuration > 600f) // 10 minutes
+                factors.Add("deep_engagement");
+            
+            if (profile.monetizationProfile.lifetimeValue > 50f)
+                factors.Add("investment_commitment");
+            
+            return factors;
+        }
+
+        private PerformancePrediction PredictLevelPerformance(PlayerProfile profile, int levelId)
+        {
+            return new PerformancePrediction
+            {
+                PredictedCompletionRate = CalculatePredictedCompletionRate(profile, levelId),
+                PredictedEngagement = CalculatePredictedEngagement(profile, levelId),
+                PredictedRetention = CalculatePredictedRetention(profile, levelId),
+                PredictedDifficulty = CalculateOptimalLevelDifficulty(profile, levelId)
+            };
+        }
+
+        private List<LevelAdjustment> GenerateRecommendedAdjustments(PlayerProfile profile, int levelId)
+        {
+            var adjustments = new List<LevelAdjustment>();
+            
+            // Difficulty adjustments
+            var optimalDifficulty = CalculateOptimalLevelDifficulty(profile, levelId);
+            if (Mathf.Abs(optimalDifficulty - profile.difficultyPreference.preferredDifficulty) > 0.2f)
+            {
+                adjustments.Add(new LevelAdjustment
+                {
+                    Type = "difficulty",
+                    Value = optimalDifficulty,
+                    Reason = "Player skill level adjustment"
+                });
+            }
+            
+            // Move limit adjustments
+            var optimalMoves = CalculateOptimalMoveLimit(profile, levelId);
+            adjustments.Add(new LevelAdjustment
+            {
+                Type = "move_limit",
+                Value = optimalMoves,
+                Reason = "Player performance optimization"
+            });
+            
+            // Color complexity adjustments
+            var optimalColors = CalculateOptimalColorCount(profile, levelId);
+            adjustments.Add(new LevelAdjustment
+            {
+                Type = "color_count",
+                Value = optimalColors,
+                Reason = "Player preference optimization"
+            });
+            
+            return adjustments;
+        }
+
+        private void UpdatePerformanceMetrics(PlayerProfile profile, LevelPerformanceData performance)
+        {
+            // Update completion rate
+            if (performance.Completed)
+            {
+                profile.performanceProfile.completionRate = Mathf.Lerp(profile.performanceProfile.completionRate, 1.0f, 0.1f);
+            }
+            else
+            {
+                profile.performanceProfile.failureRate = Mathf.Lerp(profile.performanceProfile.failureRate, 1.0f, 0.1f);
+            }
+            
+            // Update average score
+            profile.performanceProfile.averageScore = Mathf.Lerp(profile.performanceProfile.averageScore, performance.Score, 0.1f);
+            
+            // Update average moves
+            profile.performanceProfile.averageMoves = Mathf.Lerp(profile.performanceProfile.averageMoves, performance.MovesUsed, 0.1f);
+            
+            // Update average time
+            profile.performanceProfile.averageTime = Mathf.Lerp(profile.performanceProfile.averageTime, performance.CompletionTime, 0.1f);
+        }
+
+        private void UpdateDifficultyPreferences(PlayerProfile profile, LevelPerformanceData performance)
+        {
+            var difficultyAdjustment = new DifficultyAdjustment
+            {
+                reason = "Real-time performance adaptation",
+                adjustment = CalculateDifficultyAdjustment(profile, performance),
+                timestamp = DateTime.Now,
+                wasSuccessful = performance.Completed
+            };
+            
+            profile.difficultyPreference.adjustments.Add(difficultyAdjustment);
+            profile.difficultyPreference.lastAdjusted = DateTime.Now;
+            
+            // Update preferred difficulty
+            if (performance.Completed && performance.MovesUsed < performance.MoveLimit * 0.5f)
+            {
+                profile.difficultyPreference.preferredDifficulty = Mathf.Min(1.0f, 
+                    profile.difficultyPreference.preferredDifficulty + 0.05f);
+            }
+            else if (!performance.Completed || performance.MovesUsed >= performance.MoveLimit * 0.9f)
+            {
+                profile.difficultyPreference.preferredDifficulty = Mathf.Max(0.1f, 
+                    profile.difficultyPreference.preferredDifficulty - 0.05f);
+            }
+        }
+
+        private void UpdateContentPreferences(PlayerProfile profile, LevelPerformanceData performance)
+        {
+            // Update content type preferences based on performance
+            if (performance.Completed && performance.Score > 1000)
+            {
+                if (!profile.contentPreference.contentTypes.ContainsKey("puzzle"))
+                    profile.contentPreference.contentTypes["puzzle"] = 0f;
+                profile.contentPreference.contentTypes["puzzle"] = Mathf.Min(1.0f, 
+                    profile.contentPreference.contentTypes["puzzle"] + 0.1f);
+            }
+        }
+
+        private void UpdateEngagementProfile(PlayerProfile profile, LevelPerformanceData performance)
+        {
+            // Update session duration
+            profile.engagementProfile.sessionDuration = Mathf.Lerp(profile.engagementProfile.sessionDuration, 
+                performance.CompletionTime, 0.1f);
+            
+            // Update last active time
+            profile.engagementProfile.lastActive = DateTime.Now;
+        }
+
+        private void TriggerRealTimeAdaptations(PlayerProfile profile, LevelPerformanceData performance)
+        {
+            // Check if player is struggling
+            if (performance.MovesUsed >= performance.MoveLimit * 0.9f && !performance.Completed)
+            {
+                // Trigger struggling player rule
+                var strugglingRule = _personalizationRules.Values.FirstOrDefault(r => r.id == "struggling_player_rule");
+                if (strugglingRule != null)
+                {
+                    ExecuteRuleActions(profile, strugglingRule);
+                }
+            }
+            
+            // Check if player is excelling
+            if (performance.Completed && performance.MovesUsed < performance.MoveLimit * 0.3f)
+            {
+                // Trigger engaged player rule
+                var engagedRule = _personalizationRules.Values.FirstOrDefault(r => r.id == "engaged_player_rule");
+                if (engagedRule != null)
+                {
+                    ExecuteRuleActions(profile, engagedRule);
+                }
+            }
+        }
+
+        private float CalculateDifficultyAdjustment(PlayerProfile profile, LevelPerformanceData performance)
+        {
+            if (performance.Completed)
+            {
+                if (performance.MovesUsed < performance.MoveLimit * 0.5f)
+                    return 0.05f; // Increase difficulty
+                else if (performance.MovesUsed > performance.MoveLimit * 0.8f)
+                    return -0.05f; // Decrease difficulty
+            }
+            else
+            {
+                return -0.1f; // Decrease difficulty for failed levels
+            }
+            
+            return 0f;
+        }
+
+        private float CalculatePredictedCompletionRate(PlayerProfile profile, int levelId)
+        {
+            var baseRate = profile.performanceProfile.completionRate;
+            var difficultyFactor = 1.0f - (levelId * 0.01f);
+            return Mathf.Clamp01(baseRate * difficultyFactor);
+        }
+
+        private float CalculatePredictedEngagement(PlayerProfile profile, int levelId)
+        {
+            var baseEngagement = profile.engagementProfile.sessionFrequency;
+            var noveltyFactor = 1.0f + (levelId * 0.005f);
+            return Mathf.Clamp01(baseEngagement * noveltyFactor);
+        }
+
+        private float CalculatePredictedRetention(PlayerProfile profile, int levelId)
+        {
+            var completionRate = CalculatePredictedCompletionRate(profile, levelId);
+            var engagement = CalculatePredictedEngagement(profile, levelId);
+            return Mathf.Clamp01((completionRate + engagement) / 2f);
+        }
+
+        private int CalculateOptimalMoveLimit(PlayerProfile profile, int levelId)
+        {
+            var baseMoves = 20;
+            var skillAdjustment = (profile.performanceProfile.averageMoves - 20f) * 0.5f;
+            var difficultyAdjustment = levelId * 0.5f;
+            
+            return Mathf.RoundToInt(baseMoves + skillAdjustment + difficultyAdjustment);
+        }
+
+        private int CalculateOptimalColorCount(PlayerProfile profile, int levelId)
+        {
+            var baseColors = 5;
+            var skillAdjustment = profile.performanceProfile.averageScore > 1500 ? 1 : 0;
+            var difficultyAdjustment = levelId > 50 ? 1 : 0;
+            
+            return Mathf.Clamp(baseColors + skillAdjustment + difficultyAdjustment, 3, 7);
+        }
         
         public List<string> GetRecommendations(string playerId, string type)
         {
@@ -878,5 +1222,348 @@ namespace Evergreen.AI
         public Dictionary<string, PersonalizationRule> personalizationRules;
         public Dictionary<string, PersonalizationModel> personalizationModels;
         public Dictionary<string, List<BehaviorMetric>> behaviorHistory;
+    }
+
+    // AI Level Integration Data Structures
+    [System.Serializable]
+    public class LevelPersonalizationData
+    {
+        public string PlayerId;
+        public int LevelId;
+        public float OptimalDifficulty;
+        public List<string> PreferredMechanics;
+        public List<string> EngagementTriggers;
+        public List<string> RetentionFactors;
+        public PerformancePrediction PerformancePrediction;
+        public List<LevelAdjustment> RecommendedAdjustments;
+    }
+
+    [System.Serializable]
+    public class LevelPerformanceData
+    {
+        public string PlayerId;
+        public int LevelId;
+        public bool Completed;
+        public int Score;
+        public int MovesUsed;
+        public int MoveLimit;
+        public float CompletionTime;
+        public List<string> UsedPowerups;
+        public Dictionary<string, float> PerformanceMetrics;
+    }
+
+    [System.Serializable]
+    public class LevelAdjustment
+    {
+        public string Type;
+        public float Value;
+        public string Reason;
+        public DateTime Timestamp;
+    }
+
+    [System.Serializable]
+    public class PerformancePrediction
+    {
+        public float PredictedCompletionRate;
+        public float PredictedEngagement;
+        public float PredictedRetention;
+        public float PredictedDifficulty;
+    }
+
+    /// <summary>
+    /// Web AI Personalization Adapter for external AI services
+    /// </summary>
+    public class WebAIPersonalizationAdapter
+    {
+        private string _serviceUrl;
+        private bool _isAvailable;
+
+        public WebAIPersonalizationAdapter(string serviceUrl)
+        {
+            _serviceUrl = serviceUrl;
+            _isAvailable = !string.IsNullOrEmpty(serviceUrl);
+        }
+
+        public LevelPersonalizationData GetLevelPersonalizationData(string playerId, int levelId, PlayerProfile profile)
+        {
+            if (!_isAvailable) return null;
+
+            try
+            {
+                // In a real implementation, this would make HTTP requests to web AI services
+                // For now, return null to use fallback
+                return null;
+            }
+            catch (System.Exception)
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Algorithmic Personalization Engine - Pure algorithmic approach for web compatibility
+    /// </summary>
+    public class AlgorithmicPersonalizationEngine
+    {
+        private Dictionary<string, PlayerBehaviorData> _playerBehaviorData;
+        private Dictionary<string, LevelPerformanceData> _levelPerformanceData;
+
+        public AlgorithmicPersonalizationEngine()
+        {
+            _playerBehaviorData = new Dictionary<string, PlayerBehaviorData>();
+            _levelPerformanceData = new Dictionary<string, LevelPerformanceData>();
+        }
+
+        public LevelPersonalizationData GetLevelPersonalizationData(string playerId, int levelId, PlayerProfile profile)
+        {
+            var behaviorData = GetPlayerBehaviorData(playerId);
+            var levelData = GetLevelPerformanceData(levelId.ToString());
+
+            return new LevelPersonalizationData
+            {
+                PlayerId = playerId,
+                LevelId = levelId,
+                OptimalDifficulty = CalculateAlgorithmicDifficulty(profile, behaviorData, levelData),
+                PreferredMechanics = CalculateAlgorithmicMechanics(profile, behaviorData),
+                EngagementTriggers = CalculateAlgorithmicTriggers(profile, behaviorData),
+                RetentionFactors = CalculateAlgorithmicRetentionFactors(profile, behaviorData),
+                PerformancePrediction = CalculateAlgorithmicPrediction(profile, behaviorData, levelData),
+                RecommendedAdjustments = CalculateAlgorithmicAdjustments(profile, behaviorData, levelData)
+            };
+        }
+
+        private PlayerBehaviorData GetPlayerBehaviorData(string playerId)
+        {
+            if (!_playerBehaviorData.ContainsKey(playerId))
+            {
+                _playerBehaviorData[playerId] = new PlayerBehaviorData
+                {
+                    AverageScore = 1000f,
+                    AverageMoves = 20f,
+                    CompletionRate = 0.8f,
+                    SessionDuration = 300f,
+                    EngagementLevel = 0.7f,
+                    DifficultyPreference = 0.5f,
+                    ColorPreference = 5,
+                    MechanicPreferences = new Dictionary<string, float>
+                    {
+                        {"matching", 0.8f},
+                        {"combos", 0.6f},
+                        {"special_pieces", 0.7f}
+                    }
+                };
+            }
+            return _playerBehaviorData[playerId];
+        }
+
+        private LevelPerformanceData GetLevelPerformanceData(string levelId)
+        {
+            if (!_levelPerformanceData.ContainsKey(levelId))
+            {
+                _levelPerformanceData[levelId] = new LevelPerformanceData
+                {
+                    AverageCompletionRate = 0.8f,
+                    AverageEngagement = 0.7f,
+                    DifficultyRating = 0.5f,
+                    PopularityScore = 0.5f,
+                    RetentionRate = 0.6f
+                };
+            }
+            return _levelPerformanceData[levelId];
+        }
+
+        private float CalculateAlgorithmicDifficulty(PlayerProfile profile, PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            var baseDifficulty = Mathf.Clamp01(profile.performanceProfile.averageScore / 2000f);
+            var behaviorAdjustment = (behaviorData.DifficultyPreference - 0.5f) * 0.3f;
+            var performanceAdjustment = (behaviorData.CompletionRate - 0.8f) * 0.2f;
+            var levelAdjustment = (levelData.DifficultyRating - 0.5f) * 0.1f;
+            
+            return Mathf.Clamp01(baseDifficulty + behaviorAdjustment + performanceAdjustment + levelAdjustment);
+        }
+
+        private List<string> CalculateAlgorithmicMechanics(PlayerProfile profile, PlayerBehaviorData behaviorData)
+        {
+            var mechanics = new List<string>();
+            
+            foreach (var mechanic in behaviorData.MechanicPreferences)
+            {
+                if (mechanic.Value > 0.6f)
+                {
+                    mechanics.Add(mechanic.Key);
+                }
+            }
+            
+            return mechanics;
+        }
+
+        private List<string> CalculateAlgorithmicTriggers(PlayerProfile profile, PlayerBehaviorData behaviorData)
+        {
+            var triggers = new List<string>();
+            
+            if (behaviorData.EngagementLevel > 0.8f)
+                triggers.Add("challenge");
+            if (behaviorData.AverageScore > 1200f)
+                triggers.Add("progression");
+            if (behaviorData.SessionDuration > 600f)
+                triggers.Add("deep_engagement");
+            if (behaviorData.CompletionRate > 0.9f)
+                triggers.Add("achievement");
+            
+            return triggers;
+        }
+
+        private List<string> CalculateAlgorithmicRetentionFactors(PlayerProfile profile, PlayerBehaviorData behaviorData)
+        {
+            var factors = new List<string>();
+            
+            if (behaviorData.CompletionRate > 0.8f)
+                factors.Add("achievement_satisfaction");
+            if (behaviorData.SessionDuration > 600f)
+                factors.Add("deep_engagement");
+            if (profile.monetizationProfile.lifetimeValue > 50f)
+                factors.Add("investment_commitment");
+            if (behaviorData.EngagementLevel > 0.7f)
+                factors.Add("high_engagement");
+            
+            return factors;
+        }
+
+        private PerformancePrediction CalculateAlgorithmicPrediction(PlayerProfile profile, PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            return new PerformancePrediction
+            {
+                PredictedCompletionRate = CalculatePredictedCompletionRate(behaviorData, levelData),
+                PredictedEngagement = CalculatePredictedEngagement(behaviorData, levelData),
+                PredictedRetention = CalculatePredictedRetention(behaviorData, levelData),
+                PredictedDifficulty = CalculateAlgorithmicDifficulty(profile, behaviorData, levelData)
+            };
+        }
+
+        private List<LevelAdjustment> CalculateAlgorithmicAdjustments(PlayerProfile profile, PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            var adjustments = new List<LevelAdjustment>();
+            
+            // Difficulty adjustment
+            var optimalDifficulty = CalculateAlgorithmicDifficulty(profile, behaviorData, levelData);
+            if (Mathf.Abs(optimalDifficulty - behaviorData.DifficultyPreference) > 0.2f)
+            {
+                adjustments.Add(new LevelAdjustment
+                {
+                    Type = "difficulty",
+                    Value = optimalDifficulty,
+                    Reason = "Algorithmic difficulty optimization"
+                });
+            }
+            
+            // Move limit adjustment
+            var optimalMoves = CalculateOptimalMoves(behaviorData, levelData);
+            adjustments.Add(new LevelAdjustment
+            {
+                Type = "move_limit",
+                Value = optimalMoves,
+                Reason = "Algorithmic move optimization"
+            });
+            
+            // Color adjustment
+            var optimalColors = CalculateOptimalColors(behaviorData, levelData);
+            adjustments.Add(new LevelAdjustment
+            {
+                Type = "color_count",
+                Value = optimalColors,
+                Reason = "Algorithmic color optimization"
+            });
+            
+            return adjustments;
+        }
+
+        private float CalculatePredictedCompletionRate(PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            var baseRate = behaviorData.CompletionRate;
+            var levelFactor = levelData.AverageCompletionRate;
+            var engagementFactor = behaviorData.EngagementLevel;
+            
+            return Mathf.Clamp01((baseRate + levelFactor + engagementFactor) / 3f);
+        }
+
+        private float CalculatePredictedEngagement(PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            var baseEngagement = behaviorData.EngagementLevel;
+            var levelEngagement = levelData.AverageEngagement;
+            var scoreFactor = Mathf.Clamp01(behaviorData.AverageScore / 2000f);
+            
+            return Mathf.Clamp01((baseEngagement + levelEngagement + scoreFactor) / 3f);
+        }
+
+        private float CalculatePredictedRetention(PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            var completionRate = CalculatePredictedCompletionRate(behaviorData, levelData);
+            var engagement = CalculatePredictedEngagement(behaviorData, levelData);
+            var levelRetention = levelData.RetentionRate;
+            
+            return Mathf.Clamp01((completionRate + engagement + levelRetention) / 3f);
+        }
+
+        private int CalculateOptimalMoves(PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            var baseMoves = 20;
+            var behaviorAdjustment = Mathf.RoundToInt((behaviorData.AverageMoves - 20f) * 0.5f);
+            var difficultyAdjustment = Mathf.RoundToInt((levelData.DifficultyRating - 0.5f) * 10f);
+            
+            return Mathf.Clamp(baseMoves + behaviorAdjustment + difficultyAdjustment, 5, 50);
+        }
+
+        private int CalculateOptimalColors(PlayerBehaviorData behaviorData, LevelPerformanceData levelData)
+        {
+            var baseColors = 5;
+            var behaviorAdjustment = behaviorData.ColorPreference - 5;
+            var scoreAdjustment = behaviorData.AverageScore > 1500 ? 1 : 0;
+            
+            return Mathf.Clamp(baseColors + behaviorAdjustment + scoreAdjustment, 3, 7);
+        }
+
+        public void UpdatePlayerBehavior(string playerId, LevelPerformanceData performance)
+        {
+            var behaviorData = GetPlayerBehaviorData(playerId);
+            
+            // Update behavior data based on performance
+            behaviorData.AverageScore = Mathf.Lerp(behaviorData.AverageScore, performance.Score, 0.1f);
+            behaviorData.AverageMoves = Mathf.Lerp(behaviorData.AverageMoves, performance.MovesUsed, 0.1f);
+            behaviorData.CompletionRate = Mathf.Lerp(behaviorData.CompletionRate, performance.Completed ? 1f : 0f, 0.1f);
+            behaviorData.SessionDuration = Mathf.Lerp(behaviorData.SessionDuration, performance.CompletionTime, 0.1f);
+            
+            // Update difficulty preference
+            if (performance.Completed && performance.MovesUsed < performance.MoveLimit * 0.5f)
+            {
+                behaviorData.DifficultyPreference = Mathf.Min(1f, behaviorData.DifficultyPreference + 0.05f);
+            }
+            else if (!performance.Completed)
+            {
+                behaviorData.DifficultyPreference = Mathf.Max(0.1f, behaviorData.DifficultyPreference - 0.05f);
+            }
+        }
+    }
+
+    // Data structures for algorithmic personalization
+    public class PlayerBehaviorData
+    {
+        public float AverageScore;
+        public float AverageMoves;
+        public float CompletionRate;
+        public float SessionDuration;
+        public float EngagementLevel;
+        public float DifficultyPreference;
+        public int ColorPreference;
+        public Dictionary<string, float> MechanicPreferences;
+    }
+
+    public class LevelPerformanceData
+    {
+        public float AverageCompletionRate;
+        public float AverageEngagement;
+        public float DifficultyRating;
+        public float PopularityScore;
+        public float RetentionRate;
     }
 }

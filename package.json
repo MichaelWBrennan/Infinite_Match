@@ -103,7 +103,13 @@
     "automation",
     "ci-cd",
     "nodejs",
-    "express"
+    "express",
+    "ai",
+    "free-ai",
+    "ollama",
+    "huggingface",
+    "content-generation",
+    "open-source"
   ],
   "license": "MIT",
   "main": "src/server/index.js",
@@ -190,7 +196,11 @@
     "ai:insights": "node -e \"console.log('AI Insights available at /api/insights')\"",
     "ai:recommendations": "node -e \"console.log('AI Recommendations available at /api/ai/recommendations')\"",
     "ai:start": "npm run start:industry-leader",
-    "ai:dev": "npm run dev:industry-leader"
+    "ai:dev": "npm run dev:industry-leader",
+    "ai:free:setup": "chmod +x scripts/setup-free-ai.sh && ./scripts/setup-free-ai.sh",
+    "ai:free:test": "node examples/free-ai-example.js",
+    "ai:free:status": "node -e \"import('./src/services/free-ai-content-generator.js').then(m => { const ai = new m.FreeAIContentGenerator(); console.log('Free AI Status:', ai.getServiceStatus()); })\"",
+    "ai:free:example": "node examples/free-ai-example.js"
   },
   "type": "module",
   "version": "1.0.0"
