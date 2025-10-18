@@ -6,7 +6,7 @@ using Evergreen.Social;
 using Evergreen.Core;
 using Evergreen.Ads;
 
-public class MainMenuUI : MonoBehaviour
+public class OptimizedMainMenuUI : MonoBehaviour
 {
     [Header("UI References")]
     [SerializeField] private Button startGameButton;

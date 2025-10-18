@@ -96,7 +96,7 @@ namespace Evergreen.Testing
         public List<string> performanceIssues = new List<string>();
     }
     
-    public class TestFramework : MonoBehaviour
+    public class OptimizedTestFramework : MonoBehaviour
     {
         [Header("Test Configuration")]
         public TestConfiguration testConfiguration = new TestConfiguration();
