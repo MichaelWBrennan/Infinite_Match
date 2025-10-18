@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace Economy
 {
@@ -935,7 +936,128 @@ namespace Economy
                 _aiService = aiServiceGO.AddComponent<UnifiedAIAPIService>();
             }
             
+            // Initialize ARPU/ARPPU tracking
+            InitializeRevenueTracking();
+            
             Debug.Log("✅ AI Economy Systems Initialized with Unified API");
+        }
+        
+        private void InitializeRevenueTracking()
+        {
+            _currentMetrics = new EconomyMetrics
+            {
+                ARPU = 0f,
+                ARPPU = 0f,
+                ConversionRate = 0f,
+                RetentionRate = 0f,
+                AverageLTV = 0f,
+                RevenueGrowth = 0f,
+                TotalUsers = 0,
+                PayingUsers = 0,
+                HighValueUsers = 0,
+                SpendingDistribution = new Dictionary<string, float>(),
+                LastUpdated = DateTime.Now
+            };
+            
+            Debug.Log("📊 Revenue Tracking Initialized");
+        }
+        
+        public void UpdateRevenueMetrics()
+        {
+            if (_playerRevenueData.Count == 0) return;
+            
+            var totalUsers = _playerRevenueData.Count;
+            var payingUsers = GetPayingUserCount();
+            var totalRevenue = _playerRevenueData.Values.Sum(p => p.TotalSpent);
+            
+            _currentMetrics.ARPU = totalUsers > 0 ? totalRevenue / totalUsers : 0f;
+            _currentMetrics.ARPPU = payingUsers > 0 ? totalRevenue / payingUsers : 0f;
+            _currentMetrics.ConversionRate = GetConversionRate();
+            _currentMetrics.RetentionRate = GetRetentionRate();
+            _currentMetrics.AverageLTV = _playerRevenueData.Values.Average(p => p.LifetimeValue);
+            _currentMetrics.TotalUsers = totalUsers;
+            _currentMetrics.PayingUsers = payingUsers;
+            _currentMetrics.HighValueUsers = GetHighValueUserCount();
+            _currentMetrics.SpendingDistribution = GetSpendingDistribution();
+            _currentMetrics.LastUpdated = DateTime.Now;
+            
+            Debug.Log($"📈 Revenue Metrics Updated - ARPU: ${_currentMetrics.ARPU:F2}, ARPPU: ${_currentMetrics.ARPPU:F2}, Conversion: {_currentMetrics.ConversionRate:P1}");
+        }
+        
+        public void RecordPlayerPurchase(string playerId, float amount, string itemId)
+        {
+            var playerData = GetPlayerRevenueData(playerId);
+            playerData.TotalSpent += amount;
+            playerData.PurchaseCount++;
+            playerData.AveragePurchaseValue = playerData.TotalSpent / playerData.PurchaseCount;
+            playerData.DaysSinceLastPurchase = 0;
+            playerData.LifetimeValue = playerData.TotalSpent;
+            
+            // Update metrics
+            UpdateRevenueMetrics();
+            
+            // Trigger AI optimizations
+            if (enableARPUOptimization)
+            {
+                OptimizeARPU();
+            }
+            
+            if (enableARPPUOptimization)
+            {
+                OptimizeARPPU();
+            }
+            
+            Debug.Log($"💰 Purchase Recorded: {playerId} spent ${amount:F2} on {itemId}");
+        }
+        
+        public void RecordPlayerSession(string playerId, float sessionDuration, int actionsCount)
+        {
+            var engagementData = GetPlayerEngagementData(playerId);
+            engagementData.SessionDuration = sessionDuration;
+            engagementData.ActionsPerSession = actionsCount;
+            engagementData.DaysSinceLastSession = 0;
+            
+            // Calculate engagement score
+            engagementData.EngagementScore = CalculateEngagementScore(engagementData);
+            
+            // Update retention score
+            engagementData.RetentionScore = CalculateRetentionScore(engagementData);
+            
+            // Check for churn risk
+            engagementData.ChurnRisk = CalculateChurnRisk(engagementData);
+            
+            Debug.Log($"🎮 Session Recorded: {playerId} - Duration: {sessionDuration:F1}s, Actions: {actionsCount}");
+        }
+        
+        private float CalculateEngagementScore(PlayerEngagementData data)
+        {
+            // Calculate engagement score based on session data
+            var durationScore = Mathf.Clamp01(data.SessionDuration / 300f); // 5 minutes = 1.0
+            var actionScore = Mathf.Clamp01(data.ActionsPerSession / 50f); // 50 actions = 1.0
+            var frequencyScore = Mathf.Clamp01(1f - (data.DaysSinceLastSession / 7f)); // 7 days = 0.0
+            
+            return (durationScore + actionScore + frequencyScore) / 3f;
+        }
+        
+        private float CalculateRetentionScore(PlayerEngagementData data)
+        {
+            // Calculate retention score based on engagement and session history
+            var engagementWeight = 0.6f;
+            var frequencyWeight = 0.4f;
+            
+            var frequencyScore = Mathf.Clamp01(1f - (data.DaysSinceLastSession / 14f)); // 14 days = 0.0
+            
+            return (data.EngagementScore * engagementWeight) + (frequencyScore * frequencyWeight);
+        }
+        
+        private float CalculateChurnRisk(PlayerEngagementData data)
+        {
+            // Calculate churn risk based on engagement decline and session gaps
+            var engagementRisk = 1f - data.EngagementScore;
+            var frequencyRisk = Mathf.Clamp01(data.DaysSinceLastSession / 7f); // 7 days = 1.0
+            var trendRisk = 1f - data.EngagementTrend;
+            
+            return (engagementRisk + frequencyRisk + trendRisk) / 3f;
         }
         
         public void PersonalizeEconomyForPlayer(string playerId)
@@ -2018,5 +2140,72 @@ public enum SpendingTrend
 {
     Decreasing, Stable, Increasing
 }
+
+#region ARPU/ARPPU Data Structures
+
+public class PlayerRevenueData
+{
+    public string PlayerId;
+    public float TotalSpent;
+    public int SessionCount;
+    public int PurchaseCount;
+    public float AveragePurchaseValue;
+    public int DaysSinceLastPurchase;
+    public float LifetimeValue;
+    public float PredictedLTV;
+    public float PredictedSpending;
+    public float SpendingProbability;
+    public float SpendingCapacity;
+    public float PriceSensitivity;
+    public List<string> PreferredItemTypes;
+    public List<string> PreferredOfferTypes;
+    public string SpendingPattern;
+    public float PurchaseFrequency;
+    public float RetentionProbability;
+    public float SpendingGrowthPotential;
+}
+
+public class PlayerEngagementData
+{
+    public string PlayerId;
+    public float EngagementScore;
+    public float RetentionScore;
+    public float EngagementTrend;
+    public float ChurnRisk;
+    public int DaysSinceLastSession;
+    public List<string> PreferredContentTypes;
+    public float SessionDuration;
+    public int ActionsPerSession;
+    public float ProgressionRate;
+}
+
+public class EconomyMetrics
+{
+    public float ARPU;
+    public float ARPPU;
+    public float ConversionRate;
+    public float RetentionRate;
+    public float AverageLTV;
+    public float RevenueGrowth;
+    public int TotalUsers;
+    public int PayingUsers;
+    public int HighValueUsers;
+    public Dictionary<string, float> SpendingDistribution;
+    public DateTime LastUpdated;
+}
+
+public class RevenueOptimization
+{
+    public string Id;
+    public string Type;
+    public string TargetPlayerId;
+    public Dictionary<string, object> Parameters;
+    public float ExpectedImpact;
+    public DateTime CreatedAt;
+    public DateTime ExpiresAt;
+    public bool IsActive;
+}
+
+#endregion
 
 #endregion
