@@ -148,7 +148,7 @@ export const AppConfig: AppConfigType = {
 
   // Database Configuration
   database: {
-    url: process.env['DATABASE_URL'] || 'mongodb://localhost:27017/evergreen-match3',
+    url: process.env['DATABASE_URL'] || 'mongodb://localhost:27017/infinite-match',
     options: {
       useNewUrlParser: true,
       useUnifiedTopology: true,

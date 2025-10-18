@@ -8,7 +8,7 @@ import { Logger } from '../logger/index.js';
 const logger = new Logger('MFA');
 export class MFAProvider {
     constructor() {
-        this.issuer = 'Evergreen Match3';
+        this.issuer = 'Infinite Match';
         this.algorithm = 'sha1';
         this.digits = 6;
         this.period = 30;

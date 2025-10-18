@@ -82,25 +82,25 @@
   "build_script_paths": {
     "headless_webgl_builder": {
       "path": "/workspace/unity/Assets/Scripts/Editor/HeadlessWebGLBuilder.cs",
-      "class": "Evergreen.Editor.HeadlessWebGLBuilder",
+      "class": "InfiniteMatch.Editor.HeadlessWebGLBuilder",
       "method": "BuildWebGLHeadless",
       "description": "Headless WebGL build script for command line"
     },
     "poki_webgl_builder": {
       "path": "/workspace/unity/Assets/Editor/PokiWebGLBuildScript.cs",
-      "class": "Evergreen.Editor.PokiWebGLBuildScript",
+      "class": "InfiniteMatch.Editor.PokiWebGLBuildScript",
       "method": "BuildPokiWebGL",
       "description": "Poki-specific WebGL build script"
     },
     "platform_build_script": {
       "path": "/workspace/unity/Assets/Editor/PlatformBuildScript.cs",
-      "class": "Evergreen.Editor.PlatformBuildScript",
+      "class": "InfiniteMatch.Editor.PlatformBuildScript",
       "method": "BuildForPlatform",
       "description": "General platform build script"
     },
     "general_build_script": {
       "path": "/workspace/unity/Assets/Scripts/Editor/BuildScript.cs",
-      "class": "Evergreen.Editor.BuildScript",
+      "class": "InfiniteMatch.Editor.BuildScript",
       "method": "BuildWebGL",
       "description": "General Unity build script"
     }
@@ -125,9 +125,9 @@
   },
   "build_commands": {
     "unity_editor": {
-      "headless_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod Evergreen.Editor.HeadlessWebGLBuilder.BuildWebGLHeadless -platform {platform} -buildPath {buildPath}",
-      "poki_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod Evergreen.Editor.PokiWebGLBuildScript.BuildPokiWebGL",
-      "general_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod Evergreen.Editor.BuildScript.BuildWebGL"
+      "headless_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod InfiniteMatch.Editor.HeadlessWebGLBuilder.BuildWebGLHeadless -platform {platform} -buildPath {buildPath}",
+      "poki_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod InfiniteMatch.Editor.PokiWebGLBuildScript.BuildPokiWebGL",
+      "general_webgl": "Unity -batchmode -quit -projectPath /workspace/unity -executeMethod InfiniteMatch.Editor.BuildScript.BuildWebGL"
     },
     "docker_build": {
       "webgl": "./build-webgl-docker.sh {platform} {buildPath}",

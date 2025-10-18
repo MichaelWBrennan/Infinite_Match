@@ -1,10 +1,12 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 import OpenAI from 'openai';
+import { HfInference } from '@huggingface/inference';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
 import { LRUCache } from 'lru-cache';
+import { PostHogAnalyticsService } from './analytics/posthog-service.js';
 
 /**
  * AI Analytics Engine - Advanced analytics with AI-powered insights and predictions
@@ -25,6 +27,12 @@ class AIAnalyticsEngine {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+
+    // Hugging Face for specialized analytics models
+    this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
+    // PostHog for advanced analytics and real-time insights
+    this.posthog = new PostHogAnalyticsService();
 
     this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 

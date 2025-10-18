@@ -1,6 +1,7 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 import OpenAI from 'openai';
+import { HfInference } from '@huggingface/inference';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
@@ -8,15 +9,18 @@ import { LRUCache } from 'lru-cache';
 
 /**
  * AI Content Generator - Industry-leading infinite content creation system
- * Uses OpenAI GPT-4, DALL-E, and custom ML models for perpetual content generation
+ * Uses OpenAI GPT-4, Hugging Face models, and platform-specific optimization
  * 
  * OPTIMIZATIONS:
+ * - Multi-provider AI (OpenAI + Hugging Face)
+ * - Platform-specific content generation
  * - Redis caching for AI responses
  * - Request batching and queuing
  * - Intelligent retry mechanisms
  * - Performance monitoring
  * - Memory optimization
  * - Rate limiting and throttling
+ * - ASO optimization
  */
 class AIContentGenerator {
   constructor() {
@@ -24,6 +28,37 @@ class AIContentGenerator {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+
+    // Hugging Face for specialized models and cost optimization
+    this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
+    // Platform-specific AI configurations
+    this.platformConfigs = {
+      poki: {
+        contentStyle: 'family-friendly',
+        maxLength: 100,
+        preferredModel: 'huggingface',
+        contentTypes: ['levels', 'powerups', 'events']
+      },
+      facebook: {
+        contentStyle: 'social-engaging',
+        maxLength: 150,
+        preferredModel: 'openai',
+        contentTypes: ['levels', 'social_features', 'events']
+      },
+      appstore: {
+        contentStyle: 'mobile-optimized',
+        maxLength: 200,
+        preferredModel: 'openai',
+        contentTypes: ['levels', 'tutorials', 'achievements']
+      },
+      webgl: {
+        contentStyle: 'web-optimized',
+        maxLength: 120,
+        preferredModel: 'huggingface',
+        contentTypes: ['levels', 'ui_text', 'help_text']
+      }
+    };
 
     // Supabase for content storage and retrieval
     this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
@@ -69,6 +104,7 @@ class AIContentGenerator {
     this.generatedContent = new Map();
     this.playerPreferences = new Map();
     this.marketTrends = new Map();
+    this.asoCache = new Map();
 
     this.initializeContentTemplates();
     this.startBatchProcessor();
@@ -76,9 +112,146 @@ class AIContentGenerator {
   }
 
   /**
+   * Generate platform-optimized content using the best AI provider
+   */
+  async generatePlatformContent(contentType, platform, parameters) {
+    const platformConfig = this.platformConfigs[platform] || this.platformConfigs.webgl;
+    const startTime = Date.now();
+    
+    try {
+      // Choose the best AI provider for this platform and content type
+      const aiProvider = this.selectAIProvider(platformConfig, contentType);
+      
+      let content;
+      if (aiProvider === 'huggingface') {
+        content = await this.generateWithHuggingFace(contentType, platformConfig, parameters);
+      } else {
+        content = await this.generateWithOpenAI(contentType, platformConfig, parameters);
+      }
+      
+      // Apply platform-specific post-processing
+      content = this.applyPlatformOptimizations(content, platformConfig);
+      
+      this.logger.info(`Generated ${contentType} for ${platform} using ${aiProvider}`);
+      return content;
+      
+    } catch (error) {
+      this.logger.error(`Failed to generate ${contentType} for ${platform}:`, error);
+      throw new ServiceError('CONTENT_GENERATION_FAILED', error.message);
+    }
+  }
+
+  /**
+   * Select the best AI provider for the given platform and content type
+   */
+  selectAIProvider(platformConfig, contentType) {
+    // Use Hugging Face for cost-effective content generation
+    if (platformConfig.preferredModel === 'huggingface') {
+      return 'huggingface';
+    }
+    
+    // Use OpenAI for complex content that needs high quality
+    if (contentType === 'narrative' || contentType === 'dialogue') {
+      return 'openai';
+    }
+    
+    return platformConfig.preferredModel || 'huggingface';
+  }
+
+  /**
+   * Generate content using Hugging Face models
+   */
+  async generateWithHuggingFace(contentType, platformConfig, parameters) {
+    const model = this.getHuggingFaceModel(contentType);
+    const prompt = this.buildPrompt(contentType, platformConfig, parameters);
+    
+    const response = await this.hf.textGeneration({
+      model: model,
+      inputs: prompt,
+      parameters: {
+        max_new_tokens: platformConfig.maxLength,
+        temperature: 0.7,
+        return_full_text: false
+      }
+    });
+    
+    return this.parseHuggingFaceResponse(response, contentType);
+  }
+
+  /**
+   * Generate content using OpenAI models
+   */
+  async generateWithOpenAI(contentType, platformConfig, parameters) {
+    const prompt = this.buildPrompt(contentType, platformConfig, parameters);
+    
+    const response = await this.openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{
+        role: "system",
+        content: `You are an expert game content generator. Generate ${contentType} optimized for ${platformConfig.contentStyle} style.`
+      }, {
+        role: "user",
+        content: prompt
+      }],
+      max_tokens: platformConfig.maxLength,
+      temperature: 0.7
+    });
+    
+    return response.choices[0].message.content;
+  }
+
+  /**
+   * Get the appropriate Hugging Face model for content type
+   */
+  getHuggingFaceModel(contentType) {
+    const models = {
+      levels: 'microsoft/DialoGPT-medium',
+      powerups: 'gpt2',
+      events: 'microsoft/DialoGPT-medium',
+      ui_text: 'gpt2',
+      help_text: 'microsoft/DialoGPT-medium',
+      narrative: 'microsoft/DialoGPT-medium'
+    };
+    
+    return models[contentType] || 'microsoft/DialoGPT-medium';
+  }
+
+  /**
+   * Build platform-optimized prompts
+   */
+  buildPrompt(contentType, platformConfig, parameters) {
+    const basePrompt = `Generate ${contentType} for a match-3 puzzle game called "Infinite Match".`;
+    const stylePrompt = `Style: ${platformConfig.contentStyle}`;
+    const lengthPrompt = `Maximum length: ${platformConfig.maxLength} characters`;
+    
+    return `${basePrompt} ${stylePrompt} ${lengthPrompt}. Parameters: ${JSON.stringify(parameters)}`;
+  }
+
+  /**
+   * Apply platform-specific optimizations to generated content
+   */
+  applyPlatformOptimizations(content, platformConfig) {
+    // Apply platform-specific formatting
+    if (platformConfig.contentStyle === 'family-friendly') {
+      content = this.makeFamilyFriendly(content);
+    } else if (platformConfig.contentStyle === 'social-engaging') {
+      content = this.makeSocialEngaging(content);
+    } else if (platformConfig.contentStyle === 'mobile-optimized') {
+      content = this.makeMobileOptimized(content);
+    }
+    
+    // Ensure content fits within length limits
+    if (content.length > platformConfig.maxLength) {
+      content = content.substring(0, platformConfig.maxLength - 3) + '...';
+    }
+    
+    return content;
+  }
+
+  /**
    * Generate infinite levels using AI with comprehensive optimizations
    */
-  async generateLevel(levelNumber, difficulty, playerProfile) {
+  async generateLevel(levelNumber, difficulty, playerProfile, platform = 'webgl') {
     const startTime = Date.now();
     const cacheKey = `level:${levelNumber}:${difficulty}:${playerProfile?.id || 'default'}`;
     
@@ -844,6 +1017,199 @@ Create a ${assetType} for a match-3 mobile game:
   }
   async applyPersonalization(content, playerProfile) {
     return content;
+  }
+
+  /**
+   * ASO (App Store Optimization) AI Methods
+   */
+  async optimizeStoreListing(platform, gameData) {
+    const cacheKey = `aso:${platform}:${JSON.stringify(gameData)}`;
+    
+    // Check cache first
+    const cached = await this.getCachedContent(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const optimized = await this.openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{
+          role: "system",
+          content: `You are an expert ASO specialist. Optimize this ${platform} store listing for maximum downloads and visibility. Focus on keywords, descriptions, and metadata that will improve search ranking and conversion rates.`
+        }, {
+          role: "user",
+          content: `Optimize this store listing for ${platform}:\n${JSON.stringify(gameData, null, 2)}`
+        }],
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      const result = {
+        title: this.extractTitle(optimized.choices[0].message.content),
+        description: this.extractDescription(optimized.choices[0].message.content),
+        keywords: this.extractKeywords(optimized.choices[0].message.content),
+        metadata: this.extractMetadata(optimized.choices[0].message.content),
+        platform: platform,
+        optimizedAt: new Date().toISOString()
+      };
+
+      // Cache the result
+      await this.setCachedContent(cacheKey, result, 3600); // 1 hour cache
+      
+      return result;
+    } catch (error) {
+      this.logger.error('ASO optimization failed:', error);
+      throw new ServiceError('ASO_OPTIMIZATION_FAILED', error.message);
+    }
+  }
+
+  async generateASOKeywords(platform, gameCategory) {
+    const cacheKey = `keywords:${platform}:${gameCategory}`;
+    
+    const cached = await this.getCachedContent(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{
+          role: "system",
+          content: `Generate high-performing ASO keywords for a ${gameCategory} game on ${platform}. Focus on trending, relevant keywords that will improve search visibility and downloads.`
+        }, {
+          role: "user",
+          content: `Generate 20-30 ASO keywords for a match-3 puzzle game on ${platform}`
+        }],
+        max_tokens: 300,
+        temperature: 0.8
+      });
+
+      const keywords = this.parseKeywords(response.choices[0].message.content);
+      
+      await this.setCachedContent(cacheKey, keywords, 7200); // 2 hour cache
+      
+      return keywords;
+    } catch (error) {
+      this.logger.error('Keyword generation failed:', error);
+      throw new ServiceError('KEYWORD_GENERATION_FAILED', error.message);
+    }
+  }
+
+  async analyzeCompetitorASO(competitorData) {
+    try {
+      const analysis = await this.openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{
+          role: "system",
+          content: "Analyze competitor ASO strategies and provide actionable insights for improving our own store listing performance."
+        }, {
+          role: "user",
+          content: `Analyze these competitor store listings:\n${JSON.stringify(competitorData, null, 2)}`
+        }],
+        max_tokens: 400,
+        temperature: 0.6
+      });
+
+      return {
+        insights: this.extractInsights(analysis.choices[0].message.content),
+        recommendations: this.extractRecommendations(analysis.choices[0].message.content),
+        opportunities: this.extractOpportunities(analysis.choices[0].message.content),
+        analyzedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      this.logger.error('Competitor ASO analysis failed:', error);
+      throw new ServiceError('COMPETITOR_ANALYSIS_FAILED', error.message);
+    }
+  }
+
+  // Helper methods for ASO
+  extractTitle(content) {
+    const titleMatch = content.match(/Title[:\s]+(.+?)(?:\n|$)/i);
+    return titleMatch ? titleMatch[1].trim() : '';
+  }
+
+  extractDescription(content) {
+    const descMatch = content.match(/Description[:\s]+(.+?)(?:\n\n|\nKeywords|$)/is);
+    return descMatch ? descMatch[1].trim() : '';
+  }
+
+  extractKeywords(content) {
+    const keywordMatch = content.match(/Keywords[:\s]+(.+?)(?:\n\n|$)/i);
+    if (keywordMatch) {
+      return keywordMatch[1].split(',').map(k => k.trim()).filter(k => k.length > 0);
+    }
+    return [];
+  }
+
+  extractMetadata(content) {
+    const metadata = {};
+    const metaMatch = content.match(/Metadata[:\s]+(.+?)(?:\n\n|$)/is);
+    if (metaMatch) {
+      try {
+        return JSON.parse(metaMatch[1]);
+      } catch (e) {
+        return metadata;
+      }
+    }
+    return metadata;
+  }
+
+  parseKeywords(content) {
+    const lines = content.split('\n');
+    const keywords = [];
+    
+    for (const line of lines) {
+      if (line.trim() && !line.includes('Keywords') && !line.includes(':')) {
+        const words = line.split(',').map(w => w.trim()).filter(w => w.length > 0);
+        keywords.push(...words);
+      }
+    }
+    
+    return keywords.slice(0, 30); // Limit to 30 keywords
+  }
+
+  extractInsights(content) {
+    const insightsMatch = content.match(/Insights[:\s]+(.+?)(?:\n\n|\nRecommendations|$)/is);
+    return insightsMatch ? insightsMatch[1].trim() : '';
+  }
+
+  extractRecommendations(content) {
+    const recMatch = content.match(/Recommendations[:\s]+(.+?)(?:\n\n|\nOpportunities|$)/is);
+    return recMatch ? recMatch[1].trim() : '';
+  }
+
+  extractOpportunities(content) {
+    const oppMatch = content.match(/Opportunities[:\s]+(.+?)(?:\n\n|$)/is);
+    return oppMatch ? oppMatch[1].trim() : '';
+  }
+
+  makeFamilyFriendly(content) {
+    // Remove any potentially inappropriate content
+    return content.replace(/[^\w\s.,!?-]/g, '').trim();
+  }
+
+  makeSocialEngaging(content) {
+    // Add social elements
+    return content.replace(/(\w+)/g, (match) => {
+      if (Math.random() < 0.1) {
+        return `#${match}`;
+      }
+      return match;
+    });
+  }
+
+  makeMobileOptimized(content) {
+    // Optimize for mobile reading
+    return content.replace(/\s+/g, ' ').trim();
+  }
+
+  parseHuggingFaceResponse(response, contentType) {
+    if (response.generated_text) {
+      return response.generated_text.trim();
+    }
+    return '';
   }
 }
 

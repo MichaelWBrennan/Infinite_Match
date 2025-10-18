@@ -110,7 +110,7 @@ namespace Evergreen.Tutorial
             var firstTimeSequence = new TutorialSequence
             {
                 sequenceId = "first_time_user",
-                name = "Welcome to Evergreen!",
+                name = "Welcome to Infinite Match!",
                 description = "Learn the basics of the game",
                 triggerCondition = "first_launch",
                 steps = new List<TutorialStep>
@@ -119,7 +119,7 @@ namespace Evergreen.Tutorial
                     {
                         stepId = "welcome_popup",
                         title = "Welcome!",
-                        description = "Welcome to Evergreen! Let's learn how to play this magical match-3 game.",
+                        description = "Welcome to Infinite Match! Let's learn how to play this magical Infinite Match game.",
                         type = TutorialStepType.ShowPopup,
                         duration = 3f
                     },
