@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Evergreen.Platform;
 
-namespace Evergreen.Editor
+namespace InfiniteMatch.Editor
 {
     /// <summary>
     /// Platform-aware build script that handles different deployment platforms
