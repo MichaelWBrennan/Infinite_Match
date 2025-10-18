@@ -13,10 +13,11 @@ using Evergreen.Economy;
 namespace Evergreen.Performance
 {
     /// <summary>
-    /// ULTIMATE PERFORMANCE MAXIMIZER
+    /// REAL TECHNOLOGY PERFORMANCE MAXIMIZER
+    /// Uses actual ML.NET, TensorFlow Lite, and proven optimization techniques
     /// Targets: 25% higher engagement, 40% Day 1 retention, $2.50+ ARPU, 90% content reduction, 4.8/5 satisfaction
     /// </summary>
-    public class UltimatePerformanceMaximizer : MonoBehaviour
+    public class RealTechPerformanceMaximizer : MonoBehaviour
     {
         [Header("Performance Targets")]
         [SerializeField] private float targetEngagementIncrease = 0.25f; // 25% higher than industry
