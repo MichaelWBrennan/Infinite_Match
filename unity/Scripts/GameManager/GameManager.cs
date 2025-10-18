@@ -2,14 +2,17 @@ using UnityEngine;
 using Match3Game.Analytics;
 using Match3Game.CloudServices;
 using Match3Game.Integration;
+using Evergreen.ARPU;
+using Evergreen.Analytics;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 namespace Match3Game.Core
 {
     /// <summary>
-    /// Main Game Manager for Match 3 Game
-    /// Integrates all analytics, cloud services, and game logic
+    /// Main Game Manager for Match 3 Game with Complete ARPU Optimization
+    /// Integrates all analytics, cloud services, game logic, and ARPU maximization systems
     /// </summary>
     public class GameManager : MonoBehaviour
     {
@@ -22,6 +25,30 @@ namespace Match3Game.Core
         [SerializeField] private GameAnalyticsManager analyticsManager;
         [SerializeField] private CloudSaveManager cloudSaveManager;
         [SerializeField] private UnityToWebGLAnalytics webglAnalytics;
+        
+        [Header("🚀 ARPU Optimization Systems")]
+        [SerializeField] private bool enableARPUOptimization = true;
+        [SerializeField] private bool enableCompliantARPU = true;
+        [SerializeField] private bool enableOneClickARPU = true;
+        [SerializeField] private bool enableAutoARPUOptimization = true;
+        [SerializeField] private bool enableTransparentARPU = true;
+        [SerializeField] private bool enableHonestARPU = true;
+        
+        [Header("🎯 ARPU Targets")]
+        [SerializeField] private float targetARPU = 15.00f; // 5x industry average
+        [SerializeField] private float targetARPPU = 125.00f; // 5x industry average
+        [SerializeField] private float targetConversionRate = 0.40f; // 5x industry average
+        [SerializeField] private float targetRetentionD1 = 0.80f; // 2x industry average
+        [SerializeField] private float targetRetentionD7 = 0.60f; // 2x industry average
+        [SerializeField] private float targetRetentionD30 = 0.40f; // 2x industry average
+        
+        [Header("⚡ ARPU Multipliers")]
+        [SerializeField] private float psychologyMultiplier = 2.0f;
+        [SerializeField] private float aiMultiplier = 3.0f;
+        [SerializeField] private float viralMultiplier = 4.0f;
+        [SerializeField] private float revenueMultiplier = 5.0f;
+        [SerializeField] private float energyMultiplier = 2.5f;
+        [SerializeField] private float analyticsMultiplier = 1.5f;
         
         [Header("Game State")]
         [SerializeField] private int currentLevel;
@@ -42,6 +69,18 @@ namespace Match3Game.Core
         [SerializeField] private string currentSubscription = "none";
         [SerializeField] private float subscriptionMultiplier = 1f;
         
+        // ARPU System References
+        private CompliantARPUManager _arpuManager;
+        private CompliantARPUInitializer _arpuInitializer;
+        private UnityAnalyticsARPUHelper _arpuHelper;
+        private CompliantPsychologySystem _psychologySystem;
+        private CompliantAIOptimization _aiOptimization;
+        private CompliantViralSystem _viralSystem;
+        private CompliantRevenueOptimization _revenueOptimization;
+        private CompliantEnergySystem _energySystem;
+        private CompliantARPUAnalytics _arpuAnalytics;
+        private CompliantARPUUI _arpuUI;
+        
         // Game data
         private PlayerProgressData playerProgress;
         private GameSettingsData gameSettings;
@@ -58,6 +97,27 @@ namespace Match3Game.Core
         public System.Action<int> OnGemsChanged;
         public System.Action<int> OnEnergyChanged;
         public System.Action<string> OnSubscriptionChanged;
+        
+        // ARPU Events
+        public System.Action<float> OnARPUUpdated;
+        public System.Action<float> OnARPPUUpdated;
+        public System.Action<float> OnConversionRateUpdated;
+        public System.Action<Dictionary<string, object>> OnARPUReportUpdated;
+        
+        public static GameManager Instance { get; private set; }
+        
+        void Awake()
+        {
+            if (Instance == null)
+            {
+                Instance = this;
+                DontDestroyOnLoad(gameObject);
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
+        }
         
         private void Start()
         {
@@ -97,6 +157,15 @@ namespace Match3Game.Core
                 {
                     analyticsManager.SetLevel(currentLevel);
                 }
+                
+                // Initialize ARPU systems
+                if (enableARPUOptimization)
+                {
+                    InitializeARPU();
+                }
+                
+                // Initialize energy system
+                InitializeEnergy();
                 
                 // Initialize WebGL analytics
                 if (webglAnalytics)
@@ -660,6 +729,251 @@ namespace Match3Game.Core
         public int GetStarsEarned()
         {
             return starsEarned;
+        }
+        
+        // ARPU Integration Methods
+        
+        private void InitializeARPU()
+        {
+            if (!enableARPUOptimization) return;
+            
+            Debug.Log("🚀 Initializing ARPU optimization systems...");
+            
+            // Initialize ARPU Helper
+            _arpuHelper = FindObjectOfType<UnityAnalyticsARPUHelper>();
+            if (_arpuHelper == null)
+            {
+                var helperGO = new GameObject("ARPUHelper");
+                _arpuHelper = helperGO.AddComponent<UnityAnalyticsARPUHelper>();
+            }
+            
+            // Initialize ARPU Initializer for one-click setup
+            if (enableOneClickARPU)
+            {
+                _arpuInitializer = gameObject.AddComponent<CompliantARPUInitializer>();
+                _arpuInitializer.enableAutoInitialization = true;
+                _arpuInitializer.enableOneClickSetup = true;
+                _arpuInitializer.enableOptimalConfiguration = true;
+                _arpuInitializer.enableGooglePlayCompliance = true;
+                _arpuInitializer.enableTransparentSetup = true;
+                
+                // Configure targets
+                _arpuInitializer.targetARPU = targetARPU;
+                _arpuInitializer.targetARPPU = targetARPPU;
+                _arpuInitializer.targetConversionRate = targetConversionRate;
+                _arpuInitializer.targetRetentionD1 = targetRetentionD1;
+                _arpuInitializer.targetRetentionD7 = targetRetentionD7;
+                _arpuInitializer.targetRetentionD30 = targetRetentionD30;
+                
+                // Configure multipliers
+                _arpuInitializer.psychologyMultiplier = psychologyMultiplier;
+                _arpuInitializer.aiMultiplier = aiMultiplier;
+                _arpuInitializer.viralMultiplier = viralMultiplier;
+                _arpuInitializer.revenueMultiplier = revenueMultiplier;
+                _arpuInitializer.energyMultiplier = energyMultiplier;
+                _arpuInitializer.analyticsMultiplier = analyticsMultiplier;
+                
+                // Start one-click setup
+                _arpuInitializer.OneClickSetup();
+            }
+            else
+            {
+                // Manual initialization
+                InitializeARPUManually();
+            }
+            
+            Debug.Log("✅ ARPU optimization systems initialized!");
+        }
+        
+        private void InitializeARPUManually()
+        {
+            // Initialize ARPU Manager
+            _arpuManager = gameObject.AddComponent<CompliantARPUManager>();
+            _arpuManager.enableARPUManager = true;
+            _arpuManager.enableAllSystems = true;
+            _arpuManager.enableAutoOptimization = enableAutoARPUOptimization;
+            _arpuManager.enableTransparentReporting = enableTransparentARPU;
+            
+            // Configure targets
+            _arpuManager.targetARPU = targetARPU;
+            _arpuManager.targetARPPU = targetARPPU;
+            _arpuManager.targetConversionRate = targetConversionRate;
+            _arpuManager.targetRetentionD1 = targetRetentionD1;
+            _arpuManager.targetRetentionD7 = targetRetentionD7;
+            _arpuManager.targetRetentionD30 = targetRetentionD30;
+            
+            // Configure multipliers
+            _arpuManager.psychologyMultiplier = psychologyMultiplier;
+            _arpuManager.aiMultiplier = aiMultiplier;
+            _arpuManager.viralMultiplier = viralMultiplier;
+            _arpuManager.revenueMultiplier = revenueMultiplier;
+            _arpuManager.energyMultiplier = energyMultiplier;
+            _arpuManager.analyticsMultiplier = analyticsMultiplier;
+            
+            // Initialize individual systems
+            InitializeARPUComponents();
+        }
+        
+        private void InitializeARPUComponents()
+        {
+            // Psychology System
+            _psychologySystem = gameObject.AddComponent<CompliantPsychologySystem>();
+            
+            // AI Optimization
+            _aiOptimization = gameObject.AddComponent<CompliantAIOptimization>();
+            
+            // Viral System
+            _viralSystem = gameObject.AddComponent<CompliantViralSystem>();
+            
+            // Revenue Optimization
+            _revenueOptimization = gameObject.AddComponent<CompliantRevenueOptimization>();
+            
+            // Energy System
+            _energySystem = gameObject.AddComponent<CompliantEnergySystem>();
+            
+            // ARPU Analytics
+            _arpuAnalytics = gameObject.AddComponent<CompliantARPUAnalytics>();
+            
+            // ARPU UI
+            _arpuUI = gameObject.AddComponent<CompliantARPUUI>();
+        }
+        
+        private void InitializeEnergy()
+        {
+            // Initialize energy system
+            lastEnergyRefill = Time.time;
+            
+            // Calculate offline energy
+            if (enableARPUOptimization && _energySystem != null)
+            {
+                // Use ARPU energy system
+                energy = _energySystem.GetCurrentEnergy();
+                maxEnergy = _energySystem.GetMaxEnergy();
+            }
+            else
+            {
+                // Use basic energy system
+                var timeAway = Time.time - lastEnergyRefill;
+                var energyGained = Mathf.FloorToInt(timeAway / energyRefillTime);
+                energy = Mathf.Min(energy + energyGained, maxEnergy);
+                lastEnergyRefill = Time.time;
+            }
+            
+            OnEnergyChanged?.Invoke(energy);
+        }
+        
+        public void TrackRevenue(string source, float amount, string itemId = "")
+        {
+            if (_arpuHelper != null)
+            {
+                _arpuHelper.TrackRevenue("player", amount, source, itemId);
+            }
+            
+            // Update local currency based on source
+            switch (source.ToLower())
+            {
+                case "iap":
+                case "purchase":
+                    gems += Mathf.RoundToInt(amount * 10); // 1 USD = 10 gems
+                    OnGemsChanged?.Invoke(gems);
+                    break;
+                case "subscription":
+                    subscriptionMultiplier = 1.5f;
+                    OnSubscriptionChanged?.Invoke("premium");
+                    break;
+                case "ad":
+                    coins += Mathf.RoundToInt(amount * 100); // 1 USD = 100 coins
+                    OnCoinsChanged?.Invoke(coins);
+                    break;
+            }
+        }
+        
+        public void TrackPlayerAction(string action, Dictionary<string, object> parameters = null)
+        {
+            if (_arpuHelper != null)
+            {
+                _arpuHelper.TrackPlayerAction("player", action, parameters);
+            }
+        }
+        
+        public bool CanPlayLevel()
+        {
+            if (enableARPUOptimization && _energySystem != null)
+            {
+                return _energySystem.CanPlayLevel();
+            }
+            
+            return energy > 0;
+        }
+        
+        public bool TryConsumeEnergy(int amount = 1)
+        {
+            if (enableARPUOptimization && _energySystem != null)
+            {
+                return _energySystem.TryConsumeEnergy(amount);
+            }
+            
+            if (energy >= amount)
+            {
+                energy -= amount;
+                OnEnergyChanged?.Invoke(energy);
+                return true;
+            }
+            
+            return false;
+        }
+        
+        public void AddEnergy(int amount)
+        {
+            if (enableARPUOptimization && _energySystem != null)
+            {
+                _energySystem.AddEnergy(amount);
+                energy = _energySystem.GetCurrentEnergy();
+            }
+            else
+            {
+                energy = Mathf.Min(energy + amount, maxEnergy);
+            }
+            
+            OnEnergyChanged?.Invoke(energy);
+        }
+        
+        public float GetSubscriptionMultiplier(string multiplierType)
+        {
+            if (enableARPUOptimization && _arpuManager != null)
+            {
+                return _arpuManager.GetSubscriptionMultiplier("player", multiplierType);
+            }
+            
+            return subscriptionMultiplier;
+        }
+        
+        public Dictionary<string, object> GetARPUReport()
+        {
+            if (_arpuHelper != null)
+            {
+                return _arpuHelper.GetARPUReport();
+            }
+            
+            return new Dictionary<string, object>();
+        }
+        
+        public void ShowPersonalizedOffers()
+        {
+            if (enableARPUOptimization && _aiOptimization != null)
+            {
+                var offers = _aiOptimization.GetPersonalizedOffers("player");
+                // Display offers in UI
+                Debug.Log($"Showing {offers.Count} personalized offers");
+            }
+        }
+        
+        public void ShowViralFeatures()
+        {
+            if (enableARPUOptimization && _viralSystem != null)
+            {
+                _viralSystem.ShowViralFeatures();
+            }
         }
         
         #endregion
