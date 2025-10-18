@@ -59,7 +59,9 @@ namespace Economy
         public string environmentId;
         public string licenseType;
         public bool cloudServicesAvailable;
+        public bool localDataEnabled;
         public EconomyData economy;
+        public Dictionary<string, object> settings;
     }
 
     public class EconomyManager : MonoBehaviour
@@ -79,6 +81,8 @@ namespace Economy
         public static event Action<InventoryItem> OnInventoryChanged;
         public static event Action<string, int> OnPurchaseCompleted;
         public static event Action<string, string> OnError;
+        public static event Action<string> OnDataSaved;
+        public static event Action<string> OnDataLoaded;
 
         private void Awake()
         {
@@ -140,15 +144,66 @@ namespace Economy
         {
             config = new UnityServicesConfig
             {
-                projectId = "default-project",
-                environmentId = "default-environment",
-                licenseType = "personal",
+                projectId = "free-economy-project",
+                environmentId = "local-environment",
+                licenseType = "free",
                 cloudServicesAvailable = false,
+                localDataEnabled = true,
                 economy = new EconomyData
                 {
-                    currencies = new List<Currency>(),
-                    inventory = new List<InventoryItem>(),
-                    catalog = new List<CatalogItem>()
+                    currencies = new List<Currency>
+                    {
+                        new Currency
+                        {
+                            id = "coins",
+                            name = "Coins",
+                            type = "soft_currency",
+                            initial = 1000,
+                            maximum = 999999,
+                            description = "Basic currency for purchases"
+                        },
+                        new Currency
+                        {
+                            id = "gems",
+                            name = "Gems",
+                            type = "premium_currency",
+                            initial = 50,
+                            maximum = 99999,
+                            description = "Premium currency for special items"
+                        }
+                    },
+                    inventory = new List<InventoryItem>
+                    {
+                        new InventoryItem
+                        {
+                            id = "powerup_rocket",
+                            name = "Rocket Power-up",
+                            type = "powerup",
+                            tradable = true,
+                            stackable = true,
+                            rarity = "common",
+                            description = "Clears a row or column"
+                        }
+                    },
+                    catalog = new List<CatalogItem>
+                    {
+                        new CatalogItem
+                        {
+                            id = "coins_100",
+                            name = "100 Coins",
+                            cost_currency = "gems",
+                            cost_amount = 1,
+                            rewards = "coins:100",
+                            description = "Purchase 100 coins"
+                        }
+                    }
+                },
+                settings = new Dictionary<string, object>
+                {
+                    { "auto_save", true },
+                    { "save_interval", 300 },
+                    { "max_backups", 10 },
+                    { "compression_enabled", true }
                 }
             };
         }
@@ -213,6 +268,12 @@ namespace Economy
                 if (debugMode)
                 {
                     Debug.Log($"[EconomyManager] Added {amount} {currency.name}. New amount: {currency.currentAmount}");
+                }
+                
+                // Auto-save if enabled
+                if (GetSetting<bool>("auto_save"))
+                {
+                    SaveEconomyData();
                 }
                 
                 return true;
@@ -391,15 +452,157 @@ namespace Economy
             return catalog.TryGetValue(catalogItemId, out CatalogItem item) ? item : null;
         }
 
+        // Data Management
+        public void SaveEconomyData()
+        {
+            try
+            {
+                string dataPath = Path.Combine(Application.persistentDataPath, "EconomyData");
+                Directory.CreateDirectory(dataPath);
+
+                // Save current state
+                var economyState = new
+                {
+                    currencies = currencies.Values,
+                    inventory = inventory.Values,
+                    timestamp = DateTime.Now,
+                    version = "1.0.0"
+                };
+
+                string jsonData = JsonConvert.SerializeObject(economyState, Formatting.Indented);
+                string filePath = Path.Combine(dataPath, "economy_state.json");
+                File.WriteAllText(filePath, jsonData);
+
+                OnDataSaved?.Invoke("Economy data saved successfully");
+                
+                if (debugMode)
+                {
+                    Debug.Log($"[EconomyManager] Economy data saved to {filePath}");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EconomyManager] Failed to save economy data: {e.Message}");
+                OnError?.Invoke("save_failed", e.Message);
+            }
+        }
+
+        public void LoadEconomyData()
+        {
+            try
+            {
+                string dataPath = Path.Combine(Application.persistentDataPath, "EconomyData");
+                string filePath = Path.Combine(dataPath, "economy_state.json");
+
+                if (File.Exists(filePath))
+                {
+                    string jsonData = File.ReadAllText(filePath);
+                    var economyState = JsonConvert.DeserializeObject<dynamic>(jsonData);
+
+                    // Load currencies
+                    if (economyState.currencies != null)
+                    {
+                        foreach (var currencyData in economyState.currencies)
+                        {
+                            string currencyId = currencyData.id;
+                            int currentAmount = currencyData.currentAmount;
+                            
+                            if (currencies.ContainsKey(currencyId))
+                            {
+                                currencies[currencyId].currentAmount = currentAmount;
+                            }
+                        }
+                    }
+
+                    // Load inventory
+                    if (economyState.inventory != null)
+                    {
+                        foreach (var itemData in economyState.inventory)
+                        {
+                            string itemId = itemData.id;
+                            int quantity = itemData.quantity;
+                            
+                            if (inventory.ContainsKey(itemId))
+                            {
+                                inventory[itemId].quantity = quantity;
+                            }
+                        }
+                    }
+
+                    OnDataLoaded?.Invoke("Economy data loaded successfully");
+                    
+                    if (debugMode)
+                    {
+                        Debug.Log($"[EconomyManager] Economy data loaded from {filePath}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EconomyManager] Failed to load economy data: {e.Message}");
+                OnError?.Invoke("load_failed", e.Message);
+            }
+        }
+
+        // Settings Management
+        public void SetSetting<T>(string key, T value)
+        {
+            if (config.settings == null)
+                config.settings = new Dictionary<string, object>();
+            config.settings[key] = value;
+        }
+
+        public T GetSetting<T>(string key, T defaultValue = default(T))
+        {
+            if (config.settings != null && config.settings.TryGetValue(key, out object value))
+            {
+                try
+                {
+                    return (T)Convert.ChangeType(value, typeof(T));
+                }
+                catch
+                {
+                    return defaultValue;
+                }
+            }
+            return defaultValue;
+        }
+
         private void LogEconomyStatus()
         {
-            Debug.Log("=== ECONOMY STATUS ===");
+            Debug.Log("=== FREE ECONOMY STATUS ===");
             Debug.Log($"License Type: {config.licenseType}");
+            Debug.Log($"Local Data Enabled: {config.localDataEnabled}");
             Debug.Log($"Cloud Services Available: {config.cloudServicesAvailable}");
             Debug.Log($"Currencies: {currencies.Count}");
             Debug.Log($"Inventory Items: {inventory.Count}");
             Debug.Log($"Catalog Items: {catalog.Count}");
-            Debug.Log("=====================");
+            Debug.Log("==========================");
+        }
+
+        // Auto-save on application pause/focus
+        private void OnApplicationPause(bool pauseStatus)
+        {
+            if (pauseStatus && GetSetting<bool>("auto_save"))
+            {
+                SaveEconomyData();
+            }
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (!hasFocus && GetSetting<bool>("auto_save"))
+            {
+                SaveEconomyData();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (GetSetting<bool>("auto_save"))
+            {
+                SaveEconomyData();
+            }
         }
     }
 }

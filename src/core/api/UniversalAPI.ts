@@ -558,6 +558,119 @@ export class UniversalAPI {
   }
 
   /**
+   * Local implementation methods
+   */
+  private async showAdLocal(adType: string) {
+    // Simulate ad display delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return {
+      shown: true,
+      revenue: Math.random() * 0.1 // Random revenue between 0-0.1
+    };
+  }
+
+  private async showRewardedAdLocal() {
+    // Simulate rewarded ad display
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const rewarded = Math.random() > 0.1; // 90% success rate
+    return {
+      shown: true,
+      rewarded,
+      reward: rewarded ? { coins: 50, gems: 5 } : null,
+      revenue: rewarded ? Math.random() * 0.2 : 0
+    };
+  }
+
+  private async showInterstitialAdLocal() {
+    // Simulate interstitial ad display
+    await new Promise(resolve => setTimeout(resolve, 150));
+    return { shown: true };
+  }
+
+  private async getUserInfoLocal() {
+    return this.localData.get('user_info');
+  }
+
+  private async trackEventLocal(eventName: string, parameters: Record<string, any>) {
+    const analytics = this.localData.get('analytics');
+    analytics.events.push({
+      eventName,
+      parameters,
+      timestamp: Date.now(),
+      platform: this.currentPlatform?.name || 'unknown'
+    });
+    analytics.total_events++;
+  }
+
+  private isAdBlockedLocal() {
+    // Simulate ad block detection (10% chance of being blocked)
+    return Math.random() < 0.1;
+  }
+
+  private isAdFreeLocal() {
+    const userInfo = this.localData.get('user_info');
+    return userInfo.isPremium || userInfo.isAdFree || false;
+  }
+
+  private async gameplayStartLocal() {
+    const analytics = this.localData.get('analytics');
+    analytics.session_start = Date.now();
+    analytics.is_playing = true;
+  }
+
+  private async gameplayStopLocal() {
+    const analytics = this.localData.get('analytics');
+    analytics.is_playing = false;
+    analytics.session_duration = Date.now() - analytics.session_start;
+  }
+
+  /**
+   * Helper methods
+   */
+  private shouldShowAd(adType: string, adSettings: any): boolean {
+    if (adType === 'banner') return adSettings.banner_enabled;
+    if (adType === 'interstitial') return adSettings.interstitial_enabled;
+    if (adType === 'rewarded') return adSettings.rewarded_enabled;
+    return false;
+  }
+
+  private async simulateAdDisplay(adType: string) {
+    // Simulate ad display with random success
+    await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+    
+    return {
+      shown: true,
+      revenue: Math.random() * 0.1
+    };
+  }
+
+  private async simulateRewardedAd() {
+    // Simulate rewarded ad with 90% success rate
+    await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
+    
+    const rewarded = Math.random() > 0.1;
+    return {
+      shown: true,
+      rewarded,
+      reward: rewarded ? { coins: 50, gems: 5 } : null,
+      revenue: rewarded ? Math.random() * 0.2 : 0
+    };
+  }
+
+  private async simulateInterstitialAd() {
+    // Simulate interstitial ad display
+    await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 100));
+    return { shown: true };
+  }
+
+  private simulateAdBlockDetection(): boolean {
+    // Simulate ad block detection (10% chance of being blocked)
+    return Math.random() < 0.1;
+  }
+
+  /**
    * Get current platform info
    */
   getCurrentPlatform(): PlatformInfo | null {
