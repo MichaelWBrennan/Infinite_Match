@@ -12,7 +12,7 @@ namespace Evergreen.Performance
     /// Provides CPU optimization that works on all platforms including WebGL
     /// Uses coroutines and async/await instead of threading
     /// </summary>
-    public class WebGLCompatibleCPUOptimizer : MonoBehaviour
+    public class WebGLCompatibleCPUOptimizer : MonoBehaviour, ICPUOptimizer
     {
         public static WebGLCompatibleCPUOptimizer Instance { get; private set; }
 
