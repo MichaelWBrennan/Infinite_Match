@@ -51,7 +51,15 @@ namespace Evergreen.Ads
 
         private void SelectAdapter()
         {
-            // Choose between MAX and LevelPlay based on remote config; default none
+            // Use Advanced Ad Mediation for maximum revenue optimization
+            if (AdvancedAdMediation.Instance != null)
+            {
+                _adapter = new AdvancedAdMediationAdapter();
+                _adapter.Initialize(_config);
+                return;
+            }
+            
+            // Fallback to legacy system
             try
             {
                 var mediation = _config != null && _config.ContainsKey("config") ? _config["config"] as Dictionary<string, object> : _config;
