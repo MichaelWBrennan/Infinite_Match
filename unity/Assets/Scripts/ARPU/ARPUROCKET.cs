@@ -34,6 +34,16 @@ namespace Evergreen.ARPU
         public bool enableDynamicSegmentation = true;
         public bool enableAutomatedA_BTesting = true;
         
+        [Header("🚀 Advanced Rocket Strategies")]
+        public bool enableScarcityExplosion = true;
+        public bool enableSocialProofBomb = true;
+        public bool enableFOMONuke = true;
+        public bool enableLossAversionRocket = true;
+        public bool enableAnchoringBomb = true;
+        public bool enableReciprocityExplosion = true;
+        public bool enableAuthorityRocket = true;
+        public bool enableConsistencyBomb = true;
+        
         [Header("💥 Viral Explosion")]
         public bool enableViralLoops = true;
         public bool enableSocialContagion = true;

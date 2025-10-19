@@ -8,11 +8,10 @@ using Evergreen.Analytics;
 namespace Evergreen.ARPU
 {
     /// <summary>
-    /// Google Play Compliant ARPU Manager
-    /// Central manager for all ARPU optimization systems that comply with Google Play guidelines
-    /// Orchestrates psychology, AI, viral, revenue, energy, and analytics systems
+    /// Optimized ARPU Manager - Merged and streamlined ARPU optimization system
+    /// Combines CompliantARPUManager and CompleteARPUManager functionality
     /// </summary>
-    public class CompliantARPUManager : MonoBehaviour
+    public class OptimizedARPUManager : MonoBehaviour
     {
         [Header("🚀 Google Play Compliant ARPU Manager")]
         public bool enableARPUManager = true;
