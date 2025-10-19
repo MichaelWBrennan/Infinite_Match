@@ -30,11 +30,18 @@ namespace Evergreen.Ads
         public int totalAdViews = 0;
         public float avgRevenuePerAd = 0f;
         
-        // Unity Ads IDs (these are public test IDs - no keys needed)
-        private const string GAME_ID = "1234567"; // Unity's test game ID
-        private const string INTERSTITIAL_AD_ID = "Interstitial_Android";
-        private const string REWARDED_AD_ID = "Rewarded_Android";
-        private const string BANNER_AD_ID = "Banner_Android";
+        // Unity Ads IDs - Configure these in Unity Dashboard
+        [Header("Unity Ads Configuration")]
+        public string gameId = "1234567"; // Replace with your actual Game ID from Unity Dashboard
+        public string interstitialAdId = "Interstitial_Android";
+        public string rewardedAdId = "Rewarded_Android";
+        public string bannerAdId = "Banner_Android";
+        
+        // Platform-specific ad unit IDs
+        [Header("Platform Ad Units")]
+        public AdUnitConfiguration androidAdUnits;
+        public AdUnitConfiguration iosAdUnits;
+        public AdUnitConfiguration webglAdUnits;
         
         // Ad state tracking
         private bool _isInitialized = false;
@@ -65,10 +72,28 @@ namespace Evergreen.Ads
         
         private void InitializeUnityAds()
         {
-            // Initialize Unity Ads with test mode (no keys required)
-            Advertisement.Initialize(GAME_ID, enableTestMode, this);
+            // Get platform-specific ad unit IDs
+            var platformAdUnits = GetPlatformAdUnits();
             
-            Debug.Log("[UnityAdsNoKeys] Initializing Unity Ads in test mode - No external keys required!");
+            // Initialize Unity Ads with test mode (no keys required)
+            Advertisement.Initialize(gameId, enableTestMode, this);
+            
+            Debug.Log($"[UnityAdsNoKeys] Initializing Unity Ads with Game ID: {gameId}, Test Mode: {enableTestMode}");
+        }
+        
+        private AdUnitConfiguration GetPlatformAdUnits()
+        {
+            switch (Application.platform)
+            {
+                case RuntimePlatform.Android:
+                    return androidAdUnits;
+                case RuntimePlatform.IPhonePlayer:
+                    return iosAdUnits;
+                case RuntimePlatform.WebGLPlayer:
+                    return webglAdUnits;
+                default:
+                    return androidAdUnits; // Fallback to Android
+            }
         }
         
         public void OnInitializationComplete()
@@ -91,32 +116,63 @@ namespace Evergreen.Ads
         {
             if (!enableInterstitialAds) return;
             
-            Advertisement.Load(INTERSTITIAL_AD_ID, this);
+            var adUnitId = GetCurrentAdUnitId("interstitial");
+            if (!string.IsNullOrEmpty(adUnitId))
+            {
+                Advertisement.Load(adUnitId, this);
+            }
         }
         
         private void LoadRewardedAd()
         {
             if (!enableRewardedAds) return;
             
-            Advertisement.Load(REWARDED_AD_ID, this);
+            var adUnitId = GetCurrentAdUnitId("rewarded");
+            if (!string.IsNullOrEmpty(adUnitId))
+            {
+                Advertisement.Load(adUnitId, this);
+            }
         }
         
         private void LoadBannerAd()
         {
             if (!enableBannerAds) return;
             
-            Advertisement.Banner.SetPosition(BannerPosition.BOTTOM_CENTER);
-            Advertisement.Banner.Load(BANNER_AD_ID);
+            var adUnitId = GetCurrentAdUnitId("banner");
+            if (!string.IsNullOrEmpty(adUnitId))
+            {
+                Advertisement.Banner.SetPosition(BannerPosition.BOTTOM_CENTER);
+                Advertisement.Banner.Load(adUnitId);
+            }
+        }
+        
+        private string GetCurrentAdUnitId(string adType)
+        {
+            var platformAdUnits = GetPlatformAdUnits();
+            
+            switch (adType)
+            {
+                case "interstitial":
+                    return platformAdUnits.interstitialAdId;
+                case "rewarded":
+                    return platformAdUnits.rewardedAdId;
+                case "banner":
+                    return platformAdUnits.bannerAdId;
+                default:
+                    return null;
+            }
         }
         
         public void OnUnityAdsAdLoaded(string adUnitId)
         {
-            if (adUnitId == INTERSTITIAL_AD_ID)
+            var platformAdUnits = GetPlatformAdUnits();
+            
+            if (adUnitId == platformAdUnits.interstitialAdId)
             {
                 _isInterstitialLoaded = true;
                 Debug.Log("[UnityAdsNoKeys] Interstitial ad loaded");
             }
-            else if (adUnitId == REWARDED_AD_ID)
+            else if (adUnitId == platformAdUnits.rewardedAdId)
             {
                 _isRewardedLoaded = true;
                 Debug.Log("[UnityAdsNoKeys] Rewarded ad loaded");
@@ -175,9 +231,13 @@ namespace Evergreen.Ads
                 return;
             }
             
-            Advertisement.Show(INTERSTITIAL_AD_ID, this);
-            _lastAdTime = Time.time;
-            OnAdShown?.Invoke("interstitial");
+            var adUnitId = GetCurrentAdUnitId("interstitial");
+            if (!string.IsNullOrEmpty(adUnitId))
+            {
+                Advertisement.Show(adUnitId, this);
+                _lastAdTime = Time.time;
+                OnAdShown?.Invoke("interstitial");
+            }
         }
         
         public void ShowRewardedAd(Action<AdResult> onComplete = null)
@@ -188,17 +248,25 @@ namespace Evergreen.Ads
                 return;
             }
             
-            Advertisement.Show(REWARDED_AD_ID, this);
-            _lastAdTime = Time.time;
-            OnAdShown?.Invoke("rewarded");
+            var adUnitId = GetCurrentAdUnitId("rewarded");
+            if (!string.IsNullOrEmpty(adUnitId))
+            {
+                Advertisement.Show(adUnitId, this);
+                _lastAdTime = Time.time;
+                OnAdShown?.Invoke("rewarded");
+            }
         }
         
         public void ShowBannerAd()
         {
             if (!CanShowAd("banner")) return;
             
-            Advertisement.Banner.Show(BANNER_AD_ID);
-            OnAdShown?.Invoke("banner");
+            var adUnitId = GetCurrentAdUnitId("banner");
+            if (!string.IsNullOrEmpty(adUnitId))
+            {
+                Advertisement.Banner.Show(adUnitId);
+                OnAdShown?.Invoke("banner");
+            }
         }
         
         public void HideBannerAd()
@@ -208,7 +276,9 @@ namespace Evergreen.Ads
         
         public void OnUnityAdsShowComplete(string adUnitId, UnityAdsShowCompletionState showCompletionState)
         {
-            if (adUnitId == INTERSTITIAL_AD_ID)
+            var platformAdUnits = GetPlatformAdUnits();
+            
+            if (adUnitId == platformAdUnits.interstitialAdId)
             {
                 _isInterstitialLoaded = false;
                 LoadInterstitialAd(); // Load next ad
@@ -229,7 +299,7 @@ namespace Evergreen.Ads
                 
                 Debug.Log($"[UnityAdsNoKeys] Interstitial ad completed, Revenue: ${revenue:F4}");
             }
-            else if (adUnitId == REWARDED_AD_ID)
+            else if (adUnitId == platformAdUnits.rewardedAdId)
             {
                 _isRewardedLoaded = false;
                 LoadRewardedAd(); // Load next ad
@@ -303,5 +373,13 @@ namespace Evergreen.Ads
         public bool success;
         public string message;
         public float revenue;
+    }
+    
+    [System.Serializable]
+    public class AdUnitConfiguration
+    {
+        public string interstitialAdId = "Interstitial_Android";
+        public string rewardedAdId = "Rewarded_Android";
+        public string bannerAdId = "Banner_Android";
     }
 }
