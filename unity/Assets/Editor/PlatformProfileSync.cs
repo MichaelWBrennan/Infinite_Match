@@ -2,7 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using System.IO;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
+using Evergreen.Core;
 
 namespace Evergreen.Editor
 {
@@ -88,7 +88,7 @@ namespace Evergreen.Editor
         private static JObject LoadPlatformProfiles()
         {
             string jsonContent = File.ReadAllText(PLATFORM_PROFILES_PATH);
-            return JObject.Parse(jsonContent);
+            return SimpleJSON.Parse(jsonContent);
         }
         
         private static void BuildProfile(string profileKey, BuildTarget target, JObject profiles)
@@ -136,20 +136,20 @@ namespace Evergreen.Editor
         
         private static void ApplyPlatformSettings(JObject profiles, string profileKey = null)
         {
-            var profilesObj = profiles["profiles"] as JObject;
-            var syncRules = profiles["syncRules"] as JObject;
+            var profilesObj = profiles.GetObject("profiles");
+            var syncRules = profiles.GetObject("syncRules");
             
             if (profileKey != null && profilesObj.ContainsKey(profileKey))
             {
                 // Apply specific profile
-                ApplyProfileSettings(profilesObj[profileKey] as JObject, syncRules);
+                ApplyProfileSettings(profilesObj.GetObject(profileKey), syncRules);
             }
             else
             {
                 // Apply default profile
                 if (profilesObj.ContainsKey("default"))
                 {
-                    ApplyProfileSettings(profilesObj["default"] as JObject, syncRules);
+                    ApplyProfileSettings(profilesObj.GetObject("default"), syncRules);
                 }
             }
         }
@@ -162,19 +162,19 @@ namespace Evergreen.Editor
             ApplyPlayerSettings(profile);
             
             // Apply WebGL settings
-            if (profile.ContainsKey("targetPlatform") && profile["targetPlatform"].ToString() == "WebGL")
+            if (profile.ContainsKey("targetPlatform") && profile.GetString("targetPlatform") == "WebGL")
             {
                 ApplyWebGLSettings(profile);
             }
             
             // Apply Android settings
-            if (profile.ContainsKey("targetPlatform") && profile["targetPlatform"].ToString() == "Android")
+            if (profile.ContainsKey("targetPlatform") && profile.GetString("targetPlatform") == "Android")
             {
                 ApplyAndroidSettings(profile);
             }
             
             // Apply iOS settings
-            if (profile.ContainsKey("targetPlatform") && profile["targetPlatform"].ToString() == "iOS")
+            if (profile.ContainsKey("targetPlatform") && profile.GetString("targetPlatform") == "iOS")
             {
                 ApplyiOSSettings(profile);
             }
@@ -186,17 +186,17 @@ namespace Evergreen.Editor
         {
             // Basic PlayerSettings
             if (profile.ContainsKey("companyName"))
-                PlayerSettings.companyName = profile["companyName"].ToString();
+                PlayerSettings.companyName = profile.GetString("companyName");
             
             if (profile.ContainsKey("productName"))
-                PlayerSettings.productName = profile["productName"].ToString();
+                PlayerSettings.productName = profile.GetString("productName");
             
             if (profile.ContainsKey("bundleVersion"))
-                PlayerSettings.bundleVersion = profile["bundleVersion"].ToString();
+                PlayerSettings.bundleVersion = profile.GetString("bundleVersion");
             
             if (profile.ContainsKey("scriptingBackend"))
             {
-                var backend = profile["scriptingBackend"].ToString();
+                var backend = profile.GetString("scriptingBackend");
                 if (backend == "IL2CPP")
                 {
                     PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.IL2CPP);
@@ -208,7 +208,7 @@ namespace Evergreen.Editor
             
             if (profile.ContainsKey("apiCompatibilityLevel"))
             {
-                var apiLevel = profile["apiCompatibilityLevel"].ToString();
+                var apiLevel = profile.GetString("apiCompatibilityLevel");
                 if (apiLevel == "NET_Standard_2_1")
                 {
                     PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.Standalone, ApiCompatibilityLevel.NET_Standard_2_1);
@@ -219,11 +219,11 @@ namespace Evergreen.Editor
             }
             
             if (profile.ContainsKey("stripEngineCode"))
-                PlayerSettings.stripEngineCode = profile["stripEngineCode"].ToObject<bool>();
+                PlayerSettings.stripEngineCode = profile.GetBool("stripEngineCode");
             
             if (profile.ContainsKey("managedStrippingLevel"))
             {
-                var strippingLevel = profile["managedStrippingLevel"].ToString();
+                var strippingLevel = profile.GetString("managedStrippingLevel");
                 if (strippingLevel == "Medium")
                 {
                     PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.Standalone, ManagedStrippingLevel.Medium);
@@ -234,20 +234,20 @@ namespace Evergreen.Editor
             }
             
             if (profile.ContainsKey("graphicsJobs"))
-                PlayerSettings.graphicsJobs = profile["graphicsJobs"].ToObject<bool>();
+                PlayerSettings.graphicsJobs = profile.GetBool("graphicsJobs");
             
             if (profile.ContainsKey("vSyncCount"))
-                QualitySettings.vSyncCount = profile["vSyncCount"].ToObject<int>();
+                QualitySettings.vSyncCount = profile.GetInt("vSyncCount");
             
             if (profile.ContainsKey("targetFrameRate"))
-                Application.targetFrameRate = profile["targetFrameRate"].ToObject<int>();
+                Application.targetFrameRate = profile.GetInt("targetFrameRate");
             
             if (profile.ContainsKey("gcIncremental"))
-                PlayerSettings.gcIncremental = profile["gcIncremental"].ToObject<bool>();
+                PlayerSettings.gcIncremental = profile.GetBool("gcIncremental");
             
             if (profile.ContainsKey("fullscreenMode"))
             {
-                var fullscreenMode = profile["fullscreenMode"].ToString();
+                var fullscreenMode = profile.GetString("fullscreenMode");
                 if (fullscreenMode == "Windowed")
                 {
                     PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
@@ -256,7 +256,7 @@ namespace Evergreen.Editor
             
             if (profile.ContainsKey("colorSpace"))
             {
-                var colorSpace = profile["colorSpace"].ToString();
+                var colorSpace = profile.GetString("colorSpace");
                 if (colorSpace == "Gamma")
                 {
                     PlayerSettings.colorSpace = ColorSpace.Gamma;
@@ -269,20 +269,20 @@ namespace Evergreen.Editor
             Debug.Log("🌐 Applying WebGL settings...");
             
             if (profile.ContainsKey("webglMemorySizeMB"))
-                PlayerSettings.WebGL.memorySize = profile["webglMemorySizeMB"].ToObject<int>();
+                PlayerSettings.WebGL.memorySize = profile.GetInt("webglMemorySizeMB");
             
             if (profile.ContainsKey("webglThreadsSupport"))
-                PlayerSettings.WebGL.threadsSupport = profile["webglThreadsSupport"].ToObject<bool>();
+                PlayerSettings.WebGL.threadsSupport = profile.GetBool("webglThreadsSupport");
             
             if (profile.ContainsKey("webglWasmStreaming"))
-                PlayerSettings.WebGL.wasmStreaming = profile["webglWasmStreaming"].ToObject<bool>();
+                PlayerSettings.WebGL.wasmStreaming = profile.GetBool("webglWasmStreaming");
             
             if (profile.ContainsKey("webglDataCaching"))
-                PlayerSettings.WebGL.dataCaching = profile["webglDataCaching"].ToObject<bool>();
+                PlayerSettings.WebGL.dataCaching = profile.GetBool("webglDataCaching");
             
             if (profile.ContainsKey("webglCompressionFormat"))
             {
-                var compressionFormat = profile["webglCompressionFormat"].ToString();
+                var compressionFormat = profile.GetString("webglCompressionFormat");
                 if (compressionFormat == "Brotli")
                 {
                     PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
@@ -290,11 +290,11 @@ namespace Evergreen.Editor
             }
             
             if (profile.ContainsKey("webglDecompressionFallback"))
-                PlayerSettings.WebGL.decompressionFallback = profile["webglDecompressionFallback"].ToObject<bool>();
+                PlayerSettings.WebGL.decompressionFallback = profile.GetBool("webglDecompressionFallback");
             
             if (profile.ContainsKey("webglExceptionSupport"))
             {
-                var exceptionSupport = profile["webglExceptionSupport"].ToString();
+                var exceptionSupport = profile.GetString("webglExceptionSupport");
                 if (exceptionSupport == "ExplicitlyThrownExceptionsOnly")
                 {
                     PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
@@ -302,10 +302,10 @@ namespace Evergreen.Editor
             }
             
             if (profile.ContainsKey("webglNameFilesAsHashes"))
-                PlayerSettings.WebGL.nameFilesAsHashes = profile["webglNameFilesAsHashes"].ToObject<bool>();
+                PlayerSettings.WebGL.nameFilesAsHashes = profile.GetBool("webglNameFilesAsHashes");
             
             if (profile.ContainsKey("runInBackground"))
-                PlayerSettings.runInBackground = profile["runInBackground"].ToObject<bool>();
+                PlayerSettings.runInBackground = profile.GetBool("runInBackground");
         }
         
         private static void ApplyAndroidSettings(JObject profile)
@@ -313,17 +313,17 @@ namespace Evergreen.Editor
             Debug.Log("🤖 Applying Android settings...");
             
             if (profile.ContainsKey("bundleIdentifier"))
-                PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, profile["bundleIdentifier"].ToString());
+                PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, profile.GetString("bundleIdentifier"));
             
             if (profile.ContainsKey("minSdkVersion"))
-                PlayerSettings.Android.minSdkVersion = (AndroidSdkVersions)profile["minSdkVersion"].ToObject<int>();
+                PlayerSettings.Android.minSdkVersion = (AndroidSdkVersions)profile.GetInt("minSdkVersion");
             
             if (profile.ContainsKey("targetSdkVersion"))
-                PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)profile["targetSdkVersion"].ToObject<int>();
+                PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)profile.GetInt("targetSdkVersion");
             
             if (profile.ContainsKey("internetAccess"))
             {
-                var internetAccess = profile["internetAccess"].ToString();
+                var internetAccess = profile.GetString("internetAccess");
                 if (internetAccess == "Require")
                 {
                     PlayerSettings.Android.forceInternetPermission = true;
@@ -331,13 +331,13 @@ namespace Evergreen.Editor
             }
             
             if (profile.ContainsKey("androidIsGame"))
-                PlayerSettings.Android.AndroidIsGame = profile["androidIsGame"].ToObject<bool>();
+                PlayerSettings.Android.AndroidIsGame = profile.GetBool("androidIsGame");
             
             if (profile.ContainsKey("androidTVCompatibility"))
-                PlayerSettings.Android.androidTVCompatibility = profile["androidTVCompatibility"].ToObject<bool>();
+                PlayerSettings.Android.androidTVCompatibility = profile.GetBool("androidTVCompatibility");
             
             if (profile.ContainsKey("androidBuildApkPerCpuArchitecture"))
-                PlayerSettings.Android.buildApkPerCpuArchitecture = profile["androidBuildApkPerCpuArchitecture"].ToObject<bool>();
+                PlayerSettings.Android.buildApkPerCpuArchitecture = profile.GetBool("androidBuildApkPerCpuArchitecture");
         }
         
         private static void ApplyiOSSettings(JObject profile)
@@ -345,11 +345,11 @@ namespace Evergreen.Editor
             Debug.Log("🍎 Applying iOS settings...");
             
             if (profile.ContainsKey("bundleIdentifier"))
-                PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.iOS, profile["bundleIdentifier"].ToString());
+                PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.iOS, profile.GetString("bundleIdentifier"));
             
             if (profile.ContainsKey("targetDevice"))
             {
-                var targetDevice = profile["targetDevice"].ToString();
+                var targetDevice = profile.GetString("targetDevice");
                 if (targetDevice == "iPhoneAndiPad")
                 {
                     PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
@@ -358,27 +358,27 @@ namespace Evergreen.Editor
             
             if (profile.ContainsKey("targetOSVersion"))
             {
-                var targetOSVersion = profile["targetOSVersion"].ToString();
+                var targetOSVersion = profile.GetString("targetOSVersion");
                 PlayerSettings.iOS.targetOSVersionString = targetOSVersion;
             }
             
             if (profile.ContainsKey("appleEnableProMotion"))
-                PlayerSettings.iOS.appleEnableProMotion = profile["appleEnableProMotion"].ToObject<bool>();
+                PlayerSettings.iOS.appleEnableProMotion = profile.GetBool("appleEnableProMotion");
             
             if (profile.ContainsKey("statusBarHidden"))
-                PlayerSettings.iOS.statusBarHidden = profile["statusBarHidden"].ToObject<bool>();
+                PlayerSettings.iOS.statusBarHidden = profile.GetBool("statusBarHidden");
             
             if (profile.ContainsKey("iosShowActivityIndicatorOnLoading"))
-                PlayerSettings.iOS.showActivityIndicatorOnLoading = profile["iosShowActivityIndicatorOnLoading"].ToObject<bool>();
+                PlayerSettings.iOS.showActivityIndicatorOnLoading = profile.GetBool("iosShowActivityIndicatorOnLoading");
             
             if (profile.ContainsKey("iosUseOnDemandResources"))
-                PlayerSettings.iOS.useOnDemandResources = profile["iosUseOnDemandResources"].ToObject<bool>();
+                PlayerSettings.iOS.useOnDemandResources = profile.GetBool("iosUseOnDemandResources");
             
             if (profile.ContainsKey("iosRequireFullScreen"))
-                PlayerSettings.iOS.requireFullScreen = profile["iosRequireFullScreen"].ToObject<bool>();
+                PlayerSettings.iOS.requireFullScreen = profile.GetBool("iosRequireFullScreen");
             
             if (profile.ContainsKey("iosAllowHTTPDownload"))
-                PlayerSettings.iOS.allowHTTPDownload = profile["iosAllowHTTPDownload"].ToObject<bool>();
+                PlayerSettings.iOS.allowHTTPDownload = profile.GetBool("iosAllowHTTPDownload");
         }
         
         private static string[] GetBuildScenes()
