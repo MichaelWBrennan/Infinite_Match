@@ -15,6 +15,8 @@ public class OptimizedMainMenuUI : MonoBehaviour
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button shopButton;
     [SerializeField] private Button socialButton;
+    [SerializeField] private Button eventsButton;
+    [SerializeField] private Button collectionsButton;
     [SerializeField] private Text coinsText;
     [SerializeField] private Text gemsText;
     [SerializeField] private Text energyText;
@@ -72,6 +74,16 @@ public class OptimizedMainMenuUI : MonoBehaviour
         if (socialButton != null)
         {
             socialButton.onClick.AddListener(OnOpenSocial);
+        }
+
+        if (eventsButton != null)
+        {
+            eventsButton.onClick.AddListener(OnOpenEvents);
+        }
+
+        if (collectionsButton != null)
+        {
+            collectionsButton.onClick.AddListener(OnOpenCollections);
         }
     }
 
@@ -199,6 +211,32 @@ public class OptimizedMainMenuUI : MonoBehaviour
         }
     }
 
+    public void OnOpenEvents()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenEvents();
+            Logger.Info("Opening events", "MainMenu");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "MainMenu");
+        }
+    }
+
+    public void OnOpenCollections()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenCollections();
+            Logger.Info("Opening collections", "MainMenu");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "MainMenu");
+        }
+    }
+
     private void UpdateUI()
     {
         if (coinsText != null)
@@ -257,6 +295,16 @@ public class OptimizedMainMenuUI : MonoBehaviour
         if (socialButton != null)
         {
             socialButton.onClick.RemoveListener(OnOpenSocial);
+        }
+
+        if (eventsButton != null)
+        {
+            eventsButton.onClick.RemoveListener(OnOpenEvents);
+        }
+
+        if (collectionsButton != null)
+        {
+            collectionsButton.onClick.RemoveListener(OnOpenCollections);
         }
     }
 }
