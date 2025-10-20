@@ -5,21 +5,104 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="Infinite Match - Industry Leading Match 3 Game">
     <title>Infinite Match - Match 3 Game</title>
-    <link rel="shortcut icon" href="WebGL/TemplateData/favicon.ico">
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
     
-    <!-- Redirect to unified WebGL directory -->
-    <script>
-        // Redirect to the unified WebGL directory
-        window.location.href = '/WebGL/';
-    </script>
+    <!-- Device Detection -->
+    <script src="device-detector.js"></script>
+    
+    <!-- Responsive UI Styles -->
+    <link rel="stylesheet" href="mobile-ui.css" media="(max-width: 768px)">
+    <link rel="stylesheet" href="desktop-ui.css" media="(min-width: 769px)">
+    <link rel="stylesheet" href="shared-ui.css">
+    
+    <!-- Platform-specific SDK will be loaded here -->
+    <script id="platform-sdk-loader"></script>
+    
+    <!-- Analytics SDKs -->
+    <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
+    <script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
+    <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
+    
+    <!-- Platform Selector -->
+    <script src="platform-selector.js"></script>
+    
+    <!-- Platform Detection -->
+    <script src="platform-detection.js"></script>
+    
+    <!-- Shared Game Logic -->
+    <script src="shared-game.js"></script>
 </head>
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-family: Arial, sans-serif;">
-        <div style="text-align: center;">
-            <h1>Infinite Match</h1>
-            <p>Loading game...</p>
-            <p>If you are not redirected automatically, <a href="/WebGL/" style="color: #fff; text-decoration: underline;">click here</a>.</p>
+    <div id="unity-container" class="unity-desktop">
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+        <div id="unity-loading-bar">
+            <div id="unity-logo"></div>
+            <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+            </div>
+            <div class="loading-text">Loading Infinite Match...</div>
         </div>
+        <div id="unity-mobile-warning">
+            WebGL builds are not supported on mobile devices.
+        </div>
+        
+        <!-- Royal Match Top UI Bar -->
+        <div class="game-ui">
+            <div class="score">
+                <div class="ui-icon">💎</div>
+                <div class="ui-value"><span id="score">0</span></div>
+            </div>
+            <div class="level">
+                <div class="ui-icon">🏆</div>
+                <div class="ui-value">Level <span id="level">1</span></div>
+            </div>
+            <div class="moves">
+                <div class="ui-icon">⚡</div>
+                <div class="ui-value"><span id="moves">30</span></div>
+            </div>
+        </div>
+        
+        <!-- Royal Match Bottom Controls -->
+        <div class="game-controls">
+            <button class="btn" onclick="startNewGame()">
+                <span class="btn-icon">🎮</span>
+                <span class="btn-text">New Game</span>
+            </button>
+            <button class="btn secondary" onclick="pauseGame()">
+                <span class="btn-icon">⏸️</span>
+                <span class="btn-text">Pause</span>
+            </button>
+            <button class="btn success" onclick="usePowerUp()">
+                <span class="btn-icon">✨</span>
+                <span class="btn-text">Power Up</span>
+            </button>
+        </div>
+        
+        <!-- Royal Match Game Over Modal -->
+        <div class="game-over" id="gameOver">
+            <div class="modal-crown">👑</div>
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <div class="modal-stats">
+                <div class="stat-item">
+                    <div class="stat-icon">💎</div>
+                    <div class="stat-label">Final Score</div>
+                    <div class="stat-value"><span id="finalScore">0</span></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-label">Level Reached</div>
+                    <div class="stat-value"><span id="finalLevel">1</span></div>
+                </div>
+            </div>
+            <button class="btn royal-glow" onclick="startNewGame()">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">Play Again</span>
+            </button>
+        </div>
+        
+        <div class="particles" id="particles"></div>
     </div>
     
     <script>
@@ -33,8 +116,9 @@
         // Platform Integration
         var platformAPI = null;
         var gameInstance = null;
-        var platformDetector = null;
+        var platformSelector = null;
         var platformConfig = null;
+        var deviceDetector = null;
         
         // Analytics Integration
         var analytics = {
@@ -46,68 +130,23 @@
             initialized: false
         };
         
-        // Load platform-specific configuration
-        async function loadPlatformConfig() {
+        // Initialize Platform Selector
+        async function initializePlatformSelector() {
             try {
-                // Try to load platform config from current directory
-                const response = await fetch('platform-config.json');
-                if (response.ok) {
-                    platformConfig = await response.json();
-                    console.log('✅ Platform config loaded:', platformConfig.platform);
-                    
-                    // Update page title and description based on platform
-                    if (platformConfig.name) {
-                        document.title = `Infinite Match - ${platformConfig.name}`;
-                    }
-                    if (platformConfig.description) {
-                        document.querySelector('meta[name="description"]').setAttribute('content', platformConfig.description);
-                    }
-                } else {
-                    // Fallback to default config
-                    platformConfig = {
-                        platform: 'default',
-                        name: 'Default',
-                        features: {
-                            ads: false,
-                            iap: false,
-                            social: false,
-                            analytics: true
-                        }
-                    };
-                    console.log('⚠️ Using default platform config');
-                }
+                platformSelector = new PlatformSelector();
+                const platformInfo = await platformSelector.initialize();
+                
+                platformConfig = platformInfo.config;
+                platformAPI = platformInfo.api;
+                
+                console.log(`🎮 Platform: ${platformInfo.config.name}`);
+                console.log(`📱 Features:`, platformInfo.config.features);
+                
+                return platformInfo;
             } catch (error) {
-                console.error('❌ Failed to load platform config:', error);
-                // Use default config
-                platformConfig = {
-                    platform: 'default',
-                    name: 'Default',
-                    features: {
-                        ads: false,
-                        iap: false,
-                        social: false,
-                        analytics: true
-                    }
-                };
+                console.error('❌ Platform selector initialization failed:', error);
+                throw error;
             }
-        }
-        
-        // Load platform-specific SDK
-        function loadPlatformSDK() {
-            const sdkLoader = document.getElementById('platform-sdk-loader');
-            
-            if (!platformConfig || !platformConfig.sdkUrl) {
-                console.log('⚠️ No platform SDK URL, skipping SDK load');
-                return;
-            }
-            
-            sdkLoader.src = platformConfig.sdkUrl;
-            sdkLoader.onload = () => {
-                console.log('✅ Platform SDK loaded:', platformConfig.platform);
-            };
-            sdkLoader.onerror = () => {
-                console.error('❌ Failed to load platform SDK:', platformConfig.platform);
-            };
         }
         
         // Initialize Analytics
@@ -202,31 +241,27 @@
             }
         }
         
-        // Initialize Platform Detection and SDK
+        // Initialize Device Detection and Platform
         async function initializePlatform() {
             try {
-                // Load platform config first
-                await loadPlatformConfig();
+                // Initialize device detection first
+                deviceDetector = new DeviceDetector();
+                console.log('📱 Device detected:', deviceDetector.getDeviceInfo());
                 
-                // Load platform-specific SDK
-                loadPlatformSDK();
+                // Update UI based on device
+                deviceDetector.updateUIForDevice();
+                
+                // Initialize platform selector
+                await initializePlatformSelector();
                 
                 // Initialize analytics
                 initializeAnalytics();
                 
-                // Initialize platform detector
-                platformDetector = new PlatformDetector();
-                const platformInfo = await platformDetector.initialize();
-                
-                console.log(`🎮 Platform: ${platformInfo.config.name}`);
-                console.log(`📱 Features:`, platformInfo.config.features);
-                
-                platformAPI = platformDetector.getUnifiedAPI();
-                
-                // Track platform initialization
+                // Track platform and device initialization
                 trackEvent('platform_initialized', {
-                    platform: platformInfo.config.name,
-                    features: platformInfo.config.features
+                    platform: platformConfig.name,
+                    features: platformConfig.features,
+                    device: deviceDetector.getDeviceInfo()
                 });
                 
                 startGame();
@@ -238,28 +273,24 @@
         
         // Start the game
         function startGame() {
-            // Show a mobile message if the user is on a mobile device
-            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            // Check if device supports WebGL
+            if (!deviceDetector.supportsWebGL()) {
+                showError('WebGL is not supported on this device. Please use a modern browser.');
+                return;
+            }
+            
+            // Show mobile warning for unsupported devices
+            if (deviceDetector.isMobile && !deviceDetector.supportsWebGL()) {
                 container.className = "unity-mobile";
                 mobileWarning.style.display = "block";
                 return;
-            } else {
-                // Responsive canvas sizing
-                const maxWidth = Math.min(window.innerWidth - 40, 960);
-                const maxHeight = Math.min(window.innerHeight - 40, 600);
-                const aspectRatio = 960 / 600;
-                
-                let canvasWidth = maxWidth;
-                let canvasHeight = maxWidth / aspectRatio;
-                
-                if (canvasHeight > maxHeight) {
-                    canvasHeight = maxHeight;
-                    canvasWidth = maxHeight * aspectRatio;
-                }
-                
-                canvas.style.width = canvasWidth + "px";
-                canvas.style.height = canvasHeight + "px";
             }
+            
+            // Update canvas sizing based on device
+            deviceDetector.updateCanvasForDevice();
+            
+            // Update UI layout for device
+            deviceDetector.updateUILayoutForDevice();
             
             loadingBar.style.display = "block";
             
@@ -396,6 +427,20 @@
             } else {
                 onGameResume();
             }
+        });
+        
+        // Handle device changes (orientation, resize)
+        window.addEventListener('deviceChanged', function(event) {
+            console.log('🔄 Device changed:', event.detail);
+            
+            // Update game settings for new device
+            if (window.sharedGame) {
+                const optimalSettings = deviceDetector.getOptimalSettings();
+                window.sharedGame.updateSettings(optimalSettings);
+            }
+            
+            // Track device change
+            trackEvent('device_changed', event.detail);
         });
         
         // Handle page unload

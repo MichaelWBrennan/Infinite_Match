@@ -1,0 +1,33 @@
+{
+  "platform": "facebook",
+  "name": "Facebook",
+  "description": "Infinite Match - Industry Leading Match 3 Game on Facebook",
+  "sdkUrl": "https://connect.facebook.net/en_US/fbinstant.6.3.js",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": true,
+    "analytics": true,
+    "achievements": true,
+    "chat": false
+  },
+  "api": {
+    "showAd": "FBInstant.ads.showAd",
+    "showRewardedAd": "FBInstant.ads.showRewardedAd",
+    "showInterstitialAd": "FBInstant.ads.showInterstitialAd",
+    "trackEvent": "FBInstant.player.logEvent",
+    "getUserInfo": "FBInstant.player.getDataAsync",
+    "isAdBlocked": "FBInstant.ads.isAdBlocked",
+    "isAdFree": "FBInstant.player.getPurchasesAsync"
+  },
+  "ui": {
+    "theme": "dark",
+    "primaryColor": "#1877f2",
+    "secondaryColor": "#42a5f5"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": true,
+    "resumeOnFocus": true
+  }
+}

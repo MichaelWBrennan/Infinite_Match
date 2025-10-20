@@ -1,0 +1,33 @@
+{
+  "platform": "crazygames",
+  "name": "CrazyGames",
+  "description": "Infinite Match - Industry Leading Match 3 Game on CrazyGames",
+  "sdkUrl": "https://sdk.crazygames.com/crazygames-sdk-v2.js",
+  "features": {
+    "ads": true,
+    "iap": false,
+    "social": true,
+    "analytics": true,
+    "achievements": false,
+    "chat": false
+  },
+  "api": {
+    "showAd": "CrazyGames.SDK.ad.requestAd",
+    "showRewardedAd": "CrazyGames.SDK.ad.requestRewardedAd",
+    "showInterstitialAd": "CrazyGames.SDK.ad.requestInterstitialAd",
+    "trackEvent": "CrazyGames.SDK.gameplayStart",
+    "getUserInfo": "CrazyGames.SDK.user.getUser",
+    "isAdBlocked": "CrazyGames.SDK.ad.hasAdblock",
+    "isAdFree": "CrazyGames.SDK.user.isAdFree"
+  },
+  "ui": {
+    "theme": "dark",
+    "primaryColor": "#ff6b35",
+    "secondaryColor": "#f7931e"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": true,
+    "resumeOnFocus": true
+  }
+}

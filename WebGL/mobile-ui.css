@@ -1,0 +1,572 @@
+/* Mobile UI - Identical to Royal Match App */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap');
+
+/* Mobile-specific base styles */
+.unity-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Mobile background pattern */
+.unity-mobile::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Mobile canvas */
+.unity-mobile #unity-canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #1a1a2e;
+    border-radius: 15px;
+    box-shadow: 
+        0 0 0 3px #ffd700,
+        0 0 0 6px #1e3c72,
+        0 15px 30px rgba(0,0,0,0.4),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    max-width: 95vw;
+    max-height: 80vh;
+    touch-action: manipulation;
+}
+
+/* Mobile top UI bar - Royal Match style */
+.unity-mobile .game-ui {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(180deg, rgba(30, 60, 114, 0.98) 0%, rgba(42, 82, 152, 0.95) 100%);
+    backdrop-filter: blur(15px);
+    border-bottom: 3px solid #ffd700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 15px;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    -webkit-backdrop-filter: blur(15px);
+}
+
+/* Mobile score display */
+.unity-mobile .score, 
+.unity-mobile .level, 
+.unity-mobile .moves {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #1e3c72;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-weight: 700;
+    font-size: 14px;
+    text-shadow: none;
+    box-shadow: 
+        0 3px 6px rgba(0,0,0,0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    border: 2px solid #fff;
+    min-width: 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    touch-action: manipulation;
+}
+
+.unity-mobile .ui-icon {
+    font-size: 16px;
+    animation: mobileIconBounce 2s ease-in-out infinite;
+}
+
+.unity-mobile .ui-value {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+@keyframes mobileIconBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-1px); }
+}
+
+/* Mobile bottom controls */
+.unity-mobile .game-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+    animation: mobileSlideUp 0.5s ease-out 0.3s both;
+    touch-action: manipulation;
+}
+
+@keyframes mobileSlideUp {
+    from { 
+        opacity: 0; 
+        transform: translateX(-50%) translateY(30px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateX(-50%) translateY(0); 
+    }
+}
+
+/* Mobile buttons */
+.unity-mobile .btn {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    border: none;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Fredoka', sans-serif;
+    cursor: pointer;
+    box-shadow: 
+        0 4px 15px rgba(255, 107, 53, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    touch-action: manipulation;
+    min-height: 44px; /* iOS touch target minimum */
+    min-width: 44px;
+}
+
+.unity-mobile .btn:active {
+    transform: scale(0.95);
+    box-shadow: 
+        0 2px 8px rgba(255, 107, 53, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.unity-mobile .btn-icon {
+    font-size: 16px;
+    animation: mobileButtonIconPulse 1.5s ease-in-out infinite;
+}
+
+.unity-mobile .btn-text {
+    font-weight: 700;
+    font-size: 12px;
+}
+
+@keyframes mobileButtonIconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.unity-mobile .btn.secondary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 
+        0 4px 15px rgba(102, 126, 234, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.unity-mobile .btn.success {
+    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+    box-shadow: 
+        0 4px 15px rgba(0, 184, 148, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile game board */
+.unity-mobile .match3-board {
+    display: grid;
+    grid-template-columns: repeat(8, 40px);
+    grid-template-rows: repeat(8, 40px);
+    gap: 2px;
+    background: linear-gradient(135deg, rgba(30, 60, 114, 0.8) 0%, rgba(42, 82, 152, 0.8) 100%);
+    padding: 15px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    margin: 20px auto;
+    width: fit-content;
+    border: 3px solid #ffd700;
+    box-shadow: 
+        0 8px 25px rgba(0,0,0,0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    animation: mobileBoardAppear 0.6s ease-out 0.4s both;
+    touch-action: manipulation;
+}
+
+@keyframes mobileBoardAppear {
+    from { 
+        opacity: 0; 
+        transform: scale(0.9) rotateY(180deg); 
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1) rotateY(0deg); 
+    }
+}
+
+/* Mobile tiles */
+.unity-mobile .tile {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 
+        0 3px 6px rgba(0,0,0,0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    touch-action: manipulation;
+}
+
+.unity-mobile .tile:active {
+    transform: scale(0.95);
+}
+
+.unity-mobile .tile:hover {
+    transform: scale(1.05) translateY(-1px);
+    border-color: #ffd700;
+    box-shadow: 
+        0 6px 12px rgba(0,0,0,0.3),
+        0 0 0 2px #ffd700,
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.unity-mobile .tile.selected {
+    border-color: #ffd700;
+    box-shadow: 
+        0 0 15px rgba(255, 215, 0, 0.8),
+        0 0 0 3px #ffd700,
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    animation: mobileSelectedPulse 1s infinite;
+}
+
+@keyframes mobileSelectedPulse {
+    0%, 100% { transform: scale(1.05); }
+    50% { transform: scale(1.1); }
+}
+
+.unity-mobile .tile.matched {
+    animation: mobileMatchExplosion 0.5s ease-in-out forwards;
+}
+
+@keyframes mobileMatchExplosion {
+    0% { 
+        transform: scale(1) rotate(0deg); 
+        opacity: 1; 
+    }
+    50% { 
+        transform: scale(1.2) rotate(180deg); 
+        opacity: 0.8; 
+    }
+    100% { 
+        transform: scale(0) rotate(360deg); 
+        opacity: 0; 
+    }
+}
+
+/* Mobile tile colors */
+.unity-mobile .tile.red { 
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+}
+.unity-mobile .tile.blue { 
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+}
+.unity-mobile .tile.green { 
+    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+    color: white;
+}
+.unity-mobile .tile.yellow { 
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    color: #1e3c72;
+}
+.unity-mobile .tile.purple { 
+    background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+    color: white;
+}
+.unity-mobile .tile.orange { 
+    background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+    color: white;
+}
+
+/* Mobile game over modal */
+.unity-mobile .game-over {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, rgba(30, 60, 114, 0.98) 0%, rgba(42, 82, 152, 0.98) 100%);
+    color: white;
+    padding: 30px 20px;
+    border-radius: 20px;
+    text-align: center;
+    z-index: 2000;
+    display: none;
+    border: 3px solid #ffd700;
+    box-shadow: 
+        0 15px 35px rgba(0,0,0,0.5),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    animation: mobileModalAppear 0.5s ease-out;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    -webkit-backdrop-filter: blur(20px);
+}
+
+@keyframes mobileModalAppear {
+    from { 
+        opacity: 0; 
+        transform: translate(-50%, -50%) scale(0.9); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translate(-50%, -50%) scale(1); 
+    }
+}
+
+.unity-mobile .game-over h2 {
+    margin: 0 0 15px 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffd700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    font-family: 'Fredoka One', cursive;
+}
+
+.unity-mobile .modal-crown {
+    font-size: 36px;
+    margin-bottom: 10px;
+    animation: mobileCrownBounce 2s ease-in-out infinite;
+}
+
+@keyframes mobileCrownBounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-3px) rotate(5deg); }
+}
+
+.unity-mobile .modal-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 20px 0;
+    align-items: center;
+}
+
+.unity-mobile .stat-item {
+    text-align: center;
+    background: rgba(255, 215, 0, 0.1);
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px solid #ffd700;
+    min-width: 120px;
+    width: 100%;
+    max-width: 200px;
+}
+
+.unity-mobile .stat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+    animation: mobileIconBounce 2s ease-in-out infinite;
+}
+
+.unity-mobile .stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffd700;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.unity-mobile .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+}
+
+/* Mobile loading screen */
+.unity-mobile #unity-loading-bar {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+    text-align: center;
+    z-index: 1000;
+}
+
+.unity-mobile #unity-logo {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: bold;
+    color: #1e3c72;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+    animation: mobilePulse 2s infinite;
+}
+
+@keyframes mobilePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
+.unity-mobile #unity-progress-bar-empty {
+    width: 180px;
+    height: 6px;
+    margin: 15px auto;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 2px solid #ffd700;
+}
+
+.unity-mobile #unity-progress-bar-full {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #ffd700, #ffed4e);
+    border-radius: 1px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.unity-mobile .loading-text {
+    color: #ffd700;
+    text-align: center;
+    margin-top: 15px;
+    font-size: 18px;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 1px;
+}
+
+/* Mobile particle effects */
+.unity-mobile .particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 500;
+}
+
+.unity-mobile .particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    border-radius: 50%;
+    animation: mobileParticleFloat 1.2s ease-out forwards;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes mobileParticleFloat {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0) rotate(0deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0) translateY(-100px) rotate(360deg);
+    }
+}
+
+/* Mobile error states */
+.unity-mobile .poki-error {
+    color: #ff6b6b;
+    text-align: center;
+    font-size: 16px;
+    margin-top: 15px;
+    font-weight: 600;
+    background: rgba(255, 107, 107, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid #ff6b6b;
+}
+
+/* Mobile touch feedback */
+.unity-mobile .btn:active,
+.unity-mobile .tile:active {
+    -webkit-tap-highlight-color: rgba(255, 215, 0, 0.3);
+}
+
+/* Mobile safe area support */
+@supports (padding: max(0px)) {
+    .unity-mobile .game-ui {
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-left: max(15px, env(safe-area-inset-left));
+        padding-right: max(15px, env(safe-area-inset-right));
+    }
+    
+    .unity-mobile .game-controls {
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+}
+
+/* Mobile landscape adjustments */
+@media (orientation: landscape) and (max-height: 500px) {
+    .unity-mobile .game-ui {
+        height: 50px;
+        padding: 6px 15px;
+    }
+    
+    .unity-mobile .score, 
+    .unity-mobile .level, 
+    .unity-mobile .moves {
+        padding: 4px 10px;
+        font-size: 12px;
+        min-width: 50px;
+    }
+    
+    .unity-mobile .game-controls {
+        bottom: 10px;
+        gap: 8px;
+    }
+    
+    .unity-mobile .btn {
+        padding: 8px 14px;
+        font-size: 12px;
+        min-height: 36px;
+    }
+}

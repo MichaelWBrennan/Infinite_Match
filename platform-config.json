@@ -1,0 +1,23 @@
+{
+  "platform": "default",
+  "name": "Default",
+  "description": "Infinite Match - Industry Leading Match 3 Game",
+  "features": {
+    "ads": false,
+    "iap": false,
+    "social": false,
+    "analytics": true,
+    "achievements": false,
+    "chat": false
+  },
+  "ui": {
+    "theme": "dark",
+    "primaryColor": "#667eea",
+    "secondaryColor": "#764ba2"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": true,
+    "resumeOnFocus": true
+  }
+}

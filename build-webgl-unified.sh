@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# WebGL Build Script for poki
-# Usage: ./build-webgl-poki.sh
+# Unified WebGL Build Script for All Platforms
+# Usage: ./build-webgl-unified.sh
 
-echo "🎮 Building WebGL for poki..."
+echo "🎮 Building Unified WebGL for All Platforms..."
 
 # Set build path
 BUILD_PATH="/workspace/WebGL"
@@ -34,6 +34,13 @@ echo "🔧 Copying platform configurations..."
 mkdir -p "$BUILD_PATH/platforms"
 cp /workspace/WebGL/platforms/*.json "$BUILD_PATH/platforms/"
 
-echo "✅ WebGL build for poki completed!"
+# Copy TemplateData
+echo "🎨 Copying TemplateData..."
+if [ -d "/workspace/Build/TemplateData" ]; then
+    cp -r /workspace/Build/TemplateData "$BUILD_PATH/"
+fi
+
+echo "✅ Unified WebGL build completed!"
 echo "📁 Build output: $BUILD_PATH"
+echo "🌐 All platforms now use the same WebGL directory!"
 ls -la "$BUILD_PATH"
