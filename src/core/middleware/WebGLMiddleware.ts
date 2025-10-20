@@ -368,7 +368,7 @@ export class WebGLMiddleware {
 
       res.json(ApiResponseBuilder.success(optimization));
     } catch (error) {
-      this.logger.error('Error handling platform optimization:', error);
+      this.logger.error('Error handling platform optimization:', { error });
       res
         .status(500)
         .json(

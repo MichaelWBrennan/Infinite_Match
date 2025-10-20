@@ -23,7 +23,7 @@ class UnityGamingServicesHeadlessIntegration {
             projectId: this.apiClient.projectId,
             environmentId: this.apiClient.environmentId,
             operations: [],
-            summary: {}
+            summary: {},
         };
     }
     /**
@@ -58,7 +58,7 @@ class UnityGamingServicesHeadlessIntegration {
             economy: null,
             cloudCode: null,
             remoteConfig: null,
-            analytics: null
+            analytics: null,
         };
         try {
             // Deploy Economy service
@@ -90,7 +90,7 @@ class UnityGamingServicesHeadlessIntegration {
             service: 'Economy',
             timestamp: new Date().toISOString(),
             status: 'in_progress',
-            results: {}
+            results: {},
         };
         try {
             console.log('   📁 Checking economy data files...');
@@ -103,7 +103,7 @@ class UnityGamingServicesHeadlessIntegration {
             const results = await this.apiClient.deployEconomyFromFiles(this.economyDir);
             operation.status = 'completed';
             operation.results = results;
-            console.log(`   ✅ Economy deployment completed:`);
+            console.log('   ✅ Economy deployment completed:');
             console.log(`      - Currencies: ${results.currencies.created} created, ${results.currencies.errors} errors`);
             console.log(`      - Inventory: ${results.inventory.created} created, ${results.inventory.errors} errors`);
             console.log(`      - Catalog: ${results.catalog.created} created, ${results.catalog.errors} errors`);
@@ -124,7 +124,7 @@ class UnityGamingServicesHeadlessIntegration {
             service: 'Cloud Code',
             timestamp: new Date().toISOString(),
             status: 'in_progress',
-            results: {}
+            results: {},
         };
         try {
             console.log('   📁 Checking cloud code files...');
@@ -137,7 +137,7 @@ class UnityGamingServicesHeadlessIntegration {
             const results = await this.apiClient.deployCloudCodeFromFiles(this.cloudCodeDir);
             operation.status = 'completed';
             operation.results = results;
-            console.log(`   ✅ Cloud Code deployment completed:`);
+            console.log('   ✅ Cloud Code deployment completed:');
             console.log(`      - Functions: ${results.created} created, ${results.errors} errors`);
         }
         catch (error) {
@@ -156,7 +156,7 @@ class UnityGamingServicesHeadlessIntegration {
             service: 'Remote Config',
             timestamp: new Date().toISOString(),
             status: 'in_progress',
-            results: {}
+            results: {},
         };
         try {
             console.log('   📁 Checking remote config files...');
@@ -169,7 +169,7 @@ class UnityGamingServicesHeadlessIntegration {
             const results = await this.apiClient.deployRemoteConfigFromFiles(this.remoteConfigDir);
             operation.status = 'completed';
             operation.results = results;
-            console.log(`   ✅ Remote Config deployment completed:`);
+            console.log('   ✅ Remote Config deployment completed:');
             console.log(`      - Configs: ${results.created} created, ${results.errors} errors`);
         }
         catch (error) {
@@ -188,7 +188,7 @@ class UnityGamingServicesHeadlessIntegration {
             service: 'Analytics',
             timestamp: new Date().toISOString(),
             status: 'in_progress',
-            results: {}
+            results: {},
         };
         try {
             console.log('   📊 Sending analytics events...');
@@ -199,13 +199,13 @@ class UnityGamingServicesHeadlessIntegration {
                 properties: {
                     projectId: this.apiClient.projectId,
                     environmentId: this.apiClient.environmentId,
-                    deploymentType: 'headless_automation'
-                }
+                    deploymentType: 'headless_automation',
+                },
             };
             await this.apiClient.sendAnalyticsEvent(deploymentEvent);
             operation.status = 'completed';
             operation.results = { eventsSent: 1 };
-            console.log(`   ✅ Analytics deployment completed: 1 event sent`);
+            console.log('   ✅ Analytics deployment completed: 1 event sent');
         }
         catch (error) {
             operation.status = 'failed';
@@ -242,14 +242,14 @@ class UnityGamingServicesHeadlessIntegration {
             inventory: { synced: 0, conflicts: 0 },
             catalog: { synced: 0, conflicts: 0 },
             remoteConfig: { synced: 0, conflicts: 0 },
-            cloudCode: { synced: 0, conflicts: 0 }
+            cloudCode: { synced: 0, conflicts: 0 },
         };
         // Sync currencies
         try {
             const localCurrencies = this.loadLocalEconomyData('currencies');
             const cloudCurrencies = cloudData.data.currencies || [];
             for (const localCurrency of localCurrencies) {
-                const cloudCurrency = cloudCurrencies.find(c => c.id === localCurrency.id);
+                const cloudCurrency = cloudCurrencies.find((c) => c.id === localCurrency.id);
                 if (!cloudCurrency || JSON.stringify(cloudCurrency) !== JSON.stringify(localCurrency)) {
                     await this.apiClient.createCurrency(localCurrency);
                     syncResults.currencies.synced++;
@@ -264,7 +264,7 @@ class UnityGamingServicesHeadlessIntegration {
             const localInventory = this.loadLocalEconomyData('inventory');
             const cloudInventory = cloudData.data.inventory || [];
             for (const localItem of localInventory) {
-                const cloudItem = cloudInventory.find(i => i.id === localItem.id);
+                const cloudItem = cloudInventory.find((i) => i.id === localItem.id);
                 if (!cloudItem || JSON.stringify(cloudItem) !== JSON.stringify(localItem)) {
                     await this.apiClient.createInventoryItem(localItem);
                     syncResults.inventory.synced++;
@@ -279,7 +279,7 @@ class UnityGamingServicesHeadlessIntegration {
             const localCatalog = this.loadLocalEconomyData('catalog');
             const cloudCatalog = cloudData.data.catalog || [];
             for (const localItem of localCatalog) {
-                const cloudItem = cloudCatalog.find(i => i.id === localItem.id);
+                const cloudItem = cloudCatalog.find((i) => i.id === localItem.id);
                 if (!cloudItem || JSON.stringify(cloudItem) !== JSON.stringify(localItem)) {
                     await this.apiClient.createCatalogItem(localItem);
                     syncResults.catalog.synced++;
@@ -324,7 +324,7 @@ class UnityGamingServicesHeadlessIntegration {
                 }
             }
         });
-        console.log(`\n📈 Summary:`);
+        console.log('\n📈 Summary:');
         console.log(`   Total Services: ${totalOperations}`);
         console.log(`   Successful: ${successfulOperations}`);
         console.log(`   Failed: ${failedOperations}`);

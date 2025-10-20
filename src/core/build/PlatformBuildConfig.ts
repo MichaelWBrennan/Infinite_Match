@@ -5,7 +5,7 @@
 
 import { Logger } from '../logger/index.js';
 import { PlatformDetector, PlatformInfo } from '../platform/PlatformDetector.js';
-import { AppConfig } from '../config/index.js';
+import AppConfig from '../config/index.js';
 
 export interface BuildConfiguration {
   platform: string;
@@ -379,7 +379,7 @@ export class PlatformBuildConfig {
       this.logger.info(`Generated optimized build config for platform: ${platform.name}`);
       return optimizedConfig;
     } catch (error) {
-      this.logger.error('Failed to get optimized build config:', error);
+      this.logger.error('Failed to get optimized build config:', { error });
       return this.buildConfigs.get('webgl')!;
     }
   }

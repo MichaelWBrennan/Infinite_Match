@@ -4,25 +4,21 @@
  */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from 'core/security/index.js';
-import { mfaProvider } from 'core/security/mfa.js';
-import { Logger } from 'core/logger/index.js';
-import { asyncHandler } from 'core/middleware/index.js';
-import { ValidationError } from 'core/errors/ErrorHandler.js';
+import security from '../core/security/index.js';
+import { mfaProvider } from '../core/security/mfa.js';
+import { Logger } from '../core/logger/index.js';
+import { asyncHandler } from '../core/middleware/index.js';
+import { ValidationError } from '../core/errors/ErrorHandler.js';
 const router = express.Router();
 const logger = new Logger('AuthRoutes');
 // Validation middleware
 const validateLogin = [
     body('playerId').notEmpty().withMessage('Player ID is required'),
-    body('password')
-        .isLength({ min: 6 })
-        .withMessage('Password must be at least 6 characters'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ];
 const validateRegister = [
     body('playerId').notEmpty().withMessage('Player ID is required'),
-    body('password')
-        .isLength({ min: 6 })
-        .withMessage('Password must be at least 6 characters'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('email').isEmail().withMessage('Valid email is required'),
 ];
 // Login endpoint
@@ -183,7 +179,7 @@ router.post('/mfa/setup', security.sessionValidation, asyncHandler(async (req, r
             secret: mfaData.secret,
             qrCodeData: mfaData.qrCodeData,
             backupCodes: mfaData.backupCodes,
-            requestId: req.requestId
+            requestId: req.requestId,
         });
     }
     catch (error) {
@@ -191,7 +187,7 @@ router.post('/mfa/setup', security.sessionValidation, asyncHandler(async (req, r
         res.status(500).json({
             success: false,
             error: 'MFA setup failed',
-            requestId: req.requestId
+            requestId: req.requestId,
         });
     }
 }));
@@ -202,7 +198,7 @@ router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, 
         return res.status(400).json({
             success: false,
             error: 'MFA token required',
-            requestId: req.requestId
+            requestId: req.requestId,
         });
     }
     try {
@@ -211,7 +207,7 @@ router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, 
             return res.status(400).json({
                 success: false,
                 error: 'MFA not set up',
-                requestId: req.requestId
+                requestId: req.requestId,
             });
         }
         const isValid = mfaProvider.verifyToken(secret, token);
@@ -221,7 +217,7 @@ router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, 
             res.json({
                 success: true,
                 message: 'MFA enabled successfully',
-                requestId: req.requestId
+                requestId: req.requestId,
             });
         }
         else {
@@ -229,7 +225,7 @@ router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, 
             res.status(400).json({
                 success: false,
                 error: 'Invalid MFA token',
-                requestId: req.requestId
+                requestId: req.requestId,
             });
         }
     }
@@ -238,7 +234,7 @@ router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, 
         res.status(500).json({
             success: false,
             error: 'MFA verification failed',
-            requestId: req.requestId
+            requestId: req.requestId,
         });
     }
 }));

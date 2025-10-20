@@ -16,7 +16,7 @@ describe('Security Test Suite', () => {
         testUser = {
             playerId: 'test-user-123',
             email: 'test@example.com',
-            role: ROLES.USER
+            role: ROLES.USER,
         };
         // Assign role to test user
         rbacProvider.assignRole(testUser.playerId, testUser.role, 'system');
@@ -27,9 +27,7 @@ describe('Security Test Suite', () => {
     });
     describe('Authentication Security', () => {
         test('should require authentication for protected routes', async () => {
-            const response = await request(app)
-                .get('/api/auth/profile')
-                .expect(401);
+            const response = await request(app).get('/api/auth/profile').expect(401);
             expect(response.body.success).toBe(false);
             expect(response.body.error).toBe('Authentication required');
         });
@@ -48,7 +46,7 @@ describe('Security Test Suite', () => {
                 .send({
                 email: 'test@example.com',
                 password: weakPassword,
-                playerId: 'test-user-456'
+                playerId: 'test-user-456',
             })
                 .expect(400);
             expect(response.body.success).toBe(false);
@@ -109,12 +107,10 @@ describe('Security Test Suite', () => {
     describe('Input Validation', () => {
         test('should sanitize user input', async () => {
             const maliciousInput = '<script>alert("xss")</script>';
-            const response = await request(app)
-                .post('/api/auth/register')
-                .send({
+            const response = await request(app).post('/api/auth/register').send({
                 email: maliciousInput,
                 password: 'validPassword123',
-                playerId: 'test-user-789'
+                playerId: 'test-user-789',
             });
             // Should not contain the script tag
             expect(response.body.email).not.toContain('<script>');
@@ -126,18 +122,16 @@ describe('Security Test Suite', () => {
                 .send({
                 email: invalidEmail,
                 password: 'validPassword123',
-                playerId: 'test-user-101'
+                playerId: 'test-user-101',
             })
                 .expect(400);
             expect(response.body.success).toBe(false);
         });
         test('should prevent SQL injection', async () => {
             const sqlInjection = "'; DROP TABLE users; --";
-            const response = await request(app)
-                .post('/api/auth/login')
-                .send({
+            const response = await request(app).post('/api/auth/login').send({
                 email: sqlInjection,
-                password: 'password'
+                password: 'password',
             });
             // Should handle gracefully without error
             expect(response.status).not.toBe(500);
@@ -148,28 +142,22 @@ describe('Security Test Suite', () => {
             const promises = [];
             // Make multiple requests quickly
             for (let i = 0; i < 150; i++) {
-                promises.push(request(app)
-                    .get('/health')
-                    .expect(200));
+                promises.push(request(app).get('/health').expect(200));
             }
             const responses = await Promise.allSettled(promises);
-            const rateLimited = responses.filter(r => r.status === 'rejected' || r.value.status === 429);
+            const rateLimited = responses.filter((r) => r.status === 'rejected' || r.value.status === 429);
             expect(rateLimited.length).toBeGreaterThan(0);
         });
     });
     describe('HTTPS Security', () => {
         test('should include security headers', async () => {
-            const response = await request(app)
-                .get('/health')
-                .expect(200);
+            const response = await request(app).get('/health').expect(200);
             expect(response.headers['strict-transport-security']).toBeDefined();
             expect(response.headers['content-security-policy']).toBeDefined();
             expect(response.headers['x-frame-options']).toBeDefined();
         });
         test('should provide HTTPS health check', async () => {
-            const response = await request(app)
-                .get('/health/https')
-                .expect(200);
+            const response = await request(app).get('/health/https').expect(200);
             expect(response.body).toHaveProperty('https');
             expect(response.body).toHaveProperty('protocol');
             expect(response.body).toHaveProperty('environment');
@@ -206,15 +194,13 @@ describe('Security Test Suite', () => {
             // Test session expiration logic
             const now = new Date();
             const sessionTime = new Date(now.getTime() - 25 * 60 * 60 * 1000); // 25 hours ago
-            const isExpired = (now.getTime() - sessionTime.getTime()) > (24 * 60 * 60 * 1000);
+            const isExpired = now.getTime() - sessionTime.getTime() > 24 * 60 * 60 * 1000;
             expect(isExpired).toBe(true);
         });
     });
     describe('Error Handling', () => {
         test('should not expose sensitive information in errors', async () => {
-            const response = await request(app)
-                .get('/api/nonexistent')
-                .expect(404);
+            const response = await request(app).get('/api/nonexistent').expect(404);
             expect(response.body.error).not.toContain('password');
             expect(response.body.error).not.toContain('secret');
             expect(response.body.error).not.toContain('key');
@@ -225,7 +211,7 @@ describe('Security Test Suite', () => {
                 type: 'failed_login',
                 ip: '192.168.1.1',
                 userAgent: 'test-agent',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             };
             expect(securityEvent.type).toBe('failed_login');
             expect(securityEvent.ip).toBeTruthy();

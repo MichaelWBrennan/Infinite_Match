@@ -1,68 +1,137 @@
-export namespace AppConfig {
-    namespace server {
-        let port: string | number;
-        let host: string;
-        let environment: string;
-        namespace cors {
-            let origin: string[];
-            let credentials: boolean;
-        }
-    }
-    namespace security {
-        namespace jwt {
-            let secret: string;
-            let expiresIn: string;
-        }
-        namespace bcrypt {
-            let rounds: number;
-        }
-        namespace rateLimit {
-            let windowMs: number;
-            let max: number;
-        }
-        namespace encryption {
-            let algorithm: string;
-            let key: string;
-        }
-    }
-    namespace unity {
-        let projectId: string;
-        let environmentId: string;
-        let clientId: string;
-        let clientSecret: string;
-    }
-    namespace database {
-        let url: string;
-        namespace options {
-            let useNewUrlParser: boolean;
-            let useUnifiedTopology: boolean;
-        }
-    }
-    namespace logging {
-        let level: string;
-        let format: string;
-        namespace file {
-            let enabled: boolean;
-            let path: string;
-            let maxSize: string;
-            let maxFiles: string;
-        }
-    }
-    namespace cache {
-        export namespace ttl {
-            let receipt: number;
-            let segments: number;
-        }
-        let maxSize_1: number;
-        export { maxSize_1 as maxSize };
-    }
-    namespace paths {
-        let root: string;
-        let assets: string;
-        let config: string;
-        let logs: string;
-        let temp: string;
-    }
+/**
+ * Optimized Configuration Management
+ * Consolidated configuration with environment-based settings
+ */
+interface ServerConfig {
+    port: number;
+    host: string;
+    environment: string;
+    cors: {
+        origin: string | string[];
+        credentials: boolean;
+    };
 }
-export default AppConfig;
+interface SecurityConfig {
+    rateLimit: {
+        windowMs: number;
+        max: number;
+    };
+    jwt: {
+        secret: string;
+        expiresIn: string;
+    };
+    bcrypt: {
+        saltRounds: number;
+    };
+}
+interface DatabaseConfig {
+    mongodb: {
+        uri: string;
+        options: {
+            maxPoolSize: number;
+            serverSelectionTimeoutMS: number;
+            socketTimeoutMS: number;
+        };
+    };
+    redis: {
+        url: string;
+        retryDelayOnFailover: number;
+        maxRetriesPerRequest: number;
+    };
+    dynamodb: {
+        region: string;
+        tableName: string;
+    };
+}
+interface CloudConfig {
+    aws: {
+        region: string;
+        accessKeyId: string;
+        secretAccessKey: string;
+        s3Bucket: string;
+        snsTopicArn: string;
+        sqsQueueUrl: string;
+        sesFromEmail: string;
+    };
+    google: {
+        projectId: string;
+        keyFile: string;
+    };
+    azure: {
+        storageAccount: string;
+        cosmosEndpoint: string;
+        cosmosKey: string;
+        cosmosDatabase: string;
+    };
+}
+interface AnalyticsConfig {
+    sentry: {
+        dsn: string;
+        environment: string;
+        tracesSampleRate: number;
+    };
+    logging: {
+        level: string;
+        format: string;
+        maxFiles: number;
+        maxSize: string;
+        file: {
+            enabled: boolean;
+            path: string;
+            maxSize: string;
+            maxFiles: string;
+        };
+    };
+}
+interface GameConfig {
+    maxLevel: number;
+    maxScore: number;
+    powerUps: {
+        maxCount: number;
+        cooldownMs: number;
+    };
+    match3: {
+        boardSize: number;
+        colors: string[];
+        minMatch: number;
+    };
+}
+declare class OptimizedConfig {
+    readonly server: ServerConfig;
+    readonly security: SecurityConfig;
+    readonly database: DatabaseConfig;
+    readonly cloud: CloudConfig;
+    readonly analytics: AnalyticsConfig;
+    readonly game: GameConfig;
+    constructor();
+    private parseCorsOrigin;
+    isDevelopment(): boolean;
+    isProduction(): boolean;
+    isTest(): boolean;
+    getDatabaseUrl(): string;
+    getRedisUrl(): string;
+    getAwsConfig(): {
+        region: string;
+        credentials: {
+            accessKeyId: string;
+            secretAccessKey: string;
+        };
+    };
+    getGoogleConfig(): {
+        projectId: string;
+        keyFilename: string;
+    };
+    getAzureConfig(): {
+        storageAccount: string;
+        cosmosEndpoint: string;
+        cosmosKey: string;
+        cosmosDatabase: string;
+    };
+    validate(): {
+        isValid: boolean;
+        errors: string[];
+    };
+}
+declare const _default: OptimizedConfig;
+export default _default;
 //# sourceMappingURL=index.d.ts.map

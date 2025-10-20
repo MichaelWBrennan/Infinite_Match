@@ -8,7 +8,7 @@ import { Logger } from '../../core/logger/index.js';
 const logger = new Logger('MobileAPIGateway');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env['PORT'] || 3000;
 
 // Middleware
 app.use(helmet());
@@ -22,19 +22,19 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     service: 'mobile-api-gateway',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
+    version: process.env['npm_package_version'] || '1.0.0',
     platform: 'mobile',
   });
 });
 
 // Service discovery and routing for mobile game
 const services = {
-  game: process.env.GAME_SERVICE_URL || 'http://game-service:3001',
-  economy: process.env.ECONOMY_SERVICE_URL || 'http://economy-service:3002',
-  analytics: process.env.ANALYTICS_SERVICE_URL || 'http://analytics-service:3003',
-  security: process.env.SECURITY_SERVICE_URL || 'http://security-service:3004',
-  unity: process.env.UNITY_SERVICE_URL || 'http://unity-service:3005',
-  ai: process.env.AI_SERVICE_URL || 'http://ai-service:3006',
+  game: process.env['GAME_SERVICE_URL'] || 'http://game-service:3001',
+  economy: process.env['ECONOMY_SERVICE_URL'] || 'http://economy-service:3002',
+  analytics: process.env['ANALYTICS_SERVICE_URL'] || 'http://analytics-service:3003',
+  security: process.env['SECURITY_SERVICE_URL'] || 'http://security-service:3004',
+  unity: process.env['UNITY_SERVICE_URL'] || 'http://unity-service:3005',
+  ai: process.env['AI_SERVICE_URL'] || 'http://ai-service:3006',
 };
 
 // Game Service Proxy - Core game functionality
@@ -46,7 +46,7 @@ app.use(
     pathRewrite: {
       '^/api/game': '/api',
     },
-    onError: (err, req, res) => {
+    onError: (err: any, req: any, res: any) => {
       logger.error('Game service error', { error: err.message, url: req.url });
       res.status(503).json({ error: 'Game service unavailable' });
     },
@@ -62,7 +62,7 @@ app.use(
     pathRewrite: {
       '^/api/economy': '/api',
     },
-    onError: (err, req, res) => {
+    onError: (err: any, req: any, res: any) => {
       logger.error('Economy service error', { error: err.message, url: req.url });
       res.status(503).json({ error: 'Economy service unavailable' });
     },
@@ -78,7 +78,7 @@ app.use(
     pathRewrite: {
       '^/api/analytics': '/api',
     },
-    onError: (err, req, res) => {
+    onError: (err: any, req: any, res: any) => {
       logger.error('Analytics service error', { error: err.message, url: req.url });
       res.status(503).json({ error: 'Analytics service unavailable' });
     },
@@ -94,7 +94,7 @@ app.use(
     pathRewrite: {
       '^/api/security': '/api',
     },
-    onError: (err, req, res) => {
+    onError: (err: any, req: any, res: any) => {
       logger.error('Security service error', { error: err.message, url: req.url });
       res.status(503).json({ error: 'Security service unavailable' });
     },
@@ -110,7 +110,7 @@ app.use(
     pathRewrite: {
       '^/api/unity': '/api',
     },
-    onError: (err, req, res) => {
+    onError: (err: any, req: any, res: any) => {
       logger.error('Unity service error', { error: err.message, url: req.url });
       res.status(503).json({ error: 'Unity service unavailable' });
     },
@@ -126,7 +126,7 @@ app.use(
     pathRewrite: {
       '^/api/ai': '/api',
     },
-    onError: (err, req, res) => {
+    onError: (err: any, req: any, res: any) => {
       logger.error('AI service error', { error: err.message, url: req.url });
       res.status(503).json({ error: 'AI service unavailable' });
     },

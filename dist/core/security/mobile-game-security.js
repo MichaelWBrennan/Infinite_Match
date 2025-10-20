@@ -24,7 +24,7 @@ export class MobileGameSecurity {
             appVersion: deviceInfo.appVersion || 'unknown',
             screenResolution: deviceInfo.screenResolution || 'unknown',
             timezone: deviceInfo.timezone || 'unknown',
-            language: deviceInfo.language || 'unknown'
+            language: deviceInfo.language || 'unknown',
         };
         const fingerprint = crypto
             .createHash('sha256')
@@ -34,11 +34,11 @@ export class MobileGameSecurity {
             ...fingerprintData,
             firstSeen: new Date(),
             lastSeen: new Date(),
-            requestCount: 1
+            requestCount: 1,
         });
         logger.info('Device fingerprint generated', {
             fingerprint: fingerprint.substring(0, 8) + '...',
-            platform: fingerprintData.platform
+            platform: fingerprintData.platform,
         });
         return fingerprint;
     }
@@ -51,7 +51,9 @@ export class MobileGameSecurity {
     validateDeviceFingerprint(fingerprint, deviceInfo) {
         const storedInfo = this.deviceFingerprints.get(fingerprint);
         if (!storedInfo) {
-            logger.warn('Unknown device fingerprint', { fingerprint: fingerprint.substring(0, 8) + '...' });
+            logger.warn('Unknown device fingerprint', {
+                fingerprint: fingerprint.substring(0, 8) + '...',
+            });
             return false;
         }
         // Update last seen and request count
@@ -62,7 +64,7 @@ export class MobileGameSecurity {
         if (suspiciousChanges.length > 0) {
             logger.warn('Suspicious device changes detected', {
                 fingerprint: fingerprint.substring(0, 8) + '...',
-                changes: suspiciousChanges
+                changes: suspiciousChanges,
             });
             return false;
         }
@@ -118,7 +120,7 @@ export class MobileGameSecurity {
         const cheatScore = {
             total: 0,
             reasons: [],
-            suspicious: false
+            suspicious: false,
         };
         // Check for impossible scores
         if (gameAction.score && gameAction.score > 1000000) {
@@ -139,7 +141,8 @@ export class MobileGameSecurity {
         const recentActions = this.getRecentActions(playerId);
         if (recentActions.length > 10) {
             const timeSpan = recentActions[0].timestamp - recentActions[recentActions.length - 1].timestamp;
-            if (timeSpan < 10000) { // 10 seconds
+            if (timeSpan < 10000) {
+                // 10 seconds
                 cheatScore.total += 20;
                 cheatScore.reasons.push('rapid_actions');
             }
@@ -155,7 +158,7 @@ export class MobileGameSecurity {
             logger.warn('Cheating detected', {
                 playerId,
                 score: cheatScore.total,
-                reasons: cheatScore.reasons
+                reasons: cheatScore.reasons,
             });
         }
         return cheatScore;
@@ -180,7 +183,7 @@ export class MobileGameSecurity {
             this.suspiciousPlayers.set(playerId, {
                 firstDetection: new Date(),
                 totalDetections: 0,
-                actions: []
+                actions: [],
             });
         }
         const playerData = this.suspiciousPlayers.get(playerId);
@@ -188,7 +191,7 @@ export class MobileGameSecurity {
         playerData.actions.push({
             action: gameAction,
             cheatScore,
-            timestamp: new Date()
+            timestamp: new Date(),
         });
         // Store recent actions for cheat detection
         if (!this.cheatDetection.has(playerId)) {
@@ -197,7 +200,7 @@ export class MobileGameSecurity {
         const recentActions = this.cheatDetection.get(playerId);
         recentActions.unshift({
             ...gameAction,
-            timestamp: Date.now()
+            timestamp: Date.now(),
         });
         // Keep only last 20 actions
         if (recentActions.length > 20) {
@@ -213,7 +216,7 @@ export class MobileGameSecurity {
         const validation = {
             valid: true,
             reasons: [],
-            suspicious: false
+            suspicious: false,
         };
         // Check for duplicate purchases
         if (this.isDuplicatePurchase(purchaseData)) {
@@ -261,7 +264,7 @@ export class MobileGameSecurity {
         const validation = {
             valid: true,
             reasons: [],
-            suspicious: false
+            suspicious: false,
         };
         // Check for impossible progress
         if (saveData.level && saveData.level > 1000) {
@@ -311,7 +314,7 @@ export class MobileGameSecurity {
             totalDevices: this.deviceFingerprints.size,
             suspiciousPlayers: this.suspiciousPlayers.size,
             cheatDetections: Array.from(this.cheatDetection.values()).reduce((sum, actions) => sum + actions.length, 0),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
     }
 }

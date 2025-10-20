@@ -5,6 +5,10 @@
 import { Logger } from '../logger/index.js';
 const logger = new Logger('ErrorHandler');
 export class AppError extends Error {
+    code;
+    statusCode;
+    context;
+    timestamp;
     constructor(message, code, statusCode = 500, context = {}) {
         super(message);
         this.name = this.constructor.name;
@@ -37,9 +41,6 @@ export class ServiceError extends AppError {
 export class ErrorHandler {
     /**
      * Handle and categorize errors
-     * @param {Error} error - The error to handle
-     * @param {Object} context - Additional context
-     * @returns {Object} Error information
      */
     static handle(error, context = {}) {
         const errorInfo = {
@@ -47,7 +48,7 @@ export class ErrorHandler {
             name: error.name,
             context: { ...context, ...error.context },
             timestamp: error.timestamp || new Date().toISOString(),
-            stack: error.stack,
+            stack: error.stack || undefined,
         };
         // Categorize error
         if (error instanceof ValidationError) {
@@ -123,14 +124,12 @@ export class ErrorHandler {
     }
     /**
      * Create a standardized error response
-     * @param {Object} errorInfo - Error information
-     * @returns {Object} Standardized error response
      */
     static createErrorResponse(errorInfo) {
         return {
             success: false,
             error: {
-                code: errorInfo.context?.code || 'UNKNOWN_ERROR',
+                code: errorInfo.context?.['code'] || 'UNKNOWN_ERROR',
                 message: errorInfo.message,
                 type: errorInfo.type,
                 recoverable: errorInfo.recoverable,
@@ -142,20 +141,17 @@ export class ErrorHandler {
     }
     /**
      * Wrap async functions with error handling
-     * @param {Function} fn - Async function to wrap
-     * @param {Object} context - Error context
-     * @returns {Function} Wrapped function
      */
     static wrapAsync(fn, context = {}) {
-        return async (...args) => {
+        return (async (...args) => {
             try {
                 return await fn(...args);
             }
             catch (error) {
                 const errorInfo = this.handle(error, context);
-                throw new AppError(errorInfo.message, errorInfo.context?.code || 'WRAPPED_ERROR', errorInfo.context?.statusCode || 500, errorInfo.context);
+                throw new AppError(errorInfo.message, errorInfo.context?.['code'] || 'WRAPPED_ERROR', errorInfo.context?.['statusCode'] || 500, errorInfo.context);
             }
-        };
+        });
     }
 }
 export default ErrorHandler;

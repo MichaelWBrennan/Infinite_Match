@@ -3,7 +3,7 @@
  * Common utility functions used throughout the application
  */
 import crypto from 'crypto';
-import { Logger } from 'logger/index.js';
+import { Logger } from '../logger/index.js';
 const logger = new Logger('Utils');
 /**
  * Generate a random string of specified length
@@ -45,7 +45,7 @@ export const deepClone = (obj) => {
     if (obj instanceof Date)
         return new Date(obj.getTime());
     if (obj instanceof Array)
-        return obj.map(item => deepClone(item));
+        return obj.map((item) => deepClone(item));
     if (typeof obj === 'object') {
         const clonedObj = {};
         for (const key in obj) {
@@ -124,7 +124,11 @@ export const getTimeDifference = (start, end = new Date()) => {
         return endTime - startTime;
     }
     catch (error) {
-        logger.warn('Invalid date for time difference calculation', { start, end, error: error.message });
+        logger.warn('Invalid date for time difference calculation', {
+            start,
+            end,
+            error: error.message,
+        });
         return 0;
     }
 };
@@ -152,7 +156,7 @@ export const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => 
                 attempt: attempt + 1,
                 maxRetries,
             });
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
         }
     }
 };
@@ -185,7 +189,7 @@ export const throttle = (func, limit) => {
         if (!inThrottle) {
             func.apply(this, args);
             inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
+            setTimeout(() => (inThrottle = false), limit);
         }
     };
 };
@@ -195,7 +199,7 @@ export const throttle = (func, limit) => {
  * @returns {Promise} Promise that resolves after the specified time
  */
 export const sleep = (ms) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 };
 /**
  * Check if a value is a valid email

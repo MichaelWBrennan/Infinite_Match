@@ -204,21 +204,21 @@ class UnityCloudCLI {
             if (options.list || options.currencies) {
                 console.log(chalk.yellow('\n💵 Currencies:'));
                 const currencies = await integration.apiClient.getCurrencies();
-                currencies.forEach(currency => {
+                currencies.forEach((currency) => {
                     console.log(`   - ${currency.id}: ${currency.name} (${currency.type})`);
                 });
             }
             if (options.list || options.inventory) {
                 console.log(chalk.yellow('\n🎒 Inventory Items:'));
                 const inventory = await integration.apiClient.getInventoryItems();
-                inventory.forEach(item => {
+                inventory.forEach((item) => {
                     console.log(`   - ${item.id}: ${item.name} (${item.type})`);
                 });
             }
             if (options.list || options.catalog) {
                 console.log(chalk.yellow('\n🛒 Catalog Items:'));
                 const catalog = await integration.apiClient.getCatalogItems();
-                catalog.forEach(item => {
+                catalog.forEach((item) => {
                     console.log(`   - ${item.id}: ${item.name} (${item.cost_amount} ${item.cost_currency})`);
                 });
             }
@@ -236,7 +236,7 @@ class UnityCloudCLI {
             if (options.list) {
                 console.log(chalk.yellow('\n🔧 Cloud Code Functions:'));
                 const functions = await integration.apiClient.getCloudCodeFunctions();
-                functions.forEach(func => {
+                functions.forEach((func) => {
                     console.log(`   - ${func.name}: ${func.description || 'No description'}`);
                 });
             }
@@ -260,7 +260,7 @@ class UnityCloudCLI {
             if (options.list) {
                 console.log(chalk.yellow('\n🔧 Remote Config Entries:'));
                 const configs = await integration.apiClient.getRemoteConfigs();
-                configs.forEach(config => {
+                configs.forEach((config) => {
                     console.log(`   - ${config.key}: ${config.value} (${config.type})`);
                 });
             }
@@ -278,7 +278,7 @@ class UnityCloudCLI {
             if (options.list) {
                 console.log(chalk.yellow('\n📈 Recent Analytics Events:'));
                 const events = await integration.apiClient.getAnalyticsEvents();
-                events.forEach(event => {
+                events.forEach((event) => {
                     console.log(`   - ${event.eventName}: ${event.timestamp}`);
                 });
             }
@@ -288,8 +288,8 @@ class UnityCloudCLI {
                     eventName: options.send,
                     timestamp: new Date().toISOString(),
                     properties: {
-                        source: 'unity-cloud-cli'
-                    }
+                        source: 'unity-cloud-cli',
+                    },
                 };
                 await integration.apiClient.sendAnalyticsEvent(eventData);
                 console.log(chalk.green('✅ Event sent successfully!'));

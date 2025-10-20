@@ -15,7 +15,7 @@ export class WorkflowStep {
         error?: never;
     } | {
         success: boolean;
-        error: Object;
+        error: import("../core/errors/ErrorHandler.js").HandledError;
         duration: number;
         step: any;
         result?: never;

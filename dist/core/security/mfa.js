@@ -8,7 +8,7 @@ import { Logger } from '../logger/index.js';
 const logger = new Logger('MFA');
 export class MFAProvider {
     constructor() {
-        this.issuer = 'Infinite Match';
+        this.issuer = 'Evergreen Match3';
         this.algorithm = 'sha1';
         this.digits = 6;
         this.period = 30;
@@ -27,7 +27,7 @@ export class MFAProvider {
             return {
                 secret,
                 qrCodeData,
-                backupCodes: this.generateBackupCodes()
+                backupCodes: this.generateBackupCodes(),
             };
         }
         catch (error) {
@@ -46,7 +46,7 @@ export class MFAProvider {
             const currentTime = Math.floor(Date.now() / 1000);
             const timeWindow = 1; // Allow 1 time window before/after
             for (let i = -timeWindow; i <= timeWindow; i++) {
-                const time = currentTime + (i * this.period);
+                const time = currentTime + i * this.period;
                 const expectedToken = this.generateTOTP(secret, time);
                 if (crypto.timingSafeEqual(Buffer.from(token, 'utf8'), Buffer.from(expectedToken, 'utf8'))) {
                     logger.info('MFA token verified successfully');
@@ -135,12 +135,15 @@ export class MFAProvider {
         if (paddingCount > 0 && paddingCount < 8) {
             str = str.replace(new RegExp(padding + '+$'), '');
         }
-        const bits = str.split('').map(char => {
+        const bits = str
+            .split('')
+            .map((char) => {
             const index = alphabet.indexOf(char);
             if (index === -1)
                 throw new Error('Invalid base32 character');
             return index.toString(2).padStart(5, '0');
-        }).join('');
+        })
+            .join('');
         const bytes = [];
         for (let i = 0; i < bits.length; i += 8) {
             const byte = bits.substr(i, 8);

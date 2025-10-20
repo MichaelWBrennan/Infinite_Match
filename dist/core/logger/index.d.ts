@@ -1,16 +1,33 @@
-export default logger;
-export const logger: winston.Logger;
-export const securityLogger: winston.Logger;
-export const requestLogger: winston.Logger;
-export class Logger {
-    constructor(context?: string);
-    context: string;
-    info(message: any, meta?: {}): void;
-    warn(message: any, meta?: {}): void;
-    error(message: any, meta?: {}): void;
-    debug(message: any, meta?: {}): void;
-    security(event: any, details?: {}): void;
-    request(req: any, res: any, duration: any): void;
-}
+/**
+ * Centralized Logging Module
+ * Industry-standard logging with structured output and multiple transports
+ */
 import winston from 'winston';
+declare const logger: winston.Logger;
+declare const securityLogger: winston.Logger;
+declare const requestLogger: winston.Logger;
+export interface LogMeta {
+    [key: string]: any;
+}
+export interface RequestLogMeta {
+    method: string;
+    url: string;
+    statusCode: number;
+    duration: string;
+    ip: string;
+    userAgent?: string;
+    requestId?: string;
+}
+export declare class Logger {
+    private context;
+    constructor(context?: string);
+    info(message: string, meta?: LogMeta): void;
+    warn(message: string, meta?: LogMeta): void;
+    error(message: string, meta?: LogMeta): void;
+    debug(message: string, meta?: LogMeta): void;
+    security(event: string, details?: LogMeta): void;
+    request(req: any, res: any, duration: number): void;
+}
+export { logger, securityLogger, requestLogger };
+export default logger;
 //# sourceMappingURL=index.d.ts.map

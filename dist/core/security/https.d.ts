@@ -4,7 +4,7 @@ export function httpsHeaders(req: any, res: any, next: any): void;
 export function httpsHealthCheck(req: any, res: any): void;
 export function getHttpsConfig(): {
     enabled: boolean;
-    environment: string;
+    environment: any;
     enforcement: boolean;
     headers: {
         hsts: boolean;

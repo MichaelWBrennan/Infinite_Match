@@ -2,8 +2,8 @@
  * Workflow Engine
  * Manages execution of workflow steps with state management
  */
-import { Logger } from 'core/logger/index.js';
-import { ErrorHandler } from 'core/errors/ErrorHandler.js';
+import { Logger } from '../core/logger/index.js';
+import { ErrorHandler } from '../core/errors/ErrorHandler.js';
 const logger = new Logger('WorkflowEngine');
 export class WorkflowStep {
     constructor(name, executeFn, options = {}) {
@@ -175,18 +175,14 @@ export class WorkflowEngine {
     getStats() {
         const totalDuration = this.results.reduce((sum, result) => sum + result.duration, 0);
         const successRate = this.results.length > 0
-            ? ((this.results.filter((r) => r.success).length /
-                this.results.length) *
-                100).toFixed(2)
+            ? ((this.results.filter((r) => r.success).length / this.results.length) * 100).toFixed(2)
             : 0;
         return {
             totalSteps: this.steps.length,
             executedSteps: this.results.length,
             successRate: `${successRate}%`,
             totalDuration: `${totalDuration}ms`,
-            averageStepDuration: this.results.length > 0
-                ? `${Math.round(totalDuration / this.results.length)}ms`
-                : '0ms',
+            averageStepDuration: this.results.length > 0 ? `${Math.round(totalDuration / this.results.length)}ms` : '0ms',
         };
     }
     /**

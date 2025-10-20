@@ -1,30 +1,28 @@
-export class ServiceContainer {
-    services: Map<any, any>;
-    singletons: Map<any, any>;
-    factories: Map<any, any>;
+/**
+ * Service Container for Dependency Injection
+ * Centralized service management and dependency resolution
+ */
+export interface ServiceDefinition<T = any> {
+    factory: (container: ServiceContainer) => T;
+    singleton: boolean;
+}
+export declare class ServiceContainer {
+    private services;
+    private singletons;
     /**
      * Register a service factory
-     * @param {string} name - Service name
-     * @param {Function} factory - Factory function that creates the service
-     * @param {boolean} singleton - Whether to create as singleton
      */
-    register(name: string, factory: Function, singleton?: boolean): void;
+    register<T>(name: string, factory: (container: ServiceContainer) => T, singleton?: boolean): void;
     /**
      * Register a service instance
-     * @param {string} name - Service name
-     * @param {*} instance - Service instance
      */
-    registerInstance(name: string, instance: any): void;
+    registerInstance<T>(name: string, instance: T): void;
     /**
      * Get a service instance
-     * @param {string} name - Service name
-     * @returns {*} Service instance
      */
-    get(name: string): any;
+    get<T>(name: string): T;
     /**
      * Check if a service is registered
-     * @param {string} name - Service name
-     * @returns {boolean}
      */
     has(name: string): boolean;
     /**
@@ -33,10 +31,9 @@ export class ServiceContainer {
     clear(): void;
     /**
      * Get all registered service names
-     * @returns {string[]}
      */
     getServiceNames(): string[];
 }
-export const container: ServiceContainer;
+export declare const container: ServiceContainer;
 export default container;
 //# sourceMappingURL=ServiceContainer.d.ts.map

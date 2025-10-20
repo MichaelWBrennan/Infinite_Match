@@ -2,8 +2,8 @@
  * Economy Deploy Workflow Step
  * Deploys economy data to Unity Services
  */
-import { Logger } from 'core/logger/index.js';
-import { getService } from 'core/services/ServiceRegistry.js';
+import { Logger } from '../../core/logger/index.js';
+import { getService } from '../../core/services/ServiceRegistry.js';
 const logger = new Logger('EconomyDeployStep');
 export class EconomyDeployStep {
     constructor() {
@@ -34,8 +34,7 @@ export class EconomyDeployStep {
                 inventoryDeployed: deployResults.economy.result?.inventory?.length || 0,
                 catalogDeployed: deployResults.economy.result?.catalog?.length || 0,
                 errors: deployResults.economy.result?.errors || [],
-                message: deployResults.economy.result?.message ||
-                    'Economy deployment completed',
+                message: deployResults.economy.result?.message || 'Economy deployment completed',
                 timestamp: new Date().toISOString(),
             };
             // Store results in state

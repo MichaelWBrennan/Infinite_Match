@@ -1280,11 +1280,11 @@ export class UniversalAPI {
   /**
    * Check if feature is supported
    */
-  isFeatureSupported(feature: keyof typeof this.currentPlatform.capabilities): boolean {
+  isFeatureSupported(feature: keyof typeof this.currentPlatform?.capabilities): boolean {
     if (!this.currentPlatform) {
       return false;
     }
-    return this.currentPlatform.capabilities[feature] || false;
+    return Boolean(this.currentPlatform.capabilities[feature] || false);
   }
 
   /**

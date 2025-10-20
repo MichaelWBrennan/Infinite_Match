@@ -5,6 +5,7 @@ import { ErrorHandler, ValidationError } from '../core/errors/ErrorHandler.js';
 import { ApiResponseBuilder, ApiResponse } from '../core/types/ApiResponse.js';
 import { ServiceContainer } from '../core/container/ServiceContainer.js';
 import { analyticsMiddleware, gameEventMiddleware } from '../middleware/analytics-middleware.js';
+import security from '../core/security/index.js';
 
 const router = express.Router();
 const logger = new Logger('GameRoutes');
@@ -388,6 +389,254 @@ router.post(
       const errorInfo = ErrorHandler.handle(error as Error, { route: 'game/error' });
       const response = ApiResponseBuilder.error(
         errorInfo.context?.code || 'ERROR_TRACKING_ERROR',
+        errorInfo.message,
+        errorInfo.type,
+        errorInfo.recoverable,
+        errorInfo.action,
+        errorInfo.context,
+      );
+      res.status(500).json(response);
+    }
+  },
+);
+
+/**
+ * @route POST /api/game/submit_data
+ * @desc Submit game data with security validation
+ */
+router.post(
+  '/submit_data',
+  security.sessionValidation,
+  [
+    body('gameData').isObject().withMessage('Game data must be an object'),
+    body('actionType').isString().withMessage('Action type must be a string'),
+  ],
+  validateRequest,
+  async (req: Request, res: Response) => {
+    try {
+      const { gameData, actionType } = req.body;
+      const playerId = req.user?.playerId;
+
+      logger.info('Game data submitted', {
+        playerId,
+        actionType,
+        gameData,
+      });
+
+      security.logSecurityEvent('game_data_submitted', {
+        playerId,
+        actionType,
+        ip: req.ip,
+      });
+
+      const response = ApiResponseBuilder.success({
+        message: 'Game data processed successfully',
+      });
+
+      res.json(response);
+    } catch (error) {
+      logger.error('Game data submission failed', { error: error.message });
+      const errorInfo = ErrorHandler.handle(error as Error, { route: 'game/submit_data' });
+      const response = ApiResponseBuilder.error(
+        errorInfo.context?.code || 'GAME_DATA_SUBMISSION_ERROR',
+        errorInfo.message,
+        errorInfo.type,
+        errorInfo.recoverable,
+        errorInfo.action,
+        errorInfo.context,
+      );
+      res.status(500).json(response);
+    }
+  },
+);
+
+/**
+ * @route GET /api/game/progress
+ * @desc Get player progress
+ */
+router.get('/progress', security.sessionValidation, async (req: Request, res: Response) => {
+  try {
+    const playerId = req.user?.playerId;
+
+    // TODO: Implement actual progress retrieval
+    const progress = {
+      playerId,
+      level: 1,
+      score: 0,
+      coins: 100,
+      gems: 10,
+      lastPlayed: new Date().toISOString(),
+    };
+
+    const response = ApiResponseBuilder.success({ progress });
+
+    res.json(response);
+  } catch (error) {
+    logger.error('Failed to get player progress', { error: error.message });
+    const errorInfo = ErrorHandler.handle(error as Error, { route: 'game/progress' });
+    const response = ApiResponseBuilder.error(
+      errorInfo.context?.code || 'PROGRESS_RETRIEVAL_ERROR',
+      errorInfo.message,
+      errorInfo.type,
+      errorInfo.recoverable,
+      errorInfo.action,
+      errorInfo.context,
+    );
+    res.status(500).json(response);
+  }
+});
+
+/**
+ * @route PUT /api/game/progress
+ * @desc Update player progress
+ */
+router.put('/progress', security.sessionValidation, async (req: Request, res: Response) => {
+  try {
+    const playerId = req.user?.playerId;
+    const progressData = req.body;
+
+    logger.info('Player progress updated', {
+      playerId,
+      progressData,
+    });
+
+    security.logSecurityEvent('progress_updated', {
+      playerId,
+      ip: req.ip,
+    });
+
+    const response = ApiResponseBuilder.success({
+      message: 'Progress updated successfully',
+    });
+
+    res.json(response);
+  } catch (error) {
+    logger.error('Failed to update player progress', { error: error.message });
+    const errorInfo = ErrorHandler.handle(error as Error, { route: 'game/progress' });
+    const response = ApiResponseBuilder.error(
+      errorInfo.context?.code || 'PROGRESS_UPDATE_ERROR',
+      errorInfo.message,
+      errorInfo.type,
+      errorInfo.recoverable,
+      errorInfo.action,
+      errorInfo.context,
+    );
+    res.status(500).json(response);
+  }
+});
+
+/**
+ * @route GET /api/game/leaderboard
+ * @desc Get leaderboard
+ */
+router.get('/leaderboard', security.sessionValidation, async (req: Request, res: Response) => {
+  try {
+    const { type = 'score', limit = 10 } = req.query;
+
+    // TODO: Implement actual leaderboard retrieval
+    const leaderboard = Array.from({ length: parseInt(limit as string) }, (_, i) => ({
+      rank: i + 1,
+      playerId: `player_${i + 1}`,
+      score: 10000 - i * 100,
+      name: `Player ${i + 1}`,
+    }));
+
+    const response = ApiResponseBuilder.success({
+      leaderboard,
+      type,
+    });
+
+    res.json(response);
+  } catch (error) {
+    logger.error('Failed to get leaderboard', { error: error.message });
+    const errorInfo = ErrorHandler.handle(error as Error, { route: 'game/leaderboard' });
+    const response = ApiResponseBuilder.error(
+      errorInfo.context?.code || 'LEADERBOARD_RETRIEVAL_ERROR',
+      errorInfo.message,
+      errorInfo.type,
+      errorInfo.recoverable,
+      errorInfo.action,
+      errorInfo.context,
+    );
+    res.status(500).json(response);
+  }
+});
+
+/**
+ * @route GET /api/game/achievements
+ * @desc Get achievements
+ */
+router.get('/achievements', security.sessionValidation, async (req: Request, res: Response) => {
+  try {
+    // TODO: Implement actual achievements retrieval
+    const achievements = [
+      {
+        id: 'first_play',
+        name: 'First Play',
+        description: 'Complete your first game',
+        unlocked: true,
+        unlockedAt: new Date().toISOString(),
+      },
+      {
+        id: 'score_1000',
+        name: 'Score Master',
+        description: 'Score 1000 points in a single game',
+        unlocked: false,
+        unlockedAt: null,
+      },
+    ];
+
+    const response = ApiResponseBuilder.success({ achievements });
+
+    res.json(response);
+  } catch (error) {
+    logger.error('Failed to get achievements', { error: error.message });
+    const errorInfo = ErrorHandler.handle(error as Error, { route: 'game/achievements' });
+    const response = ApiResponseBuilder.error(
+      errorInfo.context?.code || 'ACHIEVEMENTS_RETRIEVAL_ERROR',
+      errorInfo.message,
+      errorInfo.type,
+      errorInfo.recoverable,
+      errorInfo.action,
+      errorInfo.context,
+    );
+    res.status(500).json(response);
+  }
+});
+
+/**
+ * @route POST /api/game/achievements/:achievementId/unlock
+ * @desc Unlock achievement
+ */
+router.post(
+  '/achievements/:achievementId/unlock',
+  security.sessionValidation,
+  async (req: Request, res: Response) => {
+    try {
+      const playerId = req.user?.playerId;
+      const { achievementId } = req.params;
+
+      logger.info('Achievement unlocked', {
+        playerId,
+        achievementId,
+      });
+
+      security.logSecurityEvent('achievement_unlocked', {
+        playerId,
+        achievementId,
+        ip: req.ip,
+      });
+
+      const response = ApiResponseBuilder.success({
+        message: 'Achievement unlocked successfully',
+      });
+
+      res.json(response);
+    } catch (error) {
+      logger.error('Failed to unlock achievement', { error: error.message });
+      const errorInfo = ErrorHandler.handle(error as Error, { route: 'game/achievements/unlock' });
+      const response = ApiResponseBuilder.error(
+        errorInfo.context?.code || 'ACHIEVEMENT_UNLOCK_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,

@@ -1,0 +1,106 @@
+declare const _default: LiveOpsDashboard;
+export default _default;
+export class LiveOpsDashboard {
+    isInitialized: boolean;
+    activeEvents: Map<any, any>;
+    eventTemplates: Map<any, any>;
+    eventHistory: any[];
+    activeCampaigns: Map<any, any>;
+    campaignTemplates: Map<any, any>;
+    campaignHistory: any[];
+    interventionQueue: Map<any, any>;
+    interventionRules: Map<any, any>;
+    interventionHistory: any[];
+    abTests: Map<any, any>;
+    testResults: Map<any, any>;
+    realTimeMetrics: Map<any, any>;
+    alertThresholds: Map<any, any>;
+    activeAlerts: Map<any, any>;
+    performanceMetrics: {
+        eventsCreated: number;
+        campaignsExecuted: number;
+        interventionsTriggered: number;
+        playersAffected: number;
+        revenueImpact: number;
+    };
+    initialize(): Promise<void>;
+    initializeTemplates(): void;
+    createEvent(eventData: any): Promise<string>;
+    deployEvent(eventId: any): Promise<void>;
+    endEvent(eventId: any): Promise<void>;
+    createCampaign(campaignData: any): Promise<string>;
+    executeCampaign(campaignId: any): Promise<void>;
+    executeCampaignActions(player: any, campaign: any): Promise<void>;
+    executeAction(player: any, action: any): Promise<void>;
+    setupInterventionRules(): void;
+    checkInterventionTriggers(playerId: any, playerData: any): Promise<{
+        ruleName: any;
+        rule: any;
+        playerId: any;
+        playerData: any;
+        timestamp: number;
+    }[]>;
+    queueIntervention(intervention: any): Promise<void>;
+    processIntervention(intervention: any): Promise<void>;
+    createABTest(testData: any): Promise<string>;
+    startABTest(testId: any): Promise<void>;
+    assignPlayerToVariant(playerId: any, variants: any): any;
+    executeABTestVariant(player: any, abTest: any, variant: any): Promise<void>;
+    setupAlertThresholds(): void;
+    updateRealTimeMetrics(metricName: any, value: any, metadata?: {}): Promise<void>;
+    checkAlerts(metricName: any, value: any): Promise<void>;
+    triggerAlert(metricName: any, alertData: any): Promise<void>;
+    sendAlertNotifications(alert: any): Promise<void>;
+    getTargetPlayers(targetAudience: any): Promise<{
+        id: string;
+        level: number;
+        churnProbability: number;
+        lastActive: number;
+        totalSpent: number;
+        friendCount: number;
+        engagementLevel: string | undefined;
+    }[]>;
+    evaluateInterventionRule(playerId: any, rule: any, playerData: any): Promise<boolean>;
+    giveReward(playerId: any, rewardData: any): Promise<void>;
+    triggerSocialAction(playerId: any, actionData: any): Promise<void>;
+    startRealTimeMonitoring(): void;
+    startInterventionProcessor(): void;
+    startEventProcessor(): void;
+    startCampaignProcessor(): void;
+    startABTestProcessor(): void;
+    processInterventionQueue(): Promise<void>;
+    processActiveEvents(): Promise<void>;
+    processActiveCampaigns(): Promise<void>;
+    processActiveABTests(): Promise<void>;
+    updateDashboardMetrics(): Promise<void>;
+    dateToCron(date: any): string;
+    hashString(str: any): number;
+    getDashboardData(): Promise<{
+        events: any[];
+        campaigns: any[];
+        abTests: any[];
+        interventions: any[];
+        alerts: any[];
+        metrics: {
+            eventsCreated: number;
+            campaignsExecuted: number;
+            interventionsTriggered: number;
+            playersAffected: number;
+            revenueImpact: number;
+        };
+        realTimeMetrics: any;
+    }>;
+    getEventTemplates(): Promise<[any, any][]>;
+    getCampaignTemplates(): Promise<[any, any][]>;
+    getInterventionRules(): Promise<[any, any][]>;
+    getMetrics(): Promise<{
+        realTimeMetrics: any;
+        activeAlerts: number;
+        eventsCreated: number;
+        campaignsExecuted: number;
+        interventionsTriggered: number;
+        playersAffected: number;
+        revenueImpact: number;
+    }>;
+}
+//# sourceMappingURL=live-ops-dashboard.d.ts.map
