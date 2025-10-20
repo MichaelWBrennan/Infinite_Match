@@ -14,20 +14,20 @@ const __dirname = path.dirname(__filename);
 class UnityGamingServicesCLISimple {
     constructor() {
         this.commands = {
-            'deploy': this.deployCommand.bind(this),
-            'sync': this.syncCommand.bind(this),
-            'status': this.statusCommand.bind(this),
-            'health': this.healthCommand.bind(this),
-            'economy': this.economyCommand.bind(this),
+            deploy: this.deployCommand.bind(this),
+            sync: this.syncCommand.bind(this),
+            status: this.statusCommand.bind(this),
+            health: this.healthCommand.bind(this),
+            economy: this.economyCommand.bind(this),
             'cloud-code': this.cloudCodeCommand.bind(this),
             'remote-config': this.remoteConfigCommand.bind(this),
-            'analytics': this.analyticsCommand.bind(this),
+            analytics: this.analyticsCommand.bind(this),
             // Cloud-only build commands (proxy to unity-wrapper)
-            'build': this.buildCommand.bind(this),
+            build: this.buildCommand.bind(this),
             'build-status': this.buildStatusCommand.bind(this),
             'build-download': this.buildDownloadCommand.bind(this),
             'build-list': this.buildListCommand.bind(this),
-            'help': this.helpCommand.bind(this)
+            help: this.helpCommand.bind(this),
         };
     }
     async runWrapper(args) {
@@ -188,7 +188,7 @@ class UnityGamingServicesCLISimple {
             if (args.includes('--list') || args.includes('-l')) {
                 console.log('\n💵 Currencies:');
                 const currencies = await integration.apiClient.getCurrencies();
-                currencies.forEach(currency => {
+                currencies.forEach((currency) => {
                     console.log(`   - ${currency.id}: ${currency.name} (${currency.type})`);
                 });
             }
@@ -206,7 +206,7 @@ class UnityGamingServicesCLISimple {
             if (args.includes('--list') || args.includes('-l')) {
                 console.log('\n🔧 Cloud Code Functions:');
                 const functions = await integration.apiClient.getCloudCodeFunctions();
-                functions.forEach(func => {
+                functions.forEach((func) => {
                     console.log(`   - ${func.name}: ${func.description || 'No description'}`);
                 });
             }
@@ -224,7 +224,7 @@ class UnityGamingServicesCLISimple {
             if (args.includes('--list') || args.includes('-l')) {
                 console.log('\n🔧 Remote Config Entries:');
                 const configs = await integration.apiClient.getRemoteConfigs();
-                configs.forEach(config => {
+                configs.forEach((config) => {
                     console.log(`   - ${config.key}: ${config.value} (${config.type})`);
                 });
             }
@@ -242,7 +242,7 @@ class UnityGamingServicesCLISimple {
             if (args.includes('--list') || args.includes('-l')) {
                 console.log('\n📈 Recent Analytics Events:');
                 const events = await integration.apiClient.getAnalyticsEvents();
-                events.forEach(event => {
+                events.forEach((event) => {
                     console.log(`   - ${event.eventName}: ${event.timestamp}`);
                 });
             }
@@ -293,7 +293,7 @@ class UnityGamingServicesCLISimple {
 }
 // Run CLI
 const cli = new UnityGamingServicesCLISimple();
-cli.run().catch(error => {
+cli.run().catch((error) => {
     console.error('❌ CLI failed:', error);
     process.exit(1);
 });

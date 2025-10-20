@@ -11,7 +11,7 @@ export const ROLES = {
     PREMIUM_USER: 'premium_user',
     MODERATOR: 'moderator',
     ADMIN: 'admin',
-    SUPER_ADMIN: 'super_admin'
+    SUPER_ADMIN: 'super_admin',
 };
 export const PERMISSIONS = {
     // User permissions
@@ -43,7 +43,7 @@ export const PERMISSIONS = {
     MANAGE_ADMINS: 'manage_admins',
     SYSTEM_CONFIGURATION: 'system_configuration',
     DATABASE_ACCESS: 'database_access',
-    SECURITY_OVERRIDE: 'security_override'
+    SECURITY_OVERRIDE: 'security_override',
 };
 // Role hierarchy (higher roles inherit lower role permissions)
 const ROLE_HIERARCHY = {
@@ -52,13 +52,11 @@ const ROLE_HIERARCHY = {
     [ROLES.PREMIUM_USER]: 2,
     [ROLES.MODERATOR]: 3,
     [ROLES.ADMIN]: 4,
-    [ROLES.SUPER_ADMIN]: 5
+    [ROLES.SUPER_ADMIN]: 5,
 };
 // Define permissions for each role
 const ROLE_PERMISSIONS = {
-    [ROLES.GUEST]: [
-        PERMISSIONS.READ_PROFILE
-    ],
+    [ROLES.GUEST]: [PERMISSIONS.READ_PROFILE],
     [ROLES.USER]: [
         PERMISSIONS.READ_PROFILE,
         PERMISSIONS.UPDATE_PROFILE,
@@ -68,20 +66,20 @@ const ROLE_PERMISSIONS = {
         PERMISSIONS.PURCHASE_ITEMS,
         PERMISSIONS.VIEW_LEADERBOARDS,
         PERMISSIONS.SEND_FRIEND_REQUESTS,
-        PERMISSIONS.CHAT_WITH_FRIENDS
+        PERMISSIONS.CHAT_WITH_FRIENDS,
     ],
     [ROLES.PREMIUM_USER]: [
         // Inherits all USER permissions
         ...Object.values(ROLE_PERMISSIONS[ROLES.USER]),
         PERMISSIONS.ACCESS_PREMIUM_FEATURES,
-        PERMISSIONS.CREATE_GUILDS
+        PERMISSIONS.CREATE_GUILDS,
     ],
     [ROLES.MODERATOR]: [
         // Inherits all PREMIUM_USER permissions
         ...Object.values(ROLE_PERMISSIONS[ROLES.PREMIUM_USER]),
         PERMISSIONS.MODERATE_CHAT,
         PERMISSIONS.VIEW_REPORTS,
-        PERMISSIONS.MANAGE_CONTENT
+        PERMISSIONS.MANAGE_CONTENT,
     ],
     [ROLES.ADMIN]: [
         // Inherits all MODERATOR permissions
@@ -91,7 +89,7 @@ const ROLE_PERMISSIONS = {
         PERMISSIONS.MANAGE_GAME_SETTINGS,
         PERMISSIONS.VIEW_ANALYTICS,
         PERMISSIONS.MANAGE_ECONOMY,
-        PERMISSIONS.DEPLOY_UPDATES
+        PERMISSIONS.DEPLOY_UPDATES,
     ],
     [ROLES.SUPER_ADMIN]: [
         // Inherits all ADMIN permissions
@@ -99,8 +97,8 @@ const ROLE_PERMISSIONS = {
         PERMISSIONS.MANAGE_ADMINS,
         PERMISSIONS.SYSTEM_CONFIGURATION,
         PERMISSIONS.DATABASE_ACCESS,
-        PERMISSIONS.SECURITY_OVERRIDE
-    ]
+        PERMISSIONS.SECURITY_OVERRIDE,
+    ],
 };
 export class RBACProvider {
     constructor() {
@@ -121,7 +119,7 @@ export class RBACProvider {
             role,
             assignedBy,
             assignedAt: new Date().toISOString(),
-            permissions: this.getRolePermissions(role)
+            permissions: this.getRolePermissions(role),
         });
         logger.info('Role assigned', { userId, role, assignedBy });
     }
@@ -172,10 +170,10 @@ export class RBACProvider {
         const role = userRole.role;
         const permissions = new Set();
         // Add permissions from current role and all lower roles
-        Object.keys(ROLE_HIERARCHY).forEach(roleName => {
+        Object.keys(ROLE_HIERARCHY).forEach((roleName) => {
             if (ROLE_HIERARCHY[roleName] <= ROLE_HIERARCHY[role]) {
                 const rolePermissions = this.getRolePermissions(roleName);
-                rolePermissions.forEach(permission => permissions.add(permission));
+                rolePermissions.forEach((permission) => permissions.add(permission));
             }
         });
         return Array.from(permissions);
@@ -198,7 +196,7 @@ export class RBACProvider {
      */
     hasAnyPermission(userId, permissions) {
         const userPermissions = this.getUserPermissions(userId);
-        return permissions.some(permission => userPermissions.includes(permission));
+        return permissions.some((permission) => userPermissions.includes(permission));
     }
     /**
      * Check if user has all of the specified permissions
@@ -208,7 +206,7 @@ export class RBACProvider {
      */
     hasAllPermissions(userId, permissions) {
         const userPermissions = this.getUserPermissions(userId);
-        return permissions.every(permission => userPermissions.includes(permission));
+        return permissions.every((permission) => userPermissions.includes(permission));
     }
     /**
      * Check if user can perform action on resource
@@ -241,7 +239,7 @@ export class RBACProvider {
      */
     getRoleStatistics() {
         const stats = {};
-        Object.values(ROLES).forEach(role => {
+        Object.values(ROLES).forEach((role) => {
             stats[role] = 0;
         });
         for (const userRole of this.userRoles.values()) {

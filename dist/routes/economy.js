@@ -4,15 +4,17 @@
  */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from 'core/security/index.js';
-import { Logger } from 'core/logger/index.js';
-import EconomyService from 'services/economy/index.js';
-import UnityService from 'services/unity/index.js';
+import security from '../core/security/index.js';
+import { Logger } from '../core/logger/index.js';
+import PricingService from '../services/pricing/PricingService.js';
+import EconomyService from '../services/economy/index.js';
+import UnityService from '../services/unity/index.js';
 const router = express.Router();
 const logger = new Logger('EconomyRoutes');
 // Initialize services
 const economyService = new EconomyService();
 const unityService = new UnityService();
+const pricingService = new PricingService();
 // Helper function for consistent error handling
 const handleRouteError = (res, error, operation, requestId) => {
     logger.error(`Failed to ${operation}`, { error: error.message });
@@ -24,9 +26,7 @@ const handleRouteError = (res, error, operation, requestId) => {
 };
 // Validation middleware
 const validateEconomyData = [
-    body('type')
-        .isIn(['currency', 'inventory', 'catalog'])
-        .withMessage('Invalid economy data type'),
+    body('type').isIn(['currency', 'inventory', 'catalog']).withMessage('Invalid economy data type'),
     body('data').isArray().withMessage('Data must be an array'),
 ];
 // Get economy data
@@ -209,4 +209,20 @@ router.post('/catalog', security.sessionValidation, async (req, res) => {
     }
 });
 export default router;
+// Monetization helpers (mounted under /api/monetization in server)
+export const createPricingRouter = () => {
+    const r = express.Router();
+    r.get('/pricing', security.sessionValidation, async (req, res) => {
+        try {
+            const { country, currency } = req.query;
+            const tiers = await pricingService.getLocalizedTiers({ country, currency });
+            res.json({ success: true, tiers, country: country || null, currency: currency || null });
+        }
+        catch (error) {
+            logger.error('Pricing retrieval failed', { error: error.message });
+            res.status(500).json({ success: false, error: 'pricing_error' });
+        }
+    });
+    return r;
+};
 //# sourceMappingURL=economy.js.map

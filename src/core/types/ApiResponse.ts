@@ -13,7 +13,7 @@ export interface ApiResponse<T = any> {
     recoverable: boolean;
     action: string;
     timestamp: string;
-    context?: Record<string, any>;
+    context?: Record<string, any> | undefined;
   };
   meta?: {
     timestamp: string;
@@ -72,7 +72,7 @@ export class ApiResponseBuilder {
         recoverable,
         action,
         timestamp: new Date().toISOString(),
-        context,
+        context: context || undefined,
       },
       meta: {
         timestamp: new Date().toISOString(),

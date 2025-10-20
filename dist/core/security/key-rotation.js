@@ -27,17 +27,17 @@ export class KeyRotationManager {
             key: jwtSecret,
             createdAt: new Date(),
             version: 1,
-            active: true
+            active: true,
         });
         this.currentKeys.set('encryption', {
             key: encryptionKey,
             createdAt: new Date(),
             version: 1,
-            active: true
+            active: true,
         });
         logger.info('Keys initialized', {
             jwtVersion: 1,
-            encryptionVersion: 1
+            encryptionVersion: 1,
         });
     }
     /**
@@ -50,7 +50,7 @@ export class KeyRotationManager {
         const key = crypto.randomBytes(length).toString('hex');
         logger.info('New key generated', {
             type,
-            length: key.length
+            length: key.length,
         });
         return key;
     }
@@ -72,38 +72,38 @@ export class KeyRotationManager {
             this.keyHistory.set(`${keyType}_${currentKey.version}`, {
                 ...currentKey,
                 active: false,
-                rotatedAt: new Date()
+                rotatedAt: new Date(),
             });
             // Update current key
             this.currentKeys.set(keyType, {
                 key: newKey,
                 createdAt: new Date(),
                 version: newVersion,
-                active: true
+                active: true,
             });
             // Notify callbacks
             this.notifyKeyRotation(keyType, newKey, newVersion);
             logger.info('Key rotated successfully', {
                 keyType,
                 version: newVersion,
-                previousVersion: currentKey.version
+                previousVersion: currentKey.version,
             });
             return {
                 success: true,
                 keyType,
                 newVersion,
-                previousVersion: currentKey.version
+                previousVersion: currentKey.version,
             };
         }
         catch (error) {
             logger.error('Key rotation failed', {
                 error: error.message,
-                keyType
+                keyType,
             });
             return {
                 success: false,
                 error: error.message,
-                keyType
+                keyType,
             };
         }
     }
@@ -117,7 +117,7 @@ export class KeyRotationManager {
             results[keyType] = this.rotateKey(keyType);
         }
         logger.info('All keys rotated', {
-            results: Object.keys(results).length
+            results: Object.keys(results).length,
         });
         return results;
     }
@@ -160,14 +160,14 @@ export class KeyRotationManager {
      */
     notifyKeyRotation(keyType, newKey, version) {
         const callbacks = this.rotationCallbacks.get(keyType) || [];
-        callbacks.forEach(callback => {
+        callbacks.forEach((callback) => {
             try {
                 callback(keyType, newKey, version);
             }
             catch (error) {
                 logger.error('Key rotation callback failed', {
                     error: error.message,
-                    keyType
+                    keyType,
                 });
             }
         });
@@ -180,7 +180,7 @@ export class KeyRotationManager {
             this.rotateAllKeys();
         }, this.rotationInterval);
         logger.info('Key rotation timer started', {
-            interval: this.rotationInterval
+            interval: this.rotationInterval,
         });
     }
     /**
@@ -192,13 +192,13 @@ export class KeyRotationManager {
             totalKeys: this.currentKeys.size,
             totalHistory: this.keyHistory.size,
             rotationInterval: this.rotationInterval,
-            keys: {}
+            keys: {},
         };
         for (const [keyType, keyData] of this.currentKeys.entries()) {
             stats.keys[keyType] = {
                 version: keyData.version,
                 createdAt: keyData.createdAt,
-                active: keyData.active
+                active: keyData.active,
             };
         }
         return stats;
@@ -208,6 +208,7 @@ export class KeyRotationManager {
      * @param {number} maxAge - Maximum age in milliseconds
      */
     cleanupOldKeys(maxAge = 7 * 24 * 60 * 60 * 1000) {
+        // 7 days
         const cutoff = new Date(Date.now() - maxAge);
         let cleaned = 0;
         for (const [key, keyData] of this.keyHistory.entries()) {
@@ -235,7 +236,7 @@ export class KeyRotationManager {
         return {
             nextRotation,
             interval: this.rotationInterval,
-            timeUntilRotation: nextRotation.getTime() - Date.now()
+            timeUntilRotation: nextRotation.getTime() - Date.now(),
         };
     }
 }

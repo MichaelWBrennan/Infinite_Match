@@ -5,7 +5,7 @@
 
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { AppConfig } from '../config/index.js';
+import AppConfig from '../config/index.js';
 
 const { combine, timestamp, errors, json, printf, colorize } = winston.format;
 
@@ -19,7 +19,7 @@ const consoleFormat = printf(({ level, message, timestamp, ...meta }) => {
 const transports: winston.transport[] = [];
 
 // Console transport
-if (AppConfig.logging.format === 'json') {
+if (AppConfig.analytics.logging.format === 'json') {
   transports.push(
     new winston.transports.Console({
       format: combine(timestamp(), errors({ stack: true }), json()),
@@ -39,13 +39,13 @@ if (AppConfig.logging.format === 'json') {
 }
 
 // File transport (if enabled)
-if (AppConfig.logging.file.enabled) {
+if (AppConfig.analytics.logging.file?.enabled || false) {
   transports.push(
     new DailyRotateFile({
-      filename: `${AppConfig.logging.file.path}/app-%DATE%.log`,
+      filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/app-%DATE%.log`,
       datePattern: 'YYYY-MM-DD',
-      maxSize: AppConfig.logging.file.maxSize,
-      maxFiles: AppConfig.logging.file.maxFiles,
+      maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+      maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
       format: combine(timestamp(), errors({ stack: true }), json()),
     }),
   );
@@ -53,7 +53,7 @@ if (AppConfig.logging.file.enabled) {
 
 // Create logger instance
 const logger = winston.createLogger({
-  level: AppConfig.logging.level,
+  level: AppConfig.analytics.logging.level,
   format: combine(timestamp(), errors({ stack: true })),
   transports,
   exitOnError: false,
@@ -67,13 +67,13 @@ const securityLogger = winston.createLogger({
     new winston.transports.Console({
       format: combine(timestamp(), colorize(), consoleFormat),
     }),
-    ...(AppConfig.logging.file.enabled
+    ...(AppConfig.analytics.logging.file?.enabled
       ? [
           new DailyRotateFile({
-            filename: `${AppConfig.logging.file.path}/security-%DATE%.log`,
+            filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/security-%DATE%.log`,
             datePattern: 'YYYY-MM-DD',
-            maxSize: AppConfig.logging.file.maxSize,
-            maxFiles: AppConfig.logging.file.maxFiles,
+            maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+            maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
           }),
         ]
       : []),
@@ -86,13 +86,13 @@ const requestLogger = winston.createLogger({
   level: 'info',
   format: combine(timestamp(), errors({ stack: true }), json()),
   transports: [
-    ...(AppConfig.logging.file.enabled
+    ...(AppConfig.analytics.logging.file?.enabled
       ? [
           new DailyRotateFile({
-            filename: `${AppConfig.logging.file.path}/requests-%DATE%.log`,
+            filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/requests-%DATE%.log`,
             datePattern: 'YYYY-MM-DD',
-            maxSize: AppConfig.logging.file.maxSize,
-            maxFiles: AppConfig.logging.file.maxFiles,
+            maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+            maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
           }),
         ]
       : []),

@@ -16,7 +16,7 @@ export interface ErrorInfo {
   name: string;
   context: ErrorContext;
   timestamp: string;
-  stack?: string;
+  stack?: string | undefined;
 }
 
 export interface HandledError extends ErrorInfo {
@@ -88,7 +88,7 @@ export class ErrorHandler {
       name: error.name,
       context: { ...context, ...(error as any).context },
       timestamp: (error as any).timestamp || new Date().toISOString(),
-      stack: error.stack,
+      stack: error.stack || undefined,
     };
 
     // Categorize error
@@ -174,7 +174,7 @@ export class ErrorHandler {
     return {
       success: false,
       error: {
-        code: errorInfo.context?.code || 'UNKNOWN_ERROR',
+        code: errorInfo.context?.['code'] || 'UNKNOWN_ERROR',
         message: errorInfo.message,
         type: errorInfo.type,
         recoverable: errorInfo.recoverable,
@@ -199,8 +199,8 @@ export class ErrorHandler {
         const errorInfo = this.handle(error as Error, context);
         throw new AppError(
           errorInfo.message,
-          errorInfo.context?.code || 'WRAPPED_ERROR',
-          errorInfo.context?.statusCode || 500,
+          errorInfo.context?.['code'] || 'WRAPPED_ERROR',
+          errorInfo.context?.['statusCode'] || 500,
           errorInfo.context,
         );
       }

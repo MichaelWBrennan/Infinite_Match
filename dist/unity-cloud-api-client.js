@@ -14,18 +14,18 @@ class UnityGamingServicesAPIClient {
     constructor(options = {}) {
         // Read from environment variables (secrets are already set)
         // Use actual project ID from Unity services config
-        this.projectId = options.projectId || "0dd5a03e-7f23-49c4-964e-7919c48c0574";
-        this.environmentId = options.environmentId || "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d";
-        this.organizationId = options.organizationId || process.env.UNITY_ORG_ID || "2473931369648";
+        this.projectId = options.projectId || '0dd5a03e-7f23-49c4-964e-7919c48c0574';
+        this.environmentId = options.environmentId || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d';
+        this.organizationId = options.organizationId || process.env.UNITY_ORG_ID || '2473931369648';
         this.clientId = options.clientId || process.env.UNITY_CLIENT_ID;
         this.clientSecret = options.clientSecret || process.env.UNITY_CLIENT_SECRET;
         this.accessToken = options.accessToken || process.env.UNITY_API_TOKEN;
-        this.baseURL = "https://services.api.unity.com";
-        this.authURL = "https://api.unity.com/v1/oauth2";
-        this.ugsBaseURL = "https://services.api.unity.com";
+        this.baseURL = 'https://services.api.unity.com';
+        this.authURL = 'https://api.unity.com/v1/oauth2';
+        this.ugsBaseURL = 'https://services.api.unity.com';
         this.headers = {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            Accept: 'application/json',
         };
         this.retryAttempts = 3;
         this.retryDelay = 1000;
@@ -35,6 +35,62 @@ class UnityGamingServicesAPIClient {
      */
     getSecret(name) {
         return process.env[name];
+    }
+    /**
+     * Get platform-specific build configuration
+     */
+    getPlatformBuildConfig(platform) {
+        const configs = {
+            webgl: {
+                target: 'WebGL',
+                architecture: 'wasm32',
+                optimization: 'release',
+                memorySize: 256,
+                compression: 'gzip',
+                textureFormat: 'astc',
+            },
+            kongregate: {
+                target: 'WebGL',
+                architecture: 'wasm32',
+                optimization: 'release',
+                memorySize: 128,
+                compression: 'gzip',
+                textureFormat: 'dxt',
+            },
+            poki: {
+                target: 'WebGL',
+                architecture: 'wasm32',
+                optimization: 'release',
+                memorySize: 64,
+                compression: 'brotli',
+                textureFormat: 'etc2',
+            },
+            gamecrazy: {
+                target: 'WebGL',
+                architecture: 'wasm32',
+                optimization: 'release',
+                memorySize: 32,
+                compression: 'gzip',
+                textureFormat: 'dxt',
+            },
+            android: {
+                target: 'Android',
+                architecture: 'arm64',
+                optimization: 'release',
+                memorySize: 512,
+                compression: 'none',
+                textureFormat: 'astc',
+            },
+            ios: {
+                target: 'iOS',
+                architecture: 'arm64',
+                optimization: 'release',
+                memorySize: 256,
+                compression: 'none',
+                textureFormat: 'astc',
+            },
+        };
+        return configs[platform] || configs.webgl;
     }
     /**
      * Authenticate with Unity Cloud using client credentials
@@ -48,22 +104,20 @@ class UnityGamingServicesAPIClient {
             throw new Error('UGS credentials not available. Please check your secrets configuration.');
         }
         // UGS authentication endpoint
-        const authEndpoints = [
-            'https://api.unity.com/v1/oauth2/token'
-        ];
+        const authEndpoints = ['https://api.unity.com/v1/oauth2/token'];
         for (const endpoint of authEndpoints) {
             try {
                 console.log(`Trying authentication endpoint: ${endpoint}`);
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Content-Type': 'application/x-www-form-urlencoded',
                     },
                     body: new URLSearchParams({
                         grant_type: 'client_credentials',
                         client_id: this.clientId,
-                        client_secret: this.clientSecret
-                    })
+                        client_secret: this.clientSecret,
+                    }),
                 });
                 console.log(`Response status: ${response.status}`);
                 if (response.ok) {
@@ -91,7 +145,9 @@ class UnityGamingServicesAPIClient {
      */
     async makeRequest(endpoint, options = {}) {
         // Use UGS base URL for service endpoints
-        const baseURL = endpoint.startsWith('/remote-config') || endpoint.startsWith('/economy') || endpoint.startsWith('/cloud-code')
+        const baseURL = endpoint.startsWith('/remote-config') ||
+            endpoint.startsWith('/economy') ||
+            endpoint.startsWith('/cloud-code')
             ? this.ugsBaseURL
             : this.baseURL;
         const url = `${baseURL}${endpoint}`;
@@ -99,8 +155,8 @@ class UnityGamingServicesAPIClient {
             ...options,
             headers: {
                 ...this.headers,
-                ...options.headers
-            }
+                ...options.headers,
+            },
         };
         for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
             try {
@@ -122,7 +178,7 @@ class UnityGamingServicesAPIClient {
                     throw error;
                 }
                 console.warn(`⚠️ API request attempt ${attempt} failed, retrying...`);
-                await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
+                await new Promise((resolve) => setTimeout(resolve, this.retryDelay * attempt));
             }
         }
     }
@@ -143,7 +199,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies`;
         return await this.makeRequest(endpoint, {
             method: 'POST',
-            body: JSON.stringify(currencyData)
+            body: JSON.stringify(currencyData),
         });
     }
     /**
@@ -153,7 +209,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies/${currencyId}`;
         return await this.makeRequest(endpoint, {
             method: 'PUT',
-            body: JSON.stringify(currencyData)
+            body: JSON.stringify(currencyData),
         });
     }
     /**
@@ -162,7 +218,7 @@ class UnityGamingServicesAPIClient {
     async deleteCurrency(currencyId) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies/${currencyId}`;
         return await this.makeRequest(endpoint, {
-            method: 'DELETE'
+            method: 'DELETE',
         });
     }
     /**
@@ -179,7 +235,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory`;
         return await this.makeRequest(endpoint, {
             method: 'POST',
-            body: JSON.stringify(itemData)
+            body: JSON.stringify(itemData),
         });
     }
     /**
@@ -189,7 +245,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory/${itemId}`;
         return await this.makeRequest(endpoint, {
             method: 'PUT',
-            body: JSON.stringify(itemData)
+            body: JSON.stringify(itemData),
         });
     }
     /**
@@ -198,7 +254,7 @@ class UnityGamingServicesAPIClient {
     async deleteInventoryItem(itemId) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory/${itemId}`;
         return await this.makeRequest(endpoint, {
-            method: 'DELETE'
+            method: 'DELETE',
         });
     }
     /**
@@ -215,7 +271,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/catalog`;
         return await this.makeRequest(endpoint, {
             method: 'POST',
-            body: JSON.stringify(itemData)
+            body: JSON.stringify(itemData),
         });
     }
     /**
@@ -225,7 +281,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/catalog/${itemId}`;
         return await this.makeRequest(endpoint, {
             method: 'PUT',
-            body: JSON.stringify(itemData)
+            body: JSON.stringify(itemData),
         });
     }
     /**
@@ -234,7 +290,7 @@ class UnityGamingServicesAPIClient {
     async deleteCatalogItem(itemId) {
         const endpoint = `/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/catalog/${itemId}`;
         return await this.makeRequest(endpoint, {
-            method: 'DELETE'
+            method: 'DELETE',
         });
     }
     // ============================================================================
@@ -246,7 +302,7 @@ class UnityGamingServicesAPIClient {
     async getRemoteConfigs() {
         const endpoints = [
             `/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs`,
-            `/remote-config/v1/projects/${this.projectId}/configs`
+            `/remote-config/v1/projects/${this.projectId}/configs`,
         ];
         for (const endpoint of endpoints) {
             try {
@@ -268,7 +324,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs`;
         return await this.makeRequest(endpoint, {
             method: 'POST',
-            body: JSON.stringify(configData)
+            body: JSON.stringify(configData),
         });
     }
     /**
@@ -278,7 +334,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs/${configKey}`;
         return await this.makeRequest(endpoint, {
             method: 'PUT',
-            body: JSON.stringify(configData)
+            body: JSON.stringify(configData),
         });
     }
     /**
@@ -287,7 +343,7 @@ class UnityGamingServicesAPIClient {
     async deleteRemoteConfig(configKey) {
         const endpoint = `/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs/${configKey}`;
         return await this.makeRequest(endpoint, {
-            method: 'DELETE'
+            method: 'DELETE',
         });
     }
     // ============================================================================
@@ -307,7 +363,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/cloud-code/v1/projects/${this.projectId}/environments/${this.environmentId}/scripts`;
         return await this.makeRequest(endpoint, {
             method: 'POST',
-            body: JSON.stringify(functionData)
+            body: JSON.stringify(functionData),
         });
     }
     /**
@@ -317,7 +373,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/cloud-code/v1/projects/${this.projectId}/environments/${this.environmentId}/scripts/${functionId}`;
         return await this.makeRequest(endpoint, {
             method: 'PUT',
-            body: JSON.stringify(functionData)
+            body: JSON.stringify(functionData),
         });
     }
     /**
@@ -326,7 +382,7 @@ class UnityGamingServicesAPIClient {
     async deleteCloudCodeFunction(functionId) {
         const endpoint = `/cloud-code/v1/projects/${this.projectId}/environments/${this.environmentId}/scripts/${functionId}`;
         return await this.makeRequest(endpoint, {
-            method: 'DELETE'
+            method: 'DELETE',
         });
     }
     /**
@@ -336,7 +392,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/cloud-code/v1/projects/${this.projectId}/environments/${this.environmentId}/scripts/${functionId}/execute`;
         return await this.makeRequest(endpoint, {
             method: 'POST',
-            body: JSON.stringify({ parameters })
+            body: JSON.stringify({ parameters }),
         });
     }
     // ============================================================================
@@ -358,7 +414,7 @@ class UnityGamingServicesAPIClient {
         const endpoint = `/analytics/v1/projects/${this.projectId}/environments/${this.environmentId}/events`;
         return await this.makeRequest(endpoint, {
             method: 'POST',
-            body: JSON.stringify(eventData)
+            body: JSON.stringify(eventData),
         });
     }
     /**
@@ -405,7 +461,7 @@ class UnityGamingServicesAPIClient {
         const results = {
             currencies: { created: 0, updated: 0, errors: 0 },
             inventory: { created: 0, updated: 0, errors: 0 },
-            catalog: { created: 0, updated: 0, errors: 0 }
+            catalog: { created: 0, updated: 0, errors: 0 },
         };
         try {
             // Deploy currencies
@@ -475,7 +531,7 @@ class UnityGamingServicesAPIClient {
                 console.log('   ⚠️ Cloud code directory not found');
                 return results;
             }
-            const files = fs.readdirSync(cloudCodeDir).filter(file => file.endsWith('.js'));
+            const files = fs.readdirSync(cloudCodeDir).filter((file) => file.endsWith('.js'));
             for (const file of files) {
                 try {
                     const filePath = path.join(cloudCodeDir, file);
@@ -484,7 +540,7 @@ class UnityGamingServicesAPIClient {
                     const functionData = {
                         name: functionName,
                         code: content,
-                        language: 'javascript'
+                        language: 'javascript',
                     };
                     await this.createCloudCodeFunction(functionData);
                     results.created++;
@@ -521,7 +577,7 @@ class UnityGamingServicesAPIClient {
                     const configEntry = {
                         key: key,
                         value: value,
-                        type: typeof value
+                        type: typeof value,
                     };
                     await this.createRemoteConfig(configEntry);
                     results.created++;
@@ -545,10 +601,10 @@ class UnityGamingServicesAPIClient {
      */
     parseCSV(filePath) {
         const content = fs.readFileSync(filePath, 'utf8');
-        const lines = content.split('\n').filter(line => line.trim());
-        const headers = lines[0].split(',').map(h => h.trim());
-        return lines.slice(1).map(line => {
-            const values = line.split(',').map(v => v.trim());
+        const lines = content.split('\n').filter((line) => line.trim());
+        const headers = lines[0].split(',').map((h) => h.trim());
+        return lines.slice(1).map((line) => {
+            const values = line.split(',').map((v) => v.trim());
             const obj = {};
             headers.forEach((header, index) => {
                 let value = values[index] || '';
@@ -578,7 +634,7 @@ class UnityGamingServicesAPIClient {
             timestamp: new Date().toISOString(),
             projectId: this.projectId,
             environmentId: this.environmentId,
-            services: {}
+            services: {},
         };
         try {
             // Check authentication
@@ -599,7 +655,10 @@ class UnityGamingServicesAPIClient {
         // Check Remote Config service
         try {
             await this.getRemoteConfigs();
-            health.services.remoteConfig = { status: 'healthy', message: 'Remote Config service accessible' };
+            health.services.remoteConfig = {
+                status: 'healthy',
+                message: 'Remote Config service accessible',
+            };
         }
         catch (error) {
             health.services.remoteConfig = { status: 'unhealthy', message: error.message };
@@ -632,7 +691,7 @@ class UnityGamingServicesAPIClient {
             projectId: this.projectId,
             environmentId: this.environmentId,
             health: await this.checkServiceHealth(),
-            data: {}
+            data: {},
         };
         try {
             // Get economy data
@@ -658,6 +717,143 @@ class UnityGamingServicesAPIClient {
             console.warn('⚠️ Could not fetch cloud code data:', error.message);
         }
         return report;
+    }
+    /**
+     * Trigger a Unity Cloud Build
+     */
+    async triggerBuild(buildTarget, gitRef = 'main', buildName = null) {
+        try {
+            console.log(`🚀 Triggering Unity Cloud Build for ${buildTarget}...`);
+            if (!this.accessToken) {
+                await this.authenticate();
+            }
+            const buildConfig = {
+                buildTarget,
+                gitRef,
+                buildName: buildName || `Build-${buildTarget}-${Date.now()}`,
+                cleanBuild: true,
+                developmentBuild: false,
+                allowDebugging: false,
+                scriptDebugging: false,
+                il2cpp: true,
+                managedStrippingLevel: 'high',
+            };
+            const response = await this.makeRequest('/builds', {
+                method: 'POST',
+                body: JSON.stringify(buildConfig),
+            });
+            if (response.success) {
+                console.log(`✅ Build triggered successfully: ${response.buildId}`);
+                return response;
+            }
+            else {
+                throw new Error(`Build trigger failed: ${response.error}`);
+            }
+        }
+        catch (error) {
+            console.error('❌ Error triggering build:', error);
+            throw error;
+        }
+    }
+    /**
+     * Trigger a platform-optimized Unity Cloud Build
+     */
+    async triggerPlatformOptimizedBuild(platform, gitRef = 'main', buildName = null) {
+        try {
+            console.log(`🚀 Triggering platform-optimized build for ${platform}...`);
+            const platformConfig = this.getPlatformBuildConfig(platform);
+            const buildTarget = platformConfig.target;
+            if (!this.accessToken) {
+                await this.authenticate();
+            }
+            const buildConfig = {
+                buildTarget,
+                gitRef,
+                buildName: buildName || `Build-${platform}-${Date.now()}`,
+                cleanBuild: true,
+                developmentBuild: false,
+                allowDebugging: false,
+                scriptDebugging: false,
+                il2cpp: true,
+                managedStrippingLevel: 'high',
+                // Platform-specific optimizations
+                platformOptimizations: {
+                    memorySize: platformConfig.memorySize,
+                    compression: platformConfig.compression,
+                    textureFormat: platformConfig.textureFormat,
+                    architecture: platformConfig.architecture,
+                },
+            };
+            const response = await this.makeRequest('/builds', {
+                method: 'POST',
+                body: JSON.stringify(buildConfig),
+            });
+            if (response.success) {
+                console.log(`✅ Platform-optimized build triggered: ${response.buildId}`);
+                console.log(`📊 Platform: ${platform}`);
+                console.log(`⚡ Memory: ${platformConfig.memorySize}MB`);
+                console.log(`🗜️ Compression: ${platformConfig.compression}`);
+                console.log(`🖼️ Texture Format: ${platformConfig.textureFormat}`);
+                return response;
+            }
+            else {
+                throw new Error(`Platform-optimized build trigger failed: ${response.error}`);
+            }
+        }
+        catch (error) {
+            console.error('❌ Error triggering platform-optimized build:', error);
+            throw error;
+        }
+    }
+    /**
+     * Get build status
+     */
+    async getBuildStatus(buildId) {
+        try {
+            console.log(`📊 Getting build status for ${buildId}...`);
+            if (!this.accessToken) {
+                await this.authenticate();
+            }
+            const response = await this.makeRequest(`/builds/${buildId}`, {
+                method: 'GET',
+            });
+            if (response.success) {
+                console.log(`✅ Build status: ${response.status}`);
+                return response;
+            }
+            else {
+                throw new Error(`Failed to get build status: ${response.error}`);
+            }
+        }
+        catch (error) {
+            console.error('❌ Error getting build status:', error);
+            throw error;
+        }
+    }
+    /**
+     * Download build
+     */
+    async downloadBuild(buildId, targetPath = './builds') {
+        try {
+            console.log(`📥 Downloading build ${buildId}...`);
+            if (!this.accessToken) {
+                await this.authenticate();
+            }
+            const response = await this.makeRequest(`/builds/${buildId}/download`, {
+                method: 'GET',
+            });
+            if (response.success) {
+                console.log(`✅ Build downloaded to: ${targetPath}`);
+                return response;
+            }
+            else {
+                throw new Error(`Failed to download build: ${response.error}`);
+            }
+        }
+        catch (error) {
+            console.error('❌ Error downloading build:', error);
+            throw error;
+        }
     }
 }
 export default UnityGamingServicesAPIClient;

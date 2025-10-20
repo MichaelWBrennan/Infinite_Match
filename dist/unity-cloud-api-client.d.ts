@@ -22,6 +22,10 @@ declare class UnityGamingServicesAPIClient {
      */
     getSecret(name: any): string | undefined;
     /**
+     * Get platform-specific build configuration
+     */
+    getPlatformBuildConfig(platform: any): any;
+    /**
      * Authenticate with Unity Cloud using client credentials
      */
     authenticate(): Promise<any>;
@@ -201,5 +205,21 @@ declare class UnityGamingServicesAPIClient {
         };
         data: {};
     }>;
+    /**
+     * Trigger a Unity Cloud Build
+     */
+    triggerBuild(buildTarget: any, gitRef?: string, buildName?: null): Promise<any>;
+    /**
+     * Trigger a platform-optimized Unity Cloud Build
+     */
+    triggerPlatformOptimizedBuild(platform: any, gitRef?: string, buildName?: null): Promise<any>;
+    /**
+     * Get build status
+     */
+    getBuildStatus(buildId: any): Promise<any>;
+    /**
+     * Download build
+     */
+    downloadBuild(buildId: any, targetPath?: string): Promise<any>;
 }
 //# sourceMappingURL=unity-cloud-api-client.d.ts.map

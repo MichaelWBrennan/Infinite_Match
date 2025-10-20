@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { createServer, Server as HttpServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import * as Sentry from '@sentry/node';
-import { AppConfig } from '../core/config/index.js';
+import AppConfig from '../core/config/index.js';
 import { Logger } from '../core/logger/index.js';
 import { ErrorHandler } from '../core/errors/ErrorHandler.js';
 import { ServiceContainer } from '../core/container/ServiceContainer.js';
@@ -14,8 +14,8 @@ import { PlatformDetector } from '../core/platform/PlatformDetector.js';
 import { UniversalAPI } from '../core/api/UniversalAPI.js';
 import WebGLMiddleware from '../core/middleware/WebGLMiddleware.js';
 import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
-import { AnalyticsService } from '../services/analytics-service.js';
-import { CloudServices } from '../services/cloud-services.js';
+// import { AnalyticsService } from '../services/analytics-service.js';
+import CloudServices from '../services/cloud-services.js';
 import { PostHogAnalyticsService } from '../services/analytics/posthog-service.js';
 import { ASOOptimizationService } from '../services/aso-optimization-service.js';
 import gameRoutes from '../routes/game-routes.js';
@@ -46,7 +46,7 @@ interface HealthCheckResponse {
 class GameServer {
   private app: Application;
   private server: HttpServer;
-  private io: SocketIOServer;
+  private io: SocketIOServer | null = null;
   private config: ServerConfig;
   private logger: Logger;
   private errorHandler: ErrorHandler;
@@ -55,10 +55,10 @@ class GameServer {
   private universalAPI: UniversalAPI;
   private webglMiddleware: WebGLMiddleware;
   private platformBuildConfig: PlatformBuildConfig;
-  private analyticsService: AnalyticsService;
-  private cloudServices: CloudServices;
-  private posthogAnalytics: PostHogAnalyticsService;
-  private asoOptimization: ASOOptimizationService;
+  private analyticsService: any;
+  private cloudServices: any;
+  private posthogAnalytics: any;
+  private asoOptimization: any;
 
   constructor() {
     this.app = express();
@@ -133,17 +133,16 @@ class GameServer {
   }
 
   private initializeSentry(): void {
-    Sentry.init({
-      dsn: process.env.SENTRY_DSN,
-      environment: this.config.environment,
-      tracesSampleRate: 1.0,
-      integrations: [
-        new Sentry.Integrations.Http({ tracing: true }),
-        new Sentry.Integrations.Express({ app: this.app }),
-        new Sentry.Integrations.Mongo({ useMongoose: true }),
-        new Sentry.Integrations.Redis({ useRedis: true }),
-      ],
-    });
+    if (process.env['SENTRY_DSN']) {
+      Sentry.init({
+        dsn: process.env['SENTRY_DSN'],
+        environment: this.config.environment,
+        tracesSampleRate: 1.0,
+        integrations: [
+          // Use basic integrations for now
+        ],
+      });
+    }
   }
 
   private setupMiddleware(): void {
@@ -151,8 +150,10 @@ class GameServer {
     this.initializeSentry();
 
     // Sentry middleware
-    this.app.use(Sentry.requestHandler());
-    this.app.use(Sentry.tracingHandler());
+    if (process.env['SENTRY_DSN']) {
+      this.app.use(Sentry.requestHandler());
+      this.app.use(Sentry.tracingHandler());
+    }
 
     // Security middleware
     this.app.use(
@@ -494,7 +495,9 @@ class GameServer {
 
   private setupErrorHandling(): void {
     // Sentry error handler
-    this.app.use(Sentry.errorHandler());
+    if (process.env['SENTRY_DSN']) {
+      this.app.use(Sentry.errorHandler());
+    }
 
     // Custom error tracking middleware
     this.app.use(errorTrackingMiddleware);

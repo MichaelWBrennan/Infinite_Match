@@ -28,7 +28,7 @@ export const httpsEnforcement = (req, res, next) => {
         originalUrl: req.originalUrl,
         httpsUrl,
         ip: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
     });
     res.redirect(301, httpsUrl);
 };
@@ -46,12 +46,12 @@ export const httpsOnly = (req, res, next) => {
         logger.warn('Blocked non-HTTPS request', {
             ip: req.ip,
             userAgent: req.get('User-Agent'),
-            url: req.originalUrl
+            url: req.originalUrl,
         });
         return res.status(403).json({
             success: false,
             error: 'HTTPS required',
-            message: 'This application requires a secure connection'
+            message: 'This application requires a secure connection',
         });
     }
     next();
@@ -72,7 +72,7 @@ export const httpsHeaders = (req, res, next) => {
         "font-src 'self' https:; " +
         "connect-src 'self' https:; " +
         "frame-ancestors 'none'; " +
-        "upgrade-insecure-requests");
+        'upgrade-insecure-requests');
     // Referrer Policy
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     // Permissions Policy
@@ -89,7 +89,7 @@ export const httpsHealthCheck = (req, res) => {
         https: isSecure,
         protocol,
         environment: AppConfig.server.environment,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     });
 };
 /**
@@ -104,8 +104,8 @@ export const getHttpsConfig = () => {
             hsts: true,
             csp: true,
             referrerPolicy: true,
-            permissionsPolicy: true
-        }
+            permissionsPolicy: true,
+        },
     };
 };
 export default {
@@ -113,6 +113,6 @@ export default {
     httpsOnly,
     httpsHeaders,
     httpsHealthCheck,
-    getHttpsConfig
+    getHttpsConfig,
 };
 //# sourceMappingURL=https.js.map

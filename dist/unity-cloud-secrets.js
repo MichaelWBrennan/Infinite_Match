@@ -27,7 +27,7 @@ class UnityCloudSecrets {
                     'UNITY_CLIENT_SECRET',
                     'UNITY_API_TOKEN',
                     'UNITY_EMAIL',
-                    'UNITY_PASSWORD'
+                    'UNITY_PASSWORD',
                 ];
                 for (const name of secretNames) {
                     try {
@@ -58,7 +58,7 @@ class UnityCloudSecrets {
                 UNITY_CLIENT_SECRET: process.env.UNITY_CLIENT_SECRET,
                 UNITY_API_TOKEN: process.env.UNITY_API_TOKEN,
                 UNITY_EMAIL: process.env.UNITY_EMAIL,
-                UNITY_PASSWORD: process.env.UNITY_PASSWORD
+                UNITY_PASSWORD: process.env.UNITY_PASSWORD,
             };
             // Log which secrets are available
             Object.entries(this.secrets).forEach(([name, value]) => {
@@ -84,7 +84,7 @@ class UnityCloudSecrets {
      */
     validateSecrets() {
         const required = ['UNITY_CLIENT_ID', 'UNITY_CLIENT_SECRET'];
-        const missing = required.filter(name => !this.secrets[name]);
+        const missing = required.filter((name) => !this.secrets[name]);
         if (missing.length > 0) {
             throw new Error(`Missing required secrets: ${missing.join(', ')}`);
         }
@@ -95,9 +95,9 @@ class UnityCloudSecrets {
      */
     getProjectConfig() {
         return {
-            projectId: this.secrets.UNITY_PROJECT_ID || "0dd5a03e-7f23-49c4-964e-7919c48c0574",
-            environmentId: this.secrets.UNITY_ENV_ID || "1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d",
-            organizationId: this.secrets.UNITY_ORG_ID || "2473931369648"
+            projectId: this.secrets.UNITY_PROJECT_ID || '0dd5a03e-7f23-49c4-964e-7919c48c0574',
+            environmentId: this.secrets.UNITY_ENV_ID || '1d8c470b-d8d2-4a72-88f6-c2a46d9e8a6d',
+            organizationId: this.secrets.UNITY_ORG_ID || '2473931369648',
         };
     }
     /**
@@ -107,7 +107,7 @@ class UnityCloudSecrets {
         return {
             clientId: this.secrets.UNITY_CLIENT_ID,
             clientSecret: this.secrets.UNITY_CLIENT_SECRET,
-            accessToken: this.secrets.UNITY_API_TOKEN
+            accessToken: this.secrets.UNITY_API_TOKEN,
         };
     }
 }

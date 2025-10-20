@@ -9,7 +9,7 @@ import { redisService } from '../../services/cache/RedisService.js';
 const logger = new Logger('AIService');
 
 const app = express();
-const PORT = process.env.PORT || 3007;
+const PORT = process.env['PORT'] || 3007;
 
 // Middleware
 app.use(helmet());
@@ -19,7 +19,7 @@ app.use(express.json());
 
 // Initialize services
 await mongoService.connect();
-await redisService.connect();
+await (redisService as any).connect();
 
 // Health check
 app.get('/health', (req, res) => {
@@ -27,7 +27,7 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     service: 'ai-service',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
+    version: process.env['npm_package_version'] || '1.0.0',
   });
 });
 
@@ -53,14 +53,14 @@ app.post('/api/analyze-behavior', async (req, res) => {
       timestamp: new Date(),
     });
 
-    res.json({
+    return res.json({
       success: true,
       analysis: behaviorAnalysis,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     logger.error('Behavior analysis error', error);
-    res.status(500).json({ error: 'Failed to analyze behavior' });
+    return res.status(500).json({ error: 'Failed to analyze behavior' });
   }
 });
 
@@ -89,14 +89,14 @@ app.post('/api/detect-cheating', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       detection: cheatDetection,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     logger.error('Cheat detection error', error);
-    res.status(500).json({ error: 'Failed to detect cheating' });
+    return res.status(500).json({ error: 'Failed to detect cheating' });
   }
 });
 
@@ -122,7 +122,7 @@ app.get('/api/recommendations/:playerId', async (req, res) => {
     // Cache recommendations for 1 hour
     await redisService.setJSON(`recommendations:${playerId}`, recommendations, 3600);
 
-    res.json({
+    return res.json({
       success: true,
       recommendations,
       cached: false,
@@ -156,7 +156,7 @@ app.post('/api/ab-test', async (req, res) => {
       timestamp: new Date(),
     });
 
-    res.json({
+    return res.json({
       success: true,
       analysis,
       timestamp: new Date().toISOString(),
@@ -179,7 +179,7 @@ app.post('/api/balance-game', async (req, res) => {
     // Use AI to balance game difficulty
     const balanceRecommendations = await balanceGameAI(levelData, playerMetrics);
 
-    res.json({
+    return res.json({
       success: true,
       recommendations: balanceRecommendations,
       timestamp: new Date().toISOString(),
@@ -212,7 +212,7 @@ app.post('/api/detect-fraud', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       detection: fraudDetection,
       timestamp: new Date().toISOString(),

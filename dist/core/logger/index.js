@@ -4,7 +4,7 @@
  */
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { AppConfig } from '../config/index.js';
+import AppConfig from '../config/index.js';
 const { combine, timestamp, errors, json, printf, colorize } = winston.format;
 // Custom format for console output
 const consoleFormat = printf(({ level, message, timestamp, ...meta }) => {
@@ -14,7 +14,7 @@ const consoleFormat = printf(({ level, message, timestamp, ...meta }) => {
 // Create transports array
 const transports = [];
 // Console transport
-if (AppConfig.logging.format === 'json') {
+if (AppConfig.analytics.logging.format === 'json') {
     transports.push(new winston.transports.Console({
         format: combine(timestamp(), errors({ stack: true }), json()),
     }));
@@ -25,18 +25,18 @@ else {
     }));
 }
 // File transport (if enabled)
-if (AppConfig.logging.file.enabled) {
+if (AppConfig.analytics.logging.file?.enabled || false) {
     transports.push(new DailyRotateFile({
-        filename: `${AppConfig.logging.file.path}/app-%DATE%.log`,
+        filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/app-%DATE%.log`,
         datePattern: 'YYYY-MM-DD',
-        maxSize: AppConfig.logging.file.maxSize,
-        maxFiles: AppConfig.logging.file.maxFiles,
+        maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+        maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
         format: combine(timestamp(), errors({ stack: true }), json()),
     }));
 }
 // Create logger instance
 const logger = winston.createLogger({
-    level: AppConfig.logging.level,
+    level: AppConfig.analytics.logging.level,
     format: combine(timestamp(), errors({ stack: true })),
     transports,
     exitOnError: false,
@@ -49,13 +49,13 @@ const securityLogger = winston.createLogger({
         new winston.transports.Console({
             format: combine(timestamp(), colorize(), consoleFormat),
         }),
-        ...(AppConfig.logging.file.enabled
+        ...(AppConfig.analytics.logging.file?.enabled
             ? [
                 new DailyRotateFile({
-                    filename: `${AppConfig.logging.file.path}/security-%DATE%.log`,
+                    filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/security-%DATE%.log`,
                     datePattern: 'YYYY-MM-DD',
-                    maxSize: AppConfig.logging.file.maxSize,
-                    maxFiles: AppConfig.logging.file.maxFiles,
+                    maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+                    maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
                 }),
             ]
             : []),
@@ -67,13 +67,13 @@ const requestLogger = winston.createLogger({
     level: 'info',
     format: combine(timestamp(), errors({ stack: true }), json()),
     transports: [
-        ...(AppConfig.logging.file.enabled
+        ...(AppConfig.analytics.logging.file?.enabled
             ? [
                 new DailyRotateFile({
-                    filename: `${AppConfig.logging.file.path}/requests-%DATE%.log`,
+                    filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/requests-%DATE%.log`,
                     datePattern: 'YYYY-MM-DD',
-                    maxSize: AppConfig.logging.file.maxSize,
-                    maxFiles: AppConfig.logging.file.maxFiles,
+                    maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+                    maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
                 }),
             ]
             : []),
@@ -81,7 +81,8 @@ const requestLogger = winston.createLogger({
     exitOnError: false,
 });
 // Enhanced logger with context
-class Logger {
+export class Logger {
+    context;
     constructor(context = '') {
         this.context = context;
     }
@@ -115,6 +116,6 @@ class Logger {
     }
 }
 // Export logger instances
-export { logger, securityLogger, requestLogger, Logger };
+export { logger, securityLogger, requestLogger };
 export default logger;
 //# sourceMappingURL=index.js.map

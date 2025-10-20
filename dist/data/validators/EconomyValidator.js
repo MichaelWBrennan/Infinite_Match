@@ -9,13 +9,7 @@ export class EconomyValidator {
     constructor() {
         this.currencyRules = {
             required: ['id', 'name', 'type'],
-            optional: [
-                'description',
-                'initial',
-                'maximum',
-                'isTradable',
-                'isConsumable',
-            ],
+            optional: ['description', 'initial', 'maximum', 'isTradable', 'isConsumable'],
             types: {
                 id: 'string',
                 name: 'string',
@@ -28,14 +22,7 @@ export class EconomyValidator {
         };
         this.inventoryRules = {
             required: ['id', 'name', 'type'],
-            optional: [
-                'description',
-                'rarity',
-                'category',
-                'tradable',
-                'stackable',
-                'iconPath',
-            ],
+            optional: ['description', 'rarity', 'category', 'tradable', 'stackable', 'iconPath'],
             types: {
                 id: 'string',
                 name: 'string',
@@ -50,14 +37,7 @@ export class EconomyValidator {
         };
         this.catalogRules = {
             required: ['id', 'name', 'cost_currency', 'cost_amount'],
-            optional: [
-                'description',
-                'type',
-                'rewards',
-                'category',
-                'rarity',
-                'isActive',
-            ],
+            optional: ['description', 'type', 'rewards', 'category', 'rarity', 'isActive'],
             types: {
                 id: 'string',
                 name: 'string',
@@ -151,9 +131,7 @@ export class EconomyValidator {
         }
         // Check required fields
         for (const field of rules.required) {
-            if (!(field in item) ||
-                item[field] === null ||
-                item[field] === undefined) {
+            if (!(field in item) || item[field] === null || item[field] === undefined) {
                 throw new ValidationError(`Missing required field '${field}' at index ${index}`, field);
             }
         }
@@ -225,9 +203,7 @@ export class EconomyValidator {
             case 'inventory':
                 mappedItem.isTradable = this.parseBoolean(mappedItem.tradable) || false;
                 mappedItem.isConsumable = mappedItem.isConsumable || false;
-                mappedItem.maxStackSize = this.parseBoolean(mappedItem.stackable)
-                    ? 999
-                    : 1;
+                mappedItem.maxStackSize = this.parseBoolean(mappedItem.stackable) ? 999 : 1;
                 mappedItem.rarity = mappedItem.rarity || 'common';
                 mappedItem.category = mappedItem.category || 'general';
                 break;
@@ -266,8 +242,7 @@ export class EconomyValidator {
             validItems: validatedData.length,
             invalidItems: originalData.length - validatedData.length,
             successRate: originalData.length > 0
-                ? ((validatedData.length / originalData.length) * 100).toFixed(2) +
-                    '%'
+                ? ((validatedData.length / originalData.length) * 100).toFixed(2) + '%'
                 : '0%',
         };
     }

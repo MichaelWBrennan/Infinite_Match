@@ -1,21 +1,22 @@
 /**
- * Centralized Middleware Management
- * Organizes and exports all middleware functions
+ * Optimized Middleware Management
+ * Consolidated middleware functions with enhanced functionality
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { body, validationResult } from 'express-validator';
 import { Logger } from '../logger/index.js';
-import { ErrorHandler } from '../errors/ErrorHandler.js';
+import { ErrorHandler, ValidationError } from '../errors/ErrorHandler.js';
 import { ApiResponseBuilder } from '../types/ApiResponse.js';
 
 const logger = new Logger('Middleware');
 
 // Request ID middleware
 export const requestIdMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  req.requestId =
+  (req as any).requestId =
     (req.headers['x-request-id'] as string) ||
     `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  res.setHeader('X-Request-ID', req.requestId);
+  res.setHeader('X-Request-ID', (req as any).requestId);
   next();
 };
 
@@ -41,14 +42,14 @@ export const errorHandlingMiddleware = (
   logger.error('Unhandled error in middleware chain:', error);
 
   const errorInfo = ErrorHandler.handle(error, {
-    requestId: req.requestId,
+    requestId: (req as any).requestId,
     method: req.method,
     url: req.url,
     userAgent: req.get('User-Agent'),
   });
 
   const response = ApiResponseBuilder.error(
-    errorInfo.context?.code || 'INTERNAL_ERROR',
+    errorInfo.context?.['code'] || 'INTERNAL_ERROR',
     errorInfo.message,
     errorInfo.type,
     errorInfo.recoverable,
@@ -56,7 +57,7 @@ export const errorHandlingMiddleware = (
     errorInfo.context,
   );
 
-  res.status(errorInfo.context?.statusCode || 500).json(response);
+  res.status(errorInfo.context?.['statusCode'] || 500).json(response);
 };
 
 // Security headers middleware
@@ -109,7 +110,7 @@ export const healthCheckMiddleware = (req: Request, res: Response, next: NextFun
 // API versioning middleware
 export const apiVersioningMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const apiVersion = (req.headers['api-version'] as string) || 'v1';
-  req.apiVersion = apiVersion;
+  (req as any).apiVersion = apiVersion;
   res.setHeader('API-Version', apiVersion);
   next();
 };
@@ -185,6 +186,107 @@ export const requestTimeoutMiddleware = (timeoutMs: number = 30000) => {
   };
 };
 
+// Async error handler wrapper
+export const asyncHandler = (fn: Function) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
+
+// Request validation middleware
+export const validateRequest = (req: Request, res: Response, next: NextFunction): void => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new ValidationError('Validation failed', null, { errors: errors.array() });
+    const errorInfo = ErrorHandler.handle(error);
+    const response = ApiResponseBuilder.error(
+      errorInfo.context?.['code'] || 'VALIDATION_ERROR',
+      errorInfo.message,
+      errorInfo.type,
+      errorInfo.recoverable,
+      errorInfo.action,
+      errorInfo.context,
+    );
+    res.status(400).json(response);
+    return;
+  }
+  next();
+};
+
+// Response formatter middleware
+export const responseFormatter = (req: Request, res: Response, next: NextFunction): void => {
+  const originalJson = res.json;
+
+  res.json = function (data) {
+    const response = {
+      success: res.statusCode < 400,
+      data: res.statusCode < 400 ? data : undefined,
+      error: res.statusCode >= 400 ? data : undefined,
+      timestamp: new Date().toISOString(),
+      requestId: (req as any).requestId,
+    };
+
+    return originalJson.call(this, response);
+  };
+
+  next();
+};
+
+// Performance monitoring middleware
+export const performanceMonitor = (req: Request, res: Response, next: NextFunction): void => {
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info('Request performance', {
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      requestId: (req as any).requestId,
+    });
+  });
+
+  next();
+};
+
+// Analytics middleware
+export const analyticsMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  // Add analytics tracking
+  (req as any).analytics = {
+    startTime: Date.now(),
+    userAgent: req.get('User-Agent'),
+    ip: req.ip,
+    platform: req.get('X-Platform') || 'unknown',
+  };
+
+  res.on('finish', () => {
+    const duration = Date.now() - (req as any).analytics.startTime;
+    // Track request analytics here
+    logger.info('Request analytics', {
+      ...(req as any).analytics,
+      duration,
+      statusCode: res.statusCode,
+      requestId: (req as any).requestId,
+    });
+  });
+
+  next();
+};
+
+// Game event middleware
+export const gameEventMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  // Add game-specific tracking
+  (req as any).gameEvent = {
+    eventType: req.body?.eventType || 'unknown',
+    userId: (req as any).user?.id || 'anonymous',
+    level: req.body?.level || null,
+    score: req.body?.score || null,
+  };
+
+  next();
+};
+
 // Middleware chain builder
 export class MiddlewareChain {
   private middlewares: Array<(req: Request, res: Response, next: NextFunction) => void> = [];
@@ -217,6 +319,46 @@ export const createApiChain = (): MiddlewareChain => {
     .add(requestTimeoutMiddleware(30000));
 };
 
+// Error handler wrapper for middleware chain
+const errorHandlerWrapper = (req: Request, res: Response, next: NextFunction) => {
+  // This will be used as the final error handler in Express
+  return next();
+};
+
 export const createErrorChain = (): MiddlewareChain => {
-  return new MiddlewareChain().add(errorHandlingMiddleware);
+  return new MiddlewareChain().add(errorHandlerWrapper);
+};
+
+export const createGameChain = (): MiddlewareChain => {
+  return new MiddlewareChain()
+    .add(requestIdMiddleware)
+    .add(analyticsMiddleware)
+    .add(gameEventMiddleware)
+    .add(performanceMonitor);
+};
+
+// Export all middleware functions
+export default {
+  requestIdMiddleware,
+  requestLoggingMiddleware,
+  errorHandlingMiddleware,
+  securityHeadersMiddleware,
+  corsPreflightMiddleware,
+  rateLimitResponseMiddleware,
+  healthCheckMiddleware,
+  apiVersioningMiddleware,
+  requestSizeValidationMiddleware,
+  contentTypeValidationMiddleware,
+  requestTimeoutMiddleware,
+  asyncHandler,
+  validateRequest,
+  responseFormatter,
+  performanceMonitor,
+  analyticsMiddleware,
+  gameEventMiddleware,
+  MiddlewareChain,
+  createSecurityChain,
+  createApiChain,
+  createErrorChain,
+  createGameChain,
 };

@@ -2,10 +2,10 @@
  * Report Generation Workflow Step
  * Generates comprehensive reports
  */
-import { Logger } from 'core/logger/index.js';
+import { Logger } from '../../core/logger/index.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { getService } from 'core/services/ServiceRegistry.js';
+import { getService } from '../../core/services/ServiceRegistry.js';
 const logger = new Logger('ReportGenerationStep');
 export class ReportGenerationStep {
     constructor() {

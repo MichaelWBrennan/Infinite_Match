@@ -4,7 +4,7 @@
  */
 
 import { Logger } from '../logger/index.js';
-import { AppConfig } from '../config/index.js';
+import AppConfig from '../config/index.js';
 
 export interface PlatformInfo {
   type: 'web' | 'mobile' | 'desktop' | 'console';
@@ -401,7 +401,7 @@ export class PlatformDetector {
       this.logger.info(`Platform detected: ${this.currentPlatform.config.name}`);
       return this.currentPlatform;
     } catch (error) {
-      this.logger.error('Platform detection failed:', error);
+      this.logger.error('Platform detection failed:', { error });
       // Fallback to WebGL
       return this.getFallbackPlatform();
     }
@@ -423,13 +423,13 @@ export class PlatformDetector {
     if (
       hostname.includes('kongregate.com') ||
       referrer.includes('kongregate.com') ||
-      window.kongregateAPI
+      (window as any).kongregateAPI
     ) {
       return 'kongregate';
     }
 
     // Check for Poki
-    if (hostname.includes('poki.com') || referrer.includes('poki.com') || window.pokiSDK) {
+    if (hostname.includes('poki.com') || referrer.includes('poki.com') || (window as any).pokiSDK) {
       return 'poki';
     }
 
@@ -437,7 +437,7 @@ export class PlatformDetector {
     if (
       hostname.includes('gamecrazy.com') ||
       referrer.includes('gamecrazy.com') ||
-      window.gameCrazyAPI
+      (window as any).gameCrazyAPI
     ) {
       return 'gamecrazy';
     }
@@ -590,7 +590,7 @@ export class PlatformDetector {
           }
           return Promise.resolve();
         } catch (error) {
-          this.logger.warn(`API call failed: ${method}`, error);
+          this.logger.warn(`API call failed: ${method}`, { error });
           return Promise.resolve();
         }
       };

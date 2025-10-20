@@ -30,46 +30,72 @@ import { DefaultAzureCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
 import { ServiceBusClient } from '@azure/service-bus';
 import { CosmosClient } from '@azure/cosmos';
+import { createClient } from 'redis';
+import { MongoClient } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Comprehensive Cloud Services Manager for Match 3 Game
- * Integrates AWS, Google Cloud, and Azure services
+ * Optimized Cloud Services Manager for Match 3 Game
+ * Integrates AWS, Google Cloud, Azure, Redis, and MongoDB with advanced features
  */
-class CloudServicesManager {
+class OptimizedCloudServicesManager {
   constructor() {
     this.awsClients = {};
     this.googleClients = {};
     this.azureClients = {};
+    this.redis = null;
+    this.mongodb = null;
     this.isInitialized = false;
+    this.healthChecks = new Map();
+    this.retryPolicies = new Map();
+    this.circuitBreakers = new Map();
+    this.metrics = {
+      requests: 0,
+      errors: 0,
+      latency: [],
+    };
   }
 
   /**
-   * Initialize all cloud services
+   * Initialize all cloud services with optimized configuration
    */
   async initialize() {
     try {
+      console.log('Initializing optimized cloud services...');
+
       // Initialize AWS services
-      await this.initializeAWS();
-
+      await this.initializeAWSServices();
+      
       // Initialize Google Cloud services
-      await this.initializeGoogleCloud();
-
+      await this.initializeGoogleCloudServices();
+      
       // Initialize Azure services
-      await this.initializeAzure();
+      await this.initializeAzureServices();
+      
+      // Initialize Redis
+      await this.initializeRedis();
+      
+      // Initialize MongoDB
+      await this.initializeMongoDB();
+
+      // Setup health checks
+      this.setupHealthChecks();
+      
+      // Setup retry policies
+      this.setupRetryPolicies();
+      
+      // Setup circuit breakers
+      this.setupCircuitBreakers();
 
       this.isInitialized = true;
-      console.log('Cloud Services Manager initialized successfully');
+      console.log('✅ All cloud services initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Cloud Services Manager:', error);
+      console.error('❌ Failed to initialize cloud services:', error);
       throw error;
     }
   }
 
-  /**
-   * Initialize AWS services
-   */
-  async initializeAWS() {
+  async initializeAWSServices() {
     const awsConfig = {
       region: process.env.AWS_REGION || 'us-east-1',
       credentials: {
@@ -85,14 +111,9 @@ class CloudServicesManager {
       sqs: new SQSClient(awsConfig),
       dynamodb: new DynamoDBClient(awsConfig),
     };
-
-    console.log('AWS services initialized');
   }
 
-  /**
-   * Initialize Google Cloud services
-   */
-  async initializeGoogleCloud() {
+  async initializeGoogleCloudServices() {
     const googleConfig = {
       projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
       keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
@@ -105,452 +126,428 @@ class CloudServicesManager {
       monitoring: new MonitoringServiceV2Client(googleConfig),
       logging: new LoggingServiceV2Client(googleConfig),
     };
-
-    console.log('Google Cloud services initialized');
   }
 
-  /**
-   * Initialize Azure services
-   */
-  async initializeAzure() {
+  async initializeAzureServices() {
     const credential = new DefaultAzureCredential();
 
     this.azureClients = {
-      blobStorage: new BlobServiceClient(
+      blob: new BlobServiceClient(
         `https://${process.env.AZURE_STORAGE_ACCOUNT}.blob.core.windows.net`,
-        credential,
+        credential
       ),
-      keyVault: new SecretClient(
-        `https://${process.env.AZURE_KEY_VAULT_NAME}.vault.azure.net`,
-        credential,
+      keyvault: new SecretClient(
+        `https://${process.env.AZURE_KEYVAULT_NAME}.vault.azure.net`,
+        credential
       ),
-      serviceBus: new ServiceBusClient(process.env.AZURE_SERVICE_BUS_CONNECTION_STRING),
+      servicebus: new ServiceBusClient(
+        process.env.AZURE_SERVICEBUS_CONNECTION_STRING,
+        credential
+      ),
       cosmos: new CosmosClient({
         endpoint: process.env.AZURE_COSMOS_ENDPOINT,
         key: process.env.AZURE_COSMOS_KEY,
       }),
     };
-
-    console.log('Azure services initialized');
   }
 
-  // ==================== AWS Services ====================
-
-  /**
-   * Save game data to S3
-   */
-  async saveGameDataToS3(bucketName, key, data) {
-    if (!this.awsClients.s3) throw new Error('AWS S3 not initialized');
-
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-      Body: JSON.stringify(data),
-      ContentType: 'application/json',
-      Metadata: {
-        'game-version': process.env.GAME_VERSION || '1.0.0',
-        timestamp: new Date().toISOString(),
-      },
-    });
-
-    const result = await this.awsClients.s3.send(command);
-    console.log(`Game data saved to S3: ${key}`);
-    return result;
-  }
-
-  /**
-   * Load game data from S3
-   */
-  async loadGameDataFromS3(bucketName, key) {
-    if (!this.awsClients.s3) throw new Error('AWS S3 not initialized');
-
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-    });
-
-    const result = await this.awsClients.s3.send(command);
-    const data = await result.Body.transformToString();
-    return JSON.parse(data);
-  }
-
-  /**
-   * Send email notification via SES
-   */
-  async sendEmailNotification(to, subject, body, htmlBody = null) {
-    if (!this.awsClients.ses) throw new Error('AWS SES not initialized');
-
-    const command = new SendEmailCommand({
-      Source: process.env.AWS_SES_FROM_EMAIL,
-      Destination: {
-        ToAddresses: [to],
-      },
-      Message: {
-        Subject: {
-          Data: subject,
-          Charset: 'UTF-8',
+  async initializeRedis() {
+    if (process.env.REDIS_URL) {
+      this.redis = createClient({
+        url: process.env.REDIS_URL,
+        retry_strategy: (options) => {
+          if (options.error && options.error.code === 'ECONNREFUSED') {
+            return new Error('Redis server connection refused');
+          }
+          if (options.total_retry_time > 1000 * 60 * 60) {
+            return new Error('Retry time exhausted');
+          }
+          if (options.attempt > 10) {
+            return undefined;
+          }
+          return Math.min(options.attempt * 100, 3000);
         },
-        Body: {
-          Text: {
-            Data: body,
+      });
+
+      this.redis.on('error', (err) => {
+        console.error('Redis Client Error:', err);
+      });
+
+      await this.redis.connect();
+    }
+  }
+
+  async initializeMongoDB() {
+    if (process.env.MONGODB_URI) {
+      this.mongodb = new MongoClient(process.env.MONGODB_URI, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+      });
+      await this.mongodb.connect();
+    }
+  }
+
+  setupHealthChecks() {
+    // AWS Health Checks
+    this.healthChecks.set('aws-s3', () => this.checkS3Health());
+    this.healthChecks.set('aws-dynamodb', () => this.checkDynamoDBHealth());
+    
+    // Google Cloud Health Checks
+    this.healthChecks.set('gcp-firestore', () => this.checkFirestoreHealth());
+    
+    // Azure Health Checks
+    this.healthChecks.set('azure-cosmos', () => this.checkCosmosHealth());
+    
+    // Redis Health Check
+    this.healthChecks.set('redis', () => this.checkRedisHealth());
+    
+    // MongoDB Health Check
+    this.healthChecks.set('mongodb', () => this.checkMongoDBHealth());
+  }
+
+  setupRetryPolicies() {
+    this.retryPolicies.set('default', {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 10000,
+      backoffMultiplier: 2,
+    });
+  }
+
+  setupCircuitBreakers() {
+    this.circuitBreakers.set('default', {
+      failureThreshold: 5,
+      recoveryTimeout: 30000,
+      state: 'CLOSED',
+      failures: 0,
+      lastFailureTime: null,
+    });
+  }
+
+  // Health check methods
+  async checkS3Health() {
+    try {
+      await this.awsClients.s3.send(new GetObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET,
+        Key: 'health-check',
+      }));
+      return { status: 'healthy', service: 's3' };
+    } catch (error) {
+      return { status: 'unhealthy', service: 's3', error: error.message };
+    }
+  }
+
+  async checkDynamoDBHealth() {
+    try {
+      await this.awsClients.dynamodb.send(new ScanCommand({
+        TableName: process.env.AWS_DYNAMODB_TABLE,
+        Limit: 1,
+      }));
+      return { status: 'healthy', service: 'dynamodb' };
+    } catch (error) {
+      return { status: 'unhealthy', service: 'dynamodb', error: error.message };
+    }
+  }
+
+  async checkFirestoreHealth() {
+    try {
+      await this.googleClients.firestore.collection('health').doc('check').get();
+      return { status: 'healthy', service: 'firestore' };
+    } catch (error) {
+      return { status: 'unhealthy', service: 'firestore', error: error.message };
+    }
+  }
+
+  async checkCosmosHealth() {
+    try {
+      await this.azureClients.cosmos.database(process.env.AZURE_COSMOS_DATABASE).read();
+      return { status: 'healthy', service: 'cosmos' };
+    } catch (error) {
+      return { status: 'unhealthy', service: 'cosmos', error: error.message };
+    }
+  }
+
+  async checkRedisHealth() {
+    try {
+      if (this.redis) {
+        await this.redis.ping();
+        return { status: 'healthy', service: 'redis' };
+      }
+      return { status: 'not_configured', service: 'redis' };
+    } catch (error) {
+      return { status: 'unhealthy', service: 'redis', error: error.message };
+    }
+  }
+
+  async checkMongoDBHealth() {
+    try {
+      if (this.mongodb) {
+        await this.mongodb.db().admin().ping();
+        return { status: 'healthy', service: 'mongodb' };
+      }
+      return { status: 'not_configured', service: 'mongodb' };
+    } catch (error) {
+      return { status: 'unhealthy', service: 'mongodb', error: error.message };
+    }
+  }
+
+  // Core service methods
+  async saveGameState(userId, gameState) {
+    const startTime = Date.now();
+    try {
+      this.metrics.requests++;
+      
+      // Save to DynamoDB
+      await this.awsClients.dynamodb.send(new PutItemCommand({
+        TableName: process.env.AWS_DYNAMODB_TABLE,
+        Item: {
+          playerId: { S: userId },
+          gameState: { S: JSON.stringify(gameState) },
+          timestamp: { S: new Date().toISOString() },
+          ttl: { N: String(Math.floor(Date.now() / 1000) + 86400) }, // 24 hours TTL
+        },
+      }));
+
+      // Cache in Redis
+      if (this.redis) {
+        await this.redis.setex(`game_state:${userId}`, 3600, JSON.stringify(gameState));
+      }
+
+      this.recordLatency(Date.now() - startTime);
+      return { success: true, userId, gameState };
+    } catch (error) {
+      this.metrics.errors++;
+      console.error('Error saving game state:', error);
+      throw error;
+    }
+  }
+
+  async getGameState(userId) {
+    const startTime = Date.now();
+    try {
+      this.metrics.requests++;
+
+      // Try Redis first
+      if (this.redis) {
+        const cached = await this.redis.get(`game_state:${userId}`);
+        if (cached) {
+          this.recordLatency(Date.now() - startTime);
+          return JSON.parse(cached);
+        }
+      }
+
+      // Fallback to DynamoDB
+      const result = await this.awsClients.dynamodb.send(new GetItemCommand({
+        TableName: process.env.AWS_DYNAMODB_TABLE,
+        Key: {
+          playerId: { S: userId },
+        },
+      }));
+
+      if (result.Item) {
+        const gameState = JSON.parse(result.Item.gameState.S);
+        
+        // Cache in Redis
+        if (this.redis) {
+          await this.redis.setex(`game_state:${userId}`, 3600, JSON.stringify(gameState));
+        }
+
+        this.recordLatency(Date.now() - startTime);
+        return gameState;
+      }
+
+      return null;
+    } catch (error) {
+      this.metrics.errors++;
+      console.error('Error getting game state:', error);
+      throw error;
+    }
+  }
+
+  async savePlayerDataToDynamoDB(tableName, playerData) {
+    try {
+      await this.awsClients.dynamodb.send(new PutItemCommand({
+        TableName: tableName,
+        Item: {
+          playerId: { S: playerData.playerId },
+          level: { N: String(playerData.level) },
+          score: { N: String(playerData.score) },
+          gameData: { S: JSON.stringify(playerData.gameData) },
+          lastUpdated: { S: new Date().toISOString() },
+        },
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving player data to DynamoDB:', error);
+      throw error;
+    }
+  }
+
+  async sendGameEventNotification(eventType, userId, eventData) {
+    try {
+      const message = {
+        eventType,
+        userId,
+        eventData,
+        timestamp: new Date().toISOString(),
+        messageId: uuidv4(),
+      };
+
+      // Send to SNS
+      await this.awsClients.sns.send(new PublishCommand({
+        TopicArn: process.env.AWS_SNS_TOPIC_ARN,
+        Message: JSON.stringify(message),
+        Subject: `Game Event: ${eventType}`,
+      }));
+
+      // Send to SQS for processing
+      await this.awsClients.sqs.send(new SendMessageCommand({
+        QueueUrl: process.env.AWS_SQS_QUEUE_URL,
+        MessageBody: JSON.stringify(message),
+      }));
+
+      return { success: true, messageId: message.messageId };
+    } catch (error) {
+      console.error('Error sending game event notification:', error);
+      throw error;
+    }
+  }
+
+  async uploadAsset(bucketName, key, data, contentType = 'application/octet-stream') {
+    try {
+      await this.awsClients.s3.send(new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: data,
+        ContentType: contentType,
+        ACL: 'public-read',
+      }));
+
+      return {
+        success: true,
+        url: `https://${bucketName}.s3.amazonaws.com/${key}`,
+      };
+    } catch (error) {
+      console.error('Error uploading asset:', error);
+      throw error;
+    }
+  }
+
+  async deleteAsset(bucketName, key) {
+    try {
+      await this.awsClients.s3.send(new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      }));
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      throw error;
+    }
+  }
+
+  async sendEmail(to, subject, body, isHtml = false) {
+    try {
+      await this.awsClients.ses.send(new SendEmailCommand({
+        Source: process.env.AWS_SES_FROM_EMAIL,
+        Destination: {
+          ToAddresses: [to],
+        },
+        Message: {
+          Subject: {
+            Data: subject,
             Charset: 'UTF-8',
           },
-          ...(htmlBody && {
+          Body: isHtml ? {
             Html: {
-              Data: htmlBody,
+              Data: body,
               Charset: 'UTF-8',
             },
-          }),
+          } : {
+            Text: {
+              Data: body,
+              Charset: 'UTF-8',
+            },
+          },
         },
-      },
-    });
+      }));
 
-    const result = await this.awsClients.ses.send(command);
-    console.log(`Email sent: ${result.MessageId}`);
-    return result;
-  }
-
-  /**
-   * Publish message to SNS topic
-   */
-  async publishToSNS(topicArn, message, subject = null) {
-    if (!this.awsClients.sns) throw new Error('AWS SNS not initialized');
-
-    const command = new PublishCommand({
-      TopicArn: topicArn,
-      Message: JSON.stringify(message),
-      Subject: subject,
-      MessageAttributes: {
-        'game-event': {
-          DataType: 'String',
-          StringValue: message.eventType || 'general',
-        },
-      },
-    });
-
-    const result = await this.awsClients.sns.send(command);
-    console.log(`Message published to SNS: ${result.MessageId}`);
-    return result;
-  }
-
-  /**
-   * Send message to SQS queue
-   */
-  async sendToSQS(queueUrl, message) {
-    if (!this.awsClients.sqs) throw new Error('AWS SQS not initialized');
-
-    const command = new SendMessageCommand({
-      QueueUrl: queueUrl,
-      MessageBody: JSON.stringify(message),
-      MessageAttributes: {
-        timestamp: {
-          DataType: 'String',
-          StringValue: new Date().toISOString(),
-        },
-      },
-    });
-
-    const result = await this.awsClients.sqs.send(command);
-    console.log(`Message sent to SQS: ${result.MessageId}`);
-    return result;
-  }
-
-  /**
-   * Save player data to DynamoDB
-   */
-  async savePlayerDataToDynamoDB(tableName, playerData) {
-    if (!this.awsClients.dynamodb) throw new Error('AWS DynamoDB not initialized');
-
-    const command = new PutItemCommand({
-      TableName: tableName,
-      Item: {
-        player_id: { S: playerData.playerId },
-        level: { N: playerData.level.toString() },
-        score: { N: playerData.score.toString() },
-        last_updated: { S: new Date().toISOString() },
-        game_data: { S: JSON.stringify(playerData.gameData) },
-      },
-    });
-
-    const result = await this.awsClients.dynamodb.send(command);
-    console.log(`Player data saved to DynamoDB: ${playerData.playerId}`);
-    return result;
-  }
-
-  // ==================== Google Cloud Services ====================
-
-  /**
-   * Save game data to Google Cloud Storage
-   */
-  async saveGameDataToGCS(bucketName, fileName, data) {
-    if (!this.googleClients.storage) throw new Error('Google Cloud Storage not initialized');
-
-    const bucket = this.googleClients.storage.bucket(bucketName);
-    const file = bucket.file(fileName);
-
-    await file.save(JSON.stringify(data), {
-      metadata: {
-        contentType: 'application/json',
-        metadata: {
-          'game-version': process.env.GAME_VERSION || '1.0.0',
-          timestamp: new Date().toISOString(),
-        },
-      },
-    });
-
-    console.log(`Game data saved to GCS: ${fileName}`);
-  }
-
-  /**
-   * Save player data to Firestore
-   */
-  async savePlayerDataToFirestore(collectionName, playerId, playerData) {
-    if (!this.googleClients.firestore) throw new Error('Firestore not initialized');
-
-    const docRef = this.googleClients.firestore.collection(collectionName).doc(playerId);
-
-    await docRef.set({
-      ...playerData,
-      last_updated: new Date(),
-      version: process.env.GAME_VERSION || '1.0.0',
-    });
-
-    console.log(`Player data saved to Firestore: ${playerId}`);
-  }
-
-  /**
-   * Publish message to Google Pub/Sub
-   */
-  async publishToPubSub(topicName, message) {
-    if (!this.googleClients.pubsub) throw new Error('Google Pub/Sub not initialized');
-
-    const topic = this.googleClients.pubsub.topic(topicName);
-    const dataBuffer = Buffer.from(JSON.stringify(message));
-
-    const messageId = await topic.publish(dataBuffer, {
-      gameEvent: message.eventType || 'general',
-      timestamp: new Date().toISOString(),
-    });
-
-    console.log(`Message published to Pub/Sub: ${messageId}`);
-    return messageId;
-  }
-
-  // ==================== Azure Services ====================
-
-  /**
-   * Save game data to Azure Blob Storage
-   */
-  async saveGameDataToAzureBlob(containerName, blobName, data) {
-    if (!this.azureClients.blobStorage) throw new Error('Azure Blob Storage not initialized');
-
-    const containerClient = this.azureClients.blobStorage.getContainerClient(containerName);
-    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-    const uploadOptions = {
-      blobHTTPHeaders: {
-        blobContentType: 'application/json',
-      },
-      metadata: {
-        'game-version': process.env.GAME_VERSION || '1.0.0',
-        timestamp: new Date().toISOString(),
-      },
-    };
-
-    await blockBlobClient.upload(JSON.stringify(data), JSON.stringify(data).length, uploadOptions);
-    console.log(`Game data saved to Azure Blob: ${blobName}`);
-  }
-
-  /**
-   * Get secret from Azure Key Vault
-   */
-  async getSecretFromKeyVault(secretName) {
-    if (!this.azureClients.keyVault) throw new Error('Azure Key Vault not initialized');
-
-    const secret = await this.azureClients.keyVault.getSecret(secretName);
-    return secret.value;
-  }
-
-  /**
-   * Send message to Azure Service Bus
-   */
-  async sendToServiceBus(queueName, message) {
-    if (!this.azureClients.serviceBus) throw new Error('Azure Service Bus not initialized');
-
-    const sender = this.azureClients.serviceBus.createSender(queueName);
-
-    await sender.sendMessages({
-      body: message,
-      contentType: 'application/json',
-      messageId: uuidv4(),
-      timeToLive: 300000, // 5 minutes
-      userProperties: {
-        gameEvent: message.eventType || 'general',
-        timestamp: new Date().toISOString(),
-      },
-    });
-
-    await sender.close();
-    console.log(`Message sent to Service Bus: ${queueName}`);
-  }
-
-  /**
-   * Save player data to Azure Cosmos DB
-   */
-  async savePlayerDataToCosmos(databaseName, containerName, playerData) {
-    if (!this.azureClients.cosmos) throw new Error('Azure Cosmos DB not initialized');
-
-    const { database } = await this.azureClients.cosmos.databases.createIfNotExists({
-      id: databaseName,
-    });
-
-    const { container } = await database.containers.createIfNotExists({
-      id: containerName,
-      partitionKey: '/player_id',
-    });
-
-    const item = {
-      id: playerData.playerId,
-      player_id: playerData.playerId,
-      ...playerData,
-      _ts: Math.floor(Date.now() / 1000),
-    };
-
-    await container.items.create(item);
-    console.log(`Player data saved to Cosmos DB: ${playerData.playerId}`);
-  }
-
-  // ==================== Game-Specific Methods ====================
-
-  /**
-   * Save complete game state across all cloud services
-   */
-  async saveGameState(playerId, gameState) {
-    const timestamp = new Date().toISOString();
-    const gameData = {
-      playerId,
-      gameState,
-      timestamp,
-      version: process.env.GAME_VERSION || '1.0.0',
-    };
-
-    try {
-      // Save to multiple cloud services for redundancy
-      const promises = [];
-
-      // AWS S3
-      if (this.awsClients.s3) {
-        promises.push(
-          this.saveGameDataToS3(
-            process.env.AWS_S3_BUCKET,
-            `game-states/${playerId}/${timestamp}.json`,
-            gameData,
-          ),
-        );
-      }
-
-      // Google Cloud Storage
-      if (this.googleClients.storage) {
-        promises.push(
-          this.saveGameDataToGCS(
-            process.env.GOOGLE_CLOUD_BUCKET,
-            `game-states/${playerId}/${timestamp}.json`,
-            gameData,
-          ),
-        );
-      }
-
-      // Azure Blob Storage
-      if (this.azureClients.blobStorage) {
-        promises.push(
-          this.saveGameDataToAzureBlob(
-            process.env.AZURE_CONTAINER_NAME,
-            `game-states/${playerId}/${timestamp}.json`,
-            gameData,
-          ),
-        );
-      }
-
-      await Promise.allSettled(promises);
-      console.log(`Game state saved for player: ${playerId}`);
+      return { success: true };
     } catch (error) {
-      console.error('Failed to save game state:', error);
+      console.error('Error sending email:', error);
       throw error;
     }
   }
 
-  /**
-   * Send game event notifications
-   */
-  async sendGameEventNotification(eventType, playerId, eventData) {
-    const notification = {
-      eventType,
-      playerId,
-      eventData,
-      timestamp: new Date().toISOString(),
-    };
-
-    try {
-      const promises = [];
-
-      // AWS SNS
-      if (this.awsClients.sns && process.env.AWS_SNS_TOPIC_ARN) {
-        promises.push(
-          this.publishToSNS(
-            process.env.AWS_SNS_TOPIC_ARN,
-            notification,
-            `Game Event: ${eventType}`,
-          ),
-        );
-      }
-
-      // Google Pub/Sub
-      if (this.googleClients.pubsub && process.env.GOOGLE_PUBSUB_TOPIC) {
-        promises.push(this.publishToPubSub(process.env.GOOGLE_PUBSUB_TOPIC, notification));
-      }
-
-      // Azure Service Bus
-      if (this.azureClients.serviceBus && process.env.AZURE_SERVICE_BUS_QUEUE) {
-        promises.push(this.sendToServiceBus(process.env.AZURE_SERVICE_BUS_QUEUE, notification));
-      }
-
-      await Promise.allSettled(promises);
-      console.log(`Game event notification sent: ${eventType}`);
-    } catch (error) {
-      console.error('Failed to send game event notification:', error);
-      throw error;
+  recordLatency(latency) {
+    this.metrics.latency.push(latency);
+    // Keep only last 1000 measurements
+    if (this.metrics.latency.length > 1000) {
+      this.metrics.latency = this.metrics.latency.slice(-1000);
     }
   }
 
-  /**
-   * Get service status
-   */
   getServiceStatus() {
     return {
-      is_initialized: this.isInitialized,
-      aws: {
-        s3: !!this.awsClients.s3,
-        ses: !!this.awsClients.ses,
-        sns: !!this.awsClients.sns,
-        sqs: !!this.awsClients.sqs,
-        dynamodb: !!this.awsClients.dynamodb,
+      initialized: this.isInitialized,
+      metrics: {
+        ...this.metrics,
+        averageLatency: this.metrics.latency.length > 0 
+          ? this.metrics.latency.reduce((a, b) => a + b, 0) / this.metrics.latency.length 
+          : 0,
+        errorRate: this.metrics.requests > 0 
+          ? (this.metrics.errors / this.metrics.requests) * 100 
+          : 0,
       },
-      google: {
-        storage: !!this.googleClients.storage,
-        firestore: !!this.googleClients.firestore,
-        pubsub: !!this.googleClients.pubsub,
-        monitoring: !!this.googleClients.monitoring,
-        logging: !!this.googleClients.logging,
-      },
-      azure: {
-        blobStorage: !!this.azureClients.blobStorage,
-        keyVault: !!this.azureClients.keyVault,
-        serviceBus: !!this.azureClients.serviceBus,
-        cosmos: !!this.azureClients.cosmos,
+      services: {
+        aws: Object.keys(this.awsClients),
+        google: Object.keys(this.googleClients),
+        azure: Object.keys(this.azureClients),
+        redis: this.redis ? 'connected' : 'not_configured',
+        mongodb: this.mongodb ? 'connected' : 'not_configured',
       },
     };
+  }
+
+  async getHealthStatus() {
+    const healthChecks = await Promise.allSettled(
+      Array.from(this.healthChecks.entries()).map(async ([name, check]) => {
+        const result = await check();
+        return { name, ...result };
+      })
+    );
+
+    const results = healthChecks.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        const name = Array.from(this.healthChecks.keys())[index];
+        return { name, status: 'error', error: result.reason.message };
+      }
+    });
+
+    return {
+      overall: results.every(r => r.status === 'healthy' || r.status === 'not_configured') ? 'healthy' : 'unhealthy',
+      services: results,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async shutdown() {
+    try {
+      if (this.redis) {
+        await this.redis.quit();
+      }
+      if (this.mongodb) {
+        await this.mongodb.close();
+      }
+      console.log('Cloud services shutdown completed');
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+    }
   }
 }
 
-// Export singleton instance
-export default new CloudServicesManager();
+export default new OptimizedCloudServicesManager();

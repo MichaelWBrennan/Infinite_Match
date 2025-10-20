@@ -1,49 +1,72 @@
-export class AppError extends Error {
-    constructor(message: any, code: any, statusCode?: number, context?: {});
-    code: any;
-    statusCode: number;
-    context: {};
+/**
+ * Centralized Error Handling Framework
+ * Provides consistent error handling across the application
+ */
+export interface ErrorContext {
+    [key: string]: any;
+}
+export interface ErrorInfo {
+    message: string;
+    name: string;
+    context: ErrorContext;
     timestamp: string;
+    stack?: string | undefined;
 }
-export class ValidationError extends AppError {
-    constructor(message: any, field?: null, context?: {});
+export interface HandledError extends ErrorInfo {
+    type: string;
+    recoverable: boolean;
+    action: string;
 }
-export class NetworkError extends AppError {
-    constructor(message: any, url?: null, context?: {});
+export interface ErrorResponse {
+    success: false;
+    error: {
+        code: string;
+        message: string;
+        type: string;
+        recoverable: boolean;
+        action: string;
+        timestamp: string;
+        context: ErrorContext;
+    };
 }
-export class ConfigurationError extends AppError {
-    constructor(message: any, configKey?: null, context?: {});
+export declare class AppError extends Error {
+    readonly code: string;
+    readonly statusCode: number;
+    readonly context: ErrorContext;
+    readonly timestamp: string;
+    constructor(message: string, code: string, statusCode?: number, context?: ErrorContext);
 }
-export class ServiceError extends AppError {
-    constructor(message: any, serviceName?: null, context?: {});
+export declare class ValidationError extends AppError {
+    constructor(message: string, field?: string | null, context?: ErrorContext);
 }
-export class ErrorHandler {
+export declare class NetworkError extends AppError {
+    constructor(message: string, url?: string | null, context?: ErrorContext);
+}
+export declare class ConfigurationError extends AppError {
+    constructor(message: string, configKey?: string | null, context?: ErrorContext);
+}
+export declare class ServiceError extends AppError {
+    constructor(message: string, serviceName?: string | null, context?: ErrorContext);
+}
+export declare class ErrorHandler {
     /**
      * Handle and categorize errors
-     * @param {Error} error - The error to handle
-     * @param {Object} context - Additional context
-     * @returns {Object} Error information
      */
-    static handle(error: Error, context?: Object): Object;
-    static handleValidationError(errorInfo: any): any;
-    static handleNetworkError(errorInfo: any): any;
-    static handleConfigurationError(errorInfo: any): any;
-    static handleServiceError(errorInfo: any): any;
-    static handleAppError(errorInfo: any): any;
-    static handleGenericError(errorInfo: any): any;
+    static handle(error: Error, context?: ErrorContext): HandledError;
+    private static handleValidationError;
+    private static handleNetworkError;
+    private static handleConfigurationError;
+    private static handleServiceError;
+    private static handleAppError;
+    private static handleGenericError;
     /**
      * Create a standardized error response
-     * @param {Object} errorInfo - Error information
-     * @returns {Object} Standardized error response
      */
-    static createErrorResponse(errorInfo: Object): Object;
+    static createErrorResponse(errorInfo: HandledError): ErrorResponse;
     /**
      * Wrap async functions with error handling
-     * @param {Function} fn - Async function to wrap
-     * @param {Object} context - Error context
-     * @returns {Function} Wrapped function
      */
-    static wrapAsync(fn: Function, context?: Object): Function;
+    static wrapAsync<T extends (...args: any[]) => Promise<any>>(fn: T, context?: ErrorContext): T;
 }
 export default ErrorHandler;
 //# sourceMappingURL=ErrorHandler.d.ts.map
