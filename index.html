@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Infinite Match - Industry Leading Match 3 Game">
     <title>Infinite Match - Match 3 Game</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    
+    <!-- Shared UI Styles -->
+    <link rel="stylesheet" href="shared-ui.css">
     
     <!-- Analytics SDKs -->
     <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
@@ -14,6 +16,12 @@
     <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
     <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
     <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
+    
+    <!-- Platform Detection -->
+    <script src="platform-detection.js"></script>
+    
+    <!-- Shared Game Logic -->
+    <script src="shared-game.js"></script>
     
     <style>
         body {
