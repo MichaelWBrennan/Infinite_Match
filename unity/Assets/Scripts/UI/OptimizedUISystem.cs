@@ -8,6 +8,7 @@ using Evergreen.MetaGame;
 using Evergreen.Economy;
 using Evergreen.Social;
 using Evergreen.ARPU;
+using Evergreen.HybridGameplay;
 
 namespace Evergreen.UI
 {
@@ -205,7 +206,141 @@ namespace Evergreen.UI
                 if (kvp.Value != null)
                 {
                     _uiPanels[kvp.Key] = kvp.Value;
+                    Log($"✅ Registered UI Panel: {kvp.Key}");
                 }
+                else
+                {
+                    LogWarning($"⚠️ UI Panel '{kvp.Key}' is not assigned in the Inspector! This will prevent the panel from showing.");
+                }
+            }
+            
+            Log($"📊 Total UI Panels Registered: {_uiPanels.Count}/{panels.Count}");
+            
+            // Create missing panels dynamically
+            CreateMissingPanels();
+        }
+        
+        private void CreateMissingPanels()
+        {
+            var missingPanels = new Dictionary<string, GameObject>
+            {
+                ["main_menu"] = mainMenuPanel,
+                ["gameplay"] = gameplayPanel,
+                ["castle_view"] = castleViewPanel,
+                ["shop"] = shopPanel,
+                ["settings"] = settingsPanel,
+                ["pause"] = pausePanel,
+                ["achievement"] = achievementPanel,
+                ["leaderboard"] = leaderboardPanel,
+                ["event"] = eventPanel,
+                ["economy"] = economyPanel,
+                ["premium"] = premiumPanel
+            };
+            
+            foreach (var kvp in missingPanels)
+            {
+                if (kvp.Value == null && !_uiPanels.ContainsKey(kvp.Key))
+                {
+                    Log($"🔧 Creating missing UI panel: {kvp.Key}");
+                    var newPanel = CreateBasicPanel(kvp.Key);
+                    _uiPanels[kvp.Key] = newPanel;
+                    
+                    // Assign to the corresponding field
+                    AssignPanelToField(kvp.Key, newPanel);
+                }
+            }
+        }
+        
+        private GameObject CreateBasicPanel(string panelName)
+        {
+            var panel = new GameObject(panelName + "Panel");
+            panel.transform.SetParent(transform);
+            
+            // Add Canvas component
+            var canvas = panel.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 1;
+            
+            // Add CanvasScaler
+            var scaler = panel.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+            
+            // Add GraphicRaycaster
+            panel.AddComponent<GraphicRaycaster>();
+            
+            // Add basic UI elements
+            var background = new GameObject("Background");
+            background.transform.SetParent(panel.transform);
+            var bgImage = background.AddComponent<Image>();
+            bgImage.color = new Color(0.1f, 0.1f, 0.1f, 0.8f);
+            var bgRect = background.GetComponent<RectTransform>();
+            bgRect.anchorMin = Vector2.zero;
+            bgRect.anchorMax = Vector2.one;
+            bgRect.offsetMin = Vector2.zero;
+            bgRect.offsetMax = Vector2.zero;
+            
+            // Add title text
+            var titleObj = new GameObject("Title");
+            titleObj.transform.SetParent(panel.transform);
+            var titleText = titleObj.AddComponent<Text>();
+            titleText.text = panelName.Replace("_", " ").ToUpper();
+            titleText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            titleText.fontSize = 48;
+            titleText.color = Color.white;
+            titleText.alignment = TextAnchor.MiddleCenter;
+            var titleRect = titleObj.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0.1f, 0.8f);
+            titleRect.anchorMax = new Vector2(0.9f, 0.95f);
+            titleRect.offsetMin = Vector2.zero;
+            titleRect.offsetMax = Vector2.zero;
+            
+            // Initially hide the panel
+            panel.SetActive(false);
+            
+            Log($"✅ Created basic panel: {panelName}");
+            return panel;
+        }
+        
+        private void AssignPanelToField(string panelName, GameObject panel)
+        {
+            switch (panelName)
+            {
+                case "main_menu":
+                    mainMenuPanel = panel;
+                    break;
+                case "gameplay":
+                    gameplayPanel = panel;
+                    break;
+                case "castle_view":
+                    castleViewPanel = panel;
+                    break;
+                case "shop":
+                    shopPanel = panel;
+                    break;
+                case "settings":
+                    settingsPanel = panel;
+                    break;
+                case "pause":
+                    pausePanel = panel;
+                    break;
+                case "achievement":
+                    achievementPanel = panel;
+                    break;
+                case "leaderboard":
+                    leaderboardPanel = panel;
+                    break;
+                case "event":
+                    eventPanel = panel;
+                    break;
+                case "economy":
+                    economyPanel = panel;
+                    break;
+                case "premium":
+                    premiumPanel = panel;
+                    break;
             }
         }
         
@@ -346,13 +481,82 @@ namespace Evergreen.UI
             ShowPanel("premium");
         }
         
+        /// <summary>
+        /// Debug method to check UI panel status
+        /// </summary>
+        public void CheckUIStatus()
+        {
+            Log("🔍 UI Panel Status Check:");
+            Log($"Current Panel: {(_currentPanel != null ? _currentPanel.name : "None")}");
+            Log($"Total Registered Panels: {_uiPanels.Count}");
+            
+            foreach (var kvp in _uiPanels)
+            {
+                var status = kvp.Value != null ? (kvp.Value.activeInHierarchy ? "✅ Active" : "⏸️ Inactive") : "❌ Null";
+                Log($"  {kvp.Key}: {status}");
+            }
+            
+            // Check feature flags
+            var hybridManager = FindObjectOfType<HybridGameplayManager>();
+            if (hybridManager != null)
+            {
+                Log("🎮 Feature Flags Status:");
+                Log($"  RPG: {hybridManager.IsFeatureEnabled(FeatureType.RPG)}");
+                Log($"  Racing: {hybridManager.IsFeatureEnabled(FeatureType.Racing)}");
+                Log($"  Strategy: {hybridManager.IsFeatureEnabled(FeatureType.Strategy)}");
+                Log($"  HybridModes: {hybridManager.IsFeatureEnabled(FeatureType.HybridModes)}");
+            }
+        }
+        
+        /// <summary>
+        /// Enable all game features and ensure UI is visible
+        /// </summary>
+        public void EnableAllFeatures()
+        {
+            Log("🚀 Enabling all game features...");
+            
+            // Enable hybrid gameplay features
+            var hybridManager = FindObjectOfType<HybridGameplayManager>();
+            if (hybridManager != null)
+            {
+                hybridManager.EnableFeature(FeatureType.RPG, true);
+                hybridManager.EnableFeature(FeatureType.Racing, true);
+                hybridManager.EnableFeature(FeatureType.Strategy, true);
+                hybridManager.EnableFeature(FeatureType.HybridModes, true);
+                Log("✅ All hybrid gameplay features enabled");
+            }
+            else
+            {
+                LogWarning("⚠️ HybridGameplayManager not found - features may not be available");
+            }
+            
+            // Ensure all UI panels are registered
+            RegisterUIPanels();
+            
+            // Show main menu by default
+            ShowMainMenu();
+            
+            Log("🎉 All features enabled and UI initialized!");
+        }
+        
         public void ShowPanel(string panelName)
         {
-            if (_isTransitioning) return;
+            if (_isTransitioning) 
+            {
+                LogWarning($"Already transitioning, cannot show panel '{panelName}'");
+                return;
+            }
             
             if (!_uiPanels.ContainsKey(panelName))
             {
-                LogWarning($"Panel '{panelName}' not found!");
+                LogError($"Panel '{panelName}' not found! Available panels: {string.Join(", ", _uiPanels.Keys)}");
+                return;
+            }
+            
+            var panel = _uiPanels[panelName];
+            if (panel == null)
+            {
+                LogError($"Panel '{panelName}' is null! This should not happen.");
                 return;
             }
             
@@ -1904,6 +2108,37 @@ public class AIBehaviorAnalyzer
     public void RecordUIHover(string elementName)
     {
         _behaviorProfile.UpdateWithUIHover(elementName);
+    }
+    
+    /// <summary>
+    /// Enable all game features and ensure UI is visible
+    /// </summary>
+    public void EnableAllFeatures()
+    {
+        Log("🚀 Enabling all game features...");
+        
+        // Enable hybrid gameplay features
+        var hybridManager = FindObjectOfType<HybridGameplayManager>();
+        if (hybridManager != null)
+        {
+            hybridManager.EnableFeature(FeatureType.RPG, true);
+            hybridManager.EnableFeature(FeatureType.Racing, true);
+            hybridManager.EnableFeature(FeatureType.Strategy, true);
+            hybridManager.EnableFeature(FeatureType.HybridModes, true);
+            Log("✅ All hybrid gameplay features enabled");
+        }
+        else
+        {
+            LogWarning("⚠️ HybridGameplayManager not found - features may not be available");
+        }
+        
+        // Ensure all UI panels are registered
+        RegisterUIPanels();
+        
+        // Show main menu by default
+        ShowMainMenu();
+        
+        Log("🎉 All features enabled and UI initialized!");
     }
 }
 
