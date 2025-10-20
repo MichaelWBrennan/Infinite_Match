@@ -7,7 +7,12 @@
     <title>Infinite Match - Match 3 Game</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     
-    <!-- Shared UI Styles -->
+    <!-- Device Detection -->
+    <script src="device-detector.js"></script>
+    
+    <!-- Responsive UI Styles -->
+    <link rel="stylesheet" href="mobile-ui.css" media="(max-width: 768px)">
+    <link rel="stylesheet" href="desktop-ui.css" media="(min-width: 769px)">
     <link rel="stylesheet" href="shared-ui.css">
     
     <!-- Platform-specific SDK will be loaded here -->
@@ -113,6 +118,7 @@
         var gameInstance = null;
         var platformSelector = null;
         var platformConfig = null;
+        var deviceDetector = null;
         
         // Analytics Integration
         var analytics = {
@@ -235,19 +241,27 @@
             }
         }
         
-        // Initialize Platform Detection and SDK
+        // Initialize Device Detection and Platform
         async function initializePlatform() {
             try {
+                // Initialize device detection first
+                deviceDetector = new DeviceDetector();
+                console.log('📱 Device detected:', deviceDetector.getDeviceInfo());
+                
+                // Update UI based on device
+                deviceDetector.updateUIForDevice();
+                
                 // Initialize platform selector
                 await initializePlatformSelector();
                 
                 // Initialize analytics
                 initializeAnalytics();
                 
-                // Track platform initialization
+                // Track platform and device initialization
                 trackEvent('platform_initialized', {
                     platform: platformConfig.name,
-                    features: platformConfig.features
+                    features: platformConfig.features,
+                    device: deviceDetector.getDeviceInfo()
                 });
                 
                 startGame();
@@ -259,28 +273,24 @@
         
         // Start the game
         function startGame() {
-            // Show a mobile message if the user is on a mobile device
-            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            // Check if device supports WebGL
+            if (!deviceDetector.supportsWebGL()) {
+                showError('WebGL is not supported on this device. Please use a modern browser.');
+                return;
+            }
+            
+            // Show mobile warning for unsupported devices
+            if (deviceDetector.isMobile && !deviceDetector.supportsWebGL()) {
                 container.className = "unity-mobile";
                 mobileWarning.style.display = "block";
                 return;
-            } else {
-                // Responsive canvas sizing
-                const maxWidth = Math.min(window.innerWidth - 40, 960);
-                const maxHeight = Math.min(window.innerHeight - 40, 600);
-                const aspectRatio = 960 / 600;
-                
-                let canvasWidth = maxWidth;
-                let canvasHeight = maxWidth / aspectRatio;
-                
-                if (canvasHeight > maxHeight) {
-                    canvasHeight = maxHeight;
-                    canvasWidth = maxHeight * aspectRatio;
-                }
-                
-                canvas.style.width = canvasWidth + "px";
-                canvas.style.height = canvasHeight + "px";
             }
+            
+            // Update canvas sizing based on device
+            deviceDetector.updateCanvasForDevice();
+            
+            // Update UI layout for device
+            deviceDetector.updateUILayoutForDevice();
             
             loadingBar.style.display = "block";
             
@@ -417,6 +427,20 @@
             } else {
                 onGameResume();
             }
+        });
+        
+        // Handle device changes (orientation, resize)
+        window.addEventListener('deviceChanged', function(event) {
+            console.log('🔄 Device changed:', event.detail);
+            
+            // Update game settings for new device
+            if (window.sharedGame) {
+                const optimalSettings = deviceDetector.getOptimalSettings();
+                window.sharedGame.updateSettings(optimalSettings);
+            }
+            
+            // Track device change
+            trackEvent('device_changed', event.detail);
         });
         
         // Handle page unload

@@ -13,10 +13,23 @@ class SharedMatch3Game {
         this.isGameOver = false;
         this.isPaused = false;
         
+        // Device-specific settings
+        this.settings = {
+            boardSize: 8,
+            tileSize: 60,
+            animationSpeed: 0.5,
+            particleCount: 50,
+            soundEnabled: true,
+            vibrationEnabled: false
+        };
+        
         this.init();
     }
     
     init() {
+        // Apply device-specific settings
+        this.applyDeviceSettings();
+        
         this.createBoard();
         this.renderBoard();
         this.setupEventListeners();
@@ -26,9 +39,31 @@ class SharedMatch3Game {
         if (window.trackEvent) {
             window.trackEvent('game_started', {
                 level: this.level,
-                platform: 'shared'
+                platform: 'shared',
+                device: window.deviceDetector ? window.deviceDetector.getDeviceInfo() : null
             });
         }
+    }
+    
+    /**
+     * Apply device-specific settings
+     */
+    applyDeviceSettings() {
+        if (window.deviceDetector) {
+            this.settings = window.deviceDetector.getOptimalSettings();
+            console.log('🎮 Applied device settings:', this.settings);
+        }
+    }
+    
+    /**
+     * Update game settings (called when device changes)
+     */
+    updateSettings(newSettings) {
+        this.settings = { ...this.settings, ...newSettings };
+        console.log('🔄 Updated game settings:', this.settings);
+        
+        // Re-render board with new settings
+        this.renderBoard();
     }
     
     createBoard() {
@@ -58,13 +93,39 @@ class SharedMatch3Game {
         const board = document.createElement('div');
         board.className = 'match3-board';
         
+        // Apply device-specific styling
+        if (this.settings.tileSize !== 60) {
+            const tileSize = this.settings.tileSize;
+            board.style.gridTemplateColumns = `repeat(${this.boardSize}, ${tileSize}px)`;
+            board.style.gridTemplateRows = `repeat(${this.boardSize}, ${tileSize}px)`;
+        }
+        
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 const tile = document.createElement('div');
                 tile.className = `tile ${this.board[row][col].color}`;
                 tile.dataset.row = row;
                 tile.dataset.col = col;
+                tile.textContent = this.getTileSymbol(this.board[row][col].color);
+                
+                // Apply device-specific tile styling
+                if (this.settings.tileSize !== 60) {
+                    tile.style.width = this.settings.tileSize + 'px';
+                    tile.style.height = this.settings.tileSize + 'px';
+                    tile.style.fontSize = Math.max(12, this.settings.tileSize * 0.4) + 'px';
+                }
+                
+                // Add click event
                 tile.onclick = () => this.selectTile(row, col);
+                
+                // Add touch events for mobile
+                if (window.deviceDetector && window.deviceDetector.isMobile) {
+                    tile.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.selectTile(row, col);
+                    });
+                }
+                
                 board.appendChild(tile);
             }
         }
