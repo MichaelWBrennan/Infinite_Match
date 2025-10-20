@@ -72,6 +72,7 @@
   "name": "infinite-match-unity-optimized",
   "scripts": {
     "build": "tsc",
+    "build:vercel": "echo 'Vercel build completed - WebGL files are already built'",
     "dev": "nodemon --exec ts-node src/server/index.ts",
     "start": "node dist/server/index.js",
     "test": "jest",
