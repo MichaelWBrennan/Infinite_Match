@@ -21,7 +21,12 @@
     "threads_support": false,
     "template": "PROJECT:Default",
     "scripting_backend": "IL2CPP",
-    "api_compatibility_level": "NET_Standard_2_1"
+    "api_compatibility_level": "NET_Standard_2_1",
+    "mobile_webgl_support": true,
+    "mobile_optimization": true,
+    "touch_input_support": true,
+    "mobile_memory_limit": 128,
+    "mobile_target_framerate": 30
   },
   "asset_paths": {
     "template_data": "TemplateData/",
@@ -36,6 +41,12 @@
     "webgl_json": "Build/WebGL.json"
   },
   "platform_configurations": {
+    "mobile": {
+      "build_path": "/workspace/Builds/WebGL/mobile/Build",
+      "template_file": "mobile-webgl-template.html",
+      "config_file": "mobile.json",
+      "defines": ["MOBILE_WEBGL", "UNITY_WEBGL", "WEBGL_BUILD", "MOBILE_OPTIMIZATION", "TOUCH_INPUT_SUPPORT"]
+    },
     "poki": {
       "build_path": "/workspace/Builds/WebGL/poki/Build",
       "template_file": "poki-webgl-template.html",
