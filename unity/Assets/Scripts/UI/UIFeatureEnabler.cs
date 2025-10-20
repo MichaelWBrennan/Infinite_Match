@@ -22,6 +22,7 @@ namespace Evergreen.UI
         [SerializeField] private bool enableHybridModes = true;
         
         private OptimizedUISystem uiSystem;
+        private RoyalMatchUIManager royalMatchUI;
         private HybridGameplayManager hybridManager;
         
         void Start()
@@ -39,12 +40,16 @@ namespace Evergreen.UI
         {
             Debug.Log("🎮 UIFeatureEnabler: Starting feature enablement...");
             
-            // Get UI system
-            uiSystem = FindObjectOfType<OptimizedUISystem>();
-            if (uiSystem == null)
+            // Get UI system (prefer Royal Match UI)
+            royalMatchUI = FindObjectOfType<RoyalMatchUIManager>();
+            if (royalMatchUI == null)
             {
-                Debug.LogError("❌ OptimizedUISystem not found! Please add it to your scene.");
-                return;
+                uiSystem = FindObjectOfType<OptimizedUISystem>();
+                if (uiSystem == null)
+                {
+                    Debug.LogError("❌ No UI system found! Please add RoyalMatchUIManager or OptimizedUISystem to your scene.");
+                    return;
+                }
             }
             
             // Get hybrid gameplay manager
@@ -66,7 +71,16 @@ namespace Evergreen.UI
             }
             
             // Enable UI system features
-            if (uiSystem != null)
+            if (royalMatchUI != null)
+            {
+                royalMatchUI.EnableAllFeatures();
+                
+                if (showDebugInfo)
+                {
+                    royalMatchUI.CheckUIStatus();
+                }
+            }
+            else if (uiSystem != null)
             {
                 uiSystem.EnableAllFeatures();
                 
@@ -85,13 +99,17 @@ namespace Evergreen.UI
         [ContextMenu("Check UI Status")]
         public void CheckStatus()
         {
-            if (uiSystem != null)
+            if (royalMatchUI != null)
+            {
+                royalMatchUI.CheckUIStatus();
+            }
+            else if (uiSystem != null)
             {
                 uiSystem.CheckUIStatus();
             }
             else
             {
-                Debug.LogWarning("UI System not found!");
+                Debug.LogWarning("No UI System found!");
             }
         }
         
