@@ -37,7 +37,24 @@
             <div class="loading-text">Loading Infinite Match...</div>
         </div>
         <div id="unity-mobile-warning">
-            WebGL builds are not supported on mobile devices.
+            <div class="mobile-warning-content">
+                <h3>📱 Mobile WebGL Support</h3>
+                <p>This game now supports mobile devices! Optimizing for your device...</p>
+                <div class="mobile-optimization-status">
+                    <div class="status-item">
+                        <span class="status-label">Device Detection:</span>
+                        <span class="status-value" id="device-status">Checking...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Performance Level:</span>
+                        <span class="status-value" id="performance-status">Detecting...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Touch Support:</span>
+                        <span class="status-value" id="touch-status">Enabling...</span>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Game UI Elements -->
