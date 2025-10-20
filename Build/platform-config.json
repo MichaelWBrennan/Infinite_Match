@@ -1,7 +1,7 @@
 {
-  "platform": "webgl",
-  "name": "WebGL",
-  "description": "Infinite Match - Industry Leading Match 3 Game on WebGL",
+  "platform": "vercel",
+  "name": "Vercel",
+  "description": "Infinite Match - Industry Leading Match 3 Game on Vercel",
   "features": {
     "ads": false,
     "iap": false,

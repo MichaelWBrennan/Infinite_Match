@@ -95,10 +95,19 @@
                 if (response.ok) {
                     platformConfig = await response.json();
                     console.log('✅ Platform config loaded:', platformConfig.platform);
+                    
+                    // Update page title and description based on platform
+                    if (platformConfig.name) {
+                        document.title = `Infinite Match - ${platformConfig.name}`;
+                    }
+                    if (platformConfig.description) {
+                        document.querySelector('meta[name="description"]').setAttribute('content', platformConfig.description);
+                    }
                 } else {
                     // Fallback to default config
                     platformConfig = {
                         platform: 'default',
+                        name: 'Default',
                         features: {
                             ads: false,
                             iap: false,
@@ -113,6 +122,7 @@
                 // Use default config
                 platformConfig = {
                     platform: 'default',
+                    name: 'Default',
                     features: {
                         ads: false,
                         iap: false,
@@ -127,47 +137,18 @@
         function loadPlatformSDK() {
             const sdkLoader = document.getElementById('platform-sdk-loader');
             
-            if (!platformConfig) {
-                console.log('⚠️ No platform config, skipping SDK load');
+            if (!platformConfig || !platformConfig.sdkUrl) {
+                console.log('⚠️ No platform SDK URL, skipping SDK load');
                 return;
             }
             
-            let sdkScript = '';
-            let sdkUrl = '';
-            
-            switch (platformConfig.platform) {
-                case 'poki':
-                    sdkUrl = 'https://game-cdn.poki.com/scripts/poki-sdk.js';
-                    break;
-                case 'facebook':
-                    sdkUrl = 'https://connect.facebook.net/en_US/fbinstant.6.3.js';
-                    break;
-                case 'crazygames':
-                    sdkUrl = 'https://sdk.crazygames.com/crazygames-sdk-v1.js';
-                    break;
-                case 'kongregate':
-                    sdkUrl = 'https://cdn1.kongregate.com/javascripts/kongregate_api.js';
-                    break;
-                case 'tiktok':
-                    sdkUrl = 'https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_sdk/tiktok_web_login_sdk.js';
-                    break;
-                case 'snap':
-                    sdkUrl = 'https://sdk.snapchat.com/ssdk.js';
-                    break;
-                default:
-                    console.log('ℹ️ No specific SDK for platform:', platformConfig.platform);
-                    return;
-            }
-            
-            if (sdkUrl) {
-                sdkLoader.src = sdkUrl;
-                sdkLoader.onload = () => {
-                    console.log('✅ Platform SDK loaded:', platformConfig.platform);
-                };
-                sdkLoader.onerror = () => {
-                    console.error('❌ Failed to load platform SDK:', platformConfig.platform);
-                };
-            }
+            sdkLoader.src = platformConfig.sdkUrl;
+            sdkLoader.onload = () => {
+                console.log('✅ Platform SDK loaded:', platformConfig.platform);
+            };
+            sdkLoader.onerror = () => {
+                console.error('❌ Failed to load platform SDK:', platformConfig.platform);
+            };
         }
         
         // Initialize Analytics
@@ -540,7 +521,7 @@
                 if (platformAPI) {
                     return platformAPI.getPlatformName();
                 }
-                return platformConfig ? platformConfig.platform : 'Unknown';
+                return platformConfig ? platformConfig.name : 'Unknown';
             },
             
             // Get available features

@@ -1,7 +1,7 @@
 {
-  "platform": "webgl",
-  "name": "WebGL",
-  "description": "Infinite Match - Industry Leading Match 3 Game on WebGL",
+  "platform": "default",
+  "name": "Default",
+  "description": "Infinite Match - Industry Leading Match 3 Game",
   "features": {
     "ads": false,
     "iap": false,

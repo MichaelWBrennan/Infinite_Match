@@ -2,363 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Unity WebGL Game - Multi-Platform Ready">
-    <title>Unity WebGL Game - Multi-Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Infinite Match - Industry Leading Match 3 Game">
+    <title>Infinite Match - Match 3 Game</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
     
-    <!-- Platform Detection -->
-    <script src="platform-detection.js"></script>
+    <!-- Shared UI Styles -->
+    <link rel="stylesheet" href="shared-ui.css">
+    
+    <!-- Platform-specific SDK will be loaded here -->
+    <script id="platform-sdk-loader"></script>
     
     <!-- Analytics SDKs -->
     <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
     <script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
     <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
     <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
     
-    <!-- Match 3 Fallback Game -->
-    <script src="match3-fallback.js"></script>
+    <!-- Platform Detection -->
+    <script src="platform-detection.js"></script>
     
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            font-family: 'Arial', sans-serif;
-            overflow: hidden;
-        }
-        
-        #unity-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        #unity-canvas {
-            background: #231F20;
-            display: block;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        
-        #unity-loading-bar {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-        
-        #unity-logo {
-            width: 154px;
-            height: 130px;
-            background: #333;
-            border: 2px solid #555;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #fff;
-        }
-        
-        #unity-progress-bar-empty {
-            width: 141px;
-            height: 18px;
-            margin-top: 10px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 9px;
-            overflow: hidden;
-        }
-        
-        #unity-progress-bar-full {
-            width: 0%;
-            height: 18px;
-            background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            transition: width 0.3s ease;
-        }
-        
-        #unity-footer {
-            position: relative;
-        }
-        
-        #unity-webgl-logo {
-            float: left;
-            width: 204px;
-            height: 38px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: #fff;
-        }
-        
-        #unity-fullscreen-button {
-            float: right;
-            width: 38px;
-            height: 38px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            color: #fff;
-            cursor: pointer;
-        }
-        
-        #unity-mobile-warning {
-            position: absolute;
-            left: 50%;
-            top: 5%;
-            transform: translate(-50%, -5%);
-            background: #000;
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            display: none;
-        }
-        
-        .poki-loading {
-            text-align: center;
-            font-size: 18px;
-            margin-top: 20px;
-        }
-        
-        .poki-error {
-            color: #ff6b6b;
-            text-align: center;
-            font-size: 16px;
-            margin-top: 20px;
-        }
-        
-        .poki-placeholder {
-            text-align: center;
-            font-size: 24px;
-            color: #888;
-        }
-        
-        .loading-text {
-            color: white;
-            text-align: center;
-            margin-top: 20px;
-            font-size: 18px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        
-        /* Match 3 Game Styles */
-        .game-ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
-        }
-        
-        .score, .level, .moves {
-            background: rgba(0,0,0,0.5);
-            padding: 10px 20px;
-            border-radius: 25px;
-            backdrop-filter: blur(10px);
-        }
-        
-        .game-controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            display: flex;
-            gap: 15px;
-        }
-        
-        .btn {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-            border: none;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-        }
-        
-        .btn:active {
-            transform: translateY(0);
-        }
-        
-        .btn.secondary {
-            background: linear-gradient(45deg, #74b9ff, #0984e3);
-        }
-        
-        .btn.success {
-            background: linear-gradient(45deg, #00b894, #00a085);
-        }
-        
-        .match3-board {
-            display: grid;
-            grid-template-columns: repeat(8, 60px);
-            grid-template-rows: repeat(8, 60px);
-            gap: 2px;
-            background: rgba(0,0,0,0.3);
-            padding: 20px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            margin: 20px auto;
-            width: fit-content;
-        }
-        
-        .tile {
-            width: 60px;
-            height: 60px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-        
-        .tile:hover {
-            transform: scale(1.1);
-            border-color: #fff;
-        }
-        
-        .tile.selected {
-            border-color: #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-        }
-        
-        .tile.matched {
-            animation: matchAnimation 0.5s ease-in-out;
-        }
-        
-        @keyframes matchAnimation {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(0); }
-        }
-        
-        .tile.red { background: linear-gradient(45deg, #ff6b6b, #ee5a24); }
-        .tile.blue { background: linear-gradient(45deg, #74b9ff, #0984e3); }
-        .tile.green { background: linear-gradient(45deg, #00b894, #00a085); }
-        .tile.yellow { background: linear-gradient(45deg, #fdcb6e, #e17055); }
-        .tile.purple { background: linear-gradient(45deg, #a29bfe, #6c5ce7); }
-        .tile.orange { background: linear-gradient(45deg, #fd79a8, #e84393); }
-        
-        .game-over {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            z-index: 2000;
-            display: none;
-        }
-        
-        .game-over h2 {
-            margin: 0 0 20px 0;
-            font-size: 36px;
-        }
-        
-        .game-over p {
-            margin: 10px 0;
-            font-size: 18px;
-        }
-        
-        .particles {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 500;
-        }
-        
-        .particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: #ffd700;
-            border-radius: 50%;
-            animation: particleAnimation 1s ease-out forwards;
-        }
-        
-        @keyframes particleAnimation {
-            0% {
-                opacity: 1;
-                transform: scale(1);
-            }
-            100% {
-                opacity: 0;
-                transform: scale(0) translateY(-100px);
-            }
-        }
-        
-        /* Additional animations and effects */
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .game-ui {
-            animation: fadeIn 0.5s ease-out;
-        }
-        
-        .game-controls {
-            animation: fadeIn 0.5s ease-out 0.2s both;
-        }
-        
-        .match3-board {
-            animation: fadeIn 0.5s ease-out 0.4s both;
-        }
-    </style>
+    <!-- Shared Game Logic -->
+    <script src="shared-game.js"></script>
 </head>
 <body>
     <div id="unity-container" class="unity-desktop">
         <canvas id="unity-canvas" tabindex="-1"></canvas>
         <div id="unity-loading-bar">
-            <div id="unity-logo">Unity</div>
+            <div id="unity-logo"></div>
             <div id="unity-progress-bar-empty">
                 <div id="unity-progress-bar-full"></div>
             </div>
-            <div class="poki-loading">Loading game...</div>
+            <div class="loading-text">Loading Infinite Match...</div>
         </div>
         <div id="unity-mobile-warning">
             WebGL builds are not supported on mobile devices.
@@ -394,12 +70,12 @@
         var progressBarFull = document.querySelector("#unity-progress-bar-full");
         var fullscreenButton = document.querySelector("#unity-fullscreen-button");
         var mobileWarning = document.querySelector("#unity-mobile-warning");
-        var placeholder = document.querySelector("#poki-placeholder");
         
         // Platform Integration
         var platformAPI = null;
         var gameInstance = null;
         var platformDetector = null;
+        var platformConfig = null;
         
         // Analytics Integration
         var analytics = {
@@ -410,6 +86,70 @@
             sessionId: null,
             initialized: false
         };
+        
+        // Load platform-specific configuration
+        async function loadPlatformConfig() {
+            try {
+                // Try to load platform config from current directory
+                const response = await fetch('platform-config.json');
+                if (response.ok) {
+                    platformConfig = await response.json();
+                    console.log('✅ Platform config loaded:', platformConfig.platform);
+                    
+                    // Update page title and description based on platform
+                    if (platformConfig.name) {
+                        document.title = `Infinite Match - ${platformConfig.name}`;
+                    }
+                    if (platformConfig.description) {
+                        document.querySelector('meta[name="description"]').setAttribute('content', platformConfig.description);
+                    }
+                } else {
+                    // Fallback to default config
+                    platformConfig = {
+                        platform: 'default',
+                        name: 'Default',
+                        features: {
+                            ads: false,
+                            iap: false,
+                            social: false,
+                            analytics: true
+                        }
+                    };
+                    console.log('⚠️ Using default platform config');
+                }
+            } catch (error) {
+                console.error('❌ Failed to load platform config:', error);
+                // Use default config
+                platformConfig = {
+                    platform: 'default',
+                    name: 'Default',
+                    features: {
+                        ads: false,
+                        iap: false,
+                        social: false,
+                        analytics: true
+                    }
+                };
+            }
+        }
+        
+        // Load platform-specific SDK
+        function loadPlatformSDK() {
+            const sdkLoader = document.getElementById('platform-sdk-loader');
+            
+            if (!platformConfig || !platformConfig.sdkUrl) {
+                console.log('⚠️ No platform SDK URL, skipping SDK load');
+                return;
+            }
+            
+            sdkLoader.src = platformConfig.sdkUrl;
+            sdkLoader.onload = () => {
+                console.log('✅ Platform SDK loaded:', platformConfig.platform);
+            };
+            sdkLoader.onerror = () => {
+                console.error('❌ Failed to load platform SDK:', platformConfig.platform);
+            };
+        }
         
         // Initialize Analytics
         function initializeAnalytics() {
@@ -481,14 +221,9 @@
                     ...properties,
                     session_id: analytics.sessionId,
                     timestamp: new Date().toISOString(),
-                    platform: 'webgl',
+                    platform: platformConfig ? platformConfig.platform : 'unknown',
                     game_version: '1.0.0'
                 };
-                
-                // Check for addiction mechanics
-                if (eventName === 'game_started') {
-                    checkDailyRewardEligibility();
-                }
                 
                 if (analytics.amplitude) {
                     analytics.amplitude.track(eventName, eventData);
@@ -508,145 +243,19 @@
             }
         }
         
-        // Addiction mechanics
-        function checkDailyRewardEligibility() {
-            const lastLogin = localStorage.getItem('lastLogin') || 0;
-            const now = Date.now();
-            const hoursSinceLastLogin = (now - lastLogin) / (1000 * 60 * 60);
-            
-            let streak = parseInt(localStorage.getItem('dailyStreak') || '0');
-            let maxStreak = parseInt(localStorage.getItem('maxStreak') || '0');
-            
-            if (hoursSinceLastLogin >= 24) {
-                if (hoursSinceLastLogin >= 24 && hoursSinceLastLogin <= 48) {
-                    streak++;
-                    if (streak > maxStreak) maxStreak = streak;
-                } else if (hoursSinceLastLogin > 72) {
-                    streak = 1;
-                    triggerComebackBonus();
-                } else {
-                    streak = 1;
-                }
-                
-                localStorage.setItem('dailyStreak', streak);
-                localStorage.setItem('maxStreak', maxStreak);
-                localStorage.setItem('lastLogin', now);
-                localStorage.setItem('hasClaimedToday', 'false');
-                
-                // Show daily reward notification
-                showDailyRewardNotification(streak, maxStreak);
-            }
-        }
-        
-        function triggerComebackBonus() {
-            trackEvent('comeback_bonus_triggered', {
-                multiplier: 2.0,
-                expiresIn: 24 * 60 * 60 * 1000
-            });
-            
-            showNotification('🎉 Welcome back! You\'ve earned a 2x bonus for the next 24 hours!', 'success');
-        }
-        
-        function claimDailyReward() {
-            const hasClaimed = localStorage.getItem('hasClaimedToday') === 'true';
-            if (hasClaimed) return;
-            
-            const streak = parseInt(localStorage.getItem('dailyStreak') || '0');
-            const baseReward = 100;
-            const streakBonus = streak * 10;
-            const multiplier = streak >= 7 ? 1.5 : 1.0;
-            const totalReward = Math.floor((baseReward + streakBonus) * multiplier);
-            
-            localStorage.setItem('hasClaimedToday', 'true');
-            
-            trackEvent('daily_reward_claimed', {
-                streak,
-                baseReward,
-                streakBonus,
-                multiplier,
-                totalReward
-            });
-            
-            showNotification(`🎁 Daily reward claimed! You earned ${totalReward} coins!`, 'success');
-        }
-        
-        function showDailyRewardNotification(streak, maxStreak) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                z-index: 10000;
-                max-width: 300px;
-                animation: slideIn 0.3s ease-out;
-            `;
-            
-            notification.innerHTML = `
-                <h3 style="margin: 0 0 10px 0; font-size: 18px;">🎁 Daily Reward Available!</h3>
-                <p style="margin: 0 0 10px 0;">Streak: ${streak} days (Best: ${maxStreak})</p>
-                <button onclick="claimDailyReward(); this.parentElement.remove();" 
-                        style="background: #4CAF50; color: white; border: none; padding: 8px 16px; 
-                               border-radius: 5px; cursor: pointer; font-weight: bold;">
-                    Claim Reward
-                </button>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 10000);
-        }
-        
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-                color: white;
-                padding: 15px 20px;
-                border-radius: 5px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                z-index: 10000;
-                animation: slideIn 0.3s ease-out;
-            `;
-            
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
-        }
-        
-        // Add CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
-        
         // Initialize Platform Detection and SDK
         async function initializePlatform() {
             try {
-                // Initialize analytics first
+                // Load platform config first
+                await loadPlatformConfig();
+                
+                // Load platform-specific SDK
+                loadPlatformSDK();
+                
+                // Initialize analytics
                 initializeAnalytics();
                 
+                // Initialize platform detector
                 platformDetector = new PlatformDetector();
                 const platformInfo = await platformDetector.initialize();
                 
@@ -654,20 +263,6 @@
                 console.log(`📱 Features:`, platformInfo.config.features);
                 
                 platformAPI = platformDetector.getUnifiedAPI();
-                
-                // Initialize platform-specific features
-                if (platformInfo.config.features.ads) {
-                    console.log('✅ Ad support enabled');
-                }
-                if (platformInfo.config.features.iap) {
-                    console.log('✅ In-app purchase support enabled');
-                }
-                if (platformInfo.config.features.social) {
-                    console.log('✅ Social features enabled');
-                }
-                if (platformInfo.config.features.analytics) {
-                    console.log('✅ Analytics enabled');
-                }
                 
                 // Track platform initialization
                 trackEvent('platform_initialized', {
@@ -753,7 +348,7 @@
                         // Track game loaded
                         trackEvent('game_loaded', {
                             load_time: Date.now() - window.performance.timing.navigationStart,
-                            platform: 'webgl'
+                            platform: platformConfig ? platformConfig.platform : 'unknown'
                         });
                         
                         console.log('✅ Unity game loaded successfully');
@@ -777,13 +372,6 @@
             document.body.appendChild(script);
         }
         
-        // Check if Unity build files exist
-        function checkUnityBuildFiles() {
-            // Check if the main Unity build files exist
-            // For now, we'll always try to load Unity
-            return true;
-        }
-        
         // Start fallback Match 3 game
         function startFallbackGame() {
             console.log('🎮 Starting Match 3 fallback game...');
@@ -796,11 +384,11 @@
             if (loadingBar) loadingBar.style.display = 'none';
             
             // Initialize the Match 3 game
-            if (typeof Match3Game !== 'undefined') {
-                window.match3Game = new Match3Game();
+            if (typeof SharedMatch3Game !== 'undefined') {
+                window.sharedGame = new SharedMatch3Game();
                 console.log('✅ Match 3 game started successfully');
             } else {
-                console.error('❌ Match3Game class not found');
+                console.error('❌ SharedMatch3Game class not found');
                 showError('Failed to load game. Please refresh the page.');
             }
         }
@@ -925,7 +513,7 @@
                 if (platformAPI) {
                     return platformAPI.getPlatform();
                 }
-                return 'unknown';
+                return platformConfig ? platformConfig.platform : 'unknown';
             },
             
             // Get platform name
@@ -933,7 +521,7 @@
                 if (platformAPI) {
                     return platformAPI.getPlatformName();
                 }
-                return 'Unknown';
+                return platformConfig ? platformConfig.name : 'Unknown';
             },
             
             // Get available features
@@ -941,37 +529,12 @@
                 if (platformAPI) {
                     return platformAPI.getFeatures();
                 }
-                return {};
+                return platformConfig ? platformConfig.features : {};
             }
         };
         
         // Legacy Poki API for backward compatibility
         window.PokiAPI = window.GameAPI;
-        
-        // Game control functions for UI buttons
-        function startNewGame() {
-            if (window.match3Game) {
-                window.match3Game.startNewGame();
-            } else {
-                console.log('Match 3 game not initialized yet');
-            }
-        }
-        
-        function pauseGame() {
-            if (window.match3Game) {
-                window.match3Game.pauseGame();
-            } else {
-                console.log('Match 3 game not initialized yet');
-            }
-        }
-        
-        function usePowerUp() {
-            if (window.match3Game) {
-                window.match3Game.usePowerUp();
-            } else {
-                console.log('Match 3 game not initialized yet');
-            }
-        }
     </script>
 </body>
 </html>

@@ -2,89 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Unity WebGL Game on Facebook Instant Games">
-    <title>Unity WebGL Game - Facebook Instant Games</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Infinite Match - Industry Leading Match 3 Game">
+    <title>Infinite Match - Match 3 Game</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
     
-    <!-- Facebook Instant Games SDK -->
-    <script src="https://connect.facebook.net/en_US/fbinstant.6.3.js"></script>
+    <!-- Shared UI Styles -->
+    <link rel="stylesheet" href="shared-ui.css">
     
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-        }
-        
-        #unity-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        #unity-canvas {
-            background: #231F20;
-            display: block;
-        }
-        
-        #unity-loading-bar {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-        
-        #unity-logo {
-            width: 154px;
-            height: 130px;
-            background: url('TemplateData/unity-logo-dark.png') no-repeat center / contain;
-        }
-        
-        #unity-progress-bar-empty {
-            width: 141px;
-            height: 18px;
-            margin-top: 10px;
-            background: url('TemplateData/progress-bar-empty-dark.png') no-repeat center / contain;
-        }
-        
-        #unity-progress-bar-full {
-            width: 0%;
-            height: 18px;
-            background: url('TemplateData/progress-bar-full-dark.png') no-repeat center / contain;
-        }
-        
-        #unity-mobile-warning {
-            position: absolute;
-            left: 50%;
-            top: 5%;
-            transform: translate(-50%, -5%);
-            background: #000;
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            display: none;
-        }
-        
-        .facebook-loading {
-            text-align: center;
-            font-size: 18px;
-            margin-top: 20px;
-        }
-        
-        .facebook-error {
-            color: #ff6b6b;
-            text-align: center;
-            font-size: 16px;
-            margin-top: 20px;
-        }
-    </style>
+    <!-- Platform-specific SDK will be loaded here -->
+    <script id="platform-sdk-loader"></script>
+    
+    <!-- Analytics SDKs -->
+    <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
+    <script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
+    <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
+    
+    <!-- Platform Detection -->
+    <script src="platform-detection.js"></script>
+    
+    <!-- Shared Game Logic -->
+    <script src="shared-game.js"></script>
 </head>
 <body>
     <div id="unity-container" class="unity-desktop">
@@ -94,11 +34,33 @@
             <div id="unity-progress-bar-empty">
                 <div id="unity-progress-bar-full"></div>
             </div>
-            <div class="facebook-loading">Loading game...</div>
+            <div class="loading-text">Loading Infinite Match...</div>
         </div>
         <div id="unity-mobile-warning">
             WebGL builds are not supported on mobile devices.
         </div>
+        
+        <!-- Game UI Elements -->
+        <div class="game-ui">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div class="moves">Moves: <span id="moves">30</span></div>
+        </div>
+        
+        <div class="game-controls">
+            <button class="btn" onclick="startNewGame()">New Game</button>
+            <button class="btn secondary" onclick="pauseGame()">Pause</button>
+            <button class="btn success" onclick="usePowerUp()">Power Up</button>
+        </div>
+        
+        <div class="game-over" id="gameOver">
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Level Reached: <span id="finalLevel">1</span></p>
+            <button class="btn" onclick="startNewGame()">Play Again</button>
+        </div>
+        
+        <div class="particles" id="particles"></div>
     </div>
     
     <script>
@@ -106,29 +68,212 @@
         var canvas = document.querySelector("#unity-canvas");
         var loadingBar = document.querySelector("#unity-loading-bar");
         var progressBarFull = document.querySelector("#unity-progress-bar-full");
+        var fullscreenButton = document.querySelector("#unity-fullscreen-button");
         var mobileWarning = document.querySelector("#unity-mobile-warning");
         
-        // Facebook Instant Games SDK Integration
-        var facebookSDK = null;
+        // Platform Integration
+        var platformAPI = null;
         var gameInstance = null;
+        var platformDetector = null;
+        var platformConfig = null;
         
-        // Initialize Facebook Instant Games SDK
-        function initializeFacebookSDK() {
-            if (typeof FBInstant !== 'undefined') {
-                facebookSDK = FBInstant;
-                console.log('📘 Facebook Instant Games SDK initialized');
+        // Analytics Integration
+        var analytics = {
+            amplitude: null,
+            mixpanel: null,
+            sentry: null,
+            datadog: null,
+            sessionId: null,
+            initialized: false
+        };
+        
+        // Load platform-specific configuration
+        async function loadPlatformConfig() {
+            try {
+                // Try to load platform config from current directory
+                const response = await fetch('platform-config.json');
+                if (response.ok) {
+                    platformConfig = await response.json();
+                    console.log('✅ Platform config loaded:', platformConfig.platform);
+                    
+                    // Update page title and description based on platform
+                    if (platformConfig.name) {
+                        document.title = `Infinite Match - ${platformConfig.name}`;
+                    }
+                    if (platformConfig.description) {
+                        document.querySelector('meta[name="description"]').setAttribute('content', platformConfig.description);
+                    }
+                } else {
+                    // Fallback to default config
+                    platformConfig = {
+                        platform: 'default',
+                        name: 'Default',
+                        features: {
+                            ads: false,
+                            iap: false,
+                            social: false,
+                            analytics: true
+                        }
+                    };
+                    console.log('⚠️ Using default platform config');
+                }
+            } catch (error) {
+                console.error('❌ Failed to load platform config:', error);
+                // Use default config
+                platformConfig = {
+                    platform: 'default',
+                    name: 'Default',
+                    features: {
+                        ads: false,
+                        iap: false,
+                        social: false,
+                        analytics: true
+                    }
+                };
+            }
+        }
+        
+        // Load platform-specific SDK
+        function loadPlatformSDK() {
+            const sdkLoader = document.getElementById('platform-sdk-loader');
+            
+            if (!platformConfig || !platformConfig.sdkUrl) {
+                console.log('⚠️ No platform SDK URL, skipping SDK load');
+                return;
+            }
+            
+            sdkLoader.src = platformConfig.sdkUrl;
+            sdkLoader.onload = () => {
+                console.log('✅ Platform SDK loaded:', platformConfig.platform);
+            };
+            sdkLoader.onerror = () => {
+                console.error('❌ Failed to load platform SDK:', platformConfig.platform);
+            };
+        }
+        
+        // Initialize Analytics
+        function initializeAnalytics() {
+            try {
+                analytics.sessionId = 'webgl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 
-                // Facebook Instant Games initialization
-                facebookSDK.initializeAsync().then(() => {
-                    console.log('✅ Facebook Instant Games ready');
-                    startGame();
-                }).catch((error) => {
-                    console.error('❌ Facebook Instant Games initialization failed:', error);
-                    showError('Failed to initialize Facebook Instant Games');
+                // Initialize Amplitude
+                if (typeof amplitude !== 'undefined') {
+                    analytics.amplitude = amplitude;
+                    analytics.amplitude.init('YOUR_AMPLITUDE_API_KEY', null, {
+                        saveEvents: true,
+                        includeUtm: true,
+                        includeReferrer: true
+                    });
+                    console.log('✅ Amplitude initialized');
+                }
+                
+                // Initialize Mixpanel
+                if (typeof mixpanel !== 'undefined') {
+                    analytics.mixpanel = mixpanel;
+                    analytics.mixpanel.init('YOUR_MIXPANEL_TOKEN');
+                    console.log('✅ Mixpanel initialized');
+                }
+                
+                // Initialize Sentry
+                if (typeof Sentry !== 'undefined') {
+                    analytics.sentry = Sentry;
+                    analytics.sentry.init({
+                        dsn: 'YOUR_SENTRY_DSN',
+                        environment: 'production',
+                        tracesSampleRate: 1.0
+                    });
+                    console.log('✅ Sentry initialized');
+                }
+                
+                // Initialize Datadog RUM
+                if (typeof DD_RUM !== 'undefined') {
+                    analytics.datadog = DD_RUM;
+                    analytics.datadog.init({
+                        applicationId: 'YOUR_DATADOG_APP_ID',
+                        clientToken: 'YOUR_DATADOG_CLIENT_TOKEN',
+                        site: 'datadoghq.com',
+                        service: 'match3-game-webgl',
+                        env: 'production',
+                        version: '1.0.0',
+                        sessionSampleRate: 100,
+                        sessionReplaySampleRate: 20,
+                        trackUserInteractions: true,
+                        trackResources: true,
+                        trackLongTasks: true
+                    });
+                    console.log('✅ Datadog RUM initialized');
+                }
+                
+                analytics.initialized = true;
+                console.log('✅ Analytics initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Analytics initialization failed:', error);
+            }
+        }
+        
+        // Track game events
+        function trackEvent(eventName, properties = {}) {
+            if (!analytics.initialized) return;
+            
+            try {
+                const eventData = {
+                    ...properties,
+                    session_id: analytics.sessionId,
+                    timestamp: new Date().toISOString(),
+                    platform: platformConfig ? platformConfig.platform : 'unknown',
+                    game_version: '1.0.0'
+                };
+                
+                if (analytics.amplitude) {
+                    analytics.amplitude.track(eventName, eventData);
+                }
+                
+                if (analytics.mixpanel) {
+                    analytics.mixpanel.track(eventName, eventData);
+                }
+                
+                if (analytics.datadog) {
+                    analytics.datadog.addAction(eventName, eventData);
+                }
+                
+                console.log('📊 Event tracked:', eventName, eventData);
+            } catch (error) {
+                console.error('Failed to track event:', error);
+            }
+        }
+        
+        // Initialize Platform Detection and SDK
+        async function initializePlatform() {
+            try {
+                // Load platform config first
+                await loadPlatformConfig();
+                
+                // Load platform-specific SDK
+                loadPlatformSDK();
+                
+                // Initialize analytics
+                initializeAnalytics();
+                
+                // Initialize platform detector
+                platformDetector = new PlatformDetector();
+                const platformInfo = await platformDetector.initialize();
+                
+                console.log(`🎮 Platform: ${platformInfo.config.name}`);
+                console.log(`📱 Features:`, platformInfo.config.features);
+                
+                platformAPI = platformDetector.getUnifiedAPI();
+                
+                // Track platform initialization
+                trackEvent('platform_initialized', {
+                    platform: platformInfo.config.name,
+                    features: platformInfo.config.features
                 });
-            } else {
-                console.warn('⚠️ Facebook Instant Games SDK not found, starting game without Facebook features');
+                
                 startGame();
+            } catch (error) {
+                console.error('❌ Platform initialization failed:', error);
+                showError('Failed to initialize platform: ' + error.message);
             }
         }
         
@@ -140,80 +285,149 @@
                 mobileWarning.style.display = "block";
                 return;
             } else {
-                canvas.style.width = "960px";
-                canvas.style.height = "600px";
+                // Responsive canvas sizing
+                const maxWidth = Math.min(window.innerWidth - 40, 960);
+                const maxHeight = Math.min(window.innerHeight - 40, 600);
+                const aspectRatio = 960 / 600;
+                
+                let canvasWidth = maxWidth;
+                let canvasHeight = maxWidth / aspectRatio;
+                
+                if (canvasHeight > maxHeight) {
+                    canvasHeight = maxHeight;
+                    canvasWidth = maxHeight * aspectRatio;
+                }
+                
+                canvas.style.width = canvasWidth + "px";
+                canvas.style.height = canvasHeight + "px";
             }
             
             loadingBar.style.display = "block";
             
+            // Load Unity WebGL build
+            loadUnityWebGL();
+        }
+        
+        // Load Unity WebGL build
+        function loadUnityWebGL() {
             var buildUrl = "Build";
             var loaderUrl = buildUrl + "/WebGL.loader.js";
-            var config = {
-                dataUrl: buildUrl + "/WebGL.data",
-                frameworkUrl: buildUrl + "/WebGL.framework.js",
-                codeUrl: buildUrl + "/WebGL.wasm",
-                streamingAssetsUrl: "StreamingAssets",
-                companyName: "YourCompany",
-                productName: "YourGame",
-                productVersion: "1.0",
-            };
             
-            // Add Facebook Instant Games SDK to Unity config
-            if (facebookSDK) {
-                config.facebookSDK = facebookSDK;
-            }
-            
+            // Load the Unity loader script
             var script = document.createElement("script");
             script.src = loaderUrl;
             script.onload = () => {
-                createUnityInstance(canvas, config, (progress) => {
-                    progressBarFull.style.width = 100 * progress + "%";
-                }).then((unityInstance) => {
-                    gameInstance = unityInstance;
-                    loadingBar.style.display = "none";
-                    
-                    // Facebook Instant Games game ready callback
-                    if (facebookSDK) {
-                        facebookSDK.startGameAsync();
-                    }
-                    
-                    console.log('✅ Unity game loaded successfully');
-                }).catch((message) => {
-                    console.error('❌ Unity game load failed:', message);
-                    showError('Failed to load game: ' + message);
-                });
+                console.log('📦 Unity loader loaded, initializing...');
+                
+                // Create Unity instance with progress callback
+                if (typeof createUnityInstance === 'function') {
+                    createUnityInstance(canvas, {}, (progress) => {
+                        progressBarFull.style.width = 100 * progress + "%";
+                        console.log('📊 Loading progress:', Math.round(progress * 100) + '%');
+                    }).then((unityInstance) => {
+                        gameInstance = unityInstance;
+                        loadingBar.style.display = "none";
+                        
+                        // Set up fullscreen functionality
+                        if (unityInstance.SetFullscreen) {
+                            canvas.addEventListener('dblclick', () => {
+                                unityInstance.SetFullscreen(1);
+                            });
+                        }
+                        
+                        // Start the game
+                        if (unityInstance.start) {
+                            unityInstance.start();
+                        }
+                        
+                        // Platform game ready callback
+                        if (platformAPI) {
+                            platformAPI.gameplayStart();
+                        }
+                        
+                        // Track game loaded
+                        trackEvent('game_loaded', {
+                            load_time: Date.now() - window.performance.timing.navigationStart,
+                            platform: platformConfig ? platformConfig.platform : 'unknown'
+                        });
+                        
+                        console.log('✅ Unity game loaded successfully');
+                    }).catch((message) => {
+                        console.error('❌ Unity game load failed:', message);
+                        console.log('🔄 Falling back to Match 3 game...');
+                        startFallbackGame();
+                    });
+                } else {
+                    console.error('❌ createUnityInstance function not found');
+                    showError('Unity loader not properly loaded');
+                }
             };
             
             script.onerror = () => {
-                console.error('❌ Failed to load Unity WebGL build');
-                showError('Failed to load Unity WebGL build. Please check your browser console for errors.');
+                console.error('❌ Failed to load Unity WebGL loader');
+                console.log('🔄 Falling back to Match 3 game...');
+                startFallbackGame();
             };
             
             document.body.appendChild(script);
         }
         
-        // Show error message
-        function showError(message) {
-            loadingBar.innerHTML = '<div class="facebook-error">' + message + '</div>';
+        // Start fallback Match 3 game
+        function startFallbackGame() {
+            console.log('🎮 Starting Match 3 fallback game...');
+            
+            // Hide Unity canvas and loading bar
+            const canvas = document.querySelector('#unity-canvas');
+            const loadingBar = document.querySelector('#unity-loading-bar');
+            
+            if (canvas) canvas.style.display = 'none';
+            if (loadingBar) loadingBar.style.display = 'none';
+            
+            // Initialize the Match 3 game
+            if (typeof SharedMatch3Game !== 'undefined') {
+                window.sharedGame = new SharedMatch3Game();
+                console.log('✅ Match 3 game started successfully');
+            } else {
+                console.error('❌ SharedMatch3Game class not found');
+                showError('Failed to load game. Please refresh the page.');
+            }
         }
         
-        // Facebook Instant Games event handlers
+        // Show error message
+        function showError(message) {
+            loadingBar.innerHTML = '<div class="poki-error">' + message + '</div>';
+        }
+        
+        // Platform event handlers
         function onGamePause() {
-            if (facebookSDK) {
-                facebookSDK.pauseAsync();
+            if (platformAPI) {
+                platformAPI.gameplayStop();
             }
+            trackEvent('game_paused', {
+                level: 1, // This would come from Unity
+                score: 0  // This would come from Unity
+            });
         }
         
         function onGameResume() {
-            if (facebookSDK) {
-                facebookSDK.resumeAsync();
+            if (platformAPI) {
+                platformAPI.gameplayStart();
             }
+            trackEvent('game_resumed', {
+                level: 1, // This would come from Unity
+                score: 0  // This would come from Unity
+            });
         }
         
         function onGameQuit() {
-            if (facebookSDK) {
-                facebookSDK.quitAsync();
+            if (platformAPI) {
+                platformAPI.gameplayStop();
             }
+            trackEvent('game_quit', {
+                session_duration: Date.now() - window.performance.timing.navigationStart,
+                level: 1, // This would come from Unity
+                score: 0  // This would come from Unity
+            });
         }
         
         // Handle page visibility changes
@@ -232,80 +446,95 @@
         
         // Initialize when page loads
         window.addEventListener('load', function() {
-            initializeFacebookSDK();
+            initializePlatform();
         });
         
-        // Facebook Instant Games API functions for Unity
-        window.FacebookAPI = {
-            // Show Facebook ad
+        // Unified Platform API for Unity
+        window.GameAPI = {
+            // Show ad
             showAd: function(type) {
-                if (facebookSDK) {
-                    return facebookSDK.showAdAsync();
+                if (platformAPI) {
+                    return platformAPI.showAd(type);
                 }
                 return Promise.resolve();
             },
             
             // Show rewarded ad
             showRewardedAd: function() {
-                if (facebookSDK) {
-                    return facebookSDK.showRewardedAdAsync();
+                if (platformAPI) {
+                    return platformAPI.showRewardedAd();
                 }
                 return Promise.resolve();
             },
             
             // Show interstitial ad
             showInterstitialAd: function() {
-                if (facebookSDK) {
-                    return facebookSDK.showAdAsync();
+                if (platformAPI) {
+                    return platformAPI.showInterstitialAd();
                 }
                 return Promise.resolve();
             },
             
-            // Purchase product
-            purchaseProduct: function(productId, price) {
-                if (facebookSDK) {
-                    return facebookSDK.payments.purchaseAsync({
-                        productID: productId,
-                        developerPayload: 'payload'
-                    });
+            // Check if ad is blocked
+            isAdBlocked: function() {
+                if (platformAPI) {
+                    return platformAPI.isAdBlocked();
                 }
-                return Promise.resolve();
+                return false;
             },
             
-            // Share game
-            shareGame: function(message) {
-                if (facebookSDK) {
-                    return facebookSDK.shareAsync({
-                        intent: 'SHARE',
-                        text: message
-                    });
+            // Check if user has ad-free
+            isAdFree: function() {
+                if (platformAPI) {
+                    return platformAPI.isAdFree();
                 }
-                return Promise.resolve();
-            },
-            
-            // Update player score
-            updatePlayerScore: function(score) {
-                if (facebookSDK) {
-                    return facebookSDK.setScoreAsync(score);
-                }
-                return Promise.resolve();
-            },
-            
-            // Get player info
-            getPlayerInfo: function() {
-                if (facebookSDK) {
-                    return facebookSDK.player;
-                }
-                return null;
+                return false;
             },
             
             // Track game event
             trackEvent: function(eventName, data) {
-                if (facebookSDK) {
-                    facebookSDK.logEvent(eventName, data);
+                if (platformAPI) {
+                    platformAPI.trackEvent(eventName, data);
                 }
+                // Also track with our analytics
+                trackEvent(eventName, data);
+            },
+            
+            // Get user info
+            getUserInfo: function() {
+                if (platformAPI) {
+                    return platformAPI.getUserInfo();
+                }
+                return null;
+            },
+            
+            // Get platform info
+            getPlatform: function() {
+                if (platformAPI) {
+                    return platformAPI.getPlatform();
+                }
+                return platformConfig ? platformConfig.platform : 'unknown';
+            },
+            
+            // Get platform name
+            getPlatformName: function() {
+                if (platformAPI) {
+                    return platformAPI.getPlatformName();
+                }
+                return platformConfig ? platformConfig.name : 'Unknown';
+            },
+            
+            // Get available features
+            getFeatures: function() {
+                if (platformAPI) {
+                    return platformAPI.getFeatures();
+                }
+                return platformConfig ? platformConfig.features : {};
             }
         };
+        
+        // Legacy Poki API for backward compatibility
+        window.PokiAPI = window.GameAPI;
     </script>
 </body>
 </html>
