@@ -5,7 +5,16 @@
   "outputDirectory": ".",
   "functions": {
     "api/**/*.js": {
-      "runtime": "nodejs22.x"
+      "runtime": "nodejs20.x"
+    },
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    },
+    "api/**/*.py": {
+      "runtime": "python3.11"
+    },
+    "api/**/*.php": {
+      "runtime": "php@1.0.0"
     }
   },
   "rewrites": [
