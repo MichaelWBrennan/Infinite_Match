@@ -1,0 +1,17 @@
+{
+  "platform": "poki",
+  "buildTime": "2025-01-27T00:00:00.000Z",
+  "version": "1.0.0",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": true,
+    "analytics": true
+  },
+  "sdk": {
+    "url": "https://game-cdn.poki.com/scripts/poki-sdk.js",
+    "name": "Poki SDK"
+  },
+  "title": "Infinite Match - Poki",
+  "description": "Infinite Match - Industry Leading Match 3 Game on Poki Platform"
+}
