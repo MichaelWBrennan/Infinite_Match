@@ -11,6 +11,12 @@ public class GameplayUI : MonoBehaviour
     [SerializeField] private Transform gridRoot;
     [SerializeField] private GameObject tilePrefab;
     [SerializeField] private Button pauseButton;
+    [SerializeField] private Button mainMenuButton;
+    [SerializeField] private Button settingsButton;
+    [SerializeField] private Button shopButton;
+    [SerializeField] private Button socialButton;
+    [SerializeField] private Button eventsButton;
+    [SerializeField] private Button collectionsButton;
     
     [Header("AI Gameplay Enhancement")]
     public bool enableAIGameplay = true;
@@ -50,6 +56,36 @@ public class GameplayUI : MonoBehaviour
         {
             pauseButton.onClick.AddListener(OnPauseButtonClicked);
         }
+        
+        if (mainMenuButton != null)
+        {
+            mainMenuButton.onClick.AddListener(OnMainMenuButtonClicked);
+        }
+        
+        if (settingsButton != null)
+        {
+            settingsButton.onClick.AddListener(OnSettingsButtonClicked);
+        }
+        
+        if (shopButton != null)
+        {
+            shopButton.onClick.AddListener(OnShopButtonClicked);
+        }
+        
+        if (socialButton != null)
+        {
+            socialButton.onClick.AddListener(OnSocialButtonClicked);
+        }
+        
+        if (eventsButton != null)
+        {
+            eventsButton.onClick.AddListener(OnEventsButtonClicked);
+        }
+        
+        if (collectionsButton != null)
+        {
+            collectionsButton.onClick.AddListener(OnCollectionsButtonClicked);
+        }
     }
 
     public void OnPauseButtonClicked()
@@ -59,6 +95,84 @@ public class GameplayUI : MonoBehaviour
             // Pause game logic here
             Debug.Log("Game paused");
             Logger.Info("Game paused", "Gameplay");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "Gameplay");
+        }
+    }
+    
+    public void OnMainMenuButtonClicked()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.GoToMainMenu();
+            Logger.Info("Returning to main menu", "Gameplay");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "Gameplay");
+        }
+    }
+    
+    public void OnSettingsButtonClicked()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenSettings();
+            Logger.Info("Opening settings", "Gameplay");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "Gameplay");
+        }
+    }
+    
+    public void OnShopButtonClicked()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenShop();
+            Logger.Info("Opening shop", "Gameplay");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "Gameplay");
+        }
+    }
+    
+    public void OnSocialButtonClicked()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenSocial();
+            Logger.Info("Opening social", "Gameplay");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "Gameplay");
+        }
+    }
+    
+    public void OnEventsButtonClicked()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenEvents();
+            Logger.Info("Opening events", "Gameplay");
+        }
+        catch (System.Exception e)
+        {
+            Logger.LogException(e, "Gameplay");
+        }
+    }
+    
+    public void OnCollectionsButtonClicked()
+    {
+        try
+        {
+            Evergreen.Core.SceneManager.Instance.OpenCollections();
+            Logger.Info("Opening collections", "Gameplay");
         }
         catch (System.Exception e)
         {
@@ -444,6 +558,36 @@ public class GameplayUI : MonoBehaviour
         if (pauseButton != null)
         {
             pauseButton.onClick.RemoveListener(OnPauseButtonClicked);
+        }
+        
+        if (mainMenuButton != null)
+        {
+            mainMenuButton.onClick.RemoveListener(OnMainMenuButtonClicked);
+        }
+        
+        if (settingsButton != null)
+        {
+            settingsButton.onClick.RemoveListener(OnSettingsButtonClicked);
+        }
+        
+        if (shopButton != null)
+        {
+            shopButton.onClick.RemoveListener(OnShopButtonClicked);
+        }
+        
+        if (socialButton != null)
+        {
+            socialButton.onClick.RemoveListener(OnSocialButtonClicked);
+        }
+        
+        if (eventsButton != null)
+        {
+            eventsButton.onClick.RemoveListener(OnEventsButtonClicked);
+        }
+        
+        if (collectionsButton != null)
+        {
+            collectionsButton.onClick.RemoveListener(OnCollectionsButtonClicked);
         }
         
         // AI service cleanup is handled by the singleton
