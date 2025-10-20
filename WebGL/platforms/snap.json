@@ -1,0 +1,33 @@
+{
+  "platform": "snap",
+  "name": "Snapchat",
+  "description": "Infinite Match - Industry Leading Match 3 Game on Snapchat",
+  "sdkUrl": "https://sdk.snapchat.com/game-sdk/v1/snap-game-sdk.js",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": true,
+    "analytics": true,
+    "achievements": false,
+    "chat": false
+  },
+  "api": {
+    "showAd": "snap.game.showAd",
+    "showRewardedAd": "snap.game.showRewardedAd",
+    "showInterstitialAd": "snap.game.showInterstitialAd",
+    "trackEvent": "snap.game.trackEvent",
+    "getUserInfo": "snap.game.getUserInfo",
+    "isAdBlocked": "snap.game.isAdBlocked",
+    "isAdFree": "snap.game.isAdFree"
+  },
+  "ui": {
+    "theme": "dark",
+    "primaryColor": "#fffc00",
+    "secondaryColor": "#ff6b35"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": true,
+    "resumeOnFocus": true
+  }
+}

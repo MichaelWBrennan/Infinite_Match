@@ -1,0 +1,32 @@
+{
+  "platform": "gamecrazy",
+  "name": "Game Crazy",
+  "sdkUrl": "https://cdn.gamecrazy.com/sdk/gamecrazy-sdk.js",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": false,
+    "analytics": true,
+    "achievements": false,
+    "chat": false
+  },
+  "api": {
+    "showAd": "gameCrazy.showAd",
+    "showRewardedAd": "gameCrazy.showRewardedAd",
+    "showInterstitialAd": "gameCrazy.showInterstitialAd",
+    "trackEvent": "gameCrazy.trackEvent",
+    "getUserInfo": "gameCrazy.getUserInfo",
+    "isAdBlocked": "gameCrazy.isAdBlocked",
+    "isAdFree": "gameCrazy.isAdFree"
+  },
+  "ui": {
+    "theme": "light",
+    "primaryColor": "#00a8cc",
+    "secondaryColor": "#0077be"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": false,
+    "resumeOnFocus": false
+  }
+}

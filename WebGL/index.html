@@ -5,21 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="Infinite Match - Industry Leading Match 3 Game">
     <title>Infinite Match - Match 3 Game</title>
-    <link rel="shortcut icon" href="WebGL/TemplateData/favicon.ico">
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
     
-    <!-- Redirect to unified WebGL directory -->
-    <script>
-        // Redirect to the unified WebGL directory
-        window.location.href = '/WebGL/';
-    </script>
+    <!-- Shared UI Styles -->
+    <link rel="stylesheet" href="shared-ui.css">
+    
+    <!-- Platform-specific SDK will be loaded here -->
+    <script id="platform-sdk-loader"></script>
+    
+    <!-- Analytics SDKs -->
+    <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
+    <script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
+    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
+    <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
+    
+    <!-- Platform Selector -->
+    <script src="platform-selector.js"></script>
+    
+    <!-- Platform Detection -->
+    <script src="platform-detection.js"></script>
+    
+    <!-- Shared Game Logic -->
+    <script src="shared-game.js"></script>
 </head>
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-family: Arial, sans-serif;">
-        <div style="text-align: center;">
-            <h1>Infinite Match</h1>
-            <p>Loading game...</p>
-            <p>If you are not redirected automatically, <a href="/WebGL/" style="color: #fff; text-decoration: underline;">click here</a>.</p>
+    <div id="unity-container" class="unity-desktop">
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+        <div id="unity-loading-bar">
+            <div id="unity-logo"></div>
+            <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+            </div>
+            <div class="loading-text">Loading Infinite Match...</div>
         </div>
+        <div id="unity-mobile-warning">
+            WebGL builds are not supported on mobile devices.
+        </div>
+        
+        <!-- Game UI Elements -->
+        <div class="game-ui">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div class="moves">Moves: <span id="moves">30</span></div>
+        </div>
+        
+        <div class="game-controls">
+            <button class="btn" onclick="startNewGame()">New Game</button>
+            <button class="btn secondary" onclick="pauseGame()">Pause</button>
+            <button class="btn success" onclick="usePowerUp()">Power Up</button>
+        </div>
+        
+        <div class="game-over" id="gameOver">
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Level Reached: <span id="finalLevel">1</span></p>
+            <button class="btn" onclick="startNewGame()">Play Again</button>
+        </div>
+        
+        <div class="particles" id="particles"></div>
     </div>
     
     <script>
@@ -33,7 +77,7 @@
         // Platform Integration
         var platformAPI = null;
         var gameInstance = null;
-        var platformDetector = null;
+        var platformSelector = null;
         var platformConfig = null;
         
         // Analytics Integration
@@ -46,68 +90,23 @@
             initialized: false
         };
         
-        // Load platform-specific configuration
-        async function loadPlatformConfig() {
+        // Initialize Platform Selector
+        async function initializePlatformSelector() {
             try {
-                // Try to load platform config from current directory
-                const response = await fetch('platform-config.json');
-                if (response.ok) {
-                    platformConfig = await response.json();
-                    console.log('✅ Platform config loaded:', platformConfig.platform);
-                    
-                    // Update page title and description based on platform
-                    if (platformConfig.name) {
-                        document.title = `Infinite Match - ${platformConfig.name}`;
-                    }
-                    if (platformConfig.description) {
-                        document.querySelector('meta[name="description"]').setAttribute('content', platformConfig.description);
-                    }
-                } else {
-                    // Fallback to default config
-                    platformConfig = {
-                        platform: 'default',
-                        name: 'Default',
-                        features: {
-                            ads: false,
-                            iap: false,
-                            social: false,
-                            analytics: true
-                        }
-                    };
-                    console.log('⚠️ Using default platform config');
-                }
+                platformSelector = new PlatformSelector();
+                const platformInfo = await platformSelector.initialize();
+                
+                platformConfig = platformInfo.config;
+                platformAPI = platformInfo.api;
+                
+                console.log(`🎮 Platform: ${platformInfo.config.name}`);
+                console.log(`📱 Features:`, platformInfo.config.features);
+                
+                return platformInfo;
             } catch (error) {
-                console.error('❌ Failed to load platform config:', error);
-                // Use default config
-                platformConfig = {
-                    platform: 'default',
-                    name: 'Default',
-                    features: {
-                        ads: false,
-                        iap: false,
-                        social: false,
-                        analytics: true
-                    }
-                };
+                console.error('❌ Platform selector initialization failed:', error);
+                throw error;
             }
-        }
-        
-        // Load platform-specific SDK
-        function loadPlatformSDK() {
-            const sdkLoader = document.getElementById('platform-sdk-loader');
-            
-            if (!platformConfig || !platformConfig.sdkUrl) {
-                console.log('⚠️ No platform SDK URL, skipping SDK load');
-                return;
-            }
-            
-            sdkLoader.src = platformConfig.sdkUrl;
-            sdkLoader.onload = () => {
-                console.log('✅ Platform SDK loaded:', platformConfig.platform);
-            };
-            sdkLoader.onerror = () => {
-                console.error('❌ Failed to load platform SDK:', platformConfig.platform);
-            };
         }
         
         // Initialize Analytics
@@ -205,28 +204,16 @@
         // Initialize Platform Detection and SDK
         async function initializePlatform() {
             try {
-                // Load platform config first
-                await loadPlatformConfig();
-                
-                // Load platform-specific SDK
-                loadPlatformSDK();
+                // Initialize platform selector
+                await initializePlatformSelector();
                 
                 // Initialize analytics
                 initializeAnalytics();
                 
-                // Initialize platform detector
-                platformDetector = new PlatformDetector();
-                const platformInfo = await platformDetector.initialize();
-                
-                console.log(`🎮 Platform: ${platformInfo.config.name}`);
-                console.log(`📱 Features:`, platformInfo.config.features);
-                
-                platformAPI = platformDetector.getUnifiedAPI();
-                
                 // Track platform initialization
                 trackEvent('platform_initialized', {
-                    platform: platformInfo.config.name,
-                    features: platformInfo.config.features
+                    platform: platformConfig.name,
+                    features: platformConfig.features
                 });
                 
                 startGame();

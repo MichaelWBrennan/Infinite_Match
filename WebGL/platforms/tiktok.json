@@ -1,0 +1,33 @@
+{
+  "platform": "tiktok",
+  "name": "TikTok",
+  "description": "Infinite Match - Industry Leading Match 3 Game on TikTok",
+  "sdkUrl": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_sdk/tiktok_web_login_sdk.js",
+  "features": {
+    "ads": true,
+    "iap": true,
+    "social": true,
+    "analytics": true,
+    "achievements": false,
+    "chat": false
+  },
+  "api": {
+    "showAd": "tt.showRewardedVideoAd",
+    "showRewardedAd": "tt.showRewardedVideoAd",
+    "showInterstitialAd": "tt.showInterstitialAd",
+    "trackEvent": "tt.reportAnalytics",
+    "getUserInfo": "tt.getUserInfo",
+    "isAdBlocked": "tt.isAdBlocked",
+    "isAdFree": "tt.isAdFree"
+  },
+  "ui": {
+    "theme": "dark",
+    "primaryColor": "#ff0050",
+    "secondaryColor": "#00f2ea"
+  },
+  "gameplay": {
+    "autoStart": true,
+    "pauseOnBlur": true,
+    "resumeOnFocus": true
+  }
+}
