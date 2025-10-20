@@ -22,7 +22,7 @@ unity-wrapper
 webgl-builder.js
 webhook-config.json
 
-# Ignore build artifacts
+# Ignore build artifacts (except the main Build directory)
 dist/
 Builds/
 *.log
@@ -66,3 +66,14 @@ requirements.txt
 *.unitypackage
 HEADLESS_ONLY_MODE
 jq
+
+# Ignore any remaining API files that might be created
+api/
+
+# Ignore any serverless function files
+**/api/**
+**/*.js
+!Build/**
+!webgl/**
+!platform-detection.js
+!match3-fallback.js
