@@ -1,177 +1,346 @@
 {
   "main_menu": {
+    "background": {
+      "type": "gradient",
+      "colors": [
+        [0.98, 0.45, 0.65, 1.0],
+        [0.2, 0.6, 0.9, 1.0]
+      ],
+      "direction": "diagonal"
+    },
     "elements": [
       {
         "name": "TitleText",
         "type": "Text",
         "text": "Infinite Match",
         "font_size": 72,
-        "color": [
-          1.0,
-          1.0,
-          1.0,
-          1.0
-        ],
-        "position": [
-          0,
-          200,
-          0
-        ],
-        "size": [
-          600,
-          100
-        ]
+        "font_weight": "black",
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "position": [0, 300, 0],
+        "size": [600, 100],
+        "shadow": {
+          "offset": [0, 8],
+          "blur": 16,
+          "color": [0, 0, 0, 0.2]
+        },
+        "animation": "bounce"
       },
       {
         "name": "PlayButton",
         "type": "Button",
-        "text": "Play",
+        "text": "PLAY",
         "font_size": 36,
-        "color": [
-          0.2,
-          0.8,
-          0.2,
-          1.0
-        ],
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "size": [
-          200,
-          80
-        ]
+        "font_weight": "bold",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [0.4, 0.8, 0.4, 1.0],
+        "position": [0, 100, 0],
+        "size": [280, 80],
+        "border_radius": 40,
+        "shadow": {
+          "offset": [0, 4],
+          "blur": 8,
+          "color": [0, 0, 0, 0.15]
+        },
+        "animation": "bounce",
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
       },
       {
         "name": "SettingsButton",
         "type": "Button",
-        "text": "Settings",
-        "font_size": 36,
-        "color": [
-          0.2,
-          0.6,
-          0.8,
-          1.0
-        ],
-        "position": [
-          0,
-          -100,
-          0
-        ],
-        "size": [
-          200,
-          80
-        ]
+        "text": "SETTINGS",
+        "font_size": 28,
+        "font_weight": "medium",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [0.2, 0.6, 0.9, 1.0],
+        "position": [0, 0, 0],
+        "size": [240, 70],
+        "border_radius": 35,
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0, 0, 0, 0.1]
+        },
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
       },
       {
-        "name": "QuitButton",
+        "name": "ShopButton",
         "type": "Button",
-        "text": "Quit",
-        "font_size": 36,
-        "color": [
-          0.8,
-          0.2,
-          0.2,
-          1.0
-        ],
-        "position": [
-          0,
-          -200,
-          0
-        ],
-        "size": [
-          200,
-          80
-        ]
+        "text": "SHOP",
+        "font_size": 28,
+        "font_weight": "medium",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [1.0, 0.6, 0.2, 1.0],
+        "position": [0, -100, 0],
+        "size": [240, 70],
+        "border_radius": 35,
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0, 0, 0, 0.1]
+        },
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
+      },
+      {
+        "name": "ProfileButton",
+        "type": "Button",
+        "text": "PROFILE",
+        "font_size": 28,
+        "font_weight": "medium",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [0.7, 0.3, 0.9, 1.0],
+        "position": [0, -200, 0],
+        "size": [240, 70],
+        "border_radius": 35,
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0, 0, 0, 0.1]
+        },
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
+      }
+    ],
+    "decorative_elements": [
+      {
+        "type": "floating_candy",
+        "position": [-400, 200, 0],
+        "size": [60, 60],
+        "animation": "float",
+        "color": [1.0, 0.9, 0.2, 0.8]
+      },
+      {
+        "type": "floating_candy",
+        "position": [400, -150, 0],
+        "size": [80, 80],
+        "animation": "float",
+        "color": [0.98, 0.45, 0.65, 0.8]
       }
     ]
   },
   "gameplay_ui": {
-    "elements": [
-      {
-        "name": "ScoreText",
-        "type": "Text",
-        "text": "Score: 0",
-        "font_size": 48,
-        "color": [
-          1.0,
-          1.0,
-          1.0,
-          1.0
-        ],
-        "position": [
-          -400,
-          400,
-          0
-        ],
-        "size": [
-          300,
-          60
-        ]
+    "top_bar": {
+      "background_color": [1.0, 1.0, 1.0, 0.95],
+      "height": 120,
+      "position": [0, 450, 0],
+      "shadow": {
+        "offset": [0, 2],
+        "blur": 4,
+        "color": [0, 0, 0, 0.1]
       },
-      {
-        "name": "MovesText",
-        "type": "Text",
-        "text": "Moves: 20",
-        "font_size": 36,
-        "color": [
-          1.0,
-          1.0,
-          1.0,
-          1.0
-        ],
-        "position": [
-          400,
-          400,
-          0
-        ],
-        "size": [
-          250,
-          50
-        ]
+      "elements": [
+        {
+          "name": "ScorePanel",
+          "type": "panel",
+          "background_color": [0.98, 0.45, 0.65, 1.0],
+          "position": [-300, 0, 0],
+          "size": [200, 80],
+          "border_radius": 40,
+          "shadow": {
+            "offset": [0, 4],
+            "blur": 8,
+            "color": [0, 0, 0, 0.15]
+          },
+          "elements": [
+            {
+              "name": "ScoreIcon",
+              "type": "icon",
+              "icon": "star",
+              "position": [-60, 0, 0],
+              "size": [40, 40],
+              "color": [1.0, 1.0, 1.0, 1.0]
+            },
+            {
+              "name": "ScoreText",
+              "type": "text",
+              "text": "0",
+              "font_size": 32,
+              "font_weight": "bold",
+              "color": [1.0, 1.0, 1.0, 1.0],
+              "position": [20, 0, 0],
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "name": "MovesPanel",
+          "type": "panel",
+          "background_color": [0.2, 0.6, 0.9, 1.0],
+          "position": [0, 0, 0],
+          "size": [180, 80],
+          "border_radius": 40,
+          "shadow": {
+            "offset": [0, 4],
+            "blur": 8,
+            "color": [0, 0, 0, 0.15]
+          },
+          "elements": [
+            {
+              "name": "MovesIcon",
+              "type": "icon",
+              "icon": "target",
+              "position": [-50, 0, 0],
+              "size": [40, 40],
+              "color": [1.0, 1.0, 1.0, 1.0]
+            },
+            {
+              "name": "MovesText",
+              "type": "text",
+              "text": "20",
+              "font_size": 32,
+              "font_weight": "bold",
+              "color": [1.0, 1.0, 1.0, 1.0],
+              "position": [20, 0, 0],
+              "alignment": "left"
+            }
+          ]
+        },
+        {
+          "name": "LevelPanel",
+          "type": "panel",
+          "background_color": [1.0, 0.6, 0.2, 1.0],
+          "position": [300, 0, 0],
+          "size": [200, 80],
+          "border_radius": 40,
+          "shadow": {
+            "offset": [0, 4],
+            "blur": 8,
+            "color": [0, 0, 0, 0.15]
+          },
+          "elements": [
+            {
+              "name": "LevelIcon",
+              "type": "icon",
+              "icon": "trophy",
+              "position": [-60, 0, 0],
+              "size": [40, 40],
+              "color": [1.0, 1.0, 1.0, 1.0]
+            },
+            {
+              "name": "LevelText",
+              "type": "text",
+              "text": "1",
+              "font_size": 32,
+              "font_weight": "bold",
+              "color": [1.0, 1.0, 1.0, 1.0],
+              "position": [20, 0, 0],
+              "alignment": "left"
+            }
+          ]
+        }
+      ]
+    },
+    "bottom_bar": {
+      "background_color": [1.0, 1.0, 1.0, 0.95],
+      "height": 100,
+      "position": [0, -450, 0],
+      "shadow": {
+        "offset": [0, 2],
+        "blur": 4,
+        "color": [0, 0, 0, 0.1]
       },
+      "elements": [
+        {
+          "name": "PauseButton",
+          "type": "button",
+          "text": "⏸",
+          "font_size": 36,
+          "background_color": [0.8, 0.8, 0.8, 1.0],
+          "position": [-400, 0, 0],
+          "size": [80, 80],
+          "border_radius": 40,
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          },
+          "hover_animation": "button_hover",
+          "click_animation": "button_click"
+        },
+        {
+          "name": "BoostersPanel",
+          "type": "panel",
+          "background_color": [0.95, 0.95, 0.98, 1.0],
+          "position": [0, 0, 0],
+          "size": [400, 80],
+          "border_radius": 40,
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          },
+          "elements": [
+            {
+              "name": "ExtraMovesBooster",
+              "type": "booster_button",
+              "icon": "extra_moves",
+              "count": "3",
+              "position": [-120, 0, 0],
+              "size": [60, 60],
+              "background_color": [0.4, 0.8, 0.4, 1.0],
+              "border_radius": 30
+            },
+            {
+              "name": "ColorBombBooster",
+              "type": "booster_button",
+              "icon": "color_bomb",
+              "count": "2",
+              "position": [0, 0, 0],
+              "size": [60, 60],
+              "background_color": [0.98, 0.45, 0.65, 1.0],
+              "border_radius": 30
+            },
+            {
+              "name": "RainbowBlastBooster",
+              "type": "booster_button",
+              "icon": "rainbow_blast",
+              "count": "1",
+              "position": [120, 0, 0],
+              "size": [60, 60],
+              "background_color": [0.7, 0.3, 0.9, 1.0],
+              "border_radius": 30
+            }
+          ]
+        },
+        {
+          "name": "ShopButton",
+          "type": "button",
+          "text": "💎",
+          "font_size": 36,
+          "background_color": [1.0, 0.8, 0.2, 1.0],
+          "position": [400, 0, 0],
+          "size": [80, 80],
+          "border_radius": 40,
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          },
+          "hover_animation": "button_hover",
+          "click_animation": "button_click"
+        }
+      ]
+    },
+    "progress_bars": [
       {
-        "name": "LevelText",
-        "type": "Text",
-        "text": "Level 1",
-        "font_size": 42,
-        "color": [
-          1.0,
-          1.0,
-          1.0,
-          1.0
-        ],
-        "position": [
-          0,
-          400,
-          0
-        ],
-        "size": [
-          200,
-          60
-        ]
-      },
-      {
-        "name": "PauseButton",
-        "type": "Button",
-        "text": "Pause",
-        "font_size": 24,
-        "color": [
-          0.8,
-          0.8,
-          0.2,
-          1.0
-        ],
-        "position": [
-          450,
-          450,
-          0
-        ],
-        "size": [
-          100,
-          50
-        ]
+        "name": "LevelProgressBar",
+        "type": "progress_bar",
+        "background_color": [0.9, 0.9, 0.9, 1.0],
+        "fill_color": [0.98, 0.45, 0.65, 1.0],
+        "position": [0, 350, 0],
+        "size": [600, 20],
+        "border_radius": 10,
+        "progress": 0.0,
+        "show_text": true,
+        "text_format": "{current}/{target}",
+        "text_color": [0.2, 0.2, 0.25, 1.0],
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0, 0, 0, 0.1]
+        }
       }
     ]
   },
@@ -264,90 +433,113 @@
     ]
   },
   "level_complete_ui": {
+    "background": {
+      "type": "modal_overlay",
+      "color": [0, 0, 0, 0.7]
+    },
+    "panel": {
+      "background_color": [1.0, 1.0, 1.0, 1.0],
+      "position": [0, 0, 0],
+      "size": [500, 600],
+      "border_radius": 24,
+      "shadow": {
+        "offset": [0, 8],
+        "blur": 16,
+        "color": [0, 0, 0, 0.2]
+      },
+      "animation": "scale_in"
+    },
     "elements": [
       {
         "name": "LevelCompleteText",
-        "type": "Text",
-        "text": "Level Complete!",
-        "font_size": 64,
-        "color": [
-          0.2,
-          1.0,
-          0.2,
-          1.0
-        ],
-        "position": [
-          0,
-          100,
-          0
-        ],
-        "size": [
-          500,
-          80
+        "type": "text",
+        "text": "LEVEL COMPLETE!",
+        "font_size": 48,
+        "font_weight": "black",
+        "color": [0.4, 0.8, 0.4, 1.0],
+        "position": [0, 200, 0],
+        "alignment": "center",
+        "animation": "bounce"
+      },
+      {
+        "name": "StarsContainer",
+        "type": "container",
+        "position": [0, 100, 0],
+        "elements": [
+          {
+            "name": "Star1",
+            "type": "star",
+            "position": [-80, 0, 0],
+            "size": [60, 60],
+            "color": [1.0, 0.8, 0.2, 1.0],
+            "animation": "star_pop"
+          },
+          {
+            "name": "Star2",
+            "type": "star",
+            "position": [0, 0, 0],
+            "size": [60, 60],
+            "color": [1.0, 0.8, 0.2, 1.0],
+            "animation": "star_pop"
+          },
+          {
+            "name": "Star3",
+            "type": "star",
+            "position": [80, 0, 0],
+            "size": [60, 60],
+            "color": [1.0, 0.8, 0.2, 1.0],
+            "animation": "star_pop"
+          }
         ]
       },
       {
-        "name": "StarsText",
-        "type": "Text",
-        "text": "\u2b50\u2b50\u2b50",
-        "font_size": 48,
-        "color": [
-          1.0,
-          1.0,
-          0.0,
-          1.0
-        ],
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "size": [
-          300,
-          60
-        ]
+        "name": "ScoreText",
+        "type": "text",
+        "text": "Score: 15,000",
+        "font_size": 32,
+        "font_weight": "bold",
+        "color": [0.2, 0.2, 0.25, 1.0],
+        "position": [0, 0, 0],
+        "alignment": "center"
       },
       {
         "name": "NextLevelButton",
-        "type": "Button",
-        "text": "Next Level",
-        "font_size": 36,
-        "color": [
-          0.2,
-          0.8,
-          0.2,
-          1.0
-        ],
-        "position": [
-          0,
-          -100,
-          0
-        ],
-        "size": [
-          200,
-          80
-        ]
+        "type": "button",
+        "text": "NEXT LEVEL",
+        "font_size": 28,
+        "font_weight": "bold",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [0.4, 0.8, 0.4, 1.0],
+        "position": [0, -100, 0],
+        "size": [250, 70],
+        "border_radius": 35,
+        "shadow": {
+          "offset": [0, 4],
+          "blur": 8,
+          "color": [0, 0, 0, 0.15]
+        },
+        "animation": "pulse",
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
       },
       {
         "name": "MainMenuButton",
-        "type": "Button",
-        "text": "Main Menu",
-        "font_size": 36,
-        "color": [
-          0.2,
-          0.6,
-          0.8,
-          1.0
-        ],
-        "position": [
-          0,
-          -200,
-          0
-        ],
-        "size": [
-          200,
-          80
-        ]
+        "type": "button",
+        "text": "MAIN MENU",
+        "font_size": 24,
+        "font_weight": "medium",
+        "text_color": [0.2, 0.2, 0.25, 1.0],
+        "background_color": [0.9, 0.9, 0.9, 1.0],
+        "position": [0, -200, 0],
+        "size": [200, 60],
+        "border_radius": 30,
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0, 0, 0, 0.1]
+        },
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
       }
     ]
   }

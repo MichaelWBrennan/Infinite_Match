@@ -1,0 +1,362 @@
+{
+  "ui_components": {
+    "buttons": {
+      "primary_button": {
+        "name": "PrimaryButton",
+        "base_style": {
+          "background_color": [0.98, 0.45, 0.65, 1.0],
+          "text_color": [1.0, 1.0, 1.0, 1.0],
+          "font_size": 28,
+          "font_weight": "bold",
+          "border_radius": 35,
+          "padding": [24, 16],
+          "min_size": [200, 60],
+          "shadow": {
+            "offset": [0, 4],
+            "blur": 8,
+            "color": [0, 0, 0, 0.15]
+          }
+        },
+        "states": {
+          "normal": {
+            "scale": [1.0, 1.0, 1.0],
+            "color_brightness": 1.0
+          },
+          "hover": {
+            "scale": [1.05, 1.05, 1.0],
+            "color_brightness": 1.2,
+            "shadow_intensity": 1.3
+          },
+          "pressed": {
+            "scale": [0.95, 0.95, 1.0],
+            "color_brightness": 0.8
+          },
+          "disabled": {
+            "scale": [1.0, 1.0, 1.0],
+            "color_brightness": 0.5,
+            "alpha": 0.5
+          }
+        },
+        "animations": {
+          "hover": {
+            "duration": 0.2,
+            "ease_type": "EaseOut"
+          },
+          "click": {
+            "duration": 0.1,
+            "ease_type": "EaseIn"
+          }
+        }
+      },
+      "secondary_button": {
+        "name": "SecondaryButton",
+        "base_style": {
+          "background_color": [0.2, 0.6, 0.9, 1.0],
+          "text_color": [1.0, 1.0, 1.0, 1.0],
+          "font_size": 24,
+          "font_weight": "medium",
+          "border_radius": 30,
+          "padding": [20, 14],
+          "min_size": [180, 50],
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          }
+        },
+        "states": {
+          "normal": {
+            "scale": [1.0, 1.0, 1.0],
+            "color_brightness": 1.0
+          },
+          "hover": {
+            "scale": [1.03, 1.03, 1.0],
+            "color_brightness": 1.15
+          },
+          "pressed": {
+            "scale": [0.97, 0.97, 1.0],
+            "color_brightness": 0.85
+          }
+        }
+      },
+      "icon_button": {
+        "name": "IconButton",
+        "base_style": {
+          "background_color": [0.8, 0.8, 0.8, 1.0],
+          "icon_color": [1.0, 1.0, 1.0, 1.0],
+          "size": [80, 80],
+          "border_radius": 40,
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          }
+        },
+        "states": {
+          "normal": {
+            "scale": [1.0, 1.0, 1.0]
+          },
+          "hover": {
+            "scale": [1.1, 1.1, 1.0],
+            "color_brightness": 1.2
+          },
+          "pressed": {
+            "scale": [0.9, 0.9, 1.0]
+          }
+        }
+      }
+    },
+    "panels": {
+      "info_panel": {
+        "name": "InfoPanel",
+        "base_style": {
+          "background_color": [1.0, 1.0, 1.0, 0.95],
+          "border_radius": 20,
+          "padding": [24, 20],
+          "shadow": {
+            "offset": [0, 4],
+            "blur": 12,
+            "color": [0, 0, 0, 0.1]
+          }
+        },
+        "variants": {
+          "score_panel": {
+            "background_color": [0.98, 0.45, 0.65, 1.0],
+            "text_color": [1.0, 1.0, 1.0, 1.0],
+            "border_radius": 40,
+            "padding": [20, 16]
+          },
+          "moves_panel": {
+            "background_color": [0.2, 0.6, 0.9, 1.0],
+            "text_color": [1.0, 1.0, 1.0, 1.0],
+            "border_radius": 40,
+            "padding": [20, 16]
+          },
+          "level_panel": {
+            "background_color": [1.0, 0.6, 0.2, 1.0],
+            "text_color": [1.0, 1.0, 1.0, 1.0],
+            "border_radius": 40,
+            "padding": [20, 16]
+          }
+        }
+      },
+      "modal_panel": {
+        "name": "ModalPanel",
+        "base_style": {
+          "background_color": [1.0, 1.0, 1.0, 1.0],
+          "border_radius": 24,
+          "padding": [32, 28],
+          "shadow": {
+            "offset": [0, 8],
+            "blur": 24,
+            "color": [0, 0, 0, 0.2]
+          }
+        },
+        "overlay": {
+          "background_color": [0, 0, 0, 0.7],
+          "animation": "fade_in"
+        }
+      }
+    },
+    "progress_bars": {
+      "level_progress": {
+        "name": "LevelProgressBar",
+        "base_style": {
+          "background_color": [0.9, 0.9, 0.9, 1.0],
+          "fill_color": [0.98, 0.45, 0.65, 1.0],
+          "height": 20,
+          "border_radius": 10,
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          }
+        },
+        "text_style": {
+          "font_size": 18,
+          "font_weight": "medium",
+          "color": [0.2, 0.2, 0.25, 1.0],
+          "format": "{current}/{target}"
+        },
+        "animations": {
+          "fill": {
+            "duration": 0.5,
+            "ease_type": "EaseOut"
+          }
+        }
+      }
+    },
+    "boosters": {
+      "booster_button": {
+        "name": "BoosterButton",
+        "base_style": {
+          "size": [60, 60],
+          "border_radius": 30,
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          }
+        },
+        "variants": {
+          "extra_moves": {
+            "background_color": [0.4, 0.8, 0.4, 1.0],
+            "icon": "extra_moves",
+            "icon_color": [1.0, 1.0, 1.0, 1.0]
+          },
+          "color_bomb": {
+            "background_color": [0.98, 0.45, 0.65, 1.0],
+            "icon": "color_bomb",
+            "icon_color": [1.0, 1.0, 1.0, 1.0]
+          },
+          "rainbow_blast": {
+            "background_color": [0.7, 0.3, 0.9, 1.0],
+            "icon": "rainbow_blast",
+            "icon_color": [1.0, 1.0, 1.0, 1.0]
+          }
+        },
+        "count_display": {
+          "font_size": 14,
+          "font_weight": "bold",
+          "color": [1.0, 1.0, 1.0, 1.0],
+          "position": "bottom_right",
+          "background": {
+            "color": [0, 0, 0, 0.7],
+            "border_radius": 10,
+            "padding": [4, 2]
+          }
+        }
+      }
+    },
+    "text_elements": {
+      "title_text": {
+        "name": "TitleText",
+        "base_style": {
+          "font_size": 48,
+          "font_weight": "black",
+          "color": [0.2, 0.2, 0.25, 1.0],
+          "alignment": "center",
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0, 0, 0, 0.1]
+          }
+        }
+      },
+      "subtitle_text": {
+        "name": "SubtitleText",
+        "base_style": {
+          "font_size": 32,
+          "font_weight": "bold",
+          "color": [0.2, 0.2, 0.25, 1.0],
+          "alignment": "center"
+        }
+      },
+      "body_text": {
+        "name": "BodyText",
+        "base_style": {
+          "font_size": 24,
+          "font_weight": "normal",
+          "color": [0.2, 0.2, 0.25, 1.0],
+          "alignment": "left"
+        }
+      },
+      "score_text": {
+        "name": "ScoreText",
+        "base_style": {
+          "font_size": 32,
+          "font_weight": "bold",
+          "color": [1.0, 1.0, 1.0, 1.0],
+          "alignment": "center",
+          "shadow": {
+            "offset": [0, 1],
+            "blur": 2,
+            "color": [0, 0, 0, 0.3]
+          }
+        }
+      }
+    },
+    "icons": {
+      "star_icon": {
+        "name": "StarIcon",
+        "base_style": {
+          "color": [1.0, 0.8, 0.2, 1.0],
+          "size": [40, 40]
+        },
+        "animations": {
+          "pop": {
+            "duration": 0.8,
+            "ease_type": "BounceOut",
+            "scale_from": [0.0, 0.0, 1.0],
+            "scale_to": [1.2, 1.2, 1.0],
+            "rotation_from": [0, 0, 0],
+            "rotation_to": [0, 0, 360]
+          }
+        }
+      },
+      "trophy_icon": {
+        "name": "TrophyIcon",
+        "base_style": {
+          "color": [1.0, 0.8, 0.2, 1.0],
+          "size": [40, 40]
+        }
+      },
+      "target_icon": {
+        "name": "TargetIcon",
+        "base_style": {
+          "color": [1.0, 1.0, 1.0, 1.0],
+          "size": [40, 40]
+        }
+      }
+    }
+  },
+  "layout_systems": {
+    "flexbox": {
+      "direction": "row",
+      "justify_content": "center",
+      "align_items": "center",
+      "flex_wrap": "nowrap",
+      "gap": 16
+    },
+    "grid": {
+      "columns": 3,
+      "rows": "auto",
+      "gap": 20,
+      "alignment": "center"
+    }
+  },
+  "animation_systems": {
+    "easing_functions": {
+      "EaseIn": "cubic-bezier(0.4, 0, 1, 1)",
+      "EaseOut": "cubic-bezier(0, 0, 0.2, 1)",
+      "EaseInOut": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "BounceOut": "cubic-bezier(0.68, -0.55, 0.265, 1.55)"
+    },
+    "timing_functions": {
+      "fast": 0.1,
+      "normal": 0.2,
+      "slow": 0.5,
+      "very_slow": 1.0
+    }
+  },
+  "accessibility": {
+    "focus_indicators": {
+      "enabled": true,
+      "color": [0.2, 0.6, 0.9, 1.0],
+      "thickness": 2,
+      "style": "dashed"
+    },
+    "high_contrast": {
+      "enabled": true,
+      "color_adjustments": {
+        "background_contrast": 1.5,
+        "text_contrast": 2.0
+      }
+    },
+    "screen_reader": {
+      "enabled": true,
+      "aria_labels": true,
+      "semantic_markup": true
+    }
+  }
+}
