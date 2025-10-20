@@ -3,127 +3,108 @@
     "button_hover": {
       "duration": 0.2,
       "ease_type": "EaseOut",
-      "scale_from": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "scale_to": [
-        1.1,
-        1.1,
-        1.0
-      ],
-      "color_from": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "color_to": [
-        1.2,
-        1.2,
-        1.2,
-        1.0
-      ]
+      "scale_from": [1.0, 1.0, 1.0],
+      "scale_to": [1.05, 1.05, 1.0],
+      "color_brightness": 1.2,
+      "shadow_intensity": 1.3
     },
     "button_click": {
       "duration": 0.1,
       "ease_type": "EaseIn",
-      "scale_from": [
-        1.1,
-        1.1,
-        1.0
-      ],
-      "scale_to": [
-        0.95,
-        0.95,
-        1.0
-      ],
-      "color_from": [
-        1.2,
-        1.2,
-        1.2,
-        1.0
-      ],
-      "color_to": [
-        0.8,
-        0.8,
-        0.8,
-        1.0
-      ]
+      "scale_from": [1.05, 1.05, 1.0],
+      "scale_to": [0.95, 0.95, 1.0],
+      "color_brightness": 0.8
+    },
+    "button_pulse": {
+      "duration": 1.0,
+      "ease_type": "EaseInOut",
+      "scale_from": [1.0, 1.0, 1.0],
+      "scale_to": [1.1, 1.1, 1.0],
+      "loop": true,
+      "ping_pong": true
     }
   },
   "text_animations": {
     "score_popup": {
-      "duration": 1.0,
+      "duration": 1.5,
       "ease_type": "BounceOut",
-      "scale_from": [
-        0.5,
-        0.5,
-        1.0
-      ],
-      "scale_to": [
-        1.2,
-        1.2,
-        1.0
-      ],
-      "position_offset": [
-        0,
-        50,
-        0
-      ],
+      "scale_from": [0.5, 0.5, 1.0],
+      "scale_to": [1.2, 1.2, 1.0],
+      "position_offset": [0, 100, 0],
       "alpha_from": 0.0,
-      "alpha_to": 1.0
+      "alpha_to": 1.0,
+      "color_shift": [0.98, 0.45, 0.65, 1.0]
     },
     "combo_text": {
-      "duration": 0.8,
+      "duration": 1.0,
       "ease_type": "EaseOut",
-      "scale_from": [
-        0.8,
-        0.8,
-        1.0
-      ],
-      "scale_to": [
-        1.5,
-        1.5,
-        1.0
-      ],
+      "scale_from": [0.8, 0.8, 1.0],
+      "scale_to": [1.5, 1.5, 1.0],
       "alpha_from": 0.0,
-      "alpha_to": 1.0
+      "alpha_to": 1.0,
+      "rotation_from": [0, 0, 0],
+      "rotation_to": [0, 0, 360]
+    },
+    "bounce": {
+      "duration": 0.6,
+      "ease_type": "BounceOut",
+      "scale_from": [0.0, 0.0, 1.0],
+      "scale_to": [1.0, 1.0, 1.0]
+    },
+    "shake": {
+      "duration": 0.5,
+      "ease_type": "EaseInOut",
+      "position_offset": [10, 0, 0],
+      "loop": true,
+      "ping_pong": true,
+      "frequency": 10
     }
   },
   "panel_animations": {
     "panel_slide_in": {
       "duration": 0.5,
       "ease_type": "EaseOut",
-      "position_from": [
-        -800,
-        0,
-        0
-      ],
-      "position_to": [
-        0,
-        0,
-        0
-      ],
+      "position_from": [-800, 0, 0],
+      "position_to": [0, 0, 0],
       "alpha_from": 0.0,
-      "alpha_to": 1.0
+      "alpha_to": 1.0,
+      "scale_from": [0.8, 0.8, 1.0],
+      "scale_to": [1.0, 1.0, 1.0]
     },
     "panel_slide_out": {
       "duration": 0.3,
       "ease_type": "EaseIn",
-      "position_from": [
-        0,
-        0,
-        0
-      ],
-      "position_to": [
-        800,
-        0,
-        0
-      ],
+      "position_from": [0, 0, 0],
+      "position_to": [800, 0, 0],
       "alpha_from": 1.0,
-      "alpha_to": 0.0
+      "alpha_to": 0.0,
+      "scale_from": [1.0, 1.0, 1.0],
+      "scale_to": [0.8, 0.8, 1.0]
+    },
+    "scale_in": {
+      "duration": 0.4,
+      "ease_type": "EaseOut",
+      "scale_from": [0.0, 0.0, 1.0],
+      "scale_to": [1.0, 1.0, 1.0],
+      "alpha_from": 0.0,
+      "alpha_to": 1.0
+    },
+    "star_pop": {
+      "duration": 0.8,
+      "ease_type": "BounceOut",
+      "scale_from": [0.0, 0.0, 1.0],
+      "scale_to": [1.2, 1.2, 1.0],
+      "rotation_from": [0, 0, 0],
+      "rotation_to": [0, 0, 360],
+      "alpha_from": 0.0,
+      "alpha_to": 1.0
+    },
+    "float": {
+      "duration": 3.0,
+      "ease_type": "EaseInOut",
+      "position_offset": [0, 20, 0],
+      "loop": true,
+      "ping_pong": true
     }
   }
 }
