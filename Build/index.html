@@ -23,26 +23,26 @@
             height: 100%;
             margin: 0;
             padding: 0;
-            background: #000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             overflow: hidden;
         }
         
         #unity-container {
-            width: 100%;
-            height: 100%;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
         }
         
         #unity-canvas {
             background: #231F20;
             display: block;
-            border: 2px solid #444;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
         #unity-loading-bar {
@@ -145,6 +145,14 @@
             text-align: center;
             font-size: 24px;
             color: #888;
+        }
+        
+        .loading-text {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         
         /* Match 3 Game Styles */
@@ -317,6 +325,29 @@
                 transform: scale(0) translateY(-100px);
             }
         }
+        
+        /* Additional animations and effects */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .game-ui {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .game-controls {
+            animation: fadeIn 0.5s ease-out 0.2s both;
+        }
+        
+        .match3-board {
+            animation: fadeIn 0.5s ease-out 0.4s both;
+        }
     </style>
 </head>
 <body>
@@ -332,6 +363,28 @@
         <div id="unity-mobile-warning">
             WebGL builds are not supported on mobile devices.
         </div>
+        
+        <!-- Game UI Elements -->
+        <div class="game-ui">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div class="moves">Moves: <span id="moves">30</span></div>
+        </div>
+        
+        <div class="game-controls">
+            <button class="btn" onclick="startNewGame()">New Game</button>
+            <button class="btn secondary" onclick="pauseGame()">Pause</button>
+            <button class="btn success" onclick="usePowerUp()">Power Up</button>
+        </div>
+        
+        <div class="game-over" id="gameOver">
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Level Reached: <span id="finalLevel">1</span></p>
+            <button class="btn" onclick="startNewGame()">Play Again</button>
+        </div>
+        
+        <div class="particles" id="particles"></div>
     </div>
     
     <script>
@@ -637,8 +690,21 @@
                 mobileWarning.style.display = "block";
                 return;
             } else {
-                canvas.style.width = "960px";
-                canvas.style.height = "600px";
+                // Responsive canvas sizing
+                const maxWidth = Math.min(window.innerWidth - 40, 960);
+                const maxHeight = Math.min(window.innerHeight - 40, 600);
+                const aspectRatio = 960 / 600;
+                
+                let canvasWidth = maxWidth;
+                let canvasHeight = maxWidth / aspectRatio;
+                
+                if (canvasHeight > maxHeight) {
+                    canvasHeight = maxHeight;
+                    canvasWidth = maxHeight * aspectRatio;
+                }
+                
+                canvas.style.width = canvasWidth + "px";
+                canvas.style.height = canvasHeight + "px";
             }
             
             loadingBar.style.display = "block";
@@ -881,6 +947,31 @@
         
         // Legacy Poki API for backward compatibility
         window.PokiAPI = window.GameAPI;
+        
+        // Game control functions for UI buttons
+        function startNewGame() {
+            if (window.match3Game) {
+                window.match3Game.startNewGame();
+            } else {
+                console.log('Match 3 game not initialized yet');
+            }
+        }
+        
+        function pauseGame() {
+            if (window.match3Game) {
+                window.match3Game.pauseGame();
+            } else {
+                console.log('Match 3 game not initialized yet');
+            }
+        }
+        
+        function usePowerUp() {
+            if (window.match3Game) {
+                window.match3Game.usePowerUp();
+            } else {
+                console.log('Match 3 game not initialized yet');
+            }
+        }
     </script>
 </body>
 </html>
