@@ -43,24 +43,58 @@
             WebGL builds are not supported on mobile devices.
         </div>
         
-        <!-- Game UI Elements -->
+        <!-- Royal Match Top UI Bar -->
         <div class="game-ui">
-            <div class="score">Score: <span id="score">0</span></div>
-            <div class="level">Level: <span id="level">1</span></div>
-            <div class="moves">Moves: <span id="moves">30</span></div>
+            <div class="score">
+                <div class="ui-icon">💎</div>
+                <div class="ui-value"><span id="score">0</span></div>
+            </div>
+            <div class="level">
+                <div class="ui-icon">🏆</div>
+                <div class="ui-value">Level <span id="level">1</span></div>
+            </div>
+            <div class="moves">
+                <div class="ui-icon">⚡</div>
+                <div class="ui-value"><span id="moves">30</span></div>
+            </div>
         </div>
         
+        <!-- Royal Match Bottom Controls -->
         <div class="game-controls">
-            <button class="btn" onclick="startNewGame()">New Game</button>
-            <button class="btn secondary" onclick="pauseGame()">Pause</button>
-            <button class="btn success" onclick="usePowerUp()">Power Up</button>
+            <button class="btn" onclick="startNewGame()">
+                <span class="btn-icon">🎮</span>
+                <span class="btn-text">New Game</span>
+            </button>
+            <button class="btn secondary" onclick="pauseGame()">
+                <span class="btn-icon">⏸️</span>
+                <span class="btn-text">Pause</span>
+            </button>
+            <button class="btn success" onclick="usePowerUp()">
+                <span class="btn-icon">✨</span>
+                <span class="btn-text">Power Up</span>
+            </button>
         </div>
         
+        <!-- Royal Match Game Over Modal -->
         <div class="game-over" id="gameOver">
+            <div class="modal-crown">👑</div>
             <h2 id="gameOverTitle">Game Over!</h2>
-            <p>Final Score: <span id="finalScore">0</span></p>
-            <p>Level Reached: <span id="finalLevel">1</span></p>
-            <button class="btn" onclick="startNewGame()">Play Again</button>
+            <div class="modal-stats">
+                <div class="stat-item">
+                    <div class="stat-icon">💎</div>
+                    <div class="stat-label">Final Score</div>
+                    <div class="stat-value"><span id="finalScore">0</span></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-label">Level Reached</div>
+                    <div class="stat-value"><span id="finalLevel">1</span></div>
+                </div>
+            </div>
+            <button class="btn royal-glow" onclick="startNewGame()">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">Play Again</span>
+            </button>
         </div>
         
         <div class="particles" id="particles"></div>
