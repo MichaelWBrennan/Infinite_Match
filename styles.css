@@ -1,4 +1,4 @@
-/* Royal Match - Pixel Perfect UI Styling */
+/* Infinite Match - Pixel Perfect UI Styling */
 * {
     margin: 0;
     padding: 0;
@@ -32,7 +32,7 @@ body {
     display: flex;
 }
 
-/* Loading Screen - Royal Match Style */
+/* Loading Screen - Infinite Match Style */
 #loading-screen {
     justify-content: center;
     align-items: center;
@@ -135,7 +135,7 @@ body {
     50% { transform: scale(1.05); }
 }
 
-/* Title Screen - Royal Match Style */
+/* Title Screen - Infinite Match Style */
 .title-background {
     position: absolute;
     top: 0;
@@ -378,7 +378,7 @@ body {
     font-weight: 600;
 }
 
-/* Mode Select - Royal Match Style */
+/* Mode Select - Infinite Match Style */
 .screen-header-royal {
     display: flex;
     align-items: center;
@@ -541,7 +541,7 @@ body {
     font-weight: 600;
 }
 
-/* Settings - Royal Match Style */
+/* Settings - Infinite Match Style */
 .settings-container-royal {
     flex: 1;
     padding: 2rem;
@@ -731,7 +731,7 @@ body {
     color: rgba(255,255,255,0.6);
 }
 
-/* Level Select - Royal Match Style */
+/* Level Select - Infinite Match Style */
 .player-stats-royal {
     display: flex;
     gap: 1rem;
@@ -963,7 +963,7 @@ body {
     font-weight: bold;
 }
 
-/* Pre-Game Lobby - Royal Match Style */
+/* Pre-Game Lobby - Infinite Match Style */
 .pre-game-container-royal {
     flex: 1;
     padding: 2rem;

@@ -1,6 +1,6 @@
-// Royal Match - Complete Game Logic and UI Interactions
+// Infinite Match - Complete Game Logic and UI Interactions
 
-class RoyalMatchGame {
+class InfiniteMatchGame {
     constructor() {
         this.currentScreen = 'loading-screen';
         this.gameState = {
@@ -27,7 +27,7 @@ class RoyalMatchGame {
         this.achievements = [
             { id: 'first_match', name: 'First Match', description: 'Make your first gem match', unlocked: false },
             { id: 'score_1000', name: 'Score Master', description: 'Score 1000 points in a single game', unlocked: false },
-            { id: 'level_5', name: 'Royal Explorer', description: 'Reach level 5', unlocked: false },
+            { id: 'level_5', name: 'Infinite Explorer', description: 'Reach level 5', unlocked: false },
             { id: 'perfect_level', name: 'Perfectionist', description: 'Get 3 stars on any level', unlocked: false }
         ];
         
@@ -160,20 +160,20 @@ class RoyalMatchGame {
     updateLevelInfo() {
         const levelTitles = {
             1: 'First Steps',
-            2: 'Royal Garden', 
+            2: 'Infinite Garden', 
             3: 'Castle Gate',
-            4: 'Royal Hall',
+            4: 'Infinite Hall',
             5: 'Throne Room',
-            6: 'Royal Tower'
+            6: 'Infinite Tower'
         };
 
         const levelDescriptions = {
-            1: 'Learn the basics of royal matching',
-            2: 'Match gems in the royal garden',
-            3: 'Match gems to unlock the royal gate',
-            4: 'Enter the magnificent royal hall',
-            5: 'Reach the royal throne room',
-            6: 'Climb the highest royal tower'
+            1: 'Learn the basics of infinite matching',
+            2: 'Match gems in the infinite garden',
+            3: 'Match gems to unlock the infinite gate',
+            4: 'Enter the magnificent infinite hall',
+            5: 'Reach the infinite throne room',
+            6: 'Climb the highest infinite tower'
         };
 
         document.querySelector('#pre-game-lobby h2').textContent = `Level ${this.gameState.level}: ${levelTitles[this.gameState.level]}`;
@@ -456,8 +456,8 @@ class RoyalMatchGame {
         const itemDescription = modal.querySelector('.item-description');
 
         const items = {
-            gem: { icon: '💎', name: 'Royal Gem', desc: `+${amount} Gems added to your collection` },
-            coin: { icon: '⭐', name: 'Royal Star', desc: `+${amount} Stars added to your collection` },
+            gem: { icon: '💎', name: 'Infinite Gem', desc: `+${amount} Gems added to your collection` },
+            coin: { icon: '⭐', name: 'Infinite Star', desc: `+${amount} Stars added to your collection` },
             power: { icon: '⚡', name: 'Power-up', desc: `+${amount} Power-ups added to your collection` }
         };
 
@@ -612,7 +612,7 @@ function showAdvancedSettings() {
 // Initialize game when page loads
 let game;
 document.addEventListener('DOMContentLoaded', () => {
-    game = new RoyalMatchGame();
+    game = new InfiniteMatchGame();
 });
 
 // Add CSS animations dynamically

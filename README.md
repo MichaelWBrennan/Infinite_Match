@@ -1,6 +1,6 @@
-# Royal Match - Complete UI Implementation
+# Infinite Match - Complete UI Implementation
 
-A faithful recreation of the Royal Match mobile puzzle game UI based on comprehensive analysis of the original game screenshots.
+A faithful recreation of the Infinite Match mobile puzzle game UI based on comprehensive analysis of the original game screenshots.
 
 ## 🎮 Features
 
@@ -18,8 +18,8 @@ A faithful recreation of the Royal Match mobile puzzle game UI based on comprehe
 - **Leaderboard** - Social ranking system with player avatars
 - **Item Modal** - Popup for item collection and rewards
 
-### Royal Theme Design
-- **Color Palette** - Royal golds, purples, and blues
+### Infinite Theme Design
+- **Color Palette** - Infinite golds, purples, and blues
 - **Typography** - Fredoka font family for playful, mobile-friendly text
 - **Animations** - Smooth transitions, floating elements, and pulse effects
 - **Mobile-First** - Responsive design optimized for mobile devices
@@ -200,4 +200,4 @@ For questions or issues, please check the browser console for error messages and
 
 ---
 
-**Enjoy playing Royal Match! 👑**
+**Enjoy playing Infinite Match! ∞**
