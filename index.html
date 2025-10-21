@@ -111,6 +111,13 @@
                     <input type="text" class="royal-input" value="Royal Player">
                 </div>
             </div>
+            <div class="setting-group">
+                <h3>Advanced</h3>
+                <div class="setting-item">
+                    <label>Advanced Settings</label>
+                    <button class="royal-btn secondary" onclick="showAdvancedSettings()">Open</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -418,6 +425,63 @@
             </div>
             <div class="modal-footer">
                 <button class="royal-btn primary" onclick="closeModal()">COLLECT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Features -->
+    <div id="tutorial-overlay" class="tutorial-overlay">
+        <div class="tutorial-content">
+            <div class="tutorial-arrow"></div>
+            <div class="tutorial-text">Tap gems to match them!</div>
+            <button class="tutorial-btn" onclick="closeTutorial()">Got it!</button>
+        </div>
+    </div>
+
+    <!-- Achievement System -->
+    <div id="achievement-popup" class="achievement-popup">
+        <div class="achievement-content">
+            <div class="achievement-icon">🏆</div>
+            <div class="achievement-text">
+                <div class="achievement-title">Achievement Unlocked!</div>
+                <div class="achievement-name">First Match</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Settings -->
+    <div id="advanced-settings" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showSettings()">←</button>
+            <h2>Advanced Settings</h2>
+        </div>
+        <div class="settings-content">
+            <div class="setting-group">
+                <h3>Accessibility</h3>
+                <div class="setting-item">
+                    <label>High Contrast Mode</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="contrast-toggle">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>Large Text</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="large-text-toggle">
+                        <span class="slider"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="setting-group">
+                <h3>Performance</h3>
+                <div class="setting-item">
+                    <label>Reduce Animations</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="reduce-animations-toggle">
+                        <span class="slider"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

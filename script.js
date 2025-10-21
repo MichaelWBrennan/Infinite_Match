@@ -9,12 +9,27 @@ class RoyalMatchGame {
             time: 60,
             level: 3,
             gems: 450,
-            stars: 1250
+            stars: 1250,
+            achievements: [],
+            settings: {
+                music: true,
+                sfx: true,
+                highContrast: false,
+                largeText: false,
+                reduceAnimations: false
+            }
         };
         this.gameBoard = [];
         this.selectedGem = null;
         this.isGameRunning = false;
         this.timerInterval = null;
+        this.tutorialShown = false;
+        this.achievements = [
+            { id: 'first_match', name: 'First Match', description: 'Make your first gem match', unlocked: false },
+            { id: 'score_1000', name: 'Score Master', description: 'Score 1000 points in a single game', unlocked: false },
+            { id: 'level_5', name: 'Royal Explorer', description: 'Reach level 5', unlocked: false },
+            { id: 'perfect_level', name: 'Perfectionist', description: 'Get 3 stars on any level', unlocked: false }
+        ];
         
         this.init();
     }
@@ -35,12 +50,40 @@ class RoyalMatchGame {
     addEventListeners() {
         // Settings toggles
         document.getElementById('music-toggle').addEventListener('change', (e) => {
+            this.gameState.settings.music = e.target.checked;
             console.log('Music:', e.target.checked ? 'ON' : 'OFF');
         });
 
         document.getElementById('sfx-toggle').addEventListener('change', (e) => {
+            this.gameState.settings.sfx = e.target.checked;
             console.log('Sound Effects:', e.target.checked ? 'ON' : 'OFF');
         });
+
+        // Enhanced settings
+        const contrastToggle = document.getElementById('contrast-toggle');
+        const largeTextToggle = document.getElementById('large-text-toggle');
+        const reduceAnimationsToggle = document.getElementById('reduce-animations-toggle');
+
+        if (contrastToggle) {
+            contrastToggle.addEventListener('change', (e) => {
+                this.gameState.settings.highContrast = e.target.checked;
+                document.body.classList.toggle('high-contrast', e.target.checked);
+            });
+        }
+
+        if (largeTextToggle) {
+            largeTextToggle.addEventListener('change', (e) => {
+                this.gameState.settings.largeText = e.target.checked;
+                document.body.classList.toggle('large-text', e.target.checked);
+            });
+        }
+
+        if (reduceAnimationsToggle) {
+            reduceAnimationsToggle.addEventListener('change', (e) => {
+                this.gameState.settings.reduceAnimations = e.target.checked;
+                document.body.classList.toggle('reduced-motion', e.target.checked);
+            });
+        }
 
         // Level cards
         document.querySelectorAll('.level-card').forEach((card, index) => {
@@ -149,6 +192,13 @@ class RoyalMatchGame {
         this.startTimer();
         this.generateGameBoard();
         this.updateGameUI();
+        
+        // Show tutorial for first-time players
+        if (!this.tutorialShown) {
+            setTimeout(() => {
+                this.showTutorial();
+            }, 1000);
+        }
     }
 
     startTimer() {
@@ -215,6 +265,14 @@ class RoyalMatchGame {
         gem.classList.add('selected');
         gem.style.transform = 'scale(1.2)';
         gem.style.boxShadow = '0 0 20px rgba(243, 156, 18, 0.8)';
+        
+        // Add haptic feedback
+        vibrate(50);
+        
+        // Play selection sound
+        if (this.gameState.settings.sfx) {
+            playSound('gem_select');
+        }
     }
 
     usePowerUp(powerType) {
@@ -252,6 +310,7 @@ class RoyalMatchGame {
         const randomGems = Array.from(gems).sort(() => 0.5 - Math.random()).slice(0, 5);
         
         randomGems.forEach(gem => {
+            gem.classList.add('gem-match');
             gem.style.animation = 'fadeOut 0.5s ease-out forwards';
             setTimeout(() => {
                 gem.remove();
@@ -259,12 +318,18 @@ class RoyalMatchGame {
         });
 
         this.addScore(100);
+        
+        // Play bomb sound
+        if (this.gameState.settings.sfx) {
+            playSound('bomb_explode');
+        }
     }
 
     activateRainbow() {
         // Clear entire row
         const gems = document.querySelectorAll('.game-gem');
         gems.forEach(gem => {
+            gem.classList.add('gem-match');
             gem.style.animation = 'fadeOut 0.5s ease-out forwards';
             setTimeout(() => {
                 gem.remove();
@@ -272,12 +337,18 @@ class RoyalMatchGame {
         });
 
         this.addScore(500);
+        
+        // Play rainbow sound
+        if (this.gameState.settings.sfx) {
+            playSound('rainbow_clear');
+        }
     }
 
     activateLightning() {
         // Clear entire column
         const gems = document.querySelectorAll('.game-gem');
         gems.forEach(gem => {
+            gem.classList.add('gem-match');
             gem.style.animation = 'fadeOut 0.5s ease-out forwards';
             setTimeout(() => {
                 gem.remove();
@@ -285,6 +356,11 @@ class RoyalMatchGame {
         });
 
         this.addScore(300);
+        
+        // Play lightning sound
+        if (this.gameState.settings.sfx) {
+            playSound('lightning_strike');
+        }
     }
 
     showPowerUpAnimation(powerType) {
@@ -392,6 +468,88 @@ class RoyalMatchGame {
 
         modal.classList.add('active');
     }
+
+    // Enhanced Features
+    showTutorial() {
+        const tutorial = document.getElementById('tutorial-overlay');
+        if (tutorial) {
+            tutorial.classList.add('active');
+            this.tutorialShown = true;
+        }
+    }
+
+    closeTutorial() {
+        const tutorial = document.getElementById('tutorial-overlay');
+        if (tutorial) {
+            tutorial.classList.remove('active');
+        }
+    }
+
+    showAchievement(achievementId) {
+        const achievement = this.achievements.find(a => a.id === achievementId);
+        if (achievement && !achievement.unlocked) {
+            achievement.unlocked = true;
+            this.gameState.achievements.push(achievement);
+            
+            const popup = document.getElementById('achievement-popup');
+            if (popup) {
+                popup.querySelector('.achievement-name').textContent = achievement.name;
+                popup.classList.add('active');
+                
+                setTimeout(() => {
+                    popup.classList.remove('active');
+                }, 3000);
+            }
+        }
+    }
+
+    checkAchievements() {
+        // Check for first match
+        if (this.gameState.score > 0 && !this.achievements.find(a => a.id === 'first_match').unlocked) {
+            this.showAchievement('first_match');
+        }
+
+        // Check for score achievement
+        if (this.gameState.score >= 1000 && !this.achievements.find(a => a.id === 'score_1000').unlocked) {
+            this.showAchievement('score_1000');
+        }
+
+        // Check for level achievement
+        if (this.gameState.level >= 5 && !this.achievements.find(a => a.id === 'level_5').unlocked) {
+            this.showAchievement('level_5');
+        }
+    }
+
+    showScorePopup(points, x, y) {
+        const popup = document.createElement('div');
+        popup.className = 'score-popup';
+        popup.textContent = `+${points}`;
+        popup.style.left = x + 'px';
+        popup.style.top = y + 'px';
+        
+        document.body.appendChild(popup);
+        
+        setTimeout(() => {
+            popup.remove();
+        }, 1000);
+    }
+
+    addScore(points) {
+        this.gameState.score += points;
+        this.updateGameUI();
+        this.checkAchievements();
+        
+        // Show score popup
+        const gameBoard = document.getElementById('gem-board');
+        if (gameBoard) {
+            const rect = gameBoard.getBoundingClientRect();
+            this.showScorePopup(points, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+    }
+
+    showAdvancedSettings() {
+        this.showScreen('advanced-settings');
+    }
 }
 
 // Global functions for HTML onclick events
@@ -441,6 +599,14 @@ function nextLevel() {
 
 function closeModal() {
     game.closeModal();
+}
+
+function closeTutorial() {
+    game.closeTutorial();
+}
+
+function showAdvancedSettings() {
+    game.showAdvancedSettings();
 }
 
 // Initialize game when page loads
