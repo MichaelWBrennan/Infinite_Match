@@ -1,0 +1,337 @@
+{
+  "ui_specifications": {
+    "title_screen": {
+      "description": "Main title screen with royal theme",
+      "elements": [
+        "Royal crown logo at top",
+        "Game title \"ROYAL MATCH\" in large royal font",
+        "Subtitle text below title",
+        "Three main buttons: PLAY, SETTINGS, NEWS",
+        "Royal blue/purple gradient background",
+        "Decorative royal patterns",
+        "Mobile-optimized layout"
+      ],
+      "colors": [],
+      "layout": {},
+      "image_info": {
+        "filename": "title_screen.jpg",
+        "url": "https://www.gameuidatabase.com/uploads/Royal-Match07012021-113420-39893.jpg",
+        "size": [
+          499,
+          1080
+        ],
+        "mode": "RGB",
+        "format": "JPEG"
+      }
+    },
+    "mode_select": {
+      "description": "Mode selection screen",
+      "elements": [
+        "Back button in top-left",
+        "Screen title \"Select Mode\"",
+        "Grid of mode cards",
+        "Classic Mode card (active/unlocked)",
+        "Battle Mode card (locked)",
+        "Kingdom Mode card (locked)",
+        "Each card has icon, title, description",
+        "Lock icons on locked modes"
+      ],
+      "colors": [],
+      "layout": {},
+      "image_info": {
+        "filename": "mode_select.jpg",
+        "url": "https://www.gameuidatabase.com/uploads/Royal-Match07012021-113421-72368.jpg",
+        "size": [
+          499,
+          1080
+        ],
+        "mode": "RGB",
+        "format": "JPEG"
+      }
+    },
+    "settings": {
+      "description": "Settings screen",
+      "elements": [
+        "Back button in top-left",
+        "Screen title \"Settings\"",
+        "Audio section with Music/SFX toggles",
+        "Graphics section with Quality dropdown",
+        "Account section with Player Name input",
+        "Toggle switches for audio settings",
+        "Dropdown for graphics quality",
+        "Text input for player name"
+      ],
+      "colors": [],
+      "layout": {},
+      "image_info": {
+        "filename": "settings.jpg",
+        "url": "https://www.gameuidatabase.com/uploads/Royal-Match07012021-113421-56833.jpg",
+        "size": [
+          499,
+          1080
+        ],
+        "mode": "RGB",
+        "format": "JPEG"
+      }
+    },
+    "level_select": {
+      "description": "Level selection screen",
+      "elements": [
+        "Back button in top-left",
+        "Screen title \"Level Select\"",
+        "Player stats (stars, gems) in top-right",
+        "Grid of level cards (6x4 or similar)",
+        "Level numbers on each card",
+        "Star ratings (1-3 stars)",
+        "Level titles below numbers",
+        "Completed levels (green)",
+        "Current level (gold/orange)",
+        "Locked levels (gray with lock icon)"
+      ],
+      "colors": [],
+      "layout": {},
+      "image_info": {
+        "filename": "level_select.jpg",
+        "url": "https://www.gameuidatabase.com/uploads/Royal-Match07012021-113422-48038.jpg",
+        "size": [
+          499,
+          1080
+        ],
+        "mode": "RGB",
+        "format": "JPEG"
+      }
+    },
+    "pre_game": {
+      "description": "Pre-game lobby",
+      "elements": [
+        "Back button in top-left",
+        "Level title and number",
+        "Level preview image/grid",
+        "Level description text",
+        "Objectives list with icons",
+        "Power-ups section with icons and counts",
+        "Large START GAME button",
+        "Royal theme throughout"
+      ],
+      "colors": [],
+      "layout": {},
+      "image_info": {
+        "filename": "pre_game.jpg",
+        "url": "https://www.gameuidatabase.com/uploads/Royal-Match07012021-113422-82119.jpg",
+        "size": [
+          499,
+          1080
+        ],
+        "mode": "RGB",
+        "format": "JPEG"
+      }
+    },
+    "colors": {
+      "primary_gold": "#f39c12",
+      "primary_red": "#e74c3c",
+      "royal_purple": "#764ba2",
+      "royal_blue": "#667eea",
+      "royal_dark": "#2c3e50",
+      "royal_light": "#ecf0f1",
+      "success_green": "#27ae60",
+      "warning_orange": "#e67e22",
+      "text_white": "#ffffff",
+      "text_dark": "#2c3e50"
+    },
+    "layout": {
+      "mobile_first": true,
+      "card_based": true,
+      "rounded_corners": true,
+      "glass_morphism": true,
+      "royal_theme": true,
+      "touch_friendly": true
+    }
+  },
+  "requirements": {
+    "title_screen": {
+      "background": "Linear gradient from royal blue to purple",
+      "logo": "Large royal crown emoji (\ud83d\udc51) at top center",
+      "title": "ROYAL MATCH in large, bold, royal font",
+      "subtitle": "Match & Build Your Kingdom below title",
+      "buttons": [
+        {
+          "text": "PLAY",
+          "type": "primary",
+          "color": "gold"
+        },
+        {
+          "text": "SETTINGS",
+          "type": "secondary",
+          "color": "white"
+        },
+        {
+          "text": "NEWS",
+          "type": "secondary",
+          "color": "white"
+        }
+      ],
+      "layout": "Centered vertical layout with spacing"
+    },
+    "mode_select": {
+      "header": "Back button + \"Select Mode\" title",
+      "cards": [
+        {
+          "title": "Classic Mode",
+          "icon": "\ud83c\udfaf",
+          "description": "Match gems to build your kingdom",
+          "status": "active",
+          "button": "Start"
+        },
+        {
+          "title": "Battle Mode",
+          "icon": "\u2694\ufe0f",
+          "description": "Compete with other players",
+          "status": "locked",
+          "icon_lock": "\ud83d\udd12"
+        },
+        {
+          "title": "Kingdom Mode",
+          "icon": "\ud83c\udff0",
+          "description": "Build and manage your castle",
+          "status": "locked",
+          "icon_lock": "\ud83d\udd12"
+        }
+      ],
+      "layout": "Grid layout with 3 cards"
+    },
+    "settings": {
+      "header": "Back button + \"Settings\" title",
+      "sections": [
+        {
+          "title": "Audio",
+          "items": [
+            {
+              "label": "Music",
+              "type": "toggle",
+              "default": true
+            },
+            {
+              "label": "Sound Effects",
+              "type": "toggle",
+              "default": true
+            }
+          ]
+        },
+        {
+          "title": "Graphics",
+          "items": [
+            {
+              "label": "Quality",
+              "type": "dropdown",
+              "options": [
+                "High",
+                "Medium",
+                "Low"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Account",
+          "items": [
+            {
+              "label": "Player Name",
+              "type": "input",
+              "default": "Royal Player"
+            }
+          ]
+        }
+      ],
+      "layout": "Vertical sections with proper spacing"
+    },
+    "level_select": {
+      "header": "Back button + \"Level Select\" + Player stats",
+      "stats": [
+        {
+          "icon": "\u2b50",
+          "value": "1,250"
+        },
+        {
+          "icon": "\ud83d\udc8e",
+          "value": "450"
+        }
+      ],
+      "levels": [
+        {
+          "number": 1,
+          "title": "First Steps",
+          "stars": 3,
+          "status": "completed"
+        },
+        {
+          "number": 2,
+          "title": "Royal Garden",
+          "stars": 3,
+          "status": "completed"
+        },
+        {
+          "number": 3,
+          "title": "Castle Gate",
+          "stars": 2,
+          "status": "current"
+        },
+        {
+          "number": 4,
+          "title": "Royal Hall",
+          "stars": 0,
+          "status": "locked"
+        },
+        {
+          "number": 5,
+          "title": "Throne Room",
+          "stars": 0,
+          "status": "locked"
+        },
+        {
+          "number": 6,
+          "title": "Royal Tower",
+          "stars": 0,
+          "status": "locked"
+        }
+      ],
+      "layout": "Grid of level cards with proper spacing"
+    },
+    "pre_game": {
+      "header": "Back button + Level title",
+      "level_info": {
+        "title": "Level 3: Castle Gate",
+        "description": "Match gems to unlock the royal gate"
+      },
+      "preview": "Gem grid preview",
+      "objectives": [
+        {
+          "icon": "\ud83c\udfaf",
+          "text": "Score 5,000 points"
+        },
+        {
+          "icon": "\u2b50",
+          "text": "Get 3 stars"
+        }
+      ],
+      "power_ups": [
+        {
+          "icon": "\ud83d\udca5",
+          "name": "Bomb",
+          "count": 3
+        },
+        {
+          "icon": "\ud83c\udf08",
+          "name": "Rainbow",
+          "count": 1
+        },
+        {
+          "icon": "\u26a1",
+          "name": "Lightning",
+          "count": 2
+        }
+      ],
+      "button": "START GAME (large, primary)",
+      "layout": "Vertical layout with sections"
+    }
+  }
+}
