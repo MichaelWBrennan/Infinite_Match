@@ -1,4 +1,4 @@
-/* Royal Match - Pixel Perfect UI Styling */
+/* Infinite Match - Pixel Perfect UI Styling */
 * {
     margin: 0;
     padding: 0;
@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Fredoka', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
     overflow: hidden;
     height: 100vh;
     user-select: none;
@@ -24,7 +24,7 @@ body {
     height: 100vh;
     display: none;
     flex-direction: column;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
     overflow-y: auto;
 }
 
@@ -32,11 +32,11 @@ body {
     display: flex;
 }
 
-/* Loading Screen - Royal Match Style */
+/* Loading Screen - Infinite Match Style */
 #loading-screen {
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
     position: relative;
 }
 
@@ -46,7 +46,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
     z-index: 0;
 }
 
@@ -57,8 +57,9 @@ body {
     width: 100%;
     height: 100%;
     background-image: 
-        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
+        radial-gradient(circle at 20% 80%, rgba(138, 43, 226, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(0, 191, 255, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
 }
 
 .loading-container {
@@ -135,14 +136,14 @@ body {
     50% { transform: scale(1.05); }
 }
 
-/* Title Screen - Royal Match Style */
+/* Title Screen - Infinite Match Style */
 .title-background {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
     z-index: 0;
 }
 
@@ -153,8 +154,9 @@ body {
     width: 100%;
     height: 100%;
     background-image: 
-        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
+        radial-gradient(circle at 20% 80%, rgba(138, 43, 226, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(0, 191, 255, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.2) 0%, transparent 70%);
 }
 
 .royal-particles {
@@ -164,9 +166,10 @@ body {
     width: 100%;
     height: 100%;
     background-image: 
-        radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.3), transparent),
-        radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.2), transparent),
-        radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.4), transparent);
+        radial-gradient(2px 2px at 20px 30px, rgba(0, 191, 255, 0.6), transparent),
+        radial-gradient(2px 2px at 40px 70px, rgba(138, 43, 226, 0.4), transparent),
+        radial-gradient(1px 1px at 90px 40px, rgba(255, 215, 0, 0.5), transparent),
+        radial-gradient(1px 1px at 60px 20px, rgba(255, 255, 255, 0.3), transparent);
     background-size: 100px 100px;
     animation: particleFloat 20s linear infinite;
 }
@@ -319,25 +322,25 @@ body {
 }
 
 .royal-btn.primary {
-    background: linear-gradient(45deg, #f39c12, #e74c3c);
+    background: linear-gradient(45deg, #8a2be2, #00bfff);
     color: white;
-    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
 }
 
 .royal-btn.primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+    box-shadow: 0 6px 20px rgba(138, 43, 226, 0.6);
 }
 
 .royal-btn.secondary {
-    background: rgba(255,255,255,0.2);
+    background: rgba(0, 191, 255, 0.2);
     color: white;
-    border: 2px solid rgba(255,255,255,0.3);
+    border: 2px solid rgba(0, 191, 255, 0.5);
     backdrop-filter: blur(10px);
 }
 
 .royal-btn.secondary:hover {
-    background: rgba(255,255,255,0.3);
+    background: rgba(0, 191, 255, 0.3);
     transform: translateY(-2px);
 }
 
@@ -378,7 +381,7 @@ body {
     font-weight: 600;
 }
 
-/* Mode Select - Royal Match Style */
+/* Mode Select - Infinite Match Style */
 .screen-header-royal {
     display: flex;
     align-items: center;
@@ -541,7 +544,7 @@ body {
     font-weight: 600;
 }
 
-/* Settings - Royal Match Style */
+/* Settings - Infinite Match Style */
 .settings-container-royal {
     flex: 1;
     padding: 2rem;
@@ -731,7 +734,7 @@ body {
     color: rgba(255,255,255,0.6);
 }
 
-/* Level Select - Royal Match Style */
+/* Level Select - Infinite Match Style */
 .player-stats-royal {
     display: flex;
     gap: 1rem;
@@ -894,10 +897,10 @@ body {
     animation: float 3s ease-in-out infinite;
 }
 
-.gem.red { background: #e74c3c; }
-.gem.blue { background: #3498db; }
-.gem.green { background: #27ae60; }
-.gem.yellow { background: #f1c40f; }
+.gem.red { background: #ff4757; }
+.gem.blue { background: #00bfff; }
+.gem.green { background: #00ff7f; }
+.gem.yellow { background: #ffd700; }
 
 .level-info h3 {
     color: white;
@@ -963,7 +966,7 @@ body {
     font-weight: bold;
 }
 
-/* Pre-Game Lobby - Royal Match Style */
+/* Pre-Game Lobby - Infinite Match Style */
 .pre-game-container-royal {
     flex: 1;
     padding: 2rem;
@@ -1030,11 +1033,11 @@ body {
     transition: all 0.3s ease;
 }
 
-.gem-preview.red { background: linear-gradient(45deg, #e74c3c, #c0392b); }
-.gem-preview.blue { background: linear-gradient(45deg, #3498db, #2980b9); }
-.gem-preview.green { background: linear-gradient(45deg, #27ae60, #229954); }
-.gem-preview.yellow { background: linear-gradient(45deg, #f1c40f, #f39c12); }
-.gem-preview.purple { background: linear-gradient(45deg, #9b59b6, #8e44ad); }
+.gem-preview.red { background: linear-gradient(45deg, #ff4757, #ff3838); }
+.gem-preview.blue { background: linear-gradient(45deg, #00bfff, #0099cc); }
+.gem-preview.green { background: linear-gradient(45deg, #00ff7f, #00cc66); }
+.gem-preview.yellow { background: linear-gradient(45deg, #ffd700, #ffb347); }
+.gem-preview.purple { background: linear-gradient(45deg, #8a2be2, #7b68ee); }
 
 .level-details-royal {
     display: flex;
@@ -1304,12 +1307,12 @@ body {
     transform: scale(1.1);
 }
 
-.game-gem.red { background: #e74c3c; }
-.game-gem.blue { background: #3498db; }
-.game-gem.green { background: #27ae60; }
-.game-gem.yellow { background: #f1c40f; }
-.game-gem.purple { background: #9b59b6; }
-.game-gem.orange { background: #e67e22; }
+.game-gem.red { background: #ff4757; }
+.game-gem.blue { background: #00bfff; }
+.game-gem.green { background: #00ff7f; }
+.game-gem.yellow { background: #ffd700; }
+.game-gem.purple { background: #8a2be2; }
+.game-gem.orange { background: #ff8c00; }
 
 .game-powerups {
     display: flex;

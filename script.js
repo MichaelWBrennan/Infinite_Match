@@ -1,6 +1,6 @@
-// Royal Match - Complete Game Logic and UI Interactions
+// Infinite Match - Complete Game Logic and UI Interactions
 
-class RoyalMatchGame {
+class InfiniteMatchGame {
     constructor() {
         this.currentScreen = 'loading-screen';
         this.gameState = {
@@ -25,10 +25,10 @@ class RoyalMatchGame {
         this.timerInterval = null;
         this.tutorialShown = false;
         this.achievements = [
-            { id: 'first_match', name: 'First Match', description: 'Make your first gem match', unlocked: false },
-            { id: 'score_1000', name: 'Score Master', description: 'Score 1000 points in a single game', unlocked: false },
-            { id: 'level_5', name: 'Royal Explorer', description: 'Reach level 5', unlocked: false },
-            { id: 'perfect_level', name: 'Perfectionist', description: 'Get 3 stars on any level', unlocked: false }
+            { id: 'first_match', name: 'Stellar Debut', description: 'Make your first cosmic gem match', unlocked: false },
+            { id: 'score_1000', name: 'Galaxy Master', description: 'Score 1000 points in a single game', unlocked: false },
+            { id: 'level_5', name: 'Cosmic Explorer', description: 'Reach level 5', unlocked: false },
+            { id: 'perfect_level', name: 'Nebula Perfectionist', description: 'Get 3 stars on any level', unlocked: false }
         ];
         
         this.init();
@@ -159,21 +159,21 @@ class RoyalMatchGame {
 
     updateLevelInfo() {
         const levelTitles = {
-            1: 'First Steps',
-            2: 'Royal Garden', 
-            3: 'Castle Gate',
-            4: 'Royal Hall',
-            5: 'Throne Room',
-            6: 'Royal Tower'
+            1: 'Launch Pad',
+            2: 'Asteroid Field', 
+            3: 'Space Station Alpha',
+            4: 'Nebula Gateway',
+            5: 'Command Center',
+            6: 'Cosmic Observatory'
         };
 
         const levelDescriptions = {
-            1: 'Learn the basics of royal matching',
-            2: 'Match gems in the royal garden',
-            3: 'Match gems to unlock the royal gate',
-            4: 'Enter the magnificent royal hall',
-            5: 'Reach the royal throne room',
-            6: 'Climb the highest royal tower'
+            1: 'Begin your cosmic journey at the launch pad',
+            2: 'Navigate through the dangerous asteroid field',
+            3: 'Dock at the space station and explore',
+            4: 'Pass through the mysterious nebula gateway',
+            5: 'Take command of the central command center',
+            6: 'Reach the highest point in the cosmic observatory'
         };
 
         document.querySelector('#pre-game-lobby h2').textContent = `Level ${this.gameState.level}: ${levelTitles[this.gameState.level]}`;
@@ -456,8 +456,8 @@ class RoyalMatchGame {
         const itemDescription = modal.querySelector('.item-description');
 
         const items = {
-            gem: { icon: '💎', name: 'Royal Gem', desc: `+${amount} Gems added to your collection` },
-            coin: { icon: '⭐', name: 'Royal Star', desc: `+${amount} Stars added to your collection` },
+            gem: { icon: '💎', name: 'Infinite Gem', desc: `+${amount} Gems added to your collection` },
+            coin: { icon: '⭐', name: 'Infinite Star', desc: `+${amount} Stars added to your collection` },
             power: { icon: '⚡', name: 'Power-up', desc: `+${amount} Power-ups added to your collection` }
         };
 
@@ -612,7 +612,7 @@ function showAdvancedSettings() {
 // Initialize game when page loads
 let game;
 document.addEventListener('DOMContentLoaded', () => {
-    game = new RoyalMatchGame();
+    game = new InfiniteMatchGame();
 });
 
 // Add CSS animations dynamically

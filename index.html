@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Royal Match - Puzzle Game</title>
+    <title>Infinite Match - Puzzle Game</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -15,8 +15,8 @@
         </div>
         <div class="loading-container">
             <div class="royal-logo">
-                <div class="crown-icon-large">👑</div>
-                <div class="game-title-large">ROYAL MATCH</div>
+                <div class="crown-icon-large">∞</div>
+                <div class="game-title-large">INFINITE MATCH</div>
             </div>
             <div class="loading-progress-container">
                 <div class="loading-bar-bg">
@@ -35,9 +35,9 @@
         </div>
         <div class="title-content">
             <div class="game-logo-container">
-                <div class="royal-crown-large">👑</div>
-                <h1 class="game-title-main">ROYAL MATCH</h1>
-                <p class="game-subtitle-main">Match & Build Your Kingdom</p>
+                <div class="royal-crown-large">∞</div>
+                <h1 class="game-title-main">INFINITE MATCH</h1>
+                <p class="game-subtitle-main">Match & Build Your Universe</p>
             </div>
             <div class="main-menu-buttons">
                 <button class="menu-btn play-btn" onclick="showModeSelect()">
@@ -83,7 +83,7 @@
                     <div class="mode-card-bg">
                         <div class="mode-icon-large">🎯</div>
                         <h3 class="mode-title">Classic Mode</h3>
-                        <p class="mode-description">Match gems to build your kingdom</p>
+                        <p class="mode-description">Match cosmic gems to build your space empire</p>
                         <button class="mode-play-btn" onclick="showLevelSelect()">
                             <span class="play-text">START</span>
                         </button>
@@ -104,7 +104,7 @@
                     <div class="mode-card-bg locked-bg">
                         <div class="mode-icon-large">🏰</div>
                         <h3 class="mode-title">Kingdom Mode</h3>
-                        <p class="mode-description">Build and manage your castle</p>
+                        <p class="mode-description">Build and manage your cosmic command center</p>
                         <div class="lock-overlay">
                             <div class="lock-icon-large">🔒</div>
                             <div class="lock-text">Coming Soon</div>
@@ -188,7 +188,7 @@
                             <div class="setting-desc">Your display name</div>
                         </div>
                         <div class="royal-input-container">
-                            <input type="text" id="player-name" class="royal-input-field" value="Royal Player">
+                            <input type="text" id="player-name" class="royal-input-field" value="Infinite Player">
                         </div>
                     </div>
                 </div>
@@ -220,42 +220,42 @@
                     <div class="level-card-bg completed-bg">
                         <div class="level-number-royal">1</div>
                         <div class="stars-display">⭐⭐⭐</div>
-                        <div class="level-title-royal">First Steps</div>
+                        <div class="level-title-royal">Launch Pad</div>
                     </div>
                 </div>
                 <div class="level-card-royal completed" onclick="selectLevel(2)">
                     <div class="level-card-bg completed-bg">
                         <div class="level-number-royal">2</div>
                         <div class="stars-display">⭐⭐⭐</div>
-                        <div class="level-title-royal">Royal Garden</div>
+                        <div class="level-title-royal">Asteroid Field</div>
                     </div>
                 </div>
                 <div class="level-card-royal current" onclick="selectLevel(3)">
                     <div class="level-card-bg current-bg">
                         <div class="level-number-royal">3</div>
                         <div class="stars-display">⭐⭐</div>
-                        <div class="level-title-royal">Castle Gate</div>
+                        <div class="level-title-royal">Space Station Alpha</div>
                     </div>
                 </div>
                 <div class="level-card-royal locked">
                     <div class="level-card-bg locked-bg">
                         <div class="level-number-royal">4</div>
                         <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Royal Hall</div>
+                        <div class="level-title-royal">Nebula Gateway</div>
                     </div>
                 </div>
                 <div class="level-card-royal locked">
                     <div class="level-card-bg locked-bg">
                         <div class="level-number-royal">5</div>
                         <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Throne Room</div>
+                        <div class="level-title-royal">Command Center</div>
                     </div>
                 </div>
                 <div class="level-card-royal locked">
                     <div class="level-card-bg locked-bg">
                         <div class="level-number-royal">6</div>
                         <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Royal Tower</div>
+                        <div class="level-title-royal">Cosmic Observatory</div>
                     </div>
                 </div>
             </div>
@@ -268,7 +268,7 @@
             <button class="back-btn-royal" onclick="showLevelSelect()">
                 <span class="back-icon">←</span>
             </button>
-            <h2 class="screen-title-royal">Level 3: Castle Gate</h2>
+            <h2 class="screen-title-royal">Level 3: Space Station Alpha</h2>
             <div class="header-spacer"></div>
         </div>
         <div class="pre-game-container-royal">
@@ -314,7 +314,7 @@
             <div class="level-details-royal">
                 <div class="level-description-card">
                     <h3 class="level-description-title">Level Description</h3>
-                    <p class="level-description-text">Match gems to unlock the royal gate and continue your journey through the kingdom. Use your power-ups wisely!</p>
+                    <p class="level-description-text">Navigate through the space station and match gems to unlock the cosmic gateway. Use your power-ups wisely to explore the universe!</p>
                 </div>
                 
                 <div class="objectives-card">
@@ -445,8 +445,8 @@
             <div class="news-item featured">
                 <div class="news-image">🏰</div>
                 <div class="news-content">
-                    <h3>New Kingdom Update!</h3>
-                    <p>Build your royal castle with new levels and features</p>
+                    <h3>New Cosmic Update!</h3>
+                    <p>Build your space empire with new cosmic levels and stellar features</p>
                     <div class="news-date">2 days ago</div>
                 </div>
             </div>
@@ -454,7 +454,7 @@
                 <div class="news-image">🎁</div>
                 <div class="news-content">
                     <h3>Daily Rewards</h3>
-                    <p>Log in daily to collect royal treasures</p>
+                    <p>Log in daily to collect cosmic treasures and stellar gems</p>
                     <div class="news-date">1 week ago</div>
                 </div>
             </div>
@@ -462,7 +462,7 @@
                 <div class="news-image">⚔️</div>
                 <div class="news-content">
                     <h3>Tournament Mode</h3>
-                    <p>Compete with players worldwide</p>
+                    <p>Compete with space explorers across the galaxy</p>
                     <div class="news-date">2 weeks ago</div>
                 </div>
             </div>
@@ -479,7 +479,7 @@
             <div class="offer-card featured">
                 <div class="offer-badge">LIMITED TIME</div>
                 <div class="offer-image">💎</div>
-                <div class="offer-title">Royal Gem Pack</div>
+                <div class="offer-title">Infinite Gem Pack</div>
                 <div class="offer-description">500 Gems + 50 Coins</div>
                 <div class="offer-price">
                     <span class="old-price">$9.99</span>
@@ -495,8 +495,8 @@
                 <button class="royal-btn secondary">BUY</button>
             </div>
             <div class="offer-card">
-                <div class="offer-image">👑</div>
-                <div class="offer-title">Royal Bundle</div>
+                <div class="offer-image">∞</div>
+                <div class="offer-title">Infinite Bundle</div>
                 <div class="offer-description">1000 Gems + 100 Coins</div>
                 <div class="offer-price">$19.99</div>
                 <button class="royal-btn secondary">BUY</button>
@@ -519,8 +519,8 @@
                 <div class="leaderboard-item rank-1">
                     <div class="rank">1</div>
                     <div class="player-info">
-                        <div class="player-avatar">👑</div>
-                        <div class="player-name">RoyalKing</div>
+                        <div class="player-avatar">∞</div>
+                        <div class="player-name">InfiniteKing</div>
                     </div>
                     <div class="player-score">125,000</div>
                 </div>
@@ -562,7 +562,7 @@
             <div class="modal-body">
                 <div class="item-display">
                     <div class="item-icon">💎</div>
-                    <div class="item-name">Royal Gem</div>
+                    <div class="item-name">Infinite Gem</div>
                     <div class="item-description">+50 Gems added to your collection</div>
                 </div>
             </div>
