@@ -1,0 +1,638 @@
+{
+  "royal_match_in_space_theme": {
+    "version": "1.0.0",
+    "description": "Royal Match in Space - Complete UI overhaul with luxurious sci-fi royal theme",
+    "last_updated": "2024",
+    "compatible_with": "Unity 2021+",
+    
+    "color_palette": {
+      "deep_space_navy": {
+        "hex": "#0A0F33",
+        "rgb": [0.04, 0.06, 0.2, 1.0],
+        "usage": "Primary background, dark panels"
+      },
+      "royal_gold": {
+        "hex": "#FFD966",
+        "rgb": [1.0, 0.85, 0.4, 1.0],
+        "usage": "Primary buttons, titles, highlights"
+      },
+      "nebula_violet": {
+        "hex": "#673AB7",
+        "rgb": [0.4, 0.23, 0.72, 1.0],
+        "usage": "Secondary buttons, panels, accents"
+      },
+      "cosmic_cyan": {
+        "hex": "#4DD0E1",
+        "rgb": [0.3, 0.82, 0.88, 1.0],
+        "usage": "Tertiary buttons, info panels, special effects"
+      }
+    },
+    
+    "canvas_configuration": {
+      "main_canvas": {
+        "render_mode": "ScreenSpaceOverlay",
+        "sorting_order": 0,
+        "ui_scale_mode": "ScaleWithScreenSize",
+        "reference_resolution": [1080, 1920],
+        "screen_match_mode": "MatchWidthOrHeight",
+        "match_width_or_height": 0.5
+      },
+      "gameplay_canvas": {
+        "render_mode": "ScreenSpaceOverlay",
+        "sorting_order": 1,
+        "ui_scale_mode": "ScaleWithScreenSize",
+        "reference_resolution": [1080, 1920],
+        "screen_match_mode": "MatchWidthOrHeight",
+        "match_width_or_height": 0.5
+      },
+      "ui_canvas": {
+        "render_mode": "ScreenSpaceOverlay",
+        "sorting_order": 2,
+        "ui_scale_mode": "ScaleWithScreenSize",
+        "reference_resolution": [1080, 1920],
+        "screen_match_mode": "MatchWidthOrHeight",
+        "match_width_or_height": 0.5
+      }
+    },
+    
+    "rect_transform_anchoring": {
+      "top_bar": {
+        "anchor_min": [0, 1],
+        "anchor_max": [1, 1],
+        "pivot": [0.5, 1],
+        "description": "Fixed to top of screen"
+      },
+      "bottom_bar": {
+        "anchor_min": [0, 0],
+        "anchor_max": [1, 0],
+        "pivot": [0.5, 0],
+        "description": "Fixed to bottom of screen"
+      },
+      "central_board": {
+        "anchor_min": [0.5, 0.5],
+        "anchor_max": [0.5, 0.5],
+        "pivot": [0.5, 0.5],
+        "description": "Centered on screen"
+      },
+      "modal_panels": {
+        "anchor_min": [0.5, 0.5],
+        "anchor_max": [0.5, 0.5],
+        "pivot": [0.5, 0.5],
+        "description": "Centered overlay panels"
+      }
+    },
+    
+    "main_menu_configuration": {
+      "background": {
+        "type": "gradient",
+        "colors": [
+          [0.04, 0.06, 0.2, 1.0],
+          [0.1, 0.05, 0.3, 1.0]
+        ],
+        "direction": "diagonal",
+        "description": "Deep space gradient background"
+      },
+      "title": {
+        "text": "ROYAL MATCH IN SPACE",
+        "font_size": 72,
+        "font_weight": "black",
+        "color": [1.0, 0.85, 0.4, 1.0],
+        "position": [0, 300, 0],
+        "size": [800, 100],
+        "shadow": {
+          "offset": [0, 8],
+          "blur": 16,
+          "color": [0.3, 0.2, 0.1, 0.5]
+        },
+        "animation": "bounce"
+      },
+      "play_button": {
+        "text": "PLAY",
+        "font_size": 36,
+        "font_weight": "bold",
+        "text_color": [0.04, 0.06, 0.2, 1.0],
+        "background_color": [1.0, 0.85, 0.4, 1.0],
+        "position": [0, 100, 0],
+        "size": [350, 120],
+        "border_radius": 40,
+        "shadow": {
+          "offset": [0, 4],
+          "blur": 8,
+          "color": [0.3, 0.2, 0.1, 0.3]
+        },
+        "animation": "bounce",
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
+      },
+      "settings_button": {
+        "text": "SETTINGS",
+        "font_size": 28,
+        "font_weight": "medium",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [0.4, 0.23, 0.72, 1.0],
+        "position": [0, 0, 0],
+        "size": [240, 70],
+        "border_radius": 35,
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0.2, 0.1, 0.4, 0.3]
+        },
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
+      },
+      "shop_button": {
+        "text": "SHOP",
+        "font_size": 28,
+        "font_weight": "medium",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [0.3, 0.82, 0.88, 1.0],
+        "position": [0, -100, 0],
+        "size": [240, 70],
+        "border_radius": 35,
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0.1, 0.3, 0.3, 0.3]
+        },
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
+      },
+      "profile_button": {
+        "text": "PROFILE",
+        "font_size": 28,
+        "font_weight": "medium",
+        "text_color": [1.0, 1.0, 1.0, 1.0],
+        "background_color": [0.4, 0.23, 0.72, 1.0],
+        "position": [0, -200, 0],
+        "size": [240, 70],
+        "border_radius": 35,
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0.2, 0.1, 0.4, 0.3]
+        },
+        "hover_animation": "button_hover",
+        "click_animation": "button_click"
+      },
+      "decorative_elements": [
+        {
+          "type": "floating_star",
+          "position": [-400, 200, 0],
+          "size": [60, 60],
+          "animation": "float",
+          "color": [1.0, 0.85, 0.4, 0.8]
+        },
+        {
+          "type": "floating_star",
+          "position": [400, -150, 0],
+          "size": [80, 80],
+          "animation": "float",
+          "color": [0.3, 0.82, 0.88, 0.8]
+        },
+        {
+          "type": "floating_star",
+          "position": [0, 400, 0],
+          "size": [40, 40],
+          "animation": "float",
+          "color": [0.4, 0.23, 0.72, 0.6]
+        }
+      ]
+    },
+    
+    "gameplay_hud_configuration": {
+      "top_bar": {
+        "background_color": [0.04, 0.06, 0.2, 0.95],
+        "height": 120,
+        "position": [0, 450, 0],
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0.3, 0.2, 0.1, 0.3]
+        },
+        "elements": [
+          {
+            "name": "ScorePanel",
+            "type": "panel",
+            "background_color": [1.0, 0.85, 0.4, 1.0],
+            "position": [-300, 0, 0],
+            "size": [200, 80],
+            "border_radius": 40,
+            "shadow": {
+              "offset": [0, 4],
+              "blur": 8,
+              "color": [0.3, 0.2, 0.1, 0.3]
+            }
+          },
+          {
+            "name": "MovesPanel",
+            "type": "panel",
+            "background_color": [0.3, 0.82, 0.88, 1.0],
+            "position": [0, 0, 0],
+            "size": [180, 80],
+            "border_radius": 40,
+            "shadow": {
+              "offset": [0, 4],
+              "blur": 8,
+              "color": [0.1, 0.3, 0.3, 0.3]
+            }
+          },
+          {
+            "name": "LevelPanel",
+            "type": "panel",
+            "background_color": [0.4, 0.23, 0.72, 1.0],
+            "position": [300, 0, 0],
+            "size": [200, 80],
+            "border_radius": 40,
+            "shadow": {
+              "offset": [0, 4],
+              "blur": 8,
+              "color": [0.2, 0.1, 0.4, 0.3]
+            }
+          }
+        ]
+      },
+      "bottom_bar": {
+        "background_color": [0.04, 0.06, 0.2, 0.95],
+        "height": 100,
+        "position": [0, -450, 0],
+        "shadow": {
+          "offset": [0, 2],
+          "blur": 4,
+          "color": [0.3, 0.2, 0.1, 0.3]
+        },
+        "elements": [
+          {
+            "name": "PauseButton",
+            "type": "button",
+            "text": "⏸",
+            "font_size": 36,
+            "background_color": [0.8, 0.8, 0.8, 1.0],
+            "position": [-400, 0, 0],
+            "size": [80, 80],
+            "border_radius": 40,
+            "shadow": {
+              "offset": [0, 2],
+              "blur": 4,
+              "color": [0.3, 0.2, 0.1, 0.3]
+            },
+            "hover_animation": "button_hover",
+            "click_animation": "button_click"
+          },
+          {
+            "name": "BoostersPanel",
+            "type": "panel",
+            "background_color": [0.2, 0.2, 0.3, 1.0],
+            "position": [0, 0, 0],
+            "size": [400, 80],
+            "border_radius": 40,
+            "shadow": {
+              "offset": [0, 2],
+              "blur": 4,
+              "color": [0.3, 0.2, 0.1, 0.3]
+            },
+            "elements": [
+              {
+                "name": "ExtraMovesBooster",
+                "type": "booster_button",
+                "icon": "extra_moves",
+                "count": "3",
+                "position": [-120, 0, 0],
+                "size": [60, 60],
+                "background_color": [0.3, 0.82, 0.88, 1.0],
+                "border_radius": 30
+              },
+              {
+                "name": "ColorBombBooster",
+                "type": "booster_button",
+                "icon": "color_bomb",
+                "count": "2",
+                "position": [0, 0, 0],
+                "size": [60, 60],
+                "background_color": [1.0, 0.85, 0.4, 1.0],
+                "border_radius": 30
+              },
+              {
+                "name": "RainbowBlastBooster",
+                "type": "booster_button",
+                "icon": "rainbow_blast",
+                "count": "1",
+                "position": [120, 0, 0],
+                "size": [60, 60],
+                "background_color": [0.4, 0.23, 0.72, 1.0],
+                "border_radius": 30
+              }
+            ]
+          },
+          {
+            "name": "ShopButton",
+            "type": "button",
+            "text": "💎",
+            "font_size": 36,
+            "background_color": [1.0, 0.85, 0.4, 1.0],
+            "position": [400, 0, 0],
+            "size": [80, 80],
+            "border_radius": 40,
+            "shadow": {
+              "offset": [0, 2],
+              "blur": 4,
+              "color": [0.3, 0.2, 0.1, 0.3]
+            },
+            "hover_animation": "button_hover",
+            "click_animation": "button_click"
+          }
+        ]
+      },
+      "progress_bars": [
+        {
+          "name": "LevelProgressBar",
+          "type": "progress_bar",
+          "background_color": [0.2, 0.2, 0.3, 1.0],
+          "fill_color": [1.0, 0.85, 0.4, 1.0],
+          "position": [0, 350, 0],
+          "size": [600, 20],
+          "border_radius": 10,
+          "progress": 0.0,
+          "show_text": true,
+          "text_format": "{current}/{target}",
+          "text_color": [1.0, 0.85, 0.4, 1.0],
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0.3, 0.2, 0.1, 0.3]
+          }
+        }
+      ]
+    },
+    
+    "end_screen_configuration": {
+      "background": {
+        "type": "cosmic_throne_room",
+        "color": [0.04, 0.06, 0.2, 0.9],
+        "description": "Cosmic throne room aesthetic with volumetric light shafts"
+      },
+      "elements": [
+        {
+          "name": "LevelCompleteText",
+          "type": "text",
+          "text": "LEVEL COMPLETE!",
+          "font_size": 48,
+          "font_weight": "black",
+          "color": [1.0, 0.85, 0.4, 1.0],
+          "position": [0, 200, 0],
+          "alignment": "center",
+          "animation": "bounce"
+        },
+        {
+          "name": "StarsContainer",
+          "type": "container",
+          "position": [0, 100, 0],
+          "elements": [
+            {
+              "name": "Star1",
+              "type": "star",
+              "position": [-80, 0, 0],
+              "size": [60, 60],
+              "color": [1.0, 0.85, 0.4, 1.0],
+              "animation": "star_pop"
+            },
+            {
+              "name": "Star2",
+              "type": "star",
+              "position": [0, 0, 0],
+              "size": [60, 60],
+              "color": [1.0, 0.85, 0.4, 1.0],
+              "animation": "star_pop"
+            },
+            {
+              "name": "Star3",
+              "type": "star",
+              "position": [80, 0, 0],
+              "size": [60, 60],
+              "color": [1.0, 0.85, 0.4, 1.0],
+              "animation": "star_pop"
+            }
+          ]
+        },
+        {
+          "name": "ScoreText",
+          "type": "text",
+          "text": "Score: 15,000",
+          "font_size": 32,
+          "font_weight": "bold",
+          "color": [1.0, 0.85, 0.4, 1.0],
+          "position": [0, 0, 0],
+          "alignment": "center"
+        },
+        {
+          "name": "NextLevelButton",
+          "type": "button",
+          "text": "NEXT LEVEL",
+          "font_size": 28,
+          "font_weight": "bold",
+          "text_color": [0.04, 0.06, 0.2, 1.0],
+          "background_color": [1.0, 0.85, 0.4, 1.0],
+          "position": [0, -100, 0],
+          "size": [250, 70],
+          "border_radius": 35,
+          "shadow": {
+            "offset": [0, 4],
+            "blur": 8,
+            "color": [0.3, 0.2, 0.1, 0.3]
+          },
+          "animation": "pulse",
+          "hover_animation": "button_hover",
+          "click_animation": "button_click"
+        },
+        {
+          "name": "MainMenuButton",
+          "type": "button",
+          "text": "MAIN MENU",
+          "font_size": 24,
+          "font_weight": "medium",
+          "text_color": [1.0, 0.85, 0.4, 1.0],
+          "background_color": [0.2, 0.2, 0.3, 1.0],
+          "position": [0, -200, 0],
+          "size": [200, 60],
+          "border_radius": 30,
+          "shadow": {
+            "offset": [0, 2],
+            "blur": 4,
+            "color": [0.3, 0.2, 0.1, 0.3]
+          },
+          "hover_animation": "button_hover",
+          "click_animation": "button_click"
+        }
+      ]
+    },
+    
+    "settings_panel_configuration": {
+      "background": {
+        "type": "space_theme",
+        "color": [0.04, 0.06, 0.2, 0.95],
+        "description": "Space-themed settings panel"
+      },
+      "elements": [
+        {
+          "name": "SettingsTitle",
+          "type": "text",
+          "text": "SPACE SETTINGS",
+          "font_size": 48,
+          "font_weight": "black",
+          "color": [1.0, 0.85, 0.4, 1.0],
+          "position": [0, 300, 0],
+          "alignment": "center"
+        },
+        {
+          "name": "MusicVolumeSlider",
+          "type": "slider",
+          "background_color": [0.2, 0.2, 0.3, 1.0],
+          "fill_color": [1.0, 0.85, 0.4, 1.0],
+          "position": [0, 100, 0],
+          "size": [400, 20],
+          "border_radius": 10
+        },
+        {
+          "name": "SFXVolumeSlider",
+          "type": "slider",
+          "background_color": [0.2, 0.2, 0.3, 1.0],
+          "fill_color": [0.3, 0.82, 0.88, 1.0],
+          "position": [0, 0, 0],
+          "size": [400, 20],
+          "border_radius": 10
+        },
+        {
+          "name": "VibrationToggle",
+          "type": "toggle",
+          "background_color": [0.4, 0.23, 0.72, 1.0],
+          "position": [0, -100, 0],
+          "size": [200, 50],
+          "border_radius": 25
+        }
+      ]
+    },
+    
+    "particle_effects": {
+      "starlight_particles": {
+        "name": "StarlightParticles",
+        "type": "ParticleSystem",
+        "start_lifetime": 5.0,
+        "start_speed": 2.0,
+        "start_size": 0.1,
+        "start_color": [1.0, 0.85, 0.4, 1.0],
+        "max_particles": 15,
+        "rate_over_time": 12.0,
+        "shape_type": "Circle",
+        "shape_radius": 10.0,
+        "description": "Floating starlight particles for background ambiance"
+      },
+      "energy_core_effect": {
+        "name": "EnergyCoreEffect",
+        "type": "ParticleSystem",
+        "start_lifetime": 2.0,
+        "start_speed": 1.0,
+        "start_size": 0.2,
+        "start_color": [0.3, 0.82, 0.88, 1.0],
+        "max_particles": 8,
+        "rate_over_time": 6.0,
+        "description": "Energy core effect for center of gameplay area"
+      },
+      "glow_pulse_effect": {
+        "name": "GlowPulseEffect",
+        "type": "ParticleSystem",
+        "start_lifetime": 1.0,
+        "start_speed": 0.5,
+        "start_size": 0.3,
+        "start_color": [1.0, 0.85, 0.4, 1.0],
+        "max_particles": 5,
+        "rate_over_time": 3.0,
+        "description": "Glow pulse effect for button interactions"
+      }
+    },
+    
+    "animation_configuration": {
+      "button_hover": {
+        "duration": 0.2,
+        "ease_type": "EaseOut",
+        "scale_from": [1.0, 1.0, 1.0],
+        "scale_to": [1.05, 1.05, 1.0],
+        "color_brightness": 1.2,
+        "shadow_intensity": 1.3
+      },
+      "button_click": {
+        "duration": 0.1,
+        "ease_type": "EaseIn",
+        "scale_from": [1.05, 1.05, 1.0],
+        "scale_to": [0.95, 0.95, 1.0],
+        "color_brightness": 0.8
+      },
+      "panel_slide_in": {
+        "duration": 0.5,
+        "ease_type": "EaseOut",
+        "position_from": [-800, 0, 0],
+        "position_to": [0, 0, 0],
+        "alpha_from": 0.0,
+        "alpha_to": 1.0,
+        "scale_from": [0.8, 0.8, 1.0],
+        "scale_to": [1.0, 1.0, 1.0]
+      },
+      "score_popup": {
+        "duration": 1.5,
+        "ease_type": "BounceOut",
+        "scale_from": [0.5, 0.5, 1.0],
+        "scale_to": [1.2, 1.2, 1.0],
+        "position_offset": [0, 100, 0],
+        "alpha_from": 0.0,
+        "alpha_to": 1.0,
+        "color_shift": [1.0, 0.85, 0.4, 1.0]
+      },
+      "star_pop": {
+        "duration": 0.8,
+        "ease_type": "BounceOut",
+        "scale_from": [0.0, 0.0, 1.0],
+        "scale_to": [1.2, 1.2, 1.0],
+        "rotation_from": [0, 0, 0],
+        "rotation_to": [0, 0, 360],
+        "alpha_from": 0.0,
+        "alpha_to": 1.0
+      },
+      "float": {
+        "duration": 3.0,
+        "ease_type": "EaseInOut",
+        "position_offset": [0, 20, 0],
+        "loop": true,
+        "ping_pong": true
+      }
+    },
+    
+    "material_naming_convention": {
+      "ui_space_royal_button": "Materials/UI/UI_SpaceRoyal_Button.mat",
+      "ui_space_royal_background": "Materials/UI/UI_SpaceRoyal_Background.mat",
+      "ui_space_royal_panel": "Materials/UI/UI_SpaceRoyal_Panel.mat",
+      "ui_space_royal_text": "Materials/UI/UI_SpaceRoyal_Text.mat"
+    },
+    
+    "shader_configuration": {
+      "ui_unlit_shader": "UI/Unlit",
+      "bloom_post_processing": true,
+      "glow_effects": true,
+      "emission_support": true
+    },
+    
+    "performance_optimization": {
+      "texture_compression": true,
+      "max_texture_size": 1024,
+      "ui_batching": true,
+      "animation_pooling": true,
+      "dynamic_ui_culling": true
+    },
+    
+    "accessibility_features": {
+      "high_contrast_mode": true,
+      "large_text_mode": true,
+      "color_blind_support": true,
+      "screen_reader_support": true,
+      "keyboard_navigation": true
+    }
+  }
+}
