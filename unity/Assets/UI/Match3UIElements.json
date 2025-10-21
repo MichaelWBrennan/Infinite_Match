@@ -3,8 +3,8 @@
     "background": {
       "type": "gradient",
       "colors": [
-        [0.98, 0.45, 0.65, 1.0],
-        [0.2, 0.6, 0.9, 1.0]
+        [0.04, 0.06, 0.2, 1.0],
+        [0.1, 0.05, 0.3, 1.0]
       ],
       "direction": "diagonal"
     },
@@ -12,16 +12,16 @@
       {
         "name": "TitleText",
         "type": "Text",
-        "text": "Infinite Match",
+        "text": "ROYAL MATCH IN SPACE",
         "font_size": 72,
         "font_weight": "black",
-        "color": [1.0, 1.0, 1.0, 1.0],
+        "color": [1.0, 0.85, 0.4, 1.0],
         "position": [0, 300, 0],
-        "size": [600, 100],
+        "size": [800, 100],
         "shadow": {
           "offset": [0, 8],
           "blur": 16,
-          "color": [0, 0, 0, 0.2]
+          "color": [0.3, 0.2, 0.1, 0.5]
         },
         "animation": "bounce"
       },
@@ -31,15 +31,15 @@
         "text": "PLAY",
         "font_size": 36,
         "font_weight": "bold",
-        "text_color": [1.0, 1.0, 1.0, 1.0],
-        "background_color": [0.4, 0.8, 0.4, 1.0],
+        "text_color": [0.04, 0.06, 0.2, 1.0],
+        "background_color": [1.0, 0.85, 0.4, 1.0],
         "position": [0, 100, 0],
-        "size": [280, 80],
+        "size": [350, 120],
         "border_radius": 40,
         "shadow": {
           "offset": [0, 4],
           "blur": 8,
-          "color": [0, 0, 0, 0.15]
+          "color": [0.3, 0.2, 0.1, 0.3]
         },
         "animation": "bounce",
         "hover_animation": "button_hover",
@@ -52,14 +52,14 @@
         "font_size": 28,
         "font_weight": "medium",
         "text_color": [1.0, 1.0, 1.0, 1.0],
-        "background_color": [0.2, 0.6, 0.9, 1.0],
+        "background_color": [0.4, 0.23, 0.72, 1.0],
         "position": [0, 0, 0],
         "size": [240, 70],
         "border_radius": 35,
         "shadow": {
           "offset": [0, 2],
           "blur": 4,
-          "color": [0, 0, 0, 0.1]
+          "color": [0.2, 0.1, 0.4, 0.3]
         },
         "hover_animation": "button_hover",
         "click_animation": "button_click"
@@ -71,14 +71,14 @@
         "font_size": 28,
         "font_weight": "medium",
         "text_color": [1.0, 1.0, 1.0, 1.0],
-        "background_color": [1.0, 0.6, 0.2, 1.0],
+        "background_color": [0.3, 0.82, 0.88, 1.0],
         "position": [0, -100, 0],
         "size": [240, 70],
         "border_radius": 35,
         "shadow": {
           "offset": [0, 2],
           "blur": 4,
-          "color": [0, 0, 0, 0.1]
+          "color": [0.1, 0.3, 0.3, 0.3]
         },
         "hover_animation": "button_hover",
         "click_animation": "button_click"
@@ -90,14 +90,14 @@
         "font_size": 28,
         "font_weight": "medium",
         "text_color": [1.0, 1.0, 1.0, 1.0],
-        "background_color": [0.7, 0.3, 0.9, 1.0],
+        "background_color": [0.4, 0.23, 0.72, 1.0],
         "position": [0, -200, 0],
         "size": [240, 70],
         "border_radius": 35,
         "shadow": {
           "offset": [0, 2],
           "blur": 4,
-          "color": [0, 0, 0, 0.1]
+          "color": [0.2, 0.1, 0.4, 0.3]
         },
         "hover_animation": "button_hover",
         "click_animation": "button_click"
@@ -105,18 +105,25 @@
     ],
     "decorative_elements": [
       {
-        "type": "floating_candy",
+        "type": "floating_star",
         "position": [-400, 200, 0],
         "size": [60, 60],
         "animation": "float",
-        "color": [1.0, 0.9, 0.2, 0.8]
+        "color": [1.0, 0.85, 0.4, 0.8]
       },
       {
-        "type": "floating_candy",
+        "type": "floating_star",
         "position": [400, -150, 0],
         "size": [80, 80],
         "animation": "float",
-        "color": [0.98, 0.45, 0.65, 0.8]
+        "color": [0.3, 0.82, 0.88, 0.8]
+      },
+      {
+        "type": "floating_star",
+        "position": [0, 400, 0],
+        "size": [40, 40],
+        "animation": "float",
+        "color": [0.4, 0.23, 0.72, 0.6]
       }
     ]
   },
@@ -134,14 +141,14 @@
         {
           "name": "ScorePanel",
           "type": "panel",
-          "background_color": [0.98, 0.45, 0.65, 1.0],
+          "background_color": [1.0, 0.85, 0.4, 1.0],
           "position": [-300, 0, 0],
           "size": [200, 80],
           "border_radius": 40,
           "shadow": {
             "offset": [0, 4],
             "blur": 8,
-            "color": [0, 0, 0, 0.15]
+            "color": [0.3, 0.2, 0.1, 0.3]
           },
           "elements": [
             {
@@ -167,14 +174,14 @@
         {
           "name": "MovesPanel",
           "type": "panel",
-          "background_color": [0.2, 0.6, 0.9, 1.0],
+          "background_color": [0.3, 0.82, 0.88, 1.0],
           "position": [0, 0, 0],
           "size": [180, 80],
           "border_radius": 40,
           "shadow": {
             "offset": [0, 4],
             "blur": 8,
-            "color": [0, 0, 0, 0.15]
+            "color": [0.1, 0.3, 0.3, 0.3]
           },
           "elements": [
             {
@@ -200,14 +207,14 @@
         {
           "name": "LevelPanel",
           "type": "panel",
-          "background_color": [1.0, 0.6, 0.2, 1.0],
+          "background_color": [0.4, 0.23, 0.72, 1.0],
           "position": [300, 0, 0],
           "size": [200, 80],
           "border_radius": 40,
           "shadow": {
             "offset": [0, 4],
             "blur": 8,
-            "color": [0, 0, 0, 0.15]
+            "color": [0.2, 0.1, 0.4, 0.3]
           },
           "elements": [
             {
@@ -279,7 +286,7 @@
               "count": "3",
               "position": [-120, 0, 0],
               "size": [60, 60],
-              "background_color": [0.4, 0.8, 0.4, 1.0],
+              "background_color": [0.3, 0.82, 0.88, 1.0],
               "border_radius": 30
             },
             {
@@ -289,7 +296,7 @@
               "count": "2",
               "position": [0, 0, 0],
               "size": [60, 60],
-              "background_color": [0.98, 0.45, 0.65, 1.0],
+              "background_color": [1.0, 0.85, 0.4, 1.0],
               "border_radius": 30
             },
             {
@@ -299,7 +306,7 @@
               "count": "1",
               "position": [120, 0, 0],
               "size": [60, 60],
-              "background_color": [0.7, 0.3, 0.9, 1.0],
+              "background_color": [0.4, 0.23, 0.72, 1.0],
               "border_radius": 30
             }
           ]
@@ -309,14 +316,14 @@
           "type": "button",
           "text": "💎",
           "font_size": 36,
-          "background_color": [1.0, 0.8, 0.2, 1.0],
+          "background_color": [1.0, 0.85, 0.4, 1.0],
           "position": [400, 0, 0],
           "size": [80, 80],
           "border_radius": 40,
           "shadow": {
             "offset": [0, 2],
             "blur": 4,
-            "color": [0, 0, 0, 0.1]
+            "color": [0.3, 0.2, 0.1, 0.3]
           },
           "hover_animation": "button_hover",
           "click_animation": "button_click"
@@ -327,19 +334,19 @@
       {
         "name": "LevelProgressBar",
         "type": "progress_bar",
-        "background_color": [0.9, 0.9, 0.9, 1.0],
-        "fill_color": [0.98, 0.45, 0.65, 1.0],
+        "background_color": [0.2, 0.2, 0.3, 1.0],
+        "fill_color": [1.0, 0.85, 0.4, 1.0],
         "position": [0, 350, 0],
         "size": [600, 20],
         "border_radius": 10,
         "progress": 0.0,
         "show_text": true,
         "text_format": "{current}/{target}",
-        "text_color": [0.2, 0.2, 0.25, 1.0],
+        "text_color": [1.0, 0.85, 0.4, 1.0],
         "shadow": {
           "offset": [0, 2],
           "blur": 4,
-          "color": [0, 0, 0, 0.1]
+          "color": [0.3, 0.2, 0.1, 0.3]
         }
       }
     ]
@@ -456,7 +463,7 @@
         "text": "LEVEL COMPLETE!",
         "font_size": 48,
         "font_weight": "black",
-        "color": [0.4, 0.8, 0.4, 1.0],
+        "color": [1.0, 0.85, 0.4, 1.0],
         "position": [0, 200, 0],
         "alignment": "center",
         "animation": "bounce"
@@ -508,15 +515,15 @@
         "text": "NEXT LEVEL",
         "font_size": 28,
         "font_weight": "bold",
-        "text_color": [1.0, 1.0, 1.0, 1.0],
-        "background_color": [0.4, 0.8, 0.4, 1.0],
+        "text_color": [0.04, 0.06, 0.2, 1.0],
+        "background_color": [1.0, 0.85, 0.4, 1.0],
         "position": [0, -100, 0],
         "size": [250, 70],
         "border_radius": 35,
         "shadow": {
           "offset": [0, 4],
           "blur": 8,
-          "color": [0, 0, 0, 0.15]
+          "color": [0.3, 0.2, 0.1, 0.3]
         },
         "animation": "pulse",
         "hover_animation": "button_hover",
