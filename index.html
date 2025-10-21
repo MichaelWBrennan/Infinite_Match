@@ -1,499 +1,427 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="description" content="Infinite Match - Industry Leading Match 3 Game">
-    <title>Infinite Match - Match 3 Game</title>
-    <link rel="shortcut icon" href="WebGL/TemplateData/favicon.ico">
-    
-    <!-- Redirect to unified WebGL directory -->
-    <script>
-        // Redirect to the unified WebGL directory
-        window.location.href = '/WebGL/';
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royal Match - Puzzle Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-family: Arial, sans-serif;">
-        <div style="text-align: center;">
-            <h1>Infinite Match</h1>
-            <p>Loading game...</p>
-            <p>If you are not redirected automatically, <a href="/WebGL/" style="color: #fff; text-decoration: underline;">click here</a>.</p>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="screen active">
+        <div class="loading-container">
+            <div class="royal-crown">
+                <div class="crown-top">👑</div>
+                <div class="crown-base">ROYAL MATCH</div>
+            </div>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+            <div class="loading-text">Loading Royal Kingdom...</div>
         </div>
     </div>
-    
-    <script>
-        var container = document.querySelector("#unity-container");
-        var canvas = document.querySelector("#unity-canvas");
-        var loadingBar = document.querySelector("#unity-loading-bar");
-        var progressBarFull = document.querySelector("#unity-progress-bar-full");
-        var fullscreenButton = document.querySelector("#unity-fullscreen-button");
-        var mobileWarning = document.querySelector("#unity-mobile-warning");
-        
-        // Platform Integration
-        var platformAPI = null;
-        var gameInstance = null;
-        var platformDetector = null;
-        var platformConfig = null;
-        
-        // Analytics Integration
-        var analytics = {
-            amplitude: null,
-            mixpanel: null,
-            sentry: null,
-            datadog: null,
-            sessionId: null,
-            initialized: false
-        };
-        
-        // Load platform-specific configuration
-        async function loadPlatformConfig() {
-            try {
-                // Try to load platform config from current directory
-                const response = await fetch('platform-config.json');
-                if (response.ok) {
-                    platformConfig = await response.json();
-                    console.log('✅ Platform config loaded:', platformConfig.platform);
-                    
-                    // Update page title and description based on platform
-                    if (platformConfig.name) {
-                        document.title = `Infinite Match - ${platformConfig.name}`;
-                    }
-                    if (platformConfig.description) {
-                        document.querySelector('meta[name="description"]').setAttribute('content', platformConfig.description);
-                    }
-                } else {
-                    // Fallback to default config
-                    platformConfig = {
-                        platform: 'default',
-                        name: 'Default',
-                        features: {
-                            ads: false,
-                            iap: false,
-                            social: false,
-                            analytics: true
-                        }
-                    };
-                    console.log('⚠️ Using default platform config');
-                }
-            } catch (error) {
-                console.error('❌ Failed to load platform config:', error);
-                // Use default config
-                platformConfig = {
-                    platform: 'default',
-                    name: 'Default',
-                    features: {
-                        ads: false,
-                        iap: false,
-                        social: false,
-                        analytics: true
-                    }
-                };
-            }
-        }
-        
-        // Load platform-specific SDK
-        function loadPlatformSDK() {
-            const sdkLoader = document.getElementById('platform-sdk-loader');
-            
-            if (!platformConfig || !platformConfig.sdkUrl) {
-                console.log('⚠️ No platform SDK URL, skipping SDK load');
-                return;
-            }
-            
-            sdkLoader.src = platformConfig.sdkUrl;
-            sdkLoader.onload = () => {
-                console.log('✅ Platform SDK loaded:', platformConfig.platform);
-            };
-            sdkLoader.onerror = () => {
-                console.error('❌ Failed to load platform SDK:', platformConfig.platform);
-            };
-        }
-        
-        // Initialize Analytics
-        function initializeAnalytics() {
-            try {
-                analytics.sessionId = 'webgl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                // Initialize Amplitude
-                if (typeof amplitude !== 'undefined') {
-                    analytics.amplitude = amplitude;
-                    analytics.amplitude.init('YOUR_AMPLITUDE_API_KEY', null, {
-                        saveEvents: true,
-                        includeUtm: true,
-                        includeReferrer: true
-                    });
-                    console.log('✅ Amplitude initialized');
-                }
-                
-                // Initialize Mixpanel
-                if (typeof mixpanel !== 'undefined') {
-                    analytics.mixpanel = mixpanel;
-                    analytics.mixpanel.init('YOUR_MIXPANEL_TOKEN');
-                    console.log('✅ Mixpanel initialized');
-                }
-                
-                // Initialize Sentry
-                if (typeof Sentry !== 'undefined') {
-                    analytics.sentry = Sentry;
-                    analytics.sentry.init({
-                        dsn: 'YOUR_SENTRY_DSN',
-                        environment: 'production',
-                        tracesSampleRate: 1.0
-                    });
-                    console.log('✅ Sentry initialized');
-                }
-                
-                // Initialize Datadog RUM
-                if (typeof DD_RUM !== 'undefined') {
-                    analytics.datadog = DD_RUM;
-                    analytics.datadog.init({
-                        applicationId: 'YOUR_DATADOG_APP_ID',
-                        clientToken: 'YOUR_DATADOG_CLIENT_TOKEN',
-                        site: 'datadoghq.com',
-                        service: 'match3-game-webgl',
-                        env: 'production',
-                        version: '1.0.0',
-                        sessionSampleRate: 100,
-                        sessionReplaySampleRate: 20,
-                        trackUserInteractions: true,
-                        trackResources: true,
-                        trackLongTasks: true
-                    });
-                    console.log('✅ Datadog RUM initialized');
-                }
-                
-                analytics.initialized = true;
-                console.log('✅ Analytics initialized successfully');
-                
-            } catch (error) {
-                console.error('❌ Analytics initialization failed:', error);
-            }
-        }
-        
-        // Track game events
-        function trackEvent(eventName, properties = {}) {
-            if (!analytics.initialized) return;
-            
-            try {
-                const eventData = {
-                    ...properties,
-                    session_id: analytics.sessionId,
-                    timestamp: new Date().toISOString(),
-                    platform: platformConfig ? platformConfig.platform : 'unknown',
-                    game_version: '1.0.0'
-                };
-                
-                if (analytics.amplitude) {
-                    analytics.amplitude.track(eventName, eventData);
-                }
-                
-                if (analytics.mixpanel) {
-                    analytics.mixpanel.track(eventName, eventData);
-                }
-                
-                if (analytics.datadog) {
-                    analytics.datadog.addAction(eventName, eventData);
-                }
-                
-                console.log('📊 Event tracked:', eventName, eventData);
-            } catch (error) {
-                console.error('Failed to track event:', error);
-            }
-        }
-        
-        // Initialize Platform Detection and SDK
-        async function initializePlatform() {
-            try {
-                // Load platform config first
-                await loadPlatformConfig();
-                
-                // Load platform-specific SDK
-                loadPlatformSDK();
-                
-                // Initialize analytics
-                initializeAnalytics();
-                
-                // Initialize platform detector
-                platformDetector = new PlatformDetector();
-                const platformInfo = await platformDetector.initialize();
-                
-                console.log(`🎮 Platform: ${platformInfo.config.name}`);
-                console.log(`📱 Features:`, platformInfo.config.features);
-                
-                platformAPI = platformDetector.getUnifiedAPI();
-                
-                // Track platform initialization
-                trackEvent('platform_initialized', {
-                    platform: platformInfo.config.name,
-                    features: platformInfo.config.features
-                });
-                
-                startGame();
-            } catch (error) {
-                console.error('❌ Platform initialization failed:', error);
-                showError('Failed to initialize platform: ' + error.message);
-            }
-        }
-        
-        // Start the game
-        function startGame() {
-            // Show a mobile message if the user is on a mobile device
-            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                container.className = "unity-mobile";
-                mobileWarning.style.display = "block";
-                return;
-            } else {
-                // Responsive canvas sizing
-                const maxWidth = Math.min(window.innerWidth - 40, 960);
-                const maxHeight = Math.min(window.innerHeight - 40, 600);
-                const aspectRatio = 960 / 600;
-                
-                let canvasWidth = maxWidth;
-                let canvasHeight = maxWidth / aspectRatio;
-                
-                if (canvasHeight > maxHeight) {
-                    canvasHeight = maxHeight;
-                    canvasWidth = maxHeight * aspectRatio;
-                }
-                
-                canvas.style.width = canvasWidth + "px";
-                canvas.style.height = canvasHeight + "px";
-            }
-            
-            loadingBar.style.display = "block";
-            
-            // Load Unity WebGL build
-            loadUnityWebGL();
-        }
-        
-        // Load Unity WebGL build
-        function loadUnityWebGL() {
-            var buildUrl = "Build";
-            var loaderUrl = buildUrl + "/WebGL.loader.js";
-            
-            // Load the Unity loader script
-            var script = document.createElement("script");
-            script.src = loaderUrl;
-            script.onload = () => {
-                console.log('📦 Unity loader loaded, initializing...');
-                
-                // Create Unity instance with progress callback
-                if (typeof createUnityInstance === 'function') {
-                    createUnityInstance(canvas, {}, (progress) => {
-                        progressBarFull.style.width = 100 * progress + "%";
-                        console.log('📊 Loading progress:', Math.round(progress * 100) + '%');
-                    }).then((unityInstance) => {
-                        gameInstance = unityInstance;
-                        loadingBar.style.display = "none";
-                        
-                        // Set up fullscreen functionality
-                        if (unityInstance.SetFullscreen) {
-                            canvas.addEventListener('dblclick', () => {
-                                unityInstance.SetFullscreen(1);
-                            });
-                        }
-                        
-                        // Start the game
-                        if (unityInstance.start) {
-                            unityInstance.start();
-                        }
-                        
-                        // Platform game ready callback
-                        if (platformAPI) {
-                            platformAPI.gameplayStart();
-                        }
-                        
-                        // Track game loaded
-                        trackEvent('game_loaded', {
-                            load_time: Date.now() - window.performance.timing.navigationStart,
-                            platform: platformConfig ? platformConfig.platform : 'unknown'
-                        });
-                        
-                        console.log('✅ Unity game loaded successfully');
-                    }).catch((message) => {
-                        console.error('❌ Unity game load failed:', message);
-                        console.log('🔄 Falling back to Match 3 game...');
-                        startFallbackGame();
-                    });
-                } else {
-                    console.error('❌ createUnityInstance function not found');
-                    showError('Unity loader not properly loaded');
-                }
-            };
-            
-            script.onerror = () => {
-                console.error('❌ Failed to load Unity WebGL loader');
-                console.log('🔄 Falling back to Match 3 game...');
-                startFallbackGame();
-            };
-            
-            document.body.appendChild(script);
-        }
-        
-        // Start fallback Match 3 game
-        function startFallbackGame() {
-            console.log('🎮 Starting Match 3 fallback game...');
-            
-            // Hide Unity canvas and loading bar
-            const canvas = document.querySelector('#unity-canvas');
-            const loadingBar = document.querySelector('#unity-loading-bar');
-            
-            if (canvas) canvas.style.display = 'none';
-            if (loadingBar) loadingBar.style.display = 'none';
-            
-            // Initialize the Match 3 game
-            if (typeof SharedMatch3Game !== 'undefined') {
-                window.sharedGame = new SharedMatch3Game();
-                console.log('✅ Match 3 game started successfully');
-            } else {
-                console.error('❌ SharedMatch3Game class not found');
-                showError('Failed to load game. Please refresh the page.');
-            }
-        }
-        
-        // Show error message
-        function showError(message) {
-            loadingBar.innerHTML = '<div class="poki-error">' + message + '</div>';
-        }
-        
-        // Platform event handlers
-        function onGamePause() {
-            if (platformAPI) {
-                platformAPI.gameplayStop();
-            }
-            trackEvent('game_paused', {
-                level: 1, // This would come from Unity
-                score: 0  // This would come from Unity
-            });
-        }
-        
-        function onGameResume() {
-            if (platformAPI) {
-                platformAPI.gameplayStart();
-            }
-            trackEvent('game_resumed', {
-                level: 1, // This would come from Unity
-                score: 0  // This would come from Unity
-            });
-        }
-        
-        function onGameQuit() {
-            if (platformAPI) {
-                platformAPI.gameplayStop();
-            }
-            trackEvent('game_quit', {
-                session_duration: Date.now() - window.performance.timing.navigationStart,
-                level: 1, // This would come from Unity
-                score: 0  // This would come from Unity
-            });
-        }
-        
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                onGamePause();
-            } else {
-                onGameResume();
-            }
-        });
-        
-        // Handle page unload
-        window.addEventListener('beforeunload', function() {
-            onGameQuit();
-        });
-        
-        // Initialize when page loads
-        window.addEventListener('load', function() {
-            initializePlatform();
-        });
-        
-        // Unified Platform API for Unity
-        window.GameAPI = {
-            // Show ad
-            showAd: function(type) {
-                if (platformAPI) {
-                    return platformAPI.showAd(type);
-                }
-                return Promise.resolve();
-            },
-            
-            // Show rewarded ad
-            showRewardedAd: function() {
-                if (platformAPI) {
-                    return platformAPI.showRewardedAd();
-                }
-                return Promise.resolve();
-            },
-            
-            // Show interstitial ad
-            showInterstitialAd: function() {
-                if (platformAPI) {
-                    return platformAPI.showInterstitialAd();
-                }
-                return Promise.resolve();
-            },
-            
-            // Check if ad is blocked
-            isAdBlocked: function() {
-                if (platformAPI) {
-                    return platformAPI.isAdBlocked();
-                }
-                return false;
-            },
-            
-            // Check if user has ad-free
-            isAdFree: function() {
-                if (platformAPI) {
-                    return platformAPI.isAdFree();
-                }
-                return false;
-            },
-            
-            // Track game event
-            trackEvent: function(eventName, data) {
-                if (platformAPI) {
-                    platformAPI.trackEvent(eventName, data);
-                }
-                // Also track with our analytics
-                trackEvent(eventName, data);
-            },
-            
-            // Get user info
-            getUserInfo: function() {
-                if (platformAPI) {
-                    return platformAPI.getUserInfo();
-                }
-                return null;
-            },
-            
-            // Get platform info
-            getPlatform: function() {
-                if (platformAPI) {
-                    return platformAPI.getPlatform();
-                }
-                return platformConfig ? platformConfig.platform : 'unknown';
-            },
-            
-            // Get platform name
-            getPlatformName: function() {
-                if (platformAPI) {
-                    return platformAPI.getPlatformName();
-                }
-                return platformConfig ? platformConfig.name : 'Unknown';
-            },
-            
-            // Get available features
-            getFeatures: function() {
-                if (platformAPI) {
-                    return platformAPI.getFeatures();
-                }
-                return platformConfig ? platformConfig.features : {};
-            }
-        };
-        
-        // Legacy Poki API for backward compatibility
-        window.PokiAPI = window.GameAPI;
-    </script>
+
+    <!-- Title Screen -->
+    <div id="title-screen" class="screen">
+        <div class="title-background">
+            <div class="royal-pattern"></div>
+        </div>
+        <div class="title-content">
+            <div class="game-logo">
+                <div class="crown-icon">👑</div>
+                <h1 class="game-title">ROYAL MATCH</h1>
+                <p class="game-subtitle">Match & Build Your Kingdom</p>
+            </div>
+            <div class="title-buttons">
+                <button class="royal-btn primary" onclick="showModeSelect()">PLAY</button>
+                <button class="royal-btn secondary" onclick="showSettings()">SETTINGS</button>
+                <button class="royal-btn secondary" onclick="showNews()">NEWS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mode & Screen Select -->
+    <div id="mode-select" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showTitle()">←</button>
+            <h2>Select Mode</h2>
+        </div>
+        <div class="mode-grid">
+            <div class="mode-card active">
+                <div class="mode-icon">🎯</div>
+                <h3>Classic Mode</h3>
+                <p>Match gems to build your kingdom</p>
+                <button class="royal-btn primary" onclick="showLevelSelect()">Start</button>
+            </div>
+            <div class="mode-card locked">
+                <div class="mode-icon">⚔️</div>
+                <h3>Battle Mode</h3>
+                <p>Compete with other players</p>
+                <div class="lock-icon">🔒</div>
+            </div>
+            <div class="mode-card locked">
+                <div class="mode-icon">🏰</div>
+                <h3>Kingdom Mode</h3>
+                <p>Build and manage your castle</p>
+                <div class="lock-icon">🔒</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings-screen" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showTitle()">←</button>
+            <h2>Settings</h2>
+        </div>
+        <div class="settings-content">
+            <div class="setting-group">
+                <h3>Audio</h3>
+                <div class="setting-item">
+                    <label>Music</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="music-toggle" checked>
+                        <span class="slider"></span>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>Sound Effects</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="sfx-toggle" checked>
+                        <span class="slider"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="setting-group">
+                <h3>Graphics</h3>
+                <div class="setting-item">
+                    <label>Quality</label>
+                    <select class="royal-select">
+                        <option>High</option>
+                        <option>Medium</option>
+                        <option>Low</option>
+                    </select>
+                </div>
+            </div>
+            <div class="setting-group">
+                <h3>Account</h3>
+                <div class="setting-item">
+                    <label>Player Name</label>
+                    <input type="text" class="royal-input" value="Royal Player">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Select Screen -->
+    <div id="level-select" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showModeSelect()">←</button>
+            <h2>Level Select</h2>
+            <div class="player-stats">
+                <div class="stat">
+                    <span class="stat-icon">⭐</span>
+                    <span class="stat-value">1,250</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-icon">💎</span>
+                    <span class="stat-value">450</span>
+                </div>
+            </div>
+        </div>
+        <div class="level-grid">
+            <div class="level-card completed">
+                <div class="level-number">1</div>
+                <div class="stars">⭐⭐⭐</div>
+                <div class="level-title">First Steps</div>
+            </div>
+            <div class="level-card completed">
+                <div class="level-number">2</div>
+                <div class="stars">⭐⭐⭐</div>
+                <div class="level-title">Royal Garden</div>
+            </div>
+            <div class="level-card current">
+                <div class="level-number">3</div>
+                <div class="stars">⭐⭐</div>
+                <div class="level-title">Castle Gate</div>
+            </div>
+            <div class="level-card locked">
+                <div class="level-number">4</div>
+                <div class="lock-icon">🔒</div>
+                <div class="level-title">Royal Hall</div>
+            </div>
+            <div class="level-card locked">
+                <div class="level-number">5</div>
+                <div class="lock-icon">🔒</div>
+                <div class="level-title">Throne Room</div>
+            </div>
+            <div class="level-card locked">
+                <div class="level-number">6</div>
+                <div class="lock-icon">🔒</div>
+                <div class="level-title">Royal Tower</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pre-Game Lobby -->
+    <div id="pre-game-lobby" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showLevelSelect()">←</button>
+            <h2>Level 3: Castle Gate</h2>
+        </div>
+        <div class="lobby-content">
+            <div class="level-preview">
+                <div class="preview-image">
+                    <div class="gem-grid">
+                        <div class="gem red">💎</div>
+                        <div class="gem blue">💎</div>
+                        <div class="gem green">💎</div>
+                        <div class="gem yellow">💎</div>
+                    </div>
+                </div>
+                <div class="level-info">
+                    <h3>Castle Gate</h3>
+                    <p>Match gems to unlock the royal gate</p>
+                    <div class="objectives">
+                        <div class="objective">
+                            <span class="obj-icon">🎯</span>
+                            <span>Score 5,000 points</span>
+                        </div>
+                        <div class="objective">
+                            <span class="obj-icon">⭐</span>
+                            <span>Get 3 stars</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="power-ups">
+                <h3>Power-ups</h3>
+                <div class="power-up-grid">
+                    <div class="power-up">
+                        <div class="power-icon">💥</div>
+                        <div class="power-name">Bomb</div>
+                        <div class="power-count">3</div>
+                    </div>
+                    <div class="power-up">
+                        <div class="power-icon">🌈</div>
+                        <div class="power-name">Rainbow</div>
+                        <div class="power-count">1</div>
+                    </div>
+                    <div class="power-up">
+                        <div class="power-icon">⚡</div>
+                        <div class="power-name">Lightning</div>
+                        <div class="power-count">2</div>
+                    </div>
+                </div>
+            </div>
+            <button class="royal-btn primary large" onclick="startGame()">START GAME</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="game-hud">
+            <div class="hud-left">
+                <button class="hud-btn" onclick="pauseGame()">⏸️</button>
+                <div class="score">Score: <span id="score">0</span></div>
+            </div>
+            <div class="hud-center">
+                <div class="timer">
+                    <div class="timer-icon">⏰</div>
+                    <div class="timer-value" id="timer">60</div>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="moves">Moves: <span id="moves">30</span></div>
+                <button class="hud-btn" onclick="showSettings()">⚙️</button>
+            </div>
+        </div>
+        <div class="game-board">
+            <div class="gem-board" id="gem-board">
+                <!-- Gems will be generated by JavaScript -->
+            </div>
+        </div>
+        <div class="game-powerups">
+            <div class="power-up-btn" onclick="usePowerUp('bomb')">
+                <div class="power-icon">💥</div>
+                <div class="power-count">3</div>
+            </div>
+            <div class="power-up-btn" onclick="usePowerUp('rainbow')">
+                <div class="power-icon">🌈</div>
+                <div class="power-count">1</div>
+            </div>
+            <div class="power-up-btn" onclick="usePowerUp('lightning')">
+                <div class="power-icon">⚡</div>
+                <div class="power-count">2</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Complete Screen -->
+    <div id="level-complete" class="screen">
+        <div class="completion-overlay">
+            <div class="completion-content">
+                <div class="completion-title">Level Complete!</div>
+                <div class="completion-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Score</div>
+                        <div class="stat-value" id="final-score">5,250</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Stars</div>
+                        <div class="stars-earned">⭐⭐⭐</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Gems Earned</div>
+                        <div class="stat-value">+50</div>
+                    </div>
+                </div>
+                <div class="completion-buttons">
+                    <button class="royal-btn secondary" onclick="showLevelSelect()">Level Select</button>
+                    <button class="royal-btn primary" onclick="nextLevel()">Next Level</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- News Screen -->
+    <div id="news-screen" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showTitle()">←</button>
+            <h2>News & Updates</h2>
+        </div>
+        <div class="news-content">
+            <div class="news-item featured">
+                <div class="news-image">🏰</div>
+                <div class="news-content">
+                    <h3>New Kingdom Update!</h3>
+                    <p>Build your royal castle with new levels and features</p>
+                    <div class="news-date">2 days ago</div>
+                </div>
+            </div>
+            <div class="news-item">
+                <div class="news-image">🎁</div>
+                <div class="news-content">
+                    <h3>Daily Rewards</h3>
+                    <p>Log in daily to collect royal treasures</p>
+                    <div class="news-date">1 week ago</div>
+                </div>
+            </div>
+            <div class="news-item">
+                <div class="news-image">⚔️</div>
+                <div class="news-content">
+                    <h3>Tournament Mode</h3>
+                    <p>Compete with players worldwide</p>
+                    <div class="news-date">2 weeks ago</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offers Screen -->
+    <div id="offers-screen" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showTitle()">←</button>
+            <h2>Special Offers</h2>
+        </div>
+        <div class="offers-content">
+            <div class="offer-card featured">
+                <div class="offer-badge">LIMITED TIME</div>
+                <div class="offer-image">💎</div>
+                <div class="offer-title">Royal Gem Pack</div>
+                <div class="offer-description">500 Gems + 50 Coins</div>
+                <div class="offer-price">
+                    <span class="old-price">$9.99</span>
+                    <span class="new-price">$4.99</span>
+                </div>
+                <button class="royal-btn primary">BUY NOW</button>
+            </div>
+            <div class="offer-card">
+                <div class="offer-image">⭐</div>
+                <div class="offer-title">Starter Pack</div>
+                <div class="offer-description">100 Gems + 10 Coins</div>
+                <div class="offer-price">$1.99</div>
+                <button class="royal-btn secondary">BUY</button>
+            </div>
+            <div class="offer-card">
+                <div class="offer-image">👑</div>
+                <div class="offer-title">Royal Bundle</div>
+                <div class="offer-description">1000 Gems + 100 Coins</div>
+                <div class="offer-price">$19.99</div>
+                <button class="royal-btn secondary">BUY</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="leaderboard-screen" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" onclick="showTitle()">←</button>
+            <h2>Leaderboard</h2>
+        </div>
+        <div class="leaderboard-content">
+            <div class="leaderboard-tabs">
+                <button class="tab-btn active">Weekly</button>
+                <button class="tab-btn">All Time</button>
+            </div>
+            <div class="leaderboard-list">
+                <div class="leaderboard-item rank-1">
+                    <div class="rank">1</div>
+                    <div class="player-info">
+                        <div class="player-avatar">👑</div>
+                        <div class="player-name">RoyalKing</div>
+                    </div>
+                    <div class="player-score">125,000</div>
+                </div>
+                <div class="leaderboard-item rank-2">
+                    <div class="rank">2</div>
+                    <div class="player-info">
+                        <div class="player-avatar">⚔️</div>
+                        <div class="player-name">GemMaster</div>
+                    </div>
+                    <div class="player-score">98,500</div>
+                </div>
+                <div class="leaderboard-item rank-3">
+                    <div class="rank">3</div>
+                    <div class="player-info">
+                        <div class="player-avatar">🏰</div>
+                        <div class="player-name">CastleBuilder</div>
+                    </div>
+                    <div class="player-score">87,200</div>
+                </div>
+                <div class="leaderboard-item current-player">
+                    <div class="rank">15</div>
+                    <div class="player-info">
+                        <div class="player-avatar">⭐</div>
+                        <div class="player-name">You</div>
+                    </div>
+                    <div class="player-score">45,300</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Item Get -->
+    <div id="item-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Item Collected!</h3>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="item-display">
+                    <div class="item-icon">💎</div>
+                    <div class="item-name">Royal Gem</div>
+                    <div class="item-description">+50 Gems added to your collection</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="royal-btn primary" onclick="closeModal()">COLLECT</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
