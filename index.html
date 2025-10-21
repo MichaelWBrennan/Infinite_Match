@@ -264,56 +264,108 @@
 
     <!-- Pre-Game Lobby -->
     <div id="pre-game-lobby" class="screen">
-        <div class="screen-header">
-            <button class="back-btn" onclick="showLevelSelect()">←</button>
-            <h2>Level 3: Castle Gate</h2>
+        <div class="screen-header-royal">
+            <button class="back-btn-royal" onclick="showLevelSelect()">
+                <span class="back-icon">←</span>
+            </button>
+            <h2 class="screen-title-royal">Level 3: Castle Gate</h2>
+            <div class="header-spacer"></div>
         </div>
-        <div class="lobby-content">
-            <div class="level-preview">
-                <div class="preview-image">
-                    <div class="gem-grid">
-                        <div class="gem red">💎</div>
-                        <div class="gem blue">💎</div>
-                        <div class="gem green">💎</div>
-                        <div class="gem yellow">💎</div>
+        <div class="pre-game-container-royal">
+            <div class="level-preview-royal">
+                <div class="level-preview-card">
+                    <div class="level-preview-header">
+                        <div class="level-number-large">3</div>
+                        <div class="level-title-large">Castle Gate</div>
                     </div>
-                </div>
-                <div class="level-info">
-                    <h3>Castle Gate</h3>
-                    <p>Match gems to unlock the royal gate</p>
-                    <div class="objectives">
-                        <div class="objective">
-                            <span class="obj-icon">🎯</span>
-                            <span>Score 5,000 points</span>
+                    <div class="gem-board-preview">
+                        <div class="gem-row-preview">
+                            <div class="gem-preview red"></div>
+                            <div class="gem-preview blue"></div>
+                            <div class="gem-preview green"></div>
+                            <div class="gem-preview yellow"></div>
+                            <div class="gem-preview purple"></div>
                         </div>
-                        <div class="objective">
-                            <span class="obj-icon">⭐</span>
-                            <span>Get 3 stars</span>
+                        <div class="gem-row-preview">
+                            <div class="gem-preview blue"></div>
+                            <div class="gem-preview red"></div>
+                            <div class="gem-preview yellow"></div>
+                            <div class="gem-preview green"></div>
+                            <div class="gem-preview red"></div>
+                        </div>
+                        <div class="gem-row-preview">
+                            <div class="gem-preview green"></div>
+                            <div class="gem-preview yellow"></div>
+                            <div class="gem-preview red"></div>
+                            <div class="gem-preview blue"></div>
+                            <div class="gem-preview green"></div>
+                        </div>
+                        <div class="gem-row-preview">
+                            <div class="gem-preview yellow"></div>
+                            <div class="gem-preview green"></div>
+                            <div class="gem-preview blue"></div>
+                            <div class="gem-preview red"></div>
+                            <div class="gem-preview yellow"></div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="power-ups">
-                <h3>Power-ups</h3>
-                <div class="power-up-grid">
-                    <div class="power-up">
-                        <div class="power-icon">💥</div>
-                        <div class="power-name">Bomb</div>
-                        <div class="power-count">3</div>
-                    </div>
-                    <div class="power-up">
-                        <div class="power-icon">🌈</div>
-                        <div class="power-name">Rainbow</div>
-                        <div class="power-count">1</div>
-                    </div>
-                    <div class="power-up">
-                        <div class="power-icon">⚡</div>
-                        <div class="power-name">Lightning</div>
-                        <div class="power-count">2</div>
+            
+            <div class="level-details-royal">
+                <div class="level-description-card">
+                    <h3 class="level-description-title">Level Description</h3>
+                    <p class="level-description-text">Match gems to unlock the royal gate and continue your journey through the kingdom. Use your power-ups wisely!</p>
+                </div>
+                
+                <div class="objectives-card">
+                    <h4 class="objectives-title">Objectives</h4>
+                    <div class="objectives-list">
+                        <div class="objective-item">
+                            <div class="objective-icon">🎯</div>
+                            <div class="objective-text">Score 5,000 points</div>
+                        </div>
+                        <div class="objective-item">
+                            <div class="objective-icon">⭐</div>
+                            <div class="objective-text">Get 3 stars</div>
+                        </div>
+                        <div class="objective-item">
+                            <div class="objective-icon">⏱️</div>
+                            <div class="objective-text">Complete in 60 seconds</div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <button class="royal-btn primary large" onclick="startGame()">START GAME</button>
+            
+            <div class="power-ups-section-royal">
+                <h4 class="power-ups-title">Power-ups Available</h4>
+                <div class="power-ups-grid-royal">
+                    <div class="power-up-card-royal">
+                        <div class="power-up-icon-large">💥</div>
+                        <div class="power-up-name-royal">Bomb</div>
+                        <div class="power-up-count-royal">3</div>
+                        <div class="power-up-desc">Clears surrounding gems</div>
+                    </div>
+                    <div class="power-up-card-royal">
+                        <div class="power-up-icon-large">🌈</div>
+                        <div class="power-up-name-royal">Rainbow</div>
+                        <div class="power-up-count-royal">1</div>
+                        <div class="power-up-desc">Matches all gems of one color</div>
+                    </div>
+                    <div class="power-up-card-royal">
+                        <div class="power-up-icon-large">⚡</div>
+                        <div class="power-up-name-royal">Lightning</div>
+                        <div class="power-up-count-royal">2</div>
+                        <div class="power-up-desc">Clears an entire row or column</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="start-game-section">
+                <button class="start-game-btn-royal" onclick="startGame()">
+                    <span class="start-icon">▶️</span>
+                    <span class="start-text">START GAME</span>
+                </button>
+            </div>
         </div>
     </div>
 

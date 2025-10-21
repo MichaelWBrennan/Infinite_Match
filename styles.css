@@ -963,6 +963,245 @@ body {
     font-weight: bold;
 }
 
+/* Pre-Game Lobby - Royal Match Style */
+.pre-game-container-royal {
+    flex: 1;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.level-preview-royal {
+    display: flex;
+    justify-content: center;
+}
+
+.level-preview-card {
+    background: rgba(255,255,255,0.1);
+    border-radius: 25px;
+    padding: 2rem;
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(255,255,255,0.2);
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.level-preview-header {
+    margin-bottom: 1.5rem;
+}
+
+.level-number-large {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #f39c12;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    font-family: 'Fredoka One', cursive;
+    margin-bottom: 0.5rem;
+}
+
+.level-title-large {
+    font-size: 1.5rem;
+    color: white;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.gem-board-preview {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    max-width: 200px;
+    margin: 0 auto;
+}
+
+.gem-row-preview {
+    display: contents;
+}
+
+.gem-preview {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+.gem-preview.red { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+.gem-preview.blue { background: linear-gradient(45deg, #3498db, #2980b9); }
+.gem-preview.green { background: linear-gradient(45deg, #27ae60, #229954); }
+.gem-preview.yellow { background: linear-gradient(45deg, #f1c40f, #f39c12); }
+.gem-preview.purple { background: linear-gradient(45deg, #9b59b6, #8e44ad); }
+
+.level-details-royal {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.level-description-card, .objectives-card {
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 1.5rem;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.level-description-title, .objectives-title {
+    color: white;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.level-description-text {
+    color: rgba(255,255,255,0.9);
+    line-height: 1.5;
+    font-size: 1rem;
+}
+
+.objectives-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.objective-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem;
+    background: rgba(255,255,255,0.05);
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.objective-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.objective-text {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.power-ups-section-royal {
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 1.5rem;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.power-ups-title {
+    color: white;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    text-align: center;
+}
+
+.power-ups-grid-royal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.power-up-card-royal {
+    background: rgba(255,255,255,0.05);
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+}
+
+.power-up-card-royal:hover {
+    background: rgba(255,255,255,0.1);
+    transform: translateY(-2px);
+}
+
+.power-up-icon-large {
+    font-size: 2.5rem;
+    margin-bottom: 0.8rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.power-up-name-royal {
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.power-up-count-royal {
+    color: #f39c12;
+    font-weight: 900;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.power-up-desc {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+.start-game-section {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.start-game-btn-royal {
+    background: linear-gradient(45deg, #f39c12, #e74c3c);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 1.5rem 3rem;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    box-shadow: 0 8px 25px rgba(243, 156, 18, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 250px;
+    justify-content: center;
+}
+
+.start-game-btn-royal:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(243, 156, 18, 0.6);
+}
+
+.start-icon {
+    font-size: 1.6rem;
+}
+
+.start-text {
+    font-weight: 700;
+}
+
 /* Game Screen */
 .game-hud {
     display: flex;
