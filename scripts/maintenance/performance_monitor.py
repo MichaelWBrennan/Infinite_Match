@@ -57,12 +57,25 @@ class PerformanceMonitor:
             start_memory = psutil.virtual_memory().percent
             start_cpu = psutil.cpu_percent()
 
-            # Simulate build process monitoring
-            # In a real implementation, this would monitor actual Unity build
+            # Monitor actual Unity build process
             print("Monitoring Unity build performance...")
-
-            # Simulate build time
-            time.sleep(2)  # Replace with actual build monitoring
+            
+            # Start Unity build process
+            build_process = subprocess.Popen([
+                "unity", "-batchmode", "-quit", "-projectPath", ".",
+                "-buildTarget", "WebGL", "-executeMethod", "BuildScript.BuildWebGL"
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            # Monitor build process
+            while build_process.poll() is None:
+                time.sleep(1)
+                current_memory = psutil.virtual_memory().percent
+                current_cpu = psutil.cpu_percent()
+                build_metrics["memory_peak"] = max(build_metrics["memory_peak"], current_memory)
+                build_metrics["cpu_peak"] = max(build_metrics["cpu_peak"], current_cpu)
+            
+            # Wait for build to complete
+            stdout, stderr = build_process.communicate()
 
             # Collect metrics
             build_metrics["build_duration"] = time.time() - start_time
@@ -72,8 +85,13 @@ class PerformanceMonitor:
             build_metrics["cpu_peak"] = max(start_cpu, psutil.cpu_percent())
             build_metrics["build_success"] = True  # Simulate success
 
-            # Calculate build size (simulate)
-            build_metrics["build_size"] = random.randint(100, 1000)  # MB
+            # Calculate actual build size
+            build_dir = Path("build/WebGL")
+            if build_dir.exists():
+                total_size = sum(f.stat().st_size for f in build_dir.rglob('*') if f.is_file())
+                build_metrics["build_size"] = total_size / (1024 * 1024)  # Convert to MB
+            else:
+                build_metrics["build_size"] = 0
 
         except Exception as e:
             build_metrics["build_success"] = False
@@ -97,21 +115,53 @@ class PerformanceMonitor:
         try:
             start_time = time.time()
 
-            # Simulate test execution monitoring
+            # Monitor actual test execution
             print("Monitoring test execution performance...")
-            time.sleep(1)  # Replace with actual test monitoring
+            
+            # Run actual tests
+            test_process = subprocess.Popen([
+                "npm", "test", "--", "--coverage", "--watchAll=false"
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            # Monitor test process
+            while test_process.poll() is None:
+                time.sleep(1)
+                current_memory = psutil.virtual_memory().percent
+                test_metrics["memory_usage"] = max(test_metrics["memory_usage"], current_memory)
+            
+            # Wait for tests to complete
+            stdout, stderr = test_process.communicate()
 
-            # Simulate test results
+            # Parse actual test results
             test_metrics["test_duration"] = time.time() - start_time
-            test_metrics["tests_run"] = random.randint(50, 200)
-            test_metrics["tests_passed"] = int(
-                test_metrics["tests_run"] * random.uniform(0.8, 1.0)
-            )
-            test_metrics["tests_failed"] = (
-                test_metrics["tests_run"] - test_metrics["tests_passed"]
-            )
-            test_metrics["coverage_percentage"] = random.uniform(70, 95)
-            test_metrics["memory_usage"] = psutil.virtual_memory().percent
+            
+            # Parse test output for actual results
+            if stdout:
+                output = stdout.decode('utf-8')
+                # Extract test counts from Jest output
+                import re
+                tests_run_match = re.search(r'Tests:\s+(\d+)\s+failed', output)
+                tests_passed_match = re.search(r'Tests:\s+\d+\s+failed,\s+(\d+)\s+passed', output)
+                coverage_match = re.search(r'All files\s+\|\s+([\d.]+)%', output)
+                
+                if tests_run_match and tests_passed_match:
+                    test_metrics["tests_failed"] = int(tests_run_match.group(1))
+                    test_metrics["tests_passed"] = int(tests_passed_match.group(1))
+                    test_metrics["tests_run"] = test_metrics["tests_failed"] + test_metrics["tests_passed"]
+                else:
+                    test_metrics["tests_run"] = 0
+                    test_metrics["tests_passed"] = 0
+                    test_metrics["tests_failed"] = 0
+                
+                if coverage_match:
+                    test_metrics["coverage_percentage"] = float(coverage_match.group(1))
+                else:
+                    test_metrics["coverage_percentage"] = 0
+            else:
+                test_metrics["tests_run"] = 0
+                test_metrics["tests_passed"] = 0
+                test_metrics["tests_failed"] = 0
+                test_metrics["coverage_percentage"] = 0
 
         except Exception as e:
             test_metrics["error"] = str(e)
