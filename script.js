@@ -35,9 +35,42 @@ class InfiniteMatchGame {
     }
 
     init() {
-        // Simulate loading
+        console.log('Game initializing...');
+        console.log('Current screen:', this.currentScreen);
+        
+        // Simulate loading with progress updates
+        this.updateLoadingProgress(0);
+        
         setTimeout(() => {
-            this.showScreen('title-screen');
+            this.updateLoadingProgress(25);
+        }, 750);
+        
+        setTimeout(() => {
+            this.updateLoadingProgress(50);
+        }, 1500);
+        
+        setTimeout(() => {
+            this.updateLoadingProgress(75);
+        }, 2250);
+        
+        setTimeout(() => {
+            this.updateLoadingProgress(100);
+            console.log('Loading complete, transitioning to title screen...');
+            try {
+                this.showScreen('title-screen');
+                console.log('Successfully transitioned to title screen');
+            } catch (error) {
+                console.error('Error transitioning to title screen:', error);
+                // Force show title screen as fallback
+                const titleScreen = document.getElementById('title-screen');
+                if (titleScreen) {
+                    document.querySelectorAll('.screen').forEach(screen => {
+                        screen.classList.remove('active');
+                    });
+                    titleScreen.classList.add('active');
+                    this.currentScreen = 'title-screen';
+                }
+            }
         }, 3000);
 
         // Initialize game board
@@ -45,6 +78,25 @@ class InfiniteMatchGame {
         
         // Add event listeners
         this.addEventListeners();
+        
+        // Add click handler to skip loading screen (for testing)
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.addEventListener('click', () => {
+                console.log('Loading screen clicked - skipping to title screen');
+                this.showScreen('title-screen');
+            });
+        }
+    }
+    
+    updateLoadingProgress(percent) {
+        const progressBar = document.querySelector('.loading-bar-fill');
+        if (progressBar) {
+            // Remove the CSS animation and set width manually
+            progressBar.style.animation = 'none';
+            progressBar.style.width = percent + '%';
+            console.log('Loading progress:', percent + '%');
+        }
     }
 
     addEventListeners() {
@@ -104,6 +156,8 @@ class InfiniteMatchGame {
     }
 
     showScreen(screenId) {
+        console.log('Switching to screen:', screenId);
+        
         // Hide all screens
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -114,9 +168,12 @@ class InfiniteMatchGame {
         if (targetScreen) {
             targetScreen.classList.add('active');
             this.currentScreen = screenId;
+            console.log('Successfully switched to screen:', screenId);
             
             // Add slide-in animation
             targetScreen.style.animation = 'slideIn 0.5s ease-out';
+        } else {
+            console.error('Target screen not found:', screenId);
         }
     }
 
@@ -612,7 +669,16 @@ function showAdvancedSettings() {
 // Initialize game when page loads
 let game;
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded - Initializing game...');
     game = new InfiniteMatchGame();
+    
+    // Fallback: If loading screen is still active after 5 seconds, force transition
+    setTimeout(() => {
+        if (game && game.currentScreen === 'loading-screen') {
+            console.log('Fallback: Forcing transition from loading screen');
+            game.showScreen('title-screen');
+        }
+    }, 5000);
 });
 
 // Add CSS animations dynamically
