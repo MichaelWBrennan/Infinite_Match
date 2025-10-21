@@ -25,10 +25,10 @@ class InfiniteMatchGame {
         this.timerInterval = null;
         this.tutorialShown = false;
         this.achievements = [
-            { id: 'first_match', name: 'First Match', description: 'Make your first gem match', unlocked: false },
-            { id: 'score_1000', name: 'Score Master', description: 'Score 1000 points in a single game', unlocked: false },
-            { id: 'level_5', name: 'Infinite Explorer', description: 'Reach level 5', unlocked: false },
-            { id: 'perfect_level', name: 'Perfectionist', description: 'Get 3 stars on any level', unlocked: false }
+            { id: 'first_match', name: 'Stellar Debut', description: 'Make your first cosmic gem match', unlocked: false },
+            { id: 'score_1000', name: 'Galaxy Master', description: 'Score 1000 points in a single game', unlocked: false },
+            { id: 'level_5', name: 'Cosmic Explorer', description: 'Reach level 5', unlocked: false },
+            { id: 'perfect_level', name: 'Nebula Perfectionist', description: 'Get 3 stars on any level', unlocked: false }
         ];
         
         this.init();
@@ -159,21 +159,21 @@ class InfiniteMatchGame {
 
     updateLevelInfo() {
         const levelTitles = {
-            1: 'First Steps',
-            2: 'Infinite Garden', 
-            3: 'Castle Gate',
-            4: 'Infinite Hall',
-            5: 'Throne Room',
-            6: 'Infinite Tower'
+            1: 'Launch Pad',
+            2: 'Asteroid Field', 
+            3: 'Space Station Alpha',
+            4: 'Nebula Gateway',
+            5: 'Command Center',
+            6: 'Cosmic Observatory'
         };
 
         const levelDescriptions = {
-            1: 'Learn the basics of infinite matching',
-            2: 'Match gems in the infinite garden',
-            3: 'Match gems to unlock the infinite gate',
-            4: 'Enter the magnificent infinite hall',
-            5: 'Reach the infinite throne room',
-            6: 'Climb the highest infinite tower'
+            1: 'Begin your cosmic journey at the launch pad',
+            2: 'Navigate through the dangerous asteroid field',
+            3: 'Dock at the space station and explore',
+            4: 'Pass through the mysterious nebula gateway',
+            5: 'Take command of the central command center',
+            6: 'Reach the highest point in the cosmic observatory'
         };
 
         document.querySelector('#pre-game-lobby h2').textContent = `Level ${this.gameState.level}: ${levelTitles[this.gameState.level]}`;
