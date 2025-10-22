@@ -308,8 +308,57 @@
             loadUnityWebGL();
         }
         
+        // Check if WebGL files are valid
+        async function checkWebGLFiles() {
+            try {
+                const buildUrl = "Build";
+                const dataUrl = buildUrl + "/WebGL.data";
+                const wasmUrl = buildUrl + "/WebGL.wasm";
+                
+                // Check if data file exists and is not a placeholder
+                const dataResponse = await fetch(dataUrl);
+                if (!dataResponse.ok) {
+                    console.log('❌ WebGL.data not found, using fallback');
+                    return false;
+                }
+                
+                const dataText = await dataResponse.text();
+                if (dataText.includes('Unity WebGL Data File') && dataText.length < 100) {
+                    console.log('❌ WebGL.data is placeholder file, using fallback');
+                    return false;
+                }
+                
+                // Check if WASM file exists and is not a placeholder
+                const wasmResponse = await fetch(wasmUrl);
+                if (!wasmResponse.ok) {
+                    console.log('❌ WebGL.wasm not found, using fallback');
+                    return false;
+                }
+                
+                const wasmText = await wasmResponse.text();
+                if (wasmText.includes('Unity WebGL WASM File') && wasmText.length < 100) {
+                    console.log('❌ WebGL.wasm is placeholder file, using fallback');
+                    return false;
+                }
+                
+                console.log('✅ WebGL files appear valid');
+                return true;
+            } catch (error) {
+                console.log('❌ Error checking WebGL files:', error);
+                return false;
+            }
+        }
+
         // Load Unity WebGL build
-        function loadUnityWebGL() {
+        async function loadUnityWebGL() {
+            // First check if WebGL files are valid
+            const webglValid = await checkWebGLFiles();
+            if (!webglValid) {
+                console.log('🔄 WebGL files invalid, starting fallback game immediately...');
+                startFallbackGame();
+                return;
+            }
+            
             var buildUrl = "Build";
             var loaderUrl = buildUrl + "/WebGL.loader.js";
             

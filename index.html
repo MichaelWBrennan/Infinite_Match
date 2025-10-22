@@ -630,5 +630,63 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Check if WebGL files are valid and fallback immediately if not
+        async function checkWebGLFiles() {
+            try {
+                const dataUrl = "Build/WebGL.data";
+                const wasmUrl = "Build/WebGL.wasm";
+                
+                // Check if data file exists and is not a placeholder
+                const dataResponse = await fetch(dataUrl);
+                if (!dataResponse.ok) {
+                    console.log('❌ WebGL.data not found, using fallback');
+                    return false;
+                }
+                
+                const dataText = await dataResponse.text();
+                if (dataText.includes('Unity WebGL Data File') && dataText.length < 100) {
+                    console.log('❌ WebGL.data is placeholder file, using fallback');
+                    return false;
+                }
+                
+                // Check if WASM file exists and is not a placeholder
+                const wasmResponse = await fetch(wasmUrl);
+                if (!wasmResponse.ok) {
+                    console.log('❌ WebGL.wasm not found, using fallback');
+                    return false;
+                }
+                
+                const wasmText = await wasmResponse.text();
+                if (wasmText.includes('Unity WebGL WASM File') && wasmText.length < 100) {
+                    console.log('❌ WebGL.wasm is placeholder file, using fallback');
+                    return false;
+                }
+                
+                console.log('✅ WebGL files appear valid');
+                return true;
+            } catch (error) {
+                console.log('❌ Error checking WebGL files:', error);
+                return false;
+            }
+        }
+
+        // Override the game initialization to check WebGL files first
+        document.addEventListener('DOMContentLoaded', async () => {
+            const webglValid = await checkWebGLFiles();
+            if (!webglValid) {
+                console.log('🔄 WebGL files invalid, starting fallback game immediately...');
+                // Hide loading screen and show title screen
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('title-screen').classList.add('active');
+                return;
+            }
+            
+            // If WebGL files are valid, proceed with normal initialization
+            if (typeof InfiniteMatchGame !== 'undefined') {
+                game = new InfiniteMatchGame();
+            }
+        });
+    </script>
 </body>
 </html>
