@@ -14,6 +14,7 @@ class UnifiedUnityService {
   constructor(cacheManager = null) {
     this.projectId = AppConfig.unity.projectId;
     this.environmentId = AppConfig.unity.environmentId;
+    this.baseURL = 'https://services.api.unity.com';
     this.cacheManager = cacheManager || aiCacheManager;
     this.mode = 'unified-simulation';
     this.authenticated = false;
@@ -724,30 +725,90 @@ class UnifiedUnityService {
     logger.info('Unity service caches cleared');
   }
 
-  // Placeholder methods for real API calls (to be implemented)
+  // Real API implementations for Unity Cloud Services
   async createCurrencyAPI(currencyData) {
-    // Real API implementation would go here
-    throw new Error('Real API not implemented yet');
+    const response = await fetch(`${this.baseURL}/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/currencies`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(currencyData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unity API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   async createInventoryItemAPI(itemData) {
-    // Real API implementation would go here
-    throw new Error('Real API not implemented yet');
+    const response = await fetch(`${this.baseURL}/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/inventory`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(itemData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unity API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   async createCatalogItemAPI(catalogData) {
-    // Real API implementation would go here
-    throw new Error('Real API not implemented yet');
+    const response = await fetch(`${this.baseURL}/economy/v1/projects/${this.projectId}/environments/${this.environmentId}/catalog`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(catalogData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unity API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   async deployCloudCodeFunctionAPI(functionData) {
-    // Real API implementation would go here
-    throw new Error('Real API not implemented yet');
+    const response = await fetch(`${this.baseURL}/cloud-code/v1/projects/${this.projectId}/environments/${this.environmentId}/scripts`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(functionData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unity API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   async updateRemoteConfigAPI(configData) {
-    // Real API implementation would go here
-    throw new Error('Real API not implemented yet');
+    const response = await fetch(`${this.baseURL}/remote-config/v1/projects/${this.projectId}/environments/${this.environmentId}/configs`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(configData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unity API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 }
 

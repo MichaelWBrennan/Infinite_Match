@@ -16,18 +16,57 @@ const logger = new Logger('AdminRoutes');
 const economyService = new EconomyService();
 const unityService = new UnityService();
 
-// Admin authentication middleware (simplified)
-const adminAuth = (req, res, next) => {
-  // TODO: Implement proper admin authentication
-  const adminToken = req.headers['x-admin-token'];
-  if (!adminToken || adminToken !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({
+// Admin authentication middleware with proper security
+const adminAuth = async (req, res, next) => {
+  try {
+    const adminToken = req.headers['x-admin-token'];
+    const adminId = req.headers['x-admin-id'];
+    
+    if (!adminToken || !adminId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Admin credentials required',
+        requestId: req.requestId,
+      });
+    }
+
+    // Verify admin token and permissions
+    const isValidAdmin = await security.verifyAdminToken(adminToken, adminId);
+    if (!isValidAdmin) {
+      security.logSecurityEvent('admin_auth_failed', {
+        adminId,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
+      return res.status(403).json({
+        success: false,
+        error: 'Invalid admin credentials',
+        requestId: req.requestId,
+      });
+    }
+
+    // Add admin info to request
+    req.admin = {
+      id: adminId,
+      permissions: isValidAdmin.permissions,
+      lastActivity: new Date().toISOString(),
+    };
+
+    security.logSecurityEvent('admin_access', {
+      adminId,
+      ip: req.ip,
+      endpoint: req.path,
+    });
+
+    next();
+  } catch (error) {
+    logger.error('Admin authentication error', { error: error.message });
+    res.status(500).json({
       success: false,
-      error: 'Unauthorized',
+      error: 'Authentication service error',
       requestId: req.requestId,
     });
   }
-  next();
 };
 
 // Apply admin authentication to all routes
@@ -88,18 +127,11 @@ router.get('/security/events', async (req, res) => {
   try {
     const { limit = 100 } = req.query;
 
-    // TODO: Implement actual security events retrieval
-    const events = [
-      {
-        id: '1',
-        type: 'login',
-        timestamp: new Date().toISOString(),
-        details: {
-          playerId: 'player_1',
-          ip: '127.0.0.1',
-        },
-      },
-    ];
+    // Get actual security events from security service
+    const events = await security.getSecurityEvents({
+      limit: parseInt(limit),
+      adminId: req.admin.id,
+    });
 
     res.json({
       success: true,
@@ -171,15 +203,11 @@ router.get('/logs', async (req, res) => {
   try {
     const { limit = 100 } = req.query;
 
-    // TODO: Implement actual log retrieval
-    const logs = [
-      {
-        timestamp: new Date().toISOString(),
-        level: 'info',
-        message: 'Server started',
-        context: 'Server',
-      },
-    ];
+    // Get actual system logs from logger service
+    const logs = await logger.getLogs({
+      limit: parseInt(limit),
+      adminId: req.admin.id,
+    });
 
     res.json({
       success: true,
