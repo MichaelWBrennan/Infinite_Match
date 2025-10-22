@@ -458,8 +458,9 @@ router.get('/progress', security.sessionValidation, async (req: Request, res: Re
   try {
     const playerId = req.user?.playerId;
 
-    // TODO: Implement actual progress retrieval
-    const progress = {
+    // Get actual progress from cloud services
+    const cloudServices = serviceContainer.get('cloud');
+    const progress = await cloudServices.getPlayerProgress(playerId) || {
       playerId,
       level: 1,
       score: 0,
@@ -533,13 +534,9 @@ router.get('/leaderboard', security.sessionValidation, async (req: Request, res:
   try {
     const { type = 'score', limit = 10 } = req.query;
 
-    // TODO: Implement actual leaderboard retrieval
-    const leaderboard = Array.from({ length: parseInt(limit as string) }, (_, i) => ({
-      rank: i + 1,
-      playerId: `player_${i + 1}`,
-      score: 10000 - i * 100,
-      name: `Player ${i + 1}`,
-    }));
+    // Get actual leaderboard from cloud services
+    const cloudServices = serviceContainer.get('cloud');
+    const leaderboard = await cloudServices.getLeaderboard(type as string, parseInt(limit as string)) || [];
 
     const response = ApiResponseBuilder.success({
       leaderboard,
@@ -568,23 +565,9 @@ router.get('/leaderboard', security.sessionValidation, async (req: Request, res:
  */
 router.get('/achievements', security.sessionValidation, async (req: Request, res: Response) => {
   try {
-    // TODO: Implement actual achievements retrieval
-    const achievements = [
-      {
-        id: 'first_play',
-        name: 'First Play',
-        description: 'Complete your first game',
-        unlocked: true,
-        unlockedAt: new Date().toISOString(),
-      },
-      {
-        id: 'score_1000',
-        name: 'Score Master',
-        description: 'Score 1000 points in a single game',
-        unlocked: false,
-        unlockedAt: null,
-      },
-    ];
+    // Get actual achievements from cloud services
+    const cloudServices = serviceContainer.get('cloud');
+    const achievements = await cloudServices.getPlayerAchievements(req.user?.playerId) || [];
 
     const response = ApiResponseBuilder.success({ achievements });
 

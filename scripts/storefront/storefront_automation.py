@@ -129,8 +129,8 @@ class StorefrontAutomation:
                     "capabilities": ["GameCenter", "InAppPurchase"],
                 },
                 "steam": {
-                    "app_id": "1234567890",  # Replace with actual Steam App ID
-                    "depot_id": "1234567891",  # Replace with actual Depot ID
+                    "app_id": os.getenv("STEAM_APP_ID", "1234567890"),
+                    "depot_id": os.getenv("STEAM_DEPOT_ID", "1234567891"),
                     "tags": ["Casual", "Puzzle", "Indie", "Singleplayer"],
                     "supported_languages": [
                         "English",
@@ -295,8 +295,8 @@ class StorefrontAutomation:
                 "build",
                 f"--username={self.steam_username}",
                 f"--password={self.steam_password}",
-                f"--appid=1234567890",  # Replace with actual App ID
-                f"--depotid=1234567891",  # Replace with actual Depot ID
+                f"--appid={os.getenv('STEAM_APP_ID', '1234567890')}",
+                f"--depotid={os.getenv('STEAM_DEPOT_ID', '1234567891')}",
                 f"--content={windows_file.parent}",
                 "--description=Automated build from CI/CD",
             ]

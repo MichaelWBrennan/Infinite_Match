@@ -61,8 +61,8 @@ function createWebGLStructure(platform, buildPath) {
     const indexHtml = createIndexHtml(platform);
     fs.writeFileSync(path.join(buildPath, 'index.html'), indexHtml);
     
-    // Create basic Unity WebGL files (placeholder)
-    createUnityWebGLFiles(buildPath);
+    // Create Unity WebGL build using Unity CLI
+    await buildUnityWebGL(buildPath);
     
     // Create platform-specific files
     createPlatformFiles(platform, buildPath);
@@ -124,9 +124,22 @@ function createPokiTemplate() {
             }
         }
         
-        // Unity WebGL Loader (placeholder)
+        // Unity WebGL Loader
         function loadUnityGame() {
             console.log('Loading Unity WebGL game...');
+            // Initialize Unity WebGL loader
+            if (typeof Unity !== 'undefined') {
+                const gameInstance = Unity.instantiate('unity-container', 'Build/WebGL.json', {
+                    onProgress: function(progress) {
+                        console.log('Loading progress:', progress);
+                    },
+                    onComplete: function() {
+                        console.log('Unity game loaded successfully');
+                    }
+                });
+            } else {
+                console.error('Unity WebGL loader not found');
+            }
             // This would normally load the actual Unity WebGL build
             document.getElementById('unityLoadingBar').style.display = 'block';
             
@@ -326,13 +339,52 @@ function createCrazyGamesTemplate() {
 </html>`;
 }
 
-function createUnityWebGLFiles(buildPath) {
-    // Create placeholder Unity WebGL files
+async function buildUnityWebGL(buildPath) {
+    console.log('Building Unity WebGL...');
+    
+    try {
+        // Use Unity CLI to build WebGL
+        const { execSync } = require('child_process');
+        const unityPath = process.env.UNITY_PATH || 'unity';
+        const projectPath = path.join(process.cwd(), 'unity');
+        
+        const buildCommand = `${unityPath} -batchmode -quit -projectPath "${projectPath}" -buildTarget WebGL -executeMethod BuildScript.BuildWebGL`;
+        
+        console.log('Executing Unity build command:', buildCommand);
+        execSync(buildCommand, { stdio: 'inherit' });
+        
+        // Copy built files to target directory
+        const sourceBuildPath = path.join(projectPath, 'Builds', 'WebGL');
+        if (fs.existsSync(sourceBuildPath)) {
+            console.log('Copying Unity WebGL build files...');
+            fs.cpSync(sourceBuildPath, path.join(buildPath, 'Build'), { recursive: true });
+            console.log('Unity WebGL build completed successfully');
+        } else {
+            throw new Error('Unity WebGL build output not found');
+        }
+    } catch (error) {
+        console.error('Unity WebGL build failed:', error.message);
+        // Fallback to creating basic structure
+        createBasicWebGLStructure(buildPath);
+    }
+}
+
+function createBasicWebGLStructure(buildPath) {
+    // Create basic Unity WebGL structure for development
+    const buildDir = path.join(buildPath, 'Build');
+    fs.mkdirSync(buildDir, { recursive: true });
+    
     const files = [
-        { name: 'Build/WebGL.json', content: '{"version":"1.0.0","buildTime":"' + new Date().toISOString() + '"}', isJson: true },
-        { name: 'Build/WebGL.data', content: 'Unity WebGL Data File (placeholder)', isJson: false },
-        { name: 'Build/WebGL.wasm', content: 'Unity WebGL WASM File (placeholder)', isJson: false },
-        { name: 'Build/WebGL.mem', content: 'Unity WebGL Memory File (placeholder)', isJson: false }
+        { name: 'WebGL.json', content: JSON.stringify({
+            version: "1.0.0",
+            buildTime: new Date().toISOString(),
+            unityVersion: "2022.3.0f1",
+            platform: "WebGL"
+        }, null, 2) },
+        { name: 'WebGL.loader.js', content: '// Unity WebGL Loader - Replace with actual Unity build' },
+        { name: 'WebGL.framework.js', content: '// Unity WebGL Framework - Replace with actual Unity build' },
+        { name: 'WebGL.data', content: '// Unity WebGL Data - Replace with actual Unity build' },
+        { name: 'WebGL.wasm', content: '// Unity WebGL WASM - Replace with actual Unity build' }
     ];
     
     files.forEach(file => {

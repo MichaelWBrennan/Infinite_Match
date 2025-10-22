@@ -41,10 +41,18 @@ router.post(
 
     const { playerId, deviceInfo } = req.body;
 
-    // TODO: Implement actual user authentication
-    // For now, we'll create a session for any valid playerId
-    const sessionId = security.createSession(playerId, { deviceInfo });
-    const token = security.generateToken({ playerId, sessionId });
+    // Implement real user authentication
+    const authResult = await security.authenticateUser(playerId, req.body.password, { deviceInfo });
+    if (!authResult.success) {
+      return res.status(401).json({
+        success: false,
+        error: authResult.error,
+        requestId: req.requestId,
+      });
+    }
+
+    const sessionId = authResult.sessionId;
+    const token = authResult.token;
 
     security.logSecurityEvent('player_login', {
       playerId,
@@ -75,10 +83,24 @@ router.post('/register', security.authRateLimit, validateRegister, async (req, r
 
     const { playerId, email, deviceInfo } = req.body;
 
-    // TODO: Implement actual user registration
-    // For now, we'll create a session for any valid registration
-    const sessionId = security.createSession(playerId, { deviceInfo, email });
-    const token = security.generateToken({ playerId, sessionId });
+    // Implement real user registration
+    const registrationResult = await security.registerUser({
+      playerId,
+      email,
+      password: req.body.password,
+      deviceInfo,
+    });
+
+    if (!registrationResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: registrationResult.error,
+        requestId: req.requestId,
+      });
+    }
+
+    const sessionId = registrationResult.sessionId;
+    const token = registrationResult.token;
 
     security.logSecurityEvent('player_register', {
       playerId,
@@ -170,13 +192,15 @@ router.get('/profile', security.sessionValidation, (req, res) => {
   try {
     const { playerId } = req.user;
 
-    // TODO: Implement actual user profile retrieval
-    const profile = {
-      playerId,
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-      // Add more profile fields as needed
-    };
+    // Get actual user profile from database
+    const profile = await security.getUserProfile(playerId);
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        error: 'User profile not found',
+        requestId: req.requestId,
+      });
+    }
 
     res.json({
       success: true,
