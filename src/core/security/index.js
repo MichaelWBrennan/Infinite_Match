@@ -489,3 +489,98 @@ export const requireMinRole = (minRole) => {
     }
   };
 };
+
+// Platform sync functions
+export const syncPlatformAccount = async (syncData) => {
+  try {
+    const { playerId, platform, platformUserId, platformUsername, platformData } = syncData;
+    
+    // In a real implementation, this would store in a database
+    // For now, we'll use in-memory storage
+    const syncKey = `${playerId}_${platform}`;
+    const syncInfo = {
+      playerId,
+      platform,
+      platformUserId,
+      platformUsername,
+      platformData,
+      syncedAt: new Date().toISOString(),
+      isActive: true
+    };
+    
+    // Store sync data (in production, use database)
+    if (!global.platformSyncs) {
+      global.platformSyncs = new Map();
+    }
+    global.platformSyncs.set(syncKey, syncInfo);
+    
+    securityLogger.info('Platform account synced', {
+      playerId,
+      platform,
+      platformUserId,
+      platformUsername
+    });
+    
+    return {
+      success: true,
+      syncData: syncInfo
+    };
+  } catch (error) {
+    securityLogger.error('Platform sync failed', { error: error.message, syncData });
+    return {
+      success: false,
+      error: 'Platform sync failed'
+    };
+  }
+};
+
+export const getPlatformSyncStatus = async (playerId) => {
+  try {
+    if (!global.platformSyncs) {
+      return {};
+    }
+    
+    const playerSyncs = {};
+    for (const [key, syncInfo] of global.platformSyncs.entries()) {
+      if (syncInfo.playerId === playerId && syncInfo.isActive) {
+        playerSyncs[syncInfo.platform] = {
+          platformUserId: syncInfo.platformUserId,
+          platformUsername: syncInfo.platformUsername,
+          syncedAt: syncInfo.syncedAt
+        };
+      }
+    }
+    
+    return playerSyncs;
+  } catch (error) {
+    securityLogger.error('Failed to get platform sync status', { error: error.message, playerId });
+    return {};
+  }
+};
+
+export const unlinkPlatformAccount = async (playerId, platform) => {
+  try {
+    if (!global.platformSyncs) {
+      return { success: false, error: 'No platform syncs found' };
+    }
+    
+    const syncKey = `${playerId}_${platform}`;
+    const syncInfo = global.platformSyncs.get(syncKey);
+    
+    if (!syncInfo) {
+      return { success: false, error: 'Platform account not found' };
+    }
+    
+    // Mark as inactive instead of deleting
+    syncInfo.isActive = false;
+    syncInfo.unlinkedAt = new Date().toISOString();
+    global.platformSyncs.set(syncKey, syncInfo);
+    
+    securityLogger.info('Platform account unlinked', { playerId, platform });
+    
+    return { success: true };
+  } catch (error) {
+    securityLogger.error('Failed to unlink platform account', { error: error.message, playerId, platform });
+    return { success: false, error: 'Failed to unlink platform account' };
+  }
+};
