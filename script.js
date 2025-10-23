@@ -1098,22 +1098,16 @@ class InfiniteMatchGame {
                 coinsElement.textContent = currencies.coins.amount.toLocaleString();
             }
 
-            // Update gems display
-            const gemsElement = document.querySelector('.gems-display');
-            if (gemsElement && currencies.gems) {
-                gemsElement.textContent = currencies.gems.amount.toLocaleString();
+            // Update stars display
+            const starsElement = document.querySelector('.stars-display');
+            if (starsElement && currencies.stars) {
+                starsElement.textContent = currencies.stars.amount.toLocaleString();
             }
 
             // Update energy display
             const energyElement = document.querySelector('.energy-display');
             if (energyElement && currencies.energy) {
                 energyElement.textContent = currencies.energy.amount;
-            }
-
-            // Update hearts display
-            const heartsElement = document.querySelector('.hearts-display');
-            if (heartsElement && currencies.hearts) {
-                heartsElement.textContent = currencies.hearts.amount;
             }
         }
 

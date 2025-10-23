@@ -24,7 +24,7 @@ class AccountEconomyService {
     
     // Industry-standard match-3 economy features
     this.economyFeatures = {
-      currencies: ['coins', 'gems', 'energy', 'stars', 'hearts'],
+      currencies: ['coins', 'stars', 'energy'],
       progression: ['levels', 'xp', 'achievements', 'daily_rewards'],
       monetization: ['iap', 'ads', 'subscriptions', 'battle_pass'],
       social: ['gifts', 'leaderboards', 'guilds', 'events'],
@@ -102,17 +102,17 @@ class AccountEconomyService {
         color: '#FFD700',
         description: 'Primary soft currency earned through gameplay'
       },
-      gems: {
-        id: 'gems',
-        name: 'Gems',
+      stars: {
+        id: 'stars',
+        name: 'Stars',
         type: 'hard_currency',
-        amount: 50,
+        amount: 0,
         maxAmount: 99999,
         earned: 0,
         spent: 0,
-        icon: 'gem_icon',
-        color: '#00BFFF',
-        description: 'Premium currency for special purchases'
+        icon: 'star_icon',
+        color: '#FFA500',
+        description: 'Premium hard currency for special purchases'
       },
       energy: {
         id: 'energy',
@@ -126,32 +126,6 @@ class AccountEconomyService {
         color: '#32CD32',
         description: 'Energy required to play levels',
         regenRate: 1, // per minute
-        lastRegen: Date.now()
-      },
-      stars: {
-        id: 'stars',
-        name: 'Stars',
-        type: 'achievement_currency',
-        amount: 0,
-        maxAmount: 9999,
-        earned: 0,
-        spent: 0,
-        icon: 'star_icon',
-        color: '#FFA500',
-        description: 'Earned by completing levels with high scores'
-      },
-      hearts: {
-        id: 'hearts',
-        name: 'Hearts',
-        type: 'lives',
-        amount: 5,
-        maxAmount: 5,
-        earned: 0,
-        spent: 0,
-        icon: 'heart_icon',
-        color: '#FF69B4',
-        description: 'Lives for playing levels',
-        regenRate: 0.2, // per minute
         lastRegen: Date.now()
       }
     };
@@ -239,11 +213,11 @@ class AccountEconomyService {
       rewards: [
         { day: 1, coins: 100, xp: 50 },
         { day: 2, coins: 150, xp: 75 },
-        { day: 3, gems: 5, xp: 100 },
+        { day: 3, stars: 5, xp: 100 },
         { day: 4, coins: 200, xp: 125 },
-        { day: 5, gems: 10, xp: 150 },
+        { day: 5, stars: 10, xp: 150 },
         { day: 6, coins: 300, xp: 175 },
-        { day: 7, gems: 20, xp: 200, bonus: 'mega_reward' }
+        { day: 7, stars: 20, xp: 200, bonus: 'mega_reward' }
       ],
       canClaim: true
     };
@@ -558,7 +532,7 @@ class AccountEconomyService {
     
     // Base rewards
     rewards.push({ type: 'currency', currencyId: 'coins', amount: level * 50 });
-    rewards.push({ type: 'currency', currencyId: 'gems', amount: Math.floor(level / 5) });
+    rewards.push({ type: 'currency', currencyId: 'stars', amount: Math.floor(level / 5) });
     
     // Special rewards for milestone levels
     if (level % 10 === 0) {
@@ -605,8 +579,8 @@ class AccountEconomyService {
       if (reward.coins) {
         await this.updateCurrency(playerId, 'coins', reward.coins, 'add', 'daily_reward');
       }
-      if (reward.gems) {
-        await this.updateCurrency(playerId, 'gems', reward.gems, 'add', 'daily_reward');
+      if (reward.stars) {
+        await this.updateCurrency(playerId, 'stars', reward.stars, 'add', 'daily_reward');
       }
       if (reward.xp) {
         await this.updateProgression(playerId, reward.xp);

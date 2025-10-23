@@ -137,16 +137,16 @@ namespace Evergreen.Economy
                     },
                     new CurrencyData
                     {
-                        id = "gems",
-                        name = "Gems",
-                        symbol = "G",
+                        id = "stars",
+                        name = "Stars",
+                        symbol = "★",
                         description = "Premium hard currency for special purchases",
                         isPrimary = false,
                         isHardCurrency = true,
                         isTradeable = true,
                         decimalPlaces = 0,
-                        iconPath = "UI/Currency/Gems",
-                        displayColor = new Color(0.5f, 0f, 1f), // Purple
+                        iconPath = "UI/Currency/Stars",
+                        displayColor = new Color(1f, 1f, 0f), // Yellow
                         maxAmount = 99999,
                         minAmount = 0
                     },
@@ -163,21 +163,6 @@ namespace Evergreen.Economy
                         iconPath = "UI/Currency/Energy",
                         displayColor = new Color(0f, 1f, 0f), // Green
                         maxAmount = 30,
-                        minAmount = 0
-                    },
-                    new CurrencyData
-                    {
-                        id = "stars",
-                        name = "Stars",
-                        symbol = "★",
-                        description = "Achievement currency earned by completing levels with high scores",
-                        isPrimary = false,
-                        isHardCurrency = false,
-                        isTradeable = true,
-                        decimalPlaces = 0,
-                        iconPath = "UI/Currency/Stars",
-                        displayColor = new Color(1f, 1f, 0f), // Yellow
-                        maxAmount = 9999,
                         minAmount = 0
                     }
                 };
@@ -213,8 +198,8 @@ namespace Evergreen.Economy
                     new ExchangeRate
                     {
                         fromCurrency = "coins",
-                        toCurrency = "gems",
-                        rate = 100f, // 100 coins = 1 gem
+                        toCurrency = "stars",
+                        rate = 100f, // 100 coins = 1 star
                         minRate = 50f,
                         maxRate = 200f,
                         isActive = true,
@@ -222,21 +207,11 @@ namespace Evergreen.Economy
                     },
                     new ExchangeRate
                     {
-                        fromCurrency = "gems",
-                        toCurrency = "coins",
-                        rate = 0.01f, // 1 gem = 100 coins
-                        minRate = 0.005f,
-                        maxRate = 0.02f,
-                        isActive = true,
-                        lastUpdated = DateTime.Now
-                    },
-                    new ExchangeRate
-                    {
                         fromCurrency = "stars",
                         toCurrency = "coins",
-                        rate = 10f, // 1 star = 10 coins
-                        minRate = 5f,
-                        maxRate = 20f,
+                        rate = 0.01f, // 1 star = 100 coins
+                        minRate = 0.005f,
+                        maxRate = 0.02f,
                         isActive = true,
                         lastUpdated = DateTime.Now
                     }

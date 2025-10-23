@@ -6,12 +6,10 @@ The Account Economy System is a comprehensive, industry-standard match-3 economy
 
 ## Features
 
-### 🪙 **Multi-Currency System**
+### 🪙 **Three-Currency System**
 - **Coins**: Primary soft currency earned through gameplay
-- **Gems**: Premium hard currency for special purchases
+- **Stars**: Premium hard currency for special purchases
 - **Energy**: Consumable resource for playing levels
-- **Stars**: Achievement currency for high scores
-- **Hearts**: Lives system for level attempts
 
 ### 📈 **Progression System**
 - **Level System**: Player level with XP progression
@@ -194,16 +192,24 @@ const currencies = {
     icon: 'coin_icon',
     color: '#FFD700'
   },
-  gems: {
-    id: 'gems',
-    name: 'Gems',
+  stars: {
+    id: 'stars',
+    name: 'Stars',
     type: 'hard_currency',
-    amount: 50,
+    amount: 0,
     maxAmount: 99999,
-    icon: 'gem_icon',
-    color: '#00BFFF'
+    icon: 'star_icon',
+    color: '#FFA500'
+  },
+  energy: {
+    id: 'energy',
+    name: 'Energy',
+    type: 'consumable',
+    amount: 30,
+    maxAmount: 30,
+    icon: 'energy_icon',
+    color: '#32CD32'
   }
-  // ... other currencies
 };
 ```
 

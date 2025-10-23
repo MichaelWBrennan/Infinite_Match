@@ -667,7 +667,11 @@ namespace Evergreen.Economy
             var currencies = new Dictionary<string, int>();
             foreach (var balance in _playerBalances.Values)
             {
-                currencies[balance.CurrencyId] = balance.Balance;
+                // Only sync the three main currencies
+                if (balance.CurrencyId == "coins" || balance.CurrencyId == "stars" || balance.CurrencyId == "energy")
+                {
+                    currencies[balance.CurrencyId] = balance.Balance;
+                }
             }
             return currencies;
         }
