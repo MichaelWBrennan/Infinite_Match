@@ -45,6 +45,15 @@ class InfiniteMatchGame {
         
         // Add event listeners
         this.addEventListeners();
+        
+        // Check authentication status
+        this.checkAuthStatus();
+        
+        // Initialize platform detection
+        this.initializePlatformDetection();
+        
+        // Initialize account economy system
+        this.initializeAccountEconomy();
     }
 
     addEventListeners() {
@@ -550,6 +559,571 @@ class InfiniteMatchGame {
     showAdvancedSettings() {
         this.showScreen('advanced-settings');
     }
+
+    // Login Modal Functions
+    showLoginModal() {
+        const modal = document.getElementById('login-modal');
+        if (modal) {
+            modal.classList.add('active');
+            // Reset forms
+            this.resetLoginForms();
+        } else {
+            console.error('Login modal not found in DOM');
+        }
+    }
+
+    closeLoginModal() {
+        const modal = document.getElementById('login-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    switchLoginTab(tab) {
+        // Update tab buttons
+        document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`[onclick="switchLoginTab('${tab}')"]`).classList.add('active');
+        
+        // Update forms
+        document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+        document.getElementById(`${tab}-form`).classList.add('active');
+    }
+
+    resetLoginForms() {
+        // Reset login form
+        const loginPlayerId = document.getElementById('login-player-id');
+        const loginPassword = document.getElementById('login-password');
+        const rememberMe = document.getElementById('remember-me');
+        
+        if (loginPlayerId) loginPlayerId.value = '';
+        if (loginPassword) loginPassword.value = '';
+        if (rememberMe) rememberMe.checked = false;
+        
+        // Reset register form
+        const registerPlayerId = document.getElementById('register-player-id');
+        const registerEmail = document.getElementById('register-email');
+        const registerPassword = document.getElementById('register-password');
+        const registerConfirmPassword = document.getElementById('register-confirm-password');
+        
+        if (registerPlayerId) registerPlayerId.value = '';
+        if (registerEmail) registerEmail.value = '';
+        if (registerPassword) registerPassword.value = '';
+        if (registerConfirmPassword) registerConfirmPassword.value = '';
+        
+        // Hide account status
+        const accountStatus = document.getElementById('account-status');
+        if (accountStatus) accountStatus.style.display = 'none';
+    }
+
+    async handleLogin() {
+        const playerId = document.getElementById('login-player-id').value;
+        const password = document.getElementById('login-password').value;
+        const rememberMe = document.getElementById('remember-me').checked;
+
+        if (!playerId || !password) {
+            this.showError('Please fill in all fields');
+            return;
+        }
+
+        const form = document.getElementById('login-form');
+        form.classList.add('loading');
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    playerId,
+                    password,
+                    deviceInfo: this.getDeviceInfo(),
+                    rememberMe
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Store authentication data
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('sessionId', data.sessionId);
+                localStorage.setItem('playerId', playerId);
+                
+                this.showAccountStatus('Login successful!');
+                this.updateAccountUI();
+                
+                setTimeout(() => {
+                    this.closeLoginModal();
+                }, 2000);
+            } else {
+                this.showError(data.error || 'Login failed');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showError('Network error. Please try again.');
+        } finally {
+            form.classList.remove('loading');
+        }
+    }
+
+    async handleRegister() {
+        const playerId = document.getElementById('register-player-id').value;
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        const confirmPassword = document.getElementById('register-confirm-password').value;
+
+        if (!playerId || !email || !password || !confirmPassword) {
+            this.showError('Please fill in all fields');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            this.showError('Passwords do not match');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.showError('Password must be at least 6 characters');
+            return;
+        }
+
+        const form = document.getElementById('register-form');
+        form.classList.add('loading');
+
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    playerId,
+                    email,
+                    password,
+                    deviceInfo: this.getDeviceInfo()
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Store authentication data
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('sessionId', data.sessionId);
+                localStorage.setItem('playerId', playerId);
+                
+                this.showAccountStatus('Account created successfully!');
+                this.updateAccountUI();
+                
+                setTimeout(() => {
+                    this.closeLoginModal();
+                }, 2000);
+            } else {
+                this.showError(data.error || 'Registration failed');
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            this.showError('Network error. Please try again.');
+        } finally {
+            form.classList.remove('loading');
+        }
+    }
+
+    async syncWithPlatform(platform) {
+        try {
+            // Initialize platform detector if not already done
+            if (!window.platformDetector) {
+                window.platformDetector = new PlatformDetector();
+                await window.platformDetector.initialize();
+            }
+
+            const platformAPI = window.platformDetector.getUnifiedAPI();
+            
+            if (platform === window.platformDetector.currentPlatform) {
+                // Current platform - get user info
+                const userInfo = await platformAPI.getUserInfo();
+                if (userInfo) {
+                    // Sync with current platform
+                    await this.syncAccountWithPlatform(platform, userInfo);
+                } else {
+                    this.showError('Unable to get platform user info');
+                }
+            } else {
+                // Different platform - show instructions
+                this.showPlatformInstructions(platform);
+            }
+        } catch (error) {
+            console.error('Platform sync error:', error);
+            this.showError('Platform sync failed. Please try again.');
+        }
+    }
+
+    async syncAccountWithPlatform(platform, userInfo) {
+        try {
+            const response = await fetch('/api/auth/platform-sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                },
+                body: JSON.stringify({
+                    platform,
+                    platformUserId: userInfo.id,
+                    platformUsername: userInfo.name,
+                    platformData: userInfo
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.showAccountStatus(`Synced with ${platform} successfully!`);
+                this.updateAccountUI();
+            } else {
+                this.showError(data.error || 'Platform sync failed');
+            }
+        } catch (error) {
+            console.error('Platform sync error:', error);
+            this.showError('Platform sync failed. Please try again.');
+        }
+    }
+
+    showPlatformInstructions(platform) {
+        const instructions = {
+            kongregate: 'To sync with Kongregate, please play this game on Kongregate.com',
+            poki: 'To sync with Poki, please play this game on Poki.com',
+            gamecrazy: 'To sync with Game Crazy, please play this game on GameCrazy.com',
+            facebook: 'To sync with Facebook, please play this game through Facebook Gaming'
+        };
+
+        this.showError(instructions[platform] || 'Platform sync not available');
+    }
+
+    showAccountStatus(message) {
+        const status = document.getElementById('account-status');
+        const statusText = status.querySelector('.status-text');
+        statusText.textContent = message;
+        status.style.display = 'flex';
+    }
+
+    showError(message) {
+        // Create or update error message
+        let errorDiv = document.querySelector('.login-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'login-error';
+            errorDiv.style.cssText = `
+                background: rgba(244, 67, 54, 0.2);
+                border: 1px solid rgba(244, 67, 54, 0.5);
+                color: #f44336;
+                padding: 1rem;
+                border-radius: 10px;
+                margin: 1rem 0;
+                text-align: center;
+                font-weight: 600;
+            `;
+            document.querySelector('.login-modal-content .modal-body').appendChild(errorDiv);
+        }
+        
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    updateAccountUI() {
+        const playerId = localStorage.getItem('playerId');
+        if (playerId) {
+            // Update any UI elements that show player info
+            const playerNameElements = document.querySelectorAll('#player-name, .player-name');
+            playerNameElements.forEach(el => {
+                if (el.tagName === 'INPUT') {
+                    el.value = playerId;
+                } else {
+                    el.textContent = playerId;
+                }
+            });
+        }
+    }
+
+    getDeviceInfo() {
+        return {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            screenResolution: `${screen.width}x${screen.height}`,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    // Check if user is already logged in
+    checkAuthStatus() {
+        const token = localStorage.getItem('authToken');
+        const sessionId = localStorage.getItem('sessionId');
+        const playerId = localStorage.getItem('playerId');
+        
+        if (token && sessionId && playerId) {
+            this.updateAccountUI();
+            return true;
+        }
+        return false;
+    }
+
+    // Initialize platform detection
+    async initializePlatformDetection() {
+        try {
+            if (window.PlatformDetector) {
+                window.platformDetector = new PlatformDetector();
+                await window.platformDetector.initialize();
+                console.log('🎮 Platform detection initialized');
+            }
+        } catch (error) {
+            console.error('Failed to initialize platform detection:', error);
+        }
+    }
+
+    // Initialize account economy system
+    async initializeAccountEconomy() {
+        try {
+            const playerId = this.getPlayerId();
+            if (!playerId) {
+                console.warn('No player ID available for economy initialization');
+                return;
+            }
+
+            // Initialize player economy
+            const response = await fetch('/api/account-economy/initialize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    platform: this.getCurrentPlatform()
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = data.data;
+                console.log('💰 Account economy initialized:', this.economyData);
+                this.updateEconomyUI();
+            } else {
+                console.error('Failed to initialize account economy');
+            }
+        } catch (error) {
+            console.error('Failed to initialize account economy:', error);
+        }
+    }
+
+    // Get player ID from auth system
+    getPlayerId() {
+        return localStorage.getItem('playerId') || 'guest_' + Date.now();
+    }
+
+    // Get auth token
+    getAuthToken() {
+        return localStorage.getItem('authToken') || '';
+    }
+
+    // Get current platform
+    getCurrentPlatform() {
+        if (window.platformDetector) {
+            return window.platformDetector.getCurrentPlatform();
+        }
+        return 'local';
+    }
+
+    // Update currency
+    async updateCurrency(currencyId, amount, operation = 'add', source = 'gameplay') {
+        try {
+            const response = await fetch('/api/account-economy/currency/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    currencyId,
+                    amount,
+                    operation,
+                    source
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                return data.result;
+            } else {
+                console.error('Failed to update currency');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to update currency:', error);
+            return null;
+        }
+    }
+
+    // Update inventory
+    async updateInventory(category, itemId, quantity, operation = 'add') {
+        try {
+            const response = await fetch('/api/account-economy/inventory/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    category,
+                    itemId,
+                    quantity,
+                    operation
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                return data.result;
+            } else {
+                console.error('Failed to update inventory');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to update inventory:', error);
+            return null;
+        }
+    }
+
+    // Complete level with economy rewards
+    async completeLevel(level, score, stars = 0) {
+        try {
+            const xpGained = Math.floor(score / 100) + (stars * 50);
+            
+            const response = await fetch('/api/account-economy/level/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    level,
+                    score,
+                    stars,
+                    xpGained
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                return data.result;
+            } else {
+                console.error('Failed to complete level');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to complete level:', error);
+            return null;
+        }
+    }
+
+    // Claim daily reward
+    async claimDailyReward() {
+        try {
+            const response = await fetch('/api/account-economy/daily-reward/claim', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                this.showAccountStatus(`Daily reward claimed! Streak: ${data.result.streak}`);
+                return data.result;
+            } else {
+                const errorData = await response.json();
+                this.showError(errorData.error);
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to claim daily reward:', error);
+            return null;
+        }
+    }
+
+    // Get player economy data
+    async getPlayerEconomy() {
+        try {
+            const response = await fetch('/api/account-economy/data', {
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.data;
+            } else {
+                console.error('Failed to get player economy data');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to get player economy data:', error);
+            return null;
+        }
+    }
+
+    // Update economy UI
+    updateEconomyUI() {
+        if (!this.economyData) return;
+
+        const currencies = this.economyData.currencies;
+        if (currencies) {
+            // Update coins display
+            const coinsElement = document.querySelector('.coins-display');
+            if (coinsElement && currencies.coins) {
+                coinsElement.textContent = currencies.coins.amount.toLocaleString();
+            }
+
+            // Update stars display
+            const starsElement = document.querySelector('.stars-display');
+            if (starsElement && currencies.stars) {
+                starsElement.textContent = currencies.stars.amount.toLocaleString();
+            }
+
+            // Update energy display
+            const energyElement = document.querySelector('.energy-display');
+            if (energyElement && currencies.energy) {
+                energyElement.textContent = currencies.energy.amount;
+            }
+        }
+
+        const progression = this.economyData.progression;
+        if (progression) {
+            const levelElement = document.querySelector('.level-display');
+            if (levelElement) {
+                levelElement.textContent = `Level ${progression.level}`;
+            }
+
+            const xpElement = document.querySelector('.xp-display');
+            if (xpElement) {
+                xpElement.textContent = `${progression.xp}/${progression.xpToNext} XP`;
+            }
+        }
+    }
 }
 
 // Global functions for HTML onclick events
@@ -607,6 +1181,35 @@ function closeTutorial() {
 
 function showAdvancedSettings() {
     game.showAdvancedSettings();
+}
+
+// Login Modal Functions
+function showLoginModal() {
+    game.showLoginModal();
+}
+
+function closeLoginModal() {
+    game.closeLoginModal();
+}
+
+function switchLoginTab(tab) {
+    game.switchLoginTab(tab);
+}
+
+function handleLogin() {
+    game.handleLogin();
+}
+
+function handleRegister() {
+    game.handleRegister();
+}
+
+function syncWithPlatform(platform) {
+    game.syncWithPlatform(platform);
+}
+
+function selectLevel(levelNumber) {
+    game.selectLevel(levelNumber);
 }
 
 // Initialize game when page loads

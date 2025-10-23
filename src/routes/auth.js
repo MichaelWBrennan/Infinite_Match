@@ -303,4 +303,88 @@ router.post(
   }),
 );
 
+// Platform sync endpoint
+router.post(
+  '/platform-sync',
+  security.sessionValidation,
+  asyncHandler(async (req, res) => {
+    const { platform, platformUserId, platformUsername, platformData } = req.body;
+    const { playerId } = req.user;
+
+    if (!platform || !platformUserId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Platform and platform user ID are required',
+        requestId: req.requestId,
+      });
+    }
+
+    try {
+      // Store platform sync data
+      const syncResult = await security.syncPlatformAccount({
+        playerId,
+        platform,
+        platformUserId,
+        platformUsername,
+        platformData,
+      });
+
+      if (!syncResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: syncResult.error,
+          requestId: req.requestId,
+        });
+      }
+
+      security.logSecurityEvent('platform_sync', {
+        playerId,
+        platform,
+        platformUserId,
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        message: `Successfully synced with ${platform}`,
+        syncData: syncResult.syncData,
+        requestId: req.requestId,
+      });
+    } catch (error) {
+      logger.error('Platform sync failed', { error: error.message, playerId, platform });
+      res.status(500).json({
+        success: false,
+        error: 'Platform sync failed',
+        requestId: req.requestId,
+      });
+    }
+  }),
+);
+
+// Get platform sync status
+router.get(
+  '/platform-sync-status',
+  security.sessionValidation,
+  asyncHandler(async (req, res) => {
+    const { playerId } = req.user;
+
+    try {
+      const syncStatus = await security.getPlatformSyncStatus(playerId);
+
+      res.json({
+        success: true,
+        platforms: syncStatus,
+        requestId: req.requestId,
+      });
+    } catch (error) {
+      logger.error('Failed to get platform sync status', { error: error.message, playerId });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get platform sync status',
+        requestId: req.requestId,
+      });
+    }
+  }),
+);
+
 export default router;

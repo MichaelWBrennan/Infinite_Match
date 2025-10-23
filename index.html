@@ -48,6 +48,10 @@
                     <span class="btn-icon">⚙️</span>
                     <span class="btn-text">SETTINGS</span>
                 </button>
+                <button class="menu-btn login-btn" onclick="showLoginModal()">
+                    <span class="btn-icon">👤</span>
+                    <span class="btn-text">ACCOUNT</span>
+                </button>
                 <button class="menu-btn news-btn" onclick="showNews()">
                     <span class="btn-icon">📰</span>
                     <span class="btn-text">NEWS</span>
@@ -381,6 +385,20 @@
                     <div class="timer-icon">⏰</div>
                     <div class="timer-value" id="timer">60</div>
                 </div>
+                <div class="economy-display">
+                    <div class="currency-item">
+                        <span class="currency-icon">🪙</span>
+                        <span class="coins-display">0</span>
+                    </div>
+                    <div class="currency-item">
+                        <span class="currency-icon">⭐</span>
+                        <span class="stars-display">0</span>
+                    </div>
+                    <div class="currency-item">
+                        <span class="currency-icon">⚡</span>
+                        <span class="energy-display">0</span>
+                    </div>
+                </div>
             </div>
             <div class="hud-right">
                 <div class="moves">Moves: <span id="moves">30</span></div>
@@ -568,6 +586,100 @@
             </div>
             <div class="modal-footer">
                 <button class="royal-btn primary" onclick="closeModal()">COLLECT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content login-modal-content">
+            <div class="modal-header">
+                <h3>Account Sync</h3>
+                <button class="close-btn" onclick="closeLoginModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="login-tabs">
+                    <button class="login-tab active" onclick="switchLoginTab('login')">Login</button>
+                    <button class="login-tab" onclick="switchLoginTab('register')">Register</button>
+                </div>
+                
+                <!-- Login Form -->
+                <div id="login-form" class="login-form active">
+                    <div class="form-group">
+                        <label for="login-player-id">Player ID</label>
+                        <input type="text" id="login-player-id" class="royal-input-field" placeholder="Enter your Player ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" class="royal-input-field" placeholder="Enter your password">
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="remember-me">
+                            <span class="checkmark"></span>
+                            Remember me
+                        </label>
+                    </div>
+                    <button class="royal-btn primary full-width" onclick="handleLogin()">
+                        <span class="btn-icon">🔑</span>
+                        LOGIN
+                    </button>
+                </div>
+
+                <!-- Register Form -->
+                <div id="register-form" class="login-form">
+                    <div class="form-group">
+                        <label for="register-player-id">Player ID</label>
+                        <input type="text" id="register-player-id" class="royal-input-field" placeholder="Choose a Player ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" class="royal-input-field" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" class="royal-input-field" placeholder="Create a password">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Confirm Password</label>
+                        <input type="password" id="register-confirm-password" class="royal-input-field" placeholder="Confirm your password">
+                    </div>
+                    <button class="royal-btn primary full-width" onclick="handleRegister()">
+                        <span class="btn-icon">✨</span>
+                        CREATE ACCOUNT
+                    </button>
+                </div>
+
+                <!-- Platform Sync Section -->
+                <div class="platform-sync-section">
+                    <div class="sync-divider">
+                        <span>OR SYNC WITH PLATFORM</span>
+                    </div>
+                    <div class="platform-buttons">
+                        <button class="platform-btn" onclick="syncWithPlatform('kongregate')">
+                            <span class="platform-icon">🎮</span>
+                            <span class="platform-name">Kongregate</span>
+                        </button>
+                        <button class="platform-btn" onclick="syncWithPlatform('poki')">
+                            <span class="platform-icon">🎯</span>
+                            <span class="platform-name">Poki</span>
+                        </button>
+                        <button class="platform-btn" onclick="syncWithPlatform('gamecrazy')">
+                            <span class="platform-icon">🎲</span>
+                            <span class="platform-name">Game Crazy</span>
+                        </button>
+                        <button class="platform-btn" onclick="syncWithPlatform('facebook')">
+                            <span class="platform-icon">📘</span>
+                            <span class="platform-name">Facebook</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Account Status -->
+                <div id="account-status" class="account-status" style="display: none;">
+                    <div class="status-icon">✅</div>
+                    <div class="status-text">Account synced successfully!</div>
+                </div>
             </div>
         </div>
     </div>
