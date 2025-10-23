@@ -185,6 +185,10 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/game', gameRoutes);
 
+// Import and use account economy routes
+import accountEconomyRoutes from '../routes/account-economy.js';
+app.use('/api/account-economy', accountEconomyRoutes);
+
 // Platform detection endpoint
 app.get('/api/platform/detect', (req, res) => {
   const platform = detectPlatform(req);

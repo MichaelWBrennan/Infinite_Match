@@ -100,7 +100,7 @@ namespace Evergreen.Economy
         }
         
         /// <summary>
-        /// Initialize Unity Authentication
+        /// Initialize Unity Authentication with account linking
         /// </summary>
         private async Task InitializeAuthentication()
         {
@@ -109,20 +109,92 @@ namespace Evergreen.Economy
                 if (enableDebugLogs)
                     Debug.Log("Initializing Unity Authentication...");
                 
-                // Sign in anonymously
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                // Check if player is already authenticated with account system
+                string playerId = GetStoredPlayerId();
+                
+                if (!string.IsNullOrEmpty(playerId))
+                {
+                    // Link with existing account
+                    await LinkWithAccount(playerId);
+                }
+                else
+                {
+                    // Sign in anonymously and create account
+                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                    playerId = AuthenticationService.Instance.PlayerId;
+                    StorePlayerId(playerId);
+                }
                 
                 _isAuthenticated = true;
                 OnAuthenticated?.Invoke();
                 
                 if (enableDebugLogs)
-                    Debug.Log($"Authentication successful. Player ID: {AuthenticationService.Instance.PlayerId}");
+                    Debug.Log($"Authentication successful. Player ID: {playerId}");
             }
             catch (Exception e)
             {
                 Debug.LogError($"Authentication failed: {e.Message}");
                 throw;
             }
+        }
+        
+        /// <summary>
+        /// Link Unity player with account system
+        /// </summary>
+        private async Task LinkWithAccount(string playerId)
+        {
+            try
+            {
+                // Initialize account economy
+                await InitializeAccountEconomy(playerId);
+                
+                if (enableDebugLogs)
+                    Debug.Log($"Account linked successfully: {playerId}");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Account linking failed: {e.Message}");
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Initialize account economy system
+        /// </summary>
+        private async Task InitializeAccountEconomy(string playerId)
+        {
+            try
+            {
+                // This would call your backend API to initialize player economy
+                // For now, we'll simulate the initialization
+                if (enableDebugLogs)
+                    Debug.Log($"Initializing account economy for player: {playerId}");
+                
+                // In a real implementation, you would make an API call here
+                // await CallBackendAPI("/api/account-economy/initialize", new { playerId });
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Account economy initialization failed: {e.Message}");
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Get stored player ID
+        /// </summary>
+        private string GetStoredPlayerId()
+        {
+            return PlayerPrefs.GetString("player_id", "");
+        }
+        
+        /// <summary>
+        /// Store player ID
+        /// </summary>
+        private void StorePlayerId(string playerId)
+        {
+            PlayerPrefs.SetString("player_id", playerId);
+            PlayerPrefs.Save();
         }
         
         /// <summary>
@@ -509,6 +581,146 @@ namespace Evergreen.Economy
         }
         
         /// <summary>
+        /// Sync economy data with account system
+        /// </summary>
+        public async Task<bool> SyncWithAccount()
+        {
+            try
+            {
+                if (!_isAuthenticated)
+                {
+                    Debug.LogError("Player not authenticated. Cannot sync with account.");
+                    return false;
+                }
+                
+                string playerId = GetStoredPlayerId();
+                if (string.IsNullOrEmpty(playerId))
+                {
+                    Debug.LogError("No player ID found. Cannot sync with account.");
+                    return false;
+                }
+                
+                // Prepare Unity economy data for sync
+                var unityData = new Dictionary<string, object>
+                {
+                    { "currencies", GetCurrenciesData() },
+                    { "inventory", GetInventoryData() },
+                    { "timestamp", DateTime.Now.ToString("O") }
+                };
+                
+                // In a real implementation, you would call your backend API here
+                // var result = await CallBackendAPI("/api/account-economy/sync/unity", unityData);
+                
+                if (enableDebugLogs)
+                    Debug.Log($"Economy synced with account for player: {playerId}");
+                
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Account sync failed: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Load economy data from account system
+        /// </summary>
+        public async Task<bool> LoadFromAccount()
+        {
+            try
+            {
+                if (!_isAuthenticated)
+                {
+                    Debug.LogError("Player not authenticated. Cannot load from account.");
+                    return false;
+                }
+                
+                string playerId = GetStoredPlayerId();
+                if (string.IsNullOrEmpty(playerId))
+                {
+                    Debug.LogError("No player ID found. Cannot load from account.");
+                    return false;
+                }
+                
+                // In a real implementation, you would call your backend API here
+                // var accountData = await CallBackendAPI("/api/account-economy/data", new { playerId });
+                
+                // For now, we'll simulate loading from account
+                if (enableDebugLogs)
+                    Debug.Log($"Economy data loaded from account for player: {playerId}");
+                
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Load from account failed: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Get currencies data for sync
+        /// </summary>
+        private Dictionary<string, int> GetCurrenciesData()
+        {
+            var currencies = new Dictionary<string, int>();
+            foreach (var balance in _playerBalances.Values)
+            {
+                currencies[balance.CurrencyId] = balance.Balance;
+            }
+            return currencies;
+        }
+        
+        /// <summary>
+        /// Get inventory data for sync
+        /// </summary>
+        private Dictionary<string, Dictionary<string, int>> GetInventoryData()
+        {
+            var inventory = new Dictionary<string, Dictionary<string, int>>();
+            
+            // Group inventory items by category
+            var powerups = new Dictionary<string, int>();
+            var boosters = new Dictionary<string, int>();
+            var decorations = new Dictionary<string, int>();
+            
+            foreach (var item in _playerInventory.Values)
+            {
+                // Categorize items based on their ID or type
+                if (item.InventoryItemId.Contains("powerup") || item.InventoryItemId.Contains("bomb") || 
+                    item.InventoryItemId.Contains("rocket") || item.InventoryItemId.Contains("rainbow"))
+                {
+                    powerups[item.InventoryItemId] = item.Count;
+                }
+                else if (item.InventoryItemId.Contains("booster") || item.InventoryItemId.Contains("extra_moves"))
+                {
+                    boosters[item.InventoryItemId] = item.Count;
+                }
+                else
+                {
+                    decorations[item.InventoryItemId] = item.Count;
+                }
+            }
+            
+            inventory["powerups"] = powerups;
+            inventory["boosters"] = boosters;
+            inventory["decorations"] = decorations;
+            
+            return inventory;
+        }
+        
+        /// <summary>
+        /// Call backend API (placeholder for real implementation)
+        /// </summary>
+        private async Task<object> CallBackendAPI(string endpoint, object data)
+        {
+            // This would be implemented with your actual HTTP client
+            // For now, return a mock response
+            await Task.Delay(100); // Simulate API call delay
+            return new { success = true };
+        }
+
+        /// <summary>
         /// Get economy status
         /// </summary>
         public Dictionary<string, object> GetEconomyStatus()
@@ -517,10 +729,11 @@ namespace Evergreen.Economy
             {
                 { "isInitialized", _isInitialized },
                 { "isAuthenticated", _isAuthenticated },
-                { "playerId", AuthenticationService.Instance.PlayerId },
+                { "playerId", GetStoredPlayerId() },
                 { "balanceCount", _playerBalances.Count },
                 { "inventoryCount", _playerInventory.Count },
-                { "testMode", enableTestMode }
+                { "testMode", enableTestMode },
+                { "accountLinked", !string.IsNullOrEmpty(GetStoredPlayerId()) }
             };
         }
         

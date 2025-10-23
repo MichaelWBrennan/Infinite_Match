@@ -51,6 +51,9 @@ class InfiniteMatchGame {
         
         // Initialize platform detection
         this.initializePlatformDetection();
+        
+        // Initialize account economy system
+        this.initializeAccountEconomy();
     }
 
     addEventListeners() {
@@ -880,6 +883,251 @@ class InfiniteMatchGame {
             }
         } catch (error) {
             console.error('Failed to initialize platform detection:', error);
+        }
+    }
+
+    // Initialize account economy system
+    async initializeAccountEconomy() {
+        try {
+            const playerId = this.getPlayerId();
+            if (!playerId) {
+                console.warn('No player ID available for economy initialization');
+                return;
+            }
+
+            // Initialize player economy
+            const response = await fetch('/api/account-economy/initialize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    platform: this.getCurrentPlatform()
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = data.data;
+                console.log('💰 Account economy initialized:', this.economyData);
+                this.updateEconomyUI();
+            } else {
+                console.error('Failed to initialize account economy');
+            }
+        } catch (error) {
+            console.error('Failed to initialize account economy:', error);
+        }
+    }
+
+    // Get player ID from auth system
+    getPlayerId() {
+        return localStorage.getItem('playerId') || 'guest_' + Date.now();
+    }
+
+    // Get auth token
+    getAuthToken() {
+        return localStorage.getItem('authToken') || '';
+    }
+
+    // Get current platform
+    getCurrentPlatform() {
+        if (window.platformDetector) {
+            return window.platformDetector.getCurrentPlatform();
+        }
+        return 'local';
+    }
+
+    // Update currency
+    async updateCurrency(currencyId, amount, operation = 'add', source = 'gameplay') {
+        try {
+            const response = await fetch('/api/account-economy/currency/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    currencyId,
+                    amount,
+                    operation,
+                    source
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                return data.result;
+            } else {
+                console.error('Failed to update currency');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to update currency:', error);
+            return null;
+        }
+    }
+
+    // Update inventory
+    async updateInventory(category, itemId, quantity, operation = 'add') {
+        try {
+            const response = await fetch('/api/account-economy/inventory/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    category,
+                    itemId,
+                    quantity,
+                    operation
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                return data.result;
+            } else {
+                console.error('Failed to update inventory');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to update inventory:', error);
+            return null;
+        }
+    }
+
+    // Complete level with economy rewards
+    async completeLevel(level, score, stars = 0) {
+        try {
+            const xpGained = Math.floor(score / 100) + (stars * 50);
+            
+            const response = await fetch('/api/account-economy/level/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    level,
+                    score,
+                    stars,
+                    xpGained
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                return data.result;
+            } else {
+                console.error('Failed to complete level');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to complete level:', error);
+            return null;
+        }
+    }
+
+    // Claim daily reward
+    async claimDailyReward() {
+        try {
+            const response = await fetch('/api/account-economy/daily-reward/claim', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.economyData = await this.getPlayerEconomy();
+                this.updateEconomyUI();
+                this.showAccountStatus(`Daily reward claimed! Streak: ${data.result.streak}`);
+                return data.result;
+            } else {
+                const errorData = await response.json();
+                this.showError(errorData.error);
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to claim daily reward:', error);
+            return null;
+        }
+    }
+
+    // Get player economy data
+    async getPlayerEconomy() {
+        try {
+            const response = await fetch('/api/account-economy/data', {
+                headers: {
+                    'Authorization': `Bearer ${this.getAuthToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.data;
+            } else {
+                console.error('Failed to get player economy data');
+                return null;
+            }
+        } catch (error) {
+            console.error('Failed to get player economy data:', error);
+            return null;
+        }
+    }
+
+    // Update economy UI
+    updateEconomyUI() {
+        if (!this.economyData) return;
+
+        const currencies = this.economyData.currencies;
+        if (currencies) {
+            // Update coins display
+            const coinsElement = document.querySelector('.coins-display');
+            if (coinsElement && currencies.coins) {
+                coinsElement.textContent = currencies.coins.amount.toLocaleString();
+            }
+
+            // Update gems display
+            const gemsElement = document.querySelector('.gems-display');
+            if (gemsElement && currencies.gems) {
+                gemsElement.textContent = currencies.gems.amount.toLocaleString();
+            }
+
+            // Update energy display
+            const energyElement = document.querySelector('.energy-display');
+            if (energyElement && currencies.energy) {
+                energyElement.textContent = currencies.energy.amount;
+            }
+
+            // Update hearts display
+            const heartsElement = document.querySelector('.hearts-display');
+            if (heartsElement && currencies.hearts) {
+                heartsElement.textContent = currencies.hearts.amount;
+            }
+        }
+
+        const progression = this.economyData.progression;
+        if (progression) {
+            const levelElement = document.querySelector('.level-display');
+            if (levelElement) {
+                levelElement.textContent = `Level ${progression.level}`;
+            }
+
+            const xpElement = document.querySelector('.xp-display');
+            if (xpElement) {
+                xpElement.textContent = `${progression.xp}/${progression.xpToNext} XP`;
+            }
         }
     }
 }
