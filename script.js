@@ -1157,101 +1157,148 @@ class InfiniteMatchGame {
 
 // Global functions for HTML onclick events
 function showModeSelect() {
-    console.log('showModeSelect called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showModeSelect === 'function') {
-        game.showModeSelect();
+    console.log('🎮 showModeSelect called, game exists:', !!window.game);
+    
+    if (ensureGameReady() && window.game && typeof window.game.showModeSelect === 'function') {
+        console.log('🎮 Calling window.game.showModeSelect()');
+        window.game.showModeSelect();
     } else {
-        console.error('Game object not available or showModeSelect method missing');
+        console.error('❌ Game object not available or showModeSelect method missing');
+        console.error('❌ ensureGameReady():', ensureGameReady());
+        console.error('❌ window.game:', window.game);
+        if (window.game) {
+            console.error('❌ window.game.showModeSelect:', typeof window.game.showModeSelect);
+        }
+        
+        // Fallback: Try to show the mode select screen directly
+        console.log('🔄 Attempting fallback mode select...');
+        const modeSelectScreen = document.getElementById('mode-select');
+        const titleScreen = document.getElementById('title-screen');
+        if (modeSelectScreen && titleScreen) {
+            titleScreen.classList.remove('active');
+            modeSelectScreen.classList.add('active');
+            console.log('✅ Fallback mode select successful');
+        } else {
+            console.error('❌ Fallback mode select failed - screens not found');
+        }
     }
 }
 
 function showSettings() {
-    console.log('showSettings called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showSettings === 'function') {
-        game.showSettings();
+    console.log('⚙️ showSettings called, game exists:', !!window.game);
+    
+    if (ensureGameReady() && window.game && typeof window.game.showSettings === 'function') {
+        console.log('⚙️ Calling window.game.showSettings()');
+        window.game.showSettings();
     } else {
-        console.error('Game object not available or showSettings method missing');
+        console.error('❌ Game object not available or showSettings method missing');
+        
+        // Fallback: Try to show the settings screen directly
+        console.log('🔄 Attempting fallback settings...');
+        const settingsScreen = document.getElementById('settings-screen');
+        const titleScreen = document.getElementById('title-screen');
+        if (settingsScreen && titleScreen) {
+            titleScreen.classList.remove('active');
+            settingsScreen.classList.add('active');
+            console.log('✅ Fallback settings successful');
+        } else {
+            console.error('❌ Fallback settings failed - screens not found');
+        }
     }
 }
 
 function showTitle() {
-    console.log('showTitle called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showTitle === 'function') {
-        game.showTitle();
+    console.log('showTitle called, game exists:', !!window.game);
+    if (ensureGameReady() && window.game && typeof window.game.showTitle === 'function') {
+        window.game.showTitle();
     } else {
         console.error('Game object not available or showTitle method missing');
     }
 }
 
 function showLevelSelect() {
-    console.log('showLevelSelect called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showLevelSelect === 'function') {
-        game.showLevelSelect();
+    console.log('showLevelSelect called, game exists:', !!window.game);
+    if (ensureGameReady() && window.game && typeof window.game.showLevelSelect === 'function') {
+        window.game.showLevelSelect();
     } else {
         console.error('Game object not available or showLevelSelect method missing');
     }
 }
 
 function showNews() {
-    console.log('showNews called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showNews === 'function') {
-        game.showNews();
+    console.log('📰 showNews called, game exists:', !!window.game);
+    
+    if (ensureGameReady() && window.game && typeof window.game.showNews === 'function') {
+        console.log('📰 Calling window.game.showNews()');
+        window.game.showNews();
     } else {
-        console.error('Game object not available or showNews method missing');
+        console.error('❌ Game object not available or showNews method missing');
+        
+        // Fallback: Try to show the news screen directly
+        console.log('🔄 Attempting fallback news...');
+        const newsScreen = document.getElementById('news-screen');
+        const titleScreen = document.getElementById('title-screen');
+        if (newsScreen && titleScreen) {
+            titleScreen.classList.remove('active');
+            newsScreen.classList.add('active');
+            console.log('✅ Fallback news successful');
+        } else {
+            console.error('❌ Fallback news failed - screens not found');
+        }
     }
 }
 
 function showOffers() {
-    console.log('showOffers called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showOffers === 'function') {
-        game.showOffers();
+    console.log('showOffers called, game exists:', !!window.game);
+    if (ensureGameReady() && window.game && typeof window.game.showOffers === 'function') {
+        window.game.showOffers();
     } else {
         console.error('Game object not available or showOffers method missing');
     }
 }
 
 function showLeaderboard() {
-    console.log('showLeaderboard called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showLeaderboard === 'function') {
-        game.showLeaderboard();
+    console.log('showLeaderboard called, game exists:', !!window.game);
+    if (ensureGameReady() && window.game && typeof window.game.showLeaderboard === 'function') {
+        window.game.showLeaderboard();
     } else {
         console.error('Game object not available or showLeaderboard method missing');
     }
 }
 
 function startGame() {
-    console.log('startGame called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.startGame === 'function') {
-        game.startGame();
+    console.log('startGame called, game exists:', !!window.game);
+    if (ensureGameReady() && window.game && typeof window.game.startGame === 'function') {
+        window.game.startGame();
     } else {
         console.error('Game object not available or startGame method missing');
     }
 }
 
 function pauseGame() {
-    if (game) game.pauseGame();
+    if (window.game) window.game.pauseGame();
 }
 
 function usePowerUp(type) {
-    if (game) game.usePowerUp(type);
+    if (window.game) window.game.usePowerUp(type);
 }
 
 function nextLevel() {
-    if (game) game.nextLevel();
+    if (window.game) window.game.nextLevel();
 }
 
 function closeModal() {
-    if (game) game.closeModal();
+    if (window.game) window.game.closeModal();
 }
 
 function closeTutorial() {
-    if (game) game.closeTutorial();
+    if (window.game) window.game.closeTutorial();
 }
 
 function showAdvancedSettings() {
-    console.log('showAdvancedSettings called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showAdvancedSettings === 'function') {
-        game.showAdvancedSettings();
+    console.log('showAdvancedSettings called, game exists:', !!window.game);
+    if (ensureGameReady() && window.game && typeof window.game.showAdvancedSettings === 'function') {
+        window.game.showAdvancedSettings();
     } else {
         console.error('Game object not available or showAdvancedSettings method missing');
     }
@@ -1259,36 +1306,48 @@ function showAdvancedSettings() {
 
 // Login Modal Functions
 function showLoginModal() {
-    console.log('showLoginModal called, game exists:', !!game);
-    if (ensureGameReady() && game && typeof game.showLoginModal === 'function') {
-        game.showLoginModal();
+    console.log('👤 showLoginModal called, game exists:', !!window.game);
+    
+    if (ensureGameReady() && window.game && typeof window.game.showLoginModal === 'function') {
+        console.log('👤 Calling window.game.showLoginModal()');
+        window.game.showLoginModal();
     } else {
-        console.error('Game object not available or showLoginModal method missing');
+        console.error('❌ Game object not available or showLoginModal method missing');
+        
+        // Fallback: Try to show the login modal directly
+        console.log('🔄 Attempting fallback login modal...');
+        const loginModal = document.getElementById('login-modal');
+        if (loginModal) {
+            loginModal.classList.add('active');
+            console.log('✅ Fallback login modal successful');
+        } else {
+            console.error('❌ Fallback login modal failed - modal not found');
+        }
     }
 }
 
 function closeLoginModal() {
-    if (game) game.closeLoginModal();
+    if (window.game) window.game.closeLoginModal();
 }
 
 function switchLoginTab(tab) {
-    if (game) game.switchLoginTab(tab);
+    if (window.game) window.game.switchLoginTab(tab);
 }
 
 function handleLogin() {
-    if (game) game.handleLogin();
+    if (window.game) window.game.handleLogin();
 }
 
 function handleRegister() {
-    if (game) game.handleRegister();
+    if (window.game) window.game.handleRegister();
 }
 
 function syncWithPlatform(platform) {
-    if (game) game.syncWithPlatform(platform);
+    if (window.game) window.game.syncWithPlatform(platform);
 }
 
 function selectLevel(levelNumber) {
-    if (game) game.selectLevel(levelNumber);
+    if (window.game) window.game.selectLevel(levelNumber);
 }
 
 // Initialize game when page loads
@@ -1296,18 +1355,19 @@ let game;
 
 // Robust game initialization function
 function initializeGame() {
-    if (typeof InfiniteMatchGame !== 'undefined' && (!game || typeof game === 'undefined')) {
+    if (typeof InfiniteMatchGame !== 'undefined' && (!window.game || typeof window.game === 'undefined')) {
         try {
             console.log('Initializing game...');
-            game = new InfiniteMatchGame();
-            window.game = game;
+            window.game = new InfiniteMatchGame();
+            game = window.game; // Keep local reference for compatibility
             console.log('✅ Game initialized successfully');
             return true;
         } catch (error) {
             console.error('❌ Failed to initialize game:', error);
             return false;
         }
-    } else if (game && typeof game !== 'undefined') {
+    } else if (window.game && typeof window.game !== 'undefined') {
+        game = window.game; // Keep local reference for compatibility
         console.log('Game already initialized');
         return true;
     } else {
@@ -1318,9 +1378,17 @@ function initializeGame() {
 
 // Ensure game is ready before calling methods
 function ensureGameReady() {
-    if (!game || typeof game === 'undefined') {
-        return initializeGame();
+    if (!window.game || typeof window.game === 'undefined') {
+        console.log('🔄 Game not ready, attempting to initialize...');
+        const initialized = initializeGame();
+        if (initialized) {
+            console.log('✅ Game initialized successfully');
+        } else {
+            console.error('❌ Failed to initialize game');
+        }
+        return initialized;
     }
+    game = window.game; // Keep local reference for compatibility
     return true;
 }
 
@@ -1381,13 +1449,13 @@ document.addEventListener('touchstart', (e) => {
 document.addEventListener('keydown', (e) => {
     switch(e.key) {
         case 'Escape':
-            if (game.currentScreen === 'game-screen') {
-                game.pauseGame();
+            if (window.game && window.game.currentScreen === 'game-screen') {
+                window.game.pauseGame();
             }
             break;
         case 'Enter':
-            if (game.currentScreen === 'title-screen') {
-                game.showModeSelect();
+            if (window.game && window.game.currentScreen === 'title-screen') {
+                window.game.showModeSelect();
             }
             break;
     }
