@@ -35,8 +35,10 @@ class InfiniteMatchGame {
     }
 
     init() {
+        console.log('Game init started');
         // Simulate loading
         setTimeout(() => {
+            console.log('Loading complete, switching to title screen');
             this.showScreen('title-screen');
         }, 3000);
 
@@ -54,6 +56,7 @@ class InfiniteMatchGame {
         
         // Initialize account economy system
         this.initializeAccountEconomy();
+        console.log('Game init completed');
     }
 
     addEventListeners() {
@@ -113,6 +116,7 @@ class InfiniteMatchGame {
     }
 
     showScreen(screenId) {
+        console.log('Switching to screen:', screenId);
         // Hide all screens
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -123,9 +127,12 @@ class InfiniteMatchGame {
         if (targetScreen) {
             targetScreen.classList.add('active');
             this.currentScreen = screenId;
+            console.log('Screen switched to:', screenId);
             
             // Add slide-in animation
             targetScreen.style.animation = 'slideIn 0.5s ease-out';
+        } else {
+            console.error('Screen not found:', screenId);
         }
     }
 
@@ -1128,95 +1135,94 @@ class InfiniteMatchGame {
 
 // Global functions for HTML onclick events
 function showModeSelect() {
-    game.showModeSelect();
+    console.log('showModeSelect called, game exists:', !!game);
+    if (game) game.showModeSelect();
+    else console.error('Game object not available');
 }
 
 function showSettings() {
-    game.showSettings();
+    if (game) game.showSettings();
 }
 
 function showTitle() {
-    game.showTitle();
+    if (game) game.showTitle();
 }
 
 function showLevelSelect() {
-    game.showLevelSelect();
+    if (game) game.showLevelSelect();
 }
 
 function showNews() {
-    game.showNews();
+    if (game) game.showNews();
 }
 
 function showOffers() {
-    game.showOffers();
+    if (game) game.showOffers();
 }
 
 function showLeaderboard() {
-    game.showLeaderboard();
+    if (game) game.showLeaderboard();
 }
 
 function startGame() {
-    game.startGame();
+    if (game) game.startGame();
 }
 
 function pauseGame() {
-    game.pauseGame();
+    if (game) game.pauseGame();
 }
 
 function usePowerUp(type) {
-    game.usePowerUp(type);
+    if (game) game.usePowerUp(type);
 }
 
 function nextLevel() {
-    game.nextLevel();
+    if (game) game.nextLevel();
 }
 
 function closeModal() {
-    game.closeModal();
+    if (game) game.closeModal();
 }
 
 function closeTutorial() {
-    game.closeTutorial();
+    if (game) game.closeTutorial();
 }
 
 function showAdvancedSettings() {
-    game.showAdvancedSettings();
+    if (game) game.showAdvancedSettings();
 }
 
 // Login Modal Functions
 function showLoginModal() {
-    game.showLoginModal();
+    if (game) game.showLoginModal();
 }
 
 function closeLoginModal() {
-    game.closeLoginModal();
+    if (game) game.closeLoginModal();
 }
 
 function switchLoginTab(tab) {
-    game.switchLoginTab(tab);
+    if (game) game.switchLoginTab(tab);
 }
 
 function handleLogin() {
-    game.handleLogin();
+    if (game) game.handleLogin();
 }
 
 function handleRegister() {
-    game.handleRegister();
+    if (game) game.handleRegister();
 }
 
 function syncWithPlatform(platform) {
-    game.syncWithPlatform(platform);
+    if (game) game.syncWithPlatform(platform);
 }
 
 function selectLevel(levelNumber) {
-    game.selectLevel(levelNumber);
+    if (game) game.selectLevel(levelNumber);
 }
 
 // Initialize game when page loads
 let game;
-document.addEventListener('DOMContentLoaded', () => {
-    game = new InfiniteMatchGame();
-});
 
 // Add CSS animations dynamically
 const style = document.createElement('style');

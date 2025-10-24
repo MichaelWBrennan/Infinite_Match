@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Button Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .test-button {
+            background: linear-gradient(45deg, #f39c12, #e74c3c);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+        }
+        .log {
+            background: rgba(0,0,0,0.5);
+            color: #0f0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            width: 80%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimal Button Test</h1>
+    
+    <button class="test-button" onclick="testButton()">Test Button</button>
+    <button class="test-button" onclick="testGameObject()">Test Game Object</button>
+    
+    <div class="log" id="log"></div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function testButton() {
+            log('✅ Button clicked successfully!');
+        }
+
+        function testGameObject() {
+            if (typeof game !== 'undefined') {
+                log('✅ Game object exists: ' + typeof game);
+                if (game && typeof game.showModeSelect === 'function') {
+                    log('✅ Game.showModeSelect method exists');
+                } else {
+                    log('❌ Game.showModeSelect method not found');
+                }
+            } else {
+                log('❌ Game object does not exist');
+            }
+        }
+
+        // Test basic functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Page loaded');
+            log('Testing basic button functionality...');
+            testButton();
+        });
+    </script>
+    
+    <!-- Load the actual game script -->
+    <script src="platform-detection.js"></script>
+    <script src="script.js"></script>
+    
+    <script>
+        // Test after scripts are loaded
+        setTimeout(() => {
+            log('Testing after scripts loaded...');
+            testGameObject();
+        }, 1000);
+    </script>
+</body>
+</html>

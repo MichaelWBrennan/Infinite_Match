@@ -741,6 +741,7 @@
         </div>
     </div>
 
+    <script src="platform-detection.js"></script>
     <script src="script.js"></script>
     <script>
         // Check if WebGL files are valid and fallback immediately if not
@@ -785,18 +786,32 @@
 
         // Override the game initialization to check WebGL files first
         document.addEventListener('DOMContentLoaded', async () => {
-            const webglValid = await checkWebGLFiles();
-            if (!webglValid) {
-                console.log('🔄 WebGL files invalid, starting fallback game immediately...');
-                // Hide loading screen and show title screen
-                document.getElementById('loading-screen').classList.remove('active');
-                document.getElementById('title-screen').classList.add('active');
-                return;
-            }
+            console.log('🚀 Initializing game...');
             
-            // If WebGL files are valid, proceed with normal initialization
+            // Always initialize the game first
             if (typeof InfiniteMatchGame !== 'undefined') {
                 game = new InfiniteMatchGame();
+                console.log('✅ Game initialized successfully');
+            } else {
+                console.error('❌ InfiniteMatchGame class not found');
+            }
+            
+            // Debug: Check which screens are visible
+            console.log('Screen visibility check:');
+            document.querySelectorAll('.screen').forEach(screen => {
+                const isActive = screen.classList.contains('active');
+                const isVisible = screen.style.display !== 'none';
+                console.log(`Screen ${screen.id}: active=${isActive}, visible=${isVisible}`);
+            });
+            
+            const webglValid = await checkWebGLFiles();
+            if (!webglValid) {
+                console.log('🔄 WebGL files invalid, using fallback game...');
+                // Hide loading screen and show title screen immediately
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('title-screen').classList.add('active');
+            } else {
+                console.log('✅ WebGL files valid, using WebGL game');
             }
         });
     </script>
