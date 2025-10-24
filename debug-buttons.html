@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Button Issues</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .debug-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .debug-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .test-button {
+            background: linear-gradient(45deg, #f39c12, #e74c3c);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+        }
+        .log {
+            background: rgba(0,0,0,0.5);
+            color: #0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            font-family: monospace;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>Debug Button Issues</h1>
+        
+        <div class="status" id="status">
+            Status: Initializing...
+        </div>
+        
+        <div class="debug-section">
+            <h2>Debug Information</h2>
+            <button class="test-button" onclick="debugGameObject()">Check Game Object</button>
+            <button class="test-button" onclick="debugFunctions()">Check Functions</button>
+            <button class="test-button" onclick="debugClass()">Check Class</button>
+            <button class="test-button" onclick="testButtonClick()">Test Button Click</button>
+            <button class="test-button" onclick="forceGameInit()">Force Game Init</button>
+        </div>
+        
+        <div class="debug-section">
+            <h2>Main Menu Buttons Test</h2>
+            <button class="test-button" onclick="showModeSelect()">Mode Select</button>
+            <button class="test-button" onclick="showSettings()">Settings</button>
+            <button class="test-button" onclick="showTitle()">Title Screen</button>
+            <button class="test-button" onclick="showNews()">News</button>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = 'Status: ' + message;
+        }
+
+        function debugGameObject() {
+            log('=== DEBUGGING GAME OBJECT ===');
+            log('typeof game: ' + typeof game);
+            log('game === undefined: ' + (game === undefined));
+            log('game === null: ' + (game === null));
+            
+            if (typeof game !== 'undefined' && game !== null) {
+                log('Game object exists!');
+                log('Game currentScreen: ' + (game.currentScreen || 'undefined'));
+                log('Game methods: ' + Object.getOwnPropertyNames(Object.getPrototypeOf(game)).join(', '));
+            } else {
+                log('❌ Game object is not available');
+            }
+        }
+
+        function debugFunctions() {
+            log('=== DEBUGGING FUNCTIONS ===');
+            const functions = ['showModeSelect', 'showSettings', 'showTitle', 'showNews'];
+            functions.forEach(func => {
+                const exists = typeof window[func] === 'function';
+                log(`${func}: ${exists ? '✅ EXISTS' : '❌ MISSING'}`);
+            });
+        }
+
+        function debugClass() {
+            log('=== DEBUGGING CLASS ===');
+            log('typeof InfiniteMatchGame: ' + typeof InfiniteMatchGame);
+            log('InfiniteMatchGame === undefined: ' + (InfiniteMatchGame === undefined));
+            
+            if (typeof InfiniteMatchGame !== 'undefined') {
+                log('✅ InfiniteMatchGame class is available');
+                log('Class methods: ' + Object.getOwnPropertyNames(InfiniteMatchGame.prototype).join(', '));
+            } else {
+                log('❌ InfiniteMatchGame class is not available');
+            }
+        }
+
+        function testButtonClick() {
+            log('=== TESTING BUTTON CLICK ===');
+            try {
+                log('Calling showModeSelect()...');
+                showModeSelect();
+                log('✅ showModeSelect() called without error');
+            } catch (error) {
+                log('❌ showModeSelect() failed: ' + error.message);
+            }
+        }
+
+        function forceGameInit() {
+            log('=== FORCING GAME INITIALIZATION ===');
+            try {
+                if (typeof InfiniteMatchGame !== 'undefined') {
+                    log('Creating new game instance...');
+                    window.game = new InfiniteMatchGame();
+                    log('✅ Game instance created successfully');
+                    log('Game object: ' + typeof game);
+                    log('Game currentScreen: ' + game.currentScreen);
+                } else {
+                    log('❌ Cannot create game - InfiniteMatchGame class not available');
+                }
+            } catch (error) {
+                log('❌ Failed to create game instance: ' + error.message);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Debug page loaded');
+            updateStatus('Ready for debugging');
+            
+            // Check initial state
+            setTimeout(() => {
+                log('=== INITIAL STATE CHECK ===');
+                debugClass();
+                debugGameObject();
+                debugFunctions();
+            }, 1000);
+        });
+    </script>
+    
+    <!-- Load the actual game scripts -->
+    <script src="platform-detection.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

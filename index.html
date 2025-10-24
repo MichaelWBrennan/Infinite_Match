@@ -788,14 +788,35 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 Initializing game...');
             
+            // Wait a bit for scripts to load completely
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Debug: Log all available globals
+            console.log('Available globals:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Match') || key.includes('show')));
+            
             // Always initialize the game first
             if (typeof InfiniteMatchGame !== 'undefined') {
-                game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-                console.log('Game object:', game);
-                console.log('Game methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(game)));
+                try {
+                    game = new InfiniteMatchGame();
+                    console.log('✅ Game initialized successfully');
+                    console.log('Game object:', game);
+                    console.log('Game methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(game)));
+                    
+                    // Make sure game is globally available
+                    window.game = game;
+                    
+                    // Test button functions
+                    console.log('Testing button functions...');
+                    console.log('showModeSelect available:', typeof showModeSelect);
+                    console.log('showSettings available:', typeof showSettings);
+                    console.log('showTitle available:', typeof showTitle);
+                    console.log('showNews available:', typeof showNews);
+                } catch (error) {
+                    console.error('❌ Failed to initialize game:', error);
+                }
             } else {
                 console.error('❌ InfiniteMatchGame class not found');
+                console.log('Available globals:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Match')));
             }
             
             // Debug: Check which screens are visible
@@ -816,6 +837,20 @@
                 console.log('✅ WebGL files valid, using WebGL game');
             }
         });
+        
+        // Fallback initialization in case DOMContentLoaded doesn't work
+        setTimeout(() => {
+            if (typeof game === 'undefined' && typeof InfiniteMatchGame !== 'undefined') {
+                console.log('🔄 Fallback game initialization...');
+                try {
+                    game = new InfiniteMatchGame();
+                    window.game = game;
+                    console.log('✅ Fallback game initialization successful');
+                } catch (error) {
+                    console.error('❌ Fallback game initialization failed:', error);
+                }
+            }
+        }, 2000);
     </script>
 </body>
 </html>
