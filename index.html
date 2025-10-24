@@ -792,6 +792,8 @@
             if (typeof InfiniteMatchGame !== 'undefined') {
                 game = new InfiniteMatchGame();
                 console.log('✅ Game initialized successfully');
+                console.log('Game object:', game);
+                console.log('Game methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(game)));
             } else {
                 console.error('❌ InfiniteMatchGame class not found');
             }

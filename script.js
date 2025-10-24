@@ -36,12 +36,7 @@ class InfiniteMatchGame {
 
     init() {
         console.log('Game init started');
-        // Simulate loading
-        setTimeout(() => {
-            console.log('Loading complete, switching to title screen');
-            this.showScreen('title-screen');
-        }, 3000);
-
+        
         // Initialize game board
         this.initializeGameBoard();
         
@@ -56,6 +51,13 @@ class InfiniteMatchGame {
         
         // Initialize account economy system
         this.initializeAccountEconomy();
+        
+        // Simulate loading
+        setTimeout(() => {
+            console.log('Loading complete, switching to title screen');
+            this.showScreen('title-screen');
+        }, 3000);
+        
         console.log('Game init completed');
     }
 
@@ -97,9 +99,11 @@ class InfiniteMatchGame {
             });
         }
 
-        // Level cards
-        document.querySelectorAll('.level-card').forEach((card, index) => {
+        // Level cards - both .level-card and .level-card-royal
+        document.querySelectorAll('.level-card, .level-card-royal').forEach((card, index) => {
             if (!card.classList.contains('locked')) {
+                // Remove existing onclick to avoid conflicts
+                card.removeAttribute('onclick');
                 card.addEventListener('click', () => {
                     this.selectLevel(index + 1);
                 });
@@ -108,10 +112,23 @@ class InfiniteMatchGame {
 
         // Power-up buttons
         document.querySelectorAll('.power-up-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const powerType = e.currentTarget.onclick.toString().match(/usePowerUp\('(\w+)'\)/)[1];
-                this.usePowerUp(powerType);
-            });
+            // Extract power-up type from onclick attribute before removing it
+            const onclickAttr = btn.getAttribute('onclick');
+            let powerType = null;
+            if (onclickAttr) {
+                const match = onclickAttr.match(/usePowerUp\('(\w+)'\)/);
+                if (match) {
+                    powerType = match[1];
+                }
+                // Remove onclick to avoid conflicts
+                btn.removeAttribute('onclick');
+            }
+            
+            if (powerType) {
+                btn.addEventListener('click', (e) => {
+                    this.usePowerUp(powerType);
+                });
+            }
         });
     }
 
@@ -131,8 +148,13 @@ class InfiniteMatchGame {
             
             // Add slide-in animation
             targetScreen.style.animation = 'slideIn 0.5s ease-out';
+            
+            // Debug: Log visible screens
+            const visibleScreens = Array.from(document.querySelectorAll('.screen.active')).map(s => s.id);
+            console.log('Currently visible screens:', visibleScreens);
         } else {
             console.error('Screen not found:', screenId);
+            console.error('Available screens:', Array.from(document.querySelectorAll('.screen')).map(s => s.id));
         }
     }
 
@@ -1141,11 +1163,15 @@ function showModeSelect() {
 }
 
 function showSettings() {
+    console.log('showSettings called, game exists:', !!game);
     if (game) game.showSettings();
+    else console.error('Game object not available for showSettings');
 }
 
 function showTitle() {
+    console.log('showTitle called, game exists:', !!game);
     if (game) game.showTitle();
+    else console.error('Game object not available for showTitle');
 }
 
 function showLevelSelect() {
@@ -1165,7 +1191,9 @@ function showLeaderboard() {
 }
 
 function startGame() {
+    console.log('startGame called, game exists:', !!game);
     if (game) game.startGame();
+    else console.error('Game object not available for startGame');
 }
 
 function pauseGame() {
