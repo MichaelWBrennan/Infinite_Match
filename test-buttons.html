@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Button Test</h1>
+    <button class="test-button" onclick="testButton1()">Test Button 1</button>
+    <button class="test-button" onclick="testButton2()">Test Button 2</button>
+    <button class="test-button" onclick="testButton3()">Test Button 3</button>
+    
+    <div class="log" id="log"></div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function testButton1() {
+            log('Button 1 clicked!');
+        }
+
+        function testButton2() {
+            log('Button 2 clicked!');
+        }
+
+        function testButton3() {
+            log('Button 3 clicked!');
+        }
+
+        // Test if the game object exists
+        function checkGameObject() {
+            if (typeof game !== 'undefined') {
+                log('Game object exists: ' + typeof game);
+            } else {
+                log('Game object does not exist');
+            }
+        }
+
+        // Check every second
+        setInterval(checkGameObject, 1000);
+
+        log('Page loaded, testing buttons...');
+    </script>
+</body>
+</html>

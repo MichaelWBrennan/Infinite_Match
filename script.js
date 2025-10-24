@@ -35,11 +35,8 @@ class InfiniteMatchGame {
     }
 
     init() {
-        // Simulate loading
-        setTimeout(() => {
-            this.showScreen('title-screen');
-        }, 3000);
-
+        console.log('Game init started');
+        
         // Initialize game board
         this.initializeGameBoard();
         
@@ -54,6 +51,14 @@ class InfiniteMatchGame {
         
         // Initialize account economy system
         this.initializeAccountEconomy();
+        
+        // Simulate loading
+        setTimeout(() => {
+            console.log('Loading complete, switching to title screen');
+            this.showScreen('title-screen');
+        }, 3000);
+        
+        console.log('Game init completed');
     }
 
     addEventListeners() {
@@ -94,9 +99,11 @@ class InfiniteMatchGame {
             });
         }
 
-        // Level cards
-        document.querySelectorAll('.level-card').forEach((card, index) => {
+        // Level cards - both .level-card and .level-card-royal
+        document.querySelectorAll('.level-card, .level-card-royal').forEach((card, index) => {
             if (!card.classList.contains('locked')) {
+                // Remove existing onclick to avoid conflicts
+                card.removeAttribute('onclick');
                 card.addEventListener('click', () => {
                     this.selectLevel(index + 1);
                 });
@@ -105,14 +112,28 @@ class InfiniteMatchGame {
 
         // Power-up buttons
         document.querySelectorAll('.power-up-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const powerType = e.currentTarget.onclick.toString().match(/usePowerUp\('(\w+)'\)/)[1];
-                this.usePowerUp(powerType);
-            });
+            // Extract power-up type from onclick attribute before removing it
+            const onclickAttr = btn.getAttribute('onclick');
+            let powerType = null;
+            if (onclickAttr) {
+                const match = onclickAttr.match(/usePowerUp\('(\w+)'\)/);
+                if (match) {
+                    powerType = match[1];
+                }
+                // Remove onclick to avoid conflicts
+                btn.removeAttribute('onclick');
+            }
+            
+            if (powerType) {
+                btn.addEventListener('click', (e) => {
+                    this.usePowerUp(powerType);
+                });
+            }
         });
     }
 
     showScreen(screenId) {
+        console.log('Switching to screen:', screenId);
         // Hide all screens
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -123,9 +144,17 @@ class InfiniteMatchGame {
         if (targetScreen) {
             targetScreen.classList.add('active');
             this.currentScreen = screenId;
+            console.log('Screen switched to:', screenId);
             
             // Add slide-in animation
             targetScreen.style.animation = 'slideIn 0.5s ease-out';
+            
+            // Debug: Log visible screens
+            const visibleScreens = Array.from(document.querySelectorAll('.screen.active')).map(s => s.id);
+            console.log('Currently visible screens:', visibleScreens);
+        } else {
+            console.error('Screen not found:', screenId);
+            console.error('Available screens:', Array.from(document.querySelectorAll('.screen')).map(s => s.id));
         }
     }
 
@@ -1128,95 +1157,100 @@ class InfiniteMatchGame {
 
 // Global functions for HTML onclick events
 function showModeSelect() {
-    game.showModeSelect();
+    console.log('showModeSelect called, game exists:', !!game);
+    if (game) game.showModeSelect();
+    else console.error('Game object not available');
 }
 
 function showSettings() {
-    game.showSettings();
+    console.log('showSettings called, game exists:', !!game);
+    if (game) game.showSettings();
+    else console.error('Game object not available for showSettings');
 }
 
 function showTitle() {
-    game.showTitle();
+    console.log('showTitle called, game exists:', !!game);
+    if (game) game.showTitle();
+    else console.error('Game object not available for showTitle');
 }
 
 function showLevelSelect() {
-    game.showLevelSelect();
+    if (game) game.showLevelSelect();
 }
 
 function showNews() {
-    game.showNews();
+    if (game) game.showNews();
 }
 
 function showOffers() {
-    game.showOffers();
+    if (game) game.showOffers();
 }
 
 function showLeaderboard() {
-    game.showLeaderboard();
+    if (game) game.showLeaderboard();
 }
 
 function startGame() {
-    game.startGame();
+    console.log('startGame called, game exists:', !!game);
+    if (game) game.startGame();
+    else console.error('Game object not available for startGame');
 }
 
 function pauseGame() {
-    game.pauseGame();
+    if (game) game.pauseGame();
 }
 
 function usePowerUp(type) {
-    game.usePowerUp(type);
+    if (game) game.usePowerUp(type);
 }
 
 function nextLevel() {
-    game.nextLevel();
+    if (game) game.nextLevel();
 }
 
 function closeModal() {
-    game.closeModal();
+    if (game) game.closeModal();
 }
 
 function closeTutorial() {
-    game.closeTutorial();
+    if (game) game.closeTutorial();
 }
 
 function showAdvancedSettings() {
-    game.showAdvancedSettings();
+    if (game) game.showAdvancedSettings();
 }
 
 // Login Modal Functions
 function showLoginModal() {
-    game.showLoginModal();
+    if (game) game.showLoginModal();
 }
 
 function closeLoginModal() {
-    game.closeLoginModal();
+    if (game) game.closeLoginModal();
 }
 
 function switchLoginTab(tab) {
-    game.switchLoginTab(tab);
+    if (game) game.switchLoginTab(tab);
 }
 
 function handleLogin() {
-    game.handleLogin();
+    if (game) game.handleLogin();
 }
 
 function handleRegister() {
-    game.handleRegister();
+    if (game) game.handleRegister();
 }
 
 function syncWithPlatform(platform) {
-    game.syncWithPlatform(platform);
+    if (game) game.syncWithPlatform(platform);
 }
 
 function selectLevel(levelNumber) {
-    game.selectLevel(levelNumber);
+    if (game) game.selectLevel(levelNumber);
 }
 
 // Initialize game when page loads
 let game;
-document.addEventListener('DOMContentLoaded', () => {
-    game = new InfiniteMatchGame();
-});
 
 // Add CSS animations dynamically
 const style = document.createElement('style');
