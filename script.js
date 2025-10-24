@@ -1158,42 +1158,74 @@ class InfiniteMatchGame {
 // Global functions for HTML onclick events
 function showModeSelect() {
     console.log('showModeSelect called, game exists:', !!game);
-    if (game) game.showModeSelect();
-    else console.error('Game object not available');
+    if (ensureGameReady() && game && typeof game.showModeSelect === 'function') {
+        game.showModeSelect();
+    } else {
+        console.error('Game object not available or showModeSelect method missing');
+    }
 }
 
 function showSettings() {
     console.log('showSettings called, game exists:', !!game);
-    if (game) game.showSettings();
-    else console.error('Game object not available for showSettings');
+    if (ensureGameReady() && game && typeof game.showSettings === 'function') {
+        game.showSettings();
+    } else {
+        console.error('Game object not available or showSettings method missing');
+    }
 }
 
 function showTitle() {
     console.log('showTitle called, game exists:', !!game);
-    if (game) game.showTitle();
-    else console.error('Game object not available for showTitle');
+    if (ensureGameReady() && game && typeof game.showTitle === 'function') {
+        game.showTitle();
+    } else {
+        console.error('Game object not available or showTitle method missing');
+    }
 }
 
 function showLevelSelect() {
-    if (game) game.showLevelSelect();
+    console.log('showLevelSelect called, game exists:', !!game);
+    if (ensureGameReady() && game && typeof game.showLevelSelect === 'function') {
+        game.showLevelSelect();
+    } else {
+        console.error('Game object not available or showLevelSelect method missing');
+    }
 }
 
 function showNews() {
-    if (game) game.showNews();
+    console.log('showNews called, game exists:', !!game);
+    if (ensureGameReady() && game && typeof game.showNews === 'function') {
+        game.showNews();
+    } else {
+        console.error('Game object not available or showNews method missing');
+    }
 }
 
 function showOffers() {
-    if (game) game.showOffers();
+    console.log('showOffers called, game exists:', !!game);
+    if (ensureGameReady() && game && typeof game.showOffers === 'function') {
+        game.showOffers();
+    } else {
+        console.error('Game object not available or showOffers method missing');
+    }
 }
 
 function showLeaderboard() {
-    if (game) game.showLeaderboard();
+    console.log('showLeaderboard called, game exists:', !!game);
+    if (ensureGameReady() && game && typeof game.showLeaderboard === 'function') {
+        game.showLeaderboard();
+    } else {
+        console.error('Game object not available or showLeaderboard method missing');
+    }
 }
 
 function startGame() {
     console.log('startGame called, game exists:', !!game);
-    if (game) game.startGame();
-    else console.error('Game object not available for startGame');
+    if (ensureGameReady() && game && typeof game.startGame === 'function') {
+        game.startGame();
+    } else {
+        console.error('Game object not available or startGame method missing');
+    }
 }
 
 function pauseGame() {
@@ -1217,12 +1249,22 @@ function closeTutorial() {
 }
 
 function showAdvancedSettings() {
-    if (game) game.showAdvancedSettings();
+    console.log('showAdvancedSettings called, game exists:', !!game);
+    if (ensureGameReady() && game && typeof game.showAdvancedSettings === 'function') {
+        game.showAdvancedSettings();
+    } else {
+        console.error('Game object not available or showAdvancedSettings method missing');
+    }
 }
 
 // Login Modal Functions
 function showLoginModal() {
-    if (game) game.showLoginModal();
+    console.log('showLoginModal called, game exists:', !!game);
+    if (ensureGameReady() && game && typeof game.showLoginModal === 'function') {
+        game.showLoginModal();
+    } else {
+        console.error('Game object not available or showLoginModal method missing');
+    }
 }
 
 function closeLoginModal() {
@@ -1251,6 +1293,36 @@ function selectLevel(levelNumber) {
 
 // Initialize game when page loads
 let game;
+
+// Robust game initialization function
+function initializeGame() {
+    if (typeof InfiniteMatchGame !== 'undefined' && (!game || typeof game === 'undefined')) {
+        try {
+            console.log('Initializing game...');
+            game = new InfiniteMatchGame();
+            window.game = game;
+            console.log('✅ Game initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to initialize game:', error);
+            return false;
+        }
+    } else if (game && typeof game !== 'undefined') {
+        console.log('Game already initialized');
+        return true;
+    } else {
+        console.error('❌ InfiniteMatchGame class not available');
+        return false;
+    }
+}
+
+// Ensure game is ready before calling methods
+function ensureGameReady() {
+    if (!game || typeof game === 'undefined') {
+        return initializeGame();
+    }
+    return true;
+}
 
 // Add CSS animations dynamically
 const style = document.createElement('style');
