@@ -1159,35 +1159,48 @@ class InfiniteMatchGame {
 function showModeSelect() {
     console.log('🎮 showModeSelect called, game exists:', !!window.game);
     
-    if (ensureGameReady() && window.game && typeof window.game.showModeSelect === 'function') {
+    // Try to ensure game is ready first
+    if (!window.game) {
+        console.log('🔄 Game not ready, attempting to initialize...');
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            try {
+                window.game = new InfiniteMatchGame();
+                console.log('✅ Game initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize game:', error);
+            }
+        }
+    }
+    
+    if (window.game && typeof window.game.showModeSelect === 'function') {
         console.log('🎮 Calling window.game.showModeSelect()');
         window.game.showModeSelect();
     } else {
         console.error('❌ Game object not available or showModeSelect method missing');
-        console.error('❌ ensureGameReady():', ensureGameReady());
-        console.error('❌ window.game:', window.game);
-        if (window.game) {
-            console.error('❌ window.game.showModeSelect:', typeof window.game.showModeSelect);
-        }
         
         // Fallback: Try to show the mode select screen directly
         console.log('🔄 Attempting fallback mode select...');
-        const modeSelectScreen = document.getElementById('mode-select');
-        const titleScreen = document.getElementById('title-screen');
-        if (modeSelectScreen && titleScreen) {
-            titleScreen.classList.remove('active');
-            modeSelectScreen.classList.add('active');
-            console.log('✅ Fallback mode select successful');
-        } else {
-            console.error('❌ Fallback mode select failed - screens not found');
-        }
+        switchToScreen('mode-select');
     }
 }
 
 function showSettings() {
     console.log('⚙️ showSettings called, game exists:', !!window.game);
     
-    if (ensureGameReady() && window.game && typeof window.game.showSettings === 'function') {
+    // Try to ensure game is ready first
+    if (!window.game) {
+        console.log('🔄 Game not ready, attempting to initialize...');
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            try {
+                window.game = new InfiniteMatchGame();
+                console.log('✅ Game initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize game:', error);
+            }
+        }
+    }
+    
+    if (window.game && typeof window.game.showSettings === 'function') {
         console.log('⚙️ Calling window.game.showSettings()');
         window.game.showSettings();
     } else {
@@ -1195,40 +1208,81 @@ function showSettings() {
         
         // Fallback: Try to show the settings screen directly
         console.log('🔄 Attempting fallback settings...');
-        const settingsScreen = document.getElementById('settings-screen');
-        const titleScreen = document.getElementById('title-screen');
-        if (settingsScreen && titleScreen) {
-            titleScreen.classList.remove('active');
-            settingsScreen.classList.add('active');
-            console.log('✅ Fallback settings successful');
-        } else {
-            console.error('❌ Fallback settings failed - screens not found');
-        }
+        switchToScreen('settings-screen');
     }
 }
 
 function showTitle() {
     console.log('showTitle called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showTitle === 'function') {
+    
+    // Try to ensure game is ready first
+    if (!window.game) {
+        console.log('🔄 Game not ready, attempting to initialize...');
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            try {
+                window.game = new InfiniteMatchGame();
+                console.log('✅ Game initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize game:', error);
+            }
+        }
+    }
+    
+    if (window.game && typeof window.game.showTitle === 'function') {
         window.game.showTitle();
     } else {
         console.error('Game object not available or showTitle method missing');
+        
+        // Fallback: Try to show the title screen directly
+        console.log('🔄 Attempting fallback title...');
+        switchToScreen('title-screen');
     }
 }
 
 function showLevelSelect() {
     console.log('showLevelSelect called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showLevelSelect === 'function') {
+    
+    // Try to ensure game is ready first
+    if (!window.game) {
+        console.log('🔄 Game not ready, attempting to initialize...');
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            try {
+                window.game = new InfiniteMatchGame();
+                console.log('✅ Game initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize game:', error);
+            }
+        }
+    }
+    
+    if (window.game && typeof window.game.showLevelSelect === 'function') {
         window.game.showLevelSelect();
     } else {
         console.error('Game object not available or showLevelSelect method missing');
+        
+        // Fallback: Try to show the level select screen directly
+        console.log('🔄 Attempting fallback level select...');
+        switchToScreen('level-select');
     }
 }
 
 function showNews() {
     console.log('📰 showNews called, game exists:', !!window.game);
     
-    if (ensureGameReady() && window.game && typeof window.game.showNews === 'function') {
+    // Try to ensure game is ready first
+    if (!window.game) {
+        console.log('🔄 Game not ready, attempting to initialize...');
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            try {
+                window.game = new InfiniteMatchGame();
+                console.log('✅ Game initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize game:', error);
+            }
+        }
+    }
+    
+    if (window.game && typeof window.game.showNews === 'function') {
         console.log('📰 Calling window.game.showNews()');
         window.game.showNews();
     } else {
@@ -1236,15 +1290,7 @@ function showNews() {
         
         // Fallback: Try to show the news screen directly
         console.log('🔄 Attempting fallback news...');
-        const newsScreen = document.getElementById('news-screen');
-        const titleScreen = document.getElementById('title-screen');
-        if (newsScreen && titleScreen) {
-            titleScreen.classList.remove('active');
-            newsScreen.classList.add('active');
-            console.log('✅ Fallback news successful');
-        } else {
-            console.error('❌ Fallback news failed - screens not found');
-        }
+        switchToScreen('news-screen');
     }
 }
 
@@ -1308,7 +1354,20 @@ function showAdvancedSettings() {
 function showLoginModal() {
     console.log('👤 showLoginModal called, game exists:', !!window.game);
     
-    if (ensureGameReady() && window.game && typeof window.game.showLoginModal === 'function') {
+    // Try to ensure game is ready first
+    if (!window.game) {
+        console.log('🔄 Game not ready, attempting to initialize...');
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            try {
+                window.game = new InfiniteMatchGame();
+                console.log('✅ Game initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize game:', error);
+            }
+        }
+    }
+    
+    if (window.game && typeof window.game.showLoginModal === 'function') {
         console.log('👤 Calling window.game.showLoginModal()');
         window.game.showLoginModal();
     } else {
@@ -1376,6 +1435,21 @@ function initializeGame() {
     }
 }
 
+// Auto-initialize game when script loads
+if (typeof InfiniteMatchGame !== 'undefined') {
+    console.log('🚀 Auto-initializing game...');
+    initializeGame();
+} else {
+    console.log('⏳ Waiting for InfiniteMatchGame class to be available...');
+    // Try again after a short delay
+    setTimeout(() => {
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            console.log('🚀 Delayed auto-initialization...');
+            initializeGame();
+        }
+    }, 100);
+}
+
 // Ensure game is ready before calling methods
 function ensureGameReady() {
     if (!window.game || typeof window.game === 'undefined') {
@@ -1391,6 +1465,49 @@ function ensureGameReady() {
     game = window.game; // Keep local reference for compatibility
     return true;
 }
+
+// Make sure global functions are available immediately
+window.showModeSelect = showModeSelect;
+window.showSettings = showSettings;
+window.showTitle = showTitle;
+window.showLevelSelect = showLevelSelect;
+window.showNews = showNews;
+window.showOffers = showOffers;
+window.showLeaderboard = showLeaderboard;
+window.startGame = startGame;
+window.pauseGame = pauseGame;
+window.usePowerUp = usePowerUp;
+window.nextLevel = nextLevel;
+window.closeModal = closeModal;
+window.closeTutorial = closeTutorial;
+window.showAdvancedSettings = showAdvancedSettings;
+window.showLoginModal = showLoginModal;
+window.closeLoginModal = closeLoginModal;
+window.switchLoginTab = switchLoginTab;
+window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
+window.syncWithPlatform = syncWithPlatform;
+window.selectLevel = selectLevel;
+
+// Add a simple screen switching function that works without the game object
+function switchToScreen(screenId) {
+    console.log('Switching to screen:', screenId);
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    // Show target screen
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+        console.log('✅ Screen switched to:', screenId);
+    } else {
+        console.error('❌ Screen not found:', screenId);
+    }
+}
+
+// Make the screen switching function available globally
+window.switchToScreen = switchToScreen;
 
 // Add CSS animations dynamically
 const style = document.createElement('style');

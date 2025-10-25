@@ -872,6 +872,14 @@
             } else {
                 console.log('✅ WebGL files valid, using WebGL game');
             }
+            
+            // Ensure global functions are available immediately
+            console.log('🔧 Ensuring global functions are available...');
+            if (typeof showModeSelect !== 'function') {
+                console.error('❌ showModeSelect function not available');
+            } else {
+                console.log('✅ showModeSelect function available');
+            }
         });
         
         // Fallback initialization in case DOMContentLoaded doesn't work
