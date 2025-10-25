@@ -37,28 +37,101 @@ class InfiniteMatchGame {
     init() {
         console.log('Game init started');
         
-        // Initialize game board
-        this.initializeGameBoard();
+        try {
+            // Initialize game board
+            this.initializeGameBoard();
+            
+            // Add event listeners
+            this.addEventListeners();
+            
+            // Check authentication status
+            this.checkAuthStatus();
+            
+            // Initialize platform detection (non-blocking)
+            this.initializePlatformDetection().catch(error => {
+                console.warn('Platform detection failed:', error);
+            });
+            
+            // Initialize account economy system (non-blocking)
+            this.initializeAccountEconomy().catch(error => {
+                console.warn('Account economy initialization failed:', error);
+            });
+            
+            // Optimized loading - reduce timeout and add progress feedback
+            this.startLoadingSequence();
+            
+            console.log('Game init completed');
+        } catch (error) {
+            console.error('Game initialization failed:', error);
+            // Fallback to title screen even if initialization fails
+            setTimeout(() => {
+                this.showScreen('title-screen');
+            }, 1000);
+        }
+    }
+    
+    startLoadingSequence() {
+        let progress = 0;
+        const loadingBar = document.getElementById('loading-bar-fill');
+        const loadingText = document.getElementById('loading-text');
+        const loadingPercentage = document.getElementById('loading-percentage');
+        const loadingError = document.getElementById('loading-error');
         
-        // Add event listeners
-        this.addEventListeners();
+        const updateProgress = (newProgress, text) => {
+            progress = newProgress;
+            if (loadingBar) {
+                loadingBar.style.width = `${progress}%`;
+            }
+            if (loadingText) {
+                loadingText.textContent = text || 'Loading...';
+            }
+            if (loadingPercentage) {
+                loadingPercentage.textContent = `${progress}%`;
+            }
+        };
         
-        // Check authentication status
-        this.checkAuthStatus();
+        // Simulate loading with progress updates
+        const loadingSteps = [
+            { progress: 15, text: 'Initializing game engine...', delay: 150 },
+            { progress: 30, text: 'Loading game assets...', delay: 200 },
+            { progress: 50, text: 'Setting up UI components...', delay: 150 },
+            { progress: 70, text: 'Initializing platform detection...', delay: 200 },
+            { progress: 85, text: 'Loading user data...', delay: 150 },
+            { progress: 95, text: 'Finalizing setup...', delay: 100 },
+            { progress: 100, text: 'Ready to play!', delay: 100 }
+        ];
         
-        // Initialize platform detection
-        this.initializePlatformDetection();
+        let currentStep = 0;
+        const runNextStep = () => {
+            if (currentStep < loadingSteps.length) {
+                const step = loadingSteps[currentStep];
+                updateProgress(step.progress, step.text);
+                currentStep++;
+                setTimeout(runNextStep, step.delay);
+            } else {
+                // Loading complete
+                setTimeout(() => {
+                    console.log('Loading complete, switching to title screen');
+                    this.showScreen('title-screen');
+                }, 200);
+            }
+        };
         
-        // Initialize account economy system
-        this.initializeAccountEconomy();
+        // Show error message if loading takes too long
+        const errorTimeout = setTimeout(() => {
+            if (loadingError) {
+                loadingError.style.display = 'block';
+            }
+        }, 8000);
         
-        // Simulate loading
-        setTimeout(() => {
-            console.log('Loading complete, switching to title screen');
-            this.showScreen('title-screen');
-        }, 3000);
+        // Clear error timeout when loading completes
+        const originalRunNextStep = runNextStep;
+        runNextStep = () => {
+            clearTimeout(errorTimeout);
+            originalRunNextStep();
+        };
         
-        console.log('Game init completed');
+        runNextStep();
     }
 
     addEventListeners() {
@@ -134,27 +207,41 @@ class InfiniteMatchGame {
 
     showScreen(screenId) {
         console.log('Switching to screen:', screenId);
-        // Hide all screens
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-        });
+        
+        try {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
 
-        // Show target screen
-        const targetScreen = document.getElementById(screenId);
-        if (targetScreen) {
-            targetScreen.classList.add('active');
-            this.currentScreen = screenId;
-            console.log('Screen switched to:', screenId);
-            
-            // Add slide-in animation
-            targetScreen.style.animation = 'slideIn 0.5s ease-out';
-            
-            // Debug: Log visible screens
-            const visibleScreens = Array.from(document.querySelectorAll('.screen.active')).map(s => s.id);
-            console.log('Currently visible screens:', visibleScreens);
-        } else {
-            console.error('Screen not found:', screenId);
-            console.error('Available screens:', Array.from(document.querySelectorAll('.screen')).map(s => s.id));
+            // Show target screen
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+                this.currentScreen = screenId;
+                console.log('✅ Screen switched to:', screenId);
+                
+                // Add slide-in animation
+                targetScreen.style.animation = 'slideIn 0.5s ease-out';
+                
+                // Debug: Log visible screens
+                const visibleScreens = Array.from(document.querySelectorAll('.screen.active')).map(s => s.id);
+                console.log('Currently visible screens:', visibleScreens);
+            } else {
+                console.error('❌ Screen not found:', screenId);
+                console.error('Available screens:', Array.from(document.querySelectorAll('.screen')).map(s => s.id));
+                
+                // Fallback to title screen if target screen not found
+                if (screenId !== 'title-screen') {
+                    console.log('🔄 Falling back to title screen');
+                    this.showScreen('title-screen');
+                }
+            }
+        } catch (error) {
+            console.error('Error switching screen:', error);
+            // Emergency fallback
+            document.getElementById('loading-screen').classList.remove('active');
+            document.getElementById('title-screen').classList.add('active');
         }
     }
 

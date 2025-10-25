@@ -2,10 +2,66 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Infinite Match - Puzzle Game</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Loading screen improvements */
+        .loading-percentage {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #4ecdc4;
+            font-weight: 600;
+        }
+        
+        .loading-bar-fill {
+            transition: width 0.3s ease-out;
+            background: linear-gradient(90deg, #4ecdc4, #44a08d);
+            border-radius: 10px;
+            height: 100%;
+            width: 0%;
+        }
+        
+        .loading-error {
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .loading-error a {
+            text-decoration: underline;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .loading-text {
+                font-size: 14px;
+            }
+            
+            .loading-percentage {
+                font-size: 12px;
+            }
+            
+            .royal-logo {
+                transform: scale(0.8);
+            }
+        }
+        
+        /* Prevent zoom on input focus for mobile */
+        input, select, textarea {
+            font-size: 16px;
+        }
+        
+        /* Better touch targets for mobile */
+        .menu-btn, .btn, button {
+            min-height: 44px;
+            min-width: 44px;
+        }
+    </style>
 </head>
 <body>
     <!-- Loading Screen -->
@@ -20,10 +76,14 @@
             </div>
             <div class="loading-progress-container">
                 <div class="loading-bar-bg">
-                    <div class="loading-bar-fill"></div>
+                    <div class="loading-bar-fill" id="loading-bar-fill"></div>
                 </div>
+                <div class="loading-percentage" id="loading-percentage">0%</div>
             </div>
-            <div class="loading-text">Loading...</div>
+            <div class="loading-text" id="loading-text">Loading...</div>
+            <div class="loading-error" id="loading-error" style="display: none; color: #ff6b6b; margin-top: 10px;">
+                Loading is taking longer than expected. <a href="#" onclick="location.reload()" style="color: #4ecdc4;">Refresh page</a>
+            </div>
         </div>
     </div>
 
@@ -753,29 +813,25 @@
                 const dataUrl = "Build/WebGL.data";
                 const wasmUrl = "Build/WebGL.wasm";
                 
-                // Check if data file exists and is not a placeholder
-                const dataResponse = await fetch(dataUrl);
+                // Quick check - if files don't exist or are placeholders, use fallback immediately
+                const dataResponse = await fetch(dataUrl, { method: 'HEAD' });
                 if (!dataResponse.ok) {
                     console.log('❌ WebGL.data not found, using fallback');
                     return false;
                 }
                 
-                const dataText = await dataResponse.text();
-                if (dataText.includes('Unity WebGL Data File') && dataText.length < 100) {
-                    console.log('❌ WebGL.data is placeholder file, using fallback');
-                    return false;
-                }
-                
-                // Check if WASM file exists and is not a placeholder
-                const wasmResponse = await fetch(wasmUrl);
+                const wasmResponse = await fetch(wasmUrl, { method: 'HEAD' });
                 if (!wasmResponse.ok) {
                     console.log('❌ WebGL.wasm not found, using fallback');
                     return false;
                 }
                 
-                const wasmText = await wasmResponse.text();
-                if (wasmText.includes('Unity WebGL WASM File') && wasmText.length < 100) {
-                    console.log('❌ WebGL.wasm is placeholder file, using fallback');
+                // Check file sizes - if they're too small, they're likely placeholders
+                const dataSize = parseInt(dataResponse.headers.get('content-length') || '0');
+                const wasmSize = parseInt(wasmResponse.headers.get('content-length') || '0');
+                
+                if (dataSize < 1000 || wasmSize < 1000) {
+                    console.log('❌ WebGL files are too small (likely placeholders), using fallback');
                     return false;
                 }
                 
@@ -842,43 +898,86 @@
             }
         }
 
-        // Override the game initialization to check WebGL files first
+        // Optimized game initialization with faster loading
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 Starting game initialization...');
+            console.log('🚀 Starting optimized game initialization...');
             
-            // Wait a bit for scripts to load completely
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Detect platform capabilities
+            const platformInfo = {
+                isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+                isTouch: 'ontouchstart' in window,
+                hasWebGL: !!window.WebGLRenderingContext,
+                hasWebGL2: !!window.WebGL2RenderingContext,
+                isLowEnd: navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4
+            };
             
-            // Debug: Log all available globals
-            console.log('Available globals:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Match') || key.includes('show')));
+            console.log('📱 Platform info:', platformInfo);
             
-            // Initialize the game
-            const gameInitialized = initializeGameInstance();
+            // Start loading check immediately
+            const webglCheckPromise = checkWebGLFiles();
             
-            // Debug: Check which screens are visible
-            console.log('Screen visibility check:');
-            document.querySelectorAll('.screen').forEach(screen => {
-                const isActive = screen.classList.contains('active');
-                const isVisible = screen.style.display !== 'none';
-                console.log(`Screen ${screen.id}: active=${isActive}, visible=${isVisible}`);
+            // Initialize game instance in parallel
+            const gameInitPromise = new Promise(resolve => {
+                setTimeout(() => {
+                    const gameInitialized = initializeGameInstance();
+                    resolve(gameInitialized);
+                }, 50);
             });
             
-            const webglValid = await checkWebGLFiles();
-            if (!webglValid) {
-                console.log('🔄 WebGL files invalid, using fallback game...');
+            // Wait for both to complete
+            const [webglValid, gameInitialized] = await Promise.all([webglCheckPromise, gameInitPromise]);
+            
+            console.log('🎮 Game initialization complete');
+            console.log('📊 WebGL valid:', webglValid);
+            console.log('🎯 Game initialized:', gameInitialized);
+            
+            // Show appropriate screen based on WebGL availability and platform capabilities
+            if (!webglValid || platformInfo.isLowEnd) {
+                console.log('🔄 Using fallback game (no WebGL or low-end device)');
                 // Hide loading screen and show title screen immediately
                 document.getElementById('loading-screen').classList.remove('active');
                 document.getElementById('title-screen').classList.add('active');
             } else {
-                console.log('✅ WebGL files valid, using WebGL game');
+                console.log('✅ Using WebGL game');
+                // Let the game's own loading logic handle the transition
             }
             
-            // Ensure global functions are available immediately
-            console.log('🔧 Ensuring global functions are available...');
-            if (typeof showModeSelect !== 'function') {
-                console.error('❌ showModeSelect function not available');
-            } else {
-                console.log('✅ showModeSelect function available');
+            // Ensure global functions are available
+            console.log('🔧 Verifying global functions...');
+            const requiredFunctions = ['showModeSelect', 'showSettings', 'showTitle', 'showNews', 'showLoginModal'];
+            requiredFunctions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    console.log(`✅ ${funcName} available`);
+                } else {
+                    console.error(`❌ ${funcName} not available`);
+                }
+            });
+            
+            // Add platform-specific optimizations
+            if (platformInfo.isMobile) {
+                document.body.classList.add('mobile-device');
+                // Prevent zoom on double tap
+                let lastTouchEnd = 0;
+                document.addEventListener('touchend', function (event) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        event.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, false);
+            }
+            
+            if (platformInfo.isLowEnd) {
+                document.body.classList.add('low-end-device');
+                // Reduce animations for low-end devices
+                const style = document.createElement('style');
+                style.textContent = `
+                    * {
+                        animation-duration: 0.1s !important;
+                        transition-duration: 0.1s !important;
+                    }
+                `;
+                document.head.appendChild(style);
             }
         });
         
@@ -889,6 +988,26 @@
                 initializeGameInstance();
             }
         }, 2000);
+        
+        // Emergency loading timeout - force show title screen after 10 seconds
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const titleScreen = document.getElementById('title-screen');
+            
+            if (loadingScreen && loadingScreen.classList.contains('active')) {
+                console.log('⚠️ Loading timeout reached, forcing title screen');
+                loadingScreen.classList.remove('active');
+                if (titleScreen) {
+                    titleScreen.classList.add('active');
+                }
+                
+                // Show error message to user
+                const loadingText = document.querySelector('.loading-text');
+                if (loadingText) {
+                    loadingText.innerHTML = 'Loading took too long. Please refresh the page if issues persist.';
+                }
+            }
+        }, 10000);
     </script>
 </body>
 </html>
