@@ -744,6 +744,9 @@
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>
     <script>
+        // Declare game variable globally
+        window.game = null;
+        
         // Check if WebGL files are valid and fallback immediately if not
         async function checkWebGLFiles() {
             try {
@@ -784,26 +787,15 @@
             }
         }
 
-        // Override the game initialization to check WebGL files first
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 Initializing game...');
-            
-            // Wait a bit for scripts to load completely
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // Debug: Log all available globals
-            console.log('Available globals:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Match') || key.includes('show')));
-            
-            // Always initialize the game first
-            if (typeof InfiniteMatchGame !== 'undefined') {
+        // Initialize game function
+        function initializeGameInstance() {
+            if (typeof InfiniteMatchGame !== 'undefined' && !window.game) {
                 try {
-                    game = new InfiniteMatchGame();
+                    console.log('🚀 Initializing game...');
+                    window.game = new InfiniteMatchGame();
                     console.log('✅ Game initialized successfully');
-                    console.log('Game object:', game);
-                    console.log('Game methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(game)));
-                    
-                    // Make sure game is globally available
-                    window.game = game;
+                    console.log('Game object:', window.game);
+                    console.log('Game methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.game)));
                     
                     // Test button functions
                     console.log('Testing button functions...');
@@ -811,13 +803,57 @@
                     console.log('showSettings available:', typeof showSettings);
                     console.log('showTitle available:', typeof showTitle);
                     console.log('showNews available:', typeof showNews);
+                    console.log('showLoginModal available:', typeof showLoginModal);
+                    
+                    // Test button click handlers
+                    console.log('Testing button click handlers...');
+                    const playBtn = document.querySelector('.play-btn');
+                    const settingsBtn = document.querySelector('.settings-btn');
+                    const loginBtn = document.querySelector('.login-btn');
+                    const newsBtn = document.querySelector('.news-btn');
+                    
+                    if (playBtn) {
+                        console.log('Play button found, onclick:', playBtn.onclick);
+                        playBtn.addEventListener('click', (e) => {
+                            console.log('Play button clicked via addEventListener');
+                        });
+                    }
+                    if (settingsBtn) {
+                        console.log('Settings button found, onclick:', settingsBtn.onclick);
+                    }
+                    if (loginBtn) {
+                        console.log('Login button found, onclick:', loginBtn.onclick);
+                    }
+                    if (newsBtn) {
+                        console.log('News button found, onclick:', newsBtn.onclick);
+                    }
+                    
+                    return true;
                 } catch (error) {
                     console.error('❌ Failed to initialize game:', error);
+                    return false;
                 }
+            } else if (window.game) {
+                console.log('✅ Game already initialized');
+                return true;
             } else {
                 console.error('❌ InfiniteMatchGame class not found');
-                console.log('Available globals:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Match')));
+                return false;
             }
+        }
+
+        // Override the game initialization to check WebGL files first
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Starting game initialization...');
+            
+            // Wait a bit for scripts to load completely
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Debug: Log all available globals
+            console.log('Available globals:', Object.keys(window).filter(key => key.includes('Game') || key.includes('Match') || key.includes('show')));
+            
+            // Initialize the game
+            const gameInitialized = initializeGameInstance();
             
             // Debug: Check which screens are visible
             console.log('Screen visibility check:');
@@ -840,15 +876,9 @@
         
         // Fallback initialization in case DOMContentLoaded doesn't work
         setTimeout(() => {
-            if (typeof game === 'undefined' && typeof InfiniteMatchGame !== 'undefined') {
+            if (!window.game && typeof InfiniteMatchGame !== 'undefined') {
                 console.log('🔄 Fallback game initialization...');
-                try {
-                    game = new InfiniteMatchGame();
-                    window.game = game;
-                    console.log('✅ Fallback game initialization successful');
-                } catch (error) {
-                    console.error('❌ Fallback game initialization failed:', error);
-                }
+                initializeGameInstance();
             }
         }, 2000);
     </script>

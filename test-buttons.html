@@ -8,72 +8,121 @@
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
-            background: #f0f0f0;
+            background: #1a1a2e;
+            color: white;
         }
         .test-button {
-            background: #007bff;
+            display: block;
+            margin: 10px 0;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #f39c12, #e74c3c);
             color: white;
             border: none;
-            padding: 10px 20px;
-            margin: 10px;
-            border-radius: 5px;
+            border-radius: 25px;
+            font-size: 16px;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
         .test-button:hover {
-            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
         }
         .log {
-            background: #000;
-            color: #0f0;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
+            background: #2c3e50;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
             font-family: monospace;
-            height: 200px;
+            white-space: pre-wrap;
+            max-height: 300px;
             overflow-y: auto;
         }
     </style>
 </head>
 <body>
-    <h1>Button Test</h1>
-    <button class="test-button" onclick="testButton1()">Test Button 1</button>
-    <button class="test-button" onclick="testButton2()">Test Button 2</button>
-    <button class="test-button" onclick="testButton3()">Test Button 3</button>
+    <h1>Main Menu Button Test</h1>
+    <p>Click the buttons below to test if they work:</p>
+    
+    <button class="test-button" onclick="testShowModeSelect()">Test Show Mode Select</button>
+    <button class="test-button" onclick="testShowSettings()">Test Show Settings</button>
+    <button class="test-button" onclick="testShowLoginModal()">Test Show Login Modal</button>
+    <button class="test-button" onclick="testShowNews()">Test Show News</button>
+    <button class="test-button" onclick="testShowTitle()">Test Show Title</button>
     
     <div class="log" id="log"></div>
 
+    <script src="script.js"></script>
     <script>
         function log(message) {
             const logDiv = document.getElementById('log');
-            logDiv.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
             logDiv.scrollTop = logDiv.scrollHeight;
         }
 
-        function testButton1() {
-            log('Button 1 clicked!');
-        }
-
-        function testButton2() {
-            log('Button 2 clicked!');
-        }
-
-        function testButton3() {
-            log('Button 3 clicked!');
-        }
-
-        // Test if the game object exists
-        function checkGameObject() {
-            if (typeof game !== 'undefined') {
-                log('Game object exists: ' + typeof game);
-            } else {
-                log('Game object does not exist');
+        function testShowModeSelect() {
+            log('Testing showModeSelect...');
+            try {
+                showModeSelect();
+                log('✅ showModeSelect called successfully');
+            } catch (error) {
+                log('❌ showModeSelect failed: ' + error.message);
             }
         }
 
-        // Check every second
-        setInterval(checkGameObject, 1000);
+        function testShowSettings() {
+            log('Testing showSettings...');
+            try {
+                showSettings();
+                log('✅ showSettings called successfully');
+            } catch (error) {
+                log('❌ showSettings failed: ' + error.message);
+            }
+        }
 
-        log('Page loaded, testing buttons...');
+        function testShowLoginModal() {
+            log('Testing showLoginModal...');
+            try {
+                showLoginModal();
+                log('✅ showLoginModal called successfully');
+            } catch (error) {
+                log('❌ showLoginModal failed: ' + error.message);
+            }
+        }
+
+        function testShowNews() {
+            log('Testing showNews...');
+            try {
+                showNews();
+                log('✅ showNews called successfully');
+            } catch (error) {
+                log('❌ showNews failed: ' + error.message);
+            }
+        }
+
+        function testShowTitle() {
+            log('Testing showTitle...');
+            try {
+                showTitle();
+                log('✅ showTitle called successfully');
+            } catch (error) {
+                log('❌ showTitle failed: ' + error.message);
+            }
+        }
+
+        // Log initial state
+        log('Page loaded. Checking game state...');
+        log('window.game exists: ' + !!window.game);
+        log('InfiniteMatchGame class exists: ' + (typeof InfiniteMatchGame !== 'undefined'));
+        
+        // Wait a bit and check again
+        setTimeout(() => {
+            log('After 1 second:');
+            log('window.game exists: ' + !!window.game);
+            if (window.game) {
+                log('Game methods available: ' + Object.getOwnPropertyNames(Object.getPrototypeOf(window.game)).join(', '));
+            }
+        }, 1000);
     </script>
 </body>
 </html>
