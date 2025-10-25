@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Button Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .test-button {
+            background: linear-gradient(45deg, #f39c12, #e74c3c);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+        }
+        .test-button.success {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+        }
+        .test-button.error {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+        .test-button.warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+        .log {
+            background: rgba(0,0,0,0.5);
+            color: #0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            font-family: monospace;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 18px;
+        }
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .test-results {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Complete Button Functionality Test</h1>
+        
+        <div class="status" id="status">
+            Status: Initializing...
+        </div>
+        
+        <div class="test-section">
+            <h2>Main Menu Buttons</h2>
+            <div class="button-grid">
+                <button class="test-button" onclick="testButton('showModeSelect')">Mode Select</button>
+                <button class="test-button" onclick="testButton('showSettings')">Settings</button>
+                <button class="test-button" onclick="testButton('showTitle')">Title Screen</button>
+                <button class="test-button" onclick="testButton('showNews')">News</button>
+                <button class="test-button" onclick="testButton('showLoginModal')">Login Modal</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Game Control Buttons</h2>
+            <div class="button-grid">
+                <button class="test-button" onclick="testButton('showLevelSelect')">Level Select</button>
+                <button class="test-button" onclick="testButton('startGame')">Start Game</button>
+                <button class="test-button" onclick="testButton('pauseGame')">Pause Game</button>
+                <button class="test-button" onclick="testButton('nextLevel')">Next Level</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Screen Navigation Test</h2>
+            <div class="button-grid">
+                <button class="test-button" onclick="testScreenSwitch('title-screen')">Title Screen</button>
+                <button class="test-button" onclick="testScreenSwitch('mode-select')">Mode Select</button>
+                <button class="test-button" onclick="testScreenSwitch('settings-screen')">Settings</button>
+                <button class="test-button" onclick="testScreenSwitch('level-select')">Level Select</button>
+                <button class="test-button" onclick="testScreenSwitch('news-screen')">News</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <div class="button-grid">
+                <button class="test-button" onclick="runAllTests()">Run All Tests</button>
+                <button class="test-button" onclick="checkGameStatus()">Check Game Status</button>
+                <button class="test-button" onclick="clearLog()">Clear Log</button>
+                <button class="test-button" onclick="testScreenVisibility()">Test Screen Visibility</button>
+            </div>
+        </div>
+        
+        <div class="test-results" id="test-results">
+            <h3>Test Results</h3>
+            <div id="results-summary">No tests run yet</div>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let testResults = {};
+        let testCount = 0;
+        let successCount = 0;
+        let errorCount = 0;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = 'Status: ' + message;
+        }
+
+        function updateResults() {
+            const resultsDiv = document.getElementById('results-summary');
+            resultsDiv.innerHTML = `
+                <p>Total Tests: ${testCount}</p>
+                <p>Successful: ${successCount}</p>
+                <p>Failed: ${errorCount}</p>
+                <p>Success Rate: ${testCount > 0 ? ((successCount / testCount) * 100).toFixed(1) : 0}%</p>
+            `;
+        }
+
+        function testButton(functionName) {
+            const button = event.target;
+            const originalText = button.textContent;
+            testCount++;
+            
+            try {
+                log(`Testing ${functionName}...`);
+                
+                // Check if function exists
+                if (typeof window[functionName] !== 'function') {
+                    throw new Error(`Function ${functionName} does not exist`);
+                }
+                
+                // Call the function
+                const result = window[functionName]();
+                
+                // Mark as success
+                button.classList.add('success');
+                button.textContent = '✓ ' + originalText;
+                testResults[functionName] = 'SUCCESS';
+                successCount++;
+                log(`✅ ${functionName} executed successfully`);
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.classList.remove('success');
+                    button.textContent = originalText;
+                }, 2000);
+                
+            } catch (error) {
+                // Mark as error
+                button.classList.add('error');
+                button.textContent = '✗ ' + originalText;
+                testResults[functionName] = 'ERROR: ' + error.message;
+                errorCount++;
+                log(`❌ ${functionName} failed: ${error.message}`);
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.classList.remove('error');
+                    button.textContent = originalText;
+                }, 2000);
+            }
+            
+            updateResults();
+        }
+
+        function testScreenSwitch(screenId) {
+            const button = event.target;
+            const originalText = button.textContent;
+            testCount++;
+            
+            try {
+                log(`Testing screen switch to ${screenId}...`);
+                
+                // Check if switchToScreen function exists
+                if (typeof window.switchToScreen !== 'function') {
+                    throw new Error('switchToScreen function does not exist');
+                }
+                
+                // Call the function
+                window.switchToScreen(screenId);
+                
+                // Check if screen is now visible
+                const screen = document.getElementById(screenId);
+                if (screen && screen.classList.contains('active')) {
+                    button.classList.add('success');
+                    button.textContent = '✓ ' + originalText;
+                    testResults[`screen_${screenId}`] = 'SUCCESS';
+                    successCount++;
+                    log(`✅ Screen switch to ${screenId} successful`);
+                } else {
+                    throw new Error(`Screen ${screenId} is not visible after switch`);
+                }
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.classList.remove('success');
+                    button.textContent = originalText;
+                }, 2000);
+                
+            } catch (error) {
+                button.classList.add('error');
+                button.textContent = '✗ ' + originalText;
+                testResults[`screen_${screenId}`] = 'ERROR: ' + error.message;
+                errorCount++;
+                log(`❌ Screen switch to ${screenId} failed: ${error.message}`);
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    button.classList.remove('error');
+                    button.textContent = originalText;
+                }, 2000);
+            }
+            
+            updateResults();
+        }
+
+        function testScreenVisibility() {
+            log('=== SCREEN VISIBILITY TEST ===');
+            const screens = ['loading-screen', 'title-screen', 'mode-select', 'settings-screen', 'level-select', 'news-screen'];
+            
+            screens.forEach(screenId => {
+                const screen = document.getElementById(screenId);
+                if (screen) {
+                    const isActive = screen.classList.contains('active');
+                    const isVisible = screen.style.display !== 'none';
+                    log(`${screenId}: active=${isActive}, visible=${isVisible}`);
+                } else {
+                    log(`${screenId}: NOT FOUND`);
+                }
+            });
+        }
+
+        function runAllTests() {
+            log('Running all button tests...');
+            const buttons = document.querySelectorAll('.test-button');
+            let index = 0;
+            
+            function testNext() {
+                if (index < buttons.length) {
+                    const button = buttons[index];
+                    if (button.textContent.includes('Run All') || button.textContent.includes('Clear') || button.textContent.includes('Check') || button.textContent.includes('Test Screen')) {
+                        index++;
+                        testNext();
+                        return;
+                    }
+                    button.click();
+                    index++;
+                    setTimeout(testNext, 1000);
+                } else {
+                    log('All tests completed!');
+                    showTestSummary();
+                }
+            }
+            
+            testNext();
+        }
+
+        function showTestSummary() {
+            log('\n=== FINAL TEST SUMMARY ===');
+            log(`Total tests: ${testCount}`);
+            log(`Successful: ${successCount}`);
+            log(`Failed: ${errorCount}`);
+            log(`Success rate: ${testCount > 0 ? ((successCount / testCount) * 100).toFixed(1) : 0}%`);
+            
+            if (errorCount > 0) {
+                log('\nFailed tests:');
+                Object.entries(testResults).forEach(([name, result]) => {
+                    if (result !== 'SUCCESS') {
+                        log(`- ${name}: ${result}`);
+                    }
+                });
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            testResults = {};
+            testCount = 0;
+            successCount = 0;
+            errorCount = 0;
+            updateResults();
+        }
+
+        function checkGameStatus() {
+            log('=== GAME STATUS CHECK ===');
+            log('typeof game: ' + typeof game);
+            log('typeof window.game: ' + typeof window.game);
+            log('typeof InfiniteMatchGame: ' + typeof InfiniteMatchGame);
+            
+            // Check function availability
+            const functions = ['showModeSelect', 'showSettings', 'showTitle', 'showNews', 'showLoginModal', 'switchToScreen'];
+            log('\nFunction availability:');
+            functions.forEach(func => {
+                const exists = typeof window[func] === 'function';
+                log(`${func}: ${exists ? '✅ EXISTS' : '❌ MISSING'}`);
+            });
+            
+            // Check screen elements
+            const screens = ['title-screen', 'mode-select', 'settings-screen', 'level-select', 'news-screen'];
+            log('\nScreen elements:');
+            screens.forEach(screenId => {
+                const screen = document.getElementById(screenId);
+                log(`${screenId}: ${screen ? '✅ EXISTS' : '❌ MISSING'}`);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Complete button test page loaded');
+            updateStatus('Ready for testing');
+            
+            // Check initial state
+            setTimeout(() => {
+                checkGameStatus();
+            }, 1000);
+        });
+    </script>
+    
+    <!-- Load the actual game scripts -->
+    <script src="platform-detection.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

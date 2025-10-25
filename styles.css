@@ -26,10 +26,18 @@ body {
     flex-direction: column;
     background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
     overflow-y: auto;
+    z-index: 1;
 }
 
 .screen.active {
     display: flex;
+    z-index: 2;
+}
+
+/* Ensure loading screen is visible by default */
+#loading-screen {
+    display: flex;
+    z-index: 10;
 }
 
 /* Loading Screen - Infinite Match Style */
