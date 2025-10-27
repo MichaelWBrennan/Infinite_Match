@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Game Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .section h2 {
+            margin-top: 0;
+            color: #FFD700;
+            font-size: 1.5em;
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            color: #4CAF50;
+        }
+        
+        .error {
+            color: #F44336;
+        }
+        
+        .info {
+            color: #2196F3;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .feature-card h3 {
+            margin-top: 0;
+            color: #FFD700;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Local Game Integration Test</h1>
+        
+        <div class="section">
+            <h2>🚀 Initialization</h2>
+            <button class="button" onclick="initializeGame()">Initialize Game</button>
+            <button class="button" onclick="checkStatus()">Check Status</button>
+            <button class="button" onclick="resetGame()">Reset Game</button>
+            <div id="initStatus" class="status"></div>
+        </div>
+        
+        <div class="section">
+            <h2>📊 Game Statistics</h2>
+            <button class="button" onclick="showStats()">Show Stats</button>
+            <button class="button" onclick="showDebugInfo()">Debug Info</button>
+            <div id="statsDisplay" class="stats"></div>
+        </div>
+        
+        <div class="grid">
+            <div class="feature-card">
+                <h3>🎯 Level Management</h3>
+                <button class="button" onclick="testLevels()">Test Levels</button>
+                <button class="button" onclick="unlockLevel(2)">Unlock Level 2</button>
+                <button class="button" onclick="completeLevel(1, 1500, 3)">Complete Level 1</button>
+                <div id="levelStatus" class="status"></div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🎓 Tutorial System</h3>
+                <button class="button" onclick="testTutorial()">Test Tutorial</button>
+                <button class="button" onclick="completeTutorialStep('welcome')">Complete Welcome</button>
+                <button class="button" onclick="skipTutorial()">Skip Tutorial</button>
+                <div id="tutorialStatus" class="status"></div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>⚙️ Settings</h3>
+                <button class="button" onclick="testSettings()">Test Settings</button>
+                <button class="button" onclick="updateAudioSettings()">Update Audio</button>
+                <button class="button" onclick="resetSettings()">Reset Settings</button>
+                <div id="settingsStatus" class="status"></div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>👥 Social Features</h3>
+                <button class="button" onclick="testSocial()">Test Social</button>
+                <button class="button" onclick="addTestFriend()">Add Friend</button>
+                <button class="button" onclick="sendGift()">Send Gift</button>
+                <div id="socialStatus" class="status"></div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🎉 Events</h3>
+                <button class="button" onclick="testEvents()">Test Events</button>
+                <button class="button" onclick="participateInEvent('daily_challenge')">Join Daily Challenge</button>
+                <button class="button" onclick="claimSpecialOffer('starter_pack')">Claim Offer</button>
+                <div id="eventsStatus" class="status"></div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🎒 Inventory</h3>
+                <button class="button" onclick="testInventory()">Test Inventory</button>
+                <button class="button" onclick="useItem('bomb', 1)">Use Bomb</button>
+                <button class="button" onclick="equipItem('castle_theme')">Equip Theme</button>
+                <div id="inventoryStatus" class="status"></div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>💰 Economy</h3>
+                <button class="button" onclick="testEconomy()">Test Economy</button>
+                <button class="button" onclick="addCoins(500)">Add Coins</button>
+                <button class="button" onclick="claimDailyReward()">Claim Daily Reward</button>
+                <div id="economyStatus" class="status"></div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🔔 Notifications</h3>
+                <button class="button" onclick="testNotifications()">Test Notifications</button>
+                <button class="button" onclick="createTestNotification()">Create Notification</button>
+                <button class="button" onclick="markAllRead()">Mark All Read</button>
+                <div id="notificationStatus" class="status"></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>💾 Save/Load System</h2>
+            <button class="button" onclick="saveGame()">Save Game</button>
+            <button class="button" onclick="loadGame()">Load Game</button>
+            <button class="button" onclick="exportSaveData()">Export Save</button>
+            <button class="button" onclick="importSaveData()">Import Save</button>
+            <div id="saveStatus" class="status"></div>
+        </div>
+    </div>
+
+    <!-- Load all the local game services -->
+    <script src="src/services/LocalLevelManager.js"></script>
+    <script src="src/services/LocalTutorialEngine.js"></script>
+    <script src="src/services/LocalSettingsManager.js"></script>
+    <script src="src/services/LocalSocialManager.js"></script>
+    <script src="src/services/LocalEventsManager.js"></script>
+    <script src="src/services/LocalInventoryManager.js"></script>
+    <script src="src/services/LocalEconomyManager.js"></script>
+    <script src="src/services/LocalNotificationManager.js"></script>
+    <script src="src/services/LocalGameManager.js"></script>
+    <script src="src/services/LocalGameAPI.js"></script>
+
+    <script>
+        let gameAPI = null;
+        
+        // Wait for the API to be ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait a bit for the API to initialize
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (window.gameAPI) {
+                gameAPI = window.gameAPI;
+                log('initStatus', 'Game API loaded successfully!', 'success');
+            } else {
+                log('initStatus', 'Failed to load Game API', 'error');
+            }
+        });
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+        
+        function clearLog(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+        
+        // Initialization functions
+        async function initializeGame() {
+            clearLog('initStatus');
+            log('initStatus', 'Initializing game...', 'info');
+            
+            if (gameAPI) {
+                const result = await gameAPI.initialize();
+                if (result.success) {
+                    log('initStatus', 'Game initialized successfully!', 'success');
+                } else {
+                    log('initStatus', `Failed to initialize: ${result.error}`, 'error');
+                }
+            } else {
+                log('initStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function checkStatus() {
+            clearLog('initStatus');
+            if (gameAPI) {
+                const isReady = gameAPI.isReady();
+                const debugInfo = gameAPI.getDebugInfo();
+                log('initStatus', `Ready: ${isReady}`, isReady ? 'success' : 'error');
+                log('initStatus', `Debug Info: ${JSON.stringify(debugInfo, null, 2)}`, 'info');
+            } else {
+                log('initStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function resetGame() {
+            clearLog('initStatus');
+            if (gameAPI) {
+                gameAPI.resetGame();
+                log('initStatus', 'Game reset successfully!', 'success');
+            } else {
+                log('initStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Statistics functions
+        function showStats() {
+            clearLog('statsDisplay');
+            if (gameAPI) {
+                const stats = gameAPI.getGameStats();
+                if (stats) {
+                    const statsHtml = `
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.level.currentLevel}</div>
+                            <div class="stat-label">Current Level</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.level.levelsCompleted}</div>
+                            <div class="stat-label">Levels Completed</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.economy.coins}</div>
+                            <div class="stat-label">Coins</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.economy.gems}</div>
+                            <div class="stat-label">Gems</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.economy.energy}</div>
+                            <div class="stat-label">Energy</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.achievements.completed}/${stats.achievements.total}</div>
+                            <div class="stat-label">Achievements</div>
+                        </div>
+                    `;
+                    document.getElementById('statsDisplay').innerHTML = statsHtml;
+                } else {
+                    log('statsDisplay', 'No stats available', 'error');
+                }
+            } else {
+                log('statsDisplay', 'Game API not available', 'error');
+            }
+        }
+        
+        function showDebugInfo() {
+            clearLog('initStatus');
+            if (gameAPI) {
+                const debugInfo = gameAPI.getDebugInfo();
+                log('initStatus', `Debug Info: ${JSON.stringify(debugInfo, null, 2)}`, 'info');
+            } else {
+                log('initStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Level management functions
+        function testLevels() {
+            clearLog('levelStatus');
+            if (gameAPI) {
+                const levels = gameAPI.getLevels();
+                log('levelStatus', `Found ${levels.length} levels`, 'info');
+                levels.forEach(level => {
+                    log('levelStatus', `Level ${level.id}: ${level.name} (${level.unlocked ? 'Unlocked' : 'Locked'})`, 'info');
+                });
+            } else {
+                log('levelStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function unlockLevel(levelId) {
+            clearLog('levelStatus');
+            if (gameAPI) {
+                const result = gameAPI.unlockLevel(levelId);
+                log('levelStatus', `Unlock level ${levelId}: ${result ? 'Success' : 'Failed'}`, result ? 'success' : 'error');
+            } else {
+                log('levelStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function completeLevel(levelId, score, stars) {
+            clearLog('levelStatus');
+            if (gameAPI) {
+                const result = gameAPI.completeLevel(levelId, score, stars, 25, 120000);
+                if (result.success) {
+                    log('levelStatus', `Completed level ${levelId} with ${stars} stars!`, 'success');
+                    log('levelStatus', `Rewards: ${JSON.stringify(result.rewards)}`, 'info');
+                } else {
+                    log('levelStatus', `Failed to complete level: ${result.error}`, 'error');
+                }
+            } else {
+                log('levelStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Tutorial functions
+        function testTutorial() {
+            clearLog('tutorialStatus');
+            if (gameAPI) {
+                const status = gameAPI.getTutorialStatus();
+                const currentStep = gameAPI.getCurrentTutorialStep();
+                log('tutorialStatus', `Tutorial Status: ${JSON.stringify(status)}`, 'info');
+                if (currentStep) {
+                    log('tutorialStatus', `Current Step: ${currentStep.title}`, 'info');
+                } else {
+                    log('tutorialStatus', 'No current tutorial step', 'info');
+                }
+            } else {
+                log('tutorialStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function completeTutorialStep(stepId) {
+            clearLog('tutorialStatus');
+            if (gameAPI) {
+                const result = gameAPI.completeTutorialStep(stepId);
+                if (result.success) {
+                    log('tutorialStatus', `Completed step: ${stepId}`, 'success');
+                    log('tutorialStatus', `Rewards: ${JSON.stringify(result.rewards)}`, 'info');
+                } else {
+                    log('tutorialStatus', `Failed to complete step: ${result.error}`, 'error');
+                }
+            } else {
+                log('tutorialStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function skipTutorial() {
+            clearLog('tutorialStatus');
+            if (gameAPI) {
+                const result = gameAPI.skipTutorial();
+                log('tutorialStatus', `Tutorial skipped: ${result.success ? 'Success' : 'Failed'}`, result.success ? 'success' : 'error');
+            } else {
+                log('tutorialStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Settings functions
+        function testSettings() {
+            clearLog('settingsStatus');
+            if (gameAPI) {
+                const settings = gameAPI.getSettings();
+                log('settingsStatus', `Settings loaded: ${JSON.stringify(settings, null, 2)}`, 'info');
+            } else {
+                log('settingsStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function updateAudioSettings() {
+            clearLog('settingsStatus');
+            if (gameAPI) {
+                const result = gameAPI.updateAudioSettings({
+                    musicVolume: 0.5,
+                    soundVolume: 0.7,
+                    musicEnabled: true,
+                    soundEnabled: true
+                });
+                log('settingsStatus', `Audio settings updated: ${result ? 'Success' : 'Failed'}`, result ? 'success' : 'error');
+            } else {
+                log('settingsStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function resetSettings() {
+            clearLog('settingsStatus');
+            if (gameAPI) {
+                // This would need to be implemented in the settings manager
+                log('settingsStatus', 'Settings reset functionality not implemented yet', 'info');
+            } else {
+                log('settingsStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Social functions
+        function testSocial() {
+            clearLog('socialStatus');
+            if (gameAPI) {
+                const friends = gameAPI.getFriends();
+                const gifts = gameAPI.getGifts();
+                log('socialStatus', `Friends: ${friends.length}`, 'info');
+                log('socialStatus', `Gifts: ${gifts.length}`, 'info');
+                friends.forEach(friend => {
+                    log('socialStatus', `Friend: ${friend.name} (Level ${friend.level})`, 'info');
+                });
+            } else {
+                log('socialStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function addTestFriend() {
+            clearLog('socialStatus');
+            if (gameAPI) {
+                const result = gameAPI.addFriend('test_friend', 'Test Friend');
+                if (result.success) {
+                    log('socialStatus', 'Friend added successfully!', 'success');
+                } else {
+                    log('socialStatus', `Failed to add friend: ${result.error}`, 'error');
+                }
+            } else {
+                log('socialStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function sendGift() {
+            clearLog('socialStatus');
+            if (gameAPI) {
+                const result = gameAPI.sendGift('test_friend', 'coins');
+                if (result.success) {
+                    log('socialStatus', 'Gift sent successfully!', 'success');
+                } else {
+                    log('socialStatus', `Failed to send gift: ${result.error}`, 'error');
+                }
+            } else {
+                log('socialStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Events functions
+        function testEvents() {
+            clearLog('eventsStatus');
+            if (gameAPI) {
+                const events = gameAPI.getActiveEvents();
+                const offers = gameAPI.getSpecialOffers();
+                log('eventsStatus', `Active Events: ${events.length}`, 'info');
+                log('eventsStatus', `Special Offers: ${offers.length}`, 'info');
+                events.forEach(event => {
+                    log('eventsStatus', `Event: ${event.name}`, 'info');
+                });
+            } else {
+                log('eventsStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function participateInEvent(eventId) {
+            clearLog('eventsStatus');
+            if (gameAPI) {
+                const result = gameAPI.participateInEvent(eventId);
+                if (result.success) {
+                    log('eventsStatus', `Joined event: ${eventId}`, 'success');
+                } else {
+                    log('eventsStatus', `Failed to join event: ${result.error}`, 'error');
+                }
+            } else {
+                log('eventsStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function claimSpecialOffer(offerId) {
+            clearLog('eventsStatus');
+            if (gameAPI) {
+                const result = gameAPI.claimSpecialOffer(offerId);
+                if (result.success) {
+                    log('eventsStatus', `Claimed offer: ${offerId}`, 'success');
+                } else {
+                    log('eventsStatus', `Failed to claim offer: ${result.error}`, 'error');
+                }
+            } else {
+                log('eventsStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Inventory functions
+        function testInventory() {
+            clearLog('inventoryStatus');
+            if (gameAPI) {
+                const inventory = gameAPI.getInventory();
+                const availableItems = gameAPI.getAvailableItems();
+                log('inventoryStatus', `Inventory Items: ${inventory.length}`, 'info');
+                log('inventoryStatus', `Available Items: ${availableItems.length}`, 'info');
+                inventory.forEach(item => {
+                    log('inventoryStatus', `${item.itemDetails.name}: ${item.quantity}`, 'info');
+                });
+            } else {
+                log('inventoryStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function useItem(itemId, quantity) {
+            clearLog('inventoryStatus');
+            if (gameAPI) {
+                const result = gameAPI.useItem(itemId, quantity);
+                if (result.success) {
+                    log('inventoryStatus', `Used ${quantity} ${itemId}`, 'success');
+                    log('inventoryStatus', `Effects: ${JSON.stringify(result.effects)}`, 'info');
+                } else {
+                    log('inventoryStatus', `Failed to use item: ${result.error}`, 'error');
+                }
+            } else {
+                log('inventoryStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function equipItem(itemId) {
+            clearLog('inventoryStatus');
+            if (gameAPI) {
+                const result = gameAPI.equipItem(itemId);
+                if (result.success) {
+                    log('inventoryStatus', `Equipped: ${itemId}`, 'success');
+                } else {
+                    log('inventoryStatus', `Failed to equip: ${result.error}`, 'error');
+                }
+            } else {
+                log('inventoryStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Economy functions
+        function testEconomy() {
+            clearLog('economyStatus');
+            if (gameAPI) {
+                const economyData = gameAPI.getEconomyData();
+                log('economyStatus', `Economy Data: ${JSON.stringify(economyData, null, 2)}`, 'info');
+            } else {
+                log('economyStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function addCoins(amount) {
+            clearLog('economyStatus');
+            if (gameAPI) {
+                const result = gameAPI.addCurrency('coins', amount, 'test');
+                if (result.success) {
+                    log('economyStatus', `Added ${amount} coins`, 'success');
+                } else {
+                    log('economyStatus', `Failed to add coins: ${result.error}`, 'error');
+                }
+            } else {
+                log('economyStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function claimDailyReward() {
+            clearLog('economyStatus');
+            if (gameAPI) {
+                const result = gameAPI.claimDailyReward();
+                if (result.success) {
+                    log('economyStatus', 'Daily reward claimed!', 'success');
+                    log('economyStatus', `Rewards: ${JSON.stringify(result.rewards)}`, 'info');
+                } else {
+                    log('economyStatus', `Failed to claim daily reward: ${result.error}`, 'error');
+                }
+            } else {
+                log('economyStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Notification functions
+        function testNotifications() {
+            clearLog('notificationStatus');
+            if (gameAPI) {
+                const notifications = gameAPI.getNotifications();
+                log('notificationStatus', `Notifications: ${notifications.length}`, 'info');
+                notifications.forEach(notification => {
+                    log('notificationStatus', `${notification.title}: ${notification.message}`, 'info');
+                });
+            } else {
+                log('notificationStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function createTestNotification() {
+            clearLog('notificationStatus');
+            if (gameAPI) {
+                // This would need to be implemented in the notification manager
+                log('notificationStatus', 'Create notification functionality not implemented yet', 'info');
+            } else {
+                log('notificationStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function markAllRead() {
+            clearLog('notificationStatus');
+            if (gameAPI) {
+                const result = gameAPI.clearAllNotifications();
+                if (result.success) {
+                    log('notificationStatus', 'All notifications cleared!', 'success');
+                } else {
+                    log('notificationStatus', `Failed to clear notifications: ${result.error}`, 'error');
+                }
+            } else {
+                log('notificationStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        // Save/Load functions
+        function saveGame() {
+            clearLog('saveStatus');
+            if (gameAPI) {
+                const result = gameAPI.saveGame();
+                log('saveStatus', `Game saved: ${result ? 'Success' : 'Failed'}`, result ? 'success' : 'error');
+            } else {
+                log('saveStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function loadGame() {
+            clearLog('saveStatus');
+            if (gameAPI) {
+                const result = gameAPI.loadGame();
+                log('saveStatus', `Game loaded: ${result ? 'Success' : 'Failed'}`, result ? 'success' : 'error');
+            } else {
+                log('saveStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function exportSaveData() {
+            clearLog('saveStatus');
+            if (gameAPI) {
+                const saveData = gameAPI.exportSaveData();
+                log('saveStatus', 'Save data exported to console', 'info');
+                console.log('Save Data:', saveData);
+            } else {
+                log('saveStatus', 'Game API not available', 'error');
+            }
+        }
+        
+        function importSaveData() {
+            clearLog('saveStatus');
+            if (gameAPI) {
+                // This would need a file input or paste functionality
+                log('saveStatus', 'Import save data functionality not implemented yet', 'info');
+            } else {
+                log('saveStatus', 'Game API not available', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
