@@ -74,7 +74,6 @@ class InfiniteMatchGame {
         let progress = 0;
         const loadingBar = document.getElementById('loading-bar-fill');
         const loadingText = document.getElementById('loading-text');
-        const loadingPercentage = document.getElementById('loading-percentage');
         const loadingError = document.getElementById('loading-error');
         
         const updateProgress = (newProgress, text) => {
@@ -85,19 +84,13 @@ class InfiniteMatchGame {
             if (loadingText) {
                 loadingText.textContent = text || 'Loading...';
             }
-            if (loadingPercentage) {
-                loadingPercentage.textContent = `${progress}%`;
-            }
         };
         
         // Simulate loading with progress updates
         const loadingSteps = [
-            { progress: 15, text: 'Initializing game engine...', delay: 150 },
-            { progress: 30, text: 'Loading game assets...', delay: 200 },
-            { progress: 50, text: 'Setting up UI components...', delay: 150 },
-            { progress: 70, text: 'Initializing platform detection...', delay: 200 },
-            { progress: 85, text: 'Loading user data...', delay: 150 },
-            { progress: 95, text: 'Finalizing setup...', delay: 100 },
+            { progress: 25, text: 'Initializing game engine...', delay: 100 },
+            { progress: 50, text: 'Loading game assets...', delay: 100 },
+            { progress: 75, text: 'Setting up UI components...', delay: 100 },
             { progress: 100, text: 'Ready to play!', delay: 100 }
         ];
         
@@ -122,7 +115,7 @@ class InfiniteMatchGame {
             if (loadingError) {
                 loadingError.style.display = 'block';
             }
-        }, 8000);
+        }, 3000);
         
         // Clear error timeout when loading completes
         const originalRunNextStep = runNextStep;
