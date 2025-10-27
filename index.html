@@ -422,6 +422,9 @@
         </div>
     </div>
 
+    <!-- Unity Canvas (hidden by default) -->
+    <canvas id="unity-canvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000;"></canvas>
+
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
         <div class="game-hud">
@@ -790,54 +793,27 @@
         </div>
     </div>
 
+    <!-- Phaser 3 Game Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+    <script src="phaser3-game.js"></script>
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>
     <script>
         // Declare game variable globally
         window.game = null;
         
-        // Check if WebGL files are valid and fallback immediately if not
-        async function checkWebGLFiles() {
+        // Check if Phaser 3 is available
+        function checkPhaser3() {
             try {
-                const dataUrl = "Build/WebGL.data";
-                const wasmUrl = "Build/WebGL.wasm";
-                
-                // Quick check - if files don't exist or are placeholders, use fallback immediately
-                const dataResponse = await fetch(dataUrl, { method: 'HEAD' });
-                if (!dataResponse.ok) {
-                    console.log('❌ WebGL.data not found, using fallback');
+                if (typeof Phaser !== 'undefined' && typeof PhaserMatch3Game !== 'undefined') {
+                    console.log('✅ Phaser 3 and game class found');
+                    return true;
+                } else {
+                    console.log('❌ Phaser 3 not available, using fallback');
                     return false;
                 }
-                
-                const wasmResponse = await fetch(wasmUrl, { method: 'HEAD' });
-                if (!wasmResponse.ok) {
-                    console.log('❌ WebGL.wasm not found, using fallback');
-                    return false;
-                }
-                
-                // Check file sizes - if they're too small, they're likely placeholders
-                const dataSize = parseInt(dataResponse.headers.get('content-length') || '0');
-                const wasmSize = parseInt(wasmResponse.headers.get('content-length') || '0');
-                
-                if (dataSize < 1000 || wasmSize < 1000) {
-                    console.log('❌ WebGL files are too small (likely placeholders), using fallback');
-                    return false;
-                }
-                
-                // Check if files contain placeholder content
-                const dataContent = await fetch(dataUrl).then(r => r.text());
-                const wasmContent = await fetch(wasmUrl).then(r => r.text());
-                
-                if (dataContent.includes('// Unity WebGL Data - Replace with actual Unity build') || 
-                    wasmContent.includes('// Unity WebGL WASM - Replace with actual Unity build')) {
-                    console.log('❌ WebGL files are placeholders, using fallback');
-                    return false;
-                }
-                
-                console.log('✅ WebGL files appear valid');
-                return true;
             } catch (error) {
-                console.log('❌ Error checking WebGL files:', error);
+                console.log('❌ Error checking Phaser 3:', error);
                 return false;
             }
         }
@@ -897,9 +873,9 @@
             }
         }
 
-        // Optimized game initialization with faster loading
+        // Phaser 3 game initialization
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 Starting optimized game initialization...');
+            console.log('🚀 Starting Phaser 3 game initialization...');
             
             // Detect platform capabilities
             const platformInfo = {
@@ -912,8 +888,8 @@
             
             console.log('📱 Platform info:', platformInfo);
             
-            // Skip WebGL checking since Unity build is not available
-            const webglCheckPromise = Promise.resolve(false);
+            // Check Phaser 3 availability
+            const phaserCheckPromise = checkPhaser3();
             
             // Initialize game instance in parallel
             const gameInitPromise = new Promise(resolve => {
@@ -924,17 +900,33 @@
             });
             
             // Wait for both to complete
-            const [webglValid, gameInitialized] = await Promise.all([webglCheckPromise, gameInitPromise]);
+            const [phaserValid, gameInitialized] = await Promise.all([phaserCheckPromise, gameInitPromise]);
             
             console.log('🎮 Game initialization complete');
-            console.log('📊 WebGL valid:', webglValid);
+            console.log('📊 Phaser 3 valid:', phaserValid);
             console.log('🎯 Game initialized:', gameInitialized);
             
-        // Always use fallback game since Unity WebGL build is not available
-        console.log('🔄 Using fallback game (Unity WebGL build not available)');
-        // Hide loading screen and show title screen immediately
-        document.getElementById('loading-screen').classList.remove('active');
-        document.getElementById('title-screen').classList.add('active');
+        if (phaserValid) {
+            console.log('🎮 Phaser 3 found, initializing game...');
+            // Initialize Phaser 3 game
+            initializePhaser3Game();
+        } else {
+            console.log('🔄 Using fallback game (Phaser 3 not available)');
+            
+            // Initialize the fallback game
+            if (typeof InfiniteMatchGame !== 'undefined') {
+                try {
+                    window.game = new InfiniteMatchGame();
+                    console.log('✅ Fallback game initialized successfully');
+                } catch (error) {
+                    console.error('❌ Failed to initialize fallback game:', error);
+                }
+            }
+            
+            // Hide loading screen and show title screen immediately
+            document.getElementById('loading-screen').classList.remove('active');
+            document.getElementById('title-screen').classList.add('active');
+        }
             
             // Ensure global functions are available
             console.log('🔧 Verifying global functions...');
@@ -1002,6 +994,71 @@
                 }
             }
         }, 5000);
+        
+        // Initialize Phaser 3 game
+        function initializePhaser3Game() {
+            console.log('🚀 Initializing Phaser 3 game...');
+            
+            // Show loading progress
+            const progressBar = document.getElementById('loading-bar-fill');
+            const progressText = document.getElementById('loading-text');
+            
+            // Simulate loading progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 100) progress = 100;
+                
+                progressBar.style.width = progress + '%';
+                progressText.textContent = `Loading Phaser 3... ${Math.round(progress)}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    
+                    try {
+                        // Create Phaser 3 game container
+                        const gameContainer = document.createElement('div');
+                        gameContainer.id = 'phaser-game-container';
+                        gameContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: #2c3e50;';
+                        document.body.appendChild(gameContainer);
+                        
+                        // Initialize Phaser 3 game
+                        window.game = new PhaserMatch3Game();
+                        
+                        // Hide loading screen and show game
+                        setTimeout(() => {
+                            document.getElementById('loading-screen').classList.remove('active');
+                            document.getElementById('title-screen').classList.add('active');
+                            console.log('✅ Phaser 3 game loaded successfully');
+                        }, 500);
+                        
+                    } catch (error) {
+                        console.error('❌ Failed to load Phaser 3 game:', error);
+                        // Fallback to JavaScript game
+                        fallbackToJavaScriptGame();
+                    }
+                }
+            }, 100);
+        }
+        
+        // Fallback to JavaScript game
+        function fallbackToJavaScriptGame() {
+            console.log('🔄 Falling back to JavaScript game...');
+            
+            // Hide loading screen and show title screen
+            document.getElementById('loading-screen').classList.remove('active');
+            document.getElementById('title-screen').classList.add('active');
+            
+            // Initialize the fallback game
+            if (typeof InfiniteMatchGame !== 'undefined') {
+                try {
+                    window.game = new InfiniteMatchGame();
+                    console.log('✅ Fallback game initialized successfully');
+                } catch (error) {
+                    console.error('❌ Failed to initialize fallback game:', error);
+                }
+            }
+        }
     </script>
 </body>
 </html>

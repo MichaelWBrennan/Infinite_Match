@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "symbols": {
+    "UnityEngine": {
+      "Application": {
+        "Quit": "void Quit()",
+        "LoadLevel": "void LoadLevel(string levelName)",
+        "LoadLevelAdditive": "void LoadLevelAdditive(string levelName)"
+      },
+      "Debug": {
+        "Log": "void Log(object message)",
+        "LogError": "void LogError(object message)",
+        "LogWarning": "void LogWarning(object message)"
+      }
+    },
+    "GameManager": {
+      "StartGame": "void StartGame()",
+      "EndGame": "void EndGame()",
+      "UpdateScore": "void UpdateScore(int score)",
+      "PauseGame": "void PauseGame()",
+      "ResumeGame": "void ResumeGame()"
+    }
+  }
+}
