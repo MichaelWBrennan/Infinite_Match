@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phaser 3 Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #2c3e50;
+            font-family: Arial, sans-serif;
+        }
+        #test-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #test-info {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #phaser-game-container {
+            border: 2px solid #4ecdc4;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="test-container">
+        <div id="test-info">
+            <h1>Phaser 3 Match-3 Game Test</h1>
+            <p>Testing Phaser 3 integration with all features</p>
+        </div>
+        <div id="phaser-game-container"></div>
+    </div>
+
+    <!-- Phaser 3 Game Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+    <script src="phaser3-game.js"></script>
+    
+    <script>
+        // Test Phaser 3 integration
+        console.log('🧪 Testing Phaser 3 integration...');
+        
+        // Check if Phaser is loaded
+        if (typeof Phaser !== 'undefined') {
+            console.log('✅ Phaser 3 loaded successfully');
+        } else {
+            console.error('❌ Phaser 3 failed to load');
+        }
+        
+        // Check if game class is loaded
+        if (typeof PhaserMatch3Game !== 'undefined') {
+            console.log('✅ PhaserMatch3Game class loaded successfully');
+        } else {
+            console.error('❌ PhaserMatch3Game class failed to load');
+        }
+        
+        // Initialize the game
+        try {
+            const game = new PhaserMatch3Game();
+            console.log('✅ Phaser 3 game initialized successfully');
+            console.log('🎮 Game instance:', game);
+        } catch (error) {
+            console.error('❌ Failed to initialize Phaser 3 game:', error);
+        }
+    </script>
+</body>
+</html>
