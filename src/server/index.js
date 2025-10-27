@@ -189,6 +189,10 @@ app.use('/api/game', gameRoutes);
 import accountEconomyRoutes from '../routes/account-economy.js';
 app.use('/api/account-economy', accountEconomyRoutes);
 
+// Import and use Stripe payment routes
+import stripeRoutes from '../routes/stripe.js';
+app.use('/api/stripe', stripeRoutes);
+
 // Platform detection endpoint
 app.get('/api/platform/detect', (req, res) => {
   const platform = detectPlatform(req);

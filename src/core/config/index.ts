@@ -108,6 +108,27 @@ interface GameConfig {
   };
 }
 
+interface PaymentsConfig {
+  stripe: {
+    publishableKey: string;
+    secretKey: string;
+    webhookSecret: string;
+    apiVersion: string;
+    currency: string;
+    country: string;
+  };
+  apple: {
+    sharedSecret: string;
+  };
+  google: {
+    serviceAccountKeyPath: string;
+  };
+  pricing: {
+    defaultCurrency: string;
+    countryOverridesPath: string;
+  };
+}
+
 class OptimizedConfig {
   public readonly server: ServerConfig;
   public readonly security: SecurityConfig;
@@ -115,6 +136,7 @@ class OptimizedConfig {
   public readonly cloud: CloudConfig;
   public readonly analytics: AnalyticsConfig;
   public readonly game: GameConfig;
+  public readonly payments: PaymentsConfig;
 
   constructor() {
     this.server = {
@@ -214,6 +236,27 @@ class OptimizedConfig {
         boardSize: parseInt(process.env['GAME_BOARD_SIZE'] || '8', 10),
         colors: (process.env['GAME_COLORS'] || 'red,blue,green,yellow,purple,orange').split(','),
         minMatch: parseInt(process.env['GAME_MIN_MATCH'] || '3', 10),
+      },
+    };
+
+    this.payments = {
+      stripe: {
+        publishableKey: process.env['STRIPE_PUBLISHABLE_KEY'] || '',
+        secretKey: process.env['STRIPE_SECRET_KEY'] || '',
+        webhookSecret: process.env['STRIPE_WEBHOOK_SECRET'] || '',
+        apiVersion: process.env['STRIPE_API_VERSION'] || '2023-10-16',
+        currency: process.env['STRIPE_CURRENCY'] || 'usd',
+        country: process.env['STRIPE_COUNTRY'] || 'US',
+      },
+      apple: {
+        sharedSecret: process.env['APPLE_SHARED_SECRET'] || '',
+      },
+      google: {
+        serviceAccountKeyPath: process.env['GOOGLE_SERVICE_ACCOUNT_KEY_PATH'] || '',
+      },
+      pricing: {
+        defaultCurrency: process.env['DEFAULT_CURRENCY'] || 'USD',
+        countryOverridesPath: process.env['COUNTRY_OVERRIDES_PATH'] || 'config/pricing/overrides.json',
       },
     };
   }
