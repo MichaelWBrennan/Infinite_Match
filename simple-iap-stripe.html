@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Match - Stripe IAP</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Your existing game UI -->
+        <div id="shop-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>🛒 Shop</h2>
+                <div class="shop-items">
+                    <!-- Coin Packs -->
+                    <div class="shop-item">
+                        <h3>Small Coin Pack</h3>
+                        <p>1,000 Coins</p>
+                        <p class="price">$0.99</p>
+                        <button onclick="purchaseItem('coins_small', 0.99, 1000)">Buy Now</button>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Medium Coin Pack</h3>
+                        <p>3,000 Coins</p>
+                        <p class="price">$2.99</p>
+                        <button onclick="purchaseItem('coins_medium', 2.99, 3000)">Buy Now</button>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Large Coin Pack</h3>
+                        <p>10,000 Coins</p>
+                        <p class="price">$9.99</p>
+                        <button onclick="purchaseItem('coins_large', 9.99, 10000)">Buy Now</button>
+                    </div>
+                    
+                    <!-- Gem Packs -->
+                    <div class="shop-item">
+                        <h3>Small Gem Pack</h3>
+                        <p>50 Gems</p>
+                        <p class="price">$1.99</p>
+                        <button onclick="purchaseItem('gems_small', 1.99, 0, 50)">Buy Now</button>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Large Gem Pack</h3>
+                        <p>200 Gems</p>
+                        <p class="price">$7.99</p>
+                        <button onclick="purchaseItem('gems_large', 7.99, 0, 200)">Buy Now</button>
+                    </div>
+                    
+                    <!-- Energy Packs -->
+                    <div class="shop-item">
+                        <h3>Energy Pack</h3>
+                        <p>5 Energy</p>
+                        <p class="price">$0.99</p>
+                        <button onclick="purchaseItem('energy_pack', 0.99, 0, 0, 5)">Buy Now</button>
+                    </div>
+                </div>
+                <button onclick="closeShop()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Stripe (you'll need to get your publishable key)
+        const stripe = Stripe('pk_test_your_publishable_key_here');
+        
+        class StripeIAPGame {
+            constructor() {
+                this.gameState = {
+                    score: 0,
+                    moves: 30,
+                    level: 1,
+                    gems: 100,
+                    coins: 1000,
+                    energy: 5,
+                    inventory: {
+                        bomb: 3,
+                        rainbow: 1,
+                        lightning: 2
+                    },
+                    purchases: [],
+                    settings: {
+                        music: true,
+                        sfx: true
+                    }
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                this.loadGame();
+                this.renderUI();
+                this.setupEventListeners();
+            }
+            
+            // Process Stripe payment
+            async processStripePayment(productId, amount, coins = 0, gems = 0, energy = 0) {
+                try {
+                    // Create payment intent on your server
+                    const response = await fetch('/api/create-payment-intent', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            productId,
+                            amount: Math.round(amount * 100), // Convert to cents
+                            currency: 'usd'
+                        })
+                    });
+                    
+                    const { clientSecret } = await response.json();
+                    
+                    // Confirm payment with Stripe
+                    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+                        payment_method: {
+                            card: {
+                                // You can add a card element here for more control
+                            }
+                        }
+                    });
+                    
+                    if (error) {
+                        console.error('Payment failed:', error);
+                        this.showNotification('Payment failed: ' + error.message, 'error');
+                    } else {
+                        // Payment successful
+                        this.addPurchasedItems(coins, gems, energy);
+                        this.recordPurchase(productId, amount, paymentIntent.id);
+                        this.showNotification('Purchase successful!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Payment error:', error);
+                    this.showNotification('Payment error. Please try again.', 'error');
+                }
+            }
+            
+            // Add purchased items to game
+            addPurchasedItems(coins, gems, energy) {
+                if (coins > 0) this.gameState.coins += coins;
+                if (gems > 0) this.gameState.gems += gems;
+                if (energy > 0) this.gameState.energy += energy;
+                
+                this.saveGame();
+                this.renderUI();
+            }
+            
+            // Record purchase
+            recordPurchase(productId, amount, paymentIntentId) {
+                this.gameState.purchases.push({
+                    id: productId,
+                    amount: amount,
+                    timestamp: new Date().toISOString(),
+                    stripePaymentIntentId: paymentIntentId
+                });
+                
+                this.saveGame();
+            }
+            
+            // Save game
+            saveGame() {
+                localStorage.setItem('infiniteMatchStripeIAP', JSON.stringify(this.gameState));
+            }
+            
+            // Load game
+            loadGame() {
+                const saved = localStorage.getItem('infiniteMatchStripeIAP');
+                if (saved) {
+                    this.gameState = { ...this.gameState, ...JSON.parse(saved) };
+                }
+            }
+            
+            // Show notification
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#F44336' : '#2196F3'};
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    font-family: 'Fredoka', sans-serif;
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+            
+            // Render UI
+            renderUI() {
+                const scoreEl = document.getElementById('score');
+                const gemsEl = document.getElementById('gems');
+                const coinsEl = document.getElementById('coins');
+                const energyEl = document.getElementById('energy');
+                
+                if (scoreEl) scoreEl.textContent = this.gameState.score;
+                if (gemsEl) gemsEl.textContent = this.gameState.gems;
+                if (coinsEl) coinsEl.textContent = this.gameState.coins;
+                if (energyEl) energyEl.textContent = this.gameState.energy;
+            }
+            
+            setupEventListeners() {
+                const shopBtn = document.getElementById('shop-btn');
+                if (shopBtn) {
+                    shopBtn.addEventListener('click', () => {
+                        document.getElementById('shop-modal').style.display = 'block';
+                    });
+                }
+            }
+        }
+        
+        // Global functions
+        function closeShop() {
+            document.getElementById('shop-modal').style.display = 'none';
+        }
+        
+        function purchaseItem(productId, amount, coins = 0, gems = 0, energy = 0) {
+            game.processStripePayment(productId, amount, coins, gems, energy);
+        }
+        
+        // Initialize game
+        const game = new StripeIAPGame();
+        
+        // Auto-save every 30 seconds
+        setInterval(() => {
+            game.saveGame();
+        }, 30000);
+    </script>
+</body>
+</html>
