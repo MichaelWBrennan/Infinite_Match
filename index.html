@@ -11,13 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Loading screen improvements */
-        .loading-percentage {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 14px;
-            color: #4ecdc4;
-            font-weight: 600;
-        }
         
         .loading-bar-fill {
             transition: width 0.3s ease-out;
@@ -42,9 +35,6 @@
                 font-size: 14px;
             }
             
-            .loading-percentage {
-                font-size: 12px;
-            }
             
             .royal-logo {
                 transform: scale(0.8);
@@ -78,7 +68,6 @@
                 <div class="loading-bar-bg">
                     <div class="loading-bar-fill" id="loading-bar-fill"></div>
                 </div>
-                <div class="loading-percentage" id="loading-percentage">0%</div>
             </div>
             <div class="loading-text" id="loading-text">Loading...</div>
             <div class="loading-error" id="loading-error" style="display: none; color: #ff6b6b; margin-top: 10px;">
@@ -835,6 +824,16 @@
                     return false;
                 }
                 
+                // Check if files contain placeholder content
+                const dataContent = await fetch(dataUrl).then(r => r.text());
+                const wasmContent = await fetch(wasmUrl).then(r => r.text());
+                
+                if (dataContent.includes('// Unity WebGL Data - Replace with actual Unity build') || 
+                    wasmContent.includes('// Unity WebGL WASM - Replace with actual Unity build')) {
+                    console.log('❌ WebGL files are placeholders, using fallback');
+                    return false;
+                }
+                
                 console.log('✅ WebGL files appear valid');
                 return true;
             } catch (error) {
@@ -989,7 +988,7 @@
             }
         }, 2000);
         
-        // Emergency loading timeout - force show title screen after 10 seconds
+        // Emergency loading timeout - force show title screen after 5 seconds
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             const titleScreen = document.getElementById('title-screen');
@@ -1007,7 +1006,7 @@
                     loadingText.innerHTML = 'Loading took too long. Please refresh the page if issues persist.';
                 }
             }
-        }, 10000);
+        }, 5000);
     </script>
 </body>
 </html>
