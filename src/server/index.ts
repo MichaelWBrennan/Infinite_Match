@@ -552,7 +552,8 @@ class GameServer {
 // Start server
 const server = new GameServer();
 server.start().catch((error) => {
-  console.error('Failed to start server:', error);
+  const logger = new Logger('ServerStartup');
+  logger.error('Failed to start server:', { error });
   process.exit(1);
 });
 

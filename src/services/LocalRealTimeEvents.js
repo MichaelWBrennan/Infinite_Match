@@ -2,8 +2,11 @@
  * Local Real-Time Events System - Simulates real-time events without external APIs
  */
 
+import { Logger } from '../core/logger/index.js';
+
 class LocalRealTimeEvents {
   constructor() {
+    this.logger = new Logger('LocalRealTimeEvents');
     this.events = [];
     this.activeEvents = [];
     this.eventQueue = [];
@@ -13,13 +16,13 @@ class LocalRealTimeEvents {
   }
 
   async initialize() {
-    console.log('⏰ Initializing Local Real-Time Events System...');
+    this.logger.info('Initializing Local Real-Time Events System...');
     
     this.loadData();
     this.createDefaultEvents();
     this.startEventEngine();
     
-    console.log('✅ Local Real-Time Events System initialized');
+    this.logger.info('Local Real-Time Events System initialized');
   }
 
   createDefaultEvents() {

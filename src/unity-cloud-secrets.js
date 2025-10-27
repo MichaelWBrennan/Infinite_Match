@@ -4,8 +4,11 @@
  * Handles reading secrets from Cursor account or environment variables
  */
 
+import { Logger } from '../core/logger/index.js';
+
 class UnityCloudSecrets {
   constructor() {
+    this.logger = new Logger('UnityCloudSecrets');
     this.secrets = {};
     this.loaded = false;
   }
@@ -21,7 +24,7 @@ class UnityCloudSecrets {
     // Try to get from Cursor secrets first
     try {
       if (typeof cursor !== 'undefined' && cursor.getSecret) {
-        console.log('🔐 Loading secrets from Cursor account...');
+        this.logger.info('Loading secrets from Cursor account...');
 
         const secretNames = [
           'UNITY_PROJECT_ID',
@@ -38,21 +41,21 @@ class UnityCloudSecrets {
           try {
             this.secrets[name] = await cursor.getSecret(name);
             if (this.secrets[name]) {
-              console.log(`   ✅ ${name}: Loaded from Cursor secrets`);
+              this.logger.info(`${name}: Loaded from Cursor secrets`);
             }
           } catch (error) {
-            console.log(`   ⚠️ ${name}: Not found in Cursor secrets`);
+            this.logger.warn(`${name}: Not found in Cursor secrets`);
             this.secrets[name] = null;
           }
         }
 
-        console.log('✅ Secrets loaded from Cursor account');
+        this.logger.info('Secrets loaded from Cursor account');
       } else {
         throw new Error('Cursor secrets not available');
       }
     } catch (error) {
       // Fall back to environment variables
-      console.log('🔐 Loading secrets from environment variables...');
+      this.logger.info('Loading secrets from environment variables...');
 
       this.secrets = {
         UNITY_PROJECT_ID: process.env.UNITY_PROJECT_ID,
@@ -68,9 +71,9 @@ class UnityCloudSecrets {
       // Log which secrets are available
       Object.entries(this.secrets).forEach(([name, value]) => {
         if (value) {
-          console.log(`   ✅ ${name}: Loaded from environment`);
+          this.logger.info(`${name}: Loaded from environment`);
         } else {
-          console.log(`   ❌ ${name}: Not found`);
+          this.logger.warn(`${name}: Not found`);
         }
       });
     }

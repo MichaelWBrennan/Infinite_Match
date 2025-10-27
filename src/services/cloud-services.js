@@ -4,6 +4,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
+import { Logger } from '../core/logger/index.js';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import {
@@ -40,6 +41,7 @@ import { v4 as uuidv4 } from 'uuid';
  */
 class OptimizedCloudServicesManager {
   constructor() {
+    this.logger = new Logger('OptimizedCloudServicesManager');
     this.awsClients = {};
     this.googleClients = {};
     this.azureClients = {};
@@ -61,7 +63,7 @@ class OptimizedCloudServicesManager {
    */
   async initialize() {
     try {
-      console.log('Initializing optimized cloud services...');
+      this.logger.info('Initializing optimized cloud services...');
 
       // Initialize AWS services
       await this.initializeAWSServices();
@@ -88,7 +90,7 @@ class OptimizedCloudServicesManager {
       this.setupCircuitBreakers();
 
       this.isInitialized = true;
-      console.log('✅ All cloud services initialized successfully');
+      this.logger.info('All cloud services initialized successfully');
     } catch (error) {
       console.error('❌ Failed to initialize cloud services:', error);
       throw error;
@@ -543,7 +545,7 @@ class OptimizedCloudServicesManager {
       if (this.mongodb) {
         await this.mongodb.close();
       }
-      console.log('Cloud services shutdown completed');
+      this.logger.info('Cloud services shutdown completed');
     } catch (error) {
       console.error('Error during shutdown:', error);
     }

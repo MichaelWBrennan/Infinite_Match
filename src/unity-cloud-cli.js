@@ -6,11 +6,13 @@
 
 import UnityCloudHeadlessIntegration from './unity-cloud-headless-integration.js';
 import UnityCloudAPIClient from './unity-cloud-api-client.js';
+import { Logger } from '../core/logger/index.js';
 // Using basic console output instead of external dependencies
 
 // CLI Commands
 class UnityCloudCLI {
   constructor() {
+    this.logger = new Logger('UnityCloudCLI');
     this.setupCommands();
   }
 
@@ -99,7 +101,7 @@ class UnityCloudCLI {
   }
 
   async deployCommand(options) {
-    console.log(chalk.blue('🚀 Starting Unity Cloud deployment...'));
+    this.logger.info('Starting Unity Cloud deployment...');
 
     try {
       const integration = new UnityCloudHeadlessIntegration();

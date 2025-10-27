@@ -9,12 +9,14 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Logger } from '../core/logger/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class UnityGamingServicesAPIClient {
   constructor(options = {}) {
+    this.logger = new Logger('UnityGamingServicesAPIClient');
     // Read from environment variables (secrets are already set)
     // Use actual project ID from Unity services config
     this.projectId = options.projectId || '0dd5a03e-7f23-49c4-964e-7919c48c0574';
@@ -120,7 +122,7 @@ class UnityGamingServicesAPIClient {
 
     for (const endpoint of authEndpoints) {
       try {
-        console.log(`Trying authentication endpoint: ${endpoint}`);
+        this.logger.info(`Trying authentication endpoint: ${endpoint}`);
 
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -134,22 +136,22 @@ class UnityGamingServicesAPIClient {
           }),
         });
 
-        console.log(`Response status: ${response.status}`);
+        this.logger.info(`Response status: ${response.status}`);
 
         if (response.ok) {
           const tokenData = await response.json();
           if (tokenData.access_token) {
             this.accessToken = tokenData.access_token;
             this.headers['Authorization'] = `Bearer ${this.accessToken}`;
-            console.log('✅ UGS authentication successful');
+            this.logger.info('UGS authentication successful');
             return this.accessToken;
           }
         } else {
           const errorText = await response.text();
-          console.log(`Auth failed: ${errorText.substring(0, 100)}...`);
+          this.logger.warn(`Auth failed: ${errorText.substring(0, 100)}...`);
         }
       } catch (error) {
-        console.log(`Auth error: ${error.message}`);
+        this.logger.error(`Auth error: ${error.message}`);
       }
     }
 
@@ -344,12 +346,12 @@ class UnityGamingServicesAPIClient {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying Remote Config endpoint: ${endpoint}`);
+        this.logger.info(`Trying Remote Config endpoint: ${endpoint}`);
         const result = await this.makeRequest(endpoint);
-        console.log('✅ Remote Config data retrieved successfully');
+        this.logger.info('Remote Config data retrieved successfully');
         return result;
       } catch (error) {
-        console.log(`Remote Config endpoint failed: ${error.message}`);
+        this.logger.error(`Remote Config endpoint failed: ${error.message}`);
       }
     }
 
@@ -514,7 +516,7 @@ class UnityGamingServicesAPIClient {
    * Deploy economy data from local files
    */
   async deployEconomyFromFiles(economyDir = 'economy') {
-    console.log('💰 Deploying economy data from local files...');
+    this.logger.info('Deploying economy data from local files...');
 
     const results = {
       currencies: { created: 0, updated: 0, errors: 0 },
@@ -531,10 +533,10 @@ class UnityGamingServicesAPIClient {
           try {
             await this.createCurrency(currency);
             results.currencies.created++;
-            console.log(`   ✅ Created currency: ${currency.id}`);
+            this.logger.info(`Created currency: ${currency.id}`);
           } catch (error) {
             results.currencies.errors++;
-            console.error(`   ❌ Failed to create currency ${currency.id}: ${error.message}`);
+            this.logger.error(`Failed to create currency ${currency.id}: ${error.message}`);
           }
         }
       }
@@ -547,10 +549,10 @@ class UnityGamingServicesAPIClient {
           try {
             await this.createInventoryItem(item);
             results.inventory.created++;
-            console.log(`   ✅ Created inventory item: ${item.id}`);
+            this.logger.info(`Created inventory item: ${item.id}`);
           } catch (error) {
             results.inventory.errors++;
-            console.error(`   ❌ Failed to create inventory item ${item.id}: ${error.message}`);
+            this.logger.error(`Failed to create inventory item ${item.id}: ${error.message}`);
           }
         }
       }
@@ -563,18 +565,18 @@ class UnityGamingServicesAPIClient {
           try {
             await this.createCatalogItem(item);
             results.catalog.created++;
-            console.log(`   ✅ Created catalog item: ${item.id}`);
+            this.logger.info(`Created catalog item: ${item.id}`);
           } catch (error) {
             results.catalog.errors++;
-            console.error(`   ❌ Failed to create catalog item ${item.id}: ${error.message}`);
+            this.logger.error(`Failed to create catalog item ${item.id}: ${error.message}`);
           }
         }
       }
 
-      console.log('✅ Economy data deployment completed');
+      this.logger.info('Economy data deployment completed');
       return results;
     } catch (error) {
-      console.error('❌ Economy data deployment failed:', error.message);
+      this.logger.error('Economy data deployment failed:', { error: error.message });
       throw error;
     }
   }
@@ -583,13 +585,13 @@ class UnityGamingServicesAPIClient {
    * Deploy cloud code from local files
    */
   async deployCloudCodeFromFiles(cloudCodeDir = 'cloud-code') {
-    console.log('☁️ Deploying cloud code from local files...');
+    this.logger.info('Deploying cloud code from local files...');
 
     const results = { created: 0, updated: 0, errors: 0 };
 
     try {
       if (!fs.existsSync(cloudCodeDir)) {
-        console.log('   ⚠️ Cloud code directory not found');
+        this.logger.warn('Cloud code directory not found');
         return results;
       }
 
@@ -609,17 +611,17 @@ class UnityGamingServicesAPIClient {
 
           await this.createCloudCodeFunction(functionData);
           results.created++;
-          console.log(`   ✅ Deployed cloud code function: ${functionName}`);
+          this.logger.info(`Deployed cloud code function: ${functionName}`);
         } catch (error) {
           results.errors++;
-          console.error(`   ❌ Failed to deploy cloud code function ${file}: ${error.message}`);
+          this.logger.error(`Failed to deploy cloud code function ${file}: ${error.message}`);
         }
       }
 
-      console.log('✅ Cloud code deployment completed');
+      this.logger.info('Cloud code deployment completed');
       return results;
     } catch (error) {
-      console.error('❌ Cloud code deployment failed:', error.message);
+      this.logger.error('Cloud code deployment failed:', { error: error.message });
       throw error;
     }
   }
@@ -628,14 +630,14 @@ class UnityGamingServicesAPIClient {
    * Deploy remote config from local files
    */
   async deployRemoteConfigFromFiles(remoteConfigDir = 'remote-config') {
-    console.log('⚙️ Deploying remote config from local files...');
+    this.logger.info('Deploying remote config from local files...');
 
     const results = { created: 0, updated: 0, errors: 0 };
 
     try {
       const configFile = path.join(remoteConfigDir, 'game_config.json');
       if (!fs.existsSync(configFile)) {
-        console.log('   ⚠️ Remote config file not found');
+        this.logger.warn('Remote config file not found');
         return results;
       }
 
@@ -651,17 +653,17 @@ class UnityGamingServicesAPIClient {
 
           await this.createRemoteConfig(configEntry);
           results.created++;
-          console.log(`   ✅ Deployed remote config: ${key}`);
+          this.logger.info(`Deployed remote config: ${key}`);
         } catch (error) {
           results.errors++;
-          console.error(`   ❌ Failed to deploy remote config ${key}: ${error.message}`);
+          this.logger.error(`Failed to deploy remote config ${key}: ${error.message}`);
         }
       }
 
-      console.log('✅ Remote config deployment completed');
+      this.logger.info('Remote config deployment completed');
       return results;
     } catch (error) {
-      console.error('❌ Remote config deployment failed:', error.message);
+      this.logger.error('Remote config deployment failed:', { error: error.message });
       throw error;
     }
   }
@@ -700,7 +702,7 @@ class UnityGamingServicesAPIClient {
    * Check Unity Cloud service health
    */
   async checkServiceHealth() {
-    console.log('🔍 Checking Unity Cloud service health...');
+    this.logger.info('Checking Unity Cloud service health...');
 
     const health = {
       timestamp: new Date().toISOString(),
@@ -759,7 +761,7 @@ class UnityGamingServicesAPIClient {
    * Generate comprehensive status report
    */
   async generateStatusReport() {
-    console.log('📊 Generating Unity Cloud status report...');
+    this.logger.info('Generating Unity Cloud status report...');
 
     const report = {
       timestamp: new Date().toISOString(),
@@ -800,7 +802,7 @@ class UnityGamingServicesAPIClient {
    */
   async triggerBuild(buildTarget, gitRef = 'main', buildName = null) {
     try {
-      console.log(`🚀 Triggering Unity Cloud Build for ${buildTarget}...`);
+      this.logger.info(`Triggering Unity Cloud Build for ${buildTarget}...`);
 
       if (!this.accessToken) {
         await this.authenticate();
@@ -824,7 +826,7 @@ class UnityGamingServicesAPIClient {
       });
 
       if (response.success) {
-        console.log(`✅ Build triggered successfully: ${response.buildId}`);
+        this.logger.info(`Build triggered successfully: ${response.buildId}`);
         return response;
       } else {
         throw new Error(`Build trigger failed: ${response.error}`);
@@ -840,7 +842,7 @@ class UnityGamingServicesAPIClient {
    */
   async triggerPlatformOptimizedBuild(platform, gitRef = 'main', buildName = null) {
     try {
-      console.log(`🚀 Triggering platform-optimized build for ${platform}...`);
+      this.logger.info(`Triggering platform-optimized build for ${platform}...`);
 
       const platformConfig = this.getPlatformBuildConfig(platform);
       const buildTarget = platformConfig.target;
@@ -874,11 +876,11 @@ class UnityGamingServicesAPIClient {
       });
 
       if (response.success) {
-        console.log(`✅ Platform-optimized build triggered: ${response.buildId}`);
-        console.log(`📊 Platform: ${platform}`);
-        console.log(`⚡ Memory: ${platformConfig.memorySize}MB`);
-        console.log(`🗜️ Compression: ${platformConfig.compression}`);
-        console.log(`🖼️ Texture Format: ${platformConfig.textureFormat}`);
+        this.logger.info(`Platform-optimized build triggered: ${response.buildId}`);
+        this.logger.info(`Platform: ${platform}`);
+        this.logger.info(`Memory: ${platformConfig.memorySize}MB`);
+        this.logger.info(`Compression: ${platformConfig.compression}`);
+        this.logger.info(`Texture Format: ${platformConfig.textureFormat}`);
         return response;
       } else {
         throw new Error(`Platform-optimized build trigger failed: ${response.error}`);
@@ -894,7 +896,7 @@ class UnityGamingServicesAPIClient {
    */
   async getBuildStatus(buildId) {
     try {
-      console.log(`📊 Getting build status for ${buildId}...`);
+      this.logger.info(`Getting build status for ${buildId}...`);
 
       if (!this.accessToken) {
         await this.authenticate();
@@ -905,7 +907,7 @@ class UnityGamingServicesAPIClient {
       });
 
       if (response.success) {
-        console.log(`✅ Build status: ${response.status}`);
+        this.logger.info(`Build status: ${response.status}`);
         return response;
       } else {
         throw new Error(`Failed to get build status: ${response.error}`);
@@ -921,7 +923,7 @@ class UnityGamingServicesAPIClient {
    */
   async downloadBuild(buildId, targetPath = './builds') {
     try {
-      console.log(`📥 Downloading build ${buildId}...`);
+      this.logger.info(`Downloading build ${buildId}...`);
 
       if (!this.accessToken) {
         await this.authenticate();
@@ -932,7 +934,7 @@ class UnityGamingServicesAPIClient {
       });
 
       if (response.success) {
-        console.log(`✅ Build downloaded to: ${targetPath}`);
+        this.logger.info(`Build downloaded to: ${targetPath}`);
         return response;
       } else {
         throw new Error(`Failed to download build: ${response.error}`);

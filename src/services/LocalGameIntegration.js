@@ -3,15 +3,18 @@
  * This file provides the integration between the local game system and Unity WebGL
  */
 
+import { Logger } from '../core/logger/index.js';
+
 class LocalGameIntegration {
   constructor() {
+    this.logger = new Logger('LocalGameIntegration');
     this.gameAPI = null;
     this.unityInstance = null;
     this.initialized = false;
   }
 
   async initialize() {
-    console.log('🔗 Initializing Local Game Integration...');
+    this.logger.info('Initializing Local Game Integration...');
     
     try {
       // Wait for the game API to be ready
@@ -26,7 +29,7 @@ class LocalGameIntegration {
       this.setupUnityIntegration();
       
       this.initialized = true;
-      console.log('✅ Local Game Integration initialized successfully');
+      this.logger.info('Local Game Integration initialized successfully');
       
       return { success: true };
     } catch (error) {
@@ -182,7 +185,7 @@ class LocalGameIntegration {
   }
 
   handleUnityMessage(data) {
-    console.log('Received Unity message:', data);
+    this.logger.info('Received Unity message:', { data });
     
     switch (data.action) {
       case 'get_game_data':
@@ -204,7 +207,7 @@ class LocalGameIntegration {
         this.handleClaimDailyReward();
         break;
       default:
-        console.log('Unknown Unity message action:', data.action);
+        this.logger.warn('Unknown Unity message action:', { action: data.action });
     }
   }
 
@@ -370,12 +373,12 @@ class LocalGameIntegration {
 
   enableDebugMode() {
     this.debugMode = true;
-    console.log('🐛 Debug mode enabled for Local Game Integration');
+    this.logger.info('Debug mode enabled for Local Game Integration');
   }
 
   disableDebugMode() {
     this.debugMode = false;
-    console.log('🐛 Debug mode disabled for Local Game Integration');
+    this.logger.info('Debug mode disabled for Local Game Integration');
   }
 }
 

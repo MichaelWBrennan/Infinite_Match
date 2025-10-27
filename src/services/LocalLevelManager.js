@@ -2,8 +2,11 @@
  * Local Level Manager - Handles level progression and management
  */
 
+import { Logger } from '../core/logger/index.js';
+
 class LocalLevelManager {
   constructor() {
+    this.logger = new Logger('LocalLevelManager');
     this.levels = [];
     this.progress = {
       currentLevel: 1,
@@ -15,7 +18,7 @@ class LocalLevelManager {
   }
 
   async initialize() {
-    console.log('🎯 Initializing Level Manager...');
+    this.logger.info('Initializing Level Manager...');
     
     // Load existing data
     this.loadData();
@@ -26,7 +29,7 @@ class LocalLevelManager {
     }
     
     this.updateProgress();
-    console.log(`✅ Level Manager initialized with ${this.levels.length} levels`);
+    this.logger.info(`Level Manager initialized with ${this.levels.length} levels`);
   }
 
   createDefaultLevels() {
