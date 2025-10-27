@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Match - IAP Version</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Your existing game UI -->
+        <div id="shop-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>🛒 Shop</h2>
+                <div class="shop-items">
+                    <!-- Coin Packs -->
+                    <div class="shop-item">
+                        <h3>Small Coin Pack</h3>
+                        <p>1,000 Coins</p>
+                        <p class="price">$0.99</p>
+                        <div id="paypal-button-1"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Medium Coin Pack</h3>
+                        <p>3,000 Coins</p>
+                        <p class="price">$2.99</p>
+                        <div id="paypal-button-2"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Large Coin Pack</h3>
+                        <p>10,000 Coins</p>
+                        <p class="price">$9.99</p>
+                        <div id="paypal-button-3"></div>
+                    </div>
+                    
+                    <!-- Gem Packs -->
+                    <div class="shop-item">
+                        <h3>Small Gem Pack</h3>
+                        <p>50 Gems</p>
+                        <p class="price">$1.99</p>
+                        <div id="paypal-button-4"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Large Gem Pack</h3>
+                        <p>200 Gems</p>
+                        <p class="price">$7.99</p>
+                        <div id="paypal-button-5"></div>
+                    </div>
+                    
+                    <!-- Energy Packs -->
+                    <div class="shop-item">
+                        <h3>Energy Pack</h3>
+                        <p>5 Energy</p>
+                        <p class="price">$0.99</p>
+                        <div id="paypal-button-6"></div>
+                    </div>
+                </div>
+                <button onclick="closeShop()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SimpleIAPGame {
+            constructor() {
+                this.gameState = {
+                    score: 0,
+                    moves: 30,
+                    level: 1,
+                    gems: 100,
+                    coins: 1000,
+                    energy: 5,
+                    inventory: {
+                        bomb: 3,
+                        rainbow: 1,
+                        lightning: 2
+                    },
+                    purchases: [], // Track purchases
+                    settings: {
+                        music: true,
+                        sfx: true
+                    }
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                this.loadGame();
+                this.renderUI();
+                this.setupPayPalButtons();
+                this.setupEventListeners();
+            }
+            
+            // PayPal Integration
+            setupPayPalButtons() {
+                const products = [
+                    { id: 1, name: 'Small Coin Pack', price: '0.99', coins: 1000 },
+                    { id: 2, name: 'Medium Coin Pack', price: '2.99', coins: 3000 },
+                    { id: 3, name: 'Large Coin Pack', price: '9.99', coins: 10000 },
+                    { id: 4, name: 'Small Gem Pack', price: '1.99', gems: 50 },
+                    { id: 5, name: 'Large Gem Pack', price: '7.99', gems: 200 },
+                    { id: 6, name: 'Energy Pack', price: '0.99', energy: 5 }
+                ];
+                
+                products.forEach(product => {
+                    paypal.Buttons({
+                        createOrder: (data, actions) => {
+                            return actions.order.create({
+                                purchase_units: [{
+                                    amount: {
+                                        value: product.price
+                                    },
+                                    description: product.name
+                                }]
+                            });
+                        },
+                        onApprove: (data, actions) => {
+                            return actions.order.capture().then(details => {
+                                this.processPurchase(product, details);
+                            });
+                        },
+                        onError: (err) => {
+                            console.error('PayPal Error:', err);
+                            alert('Payment failed. Please try again.');
+                        }
+                    }).render(`#paypal-button-${product.id}`);
+                });
+            }
+            
+            // Process successful purchase
+            processPurchase(product, details) {
+                console.log('Purchase successful:', details);
+                
+                // Add items to game state
+                if (product.coins) {
+                    this.gameState.coins += product.coins;
+                }
+                if (product.gems) {
+                    this.gameState.gems += product.gems;
+                }
+                if (product.energy) {
+                    this.gameState.energy += product.energy;
+                }
+                
+                // Record purchase
+                this.gameState.purchases.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    timestamp: new Date().toISOString(),
+                    paypalOrderId: details.id
+                });
+                
+                // Save game
+                this.saveGame();
+                this.renderUI();
+                
+                // Show success message
+                this.showPurchaseSuccess(product);
+            }
+            
+            showPurchaseSuccess(product) {
+                const message = `✅ ${product.name} purchased successfully!`;
+                alert(message);
+                
+                // You could also show a nice popup here
+                this.showNotification(message, 'success');
+            }
+            
+            showNotification(message, type = 'info') {
+                // Simple notification system
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${type === 'success' ? '#4CAF50' : '#2196F3'};
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    font-family: 'Fredoka', sans-serif;
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+            
+            // Save game to localStorage
+            saveGame() {
+                localStorage.setItem('infiniteMatchIAP', JSON.stringify(this.gameState));
+                console.log('Game saved with purchases!');
+            }
+            
+            // Load game from localStorage
+            loadGame() {
+                const saved = localStorage.getItem('infiniteMatchIAP');
+                if (saved) {
+                    this.gameState = { ...this.gameState, ...JSON.parse(saved) };
+                }
+            }
+            
+            // Export save (including purchases)
+            exportSave() {
+                const data = JSON.stringify(this.gameState, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'infinite-match-save-with-purchases.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            // Use purchased items
+            useCoins(amount) {
+                if (this.gameState.coins >= amount) {
+                    this.gameState.coins -= amount;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            useGems(amount) {
+                if (this.gameState.gems >= amount) {
+                    this.gameState.gems -= amount;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            useEnergy(amount) {
+                if (this.gameState.energy >= amount) {
+                    this.gameState.energy -= amount;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            // Render UI
+            renderUI() {
+                // Update your existing UI elements
+                const scoreEl = document.getElementById('score');
+                const gemsEl = document.getElementById('gems');
+                const coinsEl = document.getElementById('coins');
+                const energyEl = document.getElementById('energy');
+                
+                if (scoreEl) scoreEl.textContent = this.gameState.score;
+                if (gemsEl) gemsEl.textContent = this.gameState.gems;
+                if (coinsEl) coinsEl.textContent = this.gameState.coins;
+                if (energyEl) energyEl.textContent = this.gameState.energy;
+            }
+            
+            setupEventListeners() {
+                // Add your existing game event listeners
+                // Add shop button listener
+                const shopBtn = document.getElementById('shop-btn');
+                if (shopBtn) {
+                    shopBtn.addEventListener('click', () => {
+                        document.getElementById('shop-modal').style.display = 'block';
+                    });
+                }
+            }
+        }
+        
+        // Global functions
+        function closeShop() {
+            document.getElementById('shop-modal').style.display = 'none';
+        }
+        
+        // Initialize game
+        const game = new SimpleIAPGame();
+        
+        // Auto-save every 30 seconds
+        setInterval(() => {
+            game.saveGame();
+        }, 30000);
+    </script>
+</body>
+</html>

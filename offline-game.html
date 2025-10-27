@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Infinite Match - Complete Offline Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="screen active">
+            <div class="loading-content">
+                <div class="royal-logo">
+                    <div class="crown">👑</div>
+                    <h1>Infinite Match</h1>
+                    <p>Complete Offline Version</p>
+                </div>
+                <div class="loading-bar">
+                    <div id="loading-bar-fill" class="loading-bar-fill"></div>
+                </div>
+                <div id="loading-text" class="loading-text">Initializing game engine...</div>
+                <div id="loading-error" class="loading-error" style="display: none;">
+                    <p>Loading failed. <a href="#" onclick="location.reload()">Click to retry</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Title Screen -->
+        <div id="title-screen" class="screen">
+            <div class="title-content">
+                <div class="royal-logo">
+                    <div class="crown">👑</div>
+                    <h1>Infinite Match</h1>
+                    <p>Complete Offline Version</p>
+                </div>
+                <div class="title-buttons">
+                    <button class="menu-btn" onclick="game.showScreen('mode-selection')">Play</button>
+                    <button class="menu-btn" onclick="game.showScreen('settings-screen')">Settings</button>
+                    <button class="menu-btn" onclick="game.showScreen('shop-screen')">Shop</button>
+                    <button class="menu-btn" onclick="game.showScreen('achievements-screen')">Achievements</button>
+                    <button class="menu-btn" onclick="game.showScreen('leaderboard-screen')">Leaderboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode Selection -->
+        <div id="mode-selection" class="screen">
+            <div class="mode-content">
+                <h2>Select Game Mode</h2>
+                <div class="mode-grid">
+                    <div class="mode-card" onclick="game.startGame('classic')">
+                        <h3>Classic Mode</h3>
+                        <p>Match 3 gems to clear the board</p>
+                        <div class="mode-status unlocked">Available</div>
+                    </div>
+                    <div class="mode-card" onclick="game.startGame('timed')">
+                        <h3>Timed Mode</h3>
+                        <p>Race against the clock</p>
+                        <div class="mode-status unlocked">Available</div>
+                    </div>
+                    <div class="mode-card" onclick="game.startGame('endless')">
+                        <h3>Endless Mode</h3>
+                        <p>See how high you can score</p>
+                        <div class="mode-status unlocked">Available</div>
+                    </div>
+                </div>
+                <button class="back-btn" onclick="game.showScreen('title-screen')">Back</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="game-hud">
+                <div class="hud-left">
+                    <div class="score-display">
+                        <span class="label">Score:</span>
+                        <span id="score" class="value">0</span>
+                    </div>
+                    <div class="moves-display">
+                        <span class="label">Moves:</span>
+                        <span id="moves" class="value">30</span>
+                    </div>
+                </div>
+                <div class="hud-center">
+                    <div class="level-display">
+                        <span class="label">Level:</span>
+                        <span id="level" class="value">1</span>
+                    </div>
+                </div>
+                <div class="hud-right">
+                    <div class="currency-display">
+                        <span class="currency">💰 <span id="coins">1000</span></span>
+                        <span class="currency">💎 <span id="gems">100</span></span>
+                        <span class="currency">⚡ <span id="energy">5</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="game-board" id="game-board"></div>
+            <div class="powerups">
+                <button class="powerup-btn" onclick="game.usePowerup('bomb')" id="bomb-btn">
+                    💣 Bomb (<span id="bomb-count">3</span>)
+                </button>
+                <button class="powerup-btn" onclick="game.usePowerup('rainbow')" id="rainbow-btn">
+                    🌈 Rainbow (<span id="rainbow-count">1</span>)
+                </button>
+                <button class="powerup-btn" onclick="game.usePowerup('lightning')" id="lightning-btn">
+                    ⚡ Lightning (<span id="lightning-count">2</span>)
+                </button>
+            </div>
+            <div class="game-controls">
+                <button class="control-btn" onclick="game.pauseGame()">Pause</button>
+                <button class="control-btn" onclick="game.showScreen('title-screen')">Menu</button>
+            </div>
+        </div>
+
+        <!-- Shop Screen -->
+        <div id="shop-screen" class="screen">
+            <div class="shop-content">
+                <h2>🛒 Shop</h2>
+                <div class="shop-grid">
+                    <!-- Coin Packs -->
+                    <div class="shop-item">
+                        <h3>Small Coin Pack</h3>
+                        <p>1,000 Coins</p>
+                        <p class="price">$0.99</p>
+                        <button onclick="game.purchaseItem('coins_small', 0.99, 1000)">Buy Now</button>
+                    </div>
+                    <div class="shop-item">
+                        <h3>Medium Coin Pack</h3>
+                        <p>3,000 Coins</p>
+                        <p class="price">$2.99</p>
+                        <button onclick="game.purchaseItem('coins_medium', 2.99, 3000)">Buy Now</button>
+                    </div>
+                    <div class="shop-item">
+                        <h3>Large Coin Pack</h3>
+                        <p>10,000 Coins</p>
+                        <p class="price">$9.99</p>
+                        <button onclick="game.purchaseItem('coins_large', 9.99, 10000)">Buy Now</button>
+                    </div>
+                    <!-- Gem Packs -->
+                    <div class="shop-item">
+                        <h3>Small Gem Pack</h3>
+                        <p>50 Gems</p>
+                        <p class="price">$1.99</p>
+                        <button onclick="game.purchaseItem('gems_small', 1.99, 0, 50)">Buy Now</button>
+                    </div>
+                    <div class="shop-item">
+                        <h3>Large Gem Pack</h3>
+                        <p>200 Gems</p>
+                        <p class="price">$7.99</p>
+                        <button onclick="game.purchaseItem('gems_large', 7.99, 0, 200)">Buy Now</button>
+                    </div>
+                    <!-- Energy Packs -->
+                    <div class="shop-item">
+                        <h3>Energy Pack</h3>
+                        <p>5 Energy</p>
+                        <p class="price">$0.99</p>
+                        <button onclick="game.purchaseItem('energy_pack', 0.99, 0, 0, 5)">Buy Now</button>
+                    </div>
+                </div>
+                <button class="back-btn" onclick="game.showScreen('title-screen')">Back</button>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen">
+            <div class="settings-content">
+                <h2>Settings</h2>
+                <div class="settings-section">
+                    <h3>Audio</h3>
+                    <label class="setting-item">
+                        <input type="checkbox" id="music-toggle" checked>
+                        <span>Music</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="sfx-toggle" checked>
+                        <span>Sound Effects</span>
+                    </label>
+                </div>
+                <div class="settings-section">
+                    <h3>Gameplay</h3>
+                    <label class="setting-item">
+                        <input type="checkbox" id="high-contrast-toggle">
+                        <span>High Contrast</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="large-text-toggle">
+                        <span>Large Text</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="reduce-animations-toggle">
+                        <span>Reduce Animations</span>
+                    </label>
+                </div>
+                <div class="settings-section">
+                    <h3>Data</h3>
+                    <button class="setting-btn" onclick="game.exportSave()">Export Save</button>
+                    <button class="setting-btn" onclick="game.importSave()">Import Save</button>
+                    <button class="setting-btn" onclick="game.resetGame()">Reset Game</button>
+                </div>
+                <button class="back-btn" onclick="game.showScreen('title-screen')">Back</button>
+            </div>
+        </div>
+
+        <!-- Achievements Screen -->
+        <div id="achievements-screen" class="screen">
+            <div class="achievements-content">
+                <h2>Achievements</h2>
+                <div class="achievements-grid" id="achievements-grid">
+                    <!-- Achievements will be populated by JavaScript -->
+                </div>
+                <button class="back-btn" onclick="game.showScreen('title-screen')">Back</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboard-screen" class="screen">
+            <div class="leaderboard-content">
+                <h2>Leaderboard</h2>
+                <div class="leaderboard-list" id="leaderboard-list">
+                    <!-- Leaderboard will be populated by JavaScript -->
+                </div>
+                <button class="back-btn" onclick="game.showScreen('title-screen')">Back</button>
+            </div>
+        </div>
+
+        <!-- Level Complete Screen -->
+        <div id="level-complete-screen" class="screen">
+            <div class="completion-content">
+                <h2>Level Complete!</h2>
+                <div class="completion-stats">
+                    <div class="stat">
+                        <span class="label">Score:</span>
+                        <span id="final-score" class="value">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Stars:</span>
+                        <span id="final-stars" class="value">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Rewards:</span>
+                        <span id="rewards" class="value">+100 Coins</span>
+                    </div>
+                </div>
+                <div class="completion-buttons">
+                    <button class="menu-btn" onclick="game.nextLevel()">Next Level</button>
+                    <button class="menu-btn" onclick="game.showScreen('title-screen')">Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Purchase Confirmation Modal -->
+        <div id="purchase-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>Purchase Confirmation</h2>
+                <p id="purchase-details"></p>
+                <div class="purchase-options">
+                    <button onclick="game.confirmPurchase()" class="confirm-btn">Confirm Purchase</button>
+                    <button onclick="game.cancelPurchase()" class="cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Save Modal -->
+        <div id="import-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>Import Save File</h2>
+                <input type="file" id="import-file" accept=".json" onchange="game.handleImportFile(event)">
+                <div class="modal-buttons">
+                    <button onclick="game.closeImportModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Complete Offline Game - Zero API Dependencies
+        class OfflineInfiniteMatch {
+            constructor() {
+                this.currentScreen = 'loading-screen';
+                this.gameState = {
+                    score: 0,
+                    moves: 30,
+                    time: 60,
+                    level: 1,
+                    gems: 100,
+                    coins: 1000,
+                    energy: 5,
+                    inventory: {
+                        bomb: 3,
+                        rainbow: 1,
+                        lightning: 2
+                    },
+                    achievements: [],
+                    purchases: [],
+                    totalSpent: 0,
+                    statistics: {
+                        gamesPlayed: 0,
+                        levelsCompleted: 0,
+                        totalScore: 0,
+                        bestScore: 0,
+                        averageScore: 0,
+                        lastPlayed: null
+                    },
+                    settings: {
+                        music: true,
+                        sfx: true,
+                        highContrast: false,
+                        largeText: false,
+                        reduceAnimations: false
+                    }
+                };
+                
+                this.gameBoard = [];
+                this.selectedGem = null;
+                this.isGameRunning = false;
+                this.timerInterval = null;
+                this.pendingPurchase = null;
+                this.achievements = [
+                    { id: 'first_match', name: 'Stellar Debut', description: 'Make your first cosmic gem match', unlocked: false },
+                    { id: 'score_1000', name: 'Galaxy Master', description: 'Score 1000 points in a single game', unlocked: false },
+                    { id: 'level_5', name: 'Cosmic Explorer', description: 'Reach level 5', unlocked: false },
+                    { id: 'perfect_level', name: 'Nebula Perfectionist', description: 'Get 3 stars on any level', unlocked: false },
+                    { id: 'big_spender', name: 'Cosmic Investor', description: 'Spend $10 in the shop', unlocked: false },
+                    { id: 'power_user', name: 'Power Master', description: 'Use 50 power-ups', unlocked: false }
+                ];
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('Offline game init started');
+                
+                try {
+                    // Load saved game data
+                    this.loadGame();
+                    
+                    // Initialize game board
+                    this.initializeGameBoard();
+                    
+                    // Add event listeners
+                    this.addEventListeners();
+                    
+                    // Start loading sequence
+                    this.startLoadingSequence();
+                    
+                    console.log('Offline game init completed');
+                } catch (error) {
+                    console.error('Game initialization failed:', error);
+                    setTimeout(() => {
+                        this.showScreen('title-screen');
+                    }, 1000);
+                }
+            }
+            
+            startLoadingSequence() {
+                let progress = 0;
+                const loadingBar = document.getElementById('loading-bar-fill');
+                const loadingText = document.getElementById('loading-text');
+                
+                const updateProgress = (newProgress, text) => {
+                    progress = newProgress;
+                    if (loadingBar) {
+                        loadingBar.style.width = `${progress}%`;
+                    }
+                    if (loadingText) {
+                        loadingText.textContent = text || 'Loading...';
+                    }
+                };
+                
+                const loadingSteps = [
+                    { progress: 25, text: 'Initializing game engine...', delay: 100 },
+                    { progress: 50, text: 'Loading game assets...', delay: 100 },
+                    { progress: 75, text: 'Setting up UI components...', delay: 100 },
+                    { progress: 100, text: 'Ready to play!', delay: 100 }
+                ];
+                
+                let currentStep = 0;
+                const runNextStep = () => {
+                    if (currentStep < loadingSteps.length) {
+                        const step = loadingSteps[currentStep];
+                        updateProgress(step.progress, step.text);
+                        currentStep++;
+                        setTimeout(runNextStep, step.delay);
+                    } else {
+                        setTimeout(() => {
+                            this.showScreen('title-screen');
+                        }, 500);
+                    }
+                };
+                
+                runNextStep();
+            }
+            
+            // Screen Management
+            showScreen(screenId) {
+                // Hide all screens
+                document.querySelectorAll('.screen').forEach(screen => {
+                    screen.classList.remove('active');
+                });
+                
+                // Show target screen
+                const targetScreen = document.getElementById(screenId);
+                if (targetScreen) {
+                    targetScreen.classList.add('active');
+                    this.currentScreen = screenId;
+                    
+                    // Update UI based on screen
+                    this.updateScreenUI(screenId);
+                }
+            }
+            
+            updateScreenUI(screenId) {
+                switch (screenId) {
+                    case 'achievements-screen':
+                        this.renderAchievements();
+                        break;
+                    case 'leaderboard-screen':
+                        this.renderLeaderboard();
+                        break;
+                    case 'game-screen':
+                        this.updateGameUI();
+                        break;
+                }
+            }
+            
+            // Game Board Management
+            initializeGameBoard() {
+                this.gameBoard = [];
+                const boardSize = 8;
+                
+                for (let row = 0; row < boardSize; row++) {
+                    this.gameBoard[row] = [];
+                    for (let col = 0; col < boardSize; col++) {
+                        this.gameBoard[row][col] = this.generateRandomGem();
+                    }
+                }
+                
+                this.renderGameBoard();
+            }
+            
+            generateRandomGem() {
+                const gems = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+                return gems[Math.floor(Math.random() * gems.length)];
+            }
+            
+            renderGameBoard() {
+                const boardEl = document.getElementById('game-board');
+                if (!boardEl) return;
+                
+                boardEl.innerHTML = '';
+                
+                for (let row = 0; row < this.gameBoard.length; row++) {
+                    for (let col = 0; col < this.gameBoard[row].length; col++) {
+                        const gemEl = document.createElement('div');
+                        gemEl.className = `gem ${this.gameBoard[row][col]}`;
+                        gemEl.dataset.row = row;
+                        gemEl.dataset.col = col;
+                        gemEl.addEventListener('click', () => this.selectGem(row, col));
+                        boardEl.appendChild(gemEl);
+                    }
+                }
+            }
+            
+            selectGem(row, col) {
+                if (!this.isGameRunning) return;
+                
+                if (this.selectedGem) {
+                    // Try to swap gems
+                    if (this.canSwap(this.selectedGem, { row, col })) {
+                        this.swapGems(this.selectedGem, { row, col });
+                        this.selectedGem = null;
+                        this.updateGameUI();
+                    } else {
+                        this.selectedGem = { row, col };
+                    }
+                } else {
+                    this.selectedGem = { row, col };
+                }
+                
+                this.updateGameBoard();
+            }
+            
+            canSwap(gem1, gem2) {
+                // Check if gems are adjacent
+                const rowDiff = Math.abs(gem1.row - gem2.row);
+                const colDiff = Math.abs(gem1.col - gem2.col);
+                return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+            }
+            
+            swapGems(gem1, gem2) {
+                const temp = this.gameBoard[gem1.row][gem1.col];
+                this.gameBoard[gem1.row][gem1.col] = this.gameBoard[gem2.row][gem2.col];
+                this.gameBoard[gem2.row][gem2.col] = temp;
+                
+                // Check for matches
+                const matches = this.findMatches();
+                if (matches.length > 0) {
+                    this.processMatches(matches);
+                } else {
+                    // Swap back if no matches
+                    const temp = this.gameBoard[gem1.row][gem1.col];
+                    this.gameBoard[gem1.row][gem1.col] = this.gameBoard[gem2.row][gem2.col];
+                    this.gameBoard[gem2.row][gem2.col] = temp;
+                }
+            }
+            
+            findMatches() {
+                const matches = [];
+                const board = this.gameBoard;
+                
+                // Check horizontal matches
+                for (let row = 0; row < board.length; row++) {
+                    for (let col = 0; col < board[row].length - 2; col++) {
+                        if (board[row][col] === board[row][col + 1] && 
+                            board[row][col] === board[row][col + 2]) {
+                            matches.push({ row, col, direction: 'horizontal', length: 3 });
+                        }
+                    }
+                }
+                
+                // Check vertical matches
+                for (let row = 0; row < board.length - 2; row++) {
+                    for (let col = 0; col < board[row].length; col++) {
+                        if (board[row][col] === board[row + 1][col] && 
+                            board[row][col] === board[row + 2][col]) {
+                            matches.push({ row, col, direction: 'vertical', length: 3 });
+                        }
+                    }
+                }
+                
+                return matches;
+            }
+            
+            processMatches(matches) {
+                let scoreGained = 0;
+                
+                matches.forEach(match => {
+                    scoreGained += match.length * 100;
+                    
+                    // Remove matched gems
+                    if (match.direction === 'horizontal') {
+                        for (let i = 0; i < match.length; i++) {
+                            this.gameBoard[match.row][match.col + i] = null;
+                        }
+                    } else {
+                        for (let i = 0; i < match.length; i++) {
+                            this.gameBoard[match.row + i][match.col] = null;
+                        }
+                    }
+                });
+                
+                this.gameState.score += scoreGained;
+                this.gameState.moves--;
+                
+                // Check for achievements
+                this.checkAchievements();
+                
+                // Drop gems and refill
+                this.dropGems();
+                this.refillBoard();
+                
+                // Check if level complete
+                if (this.gameState.moves <= 0) {
+                    this.completeLevel();
+                }
+                
+                this.updateGameUI();
+            }
+            
+            dropGems() {
+                for (let col = 0; col < this.gameBoard[0].length; col++) {
+                    let writeIndex = this.gameBoard.length - 1;
+                    
+                    for (let row = this.gameBoard.length - 1; row >= 0; row--) {
+                        if (this.gameBoard[row][col] !== null) {
+                            this.gameBoard[writeIndex][col] = this.gameBoard[row][col];
+                            if (writeIndex !== row) {
+                                this.gameBoard[row][col] = null;
+                            }
+                            writeIndex--;
+                        }
+                    }
+                }
+            }
+            
+            refillBoard() {
+                for (let row = 0; row < this.gameBoard.length; row++) {
+                    for (let col = 0; col < this.gameBoard[row].length; col++) {
+                        if (this.gameBoard[row][col] === null) {
+                            this.gameBoard[row][col] = this.generateRandomGem();
+                        }
+                    }
+                }
+            }
+            
+            // Game Flow
+            startGame(mode) {
+                this.gameState.moves = 30;
+                this.gameState.score = 0;
+                this.isGameRunning = true;
+                this.initializeGameBoard();
+                this.showScreen('game-screen');
+                this.updateGameUI();
+            }
+            
+            completeLevel() {
+                this.isGameRunning = false;
+                
+                // Calculate rewards
+                const stars = Math.min(3, Math.floor(this.gameState.score / 1000));
+                const coinReward = Math.floor(this.gameState.score / 100);
+                
+                this.gameState.coins += coinReward;
+                this.gameState.level++;
+                this.gameState.statistics.levelsCompleted++;
+                this.gameState.statistics.totalScore += this.gameState.score;
+                this.gameState.statistics.bestScore = Math.max(this.gameState.statistics.bestScore, this.gameState.score);
+                this.gameState.statistics.lastPlayed = new Date().toISOString();
+                
+                // Update final score display
+                document.getElementById('final-score').textContent = this.gameState.score;
+                document.getElementById('final-stars').textContent = stars;
+                document.getElementById('rewards').textContent = `+${coinReward} Coins`;
+                
+                this.saveGame();
+                this.showScreen('level-complete-screen');
+            }
+            
+            nextLevel() {
+                this.startGame('classic');
+            }
+            
+            pauseGame() {
+                this.isGameRunning = false;
+                // Add pause functionality
+            }
+            
+            // Power-ups
+            usePowerup(type) {
+                if (this.gameState.inventory[type] > 0) {
+                    this.gameState.inventory[type]--;
+                    this.saveGame();
+                    this.updateGameUI();
+                    this.showNotification(`${type} power-up used!`, 'success');
+                } else {
+                    this.showNotification(`No ${type} power-ups available!`, 'error');
+                }
+            }
+            
+            // Shop System
+            purchaseItem(itemId, price, coins = 0, gems = 0, energy = 0) {
+                this.pendingPurchase = {
+                    itemId,
+                    price,
+                    coins,
+                    gems,
+                    energy,
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.showPurchaseConfirmation(itemId, price, coins, gems, energy);
+            }
+            
+            showPurchaseConfirmation(itemId, price, coins, gems, energy) {
+                const details = document.getElementById('purchase-details');
+                let description = `Purchase: ${itemId}<br>`;
+                description += `Amount: $${price}<br>`;
+                if (coins > 0) description += `Coins: +${coins}<br>`;
+                if (gems > 0) description += `Gems: +${gems}<br>`;
+                if (energy > 0) description += `Energy: +${energy}<br>`;
+                description += `<br><strong>This is a demo purchase. In a real game, this would process payment.</strong>`;
+                
+                details.innerHTML = description;
+                document.getElementById('purchase-modal').style.display = 'block';
+            }
+            
+            confirmPurchase() {
+                if (this.pendingPurchase) {
+                    // Add items to game
+                    if (this.pendingPurchase.coins > 0) {
+                        this.gameState.coins += this.pendingPurchase.coins;
+                    }
+                    if (this.pendingPurchase.gems > 0) {
+                        this.gameState.gems += this.pendingPurchase.gems;
+                    }
+                    if (this.pendingPurchase.energy > 0) {
+                        this.gameState.energy += this.pendingPurchase.energy;
+                    }
+                    
+                    // Record purchase
+                    this.gameState.purchases.push({
+                        id: this.pendingPurchase.itemId,
+                        amount: this.pendingPurchase.price,
+                        coins: this.pendingPurchase.coins,
+                        gems: this.pendingPurchase.gems,
+                        energy: this.pendingPurchase.energy,
+                        timestamp: this.pendingPurchase.timestamp,
+                        type: 'demo_purchase'
+                    });
+                    
+                    this.gameState.totalSpent += this.pendingPurchase.price;
+                    
+                    this.saveGame();
+                    this.updateGameUI();
+                    this.showNotification('Purchase successful!', 'success');
+                    
+                    // Close modal
+                    document.getElementById('purchase-modal').style.display = 'none';
+                }
+            }
+            
+            cancelPurchase() {
+                this.pendingPurchase = null;
+                document.getElementById('purchase-modal').style.display = 'none';
+            }
+            
+            // Achievements
+            checkAchievements() {
+                this.achievements.forEach(achievement => {
+                    if (!achievement.unlocked) {
+                        let shouldUnlock = false;
+                        
+                        switch (achievement.id) {
+                            case 'first_match':
+                                if (this.gameState.score > 0) shouldUnlock = true;
+                                break;
+                            case 'score_1000':
+                                if (this.gameState.score >= 1000) shouldUnlock = true;
+                                break;
+                            case 'level_5':
+                                if (this.gameState.level >= 5) shouldUnlock = true;
+                                break;
+                            case 'perfect_level':
+                                // Check if 3 stars (score >= 3000)
+                                if (this.gameState.score >= 3000) shouldUnlock = true;
+                                break;
+                            case 'big_spender':
+                                if (this.gameState.totalSpent >= 10) shouldUnlock = true;
+                                break;
+                            case 'power_user':
+                                const totalPowerups = this.gameState.statistics.powerupsUsed || 0;
+                                if (totalPowerups >= 50) shouldUnlock = true;
+                                break;
+                        }
+                        
+                        if (shouldUnlock) {
+                            achievement.unlocked = true;
+                            this.gameState.achievements.push(achievement.id);
+                            this.showNotification(`Achievement Unlocked: ${achievement.name}!`, 'success');
+                        }
+                    }
+                });
+            }
+            
+            renderAchievements() {
+                const grid = document.getElementById('achievements-grid');
+                if (!grid) return;
+                
+                grid.innerHTML = '';
+                
+                this.achievements.forEach(achievement => {
+                    const achievementEl = document.createElement('div');
+                    achievementEl.className = `achievement ${achievement.unlocked ? 'unlocked' : 'locked'}`;
+                    achievementEl.innerHTML = `
+                        <h3>${achievement.name}</h3>
+                        <p>${achievement.description}</p>
+                        <div class="achievement-status">${achievement.unlocked ? '✅ Unlocked' : '🔒 Locked'}</div>
+                    `;
+                    grid.appendChild(achievementEl);
+                });
+            }
+            
+            // Leaderboard
+            renderLeaderboard() {
+                const list = document.getElementById('leaderboard-list');
+                if (!list) return;
+                
+                // Create local leaderboard from statistics
+                const leaderboard = [
+                    { name: 'You', score: this.gameState.statistics.bestScore, level: this.gameState.level },
+                    { name: 'Player 2', score: Math.floor(this.gameState.statistics.bestScore * 0.8), level: Math.floor(this.gameState.level * 0.9) },
+                    { name: 'Player 3', score: Math.floor(this.gameState.statistics.bestScore * 0.6), level: Math.floor(this.gameState.level * 0.7) },
+                    { name: 'Player 4', score: Math.floor(this.gameState.statistics.bestScore * 0.4), level: Math.floor(this.gameState.level * 0.5) },
+                    { name: 'Player 5', score: Math.floor(this.gameState.statistics.bestScore * 0.2), level: Math.floor(this.gameState.level * 0.3) }
+                ];
+                
+                list.innerHTML = '';
+                leaderboard.forEach((player, index) => {
+                    const playerEl = document.createElement('div');
+                    playerEl.className = `leaderboard-item ${index === 0 ? 'current-player' : ''}`;
+                    playerEl.innerHTML = `
+                        <div class="rank">${index + 1}</div>
+                        <div class="name">${player.name}</div>
+                        <div class="score">${player.score.toLocaleString()}</div>
+                        <div class="level">Level ${player.level}</div>
+                    `;
+                    list.appendChild(playerEl);
+                });
+            }
+            
+            // Save/Load System
+            saveGame() {
+                localStorage.setItem('infiniteMatchOffline', JSON.stringify(this.gameState));
+                console.log('Game saved offline!');
+            }
+            
+            loadGame() {
+                const saved = localStorage.getItem('infiniteMatchOffline');
+                if (saved) {
+                    try {
+                        const loadedState = JSON.parse(saved);
+                        this.gameState = { ...this.gameState, ...loadedState };
+                        console.log('Game loaded from offline storage');
+                    } catch (error) {
+                        console.error('Failed to load game:', error);
+                    }
+                }
+            }
+            
+            exportSave() {
+                const data = JSON.stringify(this.gameState, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'infinite-match-save.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showNotification('Save file exported!', 'success');
+            }
+            
+            importSave() {
+                document.getElementById('import-modal').style.display = 'block';
+            }
+            
+            handleImportFile(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const importedState = JSON.parse(e.target.result);
+                            this.gameState = { ...this.gameState, ...importedState };
+                            this.saveGame();
+                            this.updateGameUI();
+                            this.showNotification('Save file imported successfully!', 'success');
+                            this.closeImportModal();
+                        } catch (error) {
+                            this.showNotification('Invalid save file!', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            }
+            
+            closeImportModal() {
+                document.getElementById('import-modal').style.display = 'none';
+            }
+            
+            resetGame() {
+                if (confirm('Are you sure you want to reset your game? This cannot be undone!')) {
+                    localStorage.removeItem('infiniteMatchOffline');
+                    location.reload();
+                }
+            }
+            
+            // UI Updates
+            updateGameUI() {
+                document.getElementById('score').textContent = this.gameState.score;
+                document.getElementById('moves').textContent = this.gameState.moves;
+                document.getElementById('level').textContent = this.gameState.level;
+                document.getElementById('coins').textContent = this.gameState.coins;
+                document.getElementById('gems').textContent = this.gameState.gems;
+                document.getElementById('energy').textContent = this.gameState.energy;
+                document.getElementById('bomb-count').textContent = this.gameState.inventory.bomb;
+                document.getElementById('rainbow-count').textContent = this.gameState.inventory.rainbow;
+                document.getElementById('lightning-count').textContent = this.gameState.inventory.lightning;
+            }
+            
+            updateGameBoard() {
+                const boardEl = document.getElementById('game-board');
+                if (!boardEl) return;
+                
+                const gems = boardEl.querySelectorAll('.gem');
+                gems.forEach(gem => {
+                    gem.classList.remove('selected');
+                });
+                
+                if (this.selectedGem) {
+                    const selectedGem = boardEl.querySelector(`[data-row="${this.selectedGem.row}"][data-col="${this.selectedGem.col}"]`);
+                    if (selectedGem) {
+                        selectedGem.classList.add('selected');
+                    }
+                }
+            }
+            
+            // Notifications
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#F44336' : '#2196F3'};
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    font-family: 'Fredoka', sans-serif;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+            
+            // Event Listeners
+            addEventListeners() {
+                // Settings toggles
+                document.getElementById('music-toggle')?.addEventListener('change', (e) => {
+                    this.gameState.settings.music = e.target.checked;
+                    this.saveGame();
+                });
+                
+                document.getElementById('sfx-toggle')?.addEventListener('change', (e) => {
+                    this.gameState.settings.sfx = e.target.checked;
+                    this.saveGame();
+                });
+                
+                document.getElementById('high-contrast-toggle')?.addEventListener('change', (e) => {
+                    this.gameState.settings.highContrast = e.target.checked;
+                    this.saveGame();
+                });
+                
+                document.getElementById('large-text-toggle')?.addEventListener('change', (e) => {
+                    this.gameState.settings.largeText = e.target.checked;
+                    this.saveGame();
+                });
+                
+                document.getElementById('reduce-animations-toggle')?.addEventListener('change', (e) => {
+                    this.gameState.settings.reduceAnimations = e.target.checked;
+                    this.saveGame();
+                });
+            }
+        }
+        
+        // Initialize game
+        const game = new OfflineInfiniteMatch();
+        
+        // Auto-save every 30 seconds
+        setInterval(() => {
+            game.saveGame();
+        }, 30000);
+    </script>
+</body>
+</html>
