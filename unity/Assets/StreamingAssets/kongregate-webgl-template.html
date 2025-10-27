@@ -10,13 +10,12 @@
     <!-- Shared UI Styles -->
     <link rel="stylesheet" href="shared-ui.css">
     
-    <!-- Platform-specific SDK will be loaded here -->
-    <script id="platform-sdk-loader"></script>
+    <!-- Platform-specific SDK (Self-hosted) -->
+    <script src="/js/platform-sdks.js"></script>
     
-    <!-- Analytics SDKs -->
-    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
-    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
-    <script src="https://unpkg.com/posthog-js@1.100.0/dist/posthog.min.js"></script>
+    <!-- Analytics SDKs (Self-hosted) -->
+    <script src="/js/sentry.min.js"></script>
+    <script src="/js/posthog.min.js"></script>
     
     <!-- Platform Detection -->
     <script src="platform-detection.js"></script>
@@ -175,7 +174,7 @@
                 if (typeof posthog !== 'undefined') {
                     analytics.posthog = posthog;
                     analytics.posthog.init('YOUR_POSTHOG_PUBLIC_KEY', {
-                        api_host: 'https://app.posthog.com',
+                        api_host: 'http://localhost:8000',
                         loaded: (posthog) => {
                             console.log('✅ PostHog initialized');
                         }

@@ -86,7 +86,10 @@
     "stripe:setup": "./scripts/setup-stripe-cli.sh",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
     "stripe:test": "node scripts/test-stripe-integration.js",
-    "stripe:logs": "stripe logs tail"
+    "stripe:logs": "stripe logs tail",
+    "offline:setup": "node scripts/setup-offline.js",
+    "offline:verify": "node scripts/verify-offline.js",
+    "offline:start": "docker-compose -f docker-compose.opensource.yml up -d && npm run dev"
   },
   "type": "module",
   "version": "1.0.0"

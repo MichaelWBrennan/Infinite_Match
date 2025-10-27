@@ -176,14 +176,9 @@ class GameServer {
             scriptSrc: [
               '\'self\'',
               '\'unsafe-inline\'',
-              'https://cdn.amplitude.com',
-              'https://cdn.mxpnl.com',
             ],
             connectSrc: [
               '\'self\'',
-              'https://api2.amplitude.com',
-              'https://api.mixpanel.com',
-              'https://browser.sentry-cdn.com',
             ],
             imgSrc: ['\'self\'', 'data:', 'https:'],
             fontSrc: ['\'self\'', 'https:', 'data:'],
@@ -247,6 +242,9 @@ class GameServer {
     // Platform-specific API routes
     this.setupPlatformRoutes();
 
+    // Serve static files from public directory
+    this.app.use(express.static('public'));
+    
     // Serve static files for WebGL build with platform optimization
     this.app.use(
       express.static('webgl', {
