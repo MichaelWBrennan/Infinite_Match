@@ -422,6 +422,9 @@
         </div>
     </div>
 
+    <!-- Unity Canvas (hidden by default) -->
+    <canvas id="unity-canvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000;"></canvas>
+
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
         <div class="game-hud">
@@ -802,7 +805,7 @@
                 const dataUrl = "Build/WebGL.data";
                 const wasmUrl = "Build/WebGL.wasm";
                 
-                // Quick check - if files don't exist or are placeholders, use fallback immediately
+                // Quick check - if files don't exist, use fallback immediately
                 const dataResponse = await fetch(dataUrl, { method: 'HEAD' });
                 if (!dataResponse.ok) {
                     console.log('❌ WebGL.data not found, using fallback');
@@ -815,26 +818,7 @@
                     return false;
                 }
                 
-                // Check file sizes - if they're too small, they're likely placeholders
-                const dataSize = parseInt(dataResponse.headers.get('content-length') || '0');
-                const wasmSize = parseInt(wasmResponse.headers.get('content-length') || '0');
-                
-                if (dataSize < 1000 || wasmSize < 1000) {
-                    console.log('❌ WebGL files are too small (likely placeholders), using fallback');
-                    return false;
-                }
-                
-                // Check if files contain placeholder content
-                const dataContent = await fetch(dataUrl).then(r => r.text());
-                const wasmContent = await fetch(wasmUrl).then(r => r.text());
-                
-                if (dataContent.includes('// Unity WebGL Data - Replace with actual Unity build') || 
-                    wasmContent.includes('// Unity WebGL WASM - Replace with actual Unity build')) {
-                    console.log('❌ WebGL files are placeholders, using fallback');
-                    return false;
-                }
-                
-                console.log('✅ WebGL files appear valid');
+                console.log('✅ WebGL files found, attempting Unity load');
                 return true;
             } catch (error) {
                 console.log('❌ Error checking WebGL files:', error);
@@ -912,8 +896,8 @@
             
             console.log('📱 Platform info:', platformInfo);
             
-            // Skip WebGL checking since Unity build is not available
-            const webglCheckPromise = Promise.resolve(false);
+            // Check WebGL files
+            const webglCheckPromise = checkWebGLFiles();
             
             // Initialize game instance in parallel
             const gameInitPromise = new Promise(resolve => {
@@ -930,22 +914,27 @@
             console.log('📊 WebGL valid:', webglValid);
             console.log('🎯 Game initialized:', gameInitialized);
             
-        // Always use fallback game since Unity WebGL build is not available
-        console.log('🔄 Using fallback game (Unity WebGL build not available)');
-        
-        // Initialize the fallback game
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Fallback game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize fallback game:', error);
+        if (webglValid) {
+            console.log('🎮 WebGL files found, attempting Unity load...');
+            // Try to load Unity WebGL build
+            loadUnityWebGL();
+        } else {
+            console.log('🔄 Using fallback game (Unity WebGL build not available)');
+            
+            // Initialize the fallback game
+            if (typeof InfiniteMatchGame !== 'undefined') {
+                try {
+                    window.game = new InfiniteMatchGame();
+                    console.log('✅ Fallback game initialized successfully');
+                } catch (error) {
+                    console.error('❌ Failed to initialize fallback game:', error);
+                }
             }
+            
+            // Hide loading screen and show title screen immediately
+            document.getElementById('loading-screen').classList.remove('active');
+            document.getElementById('title-screen').classList.add('active');
         }
-        
-        // Hide loading screen and show title screen immediately
-        document.getElementById('loading-screen').classList.remove('active');
-        document.getElementById('title-screen').classList.add('active');
             
             // Ensure global functions are available
             console.log('🔧 Verifying global functions...');
@@ -1013,6 +1002,108 @@
                 }
             }
         }, 5000);
+        
+        // Load Unity WebGL build
+        function loadUnityWebGL() {
+            console.log('🚀 Loading Unity WebGL build...');
+            
+            var buildUrl = "Build";
+            var loaderUrl = buildUrl + "/WebGL.loader.js";
+            
+            // Load the Unity loader script
+            var script = document.createElement("script");
+            script.src = loaderUrl;
+            script.onload = () => {
+                console.log('📦 Unity loader loaded, initializing...');
+                
+                // Create Unity instance with progress callback
+                if (typeof createUnityInstance === 'function') {
+                    const canvas = document.getElementById('unity-canvas');
+                    if (!canvas) {
+                        console.error('❌ Unity canvas not found');
+                        return;
+                    }
+                    
+                    createUnityInstance(canvas, {}, (progress) => {
+                        const progressBar = document.getElementById('loading-bar-fill');
+                        if (progressBar) {
+                            progressBar.style.width = 100 * progress + "%";
+                        }
+                        console.log('📊 Unity loading progress:', Math.round(progress * 100) + '%');
+                    }).then((unityInstance) => {
+                        window.unityInstance = unityInstance;
+                        console.log('✅ Unity game loaded successfully');
+                        
+                        // Hide loading screen and show title screen
+                        document.getElementById('loading-screen').classList.remove('active');
+                        document.getElementById('title-screen').classList.add('active');
+                        
+                        // Start the Unity game
+                        if (unityInstance.start) {
+                            unityInstance.start();
+                        }
+                        
+                        // Track game loaded
+                        if (typeof window.GameAPI !== 'undefined') {
+                            window.GameAPI.trackEvent('unity_game_loaded', {
+                                load_time: Date.now() - window.performance.timing.navigationStart
+                            });
+                        }
+                    }).catch((message) => {
+                        console.error('❌ Unity game load failed:', message);
+                        console.log('🔄 Falling back to JavaScript game...');
+                        
+                        // Initialize fallback game
+                        if (typeof InfiniteMatchGame !== 'undefined') {
+                            try {
+                                window.game = new InfiniteMatchGame();
+                                console.log('✅ Fallback game initialized successfully');
+                            } catch (error) {
+                                console.error('❌ Failed to initialize fallback game:', error);
+                            }
+                        }
+                        
+                        // Hide loading screen and show title screen
+                        document.getElementById('loading-screen').classList.remove('active');
+                        document.getElementById('title-screen').classList.add('active');
+                    });
+                } else {
+                    console.error('❌ createUnityInstance function not found');
+                    // Fallback to JavaScript game
+                    if (typeof InfiniteMatchGame !== 'undefined') {
+                        try {
+                            window.game = new InfiniteMatchGame();
+                            console.log('✅ Fallback game initialized successfully');
+                        } catch (error) {
+                            console.error('❌ Failed to initialize fallback game:', error);
+                        }
+                    }
+                    
+                    document.getElementById('loading-screen').classList.remove('active');
+                    document.getElementById('title-screen').classList.add('active');
+                }
+            };
+            
+            script.onerror = () => {
+                console.error('❌ Failed to load Unity WebGL loader');
+                console.log('🔄 Falling back to JavaScript game...');
+                
+                // Initialize fallback game
+                if (typeof InfiniteMatchGame !== 'undefined') {
+                    try {
+                        window.game = new InfiniteMatchGame();
+                        console.log('✅ Fallback game initialized successfully');
+                    } catch (error) {
+                        console.error('❌ Failed to initialize fallback game:', error);
+                    }
+                }
+                
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('title-screen').classList.add('active');
+            };
+            
+            document.head.appendChild(script);
+        }
     </script>
 </body>
 </html>

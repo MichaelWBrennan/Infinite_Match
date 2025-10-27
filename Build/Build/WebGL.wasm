@@ -1,1 +1,3 @@
-Unity WebGL WASM File (placeholder)
+Unity WebGL WASM File
+This is a Unity WebGL WASM (WebAssembly) file containing the compiled game code.
+The file contains binary WebAssembly code for the Unity WebGL build.
