@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Match - Production IAP</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Your existing game UI -->
+        <div id="shop-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>🛒 Shop - Real Money IAP</h2>
+                <div class="shop-items">
+                    <!-- Coin Packs -->
+                    <div class="shop-item">
+                        <h3>Small Coin Pack</h3>
+                        <p>1,000 Coins</p>
+                        <p class="price">$0.99</p>
+                        <div id="paypal-button-1"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Medium Coin Pack</h3>
+                        <p>3,000 Coins</p>
+                        <p class="price">$2.99</p>
+                        <div id="paypal-button-2"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Large Coin Pack</h3>
+                        <p>10,000 Coins</p>
+                        <p class="price">$9.99</p>
+                        <div id="paypal-button-3"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Mega Coin Pack</h3>
+                        <p>25,000 Coins</p>
+                        <p class="price">$19.99</p>
+                        <div id="paypal-button-4"></div>
+                    </div>
+                    
+                    <!-- Gem Packs -->
+                    <div class="shop-item">
+                        <h3>Small Gem Pack</h3>
+                        <p>50 Gems</p>
+                        <p class="price">$1.99</p>
+                        <div id="paypal-button-5"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Large Gem Pack</h3>
+                        <p>200 Gems</p>
+                        <p class="price">$7.99</p>
+                        <div id="paypal-button-6"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Ultimate Gem Pack</h3>
+                        <p>500 Gems</p>
+                        <p class="price">$19.99</p>
+                        <div id="paypal-button-7"></div>
+                    </div>
+                    
+                    <!-- Energy Packs -->
+                    <div class="shop-item">
+                        <h3>Energy Pack</h3>
+                        <p>5 Energy</p>
+                        <p class="price">$0.99</p>
+                        <div id="paypal-button-8"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Energy Refill</h3>
+                        <p>10 Energy</p>
+                        <p class="price">$1.99</p>
+                        <div id="paypal-button-9"></div>
+                    </div>
+                    
+                    <!-- Special Packs -->
+                    <div class="shop-item">
+                        <h3>Starter Pack</h3>
+                        <p>1,000 Coins + 50 Gems + 5 Energy</p>
+                        <p class="price">$2.99</p>
+                        <div id="paypal-button-10"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Value Pack</h3>
+                        <p>5,000 Coins + 100 Gems + 10 Energy</p>
+                        <p class="price">$9.99</p>
+                        <div id="paypal-button-11"></div>
+                    </div>
+                    
+                    <div class="shop-item">
+                        <h3>Premium Pack</h3>
+                        <p>15,000 Coins + 300 Gems + 20 Energy</p>
+                        <p class="price">$24.99</p>
+                        <div id="paypal-button-12"></div>
+                    </div>
+                </div>
+                <button onclick="closeShop()">Close</button>
+            </div>
+        </div>
+        
+        <!-- Purchase History Modal -->
+        <div id="history-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>Purchase History</h2>
+                <div id="purchase-history"></div>
+                <button onclick="closeHistory()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ProductionPayPalIAP {
+            constructor() {
+                this.gameState = {
+                    score: 0,
+                    moves: 30,
+                    level: 1,
+                    gems: 100,
+                    coins: 1000,
+                    energy: 5,
+                    inventory: {
+                        bomb: 3,
+                        rainbow: 1,
+                        lightning: 2
+                    },
+                    purchases: [],
+                    totalSpent: 0,
+                    settings: {
+                        music: true,
+                        sfx: true
+                    }
+                };
+                
+                this.products = [
+                    { id: 1, name: 'Small Coin Pack', price: '0.99', coins: 1000, gems: 0, energy: 0 },
+                    { id: 2, name: 'Medium Coin Pack', price: '2.99', coins: 3000, gems: 0, energy: 0 },
+                    { id: 3, name: 'Large Coin Pack', price: '9.99', coins: 10000, gems: 0, energy: 0 },
+                    { id: 4, name: 'Mega Coin Pack', price: '19.99', coins: 25000, gems: 0, energy: 0 },
+                    { id: 5, name: 'Small Gem Pack', price: '1.99', coins: 0, gems: 50, energy: 0 },
+                    { id: 6, name: 'Large Gem Pack', price: '7.99', coins: 0, gems: 200, energy: 0 },
+                    { id: 7, name: 'Ultimate Gem Pack', price: '19.99', coins: 0, gems: 500, energy: 0 },
+                    { id: 8, name: 'Energy Pack', price: '0.99', coins: 0, gems: 0, energy: 5 },
+                    { id: 9, name: 'Energy Refill', price: '1.99', coins: 0, gems: 0, energy: 10 },
+                    { id: 10, name: 'Starter Pack', price: '2.99', coins: 1000, gems: 50, energy: 5 },
+                    { id: 11, name: 'Value Pack', price: '9.99', coins: 5000, gems: 100, energy: 10 },
+                    { id: 12, name: 'Premium Pack', price: '24.99', coins: 15000, gems: 300, energy: 20 }
+                ];
+                
+                this.init();
+            }
+            
+            init() {
+                this.loadGame();
+                this.renderUI();
+                this.setupPayPalButtons();
+                this.setupEventListeners();
+            }
+            
+            // PayPal Integration - Real Money Processing
+            setupPayPalButtons() {
+                this.products.forEach(product => {
+                    paypal.Buttons({
+                        createOrder: (data, actions) => {
+                            return actions.order.create({
+                                purchase_units: [{
+                                    amount: {
+                                        value: product.price,
+                                        currency_code: 'USD'
+                                    },
+                                    description: product.name,
+                                    custom_id: product.id.toString()
+                                }],
+                                application_context: {
+                                    brand_name: 'Infinite Match',
+                                    landing_page: 'BILLING',
+                                    user_action: 'PAY_NOW'
+                                }
+                            });
+                        },
+                        onApprove: (data, actions) => {
+                            return actions.order.capture().then(details => {
+                                this.processRealPurchase(product, details);
+                            });
+                        },
+                        onError: (err) => {
+                            console.error('PayPal Error:', err);
+                            this.showNotification('Payment failed. Please try again.', 'error');
+                        },
+                        onCancel: (data) => {
+                            console.log('Payment cancelled:', data);
+                            this.showNotification('Payment cancelled.', 'info');
+                        }
+                    }).render(`#paypal-button-${product.id}`);
+                });
+            }
+            
+            // Process Real Purchase - Money goes to your PayPal account!
+            processRealPurchase(product, details) {
+                console.log('Real purchase successful:', details);
+                
+                // Add items to game state
+                if (product.coins > 0) {
+                    this.gameState.coins += product.coins;
+                }
+                if (product.gems > 0) {
+                    this.gameState.gems += product.gems;
+                }
+                if (product.energy > 0) {
+                    this.gameState.energy += product.energy;
+                }
+                
+                // Record purchase with real payment data
+                const purchase = {
+                    id: product.id,
+                    name: product.name,
+                    price: parseFloat(product.price),
+                    coins: product.coins,
+                    gems: product.gems,
+                    energy: product.energy,
+                    timestamp: new Date().toISOString(),
+                    paypalOrderId: details.id,
+                    paypalStatus: details.status,
+                    payerEmail: details.payer?.email_address || 'Unknown',
+                    transactionId: details.purchase_units[0].payments.captures[0].id
+                };
+                
+                this.gameState.purchases.push(purchase);
+                this.gameState.totalSpent += purchase.price;
+                
+                // Save game
+                this.saveGame();
+                this.renderUI();
+                
+                // Show success message
+                this.showPurchaseSuccess(product, purchase);
+                
+                // Log to console for debugging
+                console.log('Purchase processed:', purchase);
+                console.log('Total spent: $' + this.gameState.totalSpent.toFixed(2));
+            }
+            
+            showPurchaseSuccess(product, purchase) {
+                const message = `✅ ${product.name} purchased successfully!<br>`;
+                const details = `+${product.coins} Coins, +${product.gems} Gems, +${product.energy} Energy<br>`;
+                const total = `Total spent: $${this.gameState.totalSpent.toFixed(2)}`;
+                
+                this.showNotification(message + details + total, 'success');
+            }
+            
+            // Show purchase history
+            showPurchaseHistory() {
+                const historyEl = document.getElementById('purchase-history');
+                if (this.gameState.purchases.length === 0) {
+                    historyEl.innerHTML = '<p>No purchases yet.</p>';
+                } else {
+                    let html = `<div class="purchase-summary">
+                        <h3>Total Spent: $${this.gameState.totalSpent.toFixed(2)}</h3>
+                        <p>Total Purchases: ${this.gameState.purchases.length}</p>
+                    </div>`;
+                    
+                    this.gameState.purchases.forEach(purchase => {
+                        html += `<div class="purchase-item">
+                            <h4>${purchase.name}</h4>
+                            <p>Price: $${purchase.price.toFixed(2)}</p>
+                            <p>Date: ${new Date(purchase.timestamp).toLocaleDateString()}</p>
+                            <p>PayPal ID: ${purchase.paypalOrderId}</p>
+                        </div>`;
+                    });
+                    
+                    historyEl.innerHTML = html;
+                }
+                
+                document.getElementById('history-modal').style.display = 'block';
+            }
+            
+            // Save game with purchase data
+            saveGame() {
+                localStorage.setItem('infiniteMatchProductionIAP', JSON.stringify(this.gameState));
+                console.log('Game saved with real purchase data!');
+            }
+            
+            // Load game
+            loadGame() {
+                const saved = localStorage.getItem('infiniteMatchProductionIAP');
+                if (saved) {
+                    this.gameState = { ...this.gameState, ...JSON.parse(saved) };
+                }
+            }
+            
+            // Export save with purchase data
+            exportSave() {
+                const data = JSON.stringify(this.gameState, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'infinite-match-save-with-purchases.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            // Use purchased items
+            useCoins(amount) {
+                if (this.gameState.coins >= amount) {
+                    this.gameState.coins -= amount;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            useGems(amount) {
+                if (this.gameState.gems >= amount) {
+                    this.gameState.gems -= amount;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            useEnergy(amount) {
+                if (this.gameState.energy >= amount) {
+                    this.gameState.energy -= amount;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            // Show notification
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerHTML = message;
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#F44336' : '#2196F3'};
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    font-family: 'Fredoka', sans-serif;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                    max-width: 300px;
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 5000);
+            }
+            
+            // Render UI
+            renderUI() {
+                const scoreEl = document.getElementById('score');
+                const gemsEl = document.getElementById('gems');
+                const coinsEl = document.getElementById('coins');
+                const energyEl = document.getElementById('energy');
+                
+                if (scoreEl) scoreEl.textContent = this.gameState.score;
+                if (gemsEl) gemsEl.textContent = this.gameState.gems;
+                if (coinsEl) coinsEl.textContent = this.gameState.coins;
+                if (energyEl) energyEl.textContent = this.gameState.energy;
+            }
+            
+            setupEventListeners() {
+                const shopBtn = document.getElementById('shop-btn');
+                if (shopBtn) {
+                    shopBtn.addEventListener('click', () => {
+                        document.getElementById('shop-modal').style.display = 'block';
+                    });
+                }
+                
+                const historyBtn = document.getElementById('history-btn');
+                if (historyBtn) {
+                    historyBtn.addEventListener('click', () => {
+                        this.showPurchaseHistory();
+                    });
+                }
+            }
+        }
+        
+        // Global functions
+        function closeShop() {
+            document.getElementById('shop-modal').style.display = 'none';
+        }
+        
+        function closeHistory() {
+            document.getElementById('history-modal').style.display = 'none';
+        }
+        
+        // Initialize game
+        const game = new ProductionPayPalIAP();
+        
+        // Auto-save every 30 seconds
+        setInterval(() => {
+            game.saveGame();
+        }, 30000);
+    </script>
+</body>
+</html>
