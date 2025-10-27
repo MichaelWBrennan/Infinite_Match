@@ -10,15 +10,12 @@
     <!-- Shared UI Styles -->
     <link rel="stylesheet" href="shared-ui.css">
     
-    <!-- Platform-specific SDK will be loaded here -->
-    <script id="platform-sdk-loader"></script>
+    <!-- Platform-specific SDK (Self-hosted) -->
+    <script src="/js/platform-sdks.js"></script>
     
-    <!-- Analytics SDKs -->
-    <script src="https://cdn.amplitude.com/libs/analytics-browser-2.26.0-min.js.gz"></script>
-    <script src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"></script>
-    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.tracing.min.js"></script>
-    <script src="https://browser.sentry-cdn.com/7.114.0/bundle.min.js"></script>
-    <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
+    <!-- Analytics SDKs (Self-hosted) -->
+    <script src="/js/sentry.min.js"></script>
+    <script src="/js/posthog.min.js"></script>
     
     <!-- Platform Detection -->
     <script src="platform-detection.js"></script>
@@ -173,22 +170,15 @@
             try {
                 analytics.sessionId = 'webgl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 
-                // Initialize Amplitude
-                if (typeof amplitude !== 'undefined') {
-                    analytics.amplitude = amplitude;
-                    analytics.amplitude.init('YOUR_AMPLITUDE_API_KEY', null, {
-                        saveEvents: true,
-                        includeUtm: true,
-                        includeReferrer: true
+                // Initialize PostHog (replaces Amplitude, Mixpanel, Datadog)
+                if (typeof posthog !== 'undefined') {
+                    analytics.posthog = posthog;
+                    analytics.posthog.init('YOUR_POSTHOG_PUBLIC_KEY', {
+                        api_host: 'http://localhost:8000',
+                        loaded: (posthog) => {
+                            console.log('✅ PostHog initialized');
+                        }
                     });
-                    console.log('✅ Amplitude initialized');
-                }
-                
-                // Initialize Mixpanel
-                if (typeof mixpanel !== 'undefined') {
-                    analytics.mixpanel = mixpanel;
-                    analytics.mixpanel.init('YOUR_MIXPANEL_TOKEN');
-                    console.log('✅ Mixpanel initialized');
                 }
                 
                 // Initialize Sentry
@@ -200,25 +190,6 @@
                         tracesSampleRate: 1.0
                     });
                     console.log('✅ Sentry initialized');
-                }
-                
-                // Initialize Datadog RUM
-                if (typeof DD_RUM !== 'undefined') {
-                    analytics.datadog = DD_RUM;
-                    analytics.datadog.init({
-                        applicationId: 'YOUR_DATADOG_APP_ID',
-                        clientToken: 'YOUR_DATADOG_CLIENT_TOKEN',
-                        site: 'datadoghq.com',
-                        service: 'match3-game-webgl',
-                        env: 'production',
-                        version: '1.0.0',
-                        sessionSampleRate: 100,
-                        sessionReplaySampleRate: 20,
-                        trackUserInteractions: true,
-                        trackResources: true,
-                        trackLongTasks: true
-                    });
-                    console.log('✅ Datadog RUM initialized');
                 }
                 
                 analytics.initialized = true;
@@ -242,16 +213,8 @@
                     game_version: '1.0.0'
                 };
                 
-                if (analytics.amplitude) {
-                    analytics.amplitude.track(eventName, eventData);
-                }
-                
-                if (analytics.mixpanel) {
-                    analytics.mixpanel.track(eventName, eventData);
-                }
-                
-                if (analytics.datadog) {
-                    analytics.datadog.addAction(eventName, eventData);
+                if (analytics.posthog) {
+                    analytics.posthog.capture(eventName, eventData);
                 }
                 
                 console.log('📊 Event tracked:', eventName, eventData);

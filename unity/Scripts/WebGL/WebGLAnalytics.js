@@ -7,10 +7,8 @@ class WebGLAnalytics {
         this.isInitialized = false;
         this.eventQueue = [];
         this.config = {
-            amplitudeApiKey: 'YOUR_AMPLITUDE_API_KEY',
-            mixpanelToken: 'YOUR_MIXPANEL_TOKEN',
-            datadogApplicationId: 'YOUR_DATADOG_APPLICATION_ID',
-            datadogClientToken: 'YOUR_DATADOG_CLIENT_TOKEN',
+            posthogApiKey: 'YOUR_POSTHOG_PUBLIC_KEY',
+            posthogHost: 'https://app.posthog.com',
             sentryDsn: 'YOUR_SENTRY_DSN'
         };
     }
@@ -21,14 +19,8 @@ class WebGLAnalytics {
             // Initialize Sentry for error tracking
             this.initializeSentry();
             
-            // Initialize Amplitude
-            this.initializeAmplitude();
-            
-            // Initialize Mixpanel
-            this.initializeMixpanel();
-            
-            // Initialize Datadog RUM
-            this.initializeDatadog();
+            // Initialize PostHog (replaces Amplitude, Mixpanel, Datadog)
+            this.initializePostHog();
             
             this.isInitialized = true;
             console.log('WebGL Analytics initialized successfully');
@@ -57,51 +49,18 @@ class WebGLAnalytics {
         }
     }
 
-    // Initialize Amplitude
-    initializeAmplitude() {
-        if (typeof amplitude !== 'undefined') {
-            amplitude.init(this.config.amplitudeApiKey, null, {
-                saveEvents: true,
-                includeUtm: true,
-                includeReferrer: true,
-                includeGclid: true,
-                includeFbclid: true,
-                logLevel: 'debug'
+    // Initialize PostHog (replaces Amplitude, Mixpanel, Datadog)
+    initializePostHog() {
+        if (typeof posthog !== 'undefined') {
+            posthog.init(this.config.posthogApiKey, {
+                api_host: this.config.posthogHost,
+                loaded: (posthog) => {
+                    this.posthog = posthog;
+                    console.log('PostHog initialized for WebGL');
+                }
             });
-            console.log('Amplitude initialized for WebGL');
-        }
-    }
-
-    // Initialize Mixpanel
-    initializeMixpanel() {
-        if (typeof mixpanel !== 'undefined') {
-            mixpanel.init(this.config.mixpanelToken, {
-                debug: true,
-                track_pageview: false,
-                persistence: 'localStorage'
-            });
-            console.log('Mixpanel initialized for WebGL');
-        }
-    }
-
-    // Initialize Datadog RUM
-    initializeDatadog() {
-        if (typeof DD_RUM !== 'undefined') {
-            DD_RUM.init({
-                applicationId: this.config.datadogApplicationId,
-                clientToken: this.config.datadogClientToken,
-                site: 'datadoghq.com',
-                service: 'match3-game-webgl',
-                env: 'production',
-                version: '1.0.0',
-                sessionSampleRate: 100,
-                sessionReplaySampleRate: 20,
-                trackUserInteractions: true,
-                trackResources: true,
-                trackLongTasks: true,
-                defaultPrivacyLevel: 'mask-user-input'
-            });
-            console.log('Datadog RUM initialized for WebGL');
+        } else {
+            console.warn('PostHog not loaded, analytics will be queued');
         }
     }
 
@@ -124,19 +83,9 @@ class WebGLAnalytics {
         }
 
         try {
-            // Track with Amplitude
-            if (typeof amplitude !== 'undefined') {
-                amplitude.track(eventName, eventData.properties);
-            }
-
-            // Track with Mixpanel
-            if (typeof mixpanel !== 'undefined') {
-                mixpanel.track(eventName, eventData.properties);
-            }
-
-            // Track with Datadog RUM
-            if (typeof DD_RUM !== 'undefined') {
-                DD_RUM.addAction(eventName, eventData.properties);
+            // Track with PostHog (replaces Amplitude, Mixpanel, Datadog)
+            if (this.posthog) {
+                this.posthog.capture(eventName, eventData.properties);
             }
 
             // Track with Sentry (as breadcrumb)

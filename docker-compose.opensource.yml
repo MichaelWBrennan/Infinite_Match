@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (replaces DynamoDB, Firestore, Cosmos DB)
+  postgres:
+    image: postgres:15-alpine
+    container_name: match3-postgres
+    environment:
+      POSTGRES_DB: match3game
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache (already open source)
+  redis:
+    image: redis:7-alpine
+    container_name: match3-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage (replaces AWS S3)
+  minio:
+    image: minio/minio:latest
+    container_name: match3-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Prometheus Monitoring (replaces Datadog)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: match3-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+  # Grafana Dashboard (replaces Datadog dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: match3-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+
+  # PostHog Analytics (replaces Amplitude, Mixpanel)
+  posthog:
+    image: posthog/posthog:latest
+    container_name: match3-posthog
+    environment:
+      POSTHOG_SECRET_KEY: your-secret-key-here
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/posthog
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: your-secret-key-here
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - posthog_data:/var/lib/posthog
+
+  # Sentry Error Tracking (already open source)
+  sentry:
+    image: sentry:latest
+    container_name: match3-sentry
+    environment:
+      SENTRY_SECRET_KEY: your-secret-key-here
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_NAME: sentry
+      SENTRY_DB_USER: postgres
+      SENTRY_DB_PASSWORD: password
+      SENTRY_REDIS_HOST: redis
+    ports:
+      - "9002:9000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - sentry_data:/var/lib/sentry
+
+  # SMTP Server for Email (replaces AWS SES)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: match3-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+
+  # MongoDB (already open source, keep existing)
+  mongodb:
+    image: mongo:7
+    container_name: match3-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+  posthog_data:
+  sentry_data:
+  mongodb_data:

@@ -16,12 +16,16 @@ import WebGLMiddleware from '../core/middleware/WebGLMiddleware.js';
 import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
 // import { AnalyticsService } from '../services/analytics-service.js';
 import CloudServices from '../services/cloud-services.js';
-import { PostHogAnalyticsService } from '../services/analytics/posthog-service.js';
+import UnifiedAnalyticsService from '../services/unified-analytics-service.js';
+import PrometheusMonitoringService from '../services/prometheus-monitoring-service.js';
+import OpenSourceCloudServices from '../services/open-source-cloud-services.js';
 import { ASOOptimizationService } from '../services/aso-optimization-service.js';
 import gameRoutes from '../routes/game-routes.js';
 import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
+import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
+import playerAccountRoutes from '../routes/player-accounts.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -57,7 +61,9 @@ class GameServer {
   private platformBuildConfig: PlatformBuildConfig;
   private analyticsService: any;
   private cloudServices: any;
-  private posthogAnalytics: any;
+  private unifiedAnalytics: any;
+  private prometheusMonitoring: any;
+  private openSourceCloud: any;
   private asoOptimization: any;
 
   constructor() {
@@ -91,6 +97,9 @@ class GameServer {
         methods: ['GET', 'POST'],
       },
     });
+    
+    // Initialize multiplayer services with Socket.IO
+    initializeMultiplayerServices(this.io);
   }
 
   private async initializeServices(): Promise<void> {
@@ -109,19 +118,26 @@ class GameServer {
       await this.webglMiddleware.initialize();
       this.logger.info('WebGL middleware initialized');
 
-      // Initialize analytics service
-      this.analyticsService = this.serviceContainer.get<AnalyticsService>('analytics');
-      await this.analyticsService.initialize();
+      // Initialize unified analytics service (replaces Amplitude, Mixpanel, Unity Analytics)
+      this.unifiedAnalytics = UnifiedAnalyticsService;
+      await this.unifiedAnalytics.initialize();
+      this.logger.info('Unified analytics service initialized');
 
-      // Initialize PostHog analytics
-      this.posthogAnalytics = new PostHogAnalyticsService();
-      this.logger.info('PostHog analytics initialized');
+      // Initialize Prometheus monitoring (replaces Datadog)
+      this.prometheusMonitoring = PrometheusMonitoringService;
+      await this.prometheusMonitoring.initialize();
+      this.logger.info('Prometheus monitoring service initialized');
+
+      // Initialize open source cloud services (replaces AWS, Google Cloud, Azure)
+      this.openSourceCloud = OpenSourceCloudServices;
+      await this.openSourceCloud.initialize();
+      this.logger.info('Open source cloud services initialized');
 
       // Initialize ASO optimization service
       this.asoOptimization = new ASOOptimizationService();
       this.logger.info('ASO optimization service initialized');
 
-      // Initialize cloud services
+      // Keep legacy cloud services for backward compatibility
       this.cloudServices = this.serviceContainer.get<CloudServices>('cloud');
       await this.cloudServices.initialize();
 
@@ -165,14 +181,9 @@ class GameServer {
             scriptSrc: [
               '\'self\'',
               '\'unsafe-inline\'',
-              'https://cdn.amplitude.com',
-              'https://cdn.mxpnl.com',
             ],
             connectSrc: [
               '\'self\'',
-              'https://api2.amplitude.com',
-              'https://api.mixpanel.com',
-              'https://browser.sentry-cdn.com',
             ],
             imgSrc: ['\'self\'', 'data:', 'https:'],
             fontSrc: ['\'self\'', 'https:', 'data:'],
@@ -217,20 +228,30 @@ class GameServer {
   private setupRoutes(): void {
     // Make services available to routes
     this.app.locals.asoOptimization = this.asoOptimization;
-    this.app.locals.posthogAnalytics = this.posthogAnalytics;
+    this.app.locals.unifiedAnalytics = this.unifiedAnalytics;
+    this.app.locals.prometheusMonitoring = this.prometheusMonitoring;
+    this.app.locals.openSourceCloud = this.openSourceCloud;
     
     // Health check endpoint
     this.app.get('/health', this.handleHealthCheck.bind(this));
+
+    // Prometheus metrics endpoint
+    this.app.get('/metrics', this.handleMetrics.bind(this));
 
     // API routes
     this.app.use('/api/game', gameRoutes);
     this.app.use('/api/ai', aiContentRoutes);
     this.app.use('/api/realtime', realtimeRoutes);
     this.app.use('/api/aso', asoRoutes);
+    this.app.use('/api/multiplayer', multiplayerRoutes);
+    this.app.use('/api/accounts', playerAccountRoutes);
 
     // Platform-specific API routes
     this.setupPlatformRoutes();
 
+    // Serve static files from public directory
+    this.app.use(express.static('public'));
+    
     // Serve static files for WebGL build with platform optimization
     this.app.use(
       express.static('webgl', {
@@ -265,8 +286,10 @@ class GameServer {
       message: 'OK',
       timestamp: new Date().toISOString(),
       services: {
-        analytics: this.analyticsService.getAnalyticsSummary(),
-        cloud: this.cloudServices.getServiceStatus(),
+        analytics: this.unifiedAnalytics.getHealthStatus(),
+        monitoring: this.prometheusMonitoring.getHealthStatus(),
+        cloud: this.openSourceCloud.getServiceStatus(),
+        legacy: this.cloudServices.getServiceStatus(),
       },
     };
 
@@ -276,6 +299,17 @@ class GameServer {
       this.logger.error('Health check failed:', { error });
       healthCheck.message = 'ERROR';
       res.status(503).json(healthCheck);
+    }
+  }
+
+  private async handleMetrics(req: Request, res: Response): Promise<void> {
+    try {
+      const metrics = await this.prometheusMonitoring.getMetrics();
+      res.set('Content-Type', 'text/plain');
+      res.status(200).send(metrics);
+    } catch (error) {
+      this.logger.error('Metrics endpoint failed:', { error });
+      res.status(500).json({ error: 'Failed to get metrics' });
     }
   }
 

@@ -1,0 +1,63 @@
+/* Local Fonts - Replaces Google Fonts */
+@font-face {
+  font-family: 'Fredoka One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Fredoka One'), local('FredokaOne-Regular'),
+       url('data:font/woff2;base64,') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: local('Fredoka Light'), local('Fredoka-Light'),
+       url('data:font/woff2;base64,') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Fredoka'), local('Fredoka-Regular'),
+       url('data:font/woff2;base64,') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local('Fredoka Medium'), local('Fredoka-Medium'),
+       url('data:font/woff2;base64,') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Fredoka SemiBold'), local('Fredoka-SemiBold'),
+       url('data:font/woff2;base64,') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Fredoka Bold'), local('Fredoka-Bold'),
+       url('data:font/woff2;base64,') format('woff2');
+}
+
+/* Fallback fonts */
+body {
+  font-family: 'Fredoka', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Fredoka One', 'Fredoka', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
