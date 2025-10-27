@@ -2,8 +2,11 @@
  * Local Economy Manager - Handles currency and economy
  */
 
+import { Logger } from '../core/logger/index.js';
+
 class LocalEconomyManager {
   constructor() {
+    this.logger = new Logger('LocalEconomyManager');
     this.currencies = {
       coins: 1000,
       gems: 50,
@@ -40,13 +43,13 @@ class LocalEconomyManager {
   }
 
   async initialize() {
-    console.log('💰 Initializing Economy Manager...');
+    this.logger.info('Initializing Economy Manager...');
     
     this.loadData();
     this.initializeAchievements();
     this.updateEnergyRegeneration();
     
-    console.log('✅ Economy Manager initialized');
+    this.logger.info('Economy Manager initialized');
   }
 
   initializeAchievements() {

@@ -2,8 +2,11 @@
  * Local Weather System - Simulates weather without external APIs
  */
 
+import { Logger } from '../core/logger/index.js';
+
 class LocalWeatherSystem {
   constructor() {
+    this.logger = new Logger('LocalWeatherSystem');
     this.weatherData = {
       current: null,
       forecast: [],
@@ -28,13 +31,13 @@ class LocalWeatherSystem {
   }
 
   async initialize() {
-    console.log('🌤️ Initializing Local Weather System...');
+    this.logger.info('Initializing Local Weather System...');
     
     this.loadData();
     this.generateWeather();
     this.startWeatherUpdates();
     
-    console.log('✅ Local Weather System initialized');
+    this.logger.info('Local Weather System initialized');
   }
 
   generateWeather() {

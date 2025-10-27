@@ -2,8 +2,11 @@
  * Local Tutorial Engine - Handles tutorial and onboarding
  */
 
+import { Logger } from '../core/logger/index.js';
+
 class LocalTutorialEngine {
   constructor() {
+    this.logger = new Logger('LocalTutorialEngine');
     this.tutorialSteps = [];
     this.currentStepIndex = 0;
     this.completed = false;
@@ -12,7 +15,7 @@ class LocalTutorialEngine {
   }
 
   async initialize() {
-    console.log('🎓 Initializing Tutorial Engine...');
+    this.logger.info('Initializing Tutorial Engine...');
     
     this.loadData();
     
@@ -20,7 +23,7 @@ class LocalTutorialEngine {
       this.createDefaultTutorial();
     }
     
-    console.log(`✅ Tutorial Engine initialized with ${this.tutorialSteps.length} steps`);
+    this.logger.info(`Tutorial Engine initialized with ${this.tutorialSteps.length} steps`);
   }
 
   createDefaultTutorial() {
