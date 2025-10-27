@@ -13,6 +13,9 @@ class LocalGameManager {
     this.inventoryManager = new LocalInventoryManager();
     this.economyManager = new LocalEconomyManager();
     this.notificationManager = new LocalNotificationManager();
+    this.weatherSystem = new LocalWeatherSystem();
+    this.realTimeEvents = new LocalRealTimeEvents();
+    this.iapSystem = new LocalIAPSystem();
     
     this.initialize();
   }
@@ -29,6 +32,9 @@ class LocalGameManager {
     await this.inventoryManager.initialize();
     await this.economyManager.initialize();
     await this.notificationManager.initialize();
+    await this.weatherSystem.initialize();
+    await this.realTimeEvents.initialize();
+    await this.iapSystem.initialize();
     
     console.log('✅ Local Game Manager initialized successfully');
   }
@@ -236,6 +242,72 @@ class LocalGameManager {
     return this.economyManager.checkAchievements(type, data);
   }
 
+  // ==================== WEATHER SYSTEM ====================
+  
+  getCurrentWeather() {
+    return this.weatherSystem.getCurrentWeather();
+  }
+
+  getWeatherForecast() {
+    return this.weatherSystem.getWeatherForecast();
+  }
+
+  getWeatherBonus() {
+    return this.weatherSystem.getWeatherBonus();
+  }
+
+  getWeatherEvents() {
+    return this.weatherSystem.getWeatherEvents();
+  }
+
+  setWeatherLocation(location) {
+    return this.weatherSystem.setLocation(location);
+  }
+
+  // ==================== REAL-TIME EVENTS ====================
+  
+  getActiveRealTimeEvents() {
+    return this.realTimeEvents.getActiveEvents();
+  }
+
+  participateInRealTimeEvent(eventId) {
+    return this.realTimeEvents.participateInEvent(eventId);
+  }
+
+  getUpcomingRealTimeEvents() {
+    return this.realTimeEvents.getUpcomingEvents();
+  }
+
+  // ==================== IAP SYSTEM ====================
+  
+  getIAPProducts(category = null) {
+    return this.iapSystem.getProducts(category);
+  }
+
+  purchaseProduct(productId, paymentMethod = 'simulated') {
+    return this.iapSystem.purchaseProduct(productId, paymentMethod);
+  }
+
+  getSubscriptions() {
+    return this.iapSystem.getSubscriptions();
+  }
+
+  purchaseSubscription(subscriptionId, paymentMethod = 'simulated') {
+    return this.iapSystem.purchaseSubscription(subscriptionId, paymentMethod);
+  }
+
+  getActiveSubscriptions() {
+    return this.iapSystem.getActiveSubscriptions();
+  }
+
+  getSubscriptionBenefits() {
+    return this.iapSystem.checkSubscriptionBenefits();
+  }
+
+  getPurchaseHistory(limit = 50) {
+    return this.iapSystem.getPurchaseHistory(limit);
+  }
+
   // ==================== UTILITY METHODS ====================
   
   saveGame() {
@@ -248,6 +320,9 @@ class LocalGameManager {
       inventory: this.inventoryManager.export(),
       economy: this.economyManager.export(),
       notifications: this.notificationManager.export(),
+      weather: this.weatherSystem.export(),
+      realTimeEvents: this.realTimeEvents.export(),
+      iap: this.iapSystem.export(),
       timestamp: Date.now()
     };
     
@@ -267,6 +342,9 @@ class LocalGameManager {
       if (gameData.inventory) this.inventoryManager.import(gameData.inventory);
       if (gameData.economy) this.economyManager.import(gameData.economy);
       if (gameData.notifications) this.notificationManager.import(gameData.notifications);
+      if (gameData.weather) this.weatherSystem.import(gameData.weather);
+      if (gameData.realTimeEvents) this.realTimeEvents.import(gameData.realTimeEvents);
+      if (gameData.iap) this.iapSystem.import(gameData.iap);
       
       return true;
     } catch (error) {
