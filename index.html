@@ -912,8 +912,8 @@
             
             console.log('📱 Platform info:', platformInfo);
             
-            // Start loading check immediately
-            const webglCheckPromise = checkWebGLFiles();
+            // Skip WebGL checking since Unity build is not available
+            const webglCheckPromise = Promise.resolve(false);
             
             // Initialize game instance in parallel
             const gameInitPromise = new Promise(resolve => {
@@ -930,16 +930,11 @@
             console.log('📊 WebGL valid:', webglValid);
             console.log('🎯 Game initialized:', gameInitialized);
             
-            // Show appropriate screen based on WebGL availability and platform capabilities
-            if (!webglValid || platformInfo.isLowEnd) {
-                console.log('🔄 Using fallback game (no WebGL or low-end device)');
-                // Hide loading screen and show title screen immediately
-                document.getElementById('loading-screen').classList.remove('active');
-                document.getElementById('title-screen').classList.add('active');
-            } else {
-                console.log('✅ Using WebGL game');
-                // Let the game's own loading logic handle the transition
-            }
+        // Always use fallback game since Unity WebGL build is not available
+        console.log('🔄 Using fallback game (Unity WebGL build not available)');
+        // Hide loading screen and show title screen immediately
+        document.getElementById('loading-screen').classList.remove('active');
+        document.getElementById('title-screen').classList.add('active');
             
             // Ensure global functions are available
             console.log('🔧 Verifying global functions...');
