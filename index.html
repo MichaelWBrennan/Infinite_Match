@@ -932,6 +932,17 @@
             
         // Always use fallback game since Unity WebGL build is not available
         console.log('🔄 Using fallback game (Unity WebGL build not available)');
+        
+        // Initialize the fallback game
+        if (typeof InfiniteMatchGame !== 'undefined') {
+            try {
+                window.game = new InfiniteMatchGame();
+                console.log('✅ Fallback game initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize fallback game:', error);
+            }
+        }
+        
         // Hide loading screen and show title screen immediately
         document.getElementById('loading-screen').classList.remove('active');
         document.getElementById('title-screen').classList.add('active');
