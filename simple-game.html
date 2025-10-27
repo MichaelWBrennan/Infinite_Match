@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Match - Simple Version</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One:wght@400&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Your existing game UI -->
+    </div>
+
+    <script>
+        // Simplified game without external dependencies
+        class SimpleInfiniteMatch {
+            constructor() {
+                this.gameState = {
+                    score: 0,
+                    moves: 30,
+                    level: 1,
+                    gems: 1000,
+                    stars: 50,
+                    energy: 5,
+                    inventory: {
+                        bomb: 3,
+                        rainbow: 1,
+                        lightning: 2
+                    },
+                    achievements: [],
+                    settings: {
+                        music: true,
+                        sfx: true
+                    }
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                this.loadGame();
+                this.renderUI();
+                this.setupEventListeners();
+            }
+            
+            // Save to localStorage (no server needed)
+            saveGame() {
+                localStorage.setItem('infiniteMatchSave', JSON.stringify(this.gameState));
+                console.log('Game saved locally!');
+            }
+            
+            // Load from localStorage
+            loadGame() {
+                const saved = localStorage.getItem('infiniteMatchSave');
+                if (saved) {
+                    this.gameState = { ...this.gameState, ...JSON.parse(saved) };
+                }
+            }
+            
+            // Export save file
+            exportSave() {
+                const data = JSON.stringify(this.gameState, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'infinite-match-save.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+            
+            // Import save file
+            importSave(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            this.gameState = JSON.parse(e.target.result);
+                            this.renderUI();
+                            console.log('Game imported successfully!');
+                        } catch (error) {
+                            console.error('Invalid save file:', error);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            }
+            
+            // Purchase items (local only)
+            purchaseItem(itemId, cost) {
+                if (this.gameState.gems >= cost) {
+                    this.gameState.gems -= cost;
+                    // Add item to inventory
+                    this.gameState.inventory[itemId] = (this.gameState.inventory[itemId] || 0) + 1;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            // Use powerup
+            usePowerup(powerupId) {
+                if (this.gameState.inventory[powerupId] > 0) {
+                    this.gameState.inventory[powerupId]--;
+                    this.saveGame();
+                    this.renderUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            // Complete level
+            completeLevel(score, stars) {
+                this.gameState.score += score;
+                this.gameState.stars += stars;
+                this.gameState.level++;
+                this.gameState.gems += Math.floor(score / 100);
+                this.saveGame();
+                this.renderUI();
+            }
+            
+            // Render UI
+            renderUI() {
+                document.getElementById('score').textContent = this.gameState.score;
+                document.getElementById('gems').textContent = this.gameState.gems;
+                document.getElementById('stars').textContent = this.gameState.stars;
+                document.getElementById('level').textContent = this.gameState.level;
+                document.getElementById('energy').textContent = this.gameState.energy;
+            }
+            
+            setupEventListeners() {
+                // Add your existing game event listeners here
+                // No external API calls needed
+            }
+        }
+        
+        // Initialize game when page loads
+        const game = new SimpleInfiniteMatch();
+        
+        // Auto-save every 30 seconds
+        setInterval(() => {
+            game.saveGame();
+        }, 30000);
+    </script>
+</body>
+</html>
