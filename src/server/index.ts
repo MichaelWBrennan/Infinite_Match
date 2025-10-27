@@ -25,6 +25,7 @@ import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
 import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
+import playerAccountRoutes from '../routes/player-accounts.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -243,6 +244,7 @@ class GameServer {
     this.app.use('/api/realtime', realtimeRoutes);
     this.app.use('/api/aso', asoRoutes);
     this.app.use('/api/multiplayer', multiplayerRoutes);
+    this.app.use('/api/accounts', playerAccountRoutes);
 
     // Platform-specific API routes
     this.setupPlatformRoutes();
