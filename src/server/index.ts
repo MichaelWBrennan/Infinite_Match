@@ -32,6 +32,7 @@ import { router as multiplayerRoutes, initializeMultiplayerServices } from '../r
 import playerAccountRoutes from '../routes/player-accounts.js';
 import authRoutes from '../routes/auth.js';
 import accountEconomyRoutes from '../routes/account-economy.js';
+import stripeRoutes from '../routes/stripe.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -278,6 +279,11 @@ class GameServer {
 
     this.app.use('/api/', limiter);
 
+    // Stripe webhooks must receive the untouched body so the signature can be
+    // verified. This raw parser has to run before express.json below; the
+    // router's own express.raw then sees the body as already parsed.
+    this.app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
     // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -314,6 +320,8 @@ class GameServer {
     // mounted, so every call returned 404.
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/account-economy', accountEconomyRoutes);
+    // stripe-payment.js calls these endpoints; the router was never mounted.
+    this.app.use('/api/stripe', stripeRoutes);
 
     // Platform-specific API routes
     this.setupPlatformRoutes();
