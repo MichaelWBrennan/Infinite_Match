@@ -4,7 +4,7 @@
  * Handles reading secrets from Cursor account or environment variables
  */
 
-import { Logger } from '../core/logger/index.js';
+import { Logger } from './core/logger/index.js';
 
 class UnityCloudSecrets {
   constructor() {

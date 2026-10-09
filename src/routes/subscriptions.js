@@ -26,7 +26,7 @@ router.post('/apple', async (req, res) => {
           raw: payload,
         });
         return res.json({ ok: true });
-      } catch (_) {}
+      } catch (_) { /* not a parseable Apple payload; fall through to record the raw body */ }
     }
     await PurchaseLedger.recordSubscriptionEvent({ provider: 'apple', eventType, raw: body });
     res.json({ ok: true });
@@ -47,7 +47,7 @@ router.post('/google', async (req, res) => {
         const json = Buffer.from(String(message.data), 'base64').toString('utf-8');
         decoded = JSON.parse(json);
       }
-    } catch (_) {}
+    } catch (_) { /* not a parseable Google RTDN payload; fall through to record the raw body */ }
     await PurchaseLedger.recordSubscriptionEvent({
       provider: 'google',
       eventType: 'rtdn',

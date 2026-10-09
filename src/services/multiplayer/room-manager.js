@@ -471,30 +471,30 @@ class RoomManager {
 
     // Add game-specific state
     switch (gameType) {
-      case 'match3_versus':
-        return {
-          ...baseState,
-          timeLimit: 60, // 60 seconds per turn
-          maxMoves: 30,
-          targetScore: 1000
-        };
-      case 'match3_tournament':
-        return {
-          ...baseState,
-          rounds: [],
-          currentRound: 0,
-          bracket: [],
-          timeLimit: 45
-        };
-      case 'match3_coop':
-        return {
-          ...baseState,
-          sharedScore: 0,
-          targetScore: 2000,
-          timeLimit: 300 // 5 minutes
-        };
-      default:
-        return baseState;
+    case 'match3_versus':
+      return {
+        ...baseState,
+        timeLimit: 60, // 60 seconds per turn
+        maxMoves: 30,
+        targetScore: 1000
+      };
+    case 'match3_tournament':
+      return {
+        ...baseState,
+        rounds: [],
+        currentRound: 0,
+        bracket: [],
+        timeLimit: 45
+      };
+    case 'match3_coop':
+      return {
+        ...baseState,
+        sharedScore: 0,
+        targetScore: 2000,
+        timeLimit: 300 // 5 minutes
+      };
+    default:
+      return baseState;
     }
   }
 

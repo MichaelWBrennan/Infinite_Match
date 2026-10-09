@@ -357,29 +357,29 @@ class AntiCheatSystem {
     
     for (const check of suspiciousChecks) {
       switch (check.warning) {
-        case 'Move frequency too high':
-          severity += 2;
-          break;
-        case 'Impossible move detected':
-          severity += 3;
-          break;
-        case 'Bot-like behavior detected':
-          severity += 2;
-          break;
-        case 'Score manipulation detected':
-          severity += 3;
-          break;
-        case 'Repetitive move patterns detected':
-          severity += 1;
-          break;
-        case 'Too consistent timing detected':
-          severity += 2;
-          break;
-        case 'Impossibly fast moves detected':
-          severity += 3;
-          break;
-        default:
-          severity += 1;
+      case 'Move frequency too high':
+        severity += 2;
+        break;
+      case 'Impossible move detected':
+        severity += 3;
+        break;
+      case 'Bot-like behavior detected':
+        severity += 2;
+        break;
+      case 'Score manipulation detected':
+        severity += 3;
+        break;
+      case 'Repetitive move patterns detected':
+        severity += 1;
+        break;
+      case 'Too consistent timing detected':
+        severity += 2;
+        break;
+      case 'Impossibly fast moves detected':
+        severity += 3;
+        break;
+      default:
+        severity += 1;
       }
     }
     

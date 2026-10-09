@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { aiCacheManager } from './ai-cache-manager.js';
 import { aiMonitoringSystem } from './ai-monitoring-system.js';
-import OpenAI from 'openai';
 import { EventEmitter } from 'events';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
 
 /**
  * AI Query Optimizer - Intelligent database query optimization system
@@ -21,9 +21,7 @@ class AIQueryOptimizer extends EventEmitter {
     this.logger = new Logger('AIQueryOptimizer');
 
     // OpenAI for query analysis
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.openai = createOpenAIClient();
 
     // Query performance tracking
     this.queryMetrics = new Map();
@@ -407,39 +405,39 @@ Return JSON recommendations:
     // Generate recommendations based on analysis
     analysis.performanceIssues.forEach(issue => {
       switch (issue.type) {
-        case 'missing_index':
-          optimizations.push({
-            type: 'index',
-            priority: 'high',
-            description: `Add index for ${issue.description}`,
-            implementation: 'Create appropriate index on identified columns',
-            expectedImprovement: '50-90%',
-            risk: 'low',
-            effort: 'low',
-          });
-          break;
-        case 'inefficient_join':
-          optimizations.push({
-            type: 'query_rewrite',
-            priority: 'medium',
-            description: 'Optimize join conditions',
-            implementation: 'Rewrite join to use proper indexes',
-            expectedImprovement: '30-70%',
-            risk: 'medium',
-            effort: 'medium',
-          });
-          break;
-        case 'full_table_scan':
-          optimizations.push({
-            type: 'index',
-            priority: 'critical',
-            description: 'Add index to prevent full table scan',
-            implementation: 'Create index on WHERE clause columns',
-            expectedImprovement: '80-95%',
-            risk: 'low',
-            effort: 'low',
-          });
-          break;
+      case 'missing_index':
+        optimizations.push({
+          type: 'index',
+          priority: 'high',
+          description: `Add index for ${issue.description}`,
+          implementation: 'Create appropriate index on identified columns',
+          expectedImprovement: '50-90%',
+          risk: 'low',
+          effort: 'low',
+        });
+        break;
+      case 'inefficient_join':
+        optimizations.push({
+          type: 'query_rewrite',
+          priority: 'medium',
+          description: 'Optimize join conditions',
+          implementation: 'Rewrite join to use proper indexes',
+          expectedImprovement: '30-70%',
+          risk: 'medium',
+          effort: 'medium',
+        });
+        break;
+      case 'full_table_scan':
+        optimizations.push({
+          type: 'index',
+          priority: 'critical',
+          description: 'Add index to prevent full table scan',
+          implementation: 'Create index on WHERE clause columns',
+          expectedImprovement: '80-95%',
+          risk: 'low',
+          effort: 'low',
+        });
+        break;
       }
     });
     

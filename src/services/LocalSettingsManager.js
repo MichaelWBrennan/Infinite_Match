@@ -82,7 +82,7 @@ class LocalSettingsManager {
   }
 
   setSetting(category, key, value) {
-    if (this.settings[category] && this.settings[category].hasOwnProperty(key)) {
+    if (this.settings[category] && Object.prototype.hasOwnProperty.call(this.settings[category], key)) {
       this.settings[category][key] = value;
       this.saveData();
       this.applySettings();

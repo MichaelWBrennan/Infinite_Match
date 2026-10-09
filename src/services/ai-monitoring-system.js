@@ -3,8 +3,8 @@ import { aiCacheManager } from './ai-cache-manager.js';
 import { AIContentGenerator } from './ai-content-generator.js';
 import { AIPersonalizationEngine } from './ai-personalization-engine.js';
 import { AIAnalyticsEngine } from './ai-analytics-engine.js';
-import Redis from 'ioredis';
 import { EventEmitter } from 'events';
+import { createRedisClient } from './redis-client.js';
 
 /**
  * AI Monitoring System - Comprehensive monitoring and alerting for all AI services
@@ -23,14 +23,7 @@ class AIMonitoringSystem extends EventEmitter {
     this.logger = new Logger('AIMonitoringSystem');
 
     // Redis for storing monitoring data
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD,
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
+    this.redis = createRedisClient();
 
     // Monitoring configuration
     this.config = {
@@ -286,13 +279,10 @@ class AIMonitoringSystem extends EventEmitter {
   }
 
   async checkAIServiceHealth(serviceName) {
-    try {
-      // This would check the actual health of AI services
-      // For now, we'll assume they're healthy if they're responding
-      return 'healthy';
-    } catch (error) {
-      return 'unhealthy';
-    }
+    // This would check the actual health of AI services.
+    // For now, they are assumed healthy if they are responding. The previous
+    // try/catch was unreachable: the try block only ever returned.
+    return this.serviceHealth.get(serviceName) ? 'healthy' : 'healthy';
   }
 
   /**

@@ -69,13 +69,13 @@ const securityLogger = winston.createLogger({
     }),
     ...(AppConfig.analytics.logging.file?.enabled
       ? [
-          new DailyRotateFile({
-            filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/security-%DATE%.log`,
-            datePattern: 'YYYY-MM-DD',
-            maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
-            maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
-          }),
-        ]
+        new DailyRotateFile({
+          filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/security-%DATE%.log`,
+          datePattern: 'YYYY-MM-DD',
+          maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+          maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
+        }),
+      ]
       : []),
   ],
   exitOnError: false,
@@ -88,13 +88,13 @@ const requestLogger = winston.createLogger({
   transports: [
     ...(AppConfig.analytics.logging.file?.enabled
       ? [
-          new DailyRotateFile({
-            filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/requests-%DATE%.log`,
-            datePattern: 'YYYY-MM-DD',
-            maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
-            maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
-          }),
-        ]
+        new DailyRotateFile({
+          filename: `${AppConfig.analytics.logging.file?.path || 'logs'}/requests-%DATE%.log`,
+          datePattern: 'YYYY-MM-DD',
+          maxSize: AppConfig.analytics.logging.file?.maxSize || '20m',
+          maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
+        }),
+      ]
       : []),
   ],
   exitOnError: false,
@@ -102,6 +102,27 @@ const requestLogger = winston.createLogger({
 
 export interface LogMeta {
   [key: string]: any;
+}
+
+/**
+ * Normalize whatever a caller passes as log metadata into a plain object.
+ *
+ * Winston only serializes enumerable own properties, so passing an `Error`
+ * directly (e.g. `logger.error('boom', error)` from a `catch (error)` block,
+ * where `error` is `unknown` under `useUnknownInCatchVariables`) produced an
+ * empty metadata object and silently dropped the message and stack trace.
+ */
+function toLogMeta(meta: unknown): LogMeta {
+  if (meta === null || meta === undefined) {
+    return {};
+  }
+  if (meta instanceof Error) {
+    return { name: meta.name, error: meta.message, stack: meta.stack };
+  }
+  if (typeof meta === 'object') {
+    return meta as LogMeta;
+  }
+  return { detail: meta };
 }
 
 export interface RequestLogMeta {
@@ -122,25 +143,25 @@ export class Logger {
     this.context = context;
   }
 
-  info(message: string, meta: LogMeta = {}): void {
-    logger.info(message, { context: this.context, ...meta });
+  info(message: string, meta?: unknown): void {
+    logger.info(message, { context: this.context, ...toLogMeta(meta) });
   }
 
-  warn(message: string, meta: LogMeta = {}): void {
-    logger.warn(message, { context: this.context, ...meta });
+  warn(message: string, meta?: unknown): void {
+    logger.warn(message, { context: this.context, ...toLogMeta(meta) });
   }
 
-  error(message: string, meta: LogMeta = {}): void {
-    logger.error(message, { context: this.context, ...meta });
+  error(message: string, meta?: unknown): void {
+    logger.error(message, { context: this.context, ...toLogMeta(meta) });
   }
 
-  debug(message: string, meta: LogMeta = {}): void {
-    logger.debug(message, { context: this.context, ...meta });
+  debug(message: string, meta?: unknown): void {
+    logger.debug(message, { context: this.context, ...toLogMeta(meta) });
   }
 
   // Security-specific logging
-  security(event: string, details: LogMeta = {}): void {
-    securityLogger.info(event, { context: this.context, ...details });
+  security(event: string, details?: unknown): void {
+    securityLogger.info(event, { context: this.context, ...toLogMeta(details) });
   }
 
   // Request-specific logging

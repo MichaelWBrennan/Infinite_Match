@@ -24,8 +24,8 @@ import {
 import { Storage } from '@google-cloud/storage';
 import { Firestore } from '@google-cloud/firestore';
 import { PubSub } from '@google-cloud/pubsub';
-import { MonitoringServiceV2Client } from '@google-cloud/monitoring';
-import { LoggingServiceV2Client } from '@google-cloud/logging';
+import { MetricServiceClient } from '@google-cloud/monitoring';
+import { Logging } from '@google-cloud/logging';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
@@ -49,6 +49,9 @@ class OptimizedCloudServicesManager {
     this.mongodb = null;
     this.isInitialized = false;
     this.healthChecks = new Map();
+    // Per-provider start-up outcome (distinct from `healthChecks`, which holds
+    // live probe functions).
+    this.providerStatus = new Map();
     this.retryPolicies = new Map();
     this.circuitBreakers = new Map();
     this.metrics = {
@@ -62,38 +65,52 @@ class OptimizedCloudServicesManager {
    * Initialize all cloud services with optimized configuration
    */
   async initialize() {
-    try {
-      this.logger.info('Initializing optimized cloud services...');
+    this.logger.info('Initializing optimized cloud services...');
 
-      // Initialize AWS services
-      await this.initializeAWSServices();
-      
-      // Initialize Google Cloud services
-      await this.initializeGoogleCloudServices();
-      
-      // Initialize Azure services
-      await this.initializeAzureServices();
-      
-      // Initialize Redis
-      await this.initializeRedis();
-      
-      // Initialize MongoDB
-      await this.initializeMongoDB();
+    // Each cloud provider is optional. Earlier the first unconfigured provider
+    // (e.g. Azure, whose SDK throws on an undefined connection string) aborted
+    // initialization and took the whole server down. Now a provider failure
+    // only disables that provider.
+    const providers = [
+      ['aws', () => this.initializeAWSServices()],
+      ['google', () => this.initializeGoogleCloudServices()],
+      ['azure', () => this.initializeAzureServices()],
+      ['redis', () => this.initializeRedis()],
+      ['mongodb', () => this.initializeMongoDB()],
+    ];
 
-      // Setup health checks
-      this.setupHealthChecks();
-      
-      // Setup retry policies
-      this.setupRetryPolicies();
-      
-      // Setup circuit breakers
-      this.setupCircuitBreakers();
+    const unavailable = [];
 
-      this.isInitialized = true;
+    for (const [name, init] of providers) {
+      try {
+        await init();
+        this.providerStatus.set(name, { status: 'connected' });
+      } catch (error) {
+        this.providerStatus.set(name, { status: 'unavailable', error: error.message });
+        unavailable.push(name);
+        this.logger.warn(
+          `Cloud provider '${name}' is unavailable, continuing without it: ${error.message}`,
+        );
+      }
+    }
+
+    // Setup health checks
+    this.setupHealthChecks();
+
+    // Setup retry policies
+    this.setupRetryPolicies();
+
+    // Setup circuit breakers
+    this.setupCircuitBreakers();
+
+    this.isInitialized = true;
+
+    if (unavailable.length > 0) {
+      this.logger.warn(
+        `Cloud services running in degraded mode. Unavailable: ${unavailable.join(', ')}`,
+      );
+    } else {
       this.logger.info('All cloud services initialized successfully');
-    } catch (error) {
-      console.error('❌ Failed to initialize cloud services:', error);
-      throw error;
     }
   }
 
@@ -125,8 +142,8 @@ class OptimizedCloudServicesManager {
       storage: new Storage(googleConfig),
       firestore: new Firestore(googleConfig),
       pubsub: new PubSub(googleConfig),
-      monitoring: new MonitoringServiceV2Client(googleConfig),
-      logging: new LoggingServiceV2Client(googleConfig),
+      monitoring: new MetricServiceClient(googleConfig),
+      logging: new Logging(googleConfig),
     };
   }
 
@@ -154,29 +171,37 @@ class OptimizedCloudServicesManager {
   }
 
   async initializeRedis() {
-    if (process.env.REDIS_URL) {
-      this.redis = createClient({
-        url: process.env.REDIS_URL,
-        retry_strategy: (options) => {
-          if (options.error && options.error.code === 'ECONNREFUSED') {
-            return new Error('Redis server connection refused');
-          }
-          if (options.total_retry_time > 1000 * 60 * 60) {
-            return new Error('Retry time exhausted');
-          }
-          if (options.attempt > 10) {
-            return undefined;
-          }
-          return Math.min(options.attempt * 100, 3000);
-        },
-      });
-
-      this.redis.on('error', (err) => {
-        console.error('Redis Client Error:', err);
-      });
-
-      await this.redis.connect();
+    if (!process.env.REDIS_URL) {
+      return;
     }
+
+    // node-redis v4 configures reconnects via `socket.reconnectStrategy`.
+    // The old v3 `retry_strategy` key is ignored, so an unreachable Redis
+    // retried forever and `await connect()` never settled - which blocked
+    // `initialize()` and stopped the server from ever listening.
+    this.redis = createClient({
+      url: process.env.REDIS_URL,
+      socket: {
+        reconnectStrategy: (retries) => {
+          // Returning false stops reconnecting and rejects the connect promise.
+          if (retries > 10) return false;
+          return Math.min(retries * 200, 5000);
+        },
+      },
+    });
+
+    // Always attach a listener: node-redis emits 'error' before it is ready,
+    // and an unhandled 'error' event crashes the process.
+    let reported = false;
+    this.redis.on('error', (err) => {
+      if (reported) return;
+      reported = true;
+      this.logger.warn(
+        `Redis unavailable, continuing without cache: ${err && err.message ? err.message : err}`,
+      );
+    });
+
+    await this.redis.connect();
   }
 
   async initializeMongoDB() {
@@ -294,12 +319,27 @@ class OptimizedCloudServicesManager {
     }
   }
 
+  /**
+   * True when the given provider connected successfully during initialize().
+   * Used to turn optional persistence into a no-op instead of a 500.
+   */
+  isProviderConnected(name) {
+    return this.providerStatus.get(name)?.status === 'connected';
+  }
+
   // Core service methods
   async saveGameState(userId, gameState) {
     const startTime = Date.now();
     try {
       this.metrics.requests++;
-      
+
+      // Game state is a cache/best-effort write: without AWS the game must
+      // still be playable, so skip the write instead of failing the request.
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, skipping game state persistence');
+        return { success: false, degraded: true, userId, gameState };
+      }
+
       // Save to DynamoDB
       await this.awsClients.dynamodb.send(new PutItemCommand({
         TableName: process.env.AWS_DYNAMODB_TABLE,
@@ -320,8 +360,8 @@ class OptimizedCloudServicesManager {
       return { success: true, userId, gameState };
     } catch (error) {
       this.metrics.errors++;
-      console.error('Error saving game state:', error);
-      throw error;
+      this.logger.warn('Error saving game state:', error && error.message);
+      return { success: false, degraded: true, userId, error: error.message };
     }
   }
 
@@ -369,6 +409,11 @@ class OptimizedCloudServicesManager {
 
   async savePlayerDataToDynamoDB(tableName, playerData) {
     try {
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, skipping player data persistence');
+        return { success: false, degraded: true };
+      }
+
       await this.awsClients.dynamodb.send(new PutItemCommand({
         TableName: tableName,
         Item: {
@@ -381,8 +426,8 @@ class OptimizedCloudServicesManager {
       }));
       return { success: true };
     } catch (error) {
-      console.error('Error saving player data to DynamoDB:', error);
-      throw error;
+      this.logger.warn('Error saving player data to DynamoDB:', error && error.message);
+      return { success: false, degraded: true, error: error.message };
     }
   }
 
@@ -395,6 +440,11 @@ class OptimizedCloudServicesManager {
         timestamp: new Date().toISOString(),
         messageId: uuidv4(),
       };
+
+      if (!this.isProviderConnected('aws')) {
+        this.logger.debug('AWS unavailable, skipping game event notification');
+        return { success: false, degraded: true, messageId: message.messageId };
+      }
 
       // Send to SNS
       await this.awsClients.sns.send(new PublishCommand({
@@ -411,8 +461,109 @@ class OptimizedCloudServicesManager {
 
       return { success: true, messageId: message.messageId };
     } catch (error) {
-      console.error('Error sending game event notification:', error);
-      throw error;
+      this.logger.warn('Error sending game event notification:', error && error.message);
+      return { success: false, degraded: true, error: error.message };
+    }
+  }
+
+  /**
+   * Read a player's progression record.
+   *
+   * The game routes call this, but it was never implemented, so
+   * GET /api/game/progress answered 500 with
+   * "cloudServices.getPlayerProgress is not a function".
+   */
+  async getPlayerProgress(playerId) {
+    try {
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, returning empty player progress', {
+          playerId,
+        });
+        return null;
+      }
+
+      const result = await this.awsClients.dynamodb.send(
+        new GetItemCommand({
+          TableName: process.env.AWS_DYNAMODB_TABLE,
+          Key: { playerId: { S: playerId } },
+        }),
+      );
+
+      if (!result.Item) return null;
+
+      return {
+        playerId,
+        level: result.Item.level ? Number(result.Item.level.N) : 1,
+        score: result.Item.score ? Number(result.Item.score.N) : 0,
+        gameData: result.Item.gameData ? JSON.parse(result.Item.gameData.S) : {},
+        lastUpdated: result.Item.lastUpdated ? result.Item.lastUpdated.S : null,
+      };
+    } catch (error) {
+      this.logger.warn('Error getting player progress:', error && error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Read a player's achievements. Returns [] when the backing store is
+   * unavailable so the endpoint degrades instead of 500-ing.
+   */
+  async getPlayerAchievements(playerId) {
+    try {
+      if (!playerId) return [];
+
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, returning no achievements', {
+          playerId,
+        });
+        return [];
+      }
+
+      const progress = await this.getPlayerProgress(playerId);
+      return (progress && progress.gameData && progress.gameData.achievements) || [];
+    } catch (error) {
+      this.logger.warn('Error getting player achievements:', error && error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Read a leaderboard page. Returns [] when the backing store is
+   * unavailable so the endpoint degrades instead of 500-ing.
+   */
+  async getLeaderboard(type = 'global', limit = 10) {
+    try {
+      const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, returning empty leaderboard', {
+          type,
+          limit: safeLimit,
+        });
+        return [];
+      }
+
+      const result = await this.awsClients.dynamodb.send(
+        new ScanCommand({
+          TableName: process.env.AWS_DYNAMODB_TABLE,
+          Limit: safeLimit,
+        }),
+      );
+
+      const rows = (result.Items || [])
+        .map((item) => ({
+          playerId: item.playerId && item.playerId.S,
+          level: item.level ? Number(item.level.N) : 1,
+          score: item.score ? Number(item.score.N) : 0,
+        }))
+        .filter((row) => row.playerId)
+        .sort((a, b) => b.score - a.score || b.level - a.level)
+        .slice(0, safeLimit);
+
+      return rows.map((row, index) => ({ ...row, rank: index + 1, type }));
+    } catch (error) {
+      this.logger.warn('Error getting leaderboard:', error && error.message);
+      return [];
     }
   }
 
@@ -504,11 +655,11 @@ class OptimizedCloudServicesManager {
           : 0,
       },
       services: {
-        aws: Object.keys(this.awsClients),
-        google: Object.keys(this.googleClients),
-        azure: Object.keys(this.azureClients),
-        redis: this.redis ? 'connected' : 'not_configured',
-        mongodb: this.mongodb ? 'connected' : 'not_configured',
+        aws: this.providerStatus.get('aws')?.status ?? 'not_configured',
+        google: this.providerStatus.get('google')?.status ?? 'not_configured',
+        azure: this.providerStatus.get('azure')?.status ?? 'not_configured',
+        redis: this.providerStatus.get('redis')?.status ?? 'not_configured',
+        mongodb: this.providerStatus.get('mongodb')?.status ?? 'not_configured',
       },
     };
   }

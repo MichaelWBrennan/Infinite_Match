@@ -3,9 +3,9 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { AIContentGenerator } from './ai-content-generator.js';
 import { MarketResearchEngine } from './market-research-engine.js';
 import { AIPersonalizationEngine } from './ai-personalization-engine.js';
-import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import cron from 'node-cron';
+import { createSupabaseClient } from './ai-clients.js';
 
 /**
  * Infinite Content Pipeline - Automated content generation and distribution system
@@ -19,7 +19,7 @@ class InfiniteContentPipeline {
     this.marketResearch = new MarketResearchEngine();
     this.personalizationEngine = new AIPersonalizationEngine();
 
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     this.contentQueue = new Map();
     this.activeGenerators = new Map();
@@ -45,6 +45,48 @@ class InfiniteContentPipeline {
     this.startQualityMonitoring();
 
     this.logger.info('Infinite Content Pipeline initialized successfully');
+  }
+
+  /**
+   * Seed the content metrics map so every tracked content type reports from
+   * zero instead of `undefined` before the first generation run completes.
+   */
+  initializeMetrics() {
+    const contentTypes = ['levels', 'events', 'visuals', 'offers'];
+
+    for (const contentType of contentTypes) {
+      if (!this.contentMetrics.has(contentType)) {
+        this.contentMetrics.set(contentType, { total: 0, today: 0 });
+      }
+    }
+
+    this.logger.info(`Content metrics initialized for: ${contentTypes.join(', ')}`);
+  }
+
+  /**
+   * Start background content quality monitoring.
+   *
+   * A full AI quality pass runs on the cron schedule in
+   * `setupContentSchedules()`; this adds a lighter periodic sweep that samples
+   * the newest content so regressions surface sooner.
+   */
+  startQualityMonitoring() {
+    const intervalMs = 60 * 60 * 1000; // hourly
+
+    const timer = setInterval(async () => {
+      try {
+        await this.performQualityCheck();
+      } catch (error) {
+        this.logger.error('Quality monitoring sweep failed', { error: error.message });
+      }
+    }, intervalMs);
+
+    // Never hold the process open just for monitoring.
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+
+    this.logger.info('Content quality monitoring started');
   }
 
   /**
@@ -162,20 +204,20 @@ class InfiniteContentPipeline {
       let content;
 
       switch (contentType) {
-        case 'levels':
-          content = await this.generateLevel(marketInsights);
-          break;
-        case 'events':
-          content = await this.generateEvent(marketInsights);
-          break;
-        case 'visuals':
-          content = await this.generateVisual(marketInsights);
-          break;
-        case 'offers':
-          content = await this.generateOffer(marketInsights);
-          break;
-        default:
-          throw new Error(`Unknown content type: ${contentType}`);
+      case 'levels':
+        content = await this.generateLevel(marketInsights);
+        break;
+      case 'events':
+        content = await this.generateEvent(marketInsights);
+        break;
+      case 'visuals':
+        content = await this.generateVisual(marketInsights);
+        break;
+      case 'offers':
+        content = await this.generateOffer(marketInsights);
+        break;
+      default:
+        throw new Error(`Unknown content type: ${contentType}`);
       }
 
       return content;

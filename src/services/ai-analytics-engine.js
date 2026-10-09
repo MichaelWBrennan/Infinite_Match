@@ -1,12 +1,10 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import OpenAI from 'openai';
-import { HfInference } from '@huggingface/inference';
-import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import Redis from 'ioredis';
 import { LRUCache } from 'lru-cache';
 import { PostHogAnalyticsService } from './analytics/posthog-service.js';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
+import { createRedisClient } from './redis-client.js';
 
 /**
  * AI Analytics Engine - Advanced analytics with AI-powered insights and predictions
@@ -24,27 +22,18 @@ class AIAnalyticsEngine {
   constructor() {
     this.logger = new Logger('AIAnalyticsEngine');
 
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.openai = createOpenAIClient();
 
     // Hugging Face for specialized analytics models
-    this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+    this.hf = createHuggingFaceClient();
 
     // PostHog for advanced analytics and real-time insights
     this.posthog = new PostHogAnalyticsService();
 
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Redis for caching analytics data and predictions
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD,
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
+    this.redis = createRedisClient();
 
     // In-memory LRU cache for frequently accessed analytics
     this.analyticsCache = new LRUCache({
@@ -915,20 +904,20 @@ Return JSON with:
     
     try {
       switch (type) {
-        case 'player_behavior':
-          await this.processPlayerBehaviorData(data);
-          break;
-        case 'game_metrics':
-          await this.processGameMetricsData(data);
-          break;
-        case 'revenue_data':
-          await this.processRevenueData(data);
-          break;
-        case 'engagement_data':
-          await this.processEngagementData(data);
-          break;
-        default:
-          this.logger.warn('Unknown data type for processing', { type });
+      case 'player_behavior':
+        await this.processPlayerBehaviorData(data);
+        break;
+      case 'game_metrics':
+        await this.processGameMetricsData(data);
+        break;
+      case 'revenue_data':
+        await this.processRevenueData(data);
+        break;
+      case 'engagement_data':
+        await this.processEngagementData(data);
+        break;
+      default:
+        this.logger.warn('Unknown data type for processing', { type });
       }
 
       // Update real-time metrics
@@ -1034,6 +1023,89 @@ Return JSON with:
   /**
    * Machine learning model optimization
    */
+  /**
+   * Drain the model training queue on a timer.
+   *
+   * `modelTrainingQueue` receives batches from the data pipeline; when it is
+   * empty the interval simply idles so no model work is scheduled on start-up.
+   */
+  startModelTraining() {
+    setInterval(async () => {
+      if (this.isTrainingModels || this.modelTrainingQueue.length === 0) return;
+
+      this.isTrainingModels = true;
+      try {
+        const batch = this.modelTrainingQueue.splice(0, 10);
+        for (const trainingData of batch) {
+          try {
+            await this.trainAnalyticsModels(trainingData);
+          } catch (error) {
+            this.logger.error('Model training failed', { error: error.message });
+          }
+        }
+      } finally {
+        this.isTrainingModels = false;
+      }
+    }, 300000); // Every 5 minutes
+  }
+
+  /**
+   * Update the aggregate real-time counters for a processed data item.
+   */
+  updateRealTimeMetrics(type, data) {
+    const totals = this.realTimeMetrics.get('processing') || {};
+    const key = `${type}Count`;
+    const updated = {
+      ...totals,
+      [key]: (totals[key] || 0) + 1,
+      totalProcessed: (totals.totalProcessed || 0) + 1,
+      lastProcessedAt: Date.now(),
+    };
+    this.realTimeMetrics.set('processing', updated);
+
+    if (this.performanceMetrics) {
+      this.performanceMetrics.realTimeUpdates = (this.performanceMetrics.realTimeUpdates || 0) + 1;
+    }
+  }
+
+  /**
+   * Flag players whose behaviour deviates sharply from their own baseline.
+   */
+  async checkBehavioralAnomalies(playerId, behavior) {
+    const metrics = this.realTimeMetrics.get(`player:${playerId}`);
+    if (!metrics || !metrics.averageScore) return;
+
+    const score = behavior.score || 0;
+    const baseline = metrics.averageScore;
+
+    // Ignore empty baselines to avoid divide-by-zero noise on a first session.
+    if (!baseline) return;
+
+    const threshold = this.alertThresholds.get('behavioral_anomaly') || 3;
+    if (score > baseline * threshold) {
+      await this.triggerAlert('behavioral_anomaly', {
+        playerId,
+        score,
+        baseline,
+        ratio: score / baseline,
+      });
+    }
+  }
+
+  /**
+   * Raise an alert when a tracked metric crosses its configured threshold.
+   */
+  async checkMetricThresholds(metric, value) {
+    const threshold = this.alertThresholds.get(metric);
+    if (threshold === undefined) return;
+
+    if (typeof value !== 'number' || Number.isNaN(value)) return;
+
+    if (value >= threshold) {
+      await this.triggerAlert('metric_threshold', { metric, value, threshold });
+    }
+  }
+
   async trainAnalyticsModels(trainingData) {
     // Train LTV prediction model
     await this.trainLTVPredictionModel(trainingData);
@@ -1415,3 +1487,7 @@ Return JSON with:
 }
 
 export { AIAnalyticsEngine };
+
+// Shared singleton instance used by the live-ops and intervention services.
+// Clients are constructed lazily, so creating this at import time is safe.
+export const aiAnalyticsEngine = new AIAnalyticsEngine();

@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { ServerResponse, type IncomingMessage } from 'http';
+import type { Socket } from 'net';
 import { Logger } from '../../core/logger/index.js';
 
 const logger = new Logger('MobileAPIGateway');
@@ -37,6 +39,30 @@ const services = {
   ai: process.env['AI_SERVICE_URL'] || 'http://ai-service:3006',
 };
 
+/**
+ * Respond to an upstream failure with a 503 JSON payload.
+ * http-proxy-middleware v3 hands us a raw `ServerResponse`, so the Express
+ * `res.status().json()` shorthand is not available here.
+ */
+const serviceErrorHandler =
+  (serviceName: string) =>
+    (err: Error, req: IncomingMessage, res: ServerResponse<IncomingMessage> | Socket): void => {
+      logger.error(`${serviceName} service error`, { error: err.message, url: req.url });
+
+      // An upgraded WebSocket request surfaces a raw socket instead of a response.
+      if (!(res instanceof ServerResponse)) {
+        res.destroy();
+        return;
+      }
+
+      if (res.headersSent) {
+        res.end();
+        return;
+      }
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `${serviceName} service unavailable` }));
+    };
+
 // Game Service Proxy - Core game functionality
 app.use(
   '/api/game',
@@ -46,10 +72,7 @@ app.use(
     pathRewrite: {
       '^/api/game': '/api',
     },
-    onError: (err: any, req: any, res: any) => {
-      logger.error('Game service error', { error: err.message, url: req.url });
-      res.status(503).json({ error: 'Game service unavailable' });
-    },
+    on: { error: serviceErrorHandler('Game') },
   }),
 );
 
@@ -62,10 +85,7 @@ app.use(
     pathRewrite: {
       '^/api/economy': '/api',
     },
-    onError: (err: any, req: any, res: any) => {
-      logger.error('Economy service error', { error: err.message, url: req.url });
-      res.status(503).json({ error: 'Economy service unavailable' });
-    },
+    on: { error: serviceErrorHandler('Economy') },
   }),
 );
 
@@ -78,10 +98,7 @@ app.use(
     pathRewrite: {
       '^/api/analytics': '/api',
     },
-    onError: (err: any, req: any, res: any) => {
-      logger.error('Analytics service error', { error: err.message, url: req.url });
-      res.status(503).json({ error: 'Analytics service unavailable' });
-    },
+    on: { error: serviceErrorHandler('Analytics') },
   }),
 );
 
@@ -94,10 +111,7 @@ app.use(
     pathRewrite: {
       '^/api/security': '/api',
     },
-    onError: (err: any, req: any, res: any) => {
-      logger.error('Security service error', { error: err.message, url: req.url });
-      res.status(503).json({ error: 'Security service unavailable' });
-    },
+    on: { error: serviceErrorHandler('Security') },
   }),
 );
 
@@ -110,10 +124,7 @@ app.use(
     pathRewrite: {
       '^/api/unity': '/api',
     },
-    onError: (err: any, req: any, res: any) => {
-      logger.error('Unity service error', { error: err.message, url: req.url });
-      res.status(503).json({ error: 'Unity service unavailable' });
-    },
+    on: { error: serviceErrorHandler('Unity') },
   }),
 );
 
@@ -126,10 +137,7 @@ app.use(
     pathRewrite: {
       '^/api/ai': '/api',
     },
-    onError: (err: any, req: any, res: any) => {
-      logger.error('AI service error', { error: err.message, url: req.url });
-      res.status(503).json({ error: 'AI service unavailable' });
-    },
+    on: { error: serviceErrorHandler('AI') },
   }),
 );
 
@@ -150,7 +158,7 @@ app.get('/api/mobile/status', (req, res) => {
 // Mobile game configuration endpoint
 app.get('/api/mobile/config', (req, res) => {
   res.json({
-    gameVersion: process.env.GAME_VERSION || '1.0.0',
+    gameVersion: process.env['GAME_VERSION'] || '1.0.0',
     apiVersion: 'v1',
     platform: 'mobile',
     features: {

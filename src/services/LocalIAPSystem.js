@@ -419,12 +419,12 @@ class LocalIAPSystem {
     }
 
     switch (promotion.type) {
-      case 'percentage':
-        return product.price * (1 - promotion.value / 100);
-      case 'fixed':
-        return Math.max(0, product.price - promotion.value);
-      default:
-        return product.price;
+    case 'percentage':
+      return product.price * (1 - promotion.value / 100);
+    case 'fixed':
+      return Math.max(0, product.price - promotion.value);
+    default:
+      return product.price;
     }
   }
 

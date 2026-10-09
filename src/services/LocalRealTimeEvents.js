@@ -160,18 +160,18 @@ class LocalRealTimeEvents {
       if (!event.active) return;
       
       switch (event.type) {
-        case 'recurring':
-          this.processRecurringEvent(event, now);
-          break;
-        case 'daily':
-          this.processDailyEvent(event, now);
-          break;
-        case 'weekly':
-          this.processWeeklyEvent(event, now);
-          break;
-        case 'random':
-          this.processRandomEvent(event, now);
-          break;
+      case 'recurring':
+        this.processRecurringEvent(event, now);
+        break;
+      case 'daily':
+        this.processDailyEvent(event, now);
+        break;
+      case 'weekly':
+        this.processWeeklyEvent(event, now);
+        break;
+      case 'random':
+        this.processRandomEvent(event, now);
+        break;
       }
     });
   }
@@ -324,15 +324,15 @@ class LocalRealTimeEvents {
     
     // Set next trigger based on type
     switch (event.type) {
-      case 'daily':
-        event.nextTrigger = this.getNextDailyTrigger(event.triggerTime);
-        break;
-      case 'weekly':
-        event.nextTrigger = this.getNextWeeklyTrigger(event.triggerDay, event.triggerTime);
-        break;
-      case 'random':
-        event.nextTrigger = Date.now() + (Math.random() * 2 * 60 * 60 * 1000);
-        break;
+    case 'daily':
+      event.nextTrigger = this.getNextDailyTrigger(event.triggerTime);
+      break;
+    case 'weekly':
+      event.nextTrigger = this.getNextWeeklyTrigger(event.triggerDay, event.triggerTime);
+      break;
+    case 'random':
+      event.nextTrigger = Date.now() + (Math.random() * 2 * 60 * 60 * 1000);
+      break;
     }
     
     this.events.push(event);

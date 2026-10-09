@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import { createSupabaseClient } from './ai-clients.js';
 
 /**
  * Market Research Engine - Real-time industry analysis and competitor monitoring
@@ -13,7 +13,7 @@ class MarketResearchEngine {
     this.logger = new Logger('MarketResearchEngine');
 
     // Supabase for storing market data
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Data sources
     this.dataSources = {
@@ -147,24 +147,20 @@ class MarketResearchEngine {
    * Fetch Google Play data
    */
   async fetchGooglePlayData() {
-    try {
-      // This would use Google Play Console API
-      // For now, return mock data structure
-      return {
-        topGames: [],
-        categories: {
-          puzzle: { downloads: 0, revenue: 0 },
-          casual: { downloads: 0, revenue: 0 },
-        },
-        trends: {
-          rising: [],
-          falling: [],
-        },
-      };
-    } catch (error) {
-      this.logger.error('Failed to fetch Google Play data', { error: error.message });
-      return null;
-    }
+    // This would use the Google Play Console API.
+    // The surrounding try/catch was unreachable (the try only returned a
+    // literal), so it is removed rather than left as dead error handling.
+    return {
+      topGames: [],
+      categories: {
+        puzzle: { downloads: 0, revenue: 0 },
+        casual: { downloads: 0, revenue: 0 },
+      },
+      trends: {
+        rising: [],
+        falling: [],
+      },
+    };
   }
 
   /**

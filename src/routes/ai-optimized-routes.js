@@ -430,17 +430,17 @@ router.post('/batch/content', async (req, res) => {
         try {
           let data;
           switch (result.type) {
-            case 'level':
-              data = await aiContentGenerator.generateLevel(result.levelNumber, result.difficulty, result.playerProfile);
-              break;
-            case 'event':
-              data = await aiContentGenerator.generateEvent(result.eventType, result.playerSegment, result.marketTrends);
-              break;
-            case 'visual':
-              data = await aiContentGenerator.generateVisualAsset(result.assetType, result.description, result.style);
-              break;
-            default:
-              throw new Error(`Unknown content type: ${result.type}`);
+          case 'level':
+            data = await aiContentGenerator.generateLevel(result.levelNumber, result.difficulty, result.playerProfile);
+            break;
+          case 'event':
+            data = await aiContentGenerator.generateEvent(result.eventType, result.playerSegment, result.marketTrends);
+            break;
+          case 'visual':
+            data = await aiContentGenerator.generateVisualAsset(result.assetType, result.description, result.style);
+            break;
+          default:
+            throw new Error(`Unknown content type: ${result.type}`);
           }
           
           result.data = data;

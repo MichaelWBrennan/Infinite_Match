@@ -18,6 +18,9 @@ class OpenSourceCloudServicesManager {
     this.redis = null;
     this.isInitialized = false;
     this.healthChecks = new Map();
+    // Per-backend start-up outcome, separate from `healthChecks` which holds
+    // live probe functions used by getHealthStatus().
+    this.serviceStatus = new Map();
     this.metrics = {
       requests: 0,
       errors: 0,
@@ -29,32 +32,46 @@ class OpenSourceCloudServicesManager {
    * Initialize all open source cloud services
    */
   async initialize() {
-    try {
-      this.logger.info('Initializing open source cloud services...');
+    this.logger.info('Initializing open source cloud services...');
 
-      // Initialize MinIO (S3-compatible storage)
-      await this.initializeMinIO();
-      
-      // Initialize PostgreSQL (replaces DynamoDB, Firestore, Cosmos DB)
-      await this.initializePostgreSQL();
-      
-      // Initialize Email service (replaces SES)
-      await this.initializeEmailService();
-      
-      // Initialize Redis (already open source)
-      await this.initializeRedis();
-      
-      // Initialize Job Queue (replaces SQS)
-      await this.initializeJobQueue();
+    // Every backend here is optional infrastructure. Previously the first
+    // unreachable service aborted start-up (and the server exited), so a
+    // missing MinIO/Postgres/SMTP took the whole game offline. Now each one is
+    // attempted independently and a failure degrades that feature only.
+    const backends = [
+      ['minio', () => this.initializeMinIO()],
+      ['postgres', () => this.initializePostgreSQL()],
+      ['email', () => this.initializeEmailService()],
+      ['redis', () => this.initializeRedis()],
+      ['jobQueue', () => this.initializeJobQueue()],
+    ];
 
-      // Setup health checks
-      this.setupHealthChecks();
-      
-      this.isInitialized = true;
+    const unavailable = [];
+
+    for (const [name, init] of backends) {
+      try {
+        await init();
+        this.serviceStatus.set(name, { status: 'connected' });
+      } catch (error) {
+        this.serviceStatus.set(name, { status: 'unavailable', error: error.message });
+        unavailable.push(name);
+        this.logger.warn(
+          `Optional service '${name}' is unavailable, continuing without it: ${error.message}`,
+        );
+      }
+    }
+
+    // Setup health checks
+    this.setupHealthChecks();
+
+    this.isInitialized = true;
+
+    if (unavailable.length > 0) {
+      this.logger.warn(
+        `Open source cloud services running in degraded mode. Unavailable: ${unavailable.join(', ')}`,
+      );
+    } else {
       this.logger.info('All open source cloud services initialized successfully');
-    } catch (error) {
-      console.error('❌ Failed to initialize open source cloud services:', error);
-      throw error;
     }
   }
 
@@ -97,7 +114,7 @@ class OpenSourceCloudServicesManager {
   }
 
   async initializeEmailService() {
-    this.emailTransporter = nodemailer.createTransporter({
+    this.emailTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'localhost',
       port: parseInt(process.env.SMTP_PORT || '587', 10),
       secure: process.env.SMTP_SECURE === 'true',
@@ -164,8 +181,13 @@ class OpenSourceCloudServicesManager {
   }
 
   async checkRedisHealth() {
+    // The previous try/catch was unreachable: the try only ever returned a
+    // literal. Report whether a client was actually established instead.
+    if (!this.redis) {
+      return { status: 'not_configured', service: 'redis' };
+    }
     try {
-      // Redis health check would be implemented here
+      await this.redis.ping();
       return { status: 'healthy', service: 'redis' };
     } catch (error) {
       return { status: 'unhealthy', service: 'redis', error: error.message };
@@ -326,11 +348,11 @@ class OpenSourceCloudServicesManager {
           : 0,
       },
       services: {
-        minio: this.minio ? 'connected' : 'not_configured',
-        postgres: this.postgres ? 'connected' : 'not_configured',
-        email: this.emailTransporter ? 'connected' : 'not_configured',
-        redis: this.redis ? 'connected' : 'not_configured',
-        jobQueue: this.jobQueue ? 'connected' : 'not_configured',
+        minio: this.serviceStatus.get('minio')?.status ?? 'not_configured',
+        postgres: this.serviceStatus.get('postgres')?.status ?? 'not_configured',
+        email: this.serviceStatus.get('email')?.status ?? 'not_configured',
+        redis: this.serviceStatus.get('redis')?.status ?? 'not_configured',
+        jobQueue: this.serviceStatus.get('jobQueue')?.status ?? 'not_configured',
       },
     };
   }

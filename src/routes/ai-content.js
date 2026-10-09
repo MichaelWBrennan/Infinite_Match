@@ -44,32 +44,32 @@ router.post('/generate', async (req, res) => {
       const marketInsights = await marketResearch.getMarketInsights();
 
       switch (contentType) {
-        case 'level':
-          content = await aiContentGenerator.generateLevel(
-            req.body.levelNumber || 1,
-            req.body.difficulty || 5,
-            { marketTrends: marketInsights },
-          );
-          break;
-        case 'event':
-          content = await aiContentGenerator.generateEvent(
-            req.body.eventType || 'daily',
-            req.body.playerSegment || 'casual',
-            marketInsights,
-          );
-          break;
-        case 'visual':
-          content = await aiContentGenerator.generateVisualAsset(
-            req.body.assetType || 'background',
-            req.body.description || 'Game asset',
-            req.body.style || 'cartoon',
-          );
-          break;
-        default:
-          return res.status(400).json({
-            success: false,
-            error: 'Invalid content type',
-          });
+      case 'level':
+        content = await aiContentGenerator.generateLevel(
+          req.body.levelNumber || 1,
+          req.body.difficulty || 5,
+          { marketTrends: marketInsights },
+        );
+        break;
+      case 'event':
+        content = await aiContentGenerator.generateEvent(
+          req.body.eventType || 'daily',
+          req.body.playerSegment || 'casual',
+          marketInsights,
+        );
+        break;
+      case 'visual':
+        content = await aiContentGenerator.generateVisualAsset(
+          req.body.assetType || 'background',
+          req.body.description || 'Game asset',
+          req.body.style || 'cartoon',
+        );
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid content type',
+        });
       }
     }
 

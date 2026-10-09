@@ -3,6 +3,7 @@ import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import * as security from '../../core/security/index.js';
 
 /**
  * Player Account Manager
@@ -220,6 +221,13 @@ class PlayerAccountManager {
       };
 
       this.sessions.set(sessionId, session);
+
+      // Mirror into the shared security store. `security.sessionValidation`
+      // gates every protected route on `activeSessions`, which is populated
+      // only by `security.createSession`. Nothing ever called it, so no
+      // authenticated route could ever succeed. Pass the id we just minted so
+      // both stores agree (and so logout can remove it again).
+      security.createSession(playerId, { sessionId, playerId, deviceInfo });
 
       // Generate JWT token
       const token = jwt.sign(
@@ -556,6 +564,11 @@ class PlayerAccountManager {
         this.logger.info(`Player logged out: ${session.playerId}`);
       }
 
+      // Revoke the mirrored entry, otherwise the token keeps passing
+      // sessionValidation after logout.
+      this.sessions.delete(sessionId);
+      security.destroySession(sessionId);
+
       return {
         success: true,
         message: 'Logged out successfully'
@@ -633,6 +646,7 @@ class PlayerAccountManager {
       if (now - session.lastActivity > this.config.sessionTimeout) {
         session.isActive = false;
         expiredSessions.push(sessionId);
+        security.destroySession(sessionId);
       }
     }
 

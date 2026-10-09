@@ -221,21 +221,21 @@ class LocalNotificationManager {
     let title, message;
     
     switch (type) {
-      case 'gift':
-        title = 'Gift Received!';
-        message = `${friendName} sent you a gift!`;
-        break;
-      case 'request':
-        title = 'Friend Request';
-        message = `${friendName} wants to be your friend!`;
-        break;
-      case 'online':
-        title = 'Friend Online';
-        message = `${friendName} is now online!`;
-        break;
-      default:
-        title = 'Friend Update';
-        message = `Update from ${friendName}`;
+    case 'gift':
+      title = 'Gift Received!';
+      message = `${friendName} sent you a gift!`;
+      break;
+    case 'request':
+      title = 'Friend Request';
+      message = `${friendName} wants to be your friend!`;
+      break;
+    case 'online':
+      title = 'Friend Online';
+      message = `${friendName} is now online!`;
+      break;
+    default:
+      title = 'Friend Update';
+      message = `Update from ${friendName}`;
     }
     
     return this.createNotification(
@@ -364,21 +364,21 @@ class LocalNotificationManager {
 
     // Handle action
     switch (action.action) {
-      case 'navigate':
-        this.navigateTo(action.target);
-        break;
-      case 'dismiss':
-        this.deleteNotification(notificationId);
-        break;
-      case 'claim_reward':
-        this.claimReward(action.data);
-        break;
-      case 'participate_event':
-        this.participateInEvent(action.data);
-        break;
-      case 'purchase':
-        this.purchaseItem(action.data);
-        break;
+    case 'navigate':
+      this.navigateTo(action.target);
+      break;
+    case 'dismiss':
+      this.deleteNotification(notificationId);
+      break;
+    case 'claim_reward':
+      this.claimReward(action.data);
+      break;
+    case 'participate_event':
+      this.participateInEvent(action.data);
+      break;
+    case 'purchase':
+      this.purchaseItem(action.data);
+      break;
     }
 
     return { success: true, action: action };

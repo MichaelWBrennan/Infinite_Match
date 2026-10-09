@@ -14,7 +14,7 @@ class ConsentServiceImpl {
     this.userIdToConsent.set(userId, updated);
     try {
       await fs.appendFile(STORE_PATH, JSON.stringify(updated) + '\n', 'utf-8');
-    } catch (_) {}
+    } catch (_) { /* audit-log append is best-effort; in-memory consent still applies */ }
     return updated;
   }
 

@@ -28,15 +28,15 @@ const activeSessions = new Map();
 export const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      defaultSrc: ['\'self\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\''],
+      scriptSrc: ['\'self\''],
+      imgSrc: ['\'self\'', 'data:', 'https:'],
+      connectSrc: ['\'self\''],
+      fontSrc: ['\'self\''],
+      objectSrc: ['\'none\''],
+      mediaSrc: ['\'self\''],
+      frameSrc: ['\'none\''],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -114,7 +114,12 @@ export const authRateLimit = rateLimit({
 export const slowDownConfig = slowDown({
   windowMs: 1000, // 1 second
   delayAfter: 1, // allow 1 request per second
-  delayMs: 500,
+  // express-slow-down v2 no longer multiplies a numeric `delayMs` by the number
+  // of requests over the limit, so the ramp is computed explicitly.
+  delayMs: (used, req) => {
+    const delayAfter = req.slowDown.limit;
+    return (used - delayAfter) * 500;
+  },
   maxDelayMs: 20000, // max 20 seconds delay
   skipSuccessfulRequests: false,
   skipFailedRequests: false,
@@ -227,7 +232,13 @@ export const sessionValidation = (req, res, next) => {
       });
     }
 
-    req.user = decoded;
+    // Routes read `req.user.id`, but the player-session token carries
+    // `playerId`, so every authenticated route saw an undefined user id and
+    // silently treated the request as anonymous.
+    req.user = {
+      ...decoded,
+      id: decoded.id ?? decoded.playerId ?? decoded.userId ?? decoded.sub,
+    };
     next();
   } catch (error) {
     securityLogger.warn(`Invalid token from IP: ${req.ip}`, {
@@ -264,17 +275,20 @@ export const generateToken = (payload) => {
  * Session management
  */
 export const createSession = (userId, sessionData = {}) => {
-  const sessionId = crypto.randomUUID();
   const session = {
-    sessionId,
+    sessionId: crypto.randomUUID(),
     userId,
     createdAt: Date.now(),
     lastActivity: Date.now(),
     ...sessionData,
   };
 
-  activeSessions.set(sessionId, session);
-  return sessionId;
+  // Key on the EFFECTIVE id. `sessionData` may legitimately supply one (the
+  // player-account manager mirrors its own session ids in here), and the old
+  // code keyed on the generated id even when `sessionData` had overridden it -
+  // which stored the session under an id it did not claim.
+  activeSessions.set(session.sessionId, session);
+  return session.sessionId;
 };
 
 export const validateSession = (sessionId) => {

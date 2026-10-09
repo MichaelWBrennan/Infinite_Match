@@ -339,7 +339,7 @@ export class MobileGameSecurity {
     // Check for missing required fields
     const requiredFields = ['level', 'currency', 'inventory', 'timestamp'];
     for (const field of requiredFields) {
-      if (!saveData.hasOwnProperty(field)) {
+      if (!Object.prototype.hasOwnProperty.call(saveData, field)) {
         return true;
       }
     }

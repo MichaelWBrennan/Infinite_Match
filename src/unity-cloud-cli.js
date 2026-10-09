@@ -6,8 +6,9 @@
 
 import UnityCloudHeadlessIntegration from './unity-cloud-headless-integration.js';
 import UnityCloudAPIClient from './unity-cloud-api-client.js';
-import { Logger } from '../core/logger/index.js';
-// Using basic console output instead of external dependencies
+import { Logger } from './core/logger/index.js';
+import { program } from 'commander';
+import chalk from 'chalk';
 
 // CLI Commands
 class UnityCloudCLI {

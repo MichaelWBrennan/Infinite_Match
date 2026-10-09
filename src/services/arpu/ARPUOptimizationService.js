@@ -177,28 +177,33 @@ class ARPUOptimizationService {
    */
   evaluateCondition(conditionType, conditionValue, playerProfile) {
     switch (conditionType) {
-      case 'max_level':
-        return (playerProfile.level || 0) <= conditionValue;
-      case 'min_level':
-        return (playerProfile.level || 0) >= conditionValue;
-      case 'max_spent':
-        return (playerProfile.totalSpent || 0) <= conditionValue;
-      case 'min_spent':
-        return (playerProfile.totalSpent || 0) >= conditionValue;
-      case 'days_since_install':
-        const installDate = new Date(playerProfile.installDate || Date.now());
-        const daysSinceInstall = (Date.now() - installDate.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSinceInstall <= conditionValue;
-      case 'days_since_last_play':
-        const lastPlayDate = new Date(playerProfile.lastPlayTime || Date.now());
-        const daysSinceLastPlay = (Date.now() - lastPlayDate.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSinceLastPlay >= conditionValue;
-      case 'max_days_since_last_play':
-        const lastPlayDate2 = new Date(playerProfile.lastPlayTime || Date.now());
-        const daysSinceLastPlay2 = (Date.now() - lastPlayDate2.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSinceLastPlay2 <= conditionValue;
-      default:
-        return true;
+    case 'max_level':
+      return (playerProfile.level || 0) <= conditionValue;
+    case 'min_level':
+      return (playerProfile.level || 0) >= conditionValue;
+    case 'max_spent':
+      return (playerProfile.totalSpent || 0) <= conditionValue;
+    case 'min_spent':
+      return (playerProfile.totalSpent || 0) >= conditionValue;
+      // Braced: `const` declarations are scoped to the switch block, so an
+      // unbraced case body leaks them into sibling cases.
+    case 'days_since_install': {
+      const installDate = new Date(playerProfile.installDate || Date.now());
+      const daysSinceInstall = (Date.now() - installDate.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceInstall <= conditionValue;
+    }
+    case 'days_since_last_play': {
+      const lastPlayDate = new Date(playerProfile.lastPlayTime || Date.now());
+      const daysSinceLastPlay = (Date.now() - lastPlayDate.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceLastPlay >= conditionValue;
+    }
+    case 'max_days_since_last_play': {
+      const lastPlayDate2 = new Date(playerProfile.lastPlayTime || Date.now());
+      const daysSinceLastPlay2 = (Date.now() - lastPlayDate2.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceLastPlay2 <= conditionValue;
+    }
+    default:
+      return true;
     }
   }
 

@@ -4,7 +4,11 @@
  */
 
 import { Logger } from '../logger/index.js';
-import { PlatformDetector, PlatformInfo } from '../platform/PlatformDetector.js';
+import {
+  PlatformDetector,
+  PlatformInfo,
+  PlatformCapabilities,
+} from '../platform/PlatformDetector.js';
 import { ApiResponseBuilder } from '../types/ApiResponse.js';
 import { ErrorHandler } from '../errors/ErrorHandler.js';
 
@@ -1280,7 +1284,7 @@ export class UniversalAPI {
   /**
    * Check if feature is supported
    */
-  isFeatureSupported(feature: keyof typeof this.currentPlatform?.capabilities): boolean {
+  isFeatureSupported(feature: keyof PlatformCapabilities): boolean {
     if (!this.currentPlatform) {
       return false;
     }

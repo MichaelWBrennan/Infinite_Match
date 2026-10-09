@@ -38,6 +38,37 @@ class LocalGameIntegration {
     }
   }
 
+  /**
+   * Initialize the Unity side of the integration.
+   *
+   * Exposed as `window.UnityGameIntegration.initialize()` but never defined,
+   * so calling it threw "this.initializeUnity is not a function".
+   */
+  async initializeUnity() {
+    try {
+      if (!this.gameAPI) {
+        await this.waitForGameAPI();
+      }
+
+      if (typeof window !== 'undefined' && window.createUnityInstance && window.unityConfig) {
+        this.unityInstance = await window.createUnityInstance(
+          window.unityCanvas || document.querySelector('#unity-canvas'),
+          window.unityConfig,
+          (progress) => this.logger.info(`Unity loading: ${Math.round(progress * 100)}%`),
+        );
+        this.logger.info('Unity instance created');
+      } else {
+        // No Unity loader present: run the local (non-Unity) game instead.
+        this.logger.warn('Unity loader not available; continuing without Unity');
+      }
+
+      return { success: true, unity: !!this.unityInstance };
+    } catch (error) {
+      this.logger.error('Failed to initialize Unity:', error && error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
   async waitForGameAPI(timeout = 10000) {
     const startTime = Date.now();
     
@@ -188,26 +219,26 @@ class LocalGameIntegration {
     this.logger.info('Received Unity message:', { data });
     
     switch (data.action) {
-      case 'get_game_data':
-        this.sendUnityMessage('game_data', this.getUnityGameData());
-        break;
-      case 'update_game_data':
-        this.updateUnityGameData(data.data);
-        break;
-      case 'level_complete':
-        this.handleLevelComplete(data.data);
-        break;
-      case 'tutorial_step_complete':
-        this.handleTutorialStepComplete(data.data);
-        break;
-      case 'use_item':
-        this.handleUseItem(data.data);
-        break;
-      case 'claim_daily_reward':
-        this.handleClaimDailyReward();
-        break;
-      default:
-        this.logger.warn('Unknown Unity message action:', { action: data.action });
+    case 'get_game_data':
+      this.sendUnityMessage('game_data', this.getUnityGameData());
+      break;
+    case 'update_game_data':
+      this.updateUnityGameData(data.data);
+      break;
+    case 'level_complete':
+      this.handleLevelComplete(data.data);
+      break;
+    case 'tutorial_step_complete':
+      this.handleTutorialStepComplete(data.data);
+      break;
+    case 'use_item':
+      this.handleUseItem(data.data);
+      break;
+    case 'claim_daily_reward':
+      this.handleClaimDailyReward();
+      break;
+    default:
+      this.logger.warn('Unknown Unity message action:', { action: data.action });
     }
   }
 

@@ -1,4 +1,5 @@
-import Redis from 'ioredis';
+import type Redis from 'ioredis';
+import { createRedisClient } from '../redis-client.js';
 import { Logger } from '../../core/logger/index.js';
 
 const logger = new Logger('RedisService');
@@ -10,19 +11,13 @@ export class RedisService {
 
   constructor() {
     const redisConfig = {
-      host: process.env['REDIS_HOST'] || 'localhost',
-      port: parseInt(process.env['REDIS_PORT'] || '6379'),
-      password: process.env['REDIS_PASSWORD'] || undefined,
-      db: parseInt(process.env['REDIS_DB'] || '0'),
-      retryDelayOnFailover: 100,
+      db: parseInt(process.env['REDIS_DB'] || '0', 10),
       enableReadyCheck: false,
-      maxRetriesPerRequest: null,
-      lazyConnect: true,
     };
 
-    this.client = new Redis(redisConfig);
-    this.subscriber = new Redis(redisConfig);
-    this.publisher = new Redis(redisConfig);
+    this.client = createRedisClient(redisConfig);
+    this.subscriber = createRedisClient(redisConfig);
+    this.publisher = createRedisClient(redisConfig);
 
     this.setupEventHandlers();
   }
@@ -33,7 +28,7 @@ export class RedisService {
     });
 
     this.client.on('error', (error) => {
-      logger.error('Redis client error', error);
+      logger.debug('Redis client error', error);
     });
 
     this.subscriber.on('connect', () => {
@@ -41,7 +36,7 @@ export class RedisService {
     });
 
     this.subscriber.on('error', (error) => {
-      logger.error('Redis subscriber error', error);
+      logger.debug('Redis subscriber error', error);
     });
 
     this.publisher.on('connect', () => {
@@ -49,7 +44,7 @@ export class RedisService {
     });
 
     this.publisher.on('error', (error) => {
-      logger.error('Redis publisher error', error);
+      logger.debug('Redis publisher error', error);
     });
   }
 
@@ -58,7 +53,7 @@ export class RedisService {
     try {
       return await this.client.get(key);
     } catch (error) {
-      logger.error('Redis get error', { key, error });
+      logger.debug('Redis get error', { key, error });
       return null;
     }
   }
@@ -72,7 +67,7 @@ export class RedisService {
       }
       return true;
     } catch (error) {
-      logger.error('Redis set error', { key, error });
+      logger.debug('Redis set error', { key, error });
       return false;
     }
   }
@@ -82,7 +77,7 @@ export class RedisService {
       await this.client.del(key);
       return true;
     } catch (error) {
-      logger.error('Redis del error', { key, error });
+      logger.debug('Redis del error', { key, error });
       return false;
     }
   }
@@ -92,7 +87,7 @@ export class RedisService {
       const result = await this.client.exists(key);
       return result === 1;
     } catch (error) {
-      logger.error('Redis exists error', { key, error });
+      logger.debug('Redis exists error', { key, error });
       return false;
     }
   }
@@ -103,7 +98,7 @@ export class RedisService {
       const value = await this.client.get(key);
       return value ? JSON.parse(value) : null;
     } catch (error) {
-      logger.error('Redis getJSON error', { key, error });
+      logger.debug('Redis getJSON error', { key, error });
       return null;
     }
   }
@@ -113,7 +108,7 @@ export class RedisService {
       const jsonValue = JSON.stringify(value);
       return await this.set(key, jsonValue, ttl);
     } catch (error) {
-      logger.error('Redis setJSON error', { key, error });
+      logger.debug('Redis setJSON error', { key, error });
       return false;
     }
   }
@@ -123,7 +118,7 @@ export class RedisService {
     try {
       return await this.client.hget(key, field);
     } catch (error) {
-      logger.error('Redis hget error', { key, field, error });
+      logger.debug('Redis hget error', { key, field, error });
       return null;
     }
   }
@@ -133,7 +128,7 @@ export class RedisService {
       await this.client.hset(key, field, value);
       return true;
     } catch (error) {
-      logger.error('Redis hset error', { key, field, error });
+      logger.debug('Redis hset error', { key, field, error });
       return false;
     }
   }
@@ -142,7 +137,7 @@ export class RedisService {
     try {
       return await this.client.hgetall(key);
     } catch (error) {
-      logger.error('Redis hgetall error', { key, error });
+      logger.debug('Redis hgetall error', { key, error });
       return null;
     }
   }
@@ -152,7 +147,7 @@ export class RedisService {
     try {
       return await this.client.lpush(key, ...values);
     } catch (error) {
-      logger.error('Redis lpush error', { key, error });
+      logger.debug('Redis lpush error', { key, error });
       return 0;
     }
   }
@@ -161,7 +156,7 @@ export class RedisService {
     try {
       return await this.client.rpop(key);
     } catch (error) {
-      logger.error('Redis rpop error', { key, error });
+      logger.debug('Redis rpop error', { key, error });
       return null;
     }
   }
@@ -170,7 +165,7 @@ export class RedisService {
     try {
       return await this.client.llen(key);
     } catch (error) {
-      logger.error('Redis llen error', { key, error });
+      logger.debug('Redis llen error', { key, error });
       return 0;
     }
   }
@@ -180,7 +175,7 @@ export class RedisService {
     try {
       return await this.client.sadd(key, ...members);
     } catch (error) {
-      logger.error('Redis sadd error', { key, error });
+      logger.debug('Redis sadd error', { key, error });
       return 0;
     }
   }
@@ -189,7 +184,7 @@ export class RedisService {
     try {
       return await this.client.smembers(key);
     } catch (error) {
-      logger.error('Redis smembers error', { key, error });
+      logger.debug('Redis smembers error', { key, error });
       return [];
     }
   }
@@ -199,7 +194,7 @@ export class RedisService {
       const result = await this.client.sismember(key, member);
       return result === 1;
     } catch (error) {
-      logger.error('Redis sismember error', { key, member, error });
+      logger.debug('Redis sismember error', { key, member, error });
       return false;
     }
   }
@@ -209,7 +204,7 @@ export class RedisService {
     try {
       return await this.client.zadd(key, score, member);
     } catch (error) {
-      logger.error('Redis zadd error', { key, score, member, error });
+      logger.debug('Redis zadd error', { key, score, member, error });
       return 0;
     }
   }
@@ -218,7 +213,7 @@ export class RedisService {
     try {
       return await this.client.zrange(key, start, stop);
     } catch (error) {
-      logger.error('Redis zrange error', { key, start, stop, error });
+      logger.debug('Redis zrange error', { key, start, stop, error });
       return [];
     }
   }
@@ -227,7 +222,7 @@ export class RedisService {
     try {
       return await this.client.zrevrange(key, start, stop);
     } catch (error) {
-      logger.error('Redis zrevrange error', { key, start, stop, error });
+      logger.debug('Redis zrevrange error', { key, start, stop, error });
       return [];
     }
   }
@@ -237,7 +232,7 @@ export class RedisService {
     try {
       return await this.publisher.publish(channel, message);
     } catch (error) {
-      logger.error('Redis publish error', { channel, error });
+      logger.debug('Redis publish error', { channel, error });
       return 0;
     }
   }
@@ -251,7 +246,7 @@ export class RedisService {
         }
       });
     } catch (error) {
-      logger.error('Redis subscribe error', { channel, error });
+      logger.debug('Redis subscribe error', { channel, error });
     }
   }
 
@@ -259,7 +254,7 @@ export class RedisService {
     try {
       await this.subscriber.unsubscribe(channel);
     } catch (error) {
-      logger.error('Redis unsubscribe error', { channel, error });
+      logger.debug('Redis unsubscribe error', { channel, error });
     }
   }
 
@@ -316,7 +311,7 @@ export class RedisService {
         resetTime,
       };
     } catch (error) {
-      logger.error('Redis rate limit error', { key, error });
+      logger.debug('Redis rate limit error', { key, error });
       return { allowed: true, remaining: limit, resetTime: Date.now() + window * 1000 };
     }
   }
@@ -329,7 +324,7 @@ export class RedisService {
       const latency = Date.now() - start;
       return { status: 'healthy', latency };
     } catch (error) {
-      logger.error('Redis health check failed', error);
+      logger.debug('Redis health check failed', error);
       return { status: 'unhealthy', latency: -1 };
     }
   }
@@ -342,7 +337,7 @@ export class RedisService {
       await this.publisher.quit();
       logger.info('Redis connections closed');
     } catch (error) {
-      logger.error('Redis disconnect error', error);
+      logger.debug('Redis disconnect error', error);
     }
   }
 }

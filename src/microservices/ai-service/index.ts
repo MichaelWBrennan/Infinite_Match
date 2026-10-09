@@ -130,7 +130,7 @@ app.get('/api/recommendations/:playerId', async (req, res) => {
     });
   } catch (error) {
     logger.error('Recommendation generation error', error);
-    res.status(500).json({ error: 'Failed to generate recommendations' });
+    return res.status(500).json({ error: 'Failed to generate recommendations' });
   }
 });
 
@@ -163,7 +163,7 @@ app.post('/api/ab-test', async (req, res) => {
     });
   } catch (error) {
     logger.error('A/B test analysis error', error);
-    res.status(500).json({ error: 'Failed to analyze A/B test' });
+    return res.status(500).json({ error: 'Failed to analyze A/B test' });
   }
 });
 
@@ -186,7 +186,7 @@ app.post('/api/balance-game', async (req, res) => {
     });
   } catch (error) {
     logger.error('Game balancing error', error);
-    res.status(500).json({ error: 'Failed to balance game' });
+    return res.status(500).json({ error: 'Failed to balance game' });
   }
 });
 
@@ -219,7 +219,7 @@ app.post('/api/detect-fraud', async (req, res) => {
     });
   } catch (error) {
     logger.error('Fraud detection error', error);
-    res.status(500).json({ error: 'Failed to detect fraud' });
+    return res.status(500).json({ error: 'Failed to detect fraud' });
   }
 });
 

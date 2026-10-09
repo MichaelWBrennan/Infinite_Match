@@ -74,6 +74,13 @@ interface CloudConfig {
   };
 }
 
+interface UnityConfig {
+  projectId: string;
+  environmentId: string;
+  clientId: string;
+  clientSecret: string;
+}
+
 interface AnalyticsConfig {
   sentry: {
     dsn: string;
@@ -134,6 +141,7 @@ class OptimizedConfig {
   public readonly security: SecurityConfig;
   public readonly database: DatabaseConfig;
   public readonly cloud: CloudConfig;
+  public readonly unity: UnityConfig;
   public readonly analytics: AnalyticsConfig;
   public readonly game: GameConfig;
   public readonly payments: PaymentsConfig;
@@ -203,6 +211,13 @@ class OptimizedConfig {
         cosmosKey: process.env['AZURE_COSMOS_KEY'] || '',
         cosmosDatabase: process.env['AZURE_COSMOS_DATABASE'] || 'match3game',
       },
+    };
+
+    this.unity = {
+      projectId: process.env['UNITY_PROJECT_ID'] || '',
+      environmentId: process.env['UNITY_ENV_ID'] || '',
+      clientId: process.env['UNITY_CLIENT_ID'] || '',
+      clientSecret: process.env['UNITY_CLIENT_SECRET'] || '',
     };
 
     this.analytics = {
@@ -349,4 +364,8 @@ class OptimizedConfig {
   }
 }
 
-export default new OptimizedConfig();
+const AppConfig = new OptimizedConfig();
+
+// Some modules import the config by name, others as the default export.
+export { AppConfig };
+export default AppConfig;

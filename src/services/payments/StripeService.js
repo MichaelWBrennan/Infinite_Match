@@ -284,29 +284,29 @@ class StripeService {
       });
 
       switch (event.type) {
-        case 'payment_intent.succeeded':
-          await this.handlePaymentIntentSucceeded(event.data.object);
-          break;
-        case 'payment_intent.payment_failed':
-          await this.handlePaymentIntentFailed(event.data.object);
-          break;
-        case 'customer.subscription.created':
-          await this.handleSubscriptionCreated(event.data.object);
-          break;
-        case 'customer.subscription.updated':
-          await this.handleSubscriptionUpdated(event.data.object);
-          break;
-        case 'customer.subscription.deleted':
-          await this.handleSubscriptionDeleted(event.data.object);
-          break;
-        case 'invoice.payment_succeeded':
-          await this.handleInvoicePaymentSucceeded(event.data.object);
-          break;
-        case 'invoice.payment_failed':
-          await this.handleInvoicePaymentFailed(event.data.object);
-          break;
-        default:
-          logger.info('Unhandled webhook event type', { type: event.type });
+      case 'payment_intent.succeeded':
+        await this.handlePaymentIntentSucceeded(event.data.object);
+        break;
+      case 'payment_intent.payment_failed':
+        await this.handlePaymentIntentFailed(event.data.object);
+        break;
+      case 'customer.subscription.created':
+        await this.handleSubscriptionCreated(event.data.object);
+        break;
+      case 'customer.subscription.updated':
+        await this.handleSubscriptionUpdated(event.data.object);
+        break;
+      case 'customer.subscription.deleted':
+        await this.handleSubscriptionDeleted(event.data.object);
+        break;
+      case 'invoice.payment_succeeded':
+        await this.handleInvoicePaymentSucceeded(event.data.object);
+        break;
+      case 'invoice.payment_failed':
+        await this.handleInvoicePaymentFailed(event.data.object);
+        break;
+      default:
+        logger.info('Unhandled webhook event type', { type: event.type });
       }
 
       return {

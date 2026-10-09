@@ -300,16 +300,46 @@ describe('Platform Compatibility', () => {
 
       expect(Array.isArray(recommendations)).toBe(true);
 
-      // Check for common recommendations
-      const hasMemoryRecommendation = recommendations.some((rec) =>
-        rec.toLowerCase().includes('memory'),
-      );
-      const hasPerformanceRecommendation = recommendations.some((rec) =>
-        rec.toLowerCase().includes('performance'),
-      );
+      // Every entry must be a usable, non-empty string.
+      recommendations.forEach((rec) => {
+        expect(typeof rec).toBe('string');
+        expect(rec.length).toBeGreaterThan(0);
+      });
 
-      // At least one recommendation should be present
-      expect(hasMemoryRecommendation || hasPerformanceRecommendation).toBe(true);
+      const capabilitiesResult = universalAPI.getPlatformCapabilities();
+      const capabilities = capabilitiesResult.success
+        ? (capabilitiesResult.data as any).capabilities
+        : undefined;
+
+      // Resource advice is only emitted when the platform is actually
+      // constrained. On a capable platform (e.g. 1 GB RAM / 4096px textures)
+      // there is legitimately nothing to warn about, so only assert the
+      // resource-specific messages when the limits are exceeded.
+      if (capabilities && capabilities.maxMemory < 512) {
+        expect(
+          recommendations.some((rec) => rec.toLowerCase().includes('memory')),
+        ).toBe(true);
+      }
+
+      if (capabilities && capabilities.maxTextureSize < 2048) {
+        expect(
+          recommendations.some((rec) => rec.toLowerCase().includes('texture')),
+        ).toBe(true);
+      }
+
+      // Feature advice is deterministic for the web platform: neither ads nor
+      // IAP are supported there.
+      const platform = universalAPI.getCurrentPlatform();
+      if (platform?.type === 'web') {
+        if (capabilities && !capabilities.ads) {
+          expect(recommendations.some((rec) => rec.toLowerCase().includes('ads'))).toBe(true);
+        }
+        if (capabilities && !capabilities.iap) {
+          expect(
+            recommendations.some((rec) => rec.toLowerCase().includes('purchase')),
+          ).toBe(true);
+        }
+      }
     });
   });
 

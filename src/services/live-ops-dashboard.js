@@ -402,31 +402,34 @@ class LiveOpsDashboard {
   async executeAction(player, action) {
     try {
       switch (action.type) {
-        case 'notification':
-          await pushNotificationService.sendNotification(
-            player.id,
-            action.template,
-            { campaignId: action.campaignId, ...action.data }
-          );
-          break;
+      case 'notification':
+        await pushNotificationService.sendNotification(
+          player.id,
+          action.template,
+          { campaignId: action.campaignId, ...action.data }
+        );
+        break;
           
-        case 'event':
-          const eventId = await this.createEvent({
-            templateKey: action.template,
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-            targetAudience: { playerIds: [player.id] }
-          });
-          await this.deployEvent(eventId);
-          break;
+        // Braced: `const` declarations are scoped to the switch block, so an
+        // unbraced case body leaks them into sibling cases.
+      case 'event': {
+        const eventId = await this.createEvent({
+          templateKey: action.template,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          targetAudience: { playerIds: [player.id] }
+        });
+        await this.deployEvent(eventId);
+        break;
+      }
           
-        case 'reward':
-          await this.giveReward(player.id, action);
-          break;
+      case 'reward':
+        await this.giveReward(player.id, action);
+        break;
           
-        case 'social':
-          await this.triggerSocialAction(player.id, action);
-          break;
+      case 'social':
+        await this.triggerSocialAction(player.id, action);
+        break;
       }
     } catch (error) {
       logger.error('Failed to execute action', { error: error.message, playerId: player.id, action });
@@ -460,7 +463,7 @@ class LiveOpsDashboard {
       actions: [
         { type: 'notification', template: 'progression', delay: 0 },
         { type: 'reward', amount: 100, currency: 'coins', delay: 300 },
-        { type: 'hint', type: 'level_hint', delay: 600 }
+        { type: 'hint', template: 'level_hint', delay: 600 }
       ],
       cooldown: 7200 // 2 hours
     });
@@ -490,7 +493,7 @@ class LiveOpsDashboard {
         { type: 'notification', template: 'comeback', delay: 0 },
         { type: 'reward', amount: 500, currency: 'coins', delay: 300 },
         { type: 'event', template: 'limited_time_offer', delay: 600 },
-        { type: 'personalized', type: 'custom_offer', delay: 1200 }
+        { type: 'personalized', template: 'custom_offer', delay: 1200 }
       ],
       cooldown: 1800 // 30 minutes
     });
@@ -527,8 +530,10 @@ class LiveOpsDashboard {
   }
 
   async queueIntervention(intervention) {
+    // Declared before the try so the catch can still log which player failed.
+    const { playerId, ruleName } = intervention;
+
     try {
-      const { playerId, ruleName } = intervention;
       const interventionKey = `${playerId}:${ruleName}`;
       
       // Check cooldown
@@ -548,8 +553,10 @@ class LiveOpsDashboard {
   }
 
   async processIntervention(intervention) {
+    // Declared before the try so the catch can still log which player failed.
+    const { playerId, rule, actions } = intervention;
+
     try {
-      const { playerId, rule, actions } = intervention;
       
       for (const action of actions) {
         const delay = action.delay || 0;
@@ -646,31 +653,31 @@ class LiveOpsDashboard {
   async executeABTestVariant(player, abTest, variant) {
     try {
       switch (abTest.type) {
-        case 'event':
-          await this.createEvent({
-            templateKey: variant.templateKey,
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            targetAudience: { playerIds: [player.id] }
-          });
-          break;
+      case 'event':
+        await this.createEvent({
+          templateKey: variant.templateKey,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          targetAudience: { playerIds: [player.id] }
+        });
+        break;
           
-        case 'campaign':
-          await this.createCampaign({
-            templateKey: variant.templateKey,
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            targetAudience: { playerIds: [player.id] }
-          });
-          break;
+      case 'campaign':
+        await this.createCampaign({
+          templateKey: variant.templateKey,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          targetAudience: { playerIds: [player.id] }
+        });
+        break;
           
-        case 'notification':
-          await pushNotificationService.sendNotification(
-            player.id,
-            variant.template,
-            { abTestId: abTest.id, variantId: variant.id }
-          );
-          break;
+      case 'notification':
+        await pushNotificationService.sendNotification(
+          player.id,
+          variant.template,
+          { abTestId: abTest.id, variantId: variant.id }
+        );
+        break;
       }
 
       abTest.metrics.impressions++;
@@ -959,6 +966,46 @@ class LiveOpsDashboard {
       if (abTest.status === 'running' && abTest.endDate <= now) {
         await this.endABTest(testId);
       }
+    }
+  }
+
+  /**
+   * Conclude a finished A/B test and attach its results.
+   *
+   * `processActiveABTests()` called this but it was never implemented, so any
+   * test reaching its end date threw "this.endABTest is not a function" and
+   * aborted the whole sweep over active tests.
+   */
+  async endABTest(testId) {
+    try {
+      const abTest = this.abTests.get(testId);
+      if (!abTest) {
+        logger.warn('A/B test not found', { testId });
+        return null;
+      }
+
+      if (abTest.status === 'completed') return abTest;
+
+      abTest.status = 'completed';
+      abTest.endedAt = new Date();
+
+      const { impressions = 0, clicks = 0, conversions = 0, revenue = 0 } = abTest.metrics || {};
+      abTest.results = {
+        impressions,
+        clicks,
+        conversions,
+        revenue,
+        clickThroughRate: impressions > 0 ? clicks / impressions : 0,
+        conversionRate: impressions > 0 ? conversions / impressions : 0,
+        revenuePerImpression: impressions > 0 ? revenue / impressions : 0,
+      };
+
+      this.abTests.set(testId, abTest);
+      logger.info('A/B test ended', { testId, name: abTest.name });
+      return abTest;
+    } catch (error) {
+      logger.error('Failed to end A/B test', { error: error.message, testId });
+      return null;
     }
   }
 

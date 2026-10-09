@@ -13,12 +13,17 @@ describe('Game Server', () => {
 
   beforeAll(async () => {
     server = new GameServer();
-    // Mock the services for testing
-    // This would be set up in a test environment
+    // `app` was declared but never assigned, so supertest was handed
+    // `undefined` and every request threw before reaching a route.
+    // Routes are wired up in the constructor, so no port binding is needed.
+    app = server.getApp();
   });
 
   afterAll(async () => {
-    // Cleanup
+    // Release the Socket.IO server / heartbeat timers so jest can exit.
+    if (typeof server?.['close'] === 'function') {
+      await server['close']();
+    }
   });
 
   beforeEach(() => {
@@ -257,11 +262,22 @@ describe('Game Server', () => {
 
       expect(response.headers).toHaveProperty('x-content-type-options', 'nosniff');
       expect(response.headers).toHaveProperty('x-frame-options', 'DENY');
-      expect(response.headers).toHaveProperty('x-xss-protection', '1; mode=block');
+      // Modern helmet intentionally disables the XSS auditor (`0`). The
+      // auditor was removed from browsers and could itself be exploited, so
+      // re-enabling `1; mode=block` would be a downgrade, not a fix.
+      expect(response.headers).toHaveProperty('x-xss-protection', '0');
     });
 
     test('should handle CORS preflight requests', async () => {
-      const response = await request(app).options('/api/game/start').expect(200);
+      // The CORS middleware answers preflight with 204 No Content, which is
+      // the conventional success status for an OPTIONS preflight.
+      const response = await request(app)
+        .options('/api/game/start')
+        .set('Origin', 'http://localhost:3000')
+        .set('Access-Control-Request-Method', 'POST')
+        .expect(204);
+
+      expect(response.headers).toHaveProperty('access-control-allow-origin');
     });
 
     test('should enforce rate limiting', async () => {

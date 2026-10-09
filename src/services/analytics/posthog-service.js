@@ -1,7 +1,7 @@
 import { Logger } from '../../core/logger/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import posthog from 'posthog-js';
-import { PostHog } from '@posthog/node';
+import { PostHog } from 'posthog-node';
 
 /**
  * PostHog Analytics Service - Advanced analytics with AI-powered insights
@@ -11,12 +11,20 @@ class PostHogAnalyticsService {
   constructor() {
     this.logger = new Logger('PostHogAnalyticsService');
     
-    // Initialize PostHog client
-    this.posthog = new PostHog(process.env.POSTHOG_API_KEY, {
-      host: process.env.POSTHOG_HOST || 'https://app.posthog.com',
-      flushAt: 20,
-      flushInterval: 10000,
-    });
+    // Initialize PostHog client. The SDK throws without an API key, and
+    // analytics must never stop the server from starting, so it is optional.
+    this.posthog = null;
+    if (process.env.POSTHOG_API_KEY) {
+      this.posthog = new PostHog(process.env.POSTHOG_API_KEY, {
+        host: process.env.POSTHOG_HOST || 'https://app.posthog.com',
+        flushAt: 20,
+        flushInterval: 10000,
+      });
+    } else {
+      this.logger.warn(
+        'POSTHOG_API_KEY is not set - PostHog analytics will be logged locally only',
+      );
+    }
 
     // Initialize browser PostHog for client-side tracking
     if (typeof window !== 'undefined') {
@@ -62,11 +70,13 @@ class PostHogAnalyticsService {
       const enrichedProperties = await this.enrichEventProperties(playerId, eventName, properties);
       
       // Track on server-side
-      this.posthog.capture({
-        distinctId: playerId,
-        event: eventName,
-        properties: enrichedProperties
-      });
+      if (this.posthog) {
+        this.posthog.capture({
+          distinctId: playerId,
+          event: eventName,
+          properties: enrichedProperties
+        });
+      }
 
       // Track on client-side if available
       if (this.browserPostHog) {
@@ -122,10 +132,12 @@ class PostHogAnalyticsService {
       this.experiments.set(experimentName, experiment);
       
       // Create PostHog feature flag
-      await this.posthog.createFeatureFlag(experimentName, variants, {
-        active: true,
-        filters: targetAudience
-      });
+      if (this.posthog) {
+        await this.posthog.createFeatureFlag(experimentName, variants, {
+          active: true,
+          filters: targetAudience
+        });
+      }
 
       this.logger.info(`Created experiment: ${experimentName}`);
       return experiment;
@@ -141,7 +153,9 @@ class PostHogAnalyticsService {
    */
   async getExperimentVariant(playerId, experimentName) {
     try {
-      const variant = await this.posthog.getFeatureFlag(experimentName, playerId);
+      const variant = this.posthog
+        ? await this.posthog.getFeatureFlag(experimentName, playerId)
+        : null;
       
       // Track experiment exposure
       await this.trackEvent(playerId, 'experiment_exposed', {
@@ -266,14 +280,14 @@ class PostHogAnalyticsService {
    */
   async handleAlert(playerId, alert) {
     switch (alert.type) {
-      case 'churn_risk':
-        await this.sendRetentionCampaign(playerId);
-        break;
-      case 'low_engagement':
-        await this.sendEngagementBoost(playerId);
-        break;
-      default:
-        this.logger.warn(`Unknown alert type: ${alert.type}`);
+    case 'churn_risk':
+      await this.sendRetentionCampaign(playerId);
+      break;
+    case 'low_engagement':
+      await this.sendEngagementBoost(playerId);
+      break;
+    default:
+      this.logger.warn(`Unknown alert type: ${alert.type}`);
     }
   }
 
@@ -282,11 +296,11 @@ class PostHogAnalyticsService {
    */
   async handleOpportunity(playerId, opportunity) {
     switch (opportunity.type) {
-      case 'monetization':
-        await this.showPersonalizedOffer(playerId, opportunity);
-        break;
-      default:
-        this.logger.warn(`Unknown opportunity type: ${opportunity.type}`);
+    case 'monetization':
+      await this.showPersonalizedOffer(playerId, opportunity);
+      break;
+    default:
+      this.logger.warn(`Unknown opportunity type: ${opportunity.type}`);
     }
   }
 
@@ -295,11 +309,11 @@ class PostHogAnalyticsService {
    */
   async handleRecommendation(playerId, recommendation) {
     switch (recommendation.type) {
-      case 'engagement':
-        await this.improvePlayerExperience(playerId, recommendation);
-        break;
-      default:
-        this.logger.warn(`Unknown recommendation type: ${recommendation.type}`);
+    case 'engagement':
+      await this.improvePlayerExperience(playerId, recommendation);
+      break;
+    default:
+      this.logger.warn(`Unknown recommendation type: ${recommendation.type}`);
     }
   }
 
@@ -529,15 +543,17 @@ class PostHogAnalyticsService {
    */
   async getDashboardData(timeRange = '7d') {
     try {
-      const insights = await this.posthog.getInsights({
-        events: [
-          { event: 'level_completed' },
-          { event: 'purchase_made' },
-          { event: 'session_start' }
-        ],
-        date_from: this.getDateFrom(timeRange),
-        date_to: new Date().toISOString()
-      });
+      const insights = this.posthog
+        ? await this.posthog.getInsights({
+          events: [
+            { event: 'level_completed' },
+            { event: 'purchase_made' },
+            { event: 'session_start' },
+          ],
+          date_from: this.getDateFrom(timeRange),
+          date_to: new Date().toISOString(),
+        })
+        : null;
 
       return {
         insights,
@@ -555,14 +571,14 @@ class PostHogAnalyticsService {
   getDateFrom(timeRange) {
     const now = new Date();
     switch (timeRange) {
-      case '1d':
-        return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-      case '7d':
-        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      case '30d':
-        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      default:
-        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    case '1d':
+      return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    case '7d':
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    case '30d':
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    default:
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     }
   }
 
@@ -578,7 +594,9 @@ class PostHogAnalyticsService {
    * Cleanup resources
    */
   async cleanup() {
-    await this.posthog.shutdown();
+    if (this.posthog) {
+      await this.posthog.shutdown();
+    }
     this.logger.info('PostHog Analytics Service cleaned up');
   }
 }

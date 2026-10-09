@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { aiCacheManager } from './ai-cache-manager.js';
 import { aiMonitoringSystem } from './ai-monitoring-system.js';
-import OpenAI from 'openai';
 import { EventEmitter } from 'events';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
 
 /**
  * AI Error Handler - Intelligent error handling and recovery system
@@ -21,9 +21,7 @@ class AIErrorHandler extends EventEmitter {
     this.logger = new Logger('AIErrorHandler');
 
     // OpenAI for error analysis
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.openai = createOpenAIClient();
 
     // Error classification patterns
     this.errorPatterns = {
@@ -445,9 +443,12 @@ Classify the error and suggest recovery strategies. Return JSON:
    * Recovery strategy determination
    */
   async determineRecoveryStrategy(classification, patternAnalysis, context) {
+    // Declared before the try so the catch block can still fall back to the
+    // rule-based strategy (`patterns` was only in scope inside the try).
+    const patterns = patternAnalysis;
+
     try {
       const strategies = classification.suggestedStrategies || ['retry'];
-      const patterns = patternAnalysis;
       
       // Use AI to determine optimal strategy
       const prompt = this.buildRecoveryStrategyPrompt(classification, patterns, context);
@@ -520,36 +521,36 @@ Return JSON with recovery strategy:
     
     // Adjust strategy based on category
     switch (category) {
-      case 'network':
-        strategy = frequency > 5 ? 'circuit_breaker' : 'retry';
-        parameters.delay = 2000;
-        break;
-      case 'rateLimit':
-        strategy = 'exponential_backoff';
-        parameters.delay = 5000;
-        parameters.backoffMultiplier = 2;
-        break;
-      case 'authentication':
-        strategy = 'refresh_token';
-        parameters.maxRetries = 1;
-        break;
-      case 'validation':
-        strategy = 'reject';
-        parameters.maxRetries = 0;
-        break;
-      case 'server':
-        strategy = frequency > 3 ? 'circuit_breaker' : 'retry';
-        break;
-      case 'ai':
-        strategy = 'fallback_model';
-        break;
-      case 'cache':
-        strategy = 'bypass_cache';
-        break;
-      case 'database':
-        strategy = 'retry';
-        parameters.delay = 3000;
-        break;
+    case 'network':
+      strategy = frequency > 5 ? 'circuit_breaker' : 'retry';
+      parameters.delay = 2000;
+      break;
+    case 'rateLimit':
+      strategy = 'exponential_backoff';
+      parameters.delay = 5000;
+      parameters.backoffMultiplier = 2;
+      break;
+    case 'authentication':
+      strategy = 'refresh_token';
+      parameters.maxRetries = 1;
+      break;
+    case 'validation':
+      strategy = 'reject';
+      parameters.maxRetries = 0;
+      break;
+    case 'server':
+      strategy = frequency > 3 ? 'circuit_breaker' : 'retry';
+      break;
+    case 'ai':
+      strategy = 'fallback_model';
+      break;
+    case 'cache':
+      strategy = 'bypass_cache';
+      break;
+    case 'database':
+      strategy = 'retry';
+      parameters.delay = 3000;
+      break;
     }
     
     // Adjust based on severity
@@ -578,29 +579,29 @@ Return JSON with recovery strategy:
       let result;
       
       switch (strategy.strategy) {
-        case 'retry':
-          result = await this.executeRetry(strategy.parameters, error, context);
-          break;
-        case 'exponential_backoff':
-          result = await this.executeExponentialBackoff(strategy.parameters, error, context);
-          break;
-        case 'circuit_breaker':
-          result = await this.executeCircuitBreaker(strategy.parameters, error, context);
-          break;
-        case 'fallback':
-          result = await this.executeFallback(strategy.parameters, error, context);
-          break;
-        case 'queue':
-          result = await this.executeQueue(strategy.parameters, error, context);
-          break;
-        case 'throttle':
-          result = await this.executeThrottle(strategy.parameters, error, context);
-          break;
-        case 'reject':
-          result = await this.executeReject(strategy.parameters, error, context);
-          break;
-        default:
-          result = await this.executeRetry(strategy.parameters, error, context);
+      case 'retry':
+        result = await this.executeRetry(strategy.parameters, error, context);
+        break;
+      case 'exponential_backoff':
+        result = await this.executeExponentialBackoff(strategy.parameters, error, context);
+        break;
+      case 'circuit_breaker':
+        result = await this.executeCircuitBreaker(strategy.parameters, error, context);
+        break;
+      case 'fallback':
+        result = await this.executeFallback(strategy.parameters, error, context);
+        break;
+      case 'queue':
+        result = await this.executeQueue(strategy.parameters, error, context);
+        break;
+      case 'throttle':
+        result = await this.executeThrottle(strategy.parameters, error, context);
+        break;
+      case 'reject':
+        result = await this.executeReject(strategy.parameters, error, context);
+        break;
+      default:
+        result = await this.executeRetry(strategy.parameters, error, context);
       }
       
       const recoveryTime = Date.now() - startTime;
@@ -832,7 +833,7 @@ Return JSON with recovery strategy:
    */
   startErrorPatternAnalysis() {
     setInterval(() => {
-      this.analyzeErrorPatterns();
+      this.runPeriodicPatternAnalysis();
     }, 300000); // Every 5 minutes
   }
 
@@ -848,7 +849,12 @@ Return JSON with recovery strategy:
     }, 1800000); // Every 30 minutes
   }
 
-  async analyzeErrorPatterns() {
+  /**
+   * Periodic sweep over aggregate error patterns.
+   * Distinct from the per-error `analyzeErrorPatterns(error, context)`, which
+   * this duplicate definition used to shadow.
+   */
+  async runPeriodicPatternAnalysis() {
     // Analyze error patterns and update recovery strategies
     this.logger.debug('Error pattern analysis completed');
   }

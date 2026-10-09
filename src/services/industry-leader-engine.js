@@ -4,8 +4,8 @@ import { AIPersonalizationEngine } from './ai-personalization-engine.js';
 import { MarketResearchEngine } from './market-research-engine.js';
 import { InfiniteContentPipeline } from './infinite-content-pipeline.js';
 import { AIAnalyticsEngine } from './ai-analytics-engine.js';
-import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import { createSupabaseClient } from './ai-clients.js';
 
 /**
  * Industry Leader Engine - The Ultimate Game Development System
@@ -15,7 +15,7 @@ class IndustryLeaderEngine {
   constructor() {
     this.logger = new Logger('IndustryLeaderEngine');
 
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Initialize all AI systems
     this.aiContentGenerator = new AIContentGenerator();

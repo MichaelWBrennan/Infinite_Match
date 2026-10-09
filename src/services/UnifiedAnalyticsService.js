@@ -132,7 +132,7 @@ class UnifiedAnalyticsService {
       logger.info('✅ Unified Analytics Service initialized successfully');
 
       // Track service initialization
-      await this.trackEvent('analytics_service_initialized', {
+      await this.trackGameEvent('analytics_service_initialized', {
         session_id: this.sessionId,
         timestamp: new Date().toISOString(),
         version: '2.0.0',

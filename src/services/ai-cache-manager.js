@@ -1,7 +1,7 @@
 import { Logger } from '../core/logger/index.js';
-import Redis from 'ioredis';
 import { LRUCache } from 'lru-cache';
 import crypto from 'crypto';
+import { createRedisClient } from './redis-client.js';
 
 /**
  * AI Cache Manager - Comprehensive caching system for all AI services
@@ -19,15 +19,7 @@ class AICacheManager {
     this.logger = new Logger('AICacheManager');
 
     // Redis connection for distributed caching
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD,
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-      keyPrefix: 'ai_cache:',
-    });
+    this.redis = createRedisClient({ keyPrefix: 'ai_cache:' });
 
     // Memory caches for different data types
     this.caches = {

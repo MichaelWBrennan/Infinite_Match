@@ -1,4 +1,5 @@
-import analyticsService from '../services/analytics-service.js';
+import { randomUUID } from 'crypto';
+import analyticsService from '../services/unified-analytics-service.js';
 import cloudServices from '../services/cloud-services.js';
 
 /**
@@ -7,7 +8,7 @@ import cloudServices from '../services/cloud-services.js';
  */
 export const analyticsMiddleware = (req, res, next) => {
   const startTime = Date.now();
-  const requestId = req.headers['x-request-id'] || require('crypto').randomUUID();
+  const requestId = req.headers['x-request-id'] || randomUUID();
 
   // Add request ID to response headers
   res.setHeader('X-Request-ID', requestId);
