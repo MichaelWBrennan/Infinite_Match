@@ -157,7 +157,10 @@ class AccountEconomyService {
         bomb: { id: 'bomb', name: 'Bomb', count: 3, maxCount: 99, type: 'powerup', rarity: 'common' },
         rocket: { id: 'rocket', name: 'Rocket', count: 2, maxCount: 99, type: 'powerup', rarity: 'common' },
         rainbow: { id: 'rainbow', name: 'Rainbow', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
-        lightning: { id: 'lightning', name: 'Lightning', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' }
+        lightning: { id: 'lightning', name: 'Lightning', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
+        target: { id: 'target', name: 'Target Gem', count: 0, maxCount: 99, type: 'powerup', rarity: 'rare' },
+        diamond: { id: 'diamond', name: 'Diamond', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
+        star: { id: 'star', name: 'Star', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' }
       },
       boosters: {
         extra_moves: { id: 'extra_moves', name: 'Extra Moves', count: 0, maxCount: 99, type: 'booster', rarity: 'common' },
@@ -341,6 +344,11 @@ class AccountEconomyService {
    * Update player currency
    */
   async updateCurrency(playerId, currencyId, amount, operation = 'add', source = 'unknown') {
+    // Amounts must be whole numbers. A negative 'spend' would otherwise add currency.
+    // Zero is allowed: level-up rewards can legitimately be 0 (e.g. stars below level 5).
+    if (!Number.isSafeInteger(amount) || amount < 0) {
+      throw new Error('Amount must be a whole number within range');
+    }
     try {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       
@@ -396,6 +404,9 @@ class AccountEconomyService {
    * Update player inventory
    */
   async updateInventory(playerId, category, itemId, quantity, operation = 'add') {
+    if (!Number.isSafeInteger(quantity) || quantity < 0) {
+      throw new Error('Quantity must be a whole number within range');
+    }
     try {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       
@@ -638,27 +649,9 @@ class AccountEconomyService {
     try {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       
-      // Sync currencies
-      if (unityData.currencies) {
-        for (const [currencyId, amount] of Object.entries(unityData.currencies)) {
-          if (playerEconomy.currencies[currencyId]) {
-            playerEconomy.currencies[currencyId].amount = amount;
-          }
-        }
-      }
-      
-      // Sync inventory
-      if (unityData.inventory) {
-        for (const [category, items] of Object.entries(unityData.inventory)) {
-          if (playerEconomy.inventory[category]) {
-            for (const [itemId, count] of Object.entries(items)) {
-              if (playerEconomy.inventory[category][itemId]) {
-                playerEconomy.inventory[category][itemId].count = count;
-              }
-            }
-          }
-        }
-      }
+      // Balances are never written from the client. Currency and inventory change
+      // only through server flows (level results, purchases, rewards), so a sync
+      // cannot set arbitrary balances.
       
       playerEconomy.lastUpdated = new Date().toISOString();
       

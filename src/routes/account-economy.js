@@ -8,6 +8,7 @@ import { body, validationResult } from 'express-validator';
 import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import AccountEconomyService from '../services/economy/AccountEconomyService.js';
+import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
 
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
@@ -29,7 +30,8 @@ const handleRouteError = (res, error, operation, requestId) => {
 const validateCurrencyUpdate = [
   body('currencyId').isString().notEmpty().withMessage('Currency ID is required'),
   body('amount').isInt({ min: 0 }).withMessage('Amount must be a positive integer'),
-  body('operation').isIn(['add', 'spend', 'set']).withMessage('Operation must be add, spend, or set'),
+  // Players may only spend. Grants come from server flows.
+  body('operation').isIn(['spend']).withMessage('Operation must be spend'),
   body('source').optional().isString().withMessage('Source must be a string'),
 ];
 
@@ -37,12 +39,8 @@ const validateInventoryUpdate = [
   body('category').isString().notEmpty().withMessage('Category is required'),
   body('itemId').isString().notEmpty().withMessage('Item ID is required'),
   body('quantity').isInt({ min: 0 }).withMessage('Quantity must be a positive integer'),
-  body('operation').isIn(['add', 'remove', 'set']).withMessage('Operation must be add, remove, or set'),
-];
-
-const validateProgressionUpdate = [
-  body('xpGained').isInt({ min: 0 }).withMessage('XP gained must be a positive integer'),
-  body('levelCompleted').optional().isBoolean().withMessage('Level completed must be a boolean'),
+  // Players may only consume items. Grants come from server flows.
+  body('operation').isIn(['remove']).withMessage('Operation must be remove'),
 ];
 
 // Initialize player economy
@@ -171,41 +169,14 @@ router.post('/inventory/update', security.sessionValidation, validateInventoryUp
 });
 
 // Update progression
-router.post('/progression/update', security.sessionValidation, validateProgressionUpdate, async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-        requestId: req.requestId,
-      });
-    }
-
-    const { playerId } = req.user;
-    const { xpGained, levelCompleted } = req.body;
-
-    const result = await accountEconomyService.updateProgression(
-      playerId,
-      xpGained,
-      levelCompleted
-    );
-
-    security.logSecurityEvent('progression_updated', {
-      playerId,
-      xpGained,
-      levelCompleted,
-      ip: req.ip,
-    });
-
-    res.json({
-      success: true,
-      result,
-      requestId: req.requestId,
-    });
-  } catch (error) {
-    handleRouteError(res, error, 'update progression', req.requestId);
-  }
+// XP is granted only by /level/complete, which computes it on the server.
+// Accepting client XP let a player level up without limit and collect the rewards.
+router.post('/progression/update', security.sessionValidation, (req, res) => {
+  res.status(403).json({
+    success: false,
+    error: 'XP is granted by level completion',
+    requestId: req.requestId,
+  });
 });
 
 // Claim daily reward
@@ -297,42 +268,31 @@ router.get('/service/stats', security.sessionValidation, requireMinRole('admin')
 router.post('/purchase', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { itemId, currencyId, amount } = req.body;
+    const { itemId } = req.body;
 
-    // Validate purchase
-    if (!itemId || !currencyId || !amount) {
+    // The price comes from the server catalog. A client-supplied amount is ignored.
+    const item = Object.prototype.hasOwnProperty.call(ITEM_CATALOG, itemId) ? ITEM_CATALOG[itemId] : null;
+    if (!item) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: itemId, currencyId, amount',
+        error: 'Unknown item',
         requestId: req.requestId,
       });
     }
 
-    // Check if player can afford the purchase
-    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
-    const currency = playerEconomy.currencies[currencyId];
-    
-    if (!currency || currency.amount < amount) {
-      return res.status(400).json({
-        success: false,
-        error: `Insufficient ${currencyId}`,
-        requestId: req.requestId,
-      });
-    }
+    const { currencyId, price, category } = item;
 
-    // Process purchase
     const currencyResult = await accountEconomyService.updateCurrency(
       playerId,
       currencyId,
-      amount,
+      price,
       'spend',
       'purchase'
     );
 
-    // Add item to inventory (this would be based on the item being purchased)
     const inventoryResult = await accountEconomyService.updateInventory(
       playerId,
-      'powerups',
+      category,
       itemId,
       1,
       'add'
@@ -342,7 +302,7 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
       playerId,
       itemId,
       currencyId,
-      amount,
+      price,
       ip: req.ip,
     });
 
@@ -355,6 +315,9 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
+    if (error.message.includes('Insufficient')) {
+      return res.status(400).json({ success: false, error: error.message, requestId: req.requestId });
+    }
     handleRouteError(res, error, 'purchase item', req.requestId);
   }
 });
@@ -410,34 +373,36 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
 router.post('/level/complete', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { level, score, stars, xpGained = 0 } = req.body;
+    const { level, score, stars = 0 } = req.body;
 
-    if (!level || !score) {
+    // Validate ranges. The client reports the result, so the server bounds it.
+    const validLevel = Number.isInteger(level) && level >= 1 && level <= LEVEL_LIMITS.maxLevel;
+    const validScore = Number.isInteger(score) && score >= 0 && score <= LEVEL_LIMITS.maxScore;
+    const validStars = Number.isInteger(stars) && stars >= 0 && stars <= LEVEL_LIMITS.maxStars;
+    if (!validLevel || !validScore || !validStars) {
       return res.status(400).json({
         success: false,
-        error: 'Level and score are required',
+        error: 'Invalid level, score, or stars',
         requestId: req.requestId,
       });
     }
 
-    // Update progression
+    // XP and coins are computed here. The client never sets them.
+    const xpGained = Math.floor(score / 100) + stars * 50;
     const progressionResult = await accountEconomyService.updateProgression(
       playerId,
       xpGained,
       true
     );
 
-    // Give level completion rewards
     const rewards = [];
-    
-    // Base coins reward
-    const coinsReward = Math.floor(score / 100);
+
+    const coinsReward = Math.min(Math.floor(score / 100), LEVEL_LIMITS.maxCoinsPerLevel);
     if (coinsReward > 0) {
       await accountEconomyService.updateCurrency(playerId, 'coins', coinsReward, 'add', 'level_complete');
       rewards.push({ type: 'currency', currencyId: 'coins', amount: coinsReward });
     }
 
-    // Stars reward
     if (stars > 0) {
       await accountEconomyService.updateCurrency(playerId, 'stars', stars, 'add', 'level_complete');
       rewards.push({ type: 'currency', currencyId: 'stars', amount: stars });
