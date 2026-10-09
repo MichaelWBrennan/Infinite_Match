@@ -47,6 +47,7 @@ import levelResultsRoutes from '../routes/level-results.js';
 import liveOpsRoutes from '../routes/live-ops.js';
 import kingdomRoutes from '../routes/kingdom.js';
 import battlepassRoutes from '../routes/battlepass.js';
+import socialRoutes from '../routes/social.js';
 import subscriptionsRoutes from '../routes/subscriptions.js';
 import { adminAuth } from '../middleware/admin-auth.js';
 import aiOptimizedRoutes from '../routes/ai-optimized-routes.js';
@@ -360,8 +361,10 @@ class GameServer {
     this.app.use('/api/kingdom', kingdomRoutes);
     // Store webhooks: each verifies the sender and returns 503 until its config is set.
     this.app.use('/api/subscriptions', subscriptionsRoutes);
-    // Battle pass config is public. The premium reward claim returns 501 until built.
+    // Battle pass config is public. Progress and claims are session-gated.
     this.app.use('/api/battlepass', battlepassRoutes);
+    // Friends, guilds, and best-score boards. Session-gated; acts on the caller's own data only.
+    this.app.use('/api/social', socialRoutes);
     // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
     this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
     // Not mounted:

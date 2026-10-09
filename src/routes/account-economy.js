@@ -10,6 +10,12 @@ import { Logger } from '../core/logger/index.js';
 import { accountEconomy as accountEconomyService, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
 import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
 import { starsForScore, winRewards } from '../services/meta/rewards.js';
+import { applyVip, VIP_ENTITLEMENT } from '../services/meta/vip.js';
+import { addSeasonXp } from '../services/meta/battlepass.js';
+import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-season.js';
+import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import { socialStore } from '../services/social/social-store.js';
+import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
 
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
@@ -27,6 +33,22 @@ const handleRouteError = (res, error, operation, requestId) => {
 };
 
 // Validation middleware
+// Records a won level for the social boards: the player's best score, and their score and progress
+// in any running tournament or challenge. A failure is logged and does not undo the reward.
+async function recordCompetitionWin(playerId, level, score) {
+  try {
+    const active = activeCompetitions(loadCompetitions(), Date.now());
+    await socialStore.recordWin(playerId, {
+      level,
+      score,
+      tournamentIds: active.tournaments.map((t) => t.id),
+      challengeIds: active.challenges.map((c) => c.id),
+    });
+  } catch (error) {
+    logger.error('Could not record the win for boards', { error: error.message, playerId });
+  }
+}
+
 const validateCurrencyUpdate = [
   body('currencyId').isString().notEmpty().withMessage('Currency ID is required'),
   body('amount').isInt({ min: 0 }).withMessage('Amount must be a positive integer'),
@@ -201,6 +223,7 @@ router.post('/daily-reward/claim', security.sessionValidation, async (req, res) 
     const { playerId } = req.user;
 
     const result = await accountEconomyService.claimDailyReward(playerId);
+    await grantSeasonXp(playerId, 'daily_login');
 
     security.logSecurityEvent('daily_reward_claimed', {
       playerId,
@@ -421,7 +444,9 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       throw error;
     }
 
-    const reward = winRewards(stars);
+    // VIP multiplies coins only. The player must hold the vip entitlement on the server.
+    const isVip = await PurchaseLedgerDb.hasPurchase(playerId, VIP_ENTITLEMENT);
+    const reward = applyVip(winRewards(stars), isVip);
     const progressionResult = await accountEconomyService.updateProgression(playerId, reward.xp, true);
 
     const rewards = [
@@ -440,7 +465,11 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     playerEconomy.statistics.bestScore = Math.max(playerEconomy.statistics.bestScore, score);
     playerEconomy.statistics.lastPlayed = new Date().toISOString();
 
+    const season = await loadSeasonSafely();
+    if (season) addSeasonXp(playerEconomy, season, 'level_complete');
+
     await accountEconomyService.updatePlayerEconomyCache(playerId, playerEconomy);
+    await recordCompetitionWin(playerId, level, score);
 
     security.logSecurityEvent('level_completed', {
       playerId,
@@ -457,6 +486,7 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
         progression: progressionResult,
         rewards,
         stars,
+        vip: isVip,
         balances: {
           coins: playerEconomy.currencies.coins.amount,
           stars: playerEconomy.currencies.stars.amount,

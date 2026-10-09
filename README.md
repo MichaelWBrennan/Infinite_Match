@@ -35,6 +35,10 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Ad event revenue reported by the client is not counted. `POST /api/ads/event` stores it as `clientReportedRevenueUsd` for debugging. The revenue total comes only from a server-verified source, which is not built yet.
 - Store billing (`POST /api/monetization/receipt/verify`, session required). iOS: a StoreKit 2 `signedTransaction` is verified offline against the pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`), with the bundle ID (`APPLE_BUNDLE_ID`) checked and Sandbox refused unless `APPLE_ALLOW_SANDBOX=true`. Legacy receipts check the bundle and environment too. Android: the purchase is checked with the Google Play API for the package in `GOOGLE_PACKAGE_NAME`. Store SKUs map to catalog products in `src/services/payments/product-catalog.js`. Each purchase is granted once per transaction, and a transaction owned by one player is refused to others (`transaction_claimed`, 409).
 - Live ops (`GET /api/live-ops/today`, session required). Reads `config/liveops.json`: dated events and deal windows. A deal price applies only inside its window, is at least $0.99, and is below the catalog price. An invalid config is logged and ignored, so catalog prices apply.
+- Battle pass (`GET /api/battlepass/progress` and `POST /api/battlepass/claim`, session required). Season XP comes from wins (50) and daily login (10). Each tier is claimed once per track. The free track is open to everyone. The premium track needs the `season_pass_premium` entitlement. Coins and power-ups are granted on the server. The season is in `config/battlepass/config.json`, and `BATTLEPASS_CONFIG` can point to another file. A claim is refused outside the season's dates, so the config must be updated for each season.
+- VIP benefit. A player who holds the `vip` entitlement gets 1.5 times the coins from a win (`src/services/meta/vip.js`). No store product grants `vip` yet.
+- Friends, guilds, and boards (`/api/social/*`, session required). A player sets a display name of 3 to 16 characters and shares a friend code. A friend request needs accepting, and a player can have up to 50 friends. A guild holds up to 30 members, and when the owner leaves, the longest-standing member takes over. The friend leaderboard shows best winning scores by name. The data is one JSON file, `SOCIAL_STORE_FILE` (default `var/social/social.json`).
+- Tournaments and community challenges (`GET /api/live-ops/competitions`, `POST /api/live-ops/challenges/:id/claim`, and `POST /api/live-ops/tournaments/:id/settle`, which is admin only). They are defined in the `tournaments` and `challenges` lists of `config/liveops.json`. A tournament ranks players by their best winning score inside its window. Settling pays each ranked player once after the window ends. A community challenge counts every player's wins toward one goal, and each player who contributed a win can claim the reward once.
 
 **Built, but not verified against the live service**
 - Stripe, Apple, and Google calls have not been tested against their live APIs. The sandbox cannot reach them. The Apple verifier is tested with locally generated keys and certificates. The Google Play purchase check is not verified: this sandbox cannot reach `androidpublisher.googleapis.com`, so it fails closed here.
@@ -49,23 +53,23 @@ This section lists what is built and tested, and what is mounted on the server. 
 
 **Not built yet** (listed in the sections below, but not implemented)
 - Timed and endless modes as separate game modes. Every level currently has the 60-second timer.
-- Guilds, friends, and social leaderboards. Services exist, but no routes or UI.
 - Weather effects. The weather service needs Supabase, which is not configured here.
 - Kingdom garden design and room customization. Kingdom renovation is built (see Built), but levels do not change gameplay yet.
 - Mini-games: treasure hunts, memory games, and rhythm challenges.
-- VIP system. Live ops deals exist on the server (see Built), but there is no VIP tier.
-- Seasonal events, tournaments, community challenges, and boss mechanics beyond a higher target.
-- Battle pass premium rewards. `POST /api/battlepass/premium/reward` returns 501 until it grants items.
-- A season pass purchase. No price exists in the repository, so the product is not sold.
-- Gems were removed from the game: nothing ever earned or spent them. Stars are the server's: the HUD shows the server value for signed-in players, and guests see a sign-in prompt instead of a balance.
-- Partial refunds are not reversed automatically; they are logged for a manual decision. Coins already spent before a refund are not recovered, and the balance stops at zero.
-- Level wins check the score against the target, but the server does not replay the board. A player can still claim a win with a made-up score, once per paid attempt. Each win pays a fixed reward, so this is limited by energy.
-- Coin packs in the client show fixed labels that mirror `product-catalog.js`. Change both when prices change.
-- The Stripe checkout button is built but has not run against Stripe. The sandbox cannot reach Stripe.
+- Boss mechanics beyond a higher target. Seasonal events are the dated windows in `config/liveops.json`.
 - Automatic difficulty adjustment. The level-tuning report is read-only: a person changes the level config after reading it.
 - Level results are kept in a single JSONL file. That works for one server; it needs a database before scaling out.
+- A VIP purchase and a season pass purchase. Neither has a price in the repository, so no store product grants them. The benefit and the premium track are built and wait for a product.
+- Client screens for friends, guilds, boards, tournaments, challenges, and the battle pass. The server routes exist, but the game does not show them yet.
+- Battle pass XP for completing a community challenge. The `challenge_complete` value in the config is not used.
 - Economy write routes (`/api/economy/*`) are intentionally not mounted. Players cannot write economy data.
 - Customer relationship messaging (`src/routes/crm.js`). Its webhook and push send only log and report success. Nothing is delivered, so it is not mounted.
+- Gems were removed from the game: nothing ever earned or spent them. Stars are the server's: the HUD shows the server value for signed-in players, and guests see a sign-in prompt instead of a balance.
+- Partial refunds are not reversed automatically; they are logged for a manual decision. Coins already spent before a refund are not recovered, and the balance stops at zero.
+- Level wins check the score against the target, but the server does not replay the board. A player can still claim a win with a made-up score, once per paid attempt. Each win pays a fixed reward, so this is limited by energy. The same score feeds the best-score boards, tournaments, and challenges, so those rankings can be inflated the same way.
+- Coin packs in the client show fixed labels that mirror `product-catalog.js`. Change both when prices change.
+- The Stripe checkout button is built but has not run against Stripe. The sandbox cannot reach Stripe.
+- Friends, guilds, and tournaments use a single JSON file. Several servers would need a shared store, which is not built.
 
 ## 🎮 Gameplay Features
 
