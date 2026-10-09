@@ -7,6 +7,7 @@ import Stripe from 'stripe';
 import { AppConfig } from '../../core/config/index.js';
 import { Logger } from '../../core/logger/index.js';
 import PurchaseLedger from './PurchaseLedger.js';
+import { productFor } from './product-catalog.js';
 
 const logger = new Logger('StripeService');
 
@@ -327,7 +328,19 @@ class StripeService {
    */
   async handlePaymentIntentSucceeded(paymentIntent) {
     const { id, amount, currency, metadata } = paymentIntent;
-    
+
+    // Grant only what the catalog sells, at the catalog price. Anything else is not recorded.
+    const product = productFor(metadata?.productId);
+    if (!product || amount !== product.priceCents || currency !== product.currency) {
+      logger.warn('Payment intent does not match the product catalog; not recorded', {
+        paymentIntentId: id,
+        productId: metadata?.productId || null,
+        amount,
+        currency,
+      });
+      return;
+    }
+
     await PurchaseLedger.recordPurchase({
       transactionId: id,
       productId: metadata.productId || 'unknown',

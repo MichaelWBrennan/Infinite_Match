@@ -1,6 +1,8 @@
 import express from 'express';
 import { Logger } from '../core/logger/index.js';
 import DeviceTokenDb from '../services/push/DeviceTokenDb.js';
+import security from '../core/security/index.js';
+import { adminAuth } from '../middleware/admin-auth.js';
 
 let admin = null;
 try {
@@ -18,11 +20,12 @@ try {
 const router = express.Router();
 const logger = new Logger('PushRoutes');
 
-router.post('/register', async (req, res) => {
+router.post('/register', security.sessionValidation, async (req, res) => {
   try {
-    const { userId, token, platform, locale } = req.body || {};
-    if (!userId || !token)
-      return res.status(400).json({ success: false, error: 'userId, token required' });
+    const userId = req.user.playerId;
+    const { token, platform, locale } = req.body || {};
+    if (!token)
+      return res.status(400).json({ success: false, error: 'token required' });
     await DeviceTokenDb.upsert({ userId, token, platform, locale });
     res.json({ success: true, stored: true });
   } catch (error) {
@@ -31,7 +34,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/send', async (req, res) => {
+router.post('/send', adminAuth, async (req, res) => {
   try {
     const { token, title, body, data } = req.body || {};
     if (!token || !title || !body) {

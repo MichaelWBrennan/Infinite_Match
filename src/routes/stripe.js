@@ -9,14 +9,14 @@ import security from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import StripeService from '../services/payments/StripeService.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import { productFor } from '../services/payments/product-catalog.js';
 
 const router = express.Router();
 const logger = new Logger('StripeRoutes');
 
 // Validation middleware
+// The amount is set by the server from the product catalog. A client amount is ignored.
 const validatePaymentIntent = [
-  body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be greater than 0'),
-  body('currency').optional().isString().withMessage('Currency must be a string'),
   body('productId').isString().withMessage('Product ID is required'),
   body('metadata').optional().isObject().withMessage('Metadata must be an object'),
 ];
@@ -84,19 +84,28 @@ router.post('/payment-intent', security.sessionValidation, validatePaymentIntent
       });
     }
 
-    const { amount, currency, productId, metadata = {} } = req.body;
+    const { productId, metadata = {} } = req.body;
+    const product = productFor(productId);
+    if (!product) {
+      return res.status(400).json({
+        success: false,
+        error: 'unknown_product',
+        requestId: req.requestId,
+      });
+    }
     const playerId = req.user?.playerId;
 
-    // Add player ID to metadata
+    // Player and product come from the server, so the webhook can trust them.
     const enrichedMetadata = {
       ...metadata,
       playerId,
       productId,
+      priceCents: String(product.priceCents),
     };
 
     const result = await StripeService.createPaymentIntent({
-      amount,
-      currency,
+      amount: product.priceCents / 100,
+      currency: product.currency,
       metadata: enrichedMetadata,
       customerId: req.user?.stripeCustomerId,
     });

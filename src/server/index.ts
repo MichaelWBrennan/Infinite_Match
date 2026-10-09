@@ -38,6 +38,13 @@ import monetizationRoutes from '../routes/monetization.js';
 import arpuRoutes from '../routes/arpu.js';
 import analyticsRoutes from '../routes/analytics.js';
 import adsRoutes from '../routes/ads.js';
+import adminRoutes from '../routes/admin.js';
+import consentRoutes from '../routes/consent.js';
+import pushRoutes from '../routes/push.js';
+import experimentsRoutes from '../routes/experiments.js';
+import battlepassRoutes from '../routes/battlepass.js';
+import subscriptionsRoutes from '../routes/subscriptions.js';
+import { adminAuth } from '../middleware/admin-auth.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -335,6 +342,20 @@ class GameServer {
     this.app.use('/api/arpu', arpuRoutes);
     this.app.use('/api/analytics', analyticsRoutes);
     this.app.use('/api/ads', adsRoutes);
+    // Operator-only. Requires ADMIN_API_TOKEN and ADMIN_IDS; refuses everything when unset.
+    this.app.use('/api/admin', adminRoutes);
+    // Player routes that check their own session and only act on the caller's own data.
+    this.app.use('/api/consent', consentRoutes);
+    this.app.use('/api/push', pushRoutes);
+    this.app.use('/api/experiments', experimentsRoutes);
+    // Store webhooks: each verifies the sender and returns 503 until its config is set.
+    this.app.use('/api/subscriptions', subscriptionsRoutes);
+    // Battle pass config is public. The premium reward claim returns 501 until built.
+    this.app.use('/api/battlepass', battlepassRoutes);
+    // Not mounted:
+    // - economy: its write routes would reopen the exploits fixed in account-economy.
+    // - crm: webhook and push send are logging stubs that deliver nothing.
+    // - ai-optimized: AI generation calls have no timeout and hung the request in testing.
 
     // Platform-specific API routes
     this.setupPlatformRoutes();

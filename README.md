@@ -4,16 +4,25 @@ A captivating match-3 puzzle game featuring royal themes, magical gems, and endl
 
 ## Implementation status
 
-This section lists what is built and tested. The feature lists below are the product goals. Anything not marked **Built** is not implemented yet.
+This section lists what is built and tested, and what is mounted on the server. The feature lists below are the product goals. Anything not marked **Built** is not implemented yet.
 
 **Built and tested**
 - Match-3 core: swaps, matches of 3+, cascades, gravity, refill, and a no-moves reshuffle.
 - Power-ups: bomb (3x3), rainbow (whole board), lightning (column), diamond (one colour), target (plus shape), star (row and column). Diamond, target, and star arm on press and fire on the next gem tap.
+- Power-up inventory: signed-in players load their counts from the server and confirm each use before it takes effect. Guests keep local counts.
 - Levels: procedural, no fixed cap. Every 10th level is a boss with a doubled target. Stars are relative to each level's target. A daily challenge is derived from the date.
 - Lucky wheel: one free spin per day with weighted rewards, granted on the server.
-- Achievements, daily reward, and login with the account economy (coins, stars, energy, inventory).
-- Stripe payment routes (`/api/stripe/*`), with the webhook verifying the raw body. Real checkout needs Stripe keys.
+- Achievements, daily reward, and login with the account economy (coins, stars, energy, inventory). Economy writes are validated on the server: no negative spends, no client-set balances, and purchases are not trusted from the client.
 - Session-gated analytics, ARPU, ads, entitlements, and monetization routes.
+- Consent, device-token registration, and experiment assignment. Each uses the signed-in player's own identity.
+- Battle pass config (`GET /api/battlepass/config`).
+- Operator admin routes (`/api/admin/*`). Access requires `ADMIN_API_TOKEN` (at least 32 characters) and `ADMIN_IDS`. Without both, every admin request is refused. See `.env.example`.
+- Store subscription webhooks (`/api/subscriptions/*`). Apple payloads must chain to a pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`). Google payloads need a valid Pub/Sub OIDC token for the configured audience and service account. Unverified payloads are rejected, and the routes return 503 until configured.
+- Stripe payment intents (`/api/stripe/payment-intent`). The price comes from a server-side catalog. Only `remove_ads` ($4.99) and `unlock_all_themes` ($7.99) can be bought. The webhook records a purchase only when the charged amount matches the catalog.
+
+**Built, but not verified against the live service**
+- Stripe, Apple, and Google calls have not been tested against their live APIs. The sandbox cannot reach them. The Apple and Google verifiers are tested with locally generated keys and certificates.
+- Subscription events are recorded, but they do not yet change entitlements.
 
 **Not built yet** (listed in the sections below, but not implemented)
 - Timed and endless modes as separate game modes. Every level currently has the 60-second timer.
@@ -23,7 +32,14 @@ This section lists what is built and tested. The feature lists below are the pro
 - Mini-games: treasure hunts, memory games, and rhythm challenges.
 - VIP system and daily deals. Offers exist as an endpoint with no client UI.
 - Seasonal events, tournaments, community challenges, and boss mechanics beyond a higher target.
-- Economy write routes (`/api/economy/*`) are intentionally not mounted. Players cannot write economy data, and admin tooling is not wired.
+- Battle pass premium rewards. `POST /api/battlepass/premium/reward` returns 501 until it grants items.
+- A season pass purchase. No price exists in the repository, so the product is not sold.
+- Stripe checkout UI. The client module in `src/frontend/` is not loaded by any page, so the game has no payment screen yet.
+- Economy write routes (`/api/economy/*`) are intentionally not mounted. Players cannot write economy data.
+- Economy statistics need the CSV files `config/currencies.csv`, `inventory.csv`, and `catalog.csv`, which are not in the repository. Until they are added, the admin endpoint returns 503 `economy_data_missing`.
+- Admin logs (`/api/admin/logs`) return 501. Logs go to stdout only.
+- Customer relationship messaging (`src/routes/crm.js`). Its webhook and push send only log and report success. Nothing is delivered, so it is not mounted.
+- AI-optimized routes (`src/routes/ai-optimized-routes.js`). A generation request hung with no timeout, so the router is not mounted.
 
 ## 🎮 Gameplay Features
 
