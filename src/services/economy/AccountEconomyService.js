@@ -606,13 +606,36 @@ class AccountEconomyService {
   withPlayerLock(playerId, fn) {
     if (!this._playerLocks) this._playerLocks = new Map();
     const previous = this._playerLocks.get(playerId) || Promise.resolve();
-    const run = previous.catch(() => {}).then(fn);
+    const run = previous.catch(() => {}).then(async () => {
+      try {
+        return await fn();
+      } catch (error) {
+        // The operation may have changed the cached economy before it failed. Drop it so the
+        // unsaved change is not written by a later save.
+        await this.discardUnsaved(playerId);
+        throw error;
+      }
+    });
     const tail = run.catch(() => {});
     this._playerLocks.set(playerId, tail);
     tail.then(() => {
       if (this._playerLocks.get(playerId) === tail) this._playerLocks.delete(playerId);
     });
     return run;
+  }
+
+  /**
+   * Drops the in-memory and AI-cache copies of a player's economy, so the next read reloads the
+   * last saved state. Durable mode only: without a store, memory is the only copy and is kept.
+   */
+  async discardUnsaved(playerId) {
+    if (!isDurableEconomy()) return;
+    this.accountEconomyData.delete(playerId);
+    try {
+      await this.cacheManager.delete(`player_economy:${playerId}`, 'content');
+    } catch (error) {
+      logger.error('Failed to evict cached economy', { error: error.message, playerId });
+    }
   }
 
   /** Adds a reward to a loaded economy object. Does not save. */
@@ -812,8 +835,8 @@ class AccountEconomyService {
       try {
         await PlayerEconomyDb.save(playerId, playerEconomy);
       } catch (error) {
-        // Drop the in-memory copy, which holds changes that were not saved. The next read reloads the stored state.
-        this.accountEconomyData.delete(playerId);
+        // The unsaved change is still on the cached object, so drop the AI-cache copy as well.
+        await this.discardUnsaved(playerId);
         throw error;
       }
     }

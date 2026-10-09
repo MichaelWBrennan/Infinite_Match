@@ -38,7 +38,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Device billing (StoreKit and Play Billing on a phone) has not been run. Only the server side of store purchases is built.
 - Live ops deals are not yet in the game client. The server reports them; the client does not show them.
 - Subscription events are recorded, but they do not yet change entitlements.
-- Durable economy (opt-in). With `ECONOMY_STORE=mongo`, player balances are saved to MongoDB, and a coin purchase is credited only when that store is on. Without it, balances are in memory and lost on restart, so purchases refuse to credit and the provider retries them. Run production with `ECONOMY_STORE=mongo`.
+- Durable economy (opt-in). With `ECONOMY_STORE=mongo`, player balances are saved to MongoDB, and a coin purchase is credited only when that store is on. Without it, balances are in memory and lost on restart, so purchases refuse to credit and the provider retries them. Run production with `ECONOMY_STORE=mongo`. The save, reload, and rollback rules are tested against an in-memory stand-in for the store (`src/__tests__/durable-economy.test.ts`). No MongoDB server has been run against them yet.
 - Client shop. Gems, stars, and energy are no longer sold or given out by the shop, and loot boxes are paid for in coins through the server. The old client code granted currency for free.
 
 **Not built yet** (listed in the sections below, but not implemented)
