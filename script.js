@@ -1320,11 +1320,16 @@ function showLoginModal() {
 }
 
 // Gameplay (Phaser game).
-function startGame() { return callGame('requestStart'); }
+// Gameplay entry points bring the canvas back if a DOM menu hid it.
+function revealCanvas() {
+    if (typeof window.showGameCanvas === 'function') window.showGameCanvas();
+}
+
+function startGame() { revealCanvas(); return callGame('requestStart'); }
 function pauseGame() { return callGame('pauseGame'); }
 function usePowerUp(type) { return callGame('usePowerUp', type); }
-function nextLevel() { return callGame('nextLevel'); }
-function selectLevel(levelNumber) { return callGame('selectLevel', levelNumber); }
+function nextLevel() { revealCanvas(); return callGame('nextLevel'); }
+function selectLevel(levelNumber) { revealCanvas(); return callGame('selectLevel', levelNumber); }
 
 // Create the DOM controller as soon as this script loads, so menus work before any click.
 initializeGame();

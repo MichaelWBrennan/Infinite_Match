@@ -653,6 +653,25 @@ class AccountEconomyService {
     }
   }
 
+  /**
+   * Takes back a refunded grant, down to zero. The balance cannot go negative, so coins a player
+   * already spent are not recovered. Returns what was taken and what could not be.
+   */
+  async reverseCurrency(playerId, currencyId, amount, source = 'reversal') {
+    if (!Number.isInteger(amount) || amount < 0) throw new EconomyRuleError('invalid_amount');
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const currency = playerEconomy.currencies[currencyId];
+      if (!currency) throw new EconomyRuleError('unknown_currency');
+      const taken = Math.min(amount, currency.amount);
+      currency.amount -= taken;
+      playerEconomy.lastUpdated = new Date().toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      logger.info('Currency reversed', { playerId, currencyId, taken, shortfall: amount - taken, source });
+      return { taken, shortfall: amount - taken };
+    });
+  }
+
   /** Takes coins from a loaded economy object. Does not save. */
   spendCoins(playerEconomy, amount) {
     const coins = playerEconomy.currencies.coins;

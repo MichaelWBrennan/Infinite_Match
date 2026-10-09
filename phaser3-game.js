@@ -42,7 +42,8 @@ class PhaserMatch3Game {
         this.time = 60;
         this.level = 3;
         this.targetScore = 1000; // score that wins the level
-        this.stars = 1250;
+        // Stars belong to the server. Guests have none, and signed-in players see the synced value.
+        this.stars = 0;
         this.energy = 100;
         this.maxEnergy = 100;
         this.achievements = [];
@@ -208,10 +209,10 @@ class PhaserMatch3Game {
         
         // Nothing starts on load. The title overlay waits for Play, which claims an attempt first.
         this.showTitleOverlay();
-        this.syncEnergyFromServer();
+        this.syncAccountFromServer();
         // Signing in happens in the DOM login modal. When it finishes, refresh energy and the title.
         window.addEventListener('auth:changed', () => {
-            this.syncEnergyFromServer();
+            this.syncAccountFromServer();
             if (this.titleShowing) this.showTitleOverlay();
         });
     }
@@ -678,7 +679,7 @@ class PhaserMatch3Game {
         });
         
         // Stars display
-        this.starsText = this.scene.add.text(50, 230, 'Stars: 1250', {
+        this.starsText = this.scene.add.text(50, 230, 'Stars: 0', {
             fontSize: '20px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -740,6 +741,16 @@ class PhaserMatch3Game {
         }).setOrigin(0.5);
         
         // Pause button
+        // Menu button: news, offers, leaderboard, settings, and login are DOM screens. They open here.
+        this.menuBtn = this.scene.add.rectangle(735, 450, 110, 40, 0x555555);
+        this.menuBtn.setInteractive();
+        this.menuBtn.on('pointerdown', () => this.openMenu());
+        this.scene.add.text(735, 450, 'Menu', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
+
         this.pauseBtn = this.scene.add.rectangle(735, 250, 110, 40, 0x666666);
         this.pauseBtn.setInteractive();
         this.pauseBtn.on('pointerdown', () => this.togglePause());
@@ -1170,14 +1181,16 @@ class PhaserMatch3Game {
     }
 
     // Shows the energy the server holds now (it regenerates while the player is away).
-    async syncEnergyFromServer() {
+    async syncAccountFromServer() {
         if (!this.getAuthToken()) return;
         try {
             const { ok, data } = await this.fetchJson('/api/account-economy/data');
             if (ok && data.success) {
                 this.energy = data.data.currencies.energy.amount;
                 this.maxEnergy = data.data.currencies.energy.maxAmount;
+                this.stars = data.data.currencies.stars.amount;
                 this.updateEnergyDisplay();
+                this.updateUI();
             }
         } catch (error) {
             // Keep the last known value. The server still checks every attempt.
@@ -1195,11 +1208,16 @@ class PhaserMatch3Game {
                 body: JSON.stringify({
                     level: this.attemptLevel,
                     score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
-                    stars,
                     attemptId,
                 }),
             });
-            if (!ok || !data.success) console.warn('Level reward not granted:', data.error);
+            if (ok && data.success) {
+                // The server works out the stars. Show its count, not the client's.
+                this.stars = data.result.balances.stars;
+                this.updateUI();
+            } else {
+                console.warn('Level reward not granted:', data.error);
+            }
         } catch (error) {
             console.warn('Could not reach the server for the level reward.', error);
         }
@@ -1316,7 +1334,7 @@ class PhaserMatch3Game {
         this.timerText.setText(`Time: ${this.time}`);
         this.levelText.setText(`Level: ${this.level}`);
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
-        this.starsText.setText(`Stars: ${this.stars}`);
+        this.starsText.setText(this.getAuthToken() ? `Stars: ${this.stars}` : 'Stars: sign in to earn');
     }
 
     togglePause() {
@@ -1434,7 +1452,6 @@ class PhaserMatch3Game {
                 const data = JSON.parse(savedData);
                 this.score = data.score || 0;
                 this.level = data.level || 3;
-                this.stars = data.stars || 1250;
                 // Energy is not restored from localStorage: signed-in energy comes from the server.
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings };
@@ -1450,7 +1467,6 @@ class PhaserMatch3Game {
             const data = {
                 score: this.score,
                 level: this.level,
-                stars: this.stars,
                 energy: this.energy,
                 achievements: this.achievements,
                 settings: this.settings,
@@ -1741,10 +1757,9 @@ class PhaserMatch3Game {
 
     // Puts a server-granted reward into the on-screen counters the player sees.
     applyLootReward(reward) {
+        // The server granted it. Re-read the balance rather than adding it here.
         if (reward.type === 'currency' && reward.currencyId === 'stars') {
-            this.stars += reward.amount;
-            this.updateUI();
-            this.saveUserData();
+            this.syncAccountFromServer();
         }
     }
 
@@ -1840,7 +1855,6 @@ class PhaserMatch3Game {
         this.moves = state.moves || 30;
         this.time = state.time || 60;
         this.level = state.level || 3;
-        this.stars = state.stars || 1250;
         this.energy = state.energy || 100;
         this.settings = { ...this.settings, ...state.settings };
         this.updateUI();
@@ -1852,7 +1866,6 @@ class PhaserMatch3Game {
             moves: this.moves,
             time: this.time,
             level: this.level,
-            stars: this.stars,
             energy: this.energy,
             settings: this.settings
         };
@@ -1985,15 +1998,30 @@ class PhaserMatch3Game {
         });
     }
 
+    // Hides the canvas and shows the DOM menu. A running level is paused until closeMenu().
+    openMenu() {
+        this.menuPausedRun = !!this.isGameRunning && !this.isPaused;
+        this.pauseGame();
+        if (typeof window.openDomMenu === 'function') window.openDomMenu();
+    }
+
+    // Called when the player returns to the canvas. Resumes the level if the menu paused it.
+    closeMenu() {
+        if (this.menuPausedRun) {
+            this.menuPausedRun = false;
+            this.resumeGame();
+        }
+    }
+
     returnToMenu() {
         this.currentScreen = 'menu';
-        this.pauseGame();
         // Remove end game screen
         this.scene.children.list.forEach(child => {
             if (child.texture && child.texture.key === 'endgame') {
                 child.destroy();
             }
         });
+        this.openMenu();
     }
 
     destroy() {

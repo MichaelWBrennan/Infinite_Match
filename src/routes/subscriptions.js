@@ -5,6 +5,11 @@ import {
   verifyAppleSignedPayload,
   verifyGooglePubSubToken,
 } from '../services/payments/store-notifications.js';
+import {
+  reverseTransaction,
+  appleTransactionIds,
+  googleTransactionIds,
+} from '../services/payments/refunds.js';
 
 const router = express.Router();
 const logger = new Logger('SubscriptionsRoutes');
@@ -18,8 +23,9 @@ router.post('/apple', async (req, res) => {
   if (!rootCertPem) {
     return res.status(503).json({ ok: false, error: 'apple_verification_not_configured' });
   }
+  let payload;
   try {
-    const payload = verifyAppleSignedPayload(req.body?.signedPayload, { rootCertPem });
+    payload = verifyAppleSignedPayload(req.body?.signedPayload, { rootCertPem });
     const eventType = payload.notificationType || 'unknown';
     await PurchaseLedger.recordSubscriptionEvent({
       provider: 'apple',
@@ -27,11 +33,33 @@ router.post('/apple', async (req, res) => {
       notificationUUID: payload.notificationUUID || null,
       raw: payload,
     });
-    res.json({ ok: true });
   } catch (error) {
     logger.warn('Rejected Apple subscription notification', { error: error.message });
-    res.status(401).json({ ok: false, error: 'invalid_signature' });
+    return res.status(401).json({ ok: false, error: 'invalid_signature' });
   }
+
+  // A refund or revocation takes back a one-time purchase. Apple names the purchase in a second
+  // signed payload. Its failure is not retried. A reversal that fails is retried by Apple.
+  if (payload.notificationType === 'REFUND' || payload.notificationType === 'REVOKE') {
+    let transactionInfo = null;
+    try {
+      transactionInfo = verifyAppleSignedPayload(payload.data?.signedTransactionInfo, { rootCertPem });
+    } catch (error) {
+      logger.error('Apple refund notification has no verifiable transaction', { error: error.message });
+    }
+    if (transactionInfo) {
+      try {
+        await reverseTransaction({
+          transactionIds: appleTransactionIds(transactionInfo),
+          reason: `apple_${payload.notificationType.toLowerCase()}`,
+        });
+      } catch (error) {
+        logger.error('Apple refund reversal failed; Apple will retry', { error: error.message });
+        return res.status(500).json({ ok: false, error: 'reversal_failed' });
+      }
+    }
+  }
+  res.json({ ok: true });
 });
 
 // Google Real-time Developer Notifications, delivered by Pub/Sub push
@@ -63,6 +91,11 @@ router.post('/google', async (req, res) => {
       messageId: message.messageId || null,
       raw: decoded,
     });
+    // A voided purchase takes back a one-time purchase. Failure makes Google retry the message.
+    const voided = decoded?.voidedPurchaseNotification;
+    if (voided?.purchaseToken) {
+      await reverseTransaction({ transactionIds: googleTransactionIds(voided.purchaseToken), reason: 'google_voided' });
+    }
     res.json({ ok: true });
   } catch (error) {
     logger.error('Google subscription webhook error', { error: error.message });

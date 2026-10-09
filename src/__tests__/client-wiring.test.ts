@@ -15,7 +15,7 @@ const declares = (source: string, name: string) =>
   new RegExp(`^    (async )?${name}\\(`, 'm').test(source);
 
 function wrapperTarget(name: string): string | null {
-  const m = script.match(new RegExp(`^function ${name}\\([^)]*\\) \\{ return (call\\w+)\\('(\\w+)'`, 'm'));
+  const m = script.match(new RegExp(`^function ${name}\\([^)]*\\) \\{ (?:revealCanvas\\(\\); )?return (call\\w+)\\('(\\w+)'`, 'm'));
   return m ? `${m[1]}:${m[2]}` : null;
 }
 
@@ -157,5 +157,57 @@ describe('energy has one spend path', () => {
   test('no local energy spend or grant is left in the game', () => {
     expect(phaser).not.toMatch(/consumeEnergy\(/);
     expect(phaser).not.toMatch(/addEnergy\(/);
+  });
+});
+
+describe('the DOM menus are reachable from the canvas', () => {
+  test('the canvas has a Menu button that opens the DOM menu and pauses a running level', () => {
+    expect(phaser).toMatch(/this\.menuBtn\.on\('pointerdown', \(\) => this\.openMenu\(\)\)/);
+    const open = phaser.slice(phaser.indexOf('    openMenu() {'), phaser.indexOf('    closeMenu() {'));
+    expect(open).toMatch(/this\.pauseGame\(\)/);
+    expect(open).toMatch(/window\.openDomMenu\(\)/);
+  });
+
+  test('returning to the canvas resumes a level the menu paused', () => {
+    const close = phaser.slice(phaser.indexOf('    closeMenu() {'), phaser.indexOf('    returnToMenu() {'));
+    expect(close).toMatch(/this\.menuPausedRun/);
+    expect(close).toMatch(/this\.resumeGame\(\)/);
+  });
+
+  test('the end-of-level Main Menu opens the DOM menu', () => {
+    const body = phaser.slice(phaser.indexOf('    returnToMenu() {'), phaser.indexOf('    destroy() {'));
+    expect(body).toMatch(/this\.openMenu\(\)/);
+  });
+
+  test('index.html hides the canvas for the menu and has a way back', () => {
+    expect(indexHtml).toMatch(/function openDomMenu\(\)[\s\S]*?display = 'none'/);
+    expect(indexHtml).toMatch(/function showGameCanvas\(\)[\s\S]*?display = ''/);
+    expect(indexHtml).toMatch(/id="menu-return"[^>]*onclick="returnToGame\(\)"/);
+  });
+
+  test('gameplay entry points bring the canvas back', () => {
+    for (const name of ['startGame', 'selectLevel', 'nextLevel']) {
+      const m = script.match(new RegExp(`function ${name}\\([^)]*\\) \\{ ?(?:revealCanvas\\(\\);)`));
+      expect(m).not.toBeNull();
+    }
+  });
+});
+
+describe('stars belong to the server', () => {
+  test('the client never invents a star balance', () => {
+    expect(phaser).not.toMatch(/1250/);
+    expect(phaser).toMatch(/this\.stars = 0;/);
+  });
+
+  test('a win shows the star count the server returned, not the client count', () => {
+    const submit = phaser.slice(phaser.indexOf('    async submitLevelWin('), phaser.indexOf('    // Refills energy on the server.'));
+    expect(submit).toMatch(/this\.stars = data\.result\.balances\.stars;/);
+    expect(submit).not.toMatch(/stars,\s*\n/);
+  });
+
+  test('loot-box stars are re-read from the server', () => {
+    const apply = phaser.slice(phaser.indexOf('    applyLootReward(reward) {'), phaser.indexOf('    applyLootReward(reward) {') + 400);
+    expect(apply).toMatch(/syncAccountFromServer/);
+    expect(apply).not.toMatch(/this\.stars \+=/);
   });
 });

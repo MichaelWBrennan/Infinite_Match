@@ -13,6 +13,16 @@ export function isDurableEconomy() {
   return process.env.ECONOMY_STORE === 'mongo';
 }
 
+/**
+ * Production keeps player balances in the database. Without ECONOMY_STORE=mongo they live in
+ * memory and are lost on restart, so the server refuses to start rather than run that way.
+ */
+export function assertEconomyStoreForEnvironment(env = process.env) {
+  if (env.NODE_ENV === 'production' && env.ECONOMY_STORE !== 'mongo') {
+    throw new Error('ECONOMY_STORE=mongo is required when NODE_ENV=production: player balances must be saved');
+  }
+}
+
 const economySchema = new mongoose.Schema(
   {
     playerId: { type: String, unique: true, required: true },

@@ -9,6 +9,7 @@ import { Logger } from '../../core/logger/index.js';
 import PurchaseLedger from './PurchaseLedger.js';
 import { productFor } from './product-catalog.js';
 import { grantPurchase } from './purchase-grants.js';
+import { reverseTransaction } from './refunds.js';
 import { priceFor } from '../live-ops/live-ops.js';
 
 const logger = new Logger('StripeService');
@@ -345,6 +346,12 @@ class StripeService {
       case 'invoice.payment_failed':
         await this.handleInvoicePaymentFailed(event.data.object);
         break;
+      case 'charge.refunded':
+        await this.handleChargeRefunded(event.data.object);
+        break;
+      case 'charge.dispute.created':
+        await this.handleDisputeCreated(event.data.object);
+        break;
       default:
         logger.info('Unhandled webhook event type', { type: event.type });
       }
@@ -418,6 +425,32 @@ class StripeService {
       playerId: metadata.playerId,
       duplicate: grant.duplicate,
     });
+  }
+
+  /**
+   * A full refund takes back what the payment granted. A partial refund is not reversed
+   * automatically: the amount it should take back is a business decision, so it is logged.
+   */
+  async handleChargeRefunded(charge) {
+    const paymentIntentId = typeof charge?.payment_intent === 'string' ? charge.payment_intent : null;
+    if (!paymentIntentId) return;
+    if (!charge.refunded) {
+      logger.warn('Partial refund needs a manual decision; not reversed', { paymentIntentId });
+      return;
+    }
+    const result = await reverseTransaction({ transactionIds: [paymentIntentId], reason: 'stripe_refund' });
+    logger.info('Refund processed', { paymentIntentId, reversed: result.reversed, reason: result.reason || null });
+  }
+
+  /**
+   * A dispute (chargeback) is reversed when it is opened. The bank can still decide in the
+   * merchant's favour, but the coins are not kept while the dispute is open.
+   */
+  async handleDisputeCreated(dispute) {
+    const paymentIntentId = typeof dispute?.payment_intent === 'string' ? dispute.payment_intent : null;
+    if (!paymentIntentId) return;
+    const result = await reverseTransaction({ transactionIds: [paymentIntentId], reason: 'stripe_dispute' });
+    logger.warn('Dispute opened', { paymentIntentId, reversed: result.reversed, reason: result.reason || null });
   }
 
   /**

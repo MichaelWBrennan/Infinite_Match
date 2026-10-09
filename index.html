@@ -898,6 +898,30 @@
             }
         });
 
+        // The DOM menus (news, offers, leaderboard, settings, login) sit under the canvas. Opening one
+        // hides the canvas; "Back to game" shows it again.
+        function openDomMenu() {
+            const container = document.getElementById('phaser-game-container');
+            if (container) container.style.display = 'none';
+            const back = document.getElementById('menu-return');
+            if (back) back.style.display = 'block';
+            if (typeof showTitle === 'function') showTitle();
+        }
+
+        function showGameCanvas() {
+            const container = document.getElementById('phaser-game-container');
+            if (container) container.style.display = '';
+            const back = document.getElementById('menu-return');
+            if (back) back.style.display = 'none';
+        }
+
+        function returnToGame() {
+            showGameCanvas();
+            if (window.game && typeof window.game.closeMenu === 'function') window.game.closeMenu();
+        }
+        window.openDomMenu = openDomMenu;
+        window.showGameCanvas = showGameCanvas;
+
         // Emergency loading timeout - force show title screen after 5 seconds
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
@@ -963,5 +987,7 @@
             }, 100);
         }
     </script>
+    <button id="menu-return" type="button" onclick="returnToGame()"
+        style="display:none;position:fixed;top:12px;right:12px;z-index:3000;padding:10px 16px;border:0;border-radius:8px;background:#4ecdc4;color:#fff;font:16px Arial,sans-serif;cursor:pointer;">Back to game</button>
 </body>
 </html>

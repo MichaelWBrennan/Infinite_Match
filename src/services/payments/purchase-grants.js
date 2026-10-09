@@ -87,6 +87,8 @@ export async function grantPurchase({
   const row = inserted ? doc : await PurchaseLedgerDb.findPurchaseByTransaction(transactionId);
   if (!row) throw new GrantRetryableError('transaction_unavailable');
   if (row.playerId !== playerId) return { granted: false, reason: 'transaction_claimed' };
+  // Refunded or voided: never granted, even if the provider delivers the purchase again.
+  if (row.reversedAt) return { granted: false, reason: 'reversed' };
 
   // Fulfilled rows: entitlements, or consumables already credited. Rows saved before the
   // field existed are entitlements, so only an explicit `false` means unfulfilled.

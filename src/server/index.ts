@@ -25,6 +25,7 @@ import PrometheusMonitoringService from '../services/prometheus-monitoring-servi
 import OpenSourceCloudServices from '../services/open-source-cloud-services.js';
 import { ASOOptimizationService } from '../services/aso-optimization-service.js';
 import gameRoutes from '../routes/game-routes.js';
+import { assertEconomyStoreForEnvironment } from '../services/economy/PlayerEconomyDb.js';
 import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
@@ -757,6 +758,7 @@ class GameServer {
   }
 
   public async start(): Promise<void> {
+    assertEconomyStoreForEnvironment(process.env);
     await this.initializeServices();
 
     this.server.listen(this.config.port, this.config.host, () => {

@@ -9,6 +9,7 @@ import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import { accountEconomy as accountEconomyService, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
 import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
+import { starsForScore, winRewards } from '../services/meta/rewards.js';
 
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
@@ -384,26 +385,30 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
   }
 });
 
-// Complete level
+// Complete a level the player won. Needs the attempt id from energy/spend. The server works out
+// the stars from the score and the level target, and pays the server's reward for them. A reported
+// star count is ignored.
 router.post('/level/complete', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { level, score, stars = 0, attemptId } = req.body;
+    const { level, score, attemptId } = req.body || {};
 
-    // Validate ranges. The client reports the result, so the server bounds it.
     const validLevel = Number.isInteger(level) && level >= 1 && level <= LEVEL_LIMITS.maxLevel;
     const validScore = Number.isInteger(score) && score >= 0 && score <= LEVEL_LIMITS.maxScore;
-    const validStars = Number.isInteger(stars) && stars >= 0 && stars <= LEVEL_LIMITS.maxStars;
-    if (!validLevel || !validScore || !validStars) {
+    if (!validLevel || !validScore) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid level, score, or stars',
+        error: 'Invalid level or score',
         requestId: req.requestId,
       });
     }
 
-    // A reward needs an attempt that was paid for with energy. Each attempt pays out once.
-    // The attempt is consumed before any reward is granted.
+    // A reward needs an attempt that was paid for with energy. The stars come from the score,
+    // so a score below the target is not a win and does not use up the attempt.
+    const stars = starsForScore(score, level);
+    if (stars === 0) {
+      return res.status(400).json({ success: false, error: 'score_below_target', requestId: req.requestId });
+    }
     if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
       return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
     }
@@ -416,28 +421,17 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       throw error;
     }
 
-    // XP and coins are computed here. The client never sets them.
-    const xpGained = Math.floor(score / 100) + stars * 50;
-    const progressionResult = await accountEconomyService.updateProgression(
-      playerId,
-      xpGained,
-      true
-    );
+    const reward = winRewards(stars);
+    const progressionResult = await accountEconomyService.updateProgression(playerId, reward.xp, true);
 
-    const rewards = [];
+    const rewards = [
+      { type: 'currency', currencyId: 'coins', amount: reward.coins },
+      { type: 'currency', currencyId: 'stars', amount: reward.stars },
+    ];
+    await accountEconomyService.updateCurrency(playerId, 'coins', reward.coins, 'add', 'level_complete');
+    await accountEconomyService.updateCurrency(playerId, 'stars', reward.stars, 'add', 'level_complete');
 
-    const coinsReward = Math.min(Math.floor(score / 100), LEVEL_LIMITS.maxCoinsPerLevel);
-    if (coinsReward > 0) {
-      await accountEconomyService.updateCurrency(playerId, 'coins', coinsReward, 'add', 'level_complete');
-      rewards.push({ type: 'currency', currencyId: 'coins', amount: coinsReward });
-    }
-
-    if (stars > 0) {
-      await accountEconomyService.updateCurrency(playerId, 'stars', stars, 'add', 'level_complete');
-      rewards.push({ type: 'currency', currencyId: 'stars', amount: stars });
-    }
-
-    // Update statistics
+    // Statistics show what the client reported. They are not used for any reward.
     const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
     playerEconomy.statistics.gamesPlayed++;
     playerEconomy.statistics.levelsCompleted++;
@@ -453,7 +447,7 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       level,
       score,
       stars,
-      xpGained,
+      xpGained: reward.xp,
       ip: req.ip,
     });
 
@@ -462,6 +456,11 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       result: {
         progression: progressionResult,
         rewards,
+        stars,
+        balances: {
+          coins: playerEconomy.currencies.coins.amount,
+          stars: playerEconomy.currencies.stars.amount,
+        },
         statistics: {
           gamesPlayed: playerEconomy.statistics.gamesPlayed,
           levelsCompleted: playerEconomy.statistics.levelsCompleted,
