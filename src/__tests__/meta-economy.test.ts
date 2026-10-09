@@ -476,6 +476,19 @@ describe('ad revenue is not taken from the client', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({ network: 'x', format: 'rewarded', event: 'impression', revenueUsd: 0.02 });
       expect(recorded[1]).toMatchObject({ revenueUsd: 0, clientReportedRevenueUsd: 0.02 });
+
+      // Unknown events and formats are refused rather than stored.
+      const bad = await request(app)
+        .post('/api/ads/event')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ network: 'x', format: 'rewarded', event: 'free_gems' });
+      expect(bad.status).toBe(400);
+      const badFormat = await request(app)
+        .post('/api/ads/event')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ network: 'x', format: 'popup', event: 'impression' });
+      expect(badFormat.status).toBe(400);
+      expect(recorded).toHaveLength(2);
     } finally {
       (AdEventDb as any).record = original;
     }
