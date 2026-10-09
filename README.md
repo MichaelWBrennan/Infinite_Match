@@ -2,6 +2,29 @@
 
 A captivating match-3 puzzle game featuring royal themes, magical gems, and endless entertainment. Experience the thrill of matching colorful gems while helping restore a magnificent kingdom!
 
+## Implementation status
+
+This section lists what is built and tested. The feature lists below are the product goals. Anything not marked **Built** is not implemented yet.
+
+**Built and tested**
+- Match-3 core: swaps, matches of 3+, cascades, gravity, refill, and a no-moves reshuffle.
+- Power-ups: bomb (3x3), rainbow (whole board), lightning (column), diamond (one colour), target (plus shape), star (row and column). Diamond, target, and star arm on press and fire on the next gem tap.
+- Levels: procedural, no fixed cap. Every 10th level is a boss with a doubled target. Stars are relative to each level's target. A daily challenge is derived from the date.
+- Lucky wheel: one free spin per day with weighted rewards, granted on the server.
+- Achievements, daily reward, and login with the account economy (coins, stars, energy, inventory).
+- Stripe payment routes (`/api/stripe/*`), with the webhook verifying the raw body. Real checkout needs Stripe keys.
+- Session-gated analytics, ARPU, ads, entitlements, and monetization routes.
+
+**Not built yet** (listed in the sections below, but not implemented)
+- Timed and endless modes as separate game modes. Every level currently has the 60-second timer.
+- Guilds, friends, and social leaderboards. Services exist, but no routes or UI.
+- Weather effects. The weather service needs Supabase, which is not configured here.
+- Kingdom building, garden design, and room customization.
+- Mini-games: treasure hunts, memory games, and rhythm challenges.
+- VIP system and daily deals. Offers exist as an endpoint with no client UI.
+- Seasonal events, tournaments, community challenges, and boss mechanics beyond a higher target.
+- Economy write routes (`/api/economy/*`) are intentionally not mounted. Players cannot write economy data, and admin tooling is not wired.
+
 ## 🎮 Gameplay Features
 
 ### Core Gameplay
