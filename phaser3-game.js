@@ -7,6 +7,14 @@
 // Tuning overrides from the server. Each level's target is multiplied by its override (1 when
 // none). Loaded once when the page starts. The server applies the same overrides to every win.
 let levelOverrides = { levels: {} };
+
+// Overlay objects are boxes or texts. A button's label is kept on the box, so both go together.
+function destroyOverlayObjects(objects) {
+    (objects || []).forEach((obj) => {
+        if (obj.labelText) obj.labelText.destroy();
+        obj.destroy();
+    });
+}
 if (typeof fetch === 'function') {
     fetch('/api/level-results/targets')
         .then((r) => (r.ok ? r.json() : null))
@@ -1689,7 +1697,7 @@ class PhaserMatch3Game {
         const box = this.scene.add.rectangle(x, y, width, height, color).setInteractive();
         box.on('pointerdown', onClick);
         this.activeOverlay.add(box);
-        this.overlayText(x, y, label);
+        box.labelText = this.overlayText(x, y, label);
         return box;
     }
 
@@ -1727,6 +1735,12 @@ class PhaserMatch3Game {
             unknown_room: 'That room does not exist.',
             energy_empty: 'Out of energy.',
             energy_full: 'Energy is already full.',
+            decor_limit: 'You already own the most of this decoration.',
+            decor_not_owned: 'Buy this decoration first.',
+            room_occupied: 'That room already has a decoration.',
+            room_level_too_low: 'That room needs a higher level for this decoration.',
+            room_empty: 'Nothing is in that room.',
+            unknown_decor: 'That decoration is not available.',
         };
         return messages[code] || 'Something went wrong. Try again.';
     }
@@ -1734,17 +1748,35 @@ class PhaserMatch3Game {
     createShopUI() {
         this.openOverlay('Shop');
         this.shopCoinsText = this.overlayText(400, 100, 'Sign in to buy coins', { size: 20, color: '#ffd700' });
-        // Labels mirror config in src/services/payments/product-catalog.js. The server sets the actual price.
+        // The button shows the coins. The price is read from the server (GET /api/live-ops/offers),
+        // so it always matches what the server charges, including any active deal.
         const packs = [
-            { productId: 'coins_small', label: '500 coins\n$0.99', color: 0x4ecdc4 },
-            { productId: 'coins_medium', label: '3,000 coins\n$4.99', color: 0xffd700 },
-            { productId: 'coins_large', label: '8,000 coins\n$9.99', color: 0xff6b6b },
+            { productId: 'coins_small', label: '500 coins', color: 0x4ecdc4, x: 200 },
+            { productId: 'coins_medium', label: '3,000 coins', color: 0xffd700, x: 400 },
+            { productId: 'coins_large', label: '8,000 coins', color: 0xff6b6b, x: 600 },
         ];
-        packs.forEach((pack, index) => {
-            this.overlayButton(200 + index * 200, 240, 150, 100, pack.color, pack.label, () => this.buyCoinPack(pack.productId));
+        packs.forEach((pack) => {
+            this.overlayButton(pack.x, 240, 150, 100, pack.color, pack.label, () => this.buyCoinPack(pack.productId));
         });
         this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeShop());
         this.refreshCoinBalance(this.shopCoinsText);
+        this.loadShopPrices(packs);
+    }
+
+    async loadShopPrices(packs) {
+        try {
+            const res = await fetch('/api/live-ops/offers');
+            const data = await res.json();
+            if (!data.success || !this.shopCoinsText || !this.shopCoinsText.active) return;
+            for (const pack of packs) {
+                const offer = (data.coinPacks || []).find((p) => p.productId === pack.productId);
+                if (!offer) continue;
+                const price = `$${(offer.priceCents / 100).toFixed(2)}${offer.deal ? ' (deal)' : ''}`;
+                this.overlayText(pack.x, 310, price, { size: 18, color: '#ffd700' });
+            }
+        } catch (error) {
+            console.warn('Could not load shop prices:', error);
+        }
     }
 
     async refreshCoinBalance(textObject) {
@@ -1856,19 +1888,95 @@ class PhaserMatch3Game {
         this.openOverlay('Kingdom');
         this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
         this.kingdomRowObjects = [];
+        this.overlayButton(250, 500, 100, 50, 0x9b59b6, 'Decor', () => this.openDecor());
         this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeKingdom());
         this.renderKingdom();
     }
 
+    // The decoration screen is its own overlay. It is rebuilt after each action, so it always shows
+    // the server's state. Back returns to the Kingdom overlay.
+    openDecor(message = '') {
+        this.openOverlay('Decorate');
+        this.decorRowObjects = [];
+        this.decorCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
+        this.overlayText(400, 110, 'Buy a decoration, select it, then place it in a room. Each room holds one.', { size: 14 });
+        this.overlayButton(400, 500, 100, 40, 0x666666, 'Back', () => this.createKingdomUI());
+        this.setOverlayStatus(message || 'Loading...');
+        this.loadDecor();
+    }
+
+    async loadDecor() {
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to decorate your kingdom.');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom');
+            if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
+            if (!this.activeOverlay || !this.decorCoinsText || !this.decorCoinsText.active) return;
+            const { decor, kingdom } = data;
+            this.decorCoinsText.setText(`Coins: ${data.coins}`);
+            const selected = this.decorSelected && decor.catalog.some((item) => item.id === this.decorSelected)
+                ? this.decorSelected : null;
+            this.decorSelected = selected;
+
+            decor.catalog.forEach((item, index) => {
+                const y = 150 + index * 42;
+                const owned = decor.owned[item.id] || 0;
+                this.overlayText(60, y, `${item.name} · ${item.priceCoins} coins · room lvl ${item.requiresRoomLevel}+ · owned ${owned}/${decor.maxOwned}`, { origin: 0, size: 15 });
+                this.overlayButton(600, y, 90, 28, 0xffd700, 'Buy', () => this.decorAction('/api/kingdom/decor/buy', { decorId: item.id }, `Bought ${item.name}.`));
+                this.overlayButton(710, y, 90, 28, selected === item.id ? 0x4ecdc4 : 0x9b59b6, selected === item.id ? 'Selected' : 'Select', () => {
+                    this.decorSelected = item.id;
+                    this.openDecor();
+                });
+            });
+
+            this.overlayText(60, 330, 'Rooms', { origin: 0, size: 16, color: '#4ecdc4' });
+            kingdom.rooms.forEach((room, index) => {
+                const y = 355 + index * 24;
+                const placedId = decor.placed[room.id];
+                const placedItem = placedId ? decor.catalog.find((item) => item.id === placedId) : null;
+                this.overlayText(60, y, `${room.name} · lvl ${room.level} · ${placedItem ? placedItem.name : 'empty'}`, { origin: 0, size: 14 });
+                if (placedItem) {
+                    this.overlayButton(710, y, 90, 22, 0xe74c3c, 'Remove', () => this.decorAction('/api/kingdom/decor/remove', { roomId: room.id }, `Removed ${placedItem.name}.`));
+                } else if (selected) {
+                    const item = decor.catalog.find((c) => c.id === selected);
+                    this.overlayButton(710, y, 90, 22, 0x4ecdc4, 'Place', () => {
+                        this.decorSelected = null;
+                        this.decorAction('/api/kingdom/decor/place', { roomId: room.id, decorId: item.id }, `${item.name} placed in ${room.name}.`);
+                    });
+                } else {
+                    this.overlayButton(710, y, 90, 22, 0x666666, 'Pick one', () => this.setOverlayStatus('Select a decoration first.'));
+                }
+            });
+        } catch (error) {
+            this.setOverlayStatus('Could not load your kingdom.');
+        }
+    }
+
+    // One decoration action. The screen is rebuilt with the server's answer and a message.
+    async decorAction(url, body, okMessage) {
+        if (this.decorPending) return;
+        this.decorPending = true;
+        this.setOverlayStatus('Working...');
+        try {
+            const { ok, data } = await this.fetchJson(url, { method: 'POST', body: JSON.stringify(body) });
+            this.decorPending = false;
+            this.openDecor(ok && data.success ? okMessage : this.ruleMessage(data.error));
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the server. Try again.');
+        } finally {
+            this.decorPending = false;
+        }
+    }
+
     async renderKingdom() {
-        (this.kingdomRowObjects || []).forEach((obj) => obj.destroy());
+        destroyOverlayObjects(this.kingdomRowObjects);
         this.kingdomRowObjects = [];
         if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to renovate your kingdom.');
         try {
             const { ok, data } = await this.fetchJson('/api/kingdom');
             if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
             if (!this.activeOverlay) return;
-            this.kingdomCoinsText.setText(`Coins: ${data.coins}`);
+            const bonus = Math.round((data.coinBonus || 0) * 100);
+            this.kingdomCoinsText.setText(`Coins: ${data.coins}${bonus > 0 ? `   Room bonus +${bonus}% coins` : ''}`);
             data.kingdom.rooms.forEach((room, index) => {
                 const y = 140 + index * 55;
                 let detail = `${room.name}   Level ${room.level}/${room.maxLevel}`;

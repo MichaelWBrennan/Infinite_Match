@@ -3,7 +3,7 @@ import { body, validationResult } from 'express-validator';
 import security from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import { accountEconomy, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
-import { ensureKingdom, kingdomView } from '../services/meta/kingdom.js';
+import { ensureKingdom, kingdomCoinMultiplier, kingdomView } from '../services/meta/kingdom.js';
 import {
   DecorError,
   decorView,
@@ -26,7 +26,15 @@ router.get('/', security.sessionValidation, async (req, res) => {
       lifetimeStars: economy.currencies.stars.earned,
     });
     const decor = decorView(ensureDecor(ensureKingdom(economy)));
-    res.json({ success: true, kingdom: view, decor, coins: economy.currencies.coins.amount, requestId: req.requestId });
+    const coinBonus = kingdomCoinMultiplier(economy.kingdom) - 1;
+    res.json({
+      success: true,
+      kingdom: view,
+      decor,
+      coins: economy.currencies.coins.amount,
+      coinBonus,
+      requestId: req.requestId,
+    });
   } catch (error) {
     logger.error('Kingdom lookup failed', { error: error.message });
     res.status(500).json({ success: false, error: 'kingdom_error', requestId: req.requestId });

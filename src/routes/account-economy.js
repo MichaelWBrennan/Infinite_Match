@@ -12,6 +12,7 @@ import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js'
 import { endlessRewards, starsForScore, winRewards } from '../services/meta/rewards.js';
 import { levelMultiplier, readLevelOverrides } from '../services/meta/level-overrides.js';
 import { applyVip, VIP_ENTITLEMENT } from '../services/meta/vip.js';
+import { kingdomCoinMultiplier } from '../services/meta/kingdom.js';
 import { addSeasonXp } from '../services/meta/battlepass.js';
 import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-season.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
@@ -446,9 +447,13 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       throw error;
     }
 
-    // VIP multiplies coins only. The player must hold the vip entitlement on the server.
+    // Kingdom rooms add a coin bonus, then VIP multiplies coins. The player must hold the vip
+    // entitlement on the server. Both are read here; neither is taken from the client.
+    const economyNow = await accountEconomyService.getPlayerEconomy(playerId);
+    const base = winRewards(stars);
+    const roomBoosted = { ...base, coins: Math.floor(base.coins * kingdomCoinMultiplier(economyNow.kingdom)) };
     const isVip = await PurchaseLedgerDb.hasPurchase(playerId, VIP_ENTITLEMENT);
-    const reward = applyVip(winRewards(stars), isVip);
+    const reward = applyVip(roomBoosted, isVip);
     const progressionResult = await accountEconomyService.updateProgression(playerId, reward.xp, true);
 
     const rewards = [

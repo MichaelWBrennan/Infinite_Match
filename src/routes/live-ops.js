@@ -6,6 +6,9 @@ import { activeCompetitions, loadCompetitions, prizeForRank } from '../services/
 import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
 import { socialStore } from '../services/social/social-store.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import { grantSeasonXp } from '../services/meta/battlepass-season.js';
+import { PRODUCTS } from '../services/payments/product-catalog.js';
+import { priceFor } from '../services/live-ops/live-ops.js';
 
 const router = express.Router();
 const logger = new Logger('LiveOpsRoutes');
@@ -19,6 +22,42 @@ async function grantCoins(playerId, coins) {
     return playerEconomy.currencies.coins.amount;
   });
 }
+
+// Public: the coin packs at their current price (with any active deal), and the live events.
+// Prices are read from the server catalog, so the offers screen never shows a price the server would not charge.
+router.get('/offers', (req, res) => {
+  try {
+    const now = Date.now();
+    const config = loadLiveOps();
+    const today = liveOpsToday(now, config);
+    const coinPacks = Object.entries(PRODUCTS)
+      .filter(([, p]) => p.kind === 'consumable' && p.grants?.currency === 'coins')
+      .map(([productId, product]) => {
+        const price = priceFor(productId, now, config);
+        const deal = today.deals.find((d) => d.productId === productId);
+        return {
+          productId,
+          coins: product.grants.amount,
+          priceCents: price.priceCents,
+          catalogPriceCents: product.priceCents,
+          currency: product.currency,
+          deal: price.deal,
+          endsAt: deal ? deal.endsAt : null,
+        };
+      });
+    res.json({
+      success: true,
+      coinPacks,
+      deals: today.deals,
+      activeEvents: today.activeEvents,
+      upcomingEvents: today.upcomingEvents,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logger.error('Offers lookup failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'live_ops_error', requestId: req.requestId });
+  }
+});
 
 // Today's deals and events. Each deal says whether the caller already owns the product.
 router.get('/today', security.sessionValidation, async (req, res) => {
@@ -105,6 +144,12 @@ router.post('/challenges/:id/claim', security.sessionValidation, async (req, res
     }
     try {
       const coins = await grantCoins(playerId, challenge.reward.coins);
+      // The challenge's season XP is granted after the coins. A failure here is logged, not refunded.
+      try {
+        await grantSeasonXp(playerId, 'challenge_complete');
+      } catch (error) {
+        logger.error('Season XP for a challenge was not granted', { error: error.message, playerId });
+      }
       res.json({ success: true, result: { reward: challenge.reward, balances: { coins } }, requestId: req.requestId });
     } catch (error) {
       await socialStore.releasePayout(key, playerId);

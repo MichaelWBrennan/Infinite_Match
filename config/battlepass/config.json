@@ -6,7 +6,8 @@
   "premiumSku": "season_pass_premium",
   "xpEvents": {
     "level_complete": 50,
-    "daily_login": 10
+    "daily_login": 10,
+    "challenge_complete": 100
   },
   "tiers": [
     { "level": 1, "xp": 0,   "free": { "coins": 100 },              "premium": { "coins": 200 } },

@@ -12,6 +12,12 @@
 import { promises as fs } from 'fs';
 import { dirname, resolve } from 'path';
 import { Logger } from '../core/logger/index.js';
+import {
+  applyProposals,
+  proposeOverrides,
+  readLevelOverrides,
+  writeLevelOverrides,
+} from './meta/level-overrides.js';
 
 const logger = new Logger('LevelTuning');
 
@@ -146,4 +152,41 @@ export function summarizeLevelResults(records) {
         flag: flagFor(s.attempts, winRate),
       };
     });
+}
+
+/**
+ * Plans the tuning step from the results. Each level counts only results after its last move
+ * (`tuned`), so a flagged level moves once per new batch of attempts, not once per run. Pure:
+ * it returns the new levels and tuning times, and changes nothing.
+ */
+export function planTuning(records, { levels = {}, tuned = {} } = {}, now = Date.now()) {
+  const windowed = records.filter((r) => {
+    if (!isIntIn(r.level, LIMITS.level)) return false;
+    const ts = Number.isFinite(r.ts) ? r.ts : 0;
+    return ts > (tuned[r.level] || 0);
+  });
+  const summary = summarizeLevelResults(windowed);
+  const proposals = proposeOverrides(summary, levels);
+  const nextTuned = { ...tuned };
+  for (const p of proposals) nextTuned[p.level] = now;
+  return { summary, proposals, levels: applyProposals(levels, proposals), tuned: nextTuned };
+}
+
+let tuningChain = Promise.resolve();
+
+/**
+ * Reads the results and plans a tuning step. With `apply`, saves the new levels. Runs are
+ * serialized, so two requests cannot both apply the same batch.
+ */
+export function runTuning({ store, file, apply = false, now = Date.now() }) {
+  const run = tuningChain.then(async () => {
+    const { records } = await store.read();
+    const current = readLevelOverrides(file);
+    const plan = planTuning(records, current, now);
+    const applied = apply && plan.proposals.length > 0;
+    if (applied) writeLevelOverrides(plan.levels, file, new Date(now), plan.tuned);
+    return { ...plan, applied };
+  });
+  tuningChain = run.catch(() => {});
+  return run;
 }

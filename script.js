@@ -502,10 +502,281 @@ class InfiniteMatchGame {
             const was = (d.catalogPriceCents / 100).toFixed(2);
             nodes.push(this.communityNote(`${d.productId}: $${price} (was $${was})`));
         }
-        const events = (today.ok && today.data.events) || [];
+        const events = (today.ok && today.data.activeEvents) || [];
         if (events.length > 0) nodes.push(this.communityEl('h3', 'Live events'));
         for (const e of events) nodes.push(this.communityNote(`${e.name} — ${e.description || ''}`));
         show(nodes);
+    }
+
+    // ----- Offers: coin packs and deals at the server's current prices, and live events. -----
+    // Prices come from GET /api/live-ops/offers, the same catalog the server charges from.
+    showOffers() {
+        this.showScreen('offers-screen');
+        this.loadOffers();
+    }
+
+    setOffersStatus(text) {
+        const el = document.getElementById('offers-status');
+        if (el) el.textContent = text;
+    }
+
+    async loadOffers() {
+        const list = document.getElementById('offers-list');
+        if (!list) return;
+        list.replaceChildren(this.communityNote('Loading offers…'));
+        try {
+            const res = await fetch('/api/live-ops/offers');
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                return list.replaceChildren(this.communityNote('Offers are not available right now.'));
+            }
+            const nodes = [this.communityEl('h3', 'Coin packs')];
+            for (const pack of data.coinPacks || []) {
+                const price = `$${(pack.priceCents / 100).toFixed(2)}`;
+                const was = pack.deal ? ` (was $${(pack.catalogPriceCents / 100).toFixed(2)})` : '';
+                const ends = pack.endsAt ? ` · deal ends ${new Date(pack.endsAt).toLocaleString()}` : '';
+                nodes.push(this.communityRow(
+                    `${Number(pack.coins).toLocaleString()} coins · ${price}${was}${ends}`,
+                    'Buy',
+                    () => this.buyCoinPack(pack.productId),
+                ));
+            }
+            if (!this.getAuthToken()) nodes.push(this.communityNote('Sign in to buy coins.'));
+
+            const events = [...(data.activeEvents || [])];
+            nodes.push(this.communityEl('h3', 'Live events'));
+            if (events.length === 0) nodes.push(this.communityNote('No event is running right now.'));
+            for (const e of events) {
+                nodes.push(this.communityNote(`${e.name} — ${e.description || ''} (ends ${new Date(e.endsAt).toLocaleString()})`));
+            }
+            if ((data.upcomingEvents || []).length > 0) {
+                nodes.push(this.communityEl('h3', 'Coming up'));
+                for (const e of data.upcomingEvents) {
+                    nodes.push(this.communityNote(`${e.name} — starts ${new Date(e.startsAt).toLocaleString()}`));
+                }
+            }
+            list.replaceChildren(...nodes);
+        } catch (error) {
+            list.replaceChildren(this.communityNote('Could not load offers. Check your connection and try again.'));
+        }
+    }
+
+    // Starts a hosted Stripe Checkout for one coin pack. The server sets the price and credits the coins.
+    async buyCoinPack(productId) {
+        if (!this.getAuthToken()) return this.setOffersStatus('Sign in to buy coins.');
+        this.setOffersStatus('Opening checkout…');
+        try {
+            const { ok, data } = await this.communityRequest('/api/stripe/checkout-session', {
+                method: 'POST',
+                body: JSON.stringify({ productId }),
+            });
+            if (!ok || !data.url) return this.setOffersStatus(`Not done: ${this.communityError(data)}.`);
+            window.location.href = data.url;
+        } catch (error) {
+            this.setOffersStatus('Could not reach the store. Try again.');
+        }
+    }
+
+    // ----- Mini-games: one paid play per game per UTC day. The server pays for the score. -----
+    showMiniGames() {
+        this.showScreen('minigames-screen');
+        this.loadMiniGames();
+    }
+
+    async loadMiniGames() {
+        const list = document.getElementById('minigames-list');
+        if (!list) return;
+        const games = [
+            { id: 'memory', name: 'Memory Match', blurb: 'Find all 8 pairs. Fewer moves score more (up to 100).' },
+            { id: 'treasure', name: 'Treasure Dig', blurb: 'Dig to find the treasure. Each dig shows how far it is (up to 12).' },
+            { id: 'rhythm', name: 'Rhythm Tap', blurb: 'Tap on the beat, 16 beats in all (up to 16).' },
+        ];
+        let played = {};
+        if (this.getAuthToken()) {
+            const r = await this.communityRequest('/api/minigames');
+            if (r.ok) played = Object.fromEntries(r.data.games.map((g) => [g.id, g.playedToday]));
+        }
+        const nodes = [];
+        if (!this.getAuthToken()) nodes.push(this.communityNote('Sign in to be paid for mini-games. You can still play.'));
+        for (const g of games) {
+            const paid = played[g.id] ? ' (paid today)' : '';
+            nodes.push(this.communityRow(`${g.name}${paid}: ${g.blurb}`, 'Play', () => this.startMinigame(g.id)));
+        }
+        list.replaceChildren(...nodes);
+    }
+
+    startMinigame(id) {
+        const stage = document.getElementById('minigame-stage');
+        if (!stage) return;
+        if (id === 'memory') this.runMemoryGame(stage);
+        else if (id === 'treasure') this.runTreasureGame(stage);
+        else if (id === 'rhythm') this.runRhythmGame(stage);
+    }
+
+    // Sends the score to the server, shows what was paid, and offers to go back to the list.
+    async finishMinigame(gameId, score, stage, summary) {
+        const nodes = [this.communityEl('h3', `Score ${score}`), this.communityNote(summary)];
+        if (!this.getAuthToken()) {
+            nodes.push(this.communityNote('Sign in to be paid for this score.'));
+        } else {
+            try {
+                const r = await this.communityRequest(`/api/minigames/${encodeURIComponent(gameId)}/complete`, {
+                    method: 'POST',
+                    body: JSON.stringify({ score }),
+                });
+                if (r.ok) {
+                    nodes.push(this.communityNote(`+${r.data.result.coins} coins. Balance ${r.data.result.balance}.`));
+                } else if (r.data.error === 'already_played_today') {
+                    nodes.push(this.communityNote('You have already been paid for this game today.'));
+                } else {
+                    nodes.push(this.communityNote(`Not paid: ${this.communityError(r.data)}.`));
+                }
+            } catch (error) {
+                nodes.push(this.communityNote('Could not reach the server. This score was not paid.'));
+            }
+        }
+        nodes.push(this.communityButton('Back to mini-games', () => {
+            stage.replaceChildren();
+            this.loadMiniGames();
+        }));
+        stage.replaceChildren(...nodes);
+    }
+
+    // Memory: flip two cards at a time. Score 100 at 8 moves, minus 5 for each extra move.
+    runMemoryGame(stage) {
+        const symbols = ['★', '♛', '♦', '♣', '♥', '☀', '☾', '✿'];
+        const deck = [...symbols, ...symbols];
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        let first = null;
+        let busy = false;
+        let moves = 0;
+        let matched = 0;
+        const status = this.communityNote('Moves: 0 · Pairs: 0 / 8');
+        const grid = this.communityEl('div', '', 'minigame-grid');
+        grid.style.gridTemplateColumns = 'repeat(4, 64px)';
+        for (const symbol of deck) {
+            const card = this.communityEl('button', '?', 'minigame-card');
+            card.type = 'button';
+            card.addEventListener('click', () => {
+                if (busy || card.classList.contains('open') || card.classList.contains('matched')) return;
+                card.textContent = symbol;
+                card.classList.add('open');
+                if (!first) {
+                    first = { card, symbol };
+                    return;
+                }
+                const other = first;
+                first = null;
+                moves++;
+                if (other.symbol === symbol) {
+                    other.card.classList.add('matched');
+                    card.classList.add('matched');
+                    matched++;
+                } else {
+                    busy = true;
+                    setTimeout(() => {
+                        for (const c of [other.card, card]) {
+                            c.textContent = '?';
+                            c.classList.remove('open');
+                        }
+                        busy = false;
+                    }, 700);
+                }
+                status.textContent = `Moves: ${moves} · Pairs: ${matched} / ${symbols.length}`;
+                if (matched === symbols.length) {
+                    const score = Math.max(0, 100 - 5 * Math.max(0, moves - symbols.length));
+                    this.finishMinigame('memory', score, stage, `Found all ${symbols.length} pairs in ${moves} moves.`);
+                }
+            });
+            grid.appendChild(card);
+        }
+        stage.replaceChildren(this.communityEl('h3', 'Memory Match'), status, grid);
+    }
+
+    // Treasure: one hidden tile in a 5 by 5 field, 12 digs. Each dig shows the distance to the
+    // treasure (0 is the treasure). Score is the digs left plus one: 1 to 12.
+    runTreasureGame(stage) {
+        const size = 5;
+        const digsTotal = 12;
+        const treasure = Math.floor(Math.random() * size * size);
+        const tr = Math.floor(treasure / size);
+        const tc = treasure % size;
+        let digs = 0;
+        let done = false;
+        const status = this.communityNote(`Digs left: ${digsTotal}. Each dig shows how far the treasure is.`);
+        const grid = this.communityEl('div', '', 'minigame-grid');
+        grid.style.gridTemplateColumns = `repeat(${size}, 56px)`;
+        for (let i = 0; i < size * size; i++) {
+            const cell = this.communityEl('button', '', 'minigame-card');
+            cell.type = 'button';
+            cell.addEventListener('click', () => {
+                if (done || cell.classList.contains('dug')) return;
+                digs++;
+                cell.classList.add('dug');
+                const distance = Math.abs(Math.floor(i / size) - tr) + Math.abs((i % size) - tc);
+                const left = digsTotal - digs;
+                if (distance === 0) {
+                    done = true;
+                    cell.textContent = '★';
+                    return this.finishMinigame('treasure', left + 1, stage, `Found the treasure with ${digs} digs.`);
+                }
+                cell.textContent = String(distance);
+                if (left === 0) {
+                    done = true;
+                    return this.finishMinigame('treasure', 0, stage, 'Out of digs. The treasure was not found.');
+                }
+                status.textContent = `Digs left: ${left}. Last dig: ${distance} away.`;
+            });
+            grid.appendChild(cell);
+        }
+        stage.replaceChildren(this.communityEl('h3', 'Treasure Dig'), status, grid);
+    }
+
+    // Rhythm: 16 beats, 600 ms apart. A tap within 150 ms of a beat scores it, once per beat.
+    runRhythmGame(stage) {
+        const beats = 16;
+        const interval = 600;
+        const window = 150;
+        const lead = 1200;
+        const hitBeats = new Set();
+        let hits = 0;
+        let started = false;
+        let finished = false;
+        let t0 = 0;
+        const status = this.communityNote('Get ready…');
+        const pad = this.communityButton('TAP', () => onTap());
+        pad.classList.add('minigame-pad');
+        const onTap = () => {
+            if (!started || finished) return;
+            const now = performance.now();
+            const i = Math.round((now - t0) / interval);
+            if (i >= 0 && i < beats && !hitBeats.has(i) && Math.abs(now - (t0 + i * interval)) <= window) {
+                hitBeats.add(i);
+                hits++;
+                status.textContent = `Hit ${hits} / ${beats}`;
+            } else {
+                status.textContent = `Off the beat. Hit ${hits} / ${beats}`;
+            }
+        };
+        stage.replaceChildren(this.communityEl('h3', 'Rhythm Tap'), status, pad);
+        setTimeout(() => {
+            t0 = performance.now();
+            started = true;
+            status.textContent = 'Tap on the beat.';
+            for (let i = 0; i < beats; i++) {
+                setTimeout(() => {
+                    pad.classList.add('beat');
+                    setTimeout(() => pad.classList.remove('beat'), 150);
+                }, i * interval);
+            }
+            setTimeout(() => {
+                finished = true;
+                this.finishMinigame('rhythm', hits, stage, `Hit ${hits} of ${beats} beats.`);
+            }, beats * interval + window + 200);
+        }, lead);
     }
 
     showLevelSelect() {
@@ -515,10 +786,6 @@ class InfiniteMatchGame {
 
     showNews() {
         this.showScreen('news-screen');
-    }
-
-    showOffers() {
-        this.showScreen('offers-screen');
     }
 
     showLeaderboard() {
@@ -1558,6 +1825,7 @@ function showNews() { return callUi('showNews'); }
 function showOffers() { return callUi('showOffers'); }
 function showLeaderboard() { return callUi('showLeaderboard'); }
 function showCommunity(tab) { return callUi('showCommunity', tab); }
+function showMiniGames() { return callUi('showMiniGames'); }
 // Mode cards. Classic and timed open the level list; endless starts a run at once.
 function chooseMode(mode) {
     callGame('setMode', mode);

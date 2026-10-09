@@ -44,6 +44,8 @@ import consentRoutes from '../routes/consent.js';
 import pushRoutes from '../routes/push.js';
 import experimentsRoutes from '../routes/experiments.js';
 import levelResultsRoutes from '../routes/level-results.js';
+import minigamesRoutes from '../routes/minigames.js';
+import { startTuningSchedule } from '../services/level-tuning-schedule.js';
 import liveOpsRoutes from '../routes/live-ops.js';
 import kingdomRoutes from '../routes/kingdom.js';
 import battlepassRoutes from '../routes/battlepass.js';
@@ -355,6 +357,8 @@ class GameServer {
     this.app.use('/api/push', pushRoutes);
     this.app.use('/api/experiments', experimentsRoutes);
     this.app.use('/api/level-results', levelResultsRoutes);
+    // Daily mini-games: session-gated. Pays once per game per UTC day, with capped coins.
+    this.app.use('/api/minigames', minigamesRoutes);
     // Live ops: today's deals and events. Session-gated.
     this.app.use('/api/live-ops', liveOpsRoutes);
     // Kingdom renovation: session-gated. Upgrades are priced and granted on the server.
@@ -766,6 +770,8 @@ class GameServer {
 
     this.server.listen(this.config.port, this.config.host, () => {
       this.logger.info(`🚀 Infinite Match Game Server running on port ${this.config.port}`);
+      // Scheduled level tuning is off unless LEVEL_TUNING_INTERVAL_HOURS is set.
+      startTuningSchedule({ logger: this.logger });
       this.logger.info(
         `📊 Analytics: ${this.analyticsService.isInitialized ? 'Enabled' : 'Disabled'}`,
       );

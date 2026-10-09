@@ -108,3 +108,18 @@ export function kingdomView({ kingdom, coins, lifetimeStars }) {
     maxTotalLevel: KINGDOM_ROOMS.length * KINGDOM_MAX_LEVEL,
   };
 }
+
+// Each room level adds this much to coins from a level win, up to the cap. These are tuning
+// values: change them here, and the server applies the change to every win.
+export const ROOM_COIN_BONUS_PER_LEVEL = 0.01;
+export const ROOM_COIN_BONUS_CAP = 0.15;
+
+/**
+ * The coin multiplier from kingdom rooms: 1 plus 1% per room level, capped at +15%. Reads only;
+ * a missing kingdom gives 1.
+ */
+export function kingdomCoinMultiplier(kingdom) {
+  const rooms = kingdom?.rooms || {};
+  const levels = KINGDOM_ROOMS.reduce((sum, room) => sum + (Number(rooms[room.id]) || 0), 0);
+  return 1 + Math.min(ROOM_COIN_BONUS_CAP, levels * ROOM_COIN_BONUS_PER_LEVEL);
+}

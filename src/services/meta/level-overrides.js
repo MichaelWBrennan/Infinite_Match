@@ -73,7 +73,23 @@ export function applyProposals(current, proposals) {
   return next;
 }
 
-const EMPTY = Object.freeze({ levels: Object.freeze({}), updatedAt: null });
+const EMPTY = Object.freeze({ levels: Object.freeze({}), updatedAt: null, tuned: Object.freeze({}) });
+
+/**
+ * When each level was last moved by the tuning job (ms since the epoch). Only results after that
+ * time count toward the next move, so one flagged level is not pushed again by the same data.
+ */
+export function parseTuned(raw) {
+  const tuned = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return tuned;
+  for (const [key, value] of Object.entries(raw)) {
+    const level = Number(key);
+    if (Number.isInteger(level) && level >= 1 && level <= MAX_LEVEL && Number.isFinite(value) && value >= 0) {
+      tuned[level] = value;
+    }
+  }
+  return tuned;
+}
 let cache = { file: null, mtimeMs: -1, value: EMPTY };
 
 /** Reads the overrides, cached until the file changes. A missing or invalid file means none. */
@@ -86,7 +102,11 @@ export function readLevelOverrides(file = levelOverridesPath()) {
     const raw = JSON.parse(readFileSync(file, 'utf-8'));
     const { errors, levels } = validateOverrides(raw);
     if (errors.length) throw new Error(errors.join('; '));
-    value = { levels, updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : null };
+    value = {
+      levels,
+      updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : null,
+      tuned: parseTuned(raw.tuned),
+    };
   } catch (error) {
     // A bad file must not change targets half-way. Log via the caller; use the base targets.
     value = EMPTY;
@@ -101,10 +121,10 @@ export function levelMultiplier(level, overrides = readLevelOverrides()) {
   return overrides.levels[level] ?? 1;
 }
 
-/** Writes the levels map atomically. */
-export function writeLevelOverrides(levels, file = levelOverridesPath(), now = new Date()) {
+/** Writes the levels map and the tuning times atomically. */
+export function writeLevelOverrides(levels, file = levelOverridesPath(), now = new Date(), tuned = {}) {
   mkdirSync(path.dirname(file), { recursive: true });
-  const body = { updatedAt: now.toISOString(), levels };
+  const body = { updatedAt: now.toISOString(), levels, tuned };
   const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   writeFileSync(tmp, JSON.stringify(body, null, 2));
   renameSync(tmp, file);

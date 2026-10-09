@@ -270,3 +270,62 @@ describe('community screen, modes, and the battle pass entry', () => {
     expect(phaser).toMatch(/const multiplier = \(levelOverrides && levelOverrides\.levels && levelOverrides\.levels\[n\]\) \|\| 1;/);
   });
 });
+
+describe('decorations, shop prices, offers, and mini-games', () => {
+  test('the Kingdom screen opens the decoration screen, which calls the three decor routes', () => {
+    expect(phaser).toMatch(/this\.overlayButton\(250, 500, 100, 50, 0x9b59b6, 'Decor', \(\) => this\.openDecor\(\)\)/);
+    const decor = phaser.slice(phaser.indexOf('    openDecor('), phaser.indexOf('    async renderKingdom()'));
+    expect(decor).toMatch(/'\/api\/kingdom\/decor\/buy'/);
+    expect(decor).toMatch(/'\/api\/kingdom\/decor\/place'/);
+    expect(decor).toMatch(/'\/api\/kingdom\/decor\/remove'/);
+    expect(decor).toMatch(/this\.createKingdomUI\(\)/);
+  });
+
+  test('overlay labels are destroyed with their buttons, so an upgrade does not leave old labels', () => {
+    expect(phaser).toMatch(/box\.labelText = this\.overlayText\(x, y, label\);/);
+    expect(phaser).toMatch(/function destroyOverlayObjects\(objects\)/);
+    const kingdom = phaser.slice(phaser.indexOf('    async renderKingdom()'), phaser.indexOf('    async renderKingdom()') + 300);
+    expect(kingdom).toMatch(/destroyOverlayObjects\(this\.kingdomRowObjects\)/);
+  });
+
+  test('the Kingdom screen shows the room coin bonus from the server', () => {
+    expect(phaser).toMatch(/data\.coinBonus/);
+    expect(phaser).toMatch(/Room bonus \+\$\{bonus\}% coins/);
+  });
+
+  test('shop pack prices come from the server offers route, not a fixed label', () => {
+    const shop = phaser.slice(phaser.indexOf('    createShopUI() {'), phaser.indexOf('    async refreshCoinBalance('));
+    expect(shop).not.toMatch(/\$0\.99|\$4\.99|\$9\.99/);
+    expect(shop).toMatch(/this\.loadShopPrices\(packs\)/);
+    const load = phaser.slice(phaser.indexOf('    async loadShopPrices('), phaser.indexOf('    async loadShopPrices(') + 500);
+    expect(load).toMatch(/fetch\('\/api\/live-ops\/offers'\)/);
+  });
+
+  test('the offers screen has no gem packs and loads its list from the server', () => {
+    const offers = indexHtml.slice(indexHtml.indexOf('<div id="offers-screen"'), indexHtml.indexOf('<div id="leaderboard-screen"'));
+    expect(offers).not.toMatch(/Gem Pack|Starter Pack|\$4\.99|\$1\.99/);
+    expect(offers).toMatch(/id="offers-list"/);
+    const load = script.slice(script.indexOf('    async loadOffers()'), script.indexOf('    async loadOffers()') + 400);
+    expect(load).toMatch(/fetch\('\/api\/live-ops\/offers'\)/);
+  });
+
+  test('the Events tab reads the active events the server sends', () => {
+    expect(script).toMatch(/today\.data\.activeEvents/);
+    expect(script).not.toMatch(/today\.data\.events/);
+  });
+
+  test('each mini-game sends its score to the server once, through finishMinigame', () => {
+    expect(script).toMatch(/finishMinigame\('memory'/);
+    expect(script).toMatch(/finishMinigame\('treasure'/);
+    expect(script).toMatch(/finishMinigame\('rhythm'/);
+    const finish = script.slice(script.indexOf('    async finishMinigame('), script.indexOf('    async finishMinigame(') + 1200);
+    expect(finish).toMatch(/\/api\/minigames\/\$\{encodeURIComponent\(gameId\)\}\/complete/);
+    expect(finish).toMatch(/already_played_today/);
+  });
+
+  test('the mini-games screen and title button exist', () => {
+    expect(indexHtml).toMatch(/<div id="minigames-screen" class="screen">/);
+    expect(indexHtml).toMatch(/onclick="showMiniGames\(\)"/);
+    expect(script).toMatch(/function showMiniGames\(\) \{ return callUi\('showMiniGames'\); \}/);
+  });
+});
