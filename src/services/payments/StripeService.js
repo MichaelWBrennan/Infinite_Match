@@ -13,6 +13,9 @@ import { priceFor } from '../live-ops/live-ops.js';
 
 const logger = new Logger('StripeService');
 
+// Longest time a checkout quote stays valid: the session lives 30 minutes, plus slack for payment.
+const MAX_QUOTE_AGE_MS = 2 * 60 * 60 * 1000;
+
 class StripeService {
   constructor() {
     this.stripe = new Stripe(AppConfig.payments.stripe.secretKey, {
@@ -58,6 +61,40 @@ class StripeService {
         success: false,
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Hosted Stripe Checkout for one product. The payment intent it creates carries the same
+   * metadata, so the existing payment_intent.succeeded webhook grants it.
+   */
+  async createCheckoutSession({ amountCents, currency, productName, metadata, clientReferenceId, successUrl, cancelUrl }) {
+    try {
+      const session = await this.stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency,
+              unit_amount: amountCents,
+              product_data: { name: productName },
+            },
+          },
+        ],
+        payment_intent_data: { metadata },
+        metadata,
+        client_reference_id: clientReferenceId,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        // Shortest allowed lifetime. The quoted price is honoured for the same window.
+        expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+      });
+      logger.info('Checkout session created', { sessionId: session.id, productId: metadata.productId });
+      return { success: true, url: session.url, sessionId: session.id };
+    } catch (error) {
+      logger.error('Failed to create checkout session', { error: error.message });
+      return { success: false, error: error.message };
     }
   }
 
@@ -334,7 +371,19 @@ class StripeService {
     // Grant only what was sold: the price in effect when the intent was created (catalog
     // price, or an active deal at that moment). Anything else is not granted.
     const createdMs = (paymentIntent.created ?? Math.floor(Date.now() / 1000)) * 1000;
-    const expected = productFor(metadata?.productId) ? priceFor(metadata.productId, createdMs) : null;
+    // Checkout sessions carry the time their price was quoted. Use it, but only within the
+    // session's lifetime, so a deal that ends during checkout still honours the quoted price.
+    let priceAtMs = createdMs;
+    if (metadata?.quotedAtMs !== undefined) {
+      const quotedMs = Number(metadata.quotedAtMs);
+      const age = createdMs - quotedMs;
+      if (!Number.isFinite(quotedMs) || age < 0 || age > MAX_QUOTE_AGE_MS) {
+        logger.warn('Payment intent quote is stale or invalid; not granted', { paymentIntentId: id });
+        return;
+      }
+      priceAtMs = quotedMs;
+    }
+    const expected = productFor(metadata?.productId) ? priceFor(metadata.productId, priceAtMs) : null;
     if (!expected || amount !== expected.priceCents || currency !== expected.currency) {
       logger.warn('Payment intent does not match the price for its product; not granted', {
         paymentIntentId: id,
@@ -350,7 +399,7 @@ class StripeService {
       productId: metadata.productId,
       transactionId: id,
       platform: 'stripe',
-      atMs: createdMs,
+      atMs: priceAtMs,
     });
     if (!grant.granted) {
       // A charge we cannot grant needs a manual look (refund or support), so log it loudly.

@@ -12,12 +12,17 @@ router.post('/event', security.sessionValidation, async (req, res) => {
     const userId = req.user?.playerId;
     if (!network || !format || !event)
       return res.status(400).json({ success: false, error: 'network, format, event required' });
+    // Revenue from the client cannot be verified, so it never enters the revenue total.
+    // revenueUsd is set only from a verified source (network server-to-server postbacks).
+    // Until those exist it stays 0 and the client's figure is kept, labelled, for debugging.
+    const reported = Number(revenueUsd);
     await AdEventDb.record({
       userId,
       network,
       format,
       event,
-      revenueUsd: Number(revenueUsd || 0),
+      revenueUsd: 0,
+      clientReportedRevenueUsd: Number.isFinite(reported) && reported >= 0 && reported < 1000 ? reported : 0,
       placement,
       country,
     });

@@ -24,6 +24,11 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Operator admin routes (`/api/admin/*`). Access requires `ADMIN_API_TOKEN` (at least 32 characters) and `ADMIN_IDS`. Without both, every admin request is refused. See `.env.example`.
 - Store subscription webhooks (`/api/subscriptions/*`). Apple payloads must chain to a pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`). Google payloads need a valid Pub/Sub OIDC token for the configured audience and service account. Unverified payloads are rejected, and the routes return 503 until configured.
 - Stripe payment intents (`/api/stripe/payment-intent`). The price is the catalog price, or an active deal at that moment, from the server. The webhook grants a purchase only when the charged amount matches the price in effect when the intent was created. Grants go to the database the entitlement checks read (`PurchaseLedgerDb`).
+- Coin packs (`coins_small`, `coins_medium`, `coins_large`). Bought through hosted Stripe Checkout (`POST /api/stripe/checkout-session`, session required). The price is set on the server, and the webhook credits the coins once per payment. A quote is honoured for up to 2 hours after it was made, so a deal that ends during checkout still applies. Checkout needs `STRIPE_CHECKOUT_SUCCESS_URL` and `STRIPE_CHECKOUT_CANCEL_URL`.
+- Kingdom renovation (`GET /api/kingdom`, `POST /api/kingdom/renovate`, session required). Six rooms, each upgraded from level 0 to 5. Costs are base cost × level² in coins. Levels 2 to 5 need 5, 15, 30, and 50 lifetime stars. Levels 3 and 5 grant a powerup. Rules are in `src/services/meta/kingdom.js`.
+- Loot boxes (`POST /api/account-economy/lootbox/open`). Bought with coins, with the reward rolled and granted on the server. Rules are in `src/services/meta/lootbox.js`.
+- Energy refill endpoint (`POST /api/account-economy/energy/refill`). Charges coins only for missing energy. Not yet in the client (see Not built).
+- Ad event revenue reported by the client is not counted. `POST /api/ads/event` stores it as `clientReportedRevenueUsd` for debugging. The revenue total comes only from a server-verified source, which is not built yet.
 - Store billing (`POST /api/monetization/receipt/verify`, session required). iOS: a StoreKit 2 `signedTransaction` is verified offline against the pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`), with the bundle ID (`APPLE_BUNDLE_ID`) checked and Sandbox refused unless `APPLE_ALLOW_SANDBOX=true`. Legacy receipts check the bundle and environment too. Android: the purchase is checked with the Google Play API for the package in `GOOGLE_PACKAGE_NAME`. Store SKUs map to catalog products in `src/services/payments/product-catalog.js`. Each purchase is granted once per transaction, and a transaction owned by one player is refused to others (`transaction_claimed`, 409).
 - Live ops (`GET /api/live-ops/today`, session required). Reads `config/liveops.json`: dated events and deal windows. A deal price applies only inside its window, is at least $0.99, and is below the catalog price. An invalid config is logged and ignored, so catalog prices apply.
 
@@ -33,18 +38,24 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Device billing (StoreKit and Play Billing on a phone) has not been run. Only the server side of store purchases is built.
 - Live ops deals are not yet in the game client. The server reports them; the client does not show them.
 - Subscription events are recorded, but they do not yet change entitlements.
+- Durable economy (opt-in). With `ECONOMY_STORE=mongo`, player balances are saved to MongoDB, and a coin purchase is credited only when that store is on. Without it, balances are in memory and lost on restart, so purchases refuse to credit and the provider retries them. Run production with `ECONOMY_STORE=mongo`.
+- Client shop. Gems, stars, and energy are no longer sold or given out by the shop, and loot boxes are paid for in coins through the server. The old client code granted currency for free.
 
 **Not built yet** (listed in the sections below, but not implemented)
 - Timed and endless modes as separate game modes. Every level currently has the 60-second timer.
 - Guilds, friends, and social leaderboards. Services exist, but no routes or UI.
 - Weather effects. The weather service needs Supabase, which is not configured here.
-- Kingdom building, garden design, and room customization.
+- Kingdom garden design and room customization. Kingdom renovation is built (see Built), but levels do not change gameplay yet.
 - Mini-games: treasure hunts, memory games, and rhythm challenges.
 - VIP system. Live ops deals exist on the server (see Built), but there is no VIP tier.
 - Seasonal events, tournaments, community challenges, and boss mechanics beyond a higher target.
 - Battle pass premium rewards. `POST /api/battlepass/premium/reward` returns 501 until it grants items.
 - A season pass purchase. No price exists in the repository, so the product is not sold.
-- Stripe checkout UI. The client module in `src/frontend/` is not loaded by any page, so the game has no payment screen yet.
+- Energy is still enforced only on the client. The server does not spend energy when a level starts, so the refill endpoint is not shown in the shop. Enforcing it needs a server call at level start.
+- Gameplay gems and stars are still kept in the browser (`localStorage`). They can be edited there, so they must not be used as a sale currency until the game reads them from the server.
+- Consumable refunds and chargebacks are not handled. Coins credited for a payment that is later refunded stay with the player.
+- Coin packs in the client show fixed labels that mirror `product-catalog.js`. Change both when prices change.
+- The Stripe checkout button is built but has not run against Stripe. The sandbox cannot reach Stripe.
 - Automatic difficulty adjustment. The level-tuning report is read-only: a person changes the level config after reading it.
 - Level results are kept in a single JSONL file. That works for one server; it needs a database before scaling out.
 - Economy write routes (`/api/economy/*`) are intentionally not mounted. Players cannot write economy data.

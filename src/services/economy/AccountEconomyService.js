@@ -9,6 +9,17 @@ import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { aiCacheManager } from '../ai-cache-manager.js';
 import crypto from 'crypto';
 import { pickWheelReward } from './item-catalog.js';
+import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
+import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS } from '../meta/kingdom.js';
+import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
+
+/** A rule the player cannot meet (not enough coins, room maxed). `code` is safe to show. */
+export class EconomyRuleError extends Error {
+  constructor(code, message = code) {
+    super(message);
+    this.code = code;
+  }
+}
 
 const logger = new Logger('AccountEconomyService');
 
@@ -51,6 +62,17 @@ class AccountEconomyService {
 
       this.cacheStats.misses++;
 
+      // A saved economy wins over a new one, so re-initialising never resets a balance.
+      if (isDurableEconomy()) {
+        const saved = await PlayerEconomyDb.load(playerId);
+        if (saved) {
+          ensureKingdom(saved);
+          this.accountEconomyData.set(playerId, saved);
+          await this.cacheManager.set(cacheKey, saved, 'content', 300);
+          return saved;
+        }
+      }
+
       // Create new player economy profile
       const playerEconomy = {
         playerId,
@@ -65,10 +87,14 @@ class AccountEconomyService {
         social: this.initializeSocial(),
         settings: this.initializeSettings(),
         statistics: this.initializeStatistics(),
+        kingdom: initialKingdom(),
         createdAt: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),
         version: '1.0.0'
       };
+
+      // Store durably first when configured, so a new economy is never lost on restart.
+      if (isDurableEconomy()) await PlayerEconomyDb.save(playerId, playerEconomy);
 
       // Cache the data
       await this.cacheManager.set(cacheKey, playerEconomy, 'content', 300);
@@ -118,8 +144,8 @@ class AccountEconomyService {
         id: 'energy',
         name: 'Energy',
         type: 'consumable',
-        amount: 30,
-        maxAmount: 30,
+        amount: 100,
+        maxAmount: 100,
         earned: 0,
         spent: 0,
         icon: 'energy_icon',
@@ -319,18 +345,31 @@ class AccountEconomyService {
       // Check memory cache first
       if (this.accountEconomyData.has(playerId)) {
         this.cacheStats.hits++;
-        return this.accountEconomyData.get(playerId);
+        const inMemory = this.accountEconomyData.get(playerId);
+        ensureKingdom(inMemory);
+        return inMemory;
       }
 
       // Check AI cache
       const cached = await this.cacheManager.get(cacheKey, 'content');
       if (cached) {
         this.cacheStats.hits++;
+        ensureKingdom(cached);
         this.accountEconomyData.set(playerId, cached);
         return cached;
       }
 
       this.cacheStats.misses++;
+
+      // The durable store is the source of truth after a restart.
+      if (isDurableEconomy()) {
+        const saved = await PlayerEconomyDb.load(playerId);
+        if (saved) {
+          ensureKingdom(saved);
+          this.accountEconomyData.set(playerId, saved);
+          return saved;
+        }
+      }
       
       // Initialize if not found
       return await this.initializePlayerEconomy(playerId);
@@ -576,6 +615,101 @@ class AccountEconomyService {
     return run;
   }
 
+  /** Adds a reward to a loaded economy object. Does not save. */
+  applyReward(playerEconomy, reward) {
+    if (reward.type === 'currency') {
+      const currency = playerEconomy.currencies[reward.currencyId];
+      if (!currency) throw new EconomyRuleError('unknown_currency');
+      currency.amount = Math.min(currency.amount + reward.amount, currency.maxAmount);
+      currency.earned += reward.amount;
+    } else {
+      const item = playerEconomy.inventory[reward.category]?.[reward.itemId];
+      if (!item) throw new EconomyRuleError('unknown_item');
+      item.count = Math.min(item.count + reward.amount, item.maxCount);
+    }
+  }
+
+  /** Takes coins from a loaded economy object. Does not save. */
+  spendCoins(playerEconomy, amount) {
+    const coins = playerEconomy.currencies.coins;
+    if (coins.amount < amount) throw new EconomyRuleError('insufficient_coins');
+    coins.amount -= amount;
+    coins.spent += amount;
+  }
+
+  /**
+   * Upgrades one kingdom room one level. The price and star gate come from kingdom.js.
+   * The whole change is saved in one write.
+   */
+  async renovateRoom(playerId, roomId) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const kingdom = ensureKingdom(playerEconomy);
+      const room = roomById(roomId);
+      if (!room) throw new EconomyRuleError('unknown_room');
+
+      const plan = planRenovation({
+        kingdom,
+        room,
+        coins: playerEconomy.currencies.coins.amount,
+        lifetimeStars: playerEconomy.currencies.stars.earned,
+      });
+      if (!plan.ok) throw new EconomyRuleError(plan.reason);
+
+      this.spendCoins(playerEconomy, plan.costCoins);
+      kingdom.rooms[room.id] = plan.targetLevel;
+      kingdom.renovations += 1;
+
+      const milestone = MILESTONE_REWARDS[plan.targetLevel] || null;
+      if (milestone) {
+        this.applyReward(playerEconomy, { type: 'inventory', ...milestone });
+      }
+
+      playerEconomy.lastUpdated = new Date().toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      logger.info('Kingdom room renovated', { playerId, roomId, level: plan.targetLevel });
+      return {
+        roomId,
+        level: plan.targetLevel,
+        costCoins: plan.costCoins,
+        milestone,
+        coins: playerEconomy.currencies.coins.amount,
+      };
+    });
+  }
+
+  /** Buys one loot box. The reward is rolled on the server and granted in the same save. */
+  async openLootbox(playerId, type, randomInt = (max) => crypto.randomInt(max)) {
+    const box = Object.prototype.hasOwnProperty.call(LOOTBOXES, type) ? LOOTBOXES[type] : null;
+    if (!box) throw new EconomyRuleError('unknown_lootbox');
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      this.spendCoins(playerEconomy, box.costCoins);
+      const reward = pickLootReward(box.rewards, randomInt);
+      this.applyReward(playerEconomy, reward);
+      playerEconomy.lastUpdated = new Date().toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      logger.info('Loot box opened', { playerId, type, reward: reward.id });
+      return { type, reward, costCoins: box.costCoins, coins: playerEconomy.currencies.coins.amount };
+    });
+  }
+
+  /** Refills energy to its maximum. Charges only for the energy that is missing. */
+  async refillEnergy(playerId) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const energy = playerEconomy.currencies.energy;
+      const missing = energy.maxAmount - energy.amount;
+      if (missing <= 0) throw new EconomyRuleError('energy_full');
+      const costCoins = missing * ENERGY_PRICE_COINS;
+      this.spendCoins(playerEconomy, costCoins);
+      energy.amount = energy.maxAmount;
+      playerEconomy.lastUpdated = new Date().toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { costCoins, energy: energy.amount, coins: playerEconomy.currencies.coins.amount };
+    });
+  }
+
   /**
    * Lucky wheel: one free spin per calendar day. The reward is chosen and granted
    * on the server.
@@ -673,6 +807,16 @@ class AccountEconomyService {
    */
   async updatePlayerEconomyCache(playerId, playerEconomy) {
     const cacheKey = `player_economy:${playerId}`;
+
+    if (isDurableEconomy()) {
+      try {
+        await PlayerEconomyDb.save(playerId, playerEconomy);
+      } catch (error) {
+        // Drop the in-memory copy, which holds changes that were not saved. The next read reloads the stored state.
+        this.accountEconomyData.delete(playerId);
+        throw error;
+      }
+    }
     
     // Update memory cache
     this.accountEconomyData.set(playerId, playerEconomy);
@@ -797,6 +941,9 @@ class AccountEconomyService {
     };
   }
 }
+
+/** The one economy instance. Every route and the purchase path must share it, or balances diverge. */
+export const accountEconomy = new AccountEconomyService();
 
 export default AccountEconomyService;
 export { AccountEconomyService };

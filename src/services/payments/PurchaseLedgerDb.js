@@ -13,6 +13,10 @@ const purchaseSchema = new mongoose.Schema(
     playerId: String,
     amountUsd: Number,
     currency: String,
+    // Consumables: `claimedAt` is set by the one request that credits the purchase, and
+    // `fulfilled` once the credit is stored. Entitlements are fulfilled when recorded.
+    fulfilled: { type: Boolean, default: false },
+    claimedAt: Date,
   },
   { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } },
 );
@@ -67,6 +71,26 @@ export const PurchaseLedgerDb = {
       { upsert: true },
     );
     return { inserted: res.upsertedCount > 0 };
+  },
+  /**
+   * Atomically takes the right to fulfil an unfulfilled purchase. Resolves true for one caller only.
+   */
+  async claimFulfillment(transactionId) {
+    await ensureConnection();
+    const res = await PurchaseModel.updateOne(
+      { transactionId, fulfilled: { $ne: true }, claimedAt: { $exists: false } },
+      { $set: { claimedAt: new Date() } },
+    );
+    return res.modifiedCount === 1;
+  },
+  /** Gives back a claim after a failed credit, so a retry can take it again. */
+  async releaseFulfillment(transactionId) {
+    await ensureConnection();
+    await PurchaseModel.updateOne({ transactionId, fulfilled: { $ne: true } }, { $unset: { claimedAt: 1 } });
+  },
+  async markFulfilled(transactionId) {
+    await ensureConnection();
+    await PurchaseModel.updateOne({ transactionId }, { $set: { fulfilled: true } });
   },
   async findPurchaseByTransaction(transactionId) {
     await ensureConnection();

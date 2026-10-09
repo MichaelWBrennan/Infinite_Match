@@ -688,6 +688,17 @@ class PhaserMatch3Game {
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
+        // Kingdom button
+        this.kingdomBtn = this.scene.add.rectangle(735, 300, 110, 40, 0x9b59b6);
+        this.kingdomBtn.setInteractive();
+        this.kingdomBtn.on('pointerdown', () => this.showKingdom());
+        
+        this.scene.add.text(735, 300, 'Kingdom', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
+        
         // Pause button
         this.pauseBtn = this.scene.add.rectangle(735, 250, 110, 40, 0x666666);
         this.pauseBtn.setInteractive();
@@ -1379,93 +1390,6 @@ class PhaserMatch3Game {
     }
 
     // Shop UI
-    createShopUI() {
-        // Create shop overlay
-        const shopOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.8);
-        shopOverlay.setInteractive();
-        
-        const shopTitle = this.scene.add.text(400, 100, 'Shop', {
-            fontSize: '32px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Gems purchase
-        const gemsBtn = this.scene.add.rectangle(200, 200, 150, 100, 0x4ecdc4);
-        gemsBtn.setInteractive();
-        gemsBtn.on('pointerdown', () => this.purchaseGems(100));
-        
-        const gemsText = this.scene.add.text(200, 200, '100 Gems\n$0.99', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Stars purchase
-        const starsBtn = this.scene.add.rectangle(400, 200, 150, 100, 0xffd700);
-        starsBtn.setInteractive();
-        starsBtn.on('pointerdown', () => this.purchaseStars(50));
-        
-        const starsText = this.scene.add.text(400, 200, '50 Stars\n$1.99', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Energy purchase
-        const energyBtn = this.scene.add.rectangle(600, 200, 150, 100, 0xff6b6b);
-        energyBtn.setInteractive();
-        energyBtn.on('pointerdown', () => this.purchaseEnergy(20));
-        
-        const energyText = this.scene.add.text(600, 200, '20 Energy\n$0.49', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Close button
-        const closeBtn = this.scene.add.rectangle(400, 500, 100, 50, 0x666666);
-        closeBtn.setInteractive();
-        closeBtn.on('pointerdown', () => this.closeShop());
-        
-        const closeText = this.scene.add.text(400, 500, 'Close', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-    }
-
-    purchaseGems(amount) {
-        this.gems += amount;
-        this.updateUI();
-        this.trackEvent('gems_purchased', { amount, total: this.gems });
-        this.saveUserData();
-    }
-
-    purchaseStars(amount) {
-        this.stars += amount;
-        this.updateUI();
-        this.trackEvent('stars_purchased', { amount, total: this.stars });
-        this.saveUserData();
-    }
-
-    purchaseEnergy(amount) {
-        this.addEnergy(amount);
-        this.trackEvent('energy_purchased', { amount, total: this.energy });
-        this.saveUserData();
-    }
-
-    closeShop() {
-        this.currentScreen = 'game';
-        this.resumeGame();
-        // Remove shop UI
-        this.scene.children.list.forEach(child => {
-            if (child.texture && child.texture.key === 'shop') {
-                child.destroy();
-            }
-        });
-    }
-
     // Battle Pass UI
     createBattlePassUI() {
         // Create battle pass overlay
@@ -1518,135 +1442,262 @@ class PhaserMatch3Game {
     }
 
     // Loot Box UI
-    createLootBoxUI() {
-        // Create loot box overlay
-        const lbOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.8);
-        lbOverlay.setInteractive();
-        
-        const lbTitle = this.scene.add.text(400, 100, 'Loot Box', {
-            fontSize: '32px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Loot box options
-        const commonBox = this.scene.add.rectangle(200, 250, 150, 200, 0x666666);
-        commonBox.setInteractive();
-        commonBox.on('pointerdown', () => this.openLootBox('common'));
-        
-        const commonText = this.scene.add.text(200, 250, 'Common Box\n100 Gems', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        const rareBox = this.scene.add.rectangle(400, 250, 150, 200, 0x4ecdc4);
-        rareBox.setInteractive();
-        rareBox.on('pointerdown', () => this.openLootBox('rare'));
-        
-        const rareText = this.scene.add.text(400, 250, 'Rare Box\n500 Gems', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        const epicBox = this.scene.add.rectangle(600, 250, 150, 200, 0xffd700);
-        epicBox.setInteractive();
-        epicBox.on('pointerdown', () => this.openLootBox('epic'));
-        
-        const epicText = this.scene.add.text(600, 250, 'Epic Box\n1000 Gems', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Close button
-        const closeBtn = this.scene.add.rectangle(400, 500, 100, 50, 0x666666);
-        closeBtn.setInteractive();
-        closeBtn.on('pointerdown', () => this.closeLootBox());
-        
-        const closeText = this.scene.add.text(400, 500, 'Close', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
+    // ---- Server-backed shop, loot boxes and kingdom ---------------------------------
+    // Every price and reward is decided on the server. The client only shows the result.
+    // Each screen is one container, so closing it removes all of its pieces.
+
+    openOverlay(title) {
+        this.closeOverlay();
+        const background = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.85).setInteractive();
+        const heading = this.scene.add.text(400, 40, title, { fontSize: '32px', fill: '#ffffff', fontFamily: 'Arial' }).setOrigin(0.5);
+        this.activeOverlay = this.scene.add.container(0, 0, [background, heading]);
+        this.activeOverlay.setDepth(1000);
+        this.overlayStatus = this.overlayText(400, 540, '', { size: 16, color: '#ffd700', width: 700 });
+        return this.activeOverlay;
     }
 
-    openLootBox(type) {
-        const costs = { common: 100, rare: 500, epic: 1000 };
-        const cost = costs[type];
-        
-        if (this.gems >= cost) {
-            this.gems -= cost;
+    overlayText(x, y, label, { size = 16, color = '#ffffff', origin = 0.5, width = null } = {}) {
+        const style = { fontSize: `${size}px`, fill: color, fontFamily: 'Arial', align: 'center' };
+        if (width) style.wordWrap = { width };
+        const text = this.scene.add.text(x, y, label, style).setOrigin(origin, 0.5);
+        this.activeOverlay.add(text);
+        return text;
+    }
+
+    overlayButton(x, y, width, height, color, label, onClick) {
+        const box = this.scene.add.rectangle(x, y, width, height, color).setInteractive();
+        box.on('pointerdown', onClick);
+        this.activeOverlay.add(box);
+        this.overlayText(x, y, label);
+        return box;
+    }
+
+    setOverlayStatus(message) {
+        if (this.overlayStatus) this.overlayStatus.setText(message);
+    }
+
+    closeOverlay() {
+        if (this.activeOverlay) {
+            this.activeOverlay.destroy();
+            this.activeOverlay = null;
+            this.overlayStatus = null;
+        }
+    }
+
+    async fetchJson(url, options = {}) {
+        const token = this.getAuthToken();
+        const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const response = await fetch(url, { ...options, headers });
+        const data = await response.json().catch(() => ({}));
+        return { ok: response.ok, status: response.status, data };
+    }
+
+    // Plain-language messages for the error codes the server returns.
+    ruleMessage(code) {
+        const messages = {
+            insufficient_coins: 'Not enough coins. Buy a coin pack in the shop.',
+            unknown_lootbox: 'That loot box is not available.',
+            unknown_product: 'That pack is not available.',
+            checkout_not_configured: 'Purchases are not available right now.',
+            checkout_failed: 'Could not start checkout. Try again.',
+            stars_required: 'Earn more stars first.',
+            room_max_level: 'This room is already at its highest level.',
+            unknown_room: 'That room does not exist.',
+        };
+        return messages[code] || 'Something went wrong. Try again.';
+    }
+
+    createShopUI() {
+        this.openOverlay('Shop');
+        this.shopCoinsText = this.overlayText(400, 100, 'Sign in to buy coins', { size: 20, color: '#ffd700' });
+        // Labels mirror config in src/services/payments/product-catalog.js. The server sets the actual price.
+        const packs = [
+            { productId: 'coins_small', label: '500 coins\n$0.99', color: 0x4ecdc4 },
+            { productId: 'coins_medium', label: '3,000 coins\n$4.99', color: 0xffd700 },
+            { productId: 'coins_large', label: '8,000 coins\n$9.99', color: 0xff6b6b },
+        ];
+        packs.forEach((pack, index) => {
+            this.overlayButton(200 + index * 200, 240, 150, 100, pack.color, pack.label, () => this.buyCoinPack(pack.productId));
+        });
+        this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeShop());
+        this.refreshCoinBalance(this.shopCoinsText);
+    }
+
+    async refreshCoinBalance(textObject) {
+        if (!this.getAuthToken()) return;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/data');
+            if (ok && textObject && textObject.active) {
+                textObject.setText(`Coins: ${data.data.currencies.coins.amount}`);
+            }
+        } catch (error) {
+            console.warn('Could not load coin balance:', error);
+        }
+    }
+
+    // Starts a hosted Stripe Checkout for one coin pack. Coins are credited by the server after payment.
+    async buyCoinPack(productId) {
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to buy coins.');
+        this.setOverlayStatus('Opening checkout...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/stripe/checkout-session', {
+                method: 'POST',
+                body: JSON.stringify({ productId }),
+            });
+            if (!ok || !data.url) return this.setOverlayStatus(this.ruleMessage(data.error));
+            this.trackEvent('checkout_started', { productId });
+            window.location.href = data.url;
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the store. Try again.');
+        }
+    }
+
+    closeShop() {
+        this.closeOverlay();
+        this.currentScreen = 'game';
+        this.resumeGame();
+    }
+
+    createLootBoxUI() {
+        this.openOverlay('Loot Box');
+        this.lootCoinsText = this.overlayText(400, 100, 'Sign in to open loot boxes', { size: 20, color: '#ffd700' });
+        const boxes = [
+            { type: 'common', label: 'Common\n100 coins', color: 0x4ecdc4, x: 200 },
+            { type: 'rare', label: 'Rare\n500 coins', color: 0xffd700, x: 400 },
+            { type: 'epic', label: 'Epic\n1000 coins', color: 0xff6b6b, x: 600 },
+        ];
+        boxes.forEach((box) => {
+            this.overlayButton(box.x, 240, 150, 100, box.color, box.label, () => this.openLootBox(box.type));
+        });
+        this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeLootBox());
+        this.refreshCoinBalance(this.lootCoinsText);
+    }
+
+    // Buys one loot box. The server charges coins, rolls the reward, and grants it.
+    async openLootBox(type) {
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to open loot boxes.');
+        if (this.lootBoxPending) return;
+        this.lootBoxPending = true;
+        this.setOverlayStatus('Opening...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/lootbox/open', {
+                method: 'POST',
+                body: JSON.stringify({ type }),
+            });
+            if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
+            const { reward, coins } = data.result;
+            if (this.lootCoinsText && this.lootCoinsText.active) this.lootCoinsText.setText(`Coins: ${coins}`);
+            this.applyLootReward(reward);
+            this.trackEvent('lootbox_opened', { type, reward: reward.id });
+            this.setOverlayStatus(`You got: ${this.describeReward(reward)}`);
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the server. Try again.');
+        } finally {
+            this.lootBoxPending = false;
+        }
+    }
+
+    describeReward(reward) {
+        if (reward.type === 'currency') return `${reward.amount} ${reward.currencyId}`;
+        return `${reward.amount} x ${reward.itemId}`;
+    }
+
+    // Puts a server-granted reward into the on-screen counters the player sees.
+    applyLootReward(reward) {
+        if (reward.type === 'currency' && reward.currencyId === 'energy') {
+            this.addEnergy(reward.amount);
+        } else if (reward.type === 'currency' && reward.currencyId === 'stars') {
+            this.stars += reward.amount;
             this.updateUI();
-            
-            // Simulate loot box opening
-            this.animateLootBoxOpening(type);
-            
-            this.trackEvent('lootbox_opened', { type, cost });
             this.saveUserData();
         }
     }
 
-    animateLootBoxOpening(type) {
-        // Create opening animation
-        const particles = this.scene.add.particles(400, 300, 'gem_red', {
-            speed: { min: 100, max: 300 },
-            scale: { start: 1, end: 0 },
-            lifespan: 1000
-        });
-        
-        particles.explode(50);
-        
-        setTimeout(() => {
-            particles.destroy();
-            this.showLootBoxReward(type);
-        }, 1000);
-    }
-
-    showLootBoxReward(type) {
-        const rewards = {
-            common: { gems: 50, stars: 10, energy: 5 },
-            rare: { gems: 200, stars: 50, energy: 20 },
-            epic: { gems: 500, stars: 100, energy: 50 }
-        };
-        
-        const reward = rewards[type];
-        this.gems += reward.gems;
-        this.stars += reward.stars;
-        this.addEnergy(reward.energy);
-        
-        this.updateUI();
-        this.saveUserData();
-        
-        // Show reward popup
-        const rewardText = this.scene.add.text(400, 300, `Reward!\n+${reward.gems} Gems\n+${reward.stars} Stars\n+${reward.energy} Energy`, {
-            fontSize: '24px',
-            fill: '#ffd700',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        this.scene.tweens.add({
-            targets: rewardText,
-            scaleX: 1.5,
-            scaleY: 1.5,
-            alpha: 0,
-            duration: 2000,
-            onComplete: () => {
-                rewardText.destroy();
-            }
-        });
-    }
-
     closeLootBox() {
+        this.closeOverlay();
         this.currentScreen = 'game';
         this.resumeGame();
-        // Remove loot box UI
-        this.scene.children.list.forEach(child => {
-            if (child.texture && child.texture.key === 'lootbox') {
-                child.destroy();
+    }
+
+    showKingdom() {
+        this.pauseGame();
+        this.currentScreen = 'kingdom';
+        this.trackEvent('kingdom_opened');
+        this.createKingdomUI();
+    }
+
+    createKingdomUI() {
+        this.openOverlay('Kingdom');
+        this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
+        this.kingdomRowObjects = [];
+        this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeKingdom());
+        this.renderKingdom();
+    }
+
+    async renderKingdom() {
+        (this.kingdomRowObjects || []).forEach((obj) => obj.destroy());
+        this.kingdomRowObjects = [];
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to renovate your kingdom.');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom');
+            if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
+            if (!this.activeOverlay) return;
+            this.kingdomCoinsText.setText(`Coins: ${data.coins}`);
+            data.kingdom.rooms.forEach((room, index) => {
+                const y = 140 + index * 55;
+                let detail = `${room.name}   Level ${room.level}/${room.maxLevel}`;
+                if (room.next) {
+                    detail += `   next: ${room.next.costCoins} coins`;
+                    if (room.next.starsRequired) detail += `, ${room.next.starsRequired} stars`;
+                }
+                this.kingdomRowObjects.push(this.overlayText(60, y, detail, { origin: 0 }));
+                if (room.canRenovate) {
+                    this.kingdomRowObjects.push(
+                        this.overlayButton(680, y, 130, 36, 0x9b59b6, 'Upgrade', () => this.renovateRoom(room.id)),
+                    );
+                } else {
+                    const reasons = {
+                        room_max_level: 'Maxed',
+                        stars_required: 'Needs stars',
+                        insufficient_coins: 'Needs coins',
+                    };
+                    this.kingdomRowObjects.push(this.overlayText(680, y, reasons[room.blockedBy] || 'Locked'));
+                }
+            });
+        } catch (error) {
+            this.setOverlayStatus('Could not load your kingdom.');
+        }
+    }
+
+    async renovateRoom(roomId) {
+        if (this.kingdomPending) return;
+        this.kingdomPending = true;
+        this.setOverlayStatus('Renovating...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom/renovate', {
+                method: 'POST',
+                body: JSON.stringify({ roomId }),
+            });
+            if (!ok || !data.success) {
+                this.setOverlayStatus(this.ruleMessage(data.error));
+            } else {
+                const { result } = data;
+                this.setOverlayStatus(`Level ${result.level} reached.${result.milestone ? ' Milestone reward granted.' : ''}`);
+                this.trackEvent('kingdom_renovated', { roomId, level: result.level });
             }
-        });
+            await this.renderKingdom();
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the server. Try again.');
+        } finally {
+            this.kingdomPending = false;
+        }
+    }
+
+    closeKingdom() {
+        this.closeOverlay();
+        this.currentScreen = 'game';
+        this.resumeGame();
     }
 
     // Integration with existing game system

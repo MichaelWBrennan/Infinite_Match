@@ -7,14 +7,13 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
-import AccountEconomyService from '../services/economy/AccountEconomyService.js';
+import { accountEconomy as accountEconomyService, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
 import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
 
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
 
-// Initialize service
-const accountEconomyService = new AccountEconomyService();
+// The shared instance: balances live in it, so every route must use the same one.
 
 // Helper function for consistent error handling
 const handleRouteError = (res, error, operation, requestId) => {
@@ -460,6 +459,37 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     });
   } catch (error) {
     handleRouteError(res, error, 'complete level', req.requestId);
+  }
+});
+
+// Buy a loot box with coins. The reward is rolled and granted on the server.
+router.post('/lootbox/open', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { type } = req.body || {};
+    const result = await accountEconomyService.openLootbox(playerId, type);
+    security.logSecurityEvent('lootbox_opened', { playerId, type, reward: result.reward.id, ip: req.ip });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'open loot box', req.requestId);
+  }
+});
+
+// Refill energy to full with coins. Charges only for the energy that is missing.
+router.post('/energy/refill', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const result = await accountEconomyService.refillEnergy(playerId);
+    security.logSecurityEvent('energy_refilled', { playerId, costCoins: result.costCoins, ip: req.ip });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'refill energy', req.requestId);
   }
 });
 

@@ -9,6 +9,8 @@ const adEventSchema = new mongoose.Schema(
     format: { type: String, index: true }, // rewarded, interstitial, banner
     event: { type: String, index: true }, // impression, click, load, fill
     revenueUsd: { type: Number, default: 0 },
+    // Figure reported by the client. Not verified, so not counted in revenue.
+    clientReportedRevenueUsd: { type: Number, default: 0 },
     placement: String,
   },
   { timestamps: true },
