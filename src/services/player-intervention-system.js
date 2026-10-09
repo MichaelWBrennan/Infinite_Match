@@ -739,6 +739,179 @@ class PlayerInterventionSystem {
     }
   }
 
+  /**
+   * Estimate churn risk (0..1).
+   *
+   * `analyzePlayerState()` called this but it was never implemented, so
+   * building a player state threw "this.analyzeChurnRisk is not a function"
+   * and no intervention could ever be triggered.
+   */
+  async analyzeChurnRisk(playerId, playerData = {}) {
+    try {
+      const hoursInactive =
+        (Date.now() - (playerData.lastActive ?? Date.now())) / 3600000;
+      const inactivityRisk = Math.min(1, Math.max(0, hoursInactive / 72));
+      const stallRisk = Math.min(1, (playerData.daysWithoutProgress ?? 0) / 7);
+      const neverMonetised = (playerData.totalSpent ?? 0) > 0 ? 0 : 1;
+      const base =
+        typeof playerData.churnProbability === 'number'
+          ? playerData.churnProbability
+          : 0.3;
+
+      const risk = Math.min(
+        1,
+        Math.max(
+          0,
+          base * 0.4 + inactivityRisk * 0.35 + stallRisk * 0.15 + neverMonetised * 0.1,
+        ),
+      );
+
+      return {
+        playerId,
+        risk,
+        level: risk > 0.7 ? 'high' : risk > 0.4 ? 'medium' : 'low',
+        factors: {
+          hoursInactive: Math.round(hoursInactive),
+          daysWithoutProgress: playerData.daysWithoutProgress ?? 0,
+          hasSpent: (playerData.totalSpent ?? 0) > 0,
+        },
+        timestamp: Date.now(),
+      };
+    } catch (error) {
+      logger.error('Failed to analyze churn risk', { error: error.message, playerId });
+      return { playerId, risk: 0.5, level: 'medium', timestamp: Date.now() };
+    }
+  }
+
+  /** Measure progression stall risk (0..1) from days without progress. */
+  async analyzeProgression(playerId, playerData = {}) {
+    try {
+      const daysWithoutProgress = playerData.daysWithoutProgress ?? 0;
+      const risk = Math.min(1, Math.max(0, daysWithoutProgress / 7));
+
+      return {
+        playerId,
+        risk,
+        level: risk > 0.6 ? 'stalled' : risk > 0.3 ? 'slow' : 'healthy',
+        currentLevel: playerData.level ?? 1,
+        daysWithoutProgress,
+        timestamp: Date.now(),
+      };
+    } catch (error) {
+      logger.error('Failed to analyze progression', { error: error.message, playerId });
+      return { playerId, risk: 0.5, timestamp: Date.now() };
+    }
+  }
+
+  /** Measure social-disengagement risk (0..1); no friends means maximum risk. */
+  async analyzeSocialEngagement(playerId, playerData = {}) {
+    try {
+      const friendCount = playerData.friendCount ?? 0;
+      const risk = Math.min(1, Math.max(0, 1 - friendCount / 10));
+
+      return {
+        playerId,
+        risk,
+        friendCount,
+        level: risk > 0.7 ? 'isolated' : risk > 0.4 ? 'low_social' : 'connected',
+        timestamp: Date.now(),
+      };
+    } catch (error) {
+      logger.error('Failed to analyze social engagement', { error: error.message, playerId });
+      return { playerId, risk: 0.5, timestamp: Date.now() };
+    }
+  }
+
+  /**
+   * Measure engagement. Exposes BOTH `score` (used by the success evaluation)
+   * and `risk` (used by calculateOverallRisk).
+   */
+  async analyzeEngagement(playerId, playerData = {}) {
+    try {
+      const sessionCount = playerData.sessionCount ?? 0;
+      const engagementDrop = playerData.engagementDrop ?? 0;
+      const score = Math.min(
+        1,
+        Math.max(0, (sessionCount / 50) * 0.6 + (1 - engagementDrop) * 0.4),
+      );
+
+      return {
+        playerId,
+        score,
+        risk: 1 - score,
+        sessionCount,
+        engagementDrop,
+        timestamp: Date.now(),
+      };
+    } catch (error) {
+      logger.error('Failed to analyze engagement', { error: error.message, playerId });
+      return { playerId, score: 0.5, risk: 0.5, timestamp: Date.now() };
+    }
+  }
+
+  /** Build hint content for a hint action. */
+  async generateHint(playerId, action = {}) {
+    try {
+      const hints = {
+        level_hint: 'Look for matches at the bottom of the board to trigger cascades.',
+        advanced_hint: 'Combine two power-ups for a board-clearing effect.',
+        general: 'Match four or more gems in a row to create a power-up.',
+      };
+
+      return {
+        type: action.template || 'general',
+        text: hints[action.template] || hints.general,
+        playerId,
+        timestamp: Date.now(),
+      };
+    } catch (error) {
+      logger.error('Failed to generate hint', { error: error.message, playerId });
+      return { type: 'general', text: 'Keep matching gems!', playerId };
+    }
+  }
+
+  /** Build a personalised offer for an offer action. */
+  async generatePersonalizedOffer(playerId, action = {}, playerData = {}) {
+    try {
+      const isSpender = (playerData.totalSpent ?? 0) > 0;
+      const basePrice = isSpender ? 4.99 : 1.99;
+
+      return {
+        id: uuidv4(),
+        type: action.template || 'starter_bundle',
+        title: isSpender ? 'Premium Gem Bundle' : 'Starter Bundle',
+        price: basePrice,
+        currency: playerData.preferredCurrency || 'coins',
+        contents: { coins: isSpender ? 5000 : 1000, gems: isSpender ? 200 : 50 },
+        playerId,
+        timestamp: Date.now(),
+      };
+    } catch (error) {
+      logger.error('Failed to generate personalized offer', { error: error.message, playerId });
+      return null;
+    }
+  }
+
+  /** Build a content recommendation for a recommendation action. */
+  async generateContentRecommendation(playerId, action = {}) {
+    try {
+      const recommendations = {
+        engaging_content: 'Try the new daily challenge for bonus rewards.',
+        level_content: 'Replay earlier levels to earn three-star rewards.',
+      };
+
+      return {
+        type: action.template || 'engaging_content',
+        text: recommendations[action.template] || recommendations.engaging_content,
+        playerId,
+        timestamp: Date.now(),
+      };
+    } catch (error) {
+      logger.error('Failed to generate content recommendation', { error: error.message, playerId });
+      return null;
+    }
+  }
+
   async provideHint(playerId, action) {
     try {
       const hintData = {

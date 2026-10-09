@@ -930,7 +930,7 @@ Create a ${assetType} for a match-3 mobile game:
   }
 
   buildOptimizedPrompt(type, parameters) {
-    const basePrompt = this.getBasePrompt(type);
+    const basePrompt = this.getSystemPrompt(type);
     const optimizationHints = this.getOptimizationHints(type, parameters);
     
     return `${basePrompt}\n\nOptimization Parameters:\n${JSON.stringify(parameters, null, 2)}\n\n${optimizationHints}`;

@@ -1396,6 +1396,67 @@ class WeatherService {
   }
 
   /**
+   * Read a value from the weather cache, honouring the configured expiry.
+   *
+   * `getCachedWeatherData()` called this but it was never implemented, so
+   * every cache lookup threw "this.getFromCache is not a function" and the
+   * weather service could never serve cached data.
+   *
+   * @param {string} key
+   * @returns {*} the cached payload, or null when absent / stale
+   */
+  getFromCache(key) {
+    try {
+      if (!key || !this.weatherCache) return null;
+
+      const entry = this.weatherCache.get(key);
+      if (!entry) return null;
+
+      // `getCachedWeatherData()` re-checks freshness against its own 30 minute
+      // window, so enforce only the general expiry here.
+      if (entry.timestamp && Date.now() - entry.timestamp > this.cacheExpiry) {
+        this.weatherCache.delete(key);
+        return null;
+      }
+
+      return entry;
+    } catch (error) {
+      this.logger?.warn?.(`Failed to read cache key ${key}:`, error && error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Rough test for whether a coordinate lies in a desert climate zone.
+   *
+   * `getWeatherTypesForLocation()` called this but it was never implemented,
+   * so generating local weather threw "this.isDesertRegion is not a function".
+   *
+   * Uses the subtropical desert belts (roughly 15-35 degrees of latitude,
+   * where the Hadley cell descending air produces arid conditions). This is a
+   * heuristic for flavour text, not a climate dataset.
+   */
+  isDesertRegion(latitude, longitude) {
+    const lat = Math.abs(Number(latitude));
+    const lon = Number(longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+    if (lat < 15 || lat > 35) return false;
+
+    // Longitude bands dominated by the great deserts, i.e. landmasses in the
+    // desert belt. Ocean longitudes are excluded.
+    const desertBands = [
+      [-20, 60],   // Sahara / Arabian
+      [60, 90],    // Thar / Central Asia
+      [110, 145],  // Gobi / Australian
+      [-120, -70], // North American (Mojave / Sonoran / Chihuahuan)
+      [-75, -65],  // Atacama (Southern Hemisphere)
+    ];
+
+    return desertBands.some(([min, max]) => lon >= min && lon <= max);
+  }
+
+  /**
    * Clean expired cache entries
    */
   cleanExpiredCache() {

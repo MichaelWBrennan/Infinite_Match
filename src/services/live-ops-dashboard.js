@@ -969,6 +969,46 @@ class LiveOpsDashboard {
     }
   }
 
+  /**
+   * Conclude a finished A/B test and attach its results.
+   *
+   * `processActiveABTests()` called this but it was never implemented, so any
+   * test reaching its end date threw "this.endABTest is not a function" and
+   * aborted the whole sweep over active tests.
+   */
+  async endABTest(testId) {
+    try {
+      const abTest = this.abTests.get(testId);
+      if (!abTest) {
+        logger.warn('A/B test not found', { testId });
+        return null;
+      }
+
+      if (abTest.status === 'completed') return abTest;
+
+      abTest.status = 'completed';
+      abTest.endedAt = new Date();
+
+      const { impressions = 0, clicks = 0, conversions = 0, revenue = 0 } = abTest.metrics || {};
+      abTest.results = {
+        impressions,
+        clicks,
+        conversions,
+        revenue,
+        clickThroughRate: impressions > 0 ? clicks / impressions : 0,
+        conversionRate: impressions > 0 ? conversions / impressions : 0,
+        revenuePerImpression: impressions > 0 ? revenue / impressions : 0,
+      };
+
+      this.abTests.set(testId, abTest);
+      logger.info('A/B test ended', { testId, name: abTest.name });
+      return abTest;
+    } catch (error) {
+      logger.error('Failed to end A/B test', { error: error.message, testId });
+      return null;
+    }
+  }
+
   async updateDashboardMetrics() {
     try {
       const metrics = {

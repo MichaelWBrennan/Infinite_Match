@@ -814,6 +814,54 @@ Return JSON with:
   /**
    * Machine learning model optimization
    */
+  /**
+   * Fold a behavior event into a player profile, in place.
+   *
+   * `processSingleUpdate()` called this but it was never implemented, so
+   * every queued real-time update threw "this.updateProfileFromBehavior is not
+   * a function" and no profile was ever refreshed from live behavior.
+   *
+   * Mutates `profile` (the caller caches that same object afterwards) and is
+   * deliberately defensive: profiles come from Supabase and behavior payloads
+   * are free-form, so unknown keys are stored as last-seen values rather than
+   * assumed to exist.
+   */
+  updateProfileFromBehavior(profile, behaviorData = {}) {
+    try {
+      if (!profile || typeof profile !== 'object') return profile;
+
+      profile.lastUpdated = new Date().toISOString();
+
+      // Bounded rolling history of raw behavior events.
+      profile.behaviorHistory = Array.isArray(profile.behaviorHistory)
+        ? [...profile.behaviorHistory, behaviorData].slice(-50)
+        : [behaviorData];
+
+      // These accumulate; everything else is last-write-wins.
+      const accumulative = new Set([
+        'sessionCount', 'sessions', 'levelsCompleted', 'levelsPlayed',
+        'purchases', 'playTime', 'timeSpent', 'score',
+      ]);
+
+      profile.behavior = { ...(profile.behavior || {}) };
+
+      for (const [key, value] of Object.entries(behaviorData || {})) {
+        if (key === 'playerId' || key === 'timestamp') continue;
+
+        if (typeof value === 'number' && Number.isFinite(value) && accumulative.has(key)) {
+          profile.behavior[key] = (profile.behavior[key] || 0) + value;
+        } else {
+          profile.behavior[key] = value;
+        }
+      }
+
+      return profile;
+    } catch (error) {
+      this.logger.error('Failed to update profile from behavior', { error: error.message });
+      return profile;
+    }
+  }
+
   queueModelUpdate(playerId, behaviorData) {
     this.modelTrainingQueue.push({ playerId, behaviorData, timestamp: Date.now() });
     
