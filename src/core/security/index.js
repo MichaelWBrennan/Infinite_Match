@@ -232,7 +232,13 @@ export const sessionValidation = (req, res, next) => {
       });
     }
 
-    req.user = decoded;
+    // Routes read `req.user.id`, but the player-session token carries
+    // `playerId`, so every authenticated route saw an undefined user id and
+    // silently treated the request as anonymous.
+    req.user = {
+      ...decoded,
+      id: decoded.id ?? decoded.playerId ?? decoded.userId ?? decoded.sub,
+    };
     next();
   } catch (error) {
     securityLogger.warn(`Invalid token from IP: ${req.ip}`, {
@@ -269,17 +275,20 @@ export const generateToken = (payload) => {
  * Session management
  */
 export const createSession = (userId, sessionData = {}) => {
-  const sessionId = crypto.randomUUID();
   const session = {
-    sessionId,
+    sessionId: crypto.randomUUID(),
     userId,
     createdAt: Date.now(),
     lastActivity: Date.now(),
     ...sessionData,
   };
 
-  activeSessions.set(sessionId, session);
-  return sessionId;
+  // Key on the EFFECTIVE id. `sessionData` may legitimately supply one (the
+  // player-account manager mirrors its own session ids in here), and the old
+  // code keyed on the generated id even when `sessionData` had overridden it -
+  // which stored the session under an id it did not claim.
+  activeSessions.set(session.sessionId, session);
+  return session.sessionId;
 };
 
 export const validateSession = (sessionId) => {

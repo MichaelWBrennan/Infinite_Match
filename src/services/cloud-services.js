@@ -466,6 +466,107 @@ class OptimizedCloudServicesManager {
     }
   }
 
+  /**
+   * Read a player's progression record.
+   *
+   * The game routes call this, but it was never implemented, so
+   * GET /api/game/progress answered 500 with
+   * "cloudServices.getPlayerProgress is not a function".
+   */
+  async getPlayerProgress(playerId) {
+    try {
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, returning empty player progress', {
+          playerId,
+        });
+        return null;
+      }
+
+      const result = await this.awsClients.dynamodb.send(
+        new GetItemCommand({
+          TableName: process.env.AWS_DYNAMODB_TABLE,
+          Key: { playerId: { S: playerId } },
+        }),
+      );
+
+      if (!result.Item) return null;
+
+      return {
+        playerId,
+        level: result.Item.level ? Number(result.Item.level.N) : 1,
+        score: result.Item.score ? Number(result.Item.score.N) : 0,
+        gameData: result.Item.gameData ? JSON.parse(result.Item.gameData.S) : {},
+        lastUpdated: result.Item.lastUpdated ? result.Item.lastUpdated.S : null,
+      };
+    } catch (error) {
+      this.logger.warn('Error getting player progress:', error && error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Read a player's achievements. Returns [] when the backing store is
+   * unavailable so the endpoint degrades instead of 500-ing.
+   */
+  async getPlayerAchievements(playerId) {
+    try {
+      if (!playerId) return [];
+
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, returning no achievements', {
+          playerId,
+        });
+        return [];
+      }
+
+      const progress = await this.getPlayerProgress(playerId);
+      return (progress && progress.gameData && progress.gameData.achievements) || [];
+    } catch (error) {
+      this.logger.warn('Error getting player achievements:', error && error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Read a leaderboard page. Returns [] when the backing store is
+   * unavailable so the endpoint degrades instead of 500-ing.
+   */
+  async getLeaderboard(type = 'global', limit = 10) {
+    try {
+      const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+
+      if (!this.isProviderConnected('aws')) {
+        this.logger.warn('AWS unavailable, returning empty leaderboard', {
+          type,
+          limit: safeLimit,
+        });
+        return [];
+      }
+
+      const result = await this.awsClients.dynamodb.send(
+        new ScanCommand({
+          TableName: process.env.AWS_DYNAMODB_TABLE,
+          Limit: safeLimit,
+        }),
+      );
+
+      const rows = (result.Items || [])
+        .map((item) => ({
+          playerId: item.playerId && item.playerId.S,
+          level: item.level ? Number(item.level.N) : 1,
+          score: item.score ? Number(item.score.N) : 0,
+        }))
+        .filter((row) => row.playerId)
+        .sort((a, b) => b.score - a.score || b.level - a.level)
+        .slice(0, safeLimit);
+
+      return rows.map((row, index) => ({ ...row, rank: index + 1, type }));
+    } catch (error) {
+      this.logger.warn('Error getting leaderboard:', error && error.message);
+      return [];
+    }
+  }
+
   async uploadAsset(bucketName, key, data, contentType = 'application/octet-stream') {
     try {
       await this.awsClients.s3.send(new PutObjectCommand({
