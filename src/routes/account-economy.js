@@ -478,6 +478,20 @@ router.post('/lootbox/open', security.sessionValidation, async (req, res) => {
   }
 });
 
+// Spends the energy for one attempt at a level. The client must get this before a level starts.
+router.post('/energy/spend', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const result = await accountEconomyService.spendAttemptEnergy(playerId);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'spend attempt energy', req.requestId);
+  }
+});
+
 // Refill energy to full with coins. Charges only for the energy that is missing.
 router.post('/energy/refill', security.sessionValidation, async (req, res) => {
   try {

@@ -12,6 +12,7 @@ import { pickWheelReward } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
+import { ATTEMPT_ENERGY_COST, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
 
 /** A rule the player cannot meet (not enough coins, room maxed). `code` is safe to show. */
 export class EconomyRuleError extends Error {
@@ -713,7 +714,35 @@ class AccountEconomyService {
       playerEconomy.lastUpdated = new Date().toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
       logger.info('Loot box opened', { playerId, type, reward: reward.id });
-      return { type, reward, costCoins: box.costCoins, coins: playerEconomy.currencies.coins.amount };
+      return {
+        type,
+        reward,
+        costCoins: box.costCoins,
+        coins: playerEconomy.currencies.coins.amount,
+        energy: playerEconomy.currencies.energy.amount,
+      };
+    });
+  }
+
+  /**
+   * Spends the energy for one attempt at a level. This is the only place attempt energy is taken,
+   * so the client cannot skip it. Regeneration is applied first, so a player is never charged for
+   * points that have already come back.
+   */
+  async spendAttemptEnergy(playerId, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const energy = regenerateEnergy(playerEconomy.currencies.energy, nowMs);
+      if (energy.amount < ATTEMPT_ENERGY_COST) throw new EconomyRuleError('energy_empty');
+      energy.amount -= ATTEMPT_ENERGY_COST;
+      energy.spent += ATTEMPT_ENERGY_COST;
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return {
+        energy: energy.amount,
+        maxEnergy: energy.maxAmount,
+        nextRegenInMs: nextRegenInMs(energy, nowMs),
+      };
     });
   }
 
@@ -721,12 +750,13 @@ class AccountEconomyService {
   async refillEnergy(playerId) {
     return this.withPlayerLock(playerId, async () => {
       const playerEconomy = await this.getPlayerEconomy(playerId);
-      const energy = playerEconomy.currencies.energy;
+      const energy = regenerateEnergy(playerEconomy.currencies.energy, Date.now());
       const missing = energy.maxAmount - energy.amount;
       if (missing <= 0) throw new EconomyRuleError('energy_full');
       const costCoins = missing * ENERGY_PRICE_COINS;
       this.spendCoins(playerEconomy, costCoins);
       energy.amount = energy.maxAmount;
+      energy.lastRegen = Date.now();
       playerEconomy.lastUpdated = new Date().toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
       return { costCoins, energy: energy.amount, coins: playerEconomy.currencies.coins.amount };

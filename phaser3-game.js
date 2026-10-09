@@ -207,8 +207,8 @@ class PhaserMatch3Game {
         this.setupInput();
         this.setupAnimations();
         
-        // Start the game
-        this.startGame();
+        // Start the first board. It costs an attempt, so reloading the page is not a free play.
+        this.beginFirstAttempt();
     }
 
     // ----- Match-3 core ---------------------------------------------------
@@ -1077,14 +1077,84 @@ class PhaserMatch3Game {
         }
     }
 
+    // Starts the first board on page load, if the player may play.
+    async beginFirstAttempt() {
+        if (await this.claimAttempt()) this.startGame();
+    }
+
+    // Spends one attempt's energy on the server. Returns true if the attempt may start.
+    // Guests have no server economy, so they are not gated.
+    async claimAttempt() {
+        if (!this.getAuthToken()) return true;
+        if (this.attemptPending) return false;
+        this.attemptPending = true;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/energy/spend', { method: 'POST' });
+            if (ok && data.success) {
+                this.energy = data.result.energy;
+                this.updateEnergyDisplay();
+                return true;
+            }
+            if (data.error === 'energy_empty') {
+                await this.showNoEnergy();
+            } else {
+                this.showAttemptError(this.ruleMessage(data.error));
+            }
+            return false;
+        } catch (error) {
+            this.showAttemptError('Could not reach the server. Check your connection and try again.');
+            return false;
+        } finally {
+            this.attemptPending = false;
+        }
+    }
+
+    showAttemptError(message) {
+        this.openOverlay('Cannot Start');
+        this.overlayText(400, 280, message, { size: 20, width: 600 });
+        this.overlayButton(400, 380, 240, 60, 0x555555, 'OK', () => this.closeOverlay());
+    }
+
+    // Out of energy: offer a refill at the server price for the energy that is missing.
+    async showNoEnergy() {
+        this.openOverlay('Out of Energy');
+        this.overlayText(400, 200, 'Each attempt uses 1 energy. Energy comes back 1 point every minute.', { size: 20, width: 600 });
+        const { ok, data } = await this.fetchJson('/api/account-economy/data');
+        const energy = ok && data.success ? data.data.currencies.energy : null;
+        const missing = energy ? energy.maxAmount - energy.amount : 0;
+        const cost = missing * 10;
+        this.overlayButton(400, 300, 380, 60, 0x4ecdc4, `Refill energy (${cost} coins)`, () => this.refillEnergy());
+        this.overlayButton(400, 380, 240, 60, 0x555555, 'Close', () => this.closeOverlay());
+    }
+
+    // Refills energy on the server. The player then starts the attempt themselves.
+    async refillEnergy() {
+        const { ok, data } = await this.fetchJson('/api/account-economy/energy/refill', { method: 'POST' });
+        if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
+        this.energy = data.result.energy;
+        this.updateEnergyDisplay();
+        this.closeOverlay();
+    }
+
     // Start a numbered level. Applies its target and move limit, then restarts.
     selectLevel(levelNumber) {
         const config = levelConfig(levelNumber);
-        this.level = config.level;
-        this.targetScore = config.targetScore;
-        this.moves = config.moves;
-        this.isBossLevel = config.isBoss;
-        this.restartGame();
+        const start = () => {
+            this.level = config.level;
+            this.targetScore = config.targetScore;
+            this.moves = config.moves;
+            this.isBossLevel = config.isBoss;
+            this.restartGame(true);
+        };
+        // Guests have no server economy, so the level starts at once. Signed-in players claim an
+        // attempt first, so a refused attempt does not change the target under the old board.
+        if (!this.getAuthToken()) {
+            start();
+            return Promise.resolve();
+        }
+        return this.claimAttempt().then((ok) => {
+            if (ok) start();
+        });
     }
 
     // The result of this level, as the server expects it for difficulty tuning.
@@ -1504,6 +1574,8 @@ class PhaserMatch3Game {
             stars_required: 'Earn more stars first.',
             room_max_level: 'This room is already at its highest level.',
             unknown_room: 'That room does not exist.',
+            energy_empty: 'Out of energy.',
+            energy_full: 'Energy is already full.',
         };
         return messages[code] || 'Something went wrong. Try again.';
     }
@@ -1586,8 +1658,13 @@ class PhaserMatch3Game {
                 body: JSON.stringify({ type }),
             });
             if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
-            const { reward, coins } = data.result;
+            const { reward, coins, energy } = data.result;
             if (this.lootCoinsText && this.lootCoinsText.active) this.lootCoinsText.setText(`Coins: ${coins}`);
+            // The server has already granted the reward, so take its energy total rather than adding again.
+            if (typeof energy === 'number') {
+                this.energy = energy;
+                this.updateEnergyDisplay();
+            }
             this.applyLootReward(reward);
             this.trackEvent('lootbox_opened', { type, reward: reward.id });
             this.setOverlayStatus(`You got: ${this.describeReward(reward)}`);
@@ -1605,9 +1682,7 @@ class PhaserMatch3Game {
 
     // Puts a server-granted reward into the on-screen counters the player sees.
     applyLootReward(reward) {
-        if (reward.type === 'currency' && reward.currencyId === 'energy') {
-            this.addEnergy(reward.amount);
-        } else if (reward.type === 'currency' && reward.currencyId === 'stars') {
+        if (reward.type === 'currency' && reward.currencyId === 'stars') {
             this.stars += reward.amount;
             this.updateUI();
             this.saveUserData();
@@ -1830,12 +1905,14 @@ class PhaserMatch3Game {
         }).setOrigin(0.5);
     }
 
-    restartGame() {
-        // Reset game state
+    // Every attempt spends energy on the server first. Nothing resets until the spend succeeds.
+    async restartGame(attemptClaimed = false) {
+        if (!attemptClaimed && !(await this.claimAttempt())) return;
+
+        // Reset game state. The move limit belongs to the level, not to a fixed 30.
         this.score = 0;
-        this.moves = 30;
+        this.moves = levelConfig(this.level).moves;
         this.time = 60;
-        this.energy = Math.max(this.energy - 1, 0);
         this.setSelectedGem(null);
         this.reshuffleBoard();
         
