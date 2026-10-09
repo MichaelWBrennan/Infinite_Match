@@ -83,9 +83,11 @@ export class MFAProvider {
     const key = this.base32Decode(secret);
     const buffer = Buffer.alloc(8);
 
+    // `counter` is a const, so shift a mutable copy when filling the buffer.
+    let remaining = counter;
     for (let i = 7; i >= 0; i--) {
-      buffer[i] = counter & 0xff;
-      counter >>= 8;
+      buffer[i] = remaining & 0xff;
+      remaining >>= 8;
     }
 
     const hmac = crypto.createHmac(this.algorithm, key);

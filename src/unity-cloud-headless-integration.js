@@ -8,7 +8,7 @@
 import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
 import fs from 'fs';
 import path from 'path';
-import { Logger } from '../core/logger/index.js';
+import { Logger } from './core/logger/index.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);

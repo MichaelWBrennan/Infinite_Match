@@ -37,8 +37,8 @@ class LocalLevelManager {
       // Tutorial levels
       {
         id: 1,
-        name: "Welcome to the Game",
-        description: "Learn the basics of matching gems",
+        name: 'Welcome to the Game',
+        description: 'Learn the basics of matching gems',
         unlocked: true,
         completed: false,
         stars: 0,
@@ -46,18 +46,18 @@ class LocalLevelManager {
         targetScore: 1000,
         moves: 30,
         timeLimit: 0,
-        difficulty: "tutorial",
-        gems: ["red", "blue", "green", "yellow"],
+        difficulty: 'tutorial',
+        gems: ['red', 'blue', 'green', 'yellow'],
         powerups: [],
         rewards: { coins: 100, xp: 50 },
         objectives: [
-          { type: "score", target: 1000, description: "Score 1000 points" }
+          { type: 'score', target: 1000, description: 'Score 1000 points' }
         ]
       },
       {
         id: 2,
-        name: "First Match",
-        description: "Make your first 3-match",
+        name: 'First Match',
+        description: 'Make your first 3-match',
         unlocked: false,
         completed: false,
         stars: 0,
@@ -65,19 +65,19 @@ class LocalLevelManager {
         targetScore: 1500,
         moves: 25,
         timeLimit: 0,
-        difficulty: "easy",
-        gems: ["red", "blue", "green", "yellow", "purple"],
+        difficulty: 'easy',
+        gems: ['red', 'blue', 'green', 'yellow', 'purple'],
         powerups: [],
         rewards: { coins: 150, xp: 75 },
         objectives: [
-          { type: "score", target: 1500, description: "Score 1500 points" },
-          { type: "moves", target: 25, description: "Complete in 25 moves" }
+          { type: 'score', target: 1500, description: 'Score 1500 points' },
+          { type: 'moves', target: 25, description: 'Complete in 25 moves' }
         ]
       },
       {
         id: 3,
-        name: "Power Up Introduction",
-        description: "Learn about power-ups",
+        name: 'Power Up Introduction',
+        description: 'Learn about power-ups',
         unlocked: false,
         completed: false,
         stars: 0,
@@ -85,20 +85,20 @@ class LocalLevelManager {
         targetScore: 2000,
         moves: 20,
         timeLimit: 0,
-        difficulty: "easy",
-        gems: ["red", "blue", "green", "yellow", "purple", "orange"],
-        powerups: ["bomb", "rainbow"],
+        difficulty: 'easy',
+        gems: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'],
+        powerups: ['bomb', 'rainbow'],
         rewards: { coins: 200, xp: 100 },
         objectives: [
-          { type: "score", target: 2000, description: "Score 2000 points" },
-          { type: "powerups", target: 1, description: "Use 1 power-up" }
+          { type: 'score', target: 2000, description: 'Score 2000 points' },
+          { type: 'powerups', target: 1, description: 'Use 1 power-up' }
         ]
       },
       // Regular levels
       {
         id: 4,
-        name: "Gem Collector",
-        description: "Collect specific gems",
+        name: 'Gem Collector',
+        description: 'Collect specific gems',
         unlocked: false,
         completed: false,
         stars: 0,
@@ -106,19 +106,19 @@ class LocalLevelManager {
         targetScore: 2500,
         moves: 25,
         timeLimit: 0,
-        difficulty: "medium",
-        gems: ["red", "blue", "green", "yellow", "purple", "orange"],
-        powerups: ["bomb", "rainbow", "lightning"],
+        difficulty: 'medium',
+        gems: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'],
+        powerups: ['bomb', 'rainbow', 'lightning'],
         rewards: { coins: 250, xp: 125 },
         objectives: [
-          { type: "score", target: 2500, description: "Score 2500 points" },
-          { type: "collect", target: 20, gem: "red", description: "Collect 20 red gems" }
+          { type: 'score', target: 2500, description: 'Score 2500 points' },
+          { type: 'collect', target: 20, gem: 'red', description: 'Collect 20 red gems' }
         ]
       },
       {
         id: 5,
-        name: "Time Challenge",
-        description: "Complete the level in time",
+        name: 'Time Challenge',
+        description: 'Complete the level in time',
         unlocked: false,
         completed: false,
         stars: 0,
@@ -126,13 +126,13 @@ class LocalLevelManager {
         targetScore: 3000,
         moves: 30,
         timeLimit: 120,
-        difficulty: "medium",
-        gems: ["red", "blue", "green", "yellow", "purple", "orange"],
-        powerups: ["bomb", "rainbow", "lightning", "striped"],
+        difficulty: 'medium',
+        gems: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'],
+        powerups: ['bomb', 'rainbow', 'lightning', 'striped'],
         rewards: { coins: 300, xp: 150 },
         objectives: [
-          { type: "score", target: 3000, description: "Score 3000 points" },
-          { type: "time", target: 120, description: "Complete in 2 minutes" }
+          { type: 'score', target: 3000, description: 'Score 3000 points' },
+          { type: 'time', target: 120, description: 'Complete in 2 minutes' }
         ]
       }
     ];

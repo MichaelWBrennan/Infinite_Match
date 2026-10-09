@@ -13,7 +13,7 @@ try {
       admin.initializeApp({ credential });
     }
   }
-} catch (_) {}
+} catch (_) { /* FCM credentials unavailable; push routes report themselves disabled */ }
 
 const router = express.Router();
 const logger = new Logger('PushRoutes');

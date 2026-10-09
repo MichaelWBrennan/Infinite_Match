@@ -28,15 +28,15 @@ const activeSessions = new Map();
 export const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      defaultSrc: ['\'self\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\''],
+      scriptSrc: ['\'self\''],
+      imgSrc: ['\'self\'', 'data:', 'https:'],
+      connectSrc: ['\'self\''],
+      fontSrc: ['\'self\''],
+      objectSrc: ['\'none\''],
+      mediaSrc: ['\'self\''],
+      frameSrc: ['\'none\''],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -114,7 +114,12 @@ export const authRateLimit = rateLimit({
 export const slowDownConfig = slowDown({
   windowMs: 1000, // 1 second
   delayAfter: 1, // allow 1 request per second
-  delayMs: 500,
+  // express-slow-down v2 no longer multiplies a numeric `delayMs` by the number
+  // of requests over the limit, so the ramp is computed explicitly.
+  delayMs: (used, req) => {
+    const delayAfter = req.slowDown.limit;
+    return (used - delayAfter) * 500;
+  },
   maxDelayMs: 20000, // max 20 seconds delay
   skipSuccessfulRequests: false,
   skipFailedRequests: false,

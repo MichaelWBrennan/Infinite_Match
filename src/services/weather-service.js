@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import cron from 'node-cron';
+import { createSupabaseClient } from './ai-clients.js';
 
 /**
  * Real-Time Weather Service
@@ -12,7 +12,7 @@ class WeatherService {
   constructor() {
     this.logger = new Logger('WeatherService');
 
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Free Weather API configuration - 100% open source
     this.openWeatherApiKey = process.env.OPENWEATHER_API_KEY; // Optional for higher limits

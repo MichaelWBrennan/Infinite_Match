@@ -430,63 +430,63 @@ class LocalInventoryManager {
     
     for (let i = 0; i < quantity; i++) {
       switch (itemDetails.effects.type) {
-        case 'area_clear':
-          effects.push({
-            type: 'area_clear',
-            radius: itemDetails.effects.radius,
-            damage: itemDetails.effects.damage
-          });
-          break;
-        case 'row_clear':
-          effects.push({
-            type: 'row_clear',
-            direction: itemDetails.effects.direction
-          });
-          break;
-        case 'column_clear':
-          effects.push({
-            type: 'column_clear',
-            direction: itemDetails.effects.direction
-          });
-          break;
-        case 'extra_moves':
-          effects.push({
-            type: 'extra_moves',
-            amount: itemDetails.effects.amount
-          });
-          break;
-        case 'extra_time':
-          effects.push({
-            type: 'extra_time',
-            amount: itemDetails.effects.amount
-          });
-          break;
-        case 'score_multiplier':
-          effects.push({
-            type: 'score_multiplier',
-            multiplier: itemDetails.effects.multiplier,
-            duration: itemDetails.effects.duration
-          });
-          break;
-        case 'energy_restore':
-          effects.push({
-            type: 'energy_restore',
-            amount: itemDetails.effects.amount
-          });
-          break;
-        case 'coin_multiplier':
-          effects.push({
-            type: 'coin_multiplier',
-            multiplier: itemDetails.effects.multiplier,
-            duration: itemDetails.effects.duration
-          });
-          break;
-        case 'random_rewards':
-          effects.push({
-            type: 'random_rewards',
-            rewards: this.generateRandomRewards(itemDetails.effects.possibleRewards)
-          });
-          break;
+      case 'area_clear':
+        effects.push({
+          type: 'area_clear',
+          radius: itemDetails.effects.radius,
+          damage: itemDetails.effects.damage
+        });
+        break;
+      case 'row_clear':
+        effects.push({
+          type: 'row_clear',
+          direction: itemDetails.effects.direction
+        });
+        break;
+      case 'column_clear':
+        effects.push({
+          type: 'column_clear',
+          direction: itemDetails.effects.direction
+        });
+        break;
+      case 'extra_moves':
+        effects.push({
+          type: 'extra_moves',
+          amount: itemDetails.effects.amount
+        });
+        break;
+      case 'extra_time':
+        effects.push({
+          type: 'extra_time',
+          amount: itemDetails.effects.amount
+        });
+        break;
+      case 'score_multiplier':
+        effects.push({
+          type: 'score_multiplier',
+          multiplier: itemDetails.effects.multiplier,
+          duration: itemDetails.effects.duration
+        });
+        break;
+      case 'energy_restore':
+        effects.push({
+          type: 'energy_restore',
+          amount: itemDetails.effects.amount
+        });
+        break;
+      case 'coin_multiplier':
+        effects.push({
+          type: 'coin_multiplier',
+          multiplier: itemDetails.effects.multiplier,
+          duration: itemDetails.effects.duration
+        });
+        break;
+      case 'random_rewards':
+        effects.push({
+          type: 'random_rewards',
+          rewards: this.generateRandomRewards(itemDetails.effects.possibleRewards)
+        });
+        break;
       }
     }
     
@@ -498,17 +498,20 @@ class LocalInventoryManager {
     const rewardType = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
     
     switch (rewardType) {
-      case 'coins':
-        rewards.coins = Math.floor(Math.random() * 500) + 100;
-        break;
-      case 'gems':
-        rewards.gems = Math.floor(Math.random() * 10) + 1;
-        break;
-      case 'powerups':
-        const powerupTypes = ['bomb', 'rainbow', 'lightning'];
-        const powerupType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
-        rewards.powerups = { [powerupType]: Math.floor(Math.random() * 3) + 1 };
-        break;
+    case 'coins':
+      rewards.coins = Math.floor(Math.random() * 500) + 100;
+      break;
+    case 'gems':
+      rewards.gems = Math.floor(Math.random() * 10) + 1;
+      break;
+      // Braced: `const` declarations are scoped to the switch block, so an
+      // unbraced case body leaks them into sibling cases.
+    case 'powerups': {
+      const powerupTypes = ['bomb', 'rainbow', 'lightning'];
+      const powerupType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+      rewards.powerups = { [powerupType]: Math.floor(Math.random() * 3) + 1 };
+      break;
+    }
     }
     
     return rewards;

@@ -229,7 +229,7 @@ export const isValidEmail = (email) => {
  */
 export const isValidURL = (url) => {
   try {
-    // eslint-disable-next-line no-undef
+     
     new URL(url);
     return true;
   } catch {

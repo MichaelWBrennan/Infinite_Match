@@ -1,5 +1,6 @@
+import { randomUUID } from 'crypto';
 import { Logger } from '../core/logger/index.js';
-import { PostHog } from '@posthog/node';
+import { PostHog } from 'posthog-node';
 import posthog from 'posthog-js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 
@@ -10,13 +11,25 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 class UnifiedAnalyticsService {
   constructor() {
     this.logger = new Logger('UnifiedAnalyticsService');
+
+    // Stable id for this service instance, surfaced in API responses.
+    this.sessionId = randomUUID();
     
-    // Initialize PostHog server-side client
-    this.posthog = new PostHog(process.env.POSTHOG_API_KEY, {
-      host: process.env.POSTHOG_HOST || 'https://app.posthog.com',
-      flushAt: 20,
-      flushInterval: 10000,
-    });
+    // Initialize PostHog server-side client.
+    // The client throws when no API key is configured, and analytics must never
+    // prevent the game server from booting, so it stays optional.
+    this.posthog = null;
+    if (process.env.POSTHOG_API_KEY) {
+      this.posthog = new PostHog(process.env.POSTHOG_API_KEY, {
+        host: process.env.POSTHOG_HOST || 'https://app.posthog.com',
+        flushAt: 20,
+        flushInterval: 10000,
+      });
+    } else {
+      this.logger.warn(
+        'POSTHOG_API_KEY is not set - analytics events will be logged locally only',
+      );
+    }
 
     // Initialize PostHog client-side (for browser)
     if (typeof window !== 'undefined') {
@@ -60,13 +73,15 @@ class UnifiedAnalyticsService {
   async trackEvent(playerId, eventName, properties = {}) {
     try {
       const enrichedProperties = await this.enrichEventProperties(playerId, eventName, properties);
-      
+
       // Track on server-side
-      this.posthog.capture({
-        distinctId: playerId,
-        event: eventName,
-        properties: enrichedProperties
-      });
+      if (this.posthog) {
+        this.posthog.capture({
+          distinctId: playerId,
+          event: eventName,
+          properties: enrichedProperties
+        });
+      }
 
       // Track on client-side if available
       if (this.browserPostHog) {
@@ -96,7 +111,7 @@ class UnifiedAnalyticsService {
 
       if (userId) {
         await this.trackEvent(userId, eventName, enrichedProperties);
-      } else {
+      } else if (this.posthog) {
         // Track as anonymous event
         this.posthog.capture({
           distinctId: 'anonymous',
@@ -111,6 +126,70 @@ class UnifiedAnalyticsService {
       this.logger.error('Failed to track game event:', error);
       throw new ServiceError('GAME_EVENT_TRACKING_FAILED', error.message);
     }
+  }
+
+  /**
+   * Track a game session starting (replaces Unity Analytics).
+   */
+  async trackGameStart(userId, gameData = {}) {
+    return this.trackEvent(userId, 'game_started', {
+      ...gameData,
+      event_type: 'game_start',
+    });
+  }
+
+  /**
+   * Track a completed level (replaces Unity Analytics).
+   */
+  async trackLevelComplete(userId, levelData = {}) {
+    return this.trackEvent(userId, 'level_completed', {
+      ...levelData,
+      event_type: 'level_complete',
+    });
+  }
+
+  /**
+   * Track a match being made on the board.
+   */
+  async trackMatchMade(userId, matchData = {}) {
+    return this.trackEvent(userId, 'match_made', {
+      ...matchData,
+      event_type: 'match_made',
+    });
+  }
+
+  /**
+   * Track a power-up being consumed.
+   */
+  async trackPowerUpUsed(userId, powerUpData = {}) {
+    return this.trackEvent(userId, 'powerup_used', {
+      ...powerUpData,
+      event_type: 'powerup_used',
+    });
+  }
+
+  /**
+   * Track an in-game purchase.
+   */
+  async trackPurchase(userId, purchaseData = {}) {
+    return this.trackEvent(userId, 'purchase_made', {
+      ...purchaseData,
+      event_type: 'purchase',
+    });
+  }
+
+  /**
+   * Summary of what this service has recorded, used by the analytics endpoint.
+   */
+  getAnalyticsSummary() {
+    return {
+      service: 'unified-analytics',
+      initialized: this.isInitialized,
+      provider: 'posthog',
+      trackedPlayers: this.playerCohorts ? this.playerCohorts.size : 0,
+      trackedInsights: this.insights ? this.insights.size : 0,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
@@ -148,10 +227,12 @@ class UnifiedAnalyticsService {
       };
 
       // Create PostHog feature flag
-      await this.posthog.createFeatureFlag(experimentName, variants, {
-        active: true,
-        filters: targetAudience
-      });
+      if (this.posthog) {
+        await this.posthog.createFeatureFlag(experimentName, variants, {
+          active: true,
+          filters: targetAudience
+        });
+      }
 
       this.logger.info(`Created experiment: ${experimentName}`);
       return experiment;
@@ -167,7 +248,9 @@ class UnifiedAnalyticsService {
    */
   async getExperimentVariant(playerId, experimentName) {
     try {
-      const variant = await this.posthog.getFeatureFlag(experimentName, playerId);
+      const variant = this.posthog
+        ? await this.posthog.getFeatureFlag(experimentName, playerId)
+        : null;
       
       // Track experiment exposure
       await this.trackEvent(playerId, 'experiment_exposed', {
@@ -296,15 +379,17 @@ class UnifiedAnalyticsService {
    */
   async getDashboardData(timeRange = '7d') {
     try {
-      const insights = await this.posthog.getInsights({
-        events: [
-          { event: 'level_completed' },
-          { event: 'purchase_made' },
-          { event: 'session_start' }
-        ],
-        date_from: this.getDateFrom(timeRange),
-        date_to: new Date().toISOString()
-      });
+      const insights = this.posthog
+        ? await this.posthog.getInsights({
+          events: [
+            { event: 'level_completed' },
+            { event: 'purchase_made' },
+            { event: 'session_start' }
+          ],
+          date_from: this.getDateFrom(timeRange),
+          date_to: new Date().toISOString()
+        })
+        : null;
 
       return {
         insights,
@@ -321,14 +406,14 @@ class UnifiedAnalyticsService {
   getDateFrom(timeRange) {
     const now = new Date();
     switch (timeRange) {
-      case '1d':
-        return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-      case '7d':
-        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      case '30d':
-        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      default:
-        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    case '1d':
+      return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    case '7d':
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    case '30d':
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    default:
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     }
   }
 
@@ -341,10 +426,66 @@ class UnifiedAnalyticsService {
   }
 
   /**
+   * Initialize the service.
+   *
+   * Called by the server bootstrap; safe to invoke repeatedly because the
+   * constructor already performs the first-time setup.
+   */
+  async initialize() {
+    this.initializeAnalytics();
+    return true;
+  }
+
+  /**
+   * Track an error (used by the error-tracking middleware).
+   */
+  async trackError(userId, errorData = {}) {
+    try {
+      await this.trackEvent(userId, 'error_occurred', {
+        error_type: errorData.type || 'UnknownError',
+        error_message: errorData.message,
+        error_code: errorData.code || 'UNKNOWN',
+        level: errorData.level,
+        stack_trace: errorData.stackTrace,
+        request_id: errorData.request_id,
+        url: errorData.url,
+        method: errorData.method,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.error('Failed to track error:', error);
+    }
+  }
+
+  /**
+   * Report service health for the /health endpoint.
+   */
+  getHealthStatus() {
+    return {
+      service: 'unified-analytics',
+      status: this.isInitialized ? 'healthy' : 'not_initialized',
+      provider: 'posthog',
+      queuedEvents: this.eventQueue ? this.eventQueue.length : 0,
+      trackedPlayers: this.playerCohorts ? this.playerCohorts.size : 0,
+    };
+  }
+
+  /**
+   * Shut the service down. Alias of `cleanup()` - the server's graceful
+   * shutdown path calls `analyticsService.shutdown()`.
+   */
+  async shutdown() {
+    return this.cleanup();
+  }
+
+  /**
    * Cleanup resources
    */
   async cleanup() {
-    await this.posthog.shutdown();
+    if (this.posthog) {
+      await this.posthog.shutdown();
+    }
+    this.isInitialized = false;
     this.logger.info('Unified Analytics Service cleaned up');
   }
 }

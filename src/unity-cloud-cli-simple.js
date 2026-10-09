@@ -8,7 +8,7 @@
 import UnityGamingServicesHeadlessIntegration from './unity-cloud-headless-integration.js';
 import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
 import { spawn } from 'child_process';
-import { Logger } from '../core/logger/index.js';
+import { Logger } from './core/logger/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

@@ -1,11 +1,9 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import OpenAI from 'openai';
-import { HfInference } from '@huggingface/inference';
-import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import Redis from 'ioredis';
 import { LRUCache } from 'lru-cache';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
+import { createRedisClient } from './redis-client.js';
 
 /**
  * AI Content Generator - Industry-leading infinite content creation system
@@ -25,12 +23,10 @@ import { LRUCache } from 'lru-cache';
 class AIContentGenerator {
   constructor() {
     this.logger = new Logger('AIContentGenerator');
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.openai = createOpenAIClient();
 
     // Hugging Face for specialized models and cost optimization
-    this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+    this.hf = createHuggingFaceClient();
 
     // Platform-specific AI configurations
     this.platformConfigs = {
@@ -61,17 +57,10 @@ class AIContentGenerator {
     };
 
     // Supabase for content storage and retrieval
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Redis for caching AI responses
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD,
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
+    this.redis = createRedisClient();
 
     // In-memory LRU cache for frequently accessed data
     this.memoryCache = new LRUCache({
@@ -185,12 +174,12 @@ class AIContentGenerator {
     const prompt = this.buildPrompt(contentType, platformConfig, parameters);
     
     const response = await this.openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [{
-        role: "system",
+        role: 'system',
         content: `You are an expert game content generator. Generate ${contentType} optimized for ${platformConfig.contentStyle} style.`
       }, {
-        role: "user",
+        role: 'user',
         content: prompt
       }],
       max_tokens: platformConfig.maxLength,
@@ -408,25 +397,25 @@ class AIContentGenerator {
 
       let content;
       switch (contentType) {
-        case 'level':
-          content = await this.generateLevel(
-            playerProfile.currentLevel + 1,
-            this.calculateOptimalDifficulty(playerProfile),
-            playerProfile,
-          );
-          break;
-        case 'event':
-          content = await this.generateEvent(
-            this.selectOptimalEventType(playerProfile),
-            playerProfile.segment,
-            marketTrends,
-          );
-          break;
-        case 'offer':
-          content = await this.generatePersonalizedOffer(playerProfile, marketTrends);
-          break;
-        default:
-          throw new Error(`Unknown content type: ${contentType}`);
+      case 'level':
+        content = await this.generateLevel(
+          playerProfile.currentLevel + 1,
+          this.calculateOptimalDifficulty(playerProfile),
+          playerProfile,
+        );
+        break;
+      case 'event':
+        content = await this.generateEvent(
+          this.selectOptimalEventType(playerProfile),
+          playerProfile.segment,
+          marketTrends,
+        );
+        break;
+      case 'offer':
+        content = await this.generatePersonalizedOffer(playerProfile, marketTrends);
+        break;
+      default:
+        throw new Error(`Unknown content type: ${contentType}`);
       }
 
       // Apply personalization
@@ -1033,12 +1022,12 @@ Create a ${assetType} for a match-3 mobile game:
 
     try {
       const optimized = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [{
-          role: "system",
+          role: 'system',
           content: `You are an expert ASO specialist. Optimize this ${platform} store listing for maximum downloads and visibility. Focus on keywords, descriptions, and metadata that will improve search ranking and conversion rates.`
         }, {
-          role: "user",
+          role: 'user',
           content: `Optimize this store listing for ${platform}:\n${JSON.stringify(gameData, null, 2)}`
         }],
         max_tokens: 500,
@@ -1074,12 +1063,12 @@ Create a ${assetType} for a match-3 mobile game:
 
     try {
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [{
-          role: "system",
+          role: 'system',
           content: `Generate high-performing ASO keywords for a ${gameCategory} game on ${platform}. Focus on trending, relevant keywords that will improve search visibility and downloads.`
         }, {
-          role: "user",
+          role: 'user',
           content: `Generate 20-30 ASO keywords for a match-3 puzzle game on ${platform}`
         }],
         max_tokens: 300,
@@ -1100,12 +1089,12 @@ Create a ${assetType} for a match-3 mobile game:
   async analyzeCompetitorASO(competitorData) {
     try {
       const analysis = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [{
-          role: "system",
-          content: "Analyze competitor ASO strategies and provide actionable insights for improving our own store listing performance."
+          role: 'system',
+          content: 'Analyze competitor ASO strategies and provide actionable insights for improving our own store listing performance.'
         }, {
-          role: "user",
+          role: 'user',
           content: `Analyze these competitor store listings:\n${JSON.stringify(competitorData, null, 2)}`
         }],
         max_tokens: 400,

@@ -136,7 +136,7 @@ class LocalEconomyManager {
   }
 
   addCurrency(type, amount, source = 'gameplay') {
-    if (!this.currencies.hasOwnProperty(type)) {
+    if (!Object.prototype.hasOwnProperty.call(this.currencies, type)) {
       return { success: false, error: 'Invalid currency type' };
     }
 
@@ -163,7 +163,7 @@ class LocalEconomyManager {
   }
 
   spendCurrency(type, amount, reason = 'purchase') {
-    if (!this.currencies.hasOwnProperty(type)) {
+    if (!Object.prototype.hasOwnProperty.call(this.currencies, type)) {
       return { success: false, error: 'Invalid currency type' };
     }
 
@@ -188,7 +188,7 @@ class LocalEconomyManager {
   }
 
   setCurrency(type, amount) {
-    if (!this.currencies.hasOwnProperty(type)) {
+    if (!Object.prototype.hasOwnProperty.call(this.currencies, type)) {
       return { success: false, error: 'Invalid currency type' };
     }
 
@@ -348,30 +348,30 @@ class LocalEconomyManager {
 
   checkAchievementCompletion(achievement, data) {
     switch (achievement.type) {
-      case 'currency':
-        if (achievement.target.currency === data.currency) {
-          achievement.progress += data.amount;
-          return achievement.progress >= achievement.target.amount;
-        }
-        break;
-      case 'level':
-        if (data.levelId) {
-          achievement.progress += 1;
-          return achievement.progress >= achievement.target.levels;
-        }
-        break;
-      case 'powerup':
-        if (data.powerupType) {
-          achievement.progress += 1;
-          return achievement.progress >= achievement.target.powerups;
-        }
-        break;
-      case 'daily':
-        if (data.streak) {
-          achievement.progress = data.streak;
-          return achievement.progress >= achievement.target.days;
-        }
-        break;
+    case 'currency':
+      if (achievement.target.currency === data.currency) {
+        achievement.progress += data.amount;
+        return achievement.progress >= achievement.target.amount;
+      }
+      break;
+    case 'level':
+      if (data.levelId) {
+        achievement.progress += 1;
+        return achievement.progress >= achievement.target.levels;
+      }
+      break;
+    case 'powerup':
+      if (data.powerupType) {
+        achievement.progress += 1;
+        return achievement.progress >= achievement.target.powerups;
+      }
+      break;
+    case 'daily':
+      if (data.streak) {
+        achievement.progress = data.streak;
+        return achievement.progress >= achievement.target.days;
+      }
+      break;
     }
     
     return false;
@@ -393,16 +393,16 @@ class LocalEconomyManager {
     if (achievement.completed) return 100;
     
     switch (achievement.type) {
-      case 'currency':
-        return Math.min(100, Math.round((achievement.progress / achievement.target.amount) * 100));
-      case 'level':
-        return Math.min(100, Math.round((achievement.progress / achievement.target.levels) * 100));
-      case 'powerup':
-        return Math.min(100, Math.round((achievement.progress / achievement.target.powerups) * 100));
-      case 'daily':
-        return Math.min(100, Math.round((achievement.progress / achievement.target.days) * 100));
-      default:
-        return 0;
+    case 'currency':
+      return Math.min(100, Math.round((achievement.progress / achievement.target.amount) * 100));
+    case 'level':
+      return Math.min(100, Math.round((achievement.progress / achievement.target.levels) * 100));
+    case 'powerup':
+      return Math.min(100, Math.round((achievement.progress / achievement.target.powerups) * 100));
+    case 'daily':
+      return Math.min(100, Math.round((achievement.progress / achievement.target.days) * 100));
+    default:
+      return 0;
     }
   }
 

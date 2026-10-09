@@ -440,33 +440,33 @@ class PurchaseManager {
       // Process different types of rewards
       for (const [rewardType, rewardValue] of Object.entries(rewards)) {
         switch (rewardType) {
-          case 'coins':
-            await this.grantCurrency(playerId, 'coins', rewardValue);
-            break;
-          case 'gems':
-            await this.grantCurrency(playerId, 'gems', rewardValue);
-            break;
-          case 'extra_moves':
-            await this.grantPowerUp(playerId, 'extra_moves', rewardValue);
-            break;
-          case 'bomb_boost':
-            await this.grantPowerUp(playerId, 'bomb_boost', rewardValue);
-            break;
-          case 'rainbow_boost':
-            await this.grantPowerUp(playerId, 'rainbow_boost', rewardValue);
-            break;
-          case 'ad_free':
-            await this.grantEntitlement(playerId, 'ad_free', true);
-            break;
-          case 'all_themes':
-            await this.grantEntitlement(playerId, 'all_themes', true);
-            break;
-          case 'daily_coins':
-            await this.grantDailyReward(playerId, 'coins', rewardValue);
-            break;
-          case 'daily_gems':
-            await this.grantDailyReward(playerId, 'gems', rewardValue);
-            break;
+        case 'coins':
+          await this.grantCurrency(playerId, 'coins', rewardValue);
+          break;
+        case 'gems':
+          await this.grantCurrency(playerId, 'gems', rewardValue);
+          break;
+        case 'extra_moves':
+          await this.grantPowerUp(playerId, 'extra_moves', rewardValue);
+          break;
+        case 'bomb_boost':
+          await this.grantPowerUp(playerId, 'bomb_boost', rewardValue);
+          break;
+        case 'rainbow_boost':
+          await this.grantPowerUp(playerId, 'rainbow_boost', rewardValue);
+          break;
+        case 'ad_free':
+          await this.grantEntitlement(playerId, 'ad_free', true);
+          break;
+        case 'all_themes':
+          await this.grantEntitlement(playerId, 'all_themes', true);
+          break;
+        case 'daily_coins':
+          await this.grantDailyReward(playerId, 'coins', rewardValue);
+          break;
+        case 'daily_gems':
+          await this.grantDailyReward(playerId, 'gems', rewardValue);
+          break;
         }
       }
 

@@ -3,6 +3,12 @@ import { Logger } from '../../core/logger/index.js';
 
 const logger = new Logger('MongoService');
 
+/**
+ * The native driver collection returned by `Connection.db.collection()`.
+ * Derived rather than named so it stays correct across driver/mongoose upgrades.
+ */
+type MongoCollection = ReturnType<NonNullable<mongoose.Connection['db']>['collection']>;
+
 export class MongoService {
   private connection: mongoose.Connection | null = null;
 
@@ -29,16 +35,27 @@ export class MongoService {
     });
   }
 
+  /**
+   * Resolve a collection, failing fast when the service has no live connection.
+   * Centralizes the "MongoDB not connected" guard that every method repeated.
+   */
+  private requireCollection(name: string): MongoCollection {
+    const db = this.connection?.db;
+    if (!db) {
+      throw new Error('MongoDB not connected');
+    }
+    return db.collection(name);
+  }
+
   async connect(): Promise<boolean> {
     try {
-      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/evergreen-match3';
+      const mongoUri = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/evergreen-match3';
 
       await mongoose.connect(mongoUri, {
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
         bufferCommands: false,
-        bufferMaxEntries: 0,
       });
 
       this.connection = mongoose.connection;
@@ -65,10 +82,7 @@ export class MongoService {
   // Game Analytics Collection
   async saveGameAnalytics(analytics: any): Promise<boolean> {
     try {
-      const collection = this.connection?.db.collection('game_analytics');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('game_analytics');
 
       await collection.insertOne({
         ...analytics,
@@ -86,10 +100,7 @@ export class MongoService {
 
   async getGameAnalytics(playerId: string, startDate?: Date, endDate?: Date): Promise<any[]> {
     try {
-      const collection = this.connection?.db.collection('game_analytics');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('game_analytics');
 
       const query: any = { playerId };
       if (startDate || endDate) {
@@ -109,10 +120,7 @@ export class MongoService {
   // Player Behavior Collection
   async savePlayerBehavior(behavior: any): Promise<boolean> {
     try {
-      const collection = this.connection?.db.collection('player_behavior');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('player_behavior');
 
       await collection.updateOne(
         { playerId: behavior.playerId },
@@ -130,10 +138,7 @@ export class MongoService {
 
   async getPlayerBehavior(playerId: string): Promise<any | null> {
     try {
-      const collection = this.connection?.db.collection('player_behavior');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('player_behavior');
 
       const behavior = await collection.findOne({ playerId });
       return behavior;
@@ -146,10 +151,7 @@ export class MongoService {
   // Game Events Collection
   async saveGameEvent(event: any): Promise<boolean> {
     try {
-      const collection = this.connection?.db.collection('game_events');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('game_events');
 
       await collection.insertOne({
         ...event,
@@ -167,10 +169,7 @@ export class MongoService {
 
   async getGameEvents(playerId: string, eventType?: string, limit = 100): Promise<any[]> {
     try {
-      const collection = this.connection?.db.collection('game_events');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('game_events');
 
       const query: any = { playerId };
       if (eventType) query.type = eventType;
@@ -187,10 +186,7 @@ export class MongoService {
   // A/B Testing Collection
   async saveABTestResult(result: any): Promise<boolean> {
     try {
-      const collection = this.connection?.db.collection('ab_test_results');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('ab_test_results');
 
       await collection.insertOne({
         ...result,
@@ -208,10 +204,7 @@ export class MongoService {
 
   async getABTestResults(testId: string): Promise<any[]> {
     try {
-      const collection = this.connection?.db.collection('ab_test_results');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('ab_test_results');
 
       const results = await collection.find({ testId }).sort({ timestamp: -1 }).toArray();
 
@@ -225,10 +218,7 @@ export class MongoService {
   // Unity Cloud Logs Collection
   async saveUnityCloudLog(log: any): Promise<boolean> {
     try {
-      const collection = this.connection?.db.collection('unity_cloud_logs');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('unity_cloud_logs');
 
       await collection.insertOne({
         ...log,
@@ -246,10 +236,7 @@ export class MongoService {
 
   async getUnityCloudLogs(service?: string, level?: string, limit = 100): Promise<any[]> {
     try {
-      const collection = this.connection?.db.collection('unity_cloud_logs');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('unity_cloud_logs');
 
       const query: any = {};
       if (service) query.service = service;
@@ -267,10 +254,7 @@ export class MongoService {
   // Performance Metrics Collection
   async savePerformanceMetrics(metrics: any): Promise<boolean> {
     try {
-      const collection = this.connection?.db.collection('performance_metrics');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('performance_metrics');
 
       await collection.insertOne({
         ...metrics,
@@ -288,10 +272,7 @@ export class MongoService {
 
   async getPerformanceMetrics(service?: string, startDate?: Date, endDate?: Date): Promise<any[]> {
     try {
-      const collection = this.connection?.db.collection('performance_metrics');
-      if (!collection) {
-        throw new Error('MongoDB not connected');
-      }
+      const collection = this.requireCollection('performance_metrics');
 
       const query: any = {};
       if (service) query.service = service;
@@ -314,11 +295,12 @@ export class MongoService {
   async healthCheck(): Promise<{ status: string; latency: number }> {
     const start = Date.now();
     try {
-      if (!this.connection) {
+      const db = this.connection?.db;
+      if (!db) {
         throw new Error('MongoDB not connected');
       }
 
-      await this.connection.db.admin().ping();
+      await db.admin().ping();
       const latency = Date.now() - start;
       return { status: 'healthy', latency };
     } catch (error) {
@@ -335,11 +317,12 @@ export class MongoService {
   // Get database stats
   async getDatabaseStats(): Promise<any> {
     try {
-      if (!this.connection) {
+      const db = this.connection?.db;
+      if (!db) {
         throw new Error('MongoDB not connected');
       }
 
-      const stats = await this.connection.db.stats();
+      const stats = await db.stats();
       return stats;
     } catch (error) {
       logger.error('Failed to get database stats', error);

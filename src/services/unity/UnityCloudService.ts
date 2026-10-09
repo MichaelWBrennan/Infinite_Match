@@ -5,8 +5,8 @@
 
 import { Logger } from '../../core/logger/index.js';
 import { ErrorHandler, ServiceError, NetworkError } from '../../core/errors/ErrorHandler.js';
-import { AppConfig } from '../../core/config/index.js';
-import { ApiResponseBuilder } from '../../core/types/ApiResponse.js';
+import AppConfig from '../../core/config/index.js';
+import { ApiResponseBuilder, ApiResponse } from '../../core/types/ApiResponse.js';
 
 export interface UnityBuildConfig {
   target: 'webgl' | 'android' | 'ios';
@@ -144,7 +144,7 @@ export class UnityCloudService {
       this.logger.error('Failed to trigger Unity Cloud Build:', error);
       const errorInfo = ErrorHandler.handle(error as Error, { operation: 'triggerBuild', config });
       return ApiResponseBuilder.error(
-        errorInfo.context?.code || 'UNITY_BUILD_TRIGGER_ERROR',
+        errorInfo.context?.['code'] || 'UNITY_BUILD_TRIGGER_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
@@ -179,7 +179,7 @@ export class UnityCloudService {
         buildId,
       });
       return ApiResponseBuilder.error(
-        errorInfo.context?.code || 'UNITY_BUILD_STATUS_ERROR',
+        errorInfo.context?.['code'] || 'UNITY_BUILD_STATUS_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
@@ -229,7 +229,7 @@ export class UnityCloudService {
         targetPath,
       });
       return ApiResponseBuilder.error(
-        errorInfo.context?.code || 'UNITY_BUILD_DOWNLOAD_ERROR',
+        errorInfo.context?.['code'] || 'UNITY_BUILD_DOWNLOAD_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
@@ -261,7 +261,7 @@ export class UnityCloudService {
         config,
       });
       return ApiResponseBuilder.error(
-        errorInfo.context?.code || 'UNITY_WEBGL_CONFIG_ERROR',
+        errorInfo.context?.['code'] || 'UNITY_WEBGL_CONFIG_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
@@ -311,7 +311,7 @@ export class UnityCloudService {
         buildPath,
       });
       return ApiResponseBuilder.error(
-        errorInfo.context?.code || 'UNITY_WEBGL_OPTIMIZATION_ERROR',
+        errorInfo.context?.['code'] || 'UNITY_WEBGL_OPTIMIZATION_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,
@@ -346,7 +346,7 @@ export class UnityCloudService {
       this.logger.error('Failed to get Unity Cloud service health:', error);
       const errorInfo = ErrorHandler.handle(error as Error, { operation: 'getServiceHealth' });
       return ApiResponseBuilder.error(
-        errorInfo.context?.code || 'UNITY_HEALTH_ERROR',
+        errorInfo.context?.['code'] || 'UNITY_HEALTH_ERROR',
         errorInfo.message,
         errorInfo.type,
         errorInfo.recoverable,

@@ -227,20 +227,20 @@ class LocalTutorialEngine {
     const hints = [];
     
     switch (currentStep.id) {
-      case 'basic_matching':
-        hints.push('Look for groups of 3 or more gems of the same color');
-        hints.push('You can match horizontally or vertically');
-        break;
-      case 'bomb_powerup':
-        hints.push('Click on any gem to place the bomb');
-        hints.push('The bomb will clear a 3x3 area around it');
-        break;
-      case 'rainbow_powerup':
-        hints.push('Drag the rainbow to the row you want to clear');
-        hints.push('The rainbow clears the entire row');
-        break;
-      default:
-        hints.push('Follow the instructions on screen');
+    case 'basic_matching':
+      hints.push('Look for groups of 3 or more gems of the same color');
+      hints.push('You can match horizontally or vertically');
+      break;
+    case 'bomb_powerup':
+      hints.push('Click on any gem to place the bomb');
+      hints.push('The bomb will clear a 3x3 area around it');
+      break;
+    case 'rainbow_powerup':
+      hints.push('Drag the rainbow to the row you want to clear');
+      hints.push('The rainbow clears the entire row');
+      break;
+    default:
+      hints.push('Follow the instructions on screen');
     }
 
     return hints;

@@ -57,15 +57,15 @@ class PushNotificationService {
       // Initialize Firebase Admin SDK
       if (!admin.apps.length) {
         const serviceAccount = {
-          type: "service_account",
+          type: 'service_account',
           project_id: process.env.FIREBASE_PROJECT_ID,
           private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
           private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
           client_email: process.env.FIREBASE_CLIENT_EMAIL,
           client_id: process.env.FIREBASE_CLIENT_ID,
-          auth_uri: "https://accounts.google.com/o/oauth2/auth",
-          token_uri: "https://oauth2.googleapis.com/token",
-          auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+          auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+          token_uri: 'https://oauth2.googleapis.com/token',
+          auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
           client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`
         };
 
@@ -93,48 +93,48 @@ class PushNotificationService {
   // ===== NOTIFICATION TEMPLATES =====
   initializeTemplates() {
     this.templates.set('retention', {
-      title: "We miss you! 🎮",
-      body: "Your daily streak is waiting for you!",
+      title: 'We miss you! 🎮',
+      body: 'Your daily streak is waiting for you!',
       data: { type: 'retention', action: 'daily_streak' },
       priority: 'high',
       ttl: 3600
     });
 
     this.templates.set('fomo', {
-      title: "Limited Time Event! ⏰",
-      body: "Special rewards available for the next 2 hours!",
+      title: 'Limited Time Event! ⏰',
+      body: 'Special rewards available for the next 2 hours!',
       data: { type: 'fomo', action: 'limited_event' },
       priority: 'high',
       ttl: 7200
     });
 
     this.templates.set('social', {
-      title: "Your friend is playing! 👥",
-      body: "Join them for a multiplayer challenge!",
+      title: 'Your friend is playing! 👥',
+      body: 'Join them for a multiplayer challenge!',
       data: { type: 'social', action: 'friend_activity' },
       priority: 'medium',
       ttl: 1800
     });
 
     this.templates.set('progression', {
-      title: "Need help? 💡",
-      body: "We've got tips to help you advance!",
+      title: 'Need help? 💡',
+      body: 'We\'ve got tips to help you advance!',
       data: { type: 'progression', action: 'help_tips' },
       priority: 'medium',
       ttl: 3600
     });
 
     this.templates.set('comeback', {
-      title: "Welcome back! 🎉",
-      body: "Special comeback bonus waiting for you!",
+      title: 'Welcome back! 🎉',
+      body: 'Special comeback bonus waiting for you!',
       data: { type: 'comeback', action: 'welcome_bonus' },
       priority: 'high',
       ttl: 86400
     });
 
     this.templates.set('achievement', {
-      title: "Achievement Unlocked! 🏆",
-      body: "You've earned a new achievement!",
+      title: 'Achievement Unlocked! 🏆',
+      body: 'You\'ve earned a new achievement!',
       data: { type: 'achievement', action: 'view_achievement' },
       priority: 'low',
       ttl: 86400
@@ -505,41 +505,44 @@ class PushNotificationService {
   }
 
   async executeIntervention(userId, intervention) {
+    // Declared before the try so the catch can still report which action
+    // failed (`action` was only in scope inside the try).
+    const { action, template, priority } = intervention;
+
     try {
-      const { action, template, priority } = intervention;
       
       switch (action) {
-        case 'send_retention_notification':
-          await this.sendNotification(userId, template, {
-            intervention: true,
-            priority,
-            data: intervention.playerData
-          });
-          break;
+      case 'send_retention_notification':
+        await this.sendNotification(userId, template, {
+          intervention: true,
+          priority,
+          data: intervention.playerData
+        });
+        break;
           
-        case 'send_help_notification':
-          await this.sendNotification(userId, template, {
-            intervention: true,
-            priority,
-            data: intervention.playerData
-          });
-          break;
+      case 'send_help_notification':
+        await this.sendNotification(userId, template, {
+          intervention: true,
+          priority,
+          data: intervention.playerData
+        });
+        break;
           
-        case 'send_social_notification':
-          await this.sendNotification(userId, template, {
-            intervention: true,
-            priority,
-            data: intervention.playerData
-          });
-          break;
+      case 'send_social_notification':
+        await this.sendNotification(userId, template, {
+          intervention: true,
+          priority,
+          data: intervention.playerData
+        });
+        break;
           
-        case 'send_premium_notification':
-          await this.sendNotification(userId, template, {
-            intervention: true,
-            priority,
-            data: intervention.playerData
-          });
-          break;
+      case 'send_premium_notification':
+        await this.sendNotification(userId, template, {
+          intervention: true,
+          priority,
+          data: intervention.playerData
+        });
+        break;
       }
 
       logger.info('Intervention executed', { userId, action, template });
@@ -666,7 +669,7 @@ class PushNotificationService {
     
     // Check quiet hours
     const now = new Date();
-    const userTime = new Date(now.toLocaleString("en-US", { timeZone: preferences.timezone }));
+    const userTime = new Date(now.toLocaleString('en-US', { timeZone: preferences.timezone }));
     const currentHour = userTime.getHours();
     const quietStart = parseInt(preferences.quietHours.start.split(':')[0]);
     const quietEnd = parseInt(preferences.quietHours.end.split(':')[0]);
@@ -677,12 +680,12 @@ class PushNotificationService {
     
     // Check template-specific preferences
     switch (templateKey) {
-      case 'retention': return preferences.retention;
-      case 'fomo': return preferences.fomo;
-      case 'social': return preferences.social;
-      case 'progression': return preferences.progression;
-      case 'achievement': return preferences.achievement;
-      default: return true;
+    case 'retention': return preferences.retention;
+    case 'fomo': return preferences.fomo;
+    case 'social': return preferences.social;
+    case 'progression': return preferences.progression;
+    case 'achievement': return preferences.achievement;
+    default: return true;
     }
   }
 
@@ -708,7 +711,7 @@ class PushNotificationService {
       const users = [];
       
       // Simulate user data based on target audience
-      for (let i = 0; i < targetAudience.count || 100; i++) {
+      for (let i = 0; i < (targetAudience.count || 100); i++) {
         users.push({
           id: `user_${i}`,
           preferences: await this.getUserPreferences(`user_${i}`)
@@ -728,16 +731,16 @@ class PushNotificationService {
       if (!trigger) return false;
 
       switch (triggerName) {
-        case 'churn_risk':
-          return playerData.churnProbability >= trigger.threshold;
-        case 'progression_stall':
-          return playerData.daysWithoutProgress >= trigger.threshold;
-        case 'social_isolation':
-          return playerData.daysWithoutSocial >= trigger.threshold;
-        case 'high_value_player':
-          return playerData.totalSpent >= trigger.threshold;
-        default:
-          return false;
+      case 'churn_risk':
+        return playerData.churnProbability >= trigger.threshold;
+      case 'progression_stall':
+        return playerData.daysWithoutProgress >= trigger.threshold;
+      case 'social_isolation':
+        return playerData.daysWithoutSocial >= trigger.threshold;
+      case 'high_value_player':
+        return playerData.totalSpent >= trigger.threshold;
+      default:
+        return false;
       }
     } catch (error) {
       logger.error('Failed to evaluate trigger', { error: error.message, userId, triggerName });

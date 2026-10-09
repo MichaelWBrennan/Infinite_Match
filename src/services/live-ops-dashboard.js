@@ -402,31 +402,34 @@ class LiveOpsDashboard {
   async executeAction(player, action) {
     try {
       switch (action.type) {
-        case 'notification':
-          await pushNotificationService.sendNotification(
-            player.id,
-            action.template,
-            { campaignId: action.campaignId, ...action.data }
-          );
-          break;
+      case 'notification':
+        await pushNotificationService.sendNotification(
+          player.id,
+          action.template,
+          { campaignId: action.campaignId, ...action.data }
+        );
+        break;
           
-        case 'event':
-          const eventId = await this.createEvent({
-            templateKey: action.template,
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-            targetAudience: { playerIds: [player.id] }
-          });
-          await this.deployEvent(eventId);
-          break;
+        // Braced: `const` declarations are scoped to the switch block, so an
+        // unbraced case body leaks them into sibling cases.
+      case 'event': {
+        const eventId = await this.createEvent({
+          templateKey: action.template,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          targetAudience: { playerIds: [player.id] }
+        });
+        await this.deployEvent(eventId);
+        break;
+      }
           
-        case 'reward':
-          await this.giveReward(player.id, action);
-          break;
+      case 'reward':
+        await this.giveReward(player.id, action);
+        break;
           
-        case 'social':
-          await this.triggerSocialAction(player.id, action);
-          break;
+      case 'social':
+        await this.triggerSocialAction(player.id, action);
+        break;
       }
     } catch (error) {
       logger.error('Failed to execute action', { error: error.message, playerId: player.id, action });
@@ -460,7 +463,7 @@ class LiveOpsDashboard {
       actions: [
         { type: 'notification', template: 'progression', delay: 0 },
         { type: 'reward', amount: 100, currency: 'coins', delay: 300 },
-        { type: 'hint', type: 'level_hint', delay: 600 }
+        { type: 'hint', template: 'level_hint', delay: 600 }
       ],
       cooldown: 7200 // 2 hours
     });
@@ -490,7 +493,7 @@ class LiveOpsDashboard {
         { type: 'notification', template: 'comeback', delay: 0 },
         { type: 'reward', amount: 500, currency: 'coins', delay: 300 },
         { type: 'event', template: 'limited_time_offer', delay: 600 },
-        { type: 'personalized', type: 'custom_offer', delay: 1200 }
+        { type: 'personalized', template: 'custom_offer', delay: 1200 }
       ],
       cooldown: 1800 // 30 minutes
     });
@@ -527,8 +530,10 @@ class LiveOpsDashboard {
   }
 
   async queueIntervention(intervention) {
+    // Declared before the try so the catch can still log which player failed.
+    const { playerId, ruleName } = intervention;
+
     try {
-      const { playerId, ruleName } = intervention;
       const interventionKey = `${playerId}:${ruleName}`;
       
       // Check cooldown
@@ -548,8 +553,10 @@ class LiveOpsDashboard {
   }
 
   async processIntervention(intervention) {
+    // Declared before the try so the catch can still log which player failed.
+    const { playerId, rule, actions } = intervention;
+
     try {
-      const { playerId, rule, actions } = intervention;
       
       for (const action of actions) {
         const delay = action.delay || 0;
@@ -646,31 +653,31 @@ class LiveOpsDashboard {
   async executeABTestVariant(player, abTest, variant) {
     try {
       switch (abTest.type) {
-        case 'event':
-          await this.createEvent({
-            templateKey: variant.templateKey,
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            targetAudience: { playerIds: [player.id] }
-          });
-          break;
+      case 'event':
+        await this.createEvent({
+          templateKey: variant.templateKey,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          targetAudience: { playerIds: [player.id] }
+        });
+        break;
           
-        case 'campaign':
-          await this.createCampaign({
-            templateKey: variant.templateKey,
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            targetAudience: { playerIds: [player.id] }
-          });
-          break;
+      case 'campaign':
+        await this.createCampaign({
+          templateKey: variant.templateKey,
+          startTime: new Date(),
+          endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          targetAudience: { playerIds: [player.id] }
+        });
+        break;
           
-        case 'notification':
-          await pushNotificationService.sendNotification(
-            player.id,
-            variant.template,
-            { abTestId: abTest.id, variantId: variant.id }
-          );
-          break;
+      case 'notification':
+        await pushNotificationService.sendNotification(
+          player.id,
+          variant.template,
+          { abTestId: abTest.id, variantId: variant.id }
+        );
+        break;
       }
 
       abTest.metrics.impressions++;

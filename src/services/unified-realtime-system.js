@@ -3,9 +3,9 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { WeatherService } from './weather-service.js';
 import { RealtimeCalendarService } from './realtime-calendar-service.js';
 import { RealtimeEventService } from './realtime-event-service.js';
-import { createClient } from '@supabase/supabase-js';
 import cron from 'node-cron';
 import moment from 'moment-timezone';
+import { createSupabaseClient } from './ai-clients.js';
 
 /**
  * Unified Real-Time System
@@ -15,7 +15,7 @@ class UnifiedRealtimeSystem {
   constructor(io = null) {
     this.logger = new Logger('UnifiedRealtimeSystem');
 
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Initialize all services
     this.weatherService = new WeatherService();
@@ -165,10 +165,10 @@ class UnifiedRealtimeSystem {
       // Get weather data
       const weatherData = playerLocation
         ? await this.weatherService.getCurrentWeather(
-            playerLocation.latitude,
-            playerLocation.longitude,
-            playerLocation.name,
-          )
+          playerLocation.latitude,
+          playerLocation.longitude,
+          playerLocation.name,
+        )
         : null;
 
       // Get calendar events
@@ -186,11 +186,11 @@ class UnifiedRealtimeSystem {
         timestamp: new Date().toISOString(),
         weather: weatherData
           ? {
-              current: weatherData.current,
-              type: weatherData.weather.type,
-              gameplayEffects: weatherData.gameplay,
-              isActive: true,
-            }
+            current: weatherData.current,
+            type: weatherData.weather.type,
+            gameplayEffects: weatherData.gameplay,
+            isActive: true,
+          }
           : null,
         calendar: {
           current: calendarEvents,
@@ -252,12 +252,12 @@ class UnifiedRealtimeSystem {
 
       const location = data
         ? {
-            latitude: data.latitude,
-            longitude: data.longitude,
-            name: data.location_name,
-            country: data.country,
-            timezone: data.timezone,
-          }
+          latitude: data.latitude,
+          longitude: data.longitude,
+          name: data.location_name,
+          country: data.country,
+          timezone: data.timezone,
+        }
         : null;
 
       // Cache the result
@@ -324,33 +324,33 @@ class UnifiedRealtimeSystem {
     if (weatherData) {
       const weatherType = weatherData.weather.type;
       switch (weatherType) {
-        case 'rain':
-          features.push({
-            type: 'weather_rain',
-            name: 'Rainy Day Bonus',
-            description: 'Earn extra coins during rainy weather!',
-            multiplier: weatherData.gameplay.scoreMultiplier,
-            icon: '🌧️',
-          });
-          break;
-        case 'snow':
-          features.push({
-            type: 'weather_snow',
-            name: 'Winter Wonderland',
-            description: 'Special winter rewards available!',
-            multiplier: weatherData.gameplay.scoreMultiplier,
-            icon: '❄️',
-          });
-          break;
-        case 'thunderstorm':
-          features.push({
-            type: 'weather_storm',
-            name: 'Storm Power',
-            description: 'High energy events with amazing rewards!',
-            multiplier: weatherData.gameplay.scoreMultiplier,
-            icon: '⛈️',
-          });
-          break;
+      case 'rain':
+        features.push({
+          type: 'weather_rain',
+          name: 'Rainy Day Bonus',
+          description: 'Earn extra coins during rainy weather!',
+          multiplier: weatherData.gameplay.scoreMultiplier,
+          icon: '🌧️',
+        });
+        break;
+      case 'snow':
+        features.push({
+          type: 'weather_snow',
+          name: 'Winter Wonderland',
+          description: 'Special winter rewards available!',
+          multiplier: weatherData.gameplay.scoreMultiplier,
+          icon: '❄️',
+        });
+        break;
+      case 'thunderstorm':
+        features.push({
+          type: 'weather_storm',
+          name: 'Storm Power',
+          description: 'High energy events with amazing rewards!',
+          multiplier: weatherData.gameplay.scoreMultiplier,
+          icon: '⛈️',
+        });
+        break;
       }
     }
 

@@ -1,6 +1,6 @@
 import { Logger } from '../core/logger/index.js';
 import { register, collectDefaultMetrics, Counter, Histogram, Gauge } from 'prom-client';
-import prometheusApiMetrics from 'prometheus-api-metrics';
+
 
 /**
  * Prometheus Monitoring Service

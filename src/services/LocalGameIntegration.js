@@ -188,26 +188,26 @@ class LocalGameIntegration {
     this.logger.info('Received Unity message:', { data });
     
     switch (data.action) {
-      case 'get_game_data':
-        this.sendUnityMessage('game_data', this.getUnityGameData());
-        break;
-      case 'update_game_data':
-        this.updateUnityGameData(data.data);
-        break;
-      case 'level_complete':
-        this.handleLevelComplete(data.data);
-        break;
-      case 'tutorial_step_complete':
-        this.handleTutorialStepComplete(data.data);
-        break;
-      case 'use_item':
-        this.handleUseItem(data.data);
-        break;
-      case 'claim_daily_reward':
-        this.handleClaimDailyReward();
-        break;
-      default:
-        this.logger.warn('Unknown Unity message action:', { action: data.action });
+    case 'get_game_data':
+      this.sendUnityMessage('game_data', this.getUnityGameData());
+      break;
+    case 'update_game_data':
+      this.updateUnityGameData(data.data);
+      break;
+    case 'level_complete':
+      this.handleLevelComplete(data.data);
+      break;
+    case 'tutorial_step_complete':
+      this.handleTutorialStepComplete(data.data);
+      break;
+    case 'use_item':
+      this.handleUseItem(data.data);
+      break;
+    case 'claim_daily_reward':
+      this.handleClaimDailyReward();
+      break;
+    default:
+      this.logger.warn('Unknown Unity message action:', { action: data.action });
     }
   }
 

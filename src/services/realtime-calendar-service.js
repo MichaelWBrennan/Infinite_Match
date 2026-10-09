@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import { createClient } from '@supabase/supabase-js';
 import cron from 'node-cron';
 import moment from 'moment-timezone';
+import { createSupabaseClient } from './ai-clients.js';
 
 /**
  * Real-Time Calendar Service
@@ -12,7 +12,7 @@ class RealtimeCalendarService {
   constructor() {
     this.logger = new Logger('RealtimeCalendarService');
 
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Calendar configuration
     this.timezone = process.env.DEFAULT_TIMEZONE || 'UTC';
@@ -421,18 +421,18 @@ class RealtimeCalendarService {
       let nextOccurrence = null;
 
       switch (pattern.type) {
-        case 'daily':
-          nextOccurrence = lastOccurrence.clone().add(1, 'day');
-          break;
-        case 'weekly':
-          nextOccurrence = lastOccurrence.clone().add(1, 'week');
-          break;
-        case 'monthly':
-          nextOccurrence = lastOccurrence.clone().add(1, 'month');
-          break;
-        case 'custom':
-          nextOccurrence = lastOccurrence.clone().add(pattern.interval, pattern.unit);
-          break;
+      case 'daily':
+        nextOccurrence = lastOccurrence.clone().add(1, 'day');
+        break;
+      case 'weekly':
+        nextOccurrence = lastOccurrence.clone().add(1, 'week');
+        break;
+      case 'monthly':
+        nextOccurrence = lastOccurrence.clone().add(1, 'month');
+        break;
+      case 'custom':
+        nextOccurrence = lastOccurrence.clone().add(pattern.interval, pattern.unit);
+        break;
       }
 
       if (nextOccurrence && now.isAfter(nextOccurrence)) {

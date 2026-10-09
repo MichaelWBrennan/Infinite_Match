@@ -1,12 +1,10 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import OpenAI from 'openai';
-import { HfInference } from '@huggingface/inference';
-import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import Redis from 'ioredis';
 import { LRUCache } from 'lru-cache';
 import { PostHogAnalyticsService } from './analytics/posthog-service.js';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
+import { createRedisClient } from './redis-client.js';
 
 /**
  * AI Personalization Engine - Advanced player personalization using ML and AI
@@ -24,27 +22,18 @@ class AIPersonalizationEngine {
   constructor() {
     this.logger = new Logger('AIPersonalizationEngine');
 
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.openai = createOpenAIClient();
 
     // Hugging Face for specialized personalization models
-    this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+    this.hf = createHuggingFaceClient();
 
     // PostHog for advanced analytics and A/B testing
     this.analytics = new PostHogAnalyticsService();
 
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    this.supabase = createSupabaseClient();
 
     // Redis for caching player profiles and predictions
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD,
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
+    this.redis = createRedisClient();
 
     // In-memory LRU cache for frequently accessed profiles
     this.profileCache = new LRUCache({
@@ -84,6 +73,7 @@ class AIPersonalizationEngine {
     this.predictionModels = new Map();
 
     this.initializePersonalizationModels();
+
     this.startRealTimeProcessor();
     this.startModelTraining();
     this.startPerformanceMonitor();
@@ -870,6 +860,36 @@ Return JSON with:
     await this.trainOfferRecommendationModel(trainingData);
   }
 
+  /**
+   * Seed the default (untrained) personalization models.
+   *
+   * Every `trainXModel()` reads with `this.mlModels.get(id) || { weights: {},
+   * accuracy: 0 }`, so registering the known ids up front means the engine
+   * reports a stable model set before any training data has been seen.
+   */
+  initializePersonalizationModels() {
+    const defaultModels = [
+      'content_recommendation',
+      'difficulty_adjustment',
+      'churn_prediction',
+      'offer_recommendation',
+    ];
+
+    for (const modelId of defaultModels) {
+      if (!this.mlModels.has(modelId)) {
+        this.mlModels.set(modelId, {
+          weights: {},
+          accuracy: 0,
+          lastTrained: null,
+        });
+      }
+    }
+
+    this.logger.info(
+      `Initialized ${this.mlModels.size} personalization models: ${defaultModels.join(', ')}`,
+    );
+  }
+
   async trainContentRecommendationModel(trainingData) {
     const modelId = 'content_recommendation';
     const features = this.extractFeatures(trainingData, 'content');
@@ -936,30 +956,30 @@ Return JSON with:
       const features = {};
       
       switch (modelType) {
-        case 'content':
-          features.level = data.behaviorData.level || 0;
-          features.completionRate = data.behaviorData.completionRate || 0;
-          features.sessionDuration = data.behaviorData.sessionDuration || 0;
-          features.engagementLevel = data.behaviorData.engagementLevel || 0;
-          break;
-        case 'difficulty':
-          features.currentDifficulty = data.behaviorData.difficulty || 0;
-          features.performance = data.behaviorData.performance || 0;
-          features.movesUsed = data.behaviorData.movesUsed || 0;
-          features.timeSpent = data.behaviorData.timeSpent || 0;
-          break;
-        case 'churn':
-          features.sessionFrequency = data.behaviorData.sessionFrequency || 0;
-          features.lastActive = data.behaviorData.lastActive || 0;
-          features.engagementDrop = data.behaviorData.engagementDrop || 0;
-          features.spendingDecrease = data.behaviorData.spendingDecrease || 0;
-          break;
-        case 'offers':
-          features.spendingTendency = data.behaviorData.spendingTendency || 0;
-          features.priceSensitivity = data.behaviorData.priceSensitivity || 0;
-          features.purchaseHistory = data.behaviorData.purchaseHistory || 0;
-          features.currencyBalance = data.behaviorData.currencyBalance || 0;
-          break;
+      case 'content':
+        features.level = data.behaviorData.level || 0;
+        features.completionRate = data.behaviorData.completionRate || 0;
+        features.sessionDuration = data.behaviorData.sessionDuration || 0;
+        features.engagementLevel = data.behaviorData.engagementLevel || 0;
+        break;
+      case 'difficulty':
+        features.currentDifficulty = data.behaviorData.difficulty || 0;
+        features.performance = data.behaviorData.performance || 0;
+        features.movesUsed = data.behaviorData.movesUsed || 0;
+        features.timeSpent = data.behaviorData.timeSpent || 0;
+        break;
+      case 'churn':
+        features.sessionFrequency = data.behaviorData.sessionFrequency || 0;
+        features.lastActive = data.behaviorData.lastActive || 0;
+        features.engagementDrop = data.behaviorData.engagementDrop || 0;
+        features.spendingDecrease = data.behaviorData.spendingDecrease || 0;
+        break;
+      case 'offers':
+        features.spendingTendency = data.behaviorData.spendingTendency || 0;
+        features.priceSensitivity = data.behaviorData.priceSensitivity || 0;
+        features.purchaseHistory = data.behaviorData.purchaseHistory || 0;
+        features.currencyBalance = data.behaviorData.currencyBalance || 0;
+        break;
       }
       
       return features;
@@ -969,16 +989,16 @@ Return JSON with:
   extractLabels(trainingData, modelType) {
     return trainingData.map(data => {
       switch (modelType) {
-        case 'content':
-          return data.behaviorData.contentPreference || 0;
-        case 'difficulty':
-          return data.behaviorData.optimalDifficulty || 0;
-        case 'churn':
-          return data.behaviorData.churnRisk || 0;
-        case 'offers':
-          return data.behaviorData.offerAcceptance || 0;
-        default:
-          return 0;
+      case 'content':
+        return data.behaviorData.contentPreference || 0;
+      case 'difficulty':
+        return data.behaviorData.optimalDifficulty || 0;
+      case 'churn':
+        return data.behaviorData.churnRisk || 0;
+      case 'offers':
+        return data.behaviorData.offerAcceptance || 0;
+      default:
+        return 0;
       }
     });
   }
@@ -1092,10 +1112,14 @@ Return JSON with:
   }
 
   // ==================== EXISTING HELPER METHODS ====================
-  async storePersonalizedOffers(playerId, offers) {}
-  async storeDifficultyOptimization(optimization) {}
-  async storeChurnPrediction(prediction) {}
+  // Persistence hook for generated offers. `storeDifficultyOptimization` and
+  // `storeChurnPrediction` are defined earlier in the class; the duplicated
+  // stubs that used to live here shadowed them.
   async storePersonalizedOffers(playerId, offers) {}
 }
 
 export { AIPersonalizationEngine };
+
+// Shared singleton instance used by the live-ops and intervention services.
+// Clients are constructed lazily, so creating this at import time is safe.
+export const aiPersonalizationEngine = new AIPersonalizationEngine();

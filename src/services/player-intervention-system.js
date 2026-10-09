@@ -97,7 +97,7 @@ class PlayerInterventionSystem {
         { type: 'personalized_reward', amount: 500, currency: 'coins', delay: 30 },
         { type: 'exclusive_event', template: 'comeback_special', delay: 300 },
         { type: 'social_invite', template: 'friend_challenge', delay: 600 },
-        { type: 'progression_boost', type: 'level_skip', delay: 900 }
+        { type: 'progression_boost', template: 'level_skip', delay: 900 }
       ],
       cooldown: 1800, // 30 minutes
       successThreshold: 0.7
@@ -131,9 +131,9 @@ class PlayerInterventionSystem {
       },
       actions: [
         { type: 'notification', template: 'progression', delay: 0 },
-        { type: 'hint', type: 'level_hint', delay: 300 },
+        { type: 'hint', template: 'level_hint', delay: 300 },
         { type: 'reward', amount: 100, currency: 'coins', delay: 600 },
-        { type: 'power_up', type: 'free_power_up', delay: 900 }
+        { type: 'power_up', template: 'free_power_up', delay: 900 }
       ],
       cooldown: 7200, // 2 hours
       successThreshold: 0.5
@@ -149,10 +149,10 @@ class PlayerInterventionSystem {
       },
       actions: [
         { type: 'immediate_notification', template: 'progression', delay: 0 },
-        { type: 'difficulty_adjustment', type: 'reduce_difficulty', delay: 60 },
+        { type: 'difficulty_adjustment', template: 'reduce_difficulty', delay: 60 },
         { type: 'reward', amount: 300, currency: 'coins', delay: 300 },
-        { type: 'hint', type: 'advanced_hint', delay: 600 },
-        { type: 'power_up', type: 'super_power_up', delay: 900 }
+        { type: 'hint', template: 'advanced_hint', delay: 600 },
+        { type: 'power_up', template: 'super_power_up', delay: 900 }
       ],
       cooldown: 3600, // 1 hour
       successThreshold: 0.6
@@ -204,10 +204,10 @@ class PlayerInterventionSystem {
       },
       actions: [
         { type: 'immediate_notification', template: 'comeback', delay: 0 },
-        { type: 'personalized_offer', type: 'custom_package', delay: 300 },
+        { type: 'personalized_offer', template: 'custom_package', delay: 300 },
         { type: 'exclusive_event', template: 'vip_event', delay: 600 },
         { type: 'reward', amount: 1000, currency: 'coins', delay: 900 },
-        { type: 'priority_support', type: 'vip_support', delay: 1200 }
+        { type: 'priority_support', template: 'vip_support', delay: 1200 }
       ],
       cooldown: 1800, // 30 minutes
       successThreshold: 0.8
@@ -223,11 +223,11 @@ class PlayerInterventionSystem {
       },
       actions: [
         { type: 'immediate_notification', template: 'comeback', delay: 0 },
-        { type: 'personalized_offer', type: 'exclusive_package', delay: 180 },
+        { type: 'personalized_offer', template: 'exclusive_package', delay: 180 },
         { type: 'exclusive_event', template: 'whale_event', delay: 360 },
         { type: 'reward', amount: 2500, currency: 'coins', delay: 540 },
-        { type: 'priority_support', type: 'concierge_support', delay: 720 },
-        { type: 'social_recognition', type: 'vip_status', delay: 900 }
+        { type: 'priority_support', template: 'concierge_support', delay: 720 },
+        { type: 'social_recognition', template: 'vip_status', delay: 900 }
       ],
       cooldown: 900, // 15 minutes
       successThreshold: 0.9
@@ -261,7 +261,7 @@ class PlayerInterventionSystem {
       },
       actions: [
         { type: 'notification', template: 'progression', delay: 0 },
-        { type: 'content_recommendation', type: 'engaging_content', delay: 300 },
+        { type: 'content_recommendation', template: 'engaging_content', delay: 300 },
         { type: 'reward', amount: 100, currency: 'coins', delay: 600 }
       ],
       cooldown: 10800, // 3 hours
@@ -565,8 +565,10 @@ class PlayerInterventionSystem {
   }
 
   async executeIntervention(intervention) {
+    // Declared before the try so the catch can still log which player failed.
+    const { playerId, rule, actions } = intervention;
+
     try {
-      const { playerId, rule, actions } = intervention;
       
       intervention.status = 'executing';
       intervention.startedAt = Date.now();

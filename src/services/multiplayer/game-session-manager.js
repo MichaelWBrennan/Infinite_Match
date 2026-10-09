@@ -416,14 +416,14 @@ class GameSessionManager {
 
     // Game-specific validation
     switch (session.gameType) {
-      case 'match3_versus':
-        return this.validateMatch3Move(session, move);
-      case 'match3_tournament':
-        return this.validateMatch3Move(session, move);
-      case 'match3_coop':
-        return this.validateMatch3Move(session, move);
-      default:
-        return false;
+    case 'match3_versus':
+      return this.validateMatch3Move(session, move);
+    case 'match3_tournament':
+      return this.validateMatch3Move(session, move);
+    case 'match3_coop':
+      return this.validateMatch3Move(session, move);
+    default:
+      return false;
     }
   }
 
@@ -464,16 +464,16 @@ class GameSessionManager {
 
     // Game-specific move processing
     switch (session.gameType) {
-      case 'match3_versus':
-        return this.processMatch3Move(session, playerId, move);
-      case 'match3_tournament':
-        return this.processMatch3Move(session, playerId, move);
-      case 'match3_coop':
-        return this.processMatch3Move(session, playerId, move);
-      default:
-        result.success = false;
-        result.error = 'Unknown game type';
-        return result;
+    case 'match3_versus':
+      return this.processMatch3Move(session, playerId, move);
+    case 'match3_tournament':
+      return this.processMatch3Move(session, playerId, move);
+    case 'match3_coop':
+      return this.processMatch3Move(session, playerId, move);
+    default:
+      result.success = false;
+      result.error = 'Unknown game type';
+      return result;
     }
   }
 
@@ -651,14 +651,14 @@ class GameSessionManager {
 
     // Game-specific end conditions
     switch (session.gameType) {
-      case 'match3_versus':
-        return this.checkMatch3VersusEndConditions(session);
-      case 'match3_tournament':
-        return this.checkMatch3TournamentEndConditions(session);
-      case 'match3_coop':
-        return this.checkMatch3CoopEndConditions(session);
-      default:
-        return result;
+    case 'match3_versus':
+      return this.checkMatch3VersusEndConditions(session);
+    case 'match3_tournament':
+      return this.checkMatch3TournamentEndConditions(session);
+    case 'match3_coop':
+      return this.checkMatch3CoopEndConditions(session);
+    default:
+      return result;
     }
   }
 

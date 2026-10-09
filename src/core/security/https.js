@@ -81,13 +81,13 @@ export const httpsHeaders = (req, res, next) => {
   // Content Security Policy with HTTPS enforcement
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self' https:; " +
-      "script-src 'self' 'unsafe-inline' https:; " +
-      "style-src 'self' 'unsafe-inline' https:; " +
-      "img-src 'self' data: https:; " +
-      "font-src 'self' https:; " +
-      "connect-src 'self' https:; " +
-      "frame-ancestors 'none'; " +
+    'default-src \'self\' https:; ' +
+      'script-src \'self\' \'unsafe-inline\' https:; ' +
+      'style-src \'self\' \'unsafe-inline\' https:; ' +
+      'img-src \'self\' data: https:; ' +
+      'font-src \'self\' https:; ' +
+      'connect-src \'self\' https:; ' +
+      'frame-ancestors \'none\'; ' +
       'upgrade-insecure-requests',
   );
 

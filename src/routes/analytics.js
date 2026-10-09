@@ -104,7 +104,7 @@ router.get('/arpu', security.sessionValidation, async (req, res) => {
               totalRevenueUsd += Number(evt.amountUsd || 0);
               if (evt.playerId) payerIds.add(evt.playerId);
             }
-          } catch (_) {}
+          } catch (_) { /* skip malformed or unreadable line */ }
         }
       } catch (_) {
         // file may not exist yet
