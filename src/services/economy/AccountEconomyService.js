@@ -9,6 +9,8 @@ import { AppConfig } from '../../core/config/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { aiCacheManager } from '../ai-cache-manager.js';
 import security from '../../core/security/index.js';
+import crypto from 'crypto';
+import { pickWheelReward } from './item-catalog.js';
 
 const logger = new Logger('AccountEconomyService');
 
@@ -560,6 +562,50 @@ class AccountEconomyService {
   /**
    * Claim daily reward
    */
+  /**
+   * Serialise work for one player. Used so two requests cannot both pass a
+   * once-per-day check before either has written its result.
+   */
+  withPlayerLock(playerId, fn) {
+    if (!this._playerLocks) this._playerLocks = new Map();
+    const previous = this._playerLocks.get(playerId) || Promise.resolve();
+    const run = previous.catch(() => {}).then(fn);
+    const tail = run.catch(() => {});
+    this._playerLocks.set(playerId, tail);
+    tail.then(() => {
+      if (this._playerLocks.get(playerId) === tail) this._playerLocks.delete(playerId);
+    });
+    return run;
+  }
+
+  /**
+   * Lucky wheel: one free spin per calendar day. The reward is chosen and granted
+   * on the server.
+   */
+  async spinLuckyWheel(playerId, randomInt = (max) => crypto.randomInt(max)) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const now = new Date();
+      const lastSpin = playerEconomy.wheel?.lastSpin ? new Date(playerEconomy.wheel.lastSpin) : null;
+      if (lastSpin && this.isSameDay(now, lastSpin)) {
+        throw new Error('Lucky wheel already spun today');
+      }
+
+      const reward = pickWheelReward(randomInt);
+
+      // Record the spin before granting, so a failed grant still counts as a spin.
+      playerEconomy.wheel = { ...(playerEconomy.wheel || {}), lastSpin: now.toISOString() };
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+
+      if (reward.type === 'currency') {
+        await this.updateCurrency(playerId, reward.currencyId, reward.amount, 'add', 'lucky_wheel');
+      } else {
+        await this.updateInventory(playerId, reward.category, reward.itemId, reward.amount, 'add');
+      }
+      return { reward, spunAt: now.toISOString() };
+    });
+  }
+
   async claimDailyReward(playerId) {
     try {
       const playerEconomy = await this.getPlayerEconomy(playerId);

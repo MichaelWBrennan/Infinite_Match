@@ -1,6 +1,32 @@
 // Phaser 3 Match-3 Game with All Features
 // Replaces Unity WebGL while keeping all existing functionality
 
+// Level generator. Levels are procedural, so the game has no fixed cap.
+// Target score grows steadily. Every 10th level is a boss: double target and
+// fewer moves. Moves never drop below 12.
+function levelConfig(level) {
+    const n = Math.max(1, Math.floor(Number(level) || 1));
+    const isBoss = n % 10 === 0;
+    const targetScore = (800 + n * 60) * (isBoss ? 2 : 1);
+    const moves = Math.max(12, 30 - Math.floor(n / 25) - (isBoss ? 5 : 0));
+    return { level: n, targetScore, moves, isBoss, isDaily: false };
+}
+
+// The same challenge for everyone on a given day. The date string picks a level
+// from a fixed range, so no server call is needed.
+function dailyChallengeLevel(dateString) {
+    let hash = 2166136261;
+    for (const ch of String(dateString)) {
+        hash ^= ch.charCodeAt(0);
+        hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    const config = levelConfig(1 + (hash % 300));
+    return { ...config, isDaily: true };
+}
+
+// Power-ups that need a tapped gem. They arm on press and fire on the next tap.
+const TARGETED_POWERUPS = ['diamond', 'target', 'star'];
+
 class PhaserMatch3Game {
     constructor() {
         this.game = null;
@@ -147,6 +173,21 @@ class PhaserMatch3Game {
         graphics.fillStyle(0xffe66d);
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_lightning', 64, 64);
+
+        graphics.clear();
+        graphics.fillStyle(0x9b59b6);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_diamond', 64, 64);
+
+        graphics.clear();
+        graphics.fillStyle(0xe67e22);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_target', 64, 64);
+
+        graphics.clear();
+        graphics.fillStyle(0xf1c40f);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_star', 64, 64);
         
         graphics.destroy();
     }
@@ -311,6 +352,11 @@ class PhaserMatch3Game {
 
     selectGem(gem) {
         if (!this.isGameRunning || this.isPaused) return;
+
+        if (this.armedPowerUp) {
+            this.fireTargetedPowerUp(gem);
+            return;
+        }
 
         if (!this.selectedGem) {
             this.setSelectedGem(gem);
@@ -695,6 +741,27 @@ class PhaserMatch3Game {
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
+
+        // Targeted power-ups: press to arm, then tap a gem.
+        const targeted = [
+            { type: 'diamond', x: 450, count: 1 },
+            { type: 'target', x: 550, count: 1 },
+            { type: 'star', x: 650, count: 1 },
+        ];
+        for (const { type, x, count } of targeted) {
+            const btn = this.scene.add.image(x, powerUpY, `powerup_${type}`);
+            btn.setDisplaySize(50, 50);
+            btn.setInteractive();
+            btn.setData('type', type);
+            btn.setData('count', count);
+            const text = this.scene.add.text(x, powerUpY + 40, String(count), {
+                fontSize: '16px',
+                fill: '#ffffff',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5);
+            this.powerButtons = this.powerButtons || {};
+            this.powerButtons[type] = { btn, text };
+        }
     }
 
     setupInput() {
@@ -702,6 +769,9 @@ class PhaserMatch3Game {
         this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
         this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
         this.lightningBtn.on('pointerdown', () => this.usePowerUp('lightning'));
+        for (const type of ['diamond', 'target', 'star']) {
+            this.powerButtons[type].btn.on('pointerdown', () => this.usePowerUp(type));
+        }
     }
 
     setupAnimations() {
@@ -729,7 +799,12 @@ class PhaserMatch3Game {
 
     usePowerUp(powerType) {
         if (!this.isGameRunning) return;
-        
+
+        if (TARGETED_POWERUPS.includes(powerType)) {
+            this.toggleArmedPowerUp(powerType);
+            return;
+        }
+
         let powerUpBtn, powerUpText;
         switch(powerType) {
             case 'bomb':
@@ -770,11 +845,78 @@ class PhaserMatch3Game {
         }
     }
 
+    toggleArmedPowerUp(type) {
+        const { btn } = this.powerButtons[type];
+        if (this.armedPowerUp === type) {
+            this.disarmPowerUp();
+            return;
+        }
+        if (btn.getData('count') <= 0) return;
+        this.disarmPowerUp();
+        this.setSelectedGem(null);
+        this.armedPowerUp = type;
+        btn.setAlpha(0.5);
+    }
+
+    disarmPowerUp() {
+        if (!this.armedPowerUp) return;
+        this.powerButtons[this.armedPowerUp].btn.setAlpha(1);
+        this.armedPowerUp = null;
+    }
+
+    // Which cells a targeted power-up clears, given the tapped gem. Pure: it
+    // reads the board and returns keys, so it can be tested without sprites.
+    powerUpKeys(type, r, c) {
+        const n = this.boardSize;
+        const keys = new Set();
+        if (type === 'diamond') {
+            const gemType = this.board[r][c];
+            for (let rr = 0; rr < n; rr++) {
+                for (let cc = 0; cc < n; cc++) {
+                    if (this.board[rr][cc] === gemType) keys.add(`${rr},${cc}`);
+                }
+            }
+        } else if (type === 'target') {
+            // The tapped gem and its four orthogonal neighbours.
+            const offsets = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
+            for (const [dr, dc] of offsets) {
+                if (this.isInBounds(r + dr, c + dc)) keys.add(`${r + dr},${c + dc}`);
+            }
+        } else if (type === 'star') {
+            // The tapped gem's whole row and column.
+            for (let i = 0; i < n; i++) {
+                keys.add(`${r},${i}`);
+                keys.add(`${i},${c}`);
+            }
+        }
+        return keys;
+    }
+
+    fireTargetedPowerUp(gem) {
+        const type = this.armedPowerUp;
+        const { btn, text } = this.powerButtons[type];
+        const r = gem.getData('row');
+        const c = gem.getData('col');
+        this.disarmPowerUp();
+
+        const count = btn.getData('count') - 1;
+        btn.setData('count', count);
+        text.setText(String(count));
+
+        const keys = this.powerUpKeys(type, r, c);
+        const points = { diamond: 400, target: 200, star: 250 }[type];
+        this.clearAndCascade(keys, points);
+        this.showPowerUpAnimation(type);
+    }
+
     showPowerUpAnimation(powerType) {
         const animations = {
             bomb: '💥',
             rainbow: '🌈',
-            lightning: '⚡'
+            lightning: '⚡',
+            diamond: '💎',
+            target: '🎯',
+            star: '🌟'
         };
         
         const animation = this.scene.add.text(400, 300, animations[powerType], {
@@ -863,6 +1005,25 @@ class PhaserMatch3Game {
         }
     }
 
+    // Start a numbered level. Applies its target and move limit, then restarts.
+    selectLevel(levelNumber) {
+        const config = levelConfig(levelNumber);
+        this.level = config.level;
+        this.targetScore = config.targetScore;
+        this.moves = config.moves;
+        this.isBossLevel = config.isBoss;
+        this.restartGame();
+    }
+
+    // Stars are relative to the level target: 1x, 1.5x, 2x.
+    starsFor(score) {
+        const target = this.targetScore || 1000;
+        if (score >= target * 2) return 3;
+        if (score >= target * 1.5) return 2;
+        if (score >= target) return 1;
+        return 0;
+    }
+
     async startGame() {
         console.log('🚀 Starting Phaser 3 game...');
         
@@ -920,9 +1081,7 @@ class PhaserMatch3Game {
         
         // Calculate stars based on score
         let stars = 0;
-        if (this.score >= 5000) stars = 3;
-        else if (this.score >= 3000) stars = 2;
-        else if (this.score >= 1000) stars = 1;
+        stars = this.starsFor(this.score);
         
         console.log(`🎯 Game ended! Score: ${this.score}, Stars: ${stars}`);
         
@@ -1488,9 +1647,7 @@ class PhaserMatch3Game {
         
         // Calculate stars based on score
         let stars = 0;
-        if (this.score >= 5000) stars = 3;
-        else if (this.score >= 3000) stars = 2;
-        else if (this.score >= 1000) stars = 1;
+        stars = this.starsFor(this.score);
         
         // Update analytics
         this.analytics.gamesPlayed++;
@@ -1519,7 +1676,7 @@ class PhaserMatch3Game {
         const endOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.9);
         endOverlay.setInteractive();
         
-        const endTitle = this.scene.add.text(400, 150, 'Game Over!', {
+        const endTitle = this.scene.add.text(400, 150, stars > 0 ? 'Level Complete!' : 'Level Failed', {
             fontSize: '48px',
             fill: '#ffffff',
             fontFamily: 'Arial'

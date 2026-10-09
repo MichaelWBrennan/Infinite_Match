@@ -18,7 +18,7 @@ function seeded(seed: number): () => number {
   };
 }
 
-function loadGameClass(rng: () => number) {
+function loadSandbox(rng: () => number): Record<string, any> {
   const code = readFileSync(resolve(process.cwd(), 'phaser3-game.js'), 'utf8');
   const sandboxMath = Object.create(Math);
   sandboxMath.random = rng;
@@ -31,7 +31,11 @@ function loadGameClass(rng: () => number) {
   };
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox, { filename: 'phaser3-game.js' });
-  return (sandbox.window as { PhaserMatch3Game: any }).PhaserMatch3Game;
+  return sandbox;
+}
+
+function loadGameClass(rng: () => number) {
+  return (loadSandbox(rng).window as { PhaserMatch3Game: any }).PhaserMatch3Game;
 }
 
 function makeSprite(x: number, y: number, key: string) {
@@ -47,6 +51,9 @@ function makeSprite(x: number, y: number, key: string) {
   s.on = () => s;
   s.setTint = () => s;
   s.clearTint = () => s;
+  s.setDisplaySize = () => s;
+  s.setOrigin = () => s;
+  s.setText = (t: string) => { s.text = t; return s; };
   return s;
 }
 
@@ -55,7 +62,10 @@ function makeGame(seed = 1) {
   const Ctor = loadGameClass(rng);
   const game: any = Object.create(Ctor.prototype);
   const scene = {
-    add: { image: (x: number, y: number, key: string) => makeSprite(x, y, key) },
+    add: {
+      image: (x: number, y: number, key: string) => makeSprite(x, y, key),
+      text: (x: number, y: number, text: string) => makeSprite(x, y, text),
+    },
     // Tweens apply their end position immediately so sprite positions are testable.
     tweens: {
       add: (cfg: any) => {
@@ -92,6 +102,8 @@ function makeGame(seed = 1) {
     trackEvent() {},
   });
   game.createGameBoard();
+  game.createPowerUps();
+  game.setupInput();
   return game;
 }
 
@@ -259,4 +271,140 @@ describe('match-3 core', () => {
     }
     expect(game.score).toBeGreaterThan(0);
   });
+
+  describe('targeted power-ups', () => {
+    test('target clears the tapped gem and its four neighbours', () => {
+      const game = makeGame(21);
+      expect(game.powerUpKeys('target', 4, 4).size).toBe(5);
+      expect(game.powerUpKeys('target', 0, 0).size).toBe(3);
+      expect(game.powerUpKeys('target', 4, 4).has('3,4')).toBe(true);
+    });
+
+    test('star clears the whole row and column of the tapped gem', () => {
+      const game = makeGame(22);
+      const keys = game.powerUpKeys('star', 3, 4);
+      expect(keys.size).toBe(15); // 8 + 8 - 1 shared cell
+      expect(keys.has('3,0')).toBe(true);
+      expect(keys.has('7,4')).toBe(true);
+      expect(keys.has('0,0')).toBe(false);
+    });
+
+    test('diamond clears every gem of the tapped colour', () => {
+      const game = makeGame(23);
+      const colour = game.board[2][5];
+      let expected = 0;
+      for (const row of game.board) for (const cell of row) if (cell === colour) expected++;
+      const keys = game.powerUpKeys('diamond', 2, 5);
+      expect(keys.size).toBe(expected);
+      for (const key of keys) {
+        const [r, c] = key.split(',').map(Number);
+        expect(game.board[r][c]).toBe(colour);
+      }
+    });
+
+    test('arming then tapping a gem fires once, spends the charge, and keeps the board valid', () => {
+      const game = makeGame(24);
+      const before = game.moves;
+      game.usePowerUp('target');
+      expect(game.armedPowerUp).toBe('target');
+      game.selectGem(game.gemSprites[4][4]);
+      expect(game.armedPowerUp).toBeNull();
+      expect(game.powerButtons.target.btn.getData('count')).toBe(0);
+      expect(game.moves).toBe(before); // power-ups do not spend a move
+      assertBoardInvariants(game);
+    });
+
+    test('a spent targeted power-up cannot be armed again', () => {
+      const game = makeGame(25);
+      game.usePowerUp('star');
+      game.selectGem(game.gemSprites[1][1]);
+      game.usePowerUp('star');
+      expect(game.armedPowerUp).toBeNull();
+    });
+
+    test('pressing an armed power-up again disarms it', () => {
+      const game = makeGame(26);
+      game.usePowerUp('diamond');
+      game.usePowerUp('diamond');
+      expect(game.armedPowerUp).toBeNull();
+      expect(game.powerButtons.diamond.btn.getData('count')).toBe(1);
+    });
+
+    test('random targeted power-up use keeps every invariant', () => {
+      const game = makeGame(27);
+      game.targetScore = Number.POSITIVE_INFINITY;
+      game.moves = 1_000_000;
+      const picker = seeded(7);
+      const types = ['diamond', 'target', 'star'];
+      for (let step = 0; step < 120; step++) {
+        game.isGameRunning = true;
+        const type = types[Math.floor(picker() * 3)];
+        game.powerButtons[type].btn.setData('count', 1);
+        game.usePowerUp(type);
+        const r = Math.floor(picker() * 8);
+        const c = Math.floor(picker() * 8);
+        game.selectGem(game.gemSprites[r][c]);
+        expect(game.armedPowerUp).toBeNull();
+        assertBoardInvariants(game);
+      }
+    });
+  });
 });
+
+describe('levels', () => {
+  const sandbox = loadSandbox(seeded(1));
+
+  test('targets grow with the level number', () => {
+    let previous = 0;
+    for (let n = 1; n <= 1200; n++) {
+      const { targetScore } = sandbox.levelConfig(n);
+      if (!sandbox.levelConfig(n).isBoss) {
+        expect(targetScore).toBeGreaterThan(previous);
+        previous = targetScore;
+      }
+    }
+  });
+
+  test('every tenth level is a boss with a doubled target and fewer moves', () => {
+    const normal = sandbox.levelConfig(9);
+    const boss = sandbox.levelConfig(10);
+    expect(boss.isBoss).toBe(true);
+    expect(boss.targetScore).toBeGreaterThan(sandbox.levelConfig(11).targetScore);
+    expect(boss.moves).toBeLessThan(normal.moves);
+  });
+
+  test('moves never drop below twelve, so there is no cap on level count', () => {
+    for (const n of [1, 100, 500, 1000, 5000, 100000]) {
+      expect(sandbox.levelConfig(n).moves).toBeGreaterThanOrEqual(12);
+    }
+    expect(sandbox.levelConfig(100000).targetScore).toBeGreaterThan(sandbox.levelConfig(1000).targetScore);
+  });
+
+  test('the daily challenge is the same for everyone on a given day', () => {
+    const a = sandbox.dailyChallengeLevel('2026-10-09');
+    const b = sandbox.dailyChallengeLevel('2026-10-09');
+    expect(a).toEqual(b);
+    expect(a.isDaily).toBe(true);
+    expect(sandbox.dailyChallengeLevel('2026-10-10')).not.toEqual(a);
+  });
+
+  test('selectLevel applies the level target and move limit', () => {
+    const game = makeGame(31);
+    game.restartGame = () => {};
+    game.selectLevel(20);
+    expect(game.level).toBe(20);
+    expect(game.targetScore).toBe(sandbox.levelConfig(20).targetScore);
+    expect(game.moves).toBe(sandbox.levelConfig(20).moves);
+    expect(game.isBossLevel).toBe(true);
+  });
+
+  test('stars are relative to the level target', () => {
+    const game = makeGame(32);
+    game.targetScore = 1000;
+    expect(game.starsFor(999)).toBe(0);
+    expect(game.starsFor(1000)).toBe(1);
+    expect(game.starsFor(1500)).toBe(2);
+    expect(game.starsFor(2000)).toBe(3);
+  });
+});
+

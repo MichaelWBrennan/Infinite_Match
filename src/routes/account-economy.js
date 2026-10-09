@@ -179,6 +179,21 @@ router.post('/progression/update', security.sessionValidation, (req, res) => {
   });
 });
 
+// Lucky wheel: one spin per day, reward chosen and granted on the server.
+router.post('/wheel/spin', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { reward, spunAt } = await accountEconomyService.spinLuckyWheel(playerId);
+    security.logSecurityEvent('lucky_wheel_spun', { playerId, reward: reward.id, ip: req.ip });
+    res.json({ success: true, result: { reward, spunAt }, requestId: req.requestId });
+  } catch (error) {
+    if (error.message.includes('already spun')) {
+      return res.status(400).json({ success: false, error: error.message, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'spin lucky wheel', req.requestId);
+  }
+});
+
 // Claim daily reward
 router.post('/daily-reward/claim', security.sessionValidation, async (req, res) => {
   try {
