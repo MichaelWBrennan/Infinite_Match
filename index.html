@@ -816,84 +816,42 @@
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>
     <script>
-        // Declare game variable globally
+        // window.game is the Phaser game. window.ui is the DOM menu controller, which script.js
+        // creates once at load. This page never creates a second menu controller.
         window.game = null;
-        
-        // Check if Phaser 3 is available
+
+        // Check if Phaser 3 and its game class are available.
         function checkPhaser3() {
             try {
                 if (typeof Phaser !== 'undefined' && typeof PhaserMatch3Game !== 'undefined') {
                     console.log('✅ Phaser 3 and game class found');
                     return true;
-                } else {
-                    console.log('❌ Phaser 3 not available, using fallback');
-                    return false;
                 }
+                console.log('❌ Phaser 3 not available');
+                return false;
             } catch (error) {
                 console.log('❌ Error checking Phaser 3:', error);
                 return false;
             }
         }
 
-        // Initialize game function
-        function initializeGameInstance() {
-            if (typeof InfiniteMatchGame !== 'undefined' && !window.game) {
-                try {
-                    console.log('🚀 Initializing game...');
-                    window.game = new InfiniteMatchGame();
-                    console.log('✅ Game initialized successfully');
-                    console.log('Game object:', window.game);
-                    console.log('Game methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.game)));
-                    
-                    // Test button functions
-                    console.log('Testing button functions...');
-                    console.log('showModeSelect available:', typeof showModeSelect);
-                    console.log('showSettings available:', typeof showSettings);
-                    console.log('showTitle available:', typeof showTitle);
-                    console.log('showNews available:', typeof showNews);
-                    console.log('showLoginModal available:', typeof showLoginModal);
-                    
-                    // Test button click handlers
-                    console.log('Testing button click handlers...');
-                    const playBtn = document.querySelector('.play-btn');
-                    const settingsBtn = document.querySelector('.settings-btn');
-                    const loginBtn = document.querySelector('.login-btn');
-                    const newsBtn = document.querySelector('.news-btn');
-                    
-                    if (playBtn) {
-                        console.log('Play button found, onclick:', playBtn.onclick);
-                        playBtn.addEventListener('click', (e) => {
-                            console.log('Play button clicked via addEventListener');
-                        });
-                    }
-                    if (settingsBtn) {
-                        console.log('Settings button found, onclick:', settingsBtn.onclick);
-                    }
-                    if (loginBtn) {
-                        console.log('Login button found, onclick:', loginBtn.onclick);
-                    }
-                    if (newsBtn) {
-                        console.log('News button found, onclick:', newsBtn.onclick);
-                    }
-                    
-                    return true;
-                } catch (error) {
-                    console.error('❌ Failed to initialize game:', error);
-                    return false;
-                }
-            } else if (window.game) {
-                console.log('✅ Game already initialized');
-                return true;
-            } else {
-                console.error('❌ InfiniteMatchGame class not found');
-                return false;
-            }
+        // Shown when the game cannot start. The menu controller is not a fallback: it has its own
+        // gameplay, which is not gated by the server.
+        function showWebGLNotice() {
+            if (document.getElementById('webgl-notice')) return;
+            const notice = document.createElement('div');
+            notice.id = 'webgl-notice';
+            notice.setAttribute('role', 'alert');
+            notice.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#2c3e50;color:#fff;font-family:Arial,sans-serif;padding:24px;text-align:center;';
+            notice.innerHTML = '<div style="max-width:520px"><h2>Infinite Match could not start</h2>'
+                + '<p>This browser could not start the game renderer. Turn on hardware acceleration, or try a current version of Chrome, Edge, Firefox, or Safari, then reload the page.</p></div>';
+            document.body.appendChild(notice);
         }
 
         // Phaser 3 game initialization
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Starting Phaser 3 game initialization...');
-            
+
             // Detect platform capabilities
             const platformInfo = {
                 isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
@@ -902,60 +860,16 @@
                 hasWebGL2: !!window.WebGL2RenderingContext,
                 isLowEnd: navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4
             };
-            
+
             console.log('📱 Platform info:', platformInfo);
-            
-            // Check Phaser 3 availability
-            const phaserCheckPromise = checkPhaser3();
-            
-            // Initialize game instance in parallel
-            const gameInitPromise = new Promise(resolve => {
-                setTimeout(() => {
-                    const gameInitialized = initializeGameInstance();
-                    resolve(gameInitialized);
-                }, 50);
-            });
-            
-            // Wait for both to complete
-            const [phaserValid, gameInitialized] = await Promise.all([phaserCheckPromise, gameInitPromise]);
-            
-            console.log('🎮 Game initialization complete');
-            console.log('📊 Phaser 3 valid:', phaserValid);
-            console.log('🎯 Game initialized:', gameInitialized);
-            
-        if (phaserValid) {
-            console.log('🎮 Phaser 3 found, initializing game...');
-            // Initialize Phaser 3 game
-            initializePhaser3Game();
-        } else {
-            console.log('🔄 Using fallback game (Phaser 3 not available)');
-            
-            // Initialize the fallback game
-            if (typeof InfiniteMatchGame !== 'undefined') {
-                try {
-                    window.game = new InfiniteMatchGame();
-                    console.log('✅ Fallback game initialized successfully');
-                } catch (error) {
-                    console.error('❌ Failed to initialize fallback game:', error);
-                }
+
+            if (checkPhaser3()) {
+                console.log('🎮 Phaser 3 found, initializing game...');
+                initializePhaser3Game();
+            } else {
+                showWebGLNotice();
             }
-            
-            // Hide loading screen and show title screen immediately
-            document.getElementById('loading-screen').classList.remove('active');
-            document.getElementById('title-screen').classList.add('active');
-        }
-            
-            // Ensure global functions are available
-            console.log('🔧 Verifying global functions...');
-            const requiredFunctions = ['showModeSelect', 'showSettings', 'showTitle', 'showNews', 'showLoginModal'];
-            requiredFunctions.forEach(funcName => {
-                if (typeof window[funcName] === 'function') {
-                    console.log(`✅ ${funcName} available`);
-                } else {
-                    console.error(`❌ ${funcName} not available`);
-                }
-            });
-            
+
             // Add platform-specific optimizations
             if (platformInfo.isMobile) {
                 document.body.classList.add('mobile-device');
@@ -969,7 +883,7 @@
                     lastTouchEnd = now;
                 }, false);
             }
-            
+
             if (platformInfo.isLowEnd) {
                 document.body.classList.add('low-end-device');
                 // Reduce animations for low-end devices
@@ -983,27 +897,19 @@
                 document.head.appendChild(style);
             }
         });
-        
-        // Fallback initialization in case DOMContentLoaded doesn't work
-        setTimeout(() => {
-            if (!window.game && typeof InfiniteMatchGame !== 'undefined') {
-                console.log('🔄 Fallback game initialization...');
-                initializeGameInstance();
-            }
-        }, 2000);
-        
+
         // Emergency loading timeout - force show title screen after 5 seconds
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             const titleScreen = document.getElementById('title-screen');
-            
+
             if (loadingScreen && loadingScreen.classList.contains('active')) {
                 console.log('⚠️ Loading timeout reached, forcing title screen');
                 loadingScreen.classList.remove('active');
                 if (titleScreen) {
                     titleScreen.classList.add('active');
                 }
-                
+
                 // Show error message to user
                 const loadingText = document.querySelector('.loading-text');
                 if (loadingText) {
@@ -1011,70 +917,50 @@
                 }
             }
         }, 5000);
-        
+
         // Initialize Phaser 3 game
         function initializePhaser3Game() {
             console.log('🚀 Initializing Phaser 3 game...');
-            
+
             // Show loading progress
             const progressBar = document.getElementById('loading-bar-fill');
             const progressText = document.getElementById('loading-text');
-            
+
             // Simulate loading progress
             let progress = 0;
             const progressInterval = setInterval(() => {
                 progress += Math.random() * 20;
                 if (progress > 100) progress = 100;
-                
+
                 progressBar.style.width = progress + '%';
                 progressText.textContent = `Loading Phaser 3... ${Math.round(progress)}%`;
-                
+
                 if (progress >= 100) {
                     clearInterval(progressInterval);
-                    
+
                     try {
                         // Create Phaser 3 game container
                         const gameContainer = document.createElement('div');
                         gameContainer.id = 'phaser-game-container';
                         gameContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: #2c3e50;';
                         document.body.appendChild(gameContainer);
-                        
+
                         // Initialize Phaser 3 game
                         window.game = new PhaserMatch3Game();
-                        
+
                         // Hide loading screen and show game
                         setTimeout(() => {
                             document.getElementById('loading-screen').classList.remove('active');
                             document.getElementById('title-screen').classList.add('active');
                             console.log('✅ Phaser 3 game loaded successfully');
                         }, 500);
-                        
+
                     } catch (error) {
                         console.error('❌ Failed to load Phaser 3 game:', error);
-                        // Fallback to JavaScript game
-                        fallbackToJavaScriptGame();
+                        showWebGLNotice();
                     }
                 }
             }, 100);
-        }
-        
-        // Fallback to JavaScript game
-        function fallbackToJavaScriptGame() {
-            console.log('🔄 Falling back to JavaScript game...');
-            
-            // Hide loading screen and show title screen
-            document.getElementById('loading-screen').classList.remove('active');
-            document.getElementById('title-screen').classList.add('active');
-            
-            // Initialize the fallback game
-            if (typeof InfiniteMatchGame !== 'undefined') {
-                try {
-                    window.game = new InfiniteMatchGame();
-                    console.log('✅ Fallback game initialized successfully');
-                } catch (error) {
-                    console.error('❌ Failed to initialize fallback game:', error);
-                }
-            }
         }
     </script>
 </body>

@@ -758,6 +758,8 @@ class InfiniteMatchGame {
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('sessionId', data.sessionId);
                 localStorage.setItem('playerId', playerId);
+                // Lets the canvas game refresh its energy and title for the new session.
+                window.dispatchEvent(new Event('auth:changed'));
                 
                 this.showAccountStatus('Login successful!');
                 this.updateAccountUI();
@@ -821,6 +823,8 @@ class InfiniteMatchGame {
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('sessionId', data.sessionId);
                 localStorage.setItem('playerId', playerId);
+                // Lets the canvas game refresh its energy and title for the new session.
+                window.dispatchEvent(new Event('auth:changed'));
                 
                 this.showAccountStatus('Account created successfully!');
                 this.updateAccountUI();
@@ -1244,316 +1248,86 @@ class InfiniteMatchGame {
     }
 }
 
-// Global functions for HTML onclick events
-function showModeSelect() {
-    console.log('🎮 showModeSelect called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showModeSelect === 'function') {
-        console.log('🎮 Calling window.game.showModeSelect()');
-        window.game.showModeSelect();
-    } else {
-        console.error('❌ Game object not available or showModeSelect method missing');
-        
-        // Fallback: Try to show the mode select screen directly
-        console.log('🔄 Attempting fallback mode select...');
-        switchToScreen('mode-select');
-    }
-}
+// Global functions for HTML onclick events.
+//
+// Two objects, one job each:
+//   window.ui   the DOM controller (InfiniteMatchGame). Menus, settings, login, and register.
+//   window.game the Phaser game (PhaserMatch3Game). Gameplay and everything drawn on the canvas.
+// Each wrapper goes to exactly one of them. Before this split, menu calls reached the Phaser game,
+// which had no such methods, and handleLogin() threw a TypeError.
 
-function showSettings() {
-    console.log('⚙️ showSettings called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showSettings === 'function') {
-        console.log('⚙️ Calling window.game.showSettings()');
-        window.game.showSettings();
-    } else {
-        console.error('❌ Game object not available or showSettings method missing');
-        
-        // Fallback: Try to show the settings screen directly
-        console.log('🔄 Attempting fallback settings...');
-        switchToScreen('settings-screen');
-    }
-}
-
-function showTitle() {
-    console.log('showTitle called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showTitle === 'function') {
-        window.game.showTitle();
-    } else {
-        console.error('Game object not available or showTitle method missing');
-        
-        // Fallback: Try to show the title screen directly
-        console.log('🔄 Attempting fallback title...');
-        switchToScreen('title-screen');
-    }
-}
-
-function showLevelSelect() {
-    console.log('showLevelSelect called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showLevelSelect === 'function') {
-        window.game.showLevelSelect();
-    } else {
-        console.error('Game object not available or showLevelSelect method missing');
-        
-        // Fallback: Try to show the level select screen directly
-        console.log('🔄 Attempting fallback level select...');
-        switchToScreen('level-select');
-    }
-}
-
-function showNews() {
-    console.log('📰 showNews called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showNews === 'function') {
-        console.log('📰 Calling window.game.showNews()');
-        window.game.showNews();
-    } else {
-        console.error('❌ Game object not available or showNews method missing');
-        
-        // Fallback: Try to show the news screen directly
-        console.log('🔄 Attempting fallback news...');
-        switchToScreen('news-screen');
-    }
-}
-
-function showOffers() {
-    console.log('showOffers called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showOffers === 'function') {
-        window.game.showOffers();
-    } else {
-        console.error('Game object not available or showOffers method missing');
-    }
-}
-
-function showLeaderboard() {
-    console.log('showLeaderboard called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showLeaderboard === 'function') {
-        window.game.showLeaderboard();
-    } else {
-        console.error('Game object not available or showLeaderboard method missing');
-    }
-}
-
-function startGame() {
-    console.log('startGame called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.startGame === 'function') {
-        window.game.startGame();
-    } else {
-        console.error('Game object not available or startGame method missing');
-    }
-}
-
-function pauseGame() {
-    if (window.game) window.game.pauseGame();
-}
-
-function usePowerUp(type) {
-    if (window.game) window.game.usePowerUp(type);
-}
-
-function nextLevel() {
-    if (window.game) window.game.nextLevel();
-}
-
-function closeModal() {
-    if (window.game) window.game.closeModal();
-}
-
-function closeTutorial() {
-    if (window.game) window.game.closeTutorial();
-}
-
-function showAdvancedSettings() {
-    console.log('showAdvancedSettings called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showAdvancedSettings === 'function') {
-        window.game.showAdvancedSettings();
-    } else {
-        console.error('Game object not available or showAdvancedSettings method missing');
-    }
-}
-
-// Login Modal Functions
-function showLoginModal() {
-    console.log('👤 showLoginModal called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showLoginModal === 'function') {
-        console.log('👤 Calling window.game.showLoginModal()');
-        window.game.showLoginModal();
-    } else {
-        console.error('❌ Game object not available or showLoginModal method missing');
-        
-        // Fallback: Try to show the login modal directly
-        console.log('🔄 Attempting fallback login modal...');
-        const loginModal = document.getElementById('login-modal');
-        if (loginModal) {
-            loginModal.classList.add('active');
-            console.log('✅ Fallback login modal successful');
-        } else {
-            console.error('❌ Fallback login modal failed - modal not found');
-        }
-    }
-}
-
-function closeLoginModal() {
-    if (window.game) window.game.closeLoginModal();
-}
-
-function switchLoginTab(tab) {
-    if (window.game) window.game.switchLoginTab(tab);
-}
-
-function handleLogin() {
-    if (window.game) window.game.handleLogin();
-}
-
-function handleRegister() {
-    if (window.game) window.game.handleRegister();
-}
-
-function syncWithPlatform(platform) {
-    if (window.game) window.game.syncWithPlatform(platform);
-}
-
-function selectLevel(levelNumber) {
-    if (window.game) window.game.selectLevel(levelNumber);
-}
-
-// Initialize game when page loads
-let game;
-
-// Robust game initialization function
+// Creates the DOM controller once. The page never creates a second one: each new instance runs
+// its own loading sequence and timers.
 function initializeGame() {
-    if (typeof InfiniteMatchGame !== 'undefined' && (!window.game || typeof window.game === 'undefined')) {
-        try {
-            console.log('Initializing game...');
-            window.game = new InfiniteMatchGame();
-            game = window.game; // Keep local reference for compatibility
-            console.log('✅ Game initialized successfully');
-            return true;
-        } catch (error) {
-            console.error('❌ Failed to initialize game:', error);
-            return false;
-        }
-    } else if (window.game && typeof window.game !== 'undefined') {
-        game = window.game; // Keep local reference for compatibility
-        console.log('Game already initialized');
-        return true;
-    } else {
+    if (window.ui) return true;
+    if (typeof InfiniteMatchGame === 'undefined') {
         console.error('❌ InfiniteMatchGame class not available');
+        return false;
+    }
+    try {
+        window.ui = new InfiniteMatchGame();
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to initialize the menu controller:', error);
         return false;
     }
 }
 
-// Auto-initialize game when script loads
-if (typeof InfiniteMatchGame !== 'undefined') {
-    console.log('🚀 Auto-initializing game...');
-    initializeGame();
-} else {
-    console.log('⏳ Waiting for InfiniteMatchGame class to be available...');
-    // Try again after a short delay
-    setTimeout(() => {
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            console.log('🚀 Delayed auto-initialization...');
-            initializeGame();
-        }
-    }, 100);
+// Calls a DOM controller method. Logs and does nothing if the method is missing.
+function callUi(method, ...args) {
+    if (!initializeGame() || typeof window.ui[method] !== 'function') {
+        console.error(`Menu controller cannot run ${method}`);
+        return undefined;
+    }
+    return window.ui[method](...args);
 }
 
-// Ensure game is ready before calling methods
-function ensureGameReady() {
-    if (!window.game || typeof window.game === 'undefined') {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        const initialized = initializeGame();
-        if (initialized) {
-            console.log('✅ Game initialized successfully');
-        } else {
-            console.error('❌ Failed to initialize game');
-        }
-        return initialized;
+// Calls a Phaser game method. Logs and does nothing before the game exists.
+function callGame(method, ...args) {
+    if (!window.game || typeof window.game[method] !== 'function') {
+        console.warn(`The game is not ready for ${method}`);
+        return undefined;
     }
-    game = window.game; // Keep local reference for compatibility
-    return true;
+    return window.game[method](...args);
 }
+
+// Menus, settings, and account (DOM controller).
+function showModeSelect() { return callUi('showModeSelect'); }
+function showSettings() { return callUi('showSettings'); }
+function showTitle() { return callUi('showTitle'); }
+function showLevelSelect() { return callUi('showLevelSelect'); }
+function showNews() { return callUi('showNews'); }
+function showOffers() { return callUi('showOffers'); }
+function showLeaderboard() { return callUi('showLeaderboard'); }
+function closeModal() { return callUi('closeModal'); }
+function closeTutorial() { return callUi('closeTutorial'); }
+function showAdvancedSettings() { return callUi('showAdvancedSettings'); }
+function closeLoginModal() { return callUi('closeLoginModal'); }
+function switchLoginTab(tab) { return callUi('switchLoginTab', tab); }
+function handleLogin() { return callUi('handleLogin'); }
+function handleRegister() { return callUi('handleRegister'); }
+function syncWithPlatform(platform) { return callUi('syncWithPlatform', platform); }
+
+function showLoginModal() {
+    if (initializeGame() && typeof window.ui.showLoginModal === 'function') {
+        return window.ui.showLoginModal();
+    }
+    // Last resort when the controller is missing: show the modal markup directly.
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal) loginModal.classList.add('active');
+    else console.error('❌ Login modal not found');
+    return undefined;
+}
+
+// Gameplay (Phaser game).
+function startGame() { return callGame('requestStart'); }
+function pauseGame() { return callGame('pauseGame'); }
+function usePowerUp(type) { return callGame('usePowerUp', type); }
+function nextLevel() { return callGame('nextLevel'); }
+function selectLevel(levelNumber) { return callGame('selectLevel', levelNumber); }
+
+// Create the DOM controller as soon as this script loads, so menus work before any click.
+initializeGame();
 
 // Make sure global functions are available immediately
 window.showModeSelect = showModeSelect;
@@ -1655,13 +1429,14 @@ document.addEventListener('touchstart', (e) => {
 document.addEventListener('keydown', (e) => {
     switch(e.key) {
         case 'Escape':
-            if (window.game && window.game.currentScreen === 'game-screen') {
+            if (window.game && window.game.isGameRunning) {
                 window.game.pauseGame();
             }
             break;
         case 'Enter':
-            if (window.game && window.game.currentScreen === 'title-screen') {
-                window.game.showModeSelect();
+            // On the canvas title screen, Enter presses Play.
+            if (window.game && window.game.titleShowing) {
+                window.game.requestStart();
             }
             break;
     }

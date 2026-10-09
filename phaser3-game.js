@@ -42,7 +42,6 @@ class PhaserMatch3Game {
         this.time = 60;
         this.level = 3;
         this.targetScore = 1000; // score that wins the level
-        this.gems = 450;
         this.stars = 1250;
         this.energy = 100;
         this.maxEnergy = 100;
@@ -207,8 +206,45 @@ class PhaserMatch3Game {
         this.setupInput();
         this.setupAnimations();
         
-        // Start the first board. It costs an attempt, so reloading the page is not a free play.
-        this.beginFirstAttempt();
+        // Nothing starts on load. The title overlay waits for Play, which claims an attempt first.
+        this.showTitleOverlay();
+        this.syncEnergyFromServer();
+        // Signing in happens in the DOM login modal. When it finishes, refresh energy and the title.
+        window.addEventListener('auth:changed', () => {
+            this.syncEnergyFromServer();
+            if (this.titleShowing) this.showTitleOverlay();
+        });
+    }
+
+    // Title screen, drawn on the canvas. Play starts the first board; sign-in opens the login modal.
+    showTitleOverlay() {
+        this.titleShowing = true;
+        const signedIn = !!this.getAuthToken();
+        this.openOverlay('Infinite Match');
+        this.overlayText(400, 150, 'Match gems, clear the board, and build your kingdom.', { size: 20, width: 600 });
+        this.overlayText(400, 200, signedIn
+            ? 'Signed in. Energy, coins, and rewards are saved to your account.'
+            : 'Sign in to save energy, coins, and purchases to your account.', { size: 16, width: 600 });
+        this.overlayButton(400, 300, 300, 60, 0x4ecdc4, 'Play', () => this.requestStart());
+        this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
+    }
+
+    // Opens the DOM login modal. It sits above the canvas (z-index 2000).
+    openSignIn() {
+        if (typeof window.showLoginModal === 'function') window.showLoginModal();
+    }
+
+    // The Play button. Starts the current level: applies its target and move limit, and claims
+    // an attempt first when signed in.
+    async requestStart() {
+        this.titleShowing = false;
+        this.closeOverlay();
+        return this.selectLevel(Math.floor(this.level));
+    }
+
+    // Advances to the next numbered level. Used by the DOM controller's "next level" control.
+    nextLevel() {
+        return this.selectLevel(Math.floor(this.level) + 1);
     }
 
     // ----- Match-3 core ---------------------------------------------------
@@ -641,13 +677,6 @@ class PhaserMatch3Game {
             fontFamily: 'Arial'
         });
         
-        // Gems display
-        this.gemsText = this.scene.add.text(50, 200, 'Gems: 450', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        });
-        
         // Stars display
         this.starsText = this.scene.add.text(50, 230, 'Stars: 1250', {
             fontSize: '20px',
@@ -694,6 +723,17 @@ class PhaserMatch3Game {
         this.kingdomBtn.on('pointerdown', () => this.showKingdom());
         
         this.scene.add.text(735, 300, 'Kingdom', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
+
+        // Account button: opens the sign-in form from the canvas. Sign-in is the DOM login modal.
+        this.accountBtn = this.scene.add.rectangle(735, 400, 110, 40, 0x9b59b6);
+        this.accountBtn.setInteractive();
+        this.accountBtn.on('pointerdown', () => this.openSignIn());
+
+        this.scene.add.text(735, 400, this.getAuthToken() ? 'Account' : 'Sign in', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -1078,20 +1118,22 @@ class PhaserMatch3Game {
     }
 
     // Starts the first board on page load, if the player may play.
-    async beginFirstAttempt() {
-        if (await this.claimAttempt()) this.startGame();
-    }
-
     // Spends one attempt's energy on the server. Returns true if the attempt may start.
     // Guests have no server economy, so they are not gated.
-    async claimAttempt() {
+    async claimAttempt(level = this.level) {
         if (!this.getAuthToken()) return true;
         if (this.attemptPending) return false;
         this.attemptPending = true;
         try {
-            const { ok, data } = await this.fetchJson('/api/account-economy/energy/spend', { method: 'POST' });
+            const { ok, data } = await this.fetchJson('/api/account-economy/energy/spend', {
+                method: 'POST',
+                body: JSON.stringify({ level: Math.floor(level) }),
+            });
             if (ok && data.success) {
                 this.energy = data.result.energy;
+                // The attempt id is needed to claim this level's reward when it is won.
+                this.attemptId = data.result.attemptId;
+                this.attemptLevel = data.result.level;
                 this.updateEnergyDisplay();
                 return true;
             }
@@ -1127,6 +1169,42 @@ class PhaserMatch3Game {
         this.overlayButton(400, 380, 240, 60, 0x555555, 'Close', () => this.closeOverlay());
     }
 
+    // Shows the energy the server holds now (it regenerates while the player is away).
+    async syncEnergyFromServer() {
+        if (!this.getAuthToken()) return;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/data');
+            if (ok && data.success) {
+                this.energy = data.data.currencies.energy.amount;
+                this.maxEnergy = data.data.currencies.energy.maxAmount;
+                this.updateEnergyDisplay();
+            }
+        } catch (error) {
+            // Keep the last known value. The server still checks every attempt.
+        }
+    }
+
+    // A win pays out once, for the attempt that was spent. Losses pay nothing.
+    async submitLevelWin(stars) {
+        const attemptId = this.attemptId;
+        this.attemptId = null;
+        if (!attemptId || stars <= 0 || !this.getAuthToken()) return;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/level/complete', {
+                method: 'POST',
+                body: JSON.stringify({
+                    level: this.attemptLevel,
+                    score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
+                    stars,
+                    attemptId,
+                }),
+            });
+            if (!ok || !data.success) console.warn('Level reward not granted:', data.error);
+        } catch (error) {
+            console.warn('Could not reach the server for the level reward.', error);
+        }
+    }
+
     // Refills energy on the server. The player then starts the attempt themselves.
     async refillEnergy() {
         const { ok, data } = await this.fetchJson('/api/account-economy/energy/refill', { method: 'POST' });
@@ -1152,7 +1230,7 @@ class PhaserMatch3Game {
             start();
             return Promise.resolve();
         }
-        return this.claimAttempt().then((ok) => {
+        return this.claimAttempt(config.level).then((ok) => {
             if (ok) start();
         });
     }
@@ -1238,7 +1316,6 @@ class PhaserMatch3Game {
         this.timerText.setText(`Time: ${this.time}`);
         this.levelText.setText(`Level: ${this.level}`);
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
-        this.gemsText.setText(`Gems: ${this.gems}`);
         this.starsText.setText(`Stars: ${this.stars}`);
     }
 
@@ -1357,9 +1434,8 @@ class PhaserMatch3Game {
                 const data = JSON.parse(savedData);
                 this.score = data.score || 0;
                 this.level = data.level || 3;
-                this.gems = data.gems || 450;
                 this.stars = data.stars || 1250;
-                this.energy = data.energy || 100;
+                // Energy is not restored from localStorage: signed-in energy comes from the server.
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings };
                 console.log('✅ User data loaded');
@@ -1374,7 +1450,6 @@ class PhaserMatch3Game {
             const data = {
                 score: this.score,
                 level: this.level,
-                gems: this.gems,
                 stars: this.stars,
                 energy: this.energy,
                 achievements: this.achievements,
@@ -1411,23 +1486,7 @@ class PhaserMatch3Game {
         }
     }
 
-    // Energy System
-    consumeEnergy(amount = 1) {
-        if (this.energy >= amount) {
-            this.energy -= amount;
-            this.updateEnergyDisplay();
-            this.trackEvent('energy_consumed', { amount, remaining: this.energy });
-            return true;
-        }
-        return false;
-    }
-
-    addEnergy(amount) {
-        this.energy = Math.min(this.energy + amount, this.maxEnergy);
-        this.updateEnergyDisplay();
-        this.trackEvent('energy_gained', { amount, total: this.energy });
-    }
-
+    // Energy System. Energy is spent only on the server (claimAttempt). There is no local spend.
     updateEnergyDisplay() {
         if (this.energyText) {
             this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
@@ -1781,7 +1840,6 @@ class PhaserMatch3Game {
         this.moves = state.moves || 30;
         this.time = state.time || 60;
         this.level = state.level || 3;
-        this.gems = state.gems || 450;
         this.stars = state.stars || 1250;
         this.energy = state.energy || 100;
         this.settings = { ...this.settings, ...state.settings };
@@ -1794,7 +1852,6 @@ class PhaserMatch3Game {
             moves: this.moves,
             time: this.time,
             level: this.level,
-            gems: this.gems,
             stars: this.stars,
             energy: this.energy,
             settings: this.settings
@@ -1836,6 +1893,7 @@ class PhaserMatch3Game {
         stars = this.starsFor(this.score);
         
         this.reportLevelResult(stars);
+        this.submitLevelWin(stars);
 
         // Update analytics
         this.analytics.gamesPlayed++;

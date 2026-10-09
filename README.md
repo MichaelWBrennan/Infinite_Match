@@ -27,7 +27,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Coin packs (`coins_small`, `coins_medium`, `coins_large`). Bought through hosted Stripe Checkout (`POST /api/stripe/checkout-session`, session required). The price is set on the server, and the webhook credits the coins once per payment. A quote is honoured for up to 2 hours after it was made, so a deal that ends during checkout still applies. Checkout needs `STRIPE_CHECKOUT_SUCCESS_URL` and `STRIPE_CHECKOUT_CANCEL_URL`.
 - Kingdom renovation (`GET /api/kingdom`, `POST /api/kingdom/renovate`, session required). Six rooms, each upgraded from level 0 to 5. Costs are base cost × level² in coins. Levels 2 to 5 need 5, 15, 30, and 50 lifetime stars. Levels 3 and 5 grant a powerup. Rules are in `src/services/meta/kingdom.js`.
 - Loot boxes (`POST /api/account-economy/lootbox/open`). Bought with coins, with the reward rolled and granted on the server. Rules are in `src/services/meta/lootbox.js`.
-- Energy gate. Each attempt at a level spends 1 energy on the server (`POST /api/account-economy/energy/spend`). The attempt does not start unless the server says yes. Energy regenerates 1 point per minute up to 100. The out-of-energy screen offers a refill (`POST /api/account-economy/energy/refill`), which charges 10 coins per missing point and never charges for points that have already regenerated. Signed-in players only: guests have no server economy, so they are not gated.
+- Energy gate. Each attempt at a level spends 1 energy on the server (`POST /api/account-economy/energy/spend`). The attempt does not start unless the server says yes. Energy regenerates 1 point per minute up to 100. The out-of-energy screen offers a refill (`POST /api/account-economy/energy/refill`), which charges 10 coins per missing point and never charges for points that have already regenerated. Signed-in players only: guests have no server economy, so they are not gated. The spend returns an `attemptId` for that level. A win is rewarded once, by `POST /api/account-economy/level/complete` with that id. The id is used up on the first completion, is refused for a different level, and expires after 3 hours. Losses pay nothing. `GET /api/account-economy/data` shows energy as it is now, with regeneration applied.
 - Ad event revenue reported by the client is not counted. `POST /api/ads/event` stores it as `clientReportedRevenueUsd` for debugging. The revenue total comes only from a server-verified source, which is not built yet.
 - Store billing (`POST /api/monetization/receipt/verify`, session required). iOS: a StoreKit 2 `signedTransaction` is verified offline against the pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`), with the bundle ID (`APPLE_BUNDLE_ID`) checked and Sandbox refused unless `APPLE_ALLOW_SANDBOX=true`. Legacy receipts check the bundle and environment too. Android: the purchase is checked with the Google Play API for the package in `GOOGLE_PACKAGE_NAME`. Store SKUs map to catalog products in `src/services/payments/product-catalog.js`. Each purchase is granted once per transaction, and a transaction owned by one player is refused to others (`transaction_claimed`, 409).
 - Live ops (`GET /api/live-ops/today`, session required). Reads `config/liveops.json`: dated events and deal windows. A deal price applies only inside its window, is at least $0.99, and is below the catalog price. An invalid config is logged and ignored, so catalog prices apply.
@@ -37,6 +37,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Store SKUs. `product-catalog.js` uses the catalog IDs (`remove_ads`, `unlock_all_themes`) as the store product IDs. The real App Store Connect and Google Play product IDs are not known to this repository and must be set there.
 - Device billing (StoreKit and Play Billing on a phone) has not been run. Only the server side of store purchases is built.
 - Live ops deals are not yet in the game client. The server reports them; the client does not show them.
+- Canvas title, sign-in, and the menu wiring are checked by static tests (`src/__tests__/client-wiring.test.ts`). They have not been run in a browser, because this sandbox has no browser.
 - Subscription events are recorded, but they do not yet change entitlements.
 - Durable economy (opt-in). With `ECONOMY_STORE=mongo`, player balances are saved to MongoDB, and a coin purchase is credited only when that store is on. Without it, balances are in memory and lost on restart, so purchases refuse to credit and the provider retries them. Run production with `ECONOMY_STORE=mongo`. The save, reload, and rollback rules are tested against an in-memory stand-in for the store (`src/__tests__/durable-economy.test.ts`). No MongoDB server has been run against them yet.
 - Client shop. Gems, stars, and energy are no longer sold or given out by the shop, and loot boxes are paid for in coins through the server. The old client code granted currency for free.
@@ -51,8 +52,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Seasonal events, tournaments, community challenges, and boss mechanics beyond a higher target.
 - Battle pass premium rewards. `POST /api/battlepass/premium/reward` returns 501 until it grants items.
 - A season pass purchase. No price exists in the repository, so the product is not sold.
-- `script.js` contains a second game class, `InfiniteMatchGame`, which `index.html` falls back to. It is not energy-gated and has not been updated for the shop, loot box, or kingdom changes. Removing it or porting those changes is still to do.
-- Gameplay gems and stars are still kept in the browser (`localStorage`). They can be edited there, so they must not be used as a sale currency until the game reads them from the server.
+- Gameplay stars are still kept in the browser (`localStorage`). They can be edited there, so they must not be used as a sale currency until the game reads them from the server. Gems were removed from the game: nothing ever earned or spent them.
 - Consumable refunds and chargebacks are not handled. Coins credited for a payment that is later refunded stay with the player.
 - Coin packs in the client show fixed labels that mirror `product-catalog.js`. Change both when prices change.
 - The Stripe checkout button is built but has not run against Stripe. The sandbox cannot reach Stripe.
@@ -105,7 +105,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - **Guilds** - Join teams and work together on challenges
 
 ### Monetization & Rewards
-- **In-Game Currency** - Earn coins and gems through gameplay
+- **In-Game Currency** - Earn coins through gameplay
 - **Special Offers** - Limited-time deals on power-ups and currency
 - **Daily Deals** - Discounted items available each day
 - **VIP System** - Premium benefits for dedicated players

@@ -71,7 +71,8 @@ router.get('/data', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
 
-    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
+    // Energy is shown as it is now, not as it was at the last save. Nothing is written here.
+    const playerEconomy = await accountEconomyService.getPlayerEconomyView(playerId);
 
     res.json({
       success: true,
@@ -387,7 +388,7 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
 router.post('/level/complete', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { level, score, stars = 0 } = req.body;
+    const { level, score, stars = 0, attemptId } = req.body;
 
     // Validate ranges. The client reports the result, so the server bounds it.
     const validLevel = Number.isInteger(level) && level >= 1 && level <= LEVEL_LIMITS.maxLevel;
@@ -399,6 +400,20 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
         error: 'Invalid level, score, or stars',
         requestId: req.requestId,
       });
+    }
+
+    // A reward needs an attempt that was paid for with energy. Each attempt pays out once.
+    // The attempt is consumed before any reward is granted.
+    if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
+      return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
+    }
+    try {
+      await accountEconomyService.consumeAttempt(playerId, attemptId, level);
+    } catch (error) {
+      if (error instanceof EconomyRuleError) {
+        return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+      }
+      throw error;
     }
 
     // XP and coins are computed here. The client never sets them.
@@ -478,11 +493,12 @@ router.post('/lootbox/open', security.sessionValidation, async (req, res) => {
   }
 });
 
-// Spends the energy for one attempt at a level. The client must get this before a level starts.
+// Spends the energy for one attempt at a level and returns the attempt id. Completing the level
+// needs that id, so a reward cannot be claimed without an attempt.
 router.post('/energy/spend', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const result = await accountEconomyService.spendAttemptEnergy(playerId);
+    const result = await accountEconomyService.spendAttemptEnergy(playerId, req.body?.level);
     res.json({ success: true, result, requestId: req.requestId });
   } catch (error) {
     if (error instanceof EconomyRuleError) {

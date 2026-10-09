@@ -8,11 +8,11 @@ import { Logger } from '../../core/logger/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { aiCacheManager } from '../ai-cache-manager.js';
 import crypto from 'crypto';
-import { pickWheelReward } from './item-catalog.js';
+import { pickWheelReward, LEVEL_LIMITS } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
-import { ATTEMPT_ENERGY_COST, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
+import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
 
 /** A rule the player cannot meet (not enough coins, room maxed). `code` is safe to show. */
 export class EconomyRuleError extends Error {
@@ -725,25 +725,66 @@ class AccountEconomyService {
   }
 
   /**
-   * Spends the energy for one attempt at a level. This is the only place attempt energy is taken,
-   * so the client cannot skip it. Regeneration is applied first, so a player is never charged for
-   * points that have already come back.
+   * Spends the energy for one attempt at a level and issues the attempt id. This is the only place
+   * attempt energy is taken, so the client cannot skip it. Regeneration is applied first, so a
+   * player is never charged for points that have already come back. A new attempt replaces any
+   * earlier one that was not completed.
    */
-  async spendAttemptEnergy(playerId, nowMs = Date.now()) {
+  async spendAttemptEnergy(playerId, level, nowMs = Date.now()) {
+    if (!Number.isInteger(level) || level < 1 || level > LEVEL_LIMITS.maxLevel) {
+      throw new EconomyRuleError('invalid_level');
+    }
     return this.withPlayerLock(playerId, async () => {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       const energy = regenerateEnergy(playerEconomy.currencies.energy, nowMs);
       if (energy.amount < ATTEMPT_ENERGY_COST) throw new EconomyRuleError('energy_empty');
       energy.amount -= ATTEMPT_ENERGY_COST;
       energy.spent += ATTEMPT_ENERGY_COST;
+      const attemptId = crypto.randomUUID();
+      playerEconomy.pendingAttempt = { id: attemptId, level, issuedAt: nowMs };
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
       return {
+        attemptId,
+        level,
         energy: energy.amount,
         maxEnergy: energy.maxAmount,
         nextRegenInMs: nextRegenInMs(energy, nowMs),
       };
     });
+  }
+
+  /**
+   * Consumes a spent attempt so its level can be rewarded once. Runs under the player lock and is
+   * saved before any reward is granted, so a repeated or forged completion finds no attempt.
+   */
+  async consumeAttempt(playerId, attemptId, level, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const pending = playerEconomy.pendingAttempt;
+      if (!pending || typeof attemptId !== 'string' || pending.id !== attemptId) {
+        throw new EconomyRuleError('attempt_not_found');
+      }
+      if (pending.level !== level) throw new EconomyRuleError('attempt_level_mismatch');
+      if (nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS) throw new EconomyRuleError('attempt_expired');
+      playerEconomy.pendingAttempt = null;
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { level };
+    });
+  }
+
+  /**
+   * The economy as the player should see it now: energy is brought up to date for the time that
+   * has passed, without saving. Internal fields (the pending attempt) are left out.
+   */
+  async getPlayerEconomyView(playerId, nowMs = Date.now()) {
+    const playerEconomy = await this.getPlayerEconomy(playerId);
+    const view = structuredClone(playerEconomy);
+    delete view.pendingAttempt;
+    regenerateEnergy(view.currencies.energy, nowMs);
+    view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
+    return view;
   }
 
   /** Refills energy to its maximum. Charges only for the energy that is missing. */
