@@ -26,6 +26,7 @@ function dailyChallengeLevel(dateString) {
 
 // Power-ups that need a tapped gem. They arm on press and fire on the next tap.
 const TARGETED_POWERUPS = ['diamond', 'target', 'star'];
+const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star'];
 
 class PhaserMatch3Game {
     constructor() {
@@ -351,7 +352,7 @@ class PhaserMatch3Game {
     }
 
     selectGem(gem) {
-        if (!this.isGameRunning || this.isPaused) return;
+        if (!this.isGameRunning || this.isPaused || this.powerUpPending) return;
 
         if (this.armedPowerUp) {
             this.fireTargetedPowerUp(gem);
@@ -798,50 +799,113 @@ class PhaserMatch3Game {
     }
 
     usePowerUp(powerType) {
-        if (!this.isGameRunning) return;
+        if (!this.isGameRunning || this.powerUpPending) return;
 
         if (TARGETED_POWERUPS.includes(powerType)) {
             this.toggleArmedPowerUp(powerType);
             return;
         }
 
-        let powerUpBtn, powerUpText;
-        switch(powerType) {
-            case 'bomb':
-                powerUpBtn = this.bombBtn;
-                powerUpText = this.bombText;
-                break;
-            case 'rainbow':
-                powerUpBtn = this.rainbowBtn;
-                powerUpText = this.rainbowText;
-                break;
-            case 'lightning':
-                powerUpBtn = this.lightningBtn;
-                powerUpText = this.lightningText;
-                break;
-        }
-        
-        let count = powerUpBtn.getData('count');
-        if (count > 0) {
-            count--;
-            powerUpBtn.setData('count', count);
-            powerUpText.setText(count.toString());
-            
-            // Apply power-up effect
-            switch (powerType) {
-                case 'bomb':
-                    this.activateBomb();
-                    break;
-                case 'rainbow':
-                    this.activateRainbow();
-                    break;
-                case 'lightning':
-                    this.activateLightning();
-                    break;
-            }
-            
-            // Show power-up animation
+        const slot = this.powerSlot(powerType);
+        if (!slot || slot.btn.getData('count') <= 0) return;
+
+        this.spendPowerUp(powerType, () => {
+            this.applyInstantPowerUp(powerType);
             this.showPowerUpAnimation(powerType);
+        });
+    }
+
+    // Maps a power-up type to its button and count label.
+    powerSlot(type) {
+        const direct = {
+            bomb: { btn: this.bombBtn, text: this.bombText },
+            rainbow: { btn: this.rainbowBtn, text: this.rainbowText },
+            lightning: { btn: this.lightningBtn, text: this.lightningText },
+        };
+        return direct[type] || (this.powerButtons && this.powerButtons[type]) || null;
+    }
+
+    setPowerCount(type, count) {
+        const slot = this.powerSlot(type);
+        if (!slot) return;
+        slot.btn.setData('count', count);
+        slot.text.setText(String(count));
+    }
+
+    applyInstantPowerUp(type) {
+        switch (type) {
+            case 'bomb': this.activateBomb(); break;
+            case 'rainbow': this.activateRainbow(); break;
+            case 'lightning': this.activateLightning(); break;
+        }
+    }
+
+    getAuthToken() {
+        try {
+            return (typeof localStorage !== 'undefined' && localStorage.getItem('authToken')) || '';
+        } catch (error) {
+            return '';
+        }
+    }
+
+    // Spends one charge, then runs the effect. Signed-in players are checked against
+    // the server first, so the effect runs only when the server agrees. Guests spend locally.
+    spendPowerUp(type, effect) {
+        const token = this.getAuthToken();
+        if (!token) {
+            this.setPowerCount(type, this.powerSlot(type).btn.getData('count') - 1);
+            effect();
+            return;
+        }
+
+        this.powerUpPending = true;
+        this.consumePowerUpOnServer(type, token)
+            .then((ok) => {
+                if (ok) {
+                    this.setPowerCount(type, this.powerSlot(type).btn.getData('count') - 1);
+                    effect();
+                } else {
+                    return this.syncPowerUpInventory();
+                }
+            })
+            .catch((error) => {
+                console.warn('Power-up not spent on server:', error);
+                return this.syncPowerUpInventory();
+            })
+            .finally(() => {
+                this.powerUpPending = false;
+            });
+    }
+
+    async consumePowerUpOnServer(type, token) {
+        const response = await fetch('/api/account-economy/powerup/use', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ powerupId: type, quantity: 1 })
+        });
+        return response.ok;
+    }
+
+    // Loads power-up counts from the player's server inventory. Guests keep local counts.
+    async syncPowerUpInventory() {
+        const token = this.getAuthToken();
+        if (!token) return;
+        try {
+            const response = await fetch('/api/account-economy/data', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) return;
+            const body = await response.json();
+            const powerups = body?.data?.inventory?.powerups || {};
+            for (const type of POWERUP_TYPES) {
+                const count = powerups[type]?.count;
+                if (Number.isInteger(count) && count >= 0) this.setPowerCount(type, count);
+            }
+        } catch (error) {
+            console.warn('Could not load power-up inventory:', error);
         }
     }
 
@@ -894,19 +958,16 @@ class PhaserMatch3Game {
 
     fireTargetedPowerUp(gem) {
         const type = this.armedPowerUp;
-        const { btn, text } = this.powerButtons[type];
         const r = gem.getData('row');
         const c = gem.getData('col');
         this.disarmPowerUp();
 
-        const count = btn.getData('count') - 1;
-        btn.setData('count', count);
-        text.setText(String(count));
-
-        const keys = this.powerUpKeys(type, r, c);
-        const points = { diamond: 400, target: 200, star: 250 }[type];
-        this.clearAndCascade(keys, points);
-        this.showPowerUpAnimation(type);
+        this.spendPowerUp(type, () => {
+            const keys = this.powerUpKeys(type, r, c);
+            const points = { diamond: 400, target: 200, star: 250 }[type];
+            this.clearAndCascade(keys, points);
+            this.showPowerUpAnimation(type);
+        });
     }
 
     showPowerUpAnimation(powerType) {
@@ -1029,6 +1090,7 @@ class PhaserMatch3Game {
         
         // Initialize platform and load user data
         await this.initializePlatform();
+        await this.syncPowerUpInventory();
         
         this.isGameRunning = true;
         this.startTimer();

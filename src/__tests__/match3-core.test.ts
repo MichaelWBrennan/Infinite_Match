@@ -35,7 +35,11 @@ function loadSandbox(rng: () => number): Record<string, any> {
 }
 
 function loadGameClass(rng: () => number) {
-  return (loadSandbox(rng).window as { PhaserMatch3Game: any }).PhaserMatch3Game;
+  const sandbox = loadSandbox(rng);
+  const Ctor = (sandbox.window as { PhaserMatch3Game: any }).PhaserMatch3Game;
+  // Tests reach the sandbox through the class, to stub fetch.
+  (Ctor as any).sandbox = sandbox;
+  return Ctor;
 }
 
 function makeSprite(x: number, y: number, key: string) {
@@ -405,6 +409,77 @@ describe('levels', () => {
     expect(game.starsFor(1000)).toBe(1);
     expect(game.starsFor(1500)).toBe(2);
     expect(game.starsFor(2000)).toBe(3);
+  });
+
+  describe('power-ups and the server inventory', () => {
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    function signedIn(game: any, inventory: Record<string, { count: number }>) {
+      game.getAuthToken = () => 'test-token';
+      game.constructor.sandbox.fetch = async () => ({
+        ok: true,
+        json: async () => ({ data: { inventory: { powerups: inventory } } }),
+      });
+    }
+
+    test('signed-in counts load from the server inventory', async () => {
+      const game = makeGame(41);
+      signedIn(game, { bomb: { count: 7 }, diamond: { count: 2 } });
+      await game.syncPowerUpInventory();
+      expect(game.bombBtn.getData('count')).toBe(7);
+      expect(game.powerButtons.diamond.btn.getData('count')).toBe(2);
+    });
+
+    test('guests keep local counts and make no request', async () => {
+      const game = makeGame(42);
+      let called = false;
+      game.constructor.sandbox.fetch = async () => { called = true; throw new Error('no'); };
+      await game.syncPowerUpInventory();
+      expect(called).toBe(false);
+      expect(game.bombBtn.getData('count')).toBe(3);
+    });
+
+    test('a power-up takes effect only after the server confirms the spend', async () => {
+      const game = makeGame(43);
+      signedIn(game, { bomb: { count: 3 } });
+      let confirm: (ok: boolean) => void = () => {};
+      game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
+      const scoreBefore = game.score;
+
+      game.usePowerUp('bomb');
+      expect(game.bombBtn.getData('count')).toBe(3); // not spent yet
+      expect(game.score).toBe(scoreBefore);
+
+      confirm(true);
+      await flush();
+      expect(game.bombBtn.getData('count')).toBe(2);
+      expect(game.score).toBeGreaterThan(scoreBefore);
+      expect(game.powerUpPending).toBe(false);
+    });
+
+    test('a refused spend changes nothing and resyncs the count', async () => {
+      const game = makeGame(44);
+      signedIn(game, { bomb: { count: 0 } });
+      game.consumePowerUpOnServer = async () => false;
+      const scoreBefore = game.score;
+
+      game.usePowerUp('bomb');
+      await flush();
+      expect(game.score).toBe(scoreBefore);
+      expect(game.bombBtn.getData('count')).toBe(0);
+    });
+
+    test('input is blocked while a server check is pending', async () => {
+      const game = makeGame(45);
+      signedIn(game, { bomb: { count: 3 } });
+      let confirm: (ok: boolean) => void = () => {};
+      game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
+      game.usePowerUp('bomb');
+      game.usePowerUp('bomb'); // ignored while pending
+      confirm(true);
+      await flush();
+      expect(game.bombBtn.getData('count')).toBe(2);
+    });
   });
 });
 
