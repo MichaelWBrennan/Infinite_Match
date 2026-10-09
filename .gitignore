@@ -14,3 +14,6 @@ unity-credentials.json
 
 # Runtime data written by the server (level results, etc.)
 var/
+
+# Runtime reports written by the server and tests (not source)
+monitoring/reports/*.jsonl

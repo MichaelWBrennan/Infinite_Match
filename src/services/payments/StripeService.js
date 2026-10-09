@@ -8,6 +8,8 @@ import { AppConfig } from '../../core/config/index.js';
 import { Logger } from '../../core/logger/index.js';
 import PurchaseLedger from './PurchaseLedger.js';
 import { productFor } from './product-catalog.js';
+import { grantPurchase } from './purchase-grants.js';
+import { priceFor } from '../live-ops/live-ops.js';
 
 const logger = new Logger('StripeService');
 
@@ -329,10 +331,12 @@ class StripeService {
   async handlePaymentIntentSucceeded(paymentIntent) {
     const { id, amount, currency, metadata } = paymentIntent;
 
-    // Grant only what the catalog sells, at the catalog price. Anything else is not recorded.
-    const product = productFor(metadata?.productId);
-    if (!product || amount !== product.priceCents || currency !== product.currency) {
-      logger.warn('Payment intent does not match the product catalog; not recorded', {
+    // Grant only what was sold: the price in effect when the intent was created (catalog
+    // price, or an active deal at that moment). Anything else is not granted.
+    const createdMs = (paymentIntent.created ?? Math.floor(Date.now() / 1000)) * 1000;
+    const expected = productFor(metadata?.productId) ? priceFor(metadata.productId, createdMs) : null;
+    if (!expected || amount !== expected.priceCents || currency !== expected.currency) {
+      logger.warn('Payment intent does not match the price for its product; not granted', {
         paymentIntentId: id,
         productId: metadata?.productId || null,
         amount,
@@ -341,21 +345,29 @@ class StripeService {
       return;
     }
 
-    await PurchaseLedger.recordPurchase({
-      transactionId: id,
-      productId: metadata.productId || 'unknown',
-      amount: amount / 100, // Convert from cents
-      currency,
-      platform: 'stripe',
+    const grant = await grantPurchase({
       playerId: metadata.playerId,
-      paymentIntentId: id,
+      productId: metadata.productId,
+      transactionId: id,
+      platform: 'stripe',
+      atMs: createdMs,
     });
+    if (!grant.granted) {
+      // A charge we cannot grant needs a manual look (refund or support), so log it loudly.
+      logger.error('Succeeded payment was not granted', {
+        paymentIntentId: id,
+        reason: grant.reason,
+        playerId: metadata.playerId,
+      });
+      return;
+    }
 
     logger.info('Payment intent succeeded', {
       paymentIntentId: id,
       amount: amount / 100,
       currency,
       playerId: metadata.playerId,
+      duplicate: grant.duplicate,
     });
   }
 

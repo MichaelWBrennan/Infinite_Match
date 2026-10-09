@@ -10,6 +10,7 @@ import { Logger } from '../core/logger/index.js';
 import StripeService from '../services/payments/StripeService.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { productFor } from '../services/payments/product-catalog.js';
+import { priceFor } from '../services/live-ops/live-ops.js';
 
 const router = express.Router();
 const logger = new Logger('StripeRoutes');
@@ -86,7 +87,9 @@ router.post('/payment-intent', security.sessionValidation, validatePaymentIntent
 
     const { productId, metadata = {} } = req.body;
     const product = productFor(productId);
-    if (!product) {
+    // The price in effect now: the catalog price, or an active deal.
+    const price = product ? priceFor(productId, Date.now()) : null;
+    if (!product || !price) {
       return res.status(400).json({
         success: false,
         error: 'unknown_product',
@@ -100,12 +103,12 @@ router.post('/payment-intent', security.sessionValidation, validatePaymentIntent
       ...metadata,
       playerId,
       productId,
-      priceCents: String(product.priceCents),
+      priceCents: String(price.priceCents),
     };
 
     const result = await StripeService.createPaymentIntent({
-      amount: product.priceCents / 100,
-      currency: product.currency,
+      amount: price.priceCents / 100,
+      currency: price.currency,
       metadata: enrichedMetadata,
       customerId: req.user?.stripeCustomerId,
     });

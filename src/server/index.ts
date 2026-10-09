@@ -43,6 +43,7 @@ import consentRoutes from '../routes/consent.js';
 import pushRoutes from '../routes/push.js';
 import experimentsRoutes from '../routes/experiments.js';
 import levelResultsRoutes from '../routes/level-results.js';
+import liveOpsRoutes from '../routes/live-ops.js';
 import battlepassRoutes from '../routes/battlepass.js';
 import subscriptionsRoutes from '../routes/subscriptions.js';
 import { adminAuth } from '../middleware/admin-auth.js';
@@ -351,6 +352,8 @@ class GameServer {
     this.app.use('/api/push', pushRoutes);
     this.app.use('/api/experiments', experimentsRoutes);
     this.app.use('/api/level-results', levelResultsRoutes);
+    // Live ops: today's deals and events. Session-gated.
+    this.app.use('/api/live-ops', liveOpsRoutes);
     // Store webhooks: each verifies the sender and returns 503 until its config is set.
     this.app.use('/api/subscriptions', subscriptionsRoutes);
     // Battle pass config is public. The premium reward claim returns 501 until built.

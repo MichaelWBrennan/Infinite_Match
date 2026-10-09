@@ -23,10 +23,15 @@ This section lists what is built and tested, and what is mounted on the server. 
 - AI-optimized routes (`/api/ai-optimized/*`). Mounted behind admin auth. Returns 503 `ai_not_configured` when no OpenAI key is set, and 504 `generation_timeout` after 30 seconds. A failed AI call (including an unconfigured client) now fails its own request instead of leaving it waiting.
 - Operator admin routes (`/api/admin/*`). Access requires `ADMIN_API_TOKEN` (at least 32 characters) and `ADMIN_IDS`. Without both, every admin request is refused. See `.env.example`.
 - Store subscription webhooks (`/api/subscriptions/*`). Apple payloads must chain to a pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`). Google payloads need a valid Pub/Sub OIDC token for the configured audience and service account. Unverified payloads are rejected, and the routes return 503 until configured.
-- Stripe payment intents (`/api/stripe/payment-intent`). The price comes from a server-side catalog. Only `remove_ads` ($4.99) and `unlock_all_themes` ($7.99) can be bought. The webhook records a purchase only when the charged amount matches the catalog.
+- Stripe payment intents (`/api/stripe/payment-intent`). The price is the catalog price, or an active deal at that moment, from the server. The webhook grants a purchase only when the charged amount matches the price in effect when the intent was created. Grants go to the database the entitlement checks read (`PurchaseLedgerDb`).
+- Store billing (`POST /api/monetization/receipt/verify`, session required). iOS: a StoreKit 2 `signedTransaction` is verified offline against the pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`), with the bundle ID (`APPLE_BUNDLE_ID`) checked and Sandbox refused unless `APPLE_ALLOW_SANDBOX=true`. Legacy receipts check the bundle and environment too. Android: the purchase is checked with the Google Play API for the package in `GOOGLE_PACKAGE_NAME`. Store SKUs map to catalog products in `src/services/payments/product-catalog.js`. Each purchase is granted once per transaction, and a transaction owned by one player is refused to others (`transaction_claimed`, 409).
+- Live ops (`GET /api/live-ops/today`, session required). Reads `config/liveops.json`: dated events and deal windows. A deal price applies only inside its window, is at least $0.99, and is below the catalog price. An invalid config is logged and ignored, so catalog prices apply.
 
 **Built, but not verified against the live service**
-- Stripe, Apple, and Google calls have not been tested against their live APIs. The sandbox cannot reach them. The Apple and Google verifiers are tested with locally generated keys and certificates.
+- Stripe, Apple, and Google calls have not been tested against their live APIs. The sandbox cannot reach them. The Apple verifier is tested with locally generated keys and certificates. The Google Play purchase check is not verified: this sandbox cannot reach `androidpublisher.googleapis.com`, so it fails closed here.
+- Store SKUs. `product-catalog.js` uses the catalog IDs (`remove_ads`, `unlock_all_themes`) as the store product IDs. The real App Store Connect and Google Play product IDs are not known to this repository and must be set there.
+- Device billing (StoreKit and Play Billing on a phone) has not been run. Only the server side of store purchases is built.
+- Live ops deals are not yet in the game client. The server reports them; the client does not show them.
 - Subscription events are recorded, but they do not yet change entitlements.
 
 **Not built yet** (listed in the sections below, but not implemented)
@@ -35,7 +40,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Weather effects. The weather service needs Supabase, which is not configured here.
 - Kingdom building, garden design, and room customization.
 - Mini-games: treasure hunts, memory games, and rhythm challenges.
-- VIP system and daily deals. Offers exist as an endpoint with no client UI.
+- VIP system. Live ops deals exist on the server (see Built), but there is no VIP tier.
 - Seasonal events, tournaments, community challenges, and boss mechanics beyond a higher target.
 - Battle pass premium rewards. `POST /api/battlepass/premium/reward` returns 501 until it grants items.
 - A season pass purchase. No price exists in the repository, so the product is not sold.

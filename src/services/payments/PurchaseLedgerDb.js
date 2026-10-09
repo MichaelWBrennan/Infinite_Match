@@ -54,21 +54,23 @@ async function ensureConnection() {
 }
 
 export const PurchaseLedgerDb = {
+  /**
+   * Stores one purchase, keyed on transactionId. Resolves { inserted } and throws on
+   * failure, so a caller never grants an entitlement that was not saved.
+   */
   async recordPurchase(doc) {
-    try {
-      await ensureConnection();
-      if (doc.transactionId) {
-        await PurchaseModel.updateOne(
-          { transactionId: doc.transactionId },
-          { $setOnInsert: { ...doc } },
-          { upsert: true },
-        );
-      } else {
-        await new PurchaseModel(doc).save();
-      }
-    } catch (error) {
-      logger.error('recordPurchase failed', { error: error.message });
-    }
+    if (!doc?.transactionId) throw new Error('transactionId required');
+    await ensureConnection();
+    const res = await PurchaseModel.updateOne(
+      { transactionId: doc.transactionId },
+      { $setOnInsert: { ...doc } },
+      { upsert: true },
+    );
+    return { inserted: res.upsertedCount > 0 };
+  },
+  async findPurchaseByTransaction(transactionId) {
+    await ensureConnection();
+    return PurchaseModel.findOne({ transactionId }).lean();
   },
   async recordRefund(doc) {
     try {

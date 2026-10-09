@@ -1,16 +1,20 @@
 import express from 'express';
 import request from 'supertest';
-import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import authRoutes from '../routes/auth.js';
 import stripeRoutes from '../routes/stripe.js';
 import { productFor, PRODUCTS } from '../services/payments/product-catalog.js';
-import PurchaseLedger from '../services/payments/PurchaseLedger.js';
+import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import { loadLiveOps } from '../services/live-ops/live-ops.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import StripeService from '../services/payments/StripeService.js';
 
 describe('product catalog', () => {
   test('only priced products are sold', () => {
-    expect(productFor('remove_ads')).toEqual({ priceCents: 499, currency: 'usd' });
-    expect(productFor('unlock_all_themes')).toEqual({ priceCents: 799, currency: 'usd' });
+    expect(productFor('remove_ads')).toMatchObject({ priceCents: 499, currency: 'usd' });
+    expect(productFor('unlock_all_themes')).toMatchObject({ priceCents: 799, currency: 'usd' });
     // The premium pass has no price in the repo, so it cannot be bought.
     expect(productFor('season_pass_premium')).toBeNull();
     expect(productFor('__proto__')).toBeNull();
@@ -20,48 +24,86 @@ describe('product catalog', () => {
 });
 
 describe('webhook grants only what was charged', () => {
-  let recorded: any[];
-  const original = (PurchaseLedger as any).recordPurchase;
+  let rows: Map<string, any>;
+  const db = PurchaseLedgerDb as any;
+  const originals = { recordPurchase: db.recordPurchase, findPurchaseByTransaction: db.findPurchaseByTransaction };
 
-  beforeAll(() => {
-    recorded = [];
-    (PurchaseLedger as any).recordPurchase = async (purchase: any) => {
-      recorded.push(purchase);
+  beforeEach(() => {
+    rows = new Map();
+    db.recordPurchase = async (doc: any) => {
+      if (rows.has(doc.transactionId)) return { inserted: false };
+      rows.set(doc.transactionId, doc);
+      return { inserted: true };
     };
+    db.findPurchaseByTransaction = async (id: string) => rows.get(id) ?? null;
   });
-  afterAll(() => {
-    (PurchaseLedger as any).recordPurchase = original;
+  afterEach(() => {
+    Object.assign(db, originals);
+    loadLiveOps({ path: path.join(os.tmpdir(), 'no-liveops.json'), reload: true });
   });
 
-  test('a $0.01 intent for a priced product is not recorded', async () => {
+  test('a $0.01 intent for a priced product is not granted', async () => {
     await (StripeService as any).handlePaymentIntentSucceeded({
       id: 'pi_cheap',
       amount: 1,
       currency: 'usd',
+      created: Math.floor(Date.now() / 1000),
       metadata: { productId: 'remove_ads', playerId: 'p1' },
     });
-    expect(recorded).toHaveLength(0);
+    expect(rows.size).toBe(0);
   });
 
-  test('an intent for an unpriced product is not recorded', async () => {
+  test('an intent for an unpriced product is not granted', async () => {
     await (StripeService as any).handlePaymentIntentSucceeded({
       id: 'pi_pass',
       amount: 499,
       currency: 'usd',
+      created: Math.floor(Date.now() / 1000),
       metadata: { productId: 'season_pass_premium', playerId: 'p1' },
     });
-    expect(recorded).toHaveLength(0);
+    expect(rows.size).toBe(0);
   });
 
-  test('an intent at the catalog price is recorded', async () => {
+  test('an intent at the catalog price is granted to the database ledger', async () => {
     await (StripeService as any).handlePaymentIntentSucceeded({
       id: 'pi_ok',
       amount: 499,
       currency: 'usd',
+      created: Math.floor(Date.now() / 1000),
       metadata: { productId: 'remove_ads', playerId: 'p1' },
     });
-    expect(recorded).toHaveLength(1);
-    expect(recorded[0]).toMatchObject({ productId: 'remove_ads', playerId: 'p1', amount: 4.99 });
+    expect(rows.get('pi_ok')).toMatchObject({ productId: 'remove_ads', playerId: 'p1', amountUsd: 4.99, platform: 'stripe' });
+  });
+
+  test('an intent at the deal price is granted only when created inside the deal window', async () => {
+    const file = path.join(os.tmpdir(), `liveops-stripe-${Date.now()}.json`);
+    const start = Date.parse('2030-01-01T00:00:00Z');
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        deals: [
+          {
+            productId: 'remove_ads',
+            priceCents: 199,
+            start: new Date(start).toISOString(),
+            end: new Date(start + 86400000).toISOString(),
+          },
+        ],
+      }),
+    );
+    try {
+      loadLiveOps({ path: file, reload: true });
+      const inside = { id: 'pi_deal', amount: 199, currency: 'usd', created: start / 1000 + 60, metadata: { productId: 'remove_ads', playerId: 'p1' } };
+      await (StripeService as any).handlePaymentIntentSucceeded(inside);
+      expect(rows.get('pi_deal')).toMatchObject({ amountUsd: 1.99 });
+
+      // The same discounted amount, created after the window closes, is not granted.
+      const after = { id: 'pi_late', amount: 199, currency: 'usd', created: start / 1000 + 86400 + 60, metadata: { productId: 'remove_ads', playerId: 'p1' } };
+      await (StripeService as any).handlePaymentIntentSucceeded(after);
+      expect(rows.has('pi_late')).toBe(false);
+    } finally {
+      fs.rmSync(file, { force: true });
+    }
   });
 });
 
