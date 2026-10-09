@@ -51,6 +51,16 @@
             min-height: 44px;
             min-width: 44px;
         }
+        .community-tabs{display:flex;gap:6px;padding:8px;flex-wrap:wrap}
+    .community-tab{flex:1;padding:8px;border:0;border-radius:8px;background:#2b2d4a;color:#fff;cursor:pointer}
+    .community-tab.active{background:#4ecdc4;color:#111}
+    .community-body{padding:12px;color:#fff;overflow:auto;max-height:70vh}
+    .community-body h3{margin:12px 0 4px}
+    .community-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff22;flex-wrap:wrap}
+    .community-note{opacity:.85;margin:4px 0}
+    .community-btn{padding:6px 10px;border:0;border-radius:6px;background:#ffd700;color:#111;cursor:pointer}
+    .community-form{display:flex;gap:6px;margin:8px 0}
+    .community-input{flex:1;padding:6px;border-radius:6px;border:1px solid #888;background:#111;color:#fff}
     </style>
 </head>
 <body>
@@ -105,6 +115,10 @@
                     <span class="btn-icon">📰</span>
                     <span class="btn-text">NEWS</span>
                 </button>
+                <button class="menu-btn community-menu-btn" onclick="showCommunity()">
+                    <span class="btn-icon">🏆</span>
+                    <span class="btn-text">COMMUNITY</span>
+                </button>
             </div>
             <div class="bottom-ui">
                 <div class="player-info-mini">
@@ -137,7 +151,27 @@
                         <div class="mode-icon-large">🎯</div>
                         <h3 class="mode-title">Classic Mode</h3>
                         <p class="mode-description">Match cosmic gems to build your space empire</p>
-                        <button class="mode-play-btn" onclick="showLevelSelect()">
+                        <button class="mode-play-btn" onclick="chooseMode('classic')">
+                            <span class="play-text">START</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mode-card-royal unlocked">
+                    <div class="mode-card-bg">
+                        <div class="mode-icon-large">⏱️</div>
+                        <h3 class="mode-title">Timed</h3>
+                        <p class="mode-description">60 seconds and no move limit. Score as much as you can.</p>
+                        <button class="mode-play-btn" onclick="chooseMode('timed')">
+                            <span class="play-text">START</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mode-card-royal unlocked">
+                    <div class="mode-card-bg">
+                        <div class="mode-icon-large">♾️</div>
+                        <h3 class="mode-title">Endless</h3>
+                        <p class="mode-description">Keep matching until the board runs out of moves. Every run pays out.</p>
+                        <button class="mode-play-btn" onclick="chooseMode('endless')">
                             <span class="play-text">START</span>
                         </button>
                     </div>
@@ -623,6 +657,23 @@
     </div>
 
     <!-- Modal: Item Get -->
+    <!-- Community: season, friends, guild, and events. script.js fills #community-body from the server. -->
+    <div id="community-screen" class="screen">
+        <div class="screen-header-royal">
+            <button class="back-btn-royal" onclick="showTitle()">
+                <span class="back-icon">←</span>
+            </button>
+            <h2 class="screen-title-royal">Community</h2>
+            <div class="header-spacer"></div>
+        </div>
+        <div class="community-tabs">
+            <button class="community-tab" data-tab="battlepass" onclick="ui.showCommunityTab('battlepass')">Season</button>
+            <button class="community-tab" data-tab="friends" onclick="ui.showCommunityTab('friends')">Friends</button>
+            <button class="community-tab" data-tab="guild" onclick="ui.showCommunityTab('guild')">Guild</button>
+            <button class="community-tab" data-tab="events" onclick="ui.showCommunityTab('events')">Events</button>
+        </div>
+        <div id="community-body" class="community-body" aria-live="polite"></div>
+    </div>
     <div id="item-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">

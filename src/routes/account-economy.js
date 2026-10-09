@@ -9,7 +9,8 @@ import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import { accountEconomy as accountEconomyService, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
 import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
-import { starsForScore, winRewards } from '../services/meta/rewards.js';
+import { endlessRewards, starsForScore, winRewards } from '../services/meta/rewards.js';
+import { levelMultiplier, readLevelOverrides } from '../services/meta/level-overrides.js';
 import { applyVip, VIP_ENTITLEMENT } from '../services/meta/vip.js';
 import { addSeasonXp } from '../services/meta/battlepass.js';
 import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-season.js';
@@ -428,7 +429,8 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
 
     // A reward needs an attempt that was paid for with energy. The stars come from the score,
     // so a score below the target is not a win and does not use up the attempt.
-    const stars = starsForScore(score, level);
+    // The level's tuning multiplier moves its target. The game reads the same overrides.
+    const stars = starsForScore(score, level, levelMultiplier(level, readLevelOverrides()));
     if (stars === 0) {
       return res.status(400).json({ success: false, error: 'score_below_target', requestId: req.requestId });
     }
@@ -507,6 +509,52 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
 });
 
 // Buy a loot box with coins. The reward is rolled and granted on the server.
+// Endless mode: no target and no clock. A run ends when the board has no move left. The score
+// is paid as coins and XP. An endless run uses one energy point, spent as attempt level 1.
+const ENDLESS_ATTEMPT_LEVEL = 1;
+router.post('/endless/complete', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { score, attemptId } = req.body || {};
+    if (!Number.isInteger(score) || score < 0 || score > LEVEL_LIMITS.maxScore) {
+      return res.status(400).json({ success: false, error: 'Invalid score', requestId: req.requestId });
+    }
+    if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
+      return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
+    }
+    try {
+      await accountEconomyService.consumeAttempt(playerId, attemptId, ENDLESS_ATTEMPT_LEVEL);
+    } catch (error) {
+      if (error instanceof EconomyRuleError) {
+        return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+      }
+      throw error;
+    }
+
+    const reward = endlessRewards(score);
+    if (reward.xp > 0) await accountEconomyService.updateProgression(playerId, reward.xp, false);
+    if (reward.coins > 0) await accountEconomyService.updateCurrency(playerId, 'coins', reward.coins, 'add', 'endless_run');
+
+    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
+    const stats = playerEconomy.statistics;
+    stats.endlessRuns = (stats.endlessRuns || 0) + 1;
+    stats.endlessBest = Math.max(stats.endlessBest || 0, score);
+    await accountEconomyService.updatePlayerEconomyCache(playerId, playerEconomy);
+
+    res.json({
+      success: true,
+      result: {
+        reward,
+        endlessBest: stats.endlessBest,
+        balances: { coins: playerEconomy.currencies.coins.amount },
+      },
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    handleRouteError(res, error, 'complete endless run', req.requestId);
+  }
+});
+
 router.post('/lootbox/open', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;

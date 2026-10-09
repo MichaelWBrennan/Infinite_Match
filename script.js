@@ -250,6 +250,264 @@ class InfiniteMatchGame {
         this.showScreen('title-screen');
     }
 
+    // ----- Community screen: season, friends, guild, and events. Values come from the server. -----
+    // Text is set with textContent, never innerHTML, because names are chosen by players.
+    showCommunity(tab = 'battlepass') {
+        this.showScreen('community-screen');
+        this.showCommunityTab(tab);
+    }
+
+    showCommunityTab(tab) {
+        const tabs = ['battlepass', 'friends', 'guild', 'events'];
+        const current = tabs.includes(tab) ? tab : 'battlepass';
+        this.communityTab = current;
+        document.querySelectorAll('.community-tab').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.tab === current);
+        });
+        const body = document.getElementById('community-body');
+        if (!body) return;
+        // A message from the last action (for example, a refused claim) shows once at the top.
+        const flash = this.communityFlash;
+        this.communityFlash = null;
+        const show = (nodes) => {
+            if (this.communityTab !== current) return; // a newer tab was opened while this loaded
+            const top = flash ? [this.communityNote(flash)] : [];
+            body.replaceChildren(...top, ...nodes);
+        };
+        show([this.communityNote('Loading…')]);
+        const loaders = {
+            battlepass: () => this.loadCommunitySeason(show),
+            friends: () => this.loadCommunityFriends(show),
+            guild: () => this.loadCommunityGuild(show),
+            events: () => this.loadCommunityEvents(show),
+        };
+        loaders[current]().catch(() => {
+            show([this.communityNote('Could not load this tab. Check your connection and try again.')]);
+        });
+    }
+
+    communityEl(tag, text = '', className = '') {
+        const el = document.createElement(tag);
+        el.textContent = text === null || text === undefined ? '' : String(text);
+        if (className) el.className = className;
+        return el;
+    }
+
+    communityNote(text) {
+        return this.communityEl('p', text, 'community-note');
+    }
+
+    communityButton(label, onClick) {
+        const button = this.communityEl('button', label, 'community-btn');
+        button.type = 'button';
+        button.addEventListener('click', () => {
+            Promise.resolve(onClick()).catch(() => {});
+        });
+        return button;
+    }
+
+    communityRow(text, buttonLabel, onClick) {
+        const row = this.communityEl('div', '', 'community-row');
+        row.appendChild(this.communityEl('span', text));
+        if (buttonLabel) row.appendChild(this.communityButton(buttonLabel, onClick));
+        return row;
+    }
+
+    communityForm(placeholder, buttonLabel, onSubmit) {
+        const form = this.communityEl('div', '', 'community-form');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = placeholder;
+        input.maxLength = 40;
+        input.className = 'community-input';
+        const button = this.communityButton(buttonLabel, () => onSubmit(input.value.trim()));
+        form.append(input, button);
+        return form;
+    }
+
+    async communityRequest(url, options = {}) {
+        const headers = { ...(options.headers || {}) };
+        const token = this.getAuthToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+        if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+        const res = await fetch(url, { ...options, headers });
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok && data.success !== false, data };
+    }
+
+    communityError(data) {
+        return data && data.error ? String(data.error).replace(/_/g, ' ') : 'something went wrong';
+    }
+
+    // Runs a server action, remembers the outcome for the next render, and reloads the tab.
+    async communityAction(url, method, tab, body) {
+        const options = { method };
+        if (body !== undefined) options.body = JSON.stringify(body);
+        const result = await this.communityRequest(url, options);
+        this.communityFlash = result.ok ? 'Done.' : `Not done: ${this.communityError(result.data)}.`;
+        this.showCommunityTab(tab);
+    }
+
+    communityReward(reward) {
+        if (!reward) return 'nothing';
+        if (reward.coins !== undefined) return `${reward.coins} coins`;
+        return `${reward.amount} × ${reward.item}`;
+    }
+
+    async loadCommunitySeason(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to see your season progress.')]);
+        const { ok, data } = await this.communityRequest('/api/battlepass/progress');
+        if (!ok) return show([this.communityNote(`Season unavailable: ${this.communityError(data)}.`)]);
+        const p = data.progress;
+        const ends = p.status === 'active' && p.endsAt ? `ends ${new Date(p.endsAt).toLocaleDateString()}` : p.status;
+        const nodes = [
+            this.communityEl('h3', `${p.name} (${ends})`),
+            this.communityNote(`Season XP ${p.xp} · tier ${p.tier}`),
+        ];
+        if (!p.premiumUnlocked) nodes.push(this.communityNote('The premium track is locked.'));
+        for (const tier of p.tiers) {
+            const row = this.communityEl('div', '', 'community-row');
+            row.appendChild(this.communityEl('span', `Tier ${tier.level} · ${tier.xp} XP`));
+            for (const track of ['free', 'premium']) {
+                const reward = tier[track];
+                const label = `${track}: ${this.communityReward(reward)}`;
+                const claimed = (p.claimed[track] || []).includes(tier.level);
+                const canClaim = reward && tier.reached && !claimed && (track === 'free' || p.premiumUnlocked);
+                if (canClaim) {
+                    row.appendChild(this.communityButton(`Claim ${label}`, () => this.claimCommunityTier(tier.level, track)));
+                } else {
+                    row.appendChild(this.communityEl('span', claimed ? `${label} (claimed)` : label));
+                }
+            }
+            nodes.push(row);
+        }
+        show(nodes);
+    }
+
+    async claimCommunityTier(level, track) {
+        await this.communityAction('/api/battlepass/claim', 'POST', 'battlepass', { level, track });
+    }
+
+    async loadCommunityFriends(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to add friends.')]);
+        const [me, friends, board] = await Promise.all([
+            this.communityRequest('/api/social/me'),
+            this.communityRequest('/api/social/friends'),
+            this.communityRequest('/api/social/friends/leaderboard'),
+        ]);
+        if (!me.ok) return show([this.communityNote(`Friends unavailable: ${this.communityError(me.data)}.`)]);
+        const profile = me.data.profile || {};
+        const nodes = [this.communityNote(`Your friend code: ${profile.code || '—'}`)];
+        nodes.push(this.communityForm('Display name (3–16 characters)', profile.name ? 'Change name' : 'Set name', (name) =>
+            this.communityAction('/api/social/name', 'PUT', 'friends', { name })));
+        nodes.push(this.communityForm('Friend code', 'Send request', (code) =>
+            this.communityAction('/api/social/friends/request', 'POST', 'friends', { code })));
+
+        nodes.push(this.communityEl('h3', 'Requests'));
+        const incoming = (friends.ok && friends.data.incoming) || [];
+        if (incoming.length === 0) nodes.push(this.communityNote('No pending requests.'));
+        for (const r of incoming) {
+            const row = this.communityEl('div', '', 'community-row');
+            row.appendChild(this.communityEl('span', r.label));
+            const id = encodeURIComponent(r.playerId);
+            row.appendChild(this.communityButton('Accept', () => this.communityAction(`/api/social/friends/${id}/accept`, 'POST', 'friends')));
+            row.appendChild(this.communityButton('Decline', () => this.communityAction(`/api/social/friends/${id}/decline`, 'POST', 'friends')));
+            nodes.push(row);
+        }
+
+        nodes.push(this.communityEl('h3', 'Friends'));
+        const list = (friends.ok && friends.data.friends) || [];
+        if (list.length === 0) nodes.push(this.communityNote('No friends yet. Share your code to add them.'));
+        for (const f of list) {
+            const id = encodeURIComponent(f.playerId);
+            nodes.push(this.communityRow(`${f.label} · best ${f.bestScore || 0}`, 'Remove', () =>
+                this.communityAction(`/api/social/friends/${id}`, 'DELETE', 'friends')));
+        }
+
+        nodes.push(this.communityEl('h3', 'Best scores'));
+        const rows = (board.ok && board.data.leaderboard) || [];
+        if (rows.length === 0) nodes.push(this.communityNote('Add friends to see a board.'));
+        for (const row of rows) {
+            nodes.push(this.communityNote(`${row.rank}. ${row.label}${row.isYou ? ' (you)' : ''} — ${row.score}`));
+        }
+        show(nodes);
+    }
+
+    async loadCommunityGuild(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to join a guild.')]);
+        const mine = await this.communityRequest('/api/social/guilds/mine');
+        if (!mine.ok) return show([this.communityNote(`Guilds unavailable: ${this.communityError(mine.data)}.`)]);
+        const guild = mine.data.guild;
+        if (guild) {
+            const nodes = [
+                this.communityEl('h3', `${guild.name} · ${guild.memberCount} members`),
+                this.communityNote(guild.isOwner ? 'You lead this guild.' : 'You are a member.'),
+            ];
+            for (const m of guild.members || []) {
+                nodes.push(this.communityNote(`${m.label}${m.isYou ? ' (you)' : ''} — best ${m.bestScore || 0}`));
+            }
+            nodes.push(this.communityButton('Leave guild', () => this.communityAction('/api/social/guilds/leave', 'POST', 'guild')));
+            return show(nodes);
+        }
+        const nodes = [
+            this.communityNote('You are not in a guild.'),
+            this.communityForm('New guild name (3–16 characters)', 'Create guild', (name) =>
+                this.communityAction('/api/social/guilds', 'POST', 'guild', { name })),
+            this.communityEl('h3', 'Guilds to join'),
+        ];
+        const list = await this.communityRequest('/api/social/guilds');
+        const guilds = (list.ok && list.data.guilds) || [];
+        if (guilds.length === 0) nodes.push(this.communityNote('No guilds yet.'));
+        for (const g of guilds) {
+            const id = encodeURIComponent(g.id);
+            nodes.push(this.communityRow(`${g.name} · ${g.memberCount} members`, 'Join', () =>
+                this.communityAction(`/api/social/guilds/${id}/join`, 'POST', 'guild')));
+        }
+        show(nodes);
+    }
+
+    async loadCommunityEvents(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to see events and tournaments.')]);
+        const [comp, today] = await Promise.all([
+            this.communityRequest('/api/live-ops/competitions'),
+            this.communityRequest('/api/live-ops/today'),
+        ]);
+        if (!comp.ok) return show([this.communityNote(`Events unavailable: ${this.communityError(comp.data)}.`)]);
+        const nodes = [this.communityEl('h3', 'Tournaments')];
+        const tournaments = comp.data.tournaments || [];
+        if (tournaments.length === 0) nodes.push(this.communityNote('No tournament is running.'));
+        for (const t of tournaments) {
+            nodes.push(this.communityEl('p', `${t.name}${t.endsAt ? ` · ends ${new Date(t.endsAt).toLocaleDateString()}` : ''}`));
+            for (const e of t.entries || []) nodes.push(this.communityNote(`${e.rank}. ${e.label} — ${e.score}`));
+            const you = t.you;
+            nodes.push(this.communityNote(you && you.rank ? `Your place: ${you.rank}` : 'Win a level to enter the board.'));
+        }
+        nodes.push(this.communityEl('h3', 'Community challenges'));
+        const challenges = comp.data.challenges || [];
+        if (challenges.length === 0) nodes.push(this.communityNote('No challenge is running.'));
+        for (const c of challenges) {
+            const label = `${c.name}: ${c.progress}/${c.goal} wins`;
+            if (c.canClaim) {
+                nodes.push(this.communityRow(label, 'Claim reward', () =>
+                    this.communityAction(`/api/live-ops/challenges/${encodeURIComponent(c.id)}/claim`, 'POST', 'events')));
+            } else {
+                nodes.push(this.communityRow(c.claimed ? `${label} (reward claimed)` : label));
+            }
+        }
+        nodes.push(this.communityEl('h3', 'Deals'));
+        const deals = (today.ok && today.data.deals) || [];
+        if (deals.length === 0) nodes.push(this.communityNote('No deals right now.'));
+        for (const d of deals) {
+            const price = (d.priceCents / 100).toFixed(2);
+            const was = (d.catalogPriceCents / 100).toFixed(2);
+            nodes.push(this.communityNote(`${d.productId}: $${price} (was $${was})`));
+        }
+        const events = (today.ok && today.data.events) || [];
+        if (events.length > 0) nodes.push(this.communityEl('h3', 'Live events'));
+        for (const e of events) nodes.push(this.communityNote(`${e.name} — ${e.description || ''}`));
+        show(nodes);
+    }
+
     showLevelSelect() {
         this.showScreen('level-select');
         this.updatePlayerStats();
@@ -1299,6 +1557,16 @@ function showLevelSelect() { return callUi('showLevelSelect'); }
 function showNews() { return callUi('showNews'); }
 function showOffers() { return callUi('showOffers'); }
 function showLeaderboard() { return callUi('showLeaderboard'); }
+function showCommunity(tab) { return callUi('showCommunity', tab); }
+// Mode cards. Classic and timed open the level list; endless starts a run at once.
+function chooseMode(mode) {
+    callGame('setMode', mode);
+    if (mode === 'endless') {
+        revealCanvas();
+        return callGame('startEndless');
+    }
+    return callUi('showLevelSelect');
+}
 function closeModal() { return callUi('closeModal'); }
 function closeTutorial() { return callUi('closeTutorial'); }
 function showAdvancedSettings() { return callUi('showAdvancedSettings'); }

@@ -6,9 +6,11 @@ import { levelTarget, starsForScore, winRewards, WIN_REWARDS } from '../services
 // The client's levelConfig() decides the target a player sees. The server must use the same
 // number, or a legitimate win could be refused or a short one accepted.
 const source = fs.readFileSync(path.join(process.cwd(), 'phaser3-game.js'), 'utf-8');
-const clientLevelConfig = new Function(
-  `${source.match(/function levelConfig\(level\) \{[\s\S]*?\n\}/)![0]}; return levelConfig;`,
-)() as any;
+// levelConfig(level, mode) reads the server's tuning overrides through its first parameter.
+const levelConfigSource = source.match(/function levelConfig\([^)]*\) \{[\s\S]*?\n\}/)![0];
+const clientLevelConfigWith = (overrides: unknown) =>
+  new Function('levelOverrides', `${levelConfigSource}; return levelConfig;`)(overrides) as any;
+const clientLevelConfig = clientLevelConfigWith({ levels: {} });
 
 describe('server level target matches the client', () => {
   test.each(Array.from({ length: 60 }, (_, i) => i + 1))('level %i has the same target', (level) => {
@@ -39,5 +41,32 @@ describe('stars and rewards', () => {
   test('a win pays the base plus a per-star amount', () => {
     expect(winRewards(1)).toEqual({ coins: WIN_REWARDS.coinsBase + WIN_REWARDS.coinsPerStar, xp: 100, stars: 1 });
     expect(winRewards(3).coins).toBe(35);
+  });
+});
+
+describe('tuning overrides and game modes on the client', () => {
+  test('a level override scales the client target the same way the server does', () => {
+    const client = clientLevelConfigWith({ levels: { 12: 1.1, 30: 0.9 } });
+    expect(client(12).targetScore).toBe(levelTarget(12, 1.1));
+    expect(client(30).targetScore).toBe(levelTarget(30, 0.9));
+    expect(client(13).targetScore).toBe(levelTarget(13));
+  });
+
+  test('timed mode has a 60-second clock and no move limit', () => {
+    const timed = clientLevelConfig(3, 'timed');
+    expect(timed.timeLimit).toBe(60);
+    expect(timed.moves).toBeGreaterThan(900);
+    expect(timed.targetScore).toBe(levelTarget(3));
+  });
+
+  test('endless mode has no clock and no reachable target', () => {
+    const endless = clientLevelConfig(1, 'endless');
+    expect(endless.timeLimit).toBe(0);
+    expect(endless.targetScore).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  test('classic mode is the default and keeps the 60-second clock', () => {
+    expect(clientLevelConfig(4).mode).toBe('classic');
+    expect(clientLevelConfig(4, 'classic').timeLimit).toBe(60);
   });
 });

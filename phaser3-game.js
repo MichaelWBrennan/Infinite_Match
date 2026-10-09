@@ -4,12 +4,29 @@
 // Level generator. Levels are procedural, so the game has no fixed cap.
 // Target score grows steadily. Every 10th level is a boss: double target and
 // fewer moves. Moves never drop below 12.
-function levelConfig(level) {
+// Tuning overrides from the server. Each level's target is multiplied by its override (1 when
+// none). Loaded once when the page starts. The server applies the same overrides to every win.
+let levelOverrides = { levels: {} };
+if (typeof fetch === 'function') {
+    fetch('/api/level-results/targets')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && d.levels) levelOverrides = { levels: d.levels }; })
+        .catch(() => {});
+}
+
+// Game modes. classic: the level's moves and a 60-second clock. timed: the clock only, with no
+// move limit. endless: no target and no clock. A run ends when no move is left.
+function levelConfig(level, mode = 'classic') {
     const n = Math.max(1, Math.floor(Number(level) || 1));
     const isBoss = n % 10 === 0;
-    const targetScore = (800 + n * 60) * (isBoss ? 2 : 1);
+    const multiplier = (levelOverrides && levelOverrides.levels && levelOverrides.levels[n]) || 1;
+    const targetScore = Math.round((800 + n * 60) * (isBoss ? 2 : 1) * multiplier);
     const moves = Math.max(12, 30 - Math.floor(n / 25) - (isBoss ? 5 : 0));
-    return { level: n, targetScore, moves, isBoss, isDaily: false };
+    if (mode === 'timed') return { level: n, targetScore, moves: 999, isBoss, isDaily: false, mode, timeLimit: 60 };
+    if (mode === 'endless') {
+        return { level: n, targetScore: Number.MAX_SAFE_INTEGER, moves: Number.MAX_SAFE_INTEGER, isBoss: false, isDaily: false, mode, timeLimit: 0 };
+    }
+    return { level: n, targetScore, moves, isBoss, isDaily: false, mode: 'classic', timeLimit: 60 };
 }
 
 // The same challenge for everyone on a given day. The date string picks a level
@@ -40,6 +57,10 @@ class PhaserMatch3Game {
         this.score = 0;
         this.moves = 30;
         this.time = 60;
+        // Game mode and clock. timeLimit 0 means no clock (endless).
+        this.mode = 'classic';
+        this.timeLimit = 60;
+        this.runStartedAt = 0;
         this.level = 3;
         this.targetScore = 1000; // score that wins the level
         // Stars belong to the server. Guests have none, and signed-in players see the synced value.
@@ -583,7 +604,10 @@ class PhaserMatch3Game {
         if (!this.isGameRunning) return;
         if (this.score >= this.targetScore || this.moves <= 0) {
             this.endGame();
+            return;
         }
+        // An endless run ends when no move is left on the board.
+        if (this.mode === 'endless' && !this.hasPossibleMove()) this.endGame();
     }
 
     // Clears the given cells (power-up effects), then resolves any cascades.
@@ -1234,7 +1258,7 @@ class PhaserMatch3Game {
 
     // Start a numbered level. Applies its target and move limit, then restarts.
     selectLevel(levelNumber) {
-        const config = levelConfig(levelNumber);
+        const config = levelConfig(levelNumber, this.mode);
         const start = () => {
             this.level = config.level;
             this.targetScore = config.targetScore;
@@ -1262,7 +1286,7 @@ class PhaserMatch3Game {
             score: Math.max(0, Math.floor(this.score)),
             targetScore: Math.max(1, Math.floor(target)),
             movesLeft: Math.max(0, Math.floor(this.moves)),
-            durationSeconds: Math.min(3600, Math.max(0, Math.floor(60 - this.time))),
+            durationSeconds: this.runSeconds(),
             isBoss: !!this.isBossLevel,
         };
     }
@@ -1299,6 +1323,7 @@ class PhaserMatch3Game {
         await this.syncPowerUpInventory();
         
         this.isGameRunning = true;
+        this.runStartedAt = Date.now();
         this.startTimer();
         this.updateUI();
         
@@ -1317,7 +1342,59 @@ class PhaserMatch3Game {
         });
     }
 
+    // Game modes: classic (moves and a 60-second clock), timed (60 seconds, no move limit), and
+    // endless (no target, no clock, runs until no move is left).
+    setMode(mode) {
+        this.mode = ['classic', 'timed', 'endless'].includes(mode) ? mode : 'classic';
+    }
+
+    startEndless() {
+        this.setMode('endless');
+        return this.selectLevel(1);
+    }
+
+    // Seconds the run has lasted: counted down on the clock, or measured from the start.
+    runSeconds() {
+        if (this.mode !== 'endless') return Math.min(3600, Math.max(0, (this.timeLimit || 60) - this.time));
+        return Math.min(3600, Math.max(0, Math.floor((Date.now() - (this.runStartedAt || Date.now())) / 1000)));
+    }
+
+    // An endless run has no target, so it is never a level win. The server pays for the score.
+    async finishEndless() {
+        const score = Math.max(0, Math.floor(this.score));
+        this.analytics.gamesPlayed++;
+        this.analytics.totalScore += score;
+        this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
+        const result = await this.submitEndlessRun(score);
+        this.saveUserData();
+        let subtitle = 'Sign in to be paid for endless runs.';
+        if (result) subtitle = `+${result.reward.coins} coins, +${result.reward.xp} XP (best ${result.endlessBest})`;
+        this.showEndGameScreen(0, { title: 'Run Over', subtitle });
+    }
+
+    async submitEndlessRun(score) {
+        const attemptId = this.attemptId;
+        this.attemptId = null;
+        if (!attemptId || !this.getAuthToken()) return null;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/endless/complete', {
+                method: 'POST',
+                body: JSON.stringify({ score: Math.min(1000000, score), attemptId }),
+            });
+            if (ok && data.success) {
+                if (typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
+                this.updateUI();
+                return data.result;
+            }
+            console.warn('Endless run not paid:', data.error);
+        } catch (error) {
+            console.warn('Could not reach the server for the endless run.', error);
+        }
+        return null;
+    }
+
     startTimer() {
+        if (this.mode === 'endless') return; // endless: no clock
         this.timerInterval = setInterval(() => {
             this.time--;
             this.timerText.setText(`Time: ${this.time}`);
@@ -1330,8 +1407,8 @@ class PhaserMatch3Game {
 
     updateUI() {
         this.scoreText.setText(`Score: ${this.score.toLocaleString()}`);
-        this.movesText.setText(`Moves: ${this.moves}`);
-        this.timerText.setText(`Time: ${this.time}`);
+        this.movesText.setText(this.mode === 'classic' ? `Moves: ${this.moves}` : 'Moves: ∞');
+        this.timerText.setText(this.mode === 'endless' ? 'Time: ∞' : `Time: ${this.time}`);
         this.levelText.setText(`Level: ${this.level}`);
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
         this.starsText.setText(this.getAuthToken() ? `Stars: ${this.stars}` : 'Stars: sign in to earn');
@@ -1518,12 +1595,11 @@ class PhaserMatch3Game {
         this.createShopUI();
     }
 
+    // The battle pass lives in the DOM community screen, so it opens like the other DOM menus.
     showBattlePass() {
-        this.pauseGame();
-        this.currentScreen = 'battlepass';
+        this.openMenu();
         this.trackEvent('battlepass_opened');
-        // Show battle pass UI
-        this.createBattlePassUI();
+        if (window.ui && typeof window.ui.showCommunity === 'function') window.ui.showCommunity('battlepass');
     }
 
     showLootBox() {
@@ -1901,6 +1977,11 @@ class PhaserMatch3Game {
             clearInterval(this.timerInterval);
         }
         
+        if (this.mode === 'endless') {
+            this.finishEndless();
+            return;
+        }
+
         // Calculate stars based on score
         let stars = 0;
         stars = this.starsFor(this.score);
@@ -1911,14 +1992,14 @@ class PhaserMatch3Game {
         // Update analytics
         this.analytics.gamesPlayed++;
         this.analytics.totalScore += this.score;
-        this.analytics.totalTime += (60 - this.time);
+        this.analytics.totalTime += this.runSeconds();
         
         // Track game end
         this.trackEvent('game_ended', {
             score: this.score,
             stars: stars,
             level: this.level,
-            duration: 60 - this.time
+            duration: this.runSeconds()
         });
         
         // Save user data
@@ -1930,12 +2011,12 @@ class PhaserMatch3Game {
         this.showEndGameScreen(stars);
     }
 
-    showEndGameScreen(stars) {
+    showEndGameScreen(stars, { title = null, subtitle = null } = {}) {
         // Create end game overlay
         const endOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.9);
         endOverlay.setInteractive();
         
-        const endTitle = this.scene.add.text(400, 150, stars > 0 ? 'Level Complete!' : 'Level Failed', {
+        const endTitle = this.scene.add.text(400, 150, title || (stars > 0 ? 'Level Complete!' : 'Level Failed'), {
             fontSize: '48px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -1947,7 +2028,7 @@ class PhaserMatch3Game {
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
-        const starsText = this.scene.add.text(400, 250, `Stars: ${stars}/3`, {
+        const starsText = this.scene.add.text(400, 250, subtitle || `Stars: ${stars}/3`, {
             fontSize: '24px',
             fill: '#ffd700',
             fontFamily: 'Arial'
@@ -1982,8 +2063,11 @@ class PhaserMatch3Game {
 
         // Reset game state. The move limit belongs to the level, not to a fixed 30.
         this.score = 0;
-        this.moves = levelConfig(this.level).moves;
-        this.time = 60;
+        const config = levelConfig(this.level, this.mode);
+        this.moves = config.moves;
+        this.targetScore = config.targetScore;
+        this.timeLimit = config.timeLimit;
+        this.time = config.timeLimit;
         this.setSelectedGem(null);
         this.reshuffleBoard();
         

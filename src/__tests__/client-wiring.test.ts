@@ -211,3 +211,62 @@ describe('stars belong to the server', () => {
     expect(apply).not.toMatch(/this\.stars \+=/);
   });
 });
+
+describe('community screen, modes, and the battle pass entry', () => {
+  // The community code is the slice of script.js between its first and last community method.
+  const community = script.slice(script.indexOf('    showCommunity('), script.indexOf('    showLevelSelect() {'));
+
+  test('the community methods exist on the controller', () => {
+    for (const name of ['showCommunity', 'showCommunityTab', 'loadCommunitySeason', 'loadCommunityFriends', 'loadCommunityGuild', 'loadCommunityEvents']) {
+      expect(declares(script, name)).toBe(true);
+    }
+  });
+
+  test('player-chosen names are written with textContent, never innerHTML', () => {
+    expect(community.length).toBeGreaterThan(1000);
+    expect(community).not.toMatch(/innerHTML/);
+    expect(community).not.toMatch(/insertAdjacentHTML/);
+  });
+
+  test('every community request sends the session token', () => {
+    expect(community).toMatch(/Authorization = `Bearer \$\{token\}`/);
+    expect(community).toMatch(/const token = this\.getAuthToken\(\)/);
+  });
+
+  test('the community screen exists and each tab is wired to the controller', () => {
+    expect(indexHtml).toMatch(/<div id="community-screen" class="screen">/);
+    expect(indexHtml).toMatch(/<div id="community-body"/);
+    for (const tab of ['battlepass', 'friends', 'guild', 'events']) {
+      expect(indexHtml).toMatch(new RegExp(`data-tab="${tab}" onclick="ui\\.showCommunityTab\\('${tab}'\\)"`));
+    }
+  });
+
+  test('the title screen opens the community, and the old canvas battle pass is no longer opened', () => {
+    expect(indexHtml).toMatch(/onclick="showCommunity\(\)"/);
+    expect(script).toMatch(/function showCommunity\(tab\) \{ return callUi\('showCommunity', tab\); \}/);
+    const showBp = phaser.slice(phaser.indexOf('    showBattlePass() {'), phaser.indexOf('    showBattlePass() {') + 400);
+    expect(showBp).toMatch(/showCommunity\('battlepass'\)/);
+    expect(showBp).not.toMatch(/createBattlePassUI\(\)/);
+  });
+
+  test('the mode cards call chooseMode, and classic goes through it too', () => {
+    expect(indexHtml).toMatch(/onclick="chooseMode\('classic'\)"/);
+    expect(indexHtml).toMatch(/onclick="chooseMode\('timed'\)"/);
+    expect(indexHtml).toMatch(/onclick="chooseMode\('endless'\)"/);
+    expect(indexHtml).not.toMatch(/onclick="showLevelSelect\(\)">\s*<span class="play-text">START/);
+    expect(script).toMatch(/function chooseMode\(mode\) \{[\s\S]*?callGame\('setMode', mode\)[\s\S]*?callGame\('startEndless'\)/);
+  });
+
+  test('endless runs pay through the server and never report a level result', () => {
+    const endless = phaser.slice(phaser.indexOf('    async finishEndless() {'), phaser.indexOf('    async finishEndless() {') + 900);
+    expect(endless).toMatch(/submitEndlessRun\(score\)/);
+    expect(endless).not.toMatch(/reportLevelResult/);
+    const submit = phaser.slice(phaser.indexOf('    async submitEndlessRun('), phaser.indexOf('    async submitEndlessRun(') + 700);
+    expect(submit).toMatch(/\/api\/account-economy\/endless\/complete/);
+  });
+
+  test('the client loads the tuning overrides from the public targets route', () => {
+    expect(phaser).toMatch(/fetch\('\/api\/level-results\/targets'\)/);
+    expect(phaser).toMatch(/const multiplier = \(levelOverrides && levelOverrides\.levels && levelOverrides\.levels\[n\]\) \|\| 1;/);
+  });
+});

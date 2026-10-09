@@ -207,8 +207,8 @@ describe('client gates every attempt on the server', () => {
   });
 
   test('a restart keeps the level move limit instead of resetting to 30', () => {
-    const restart = source.slice(source.indexOf('async restartGame('), source.indexOf('async restartGame(') + 600);
-    expect(restart).toMatch(/this\.moves = levelConfig\(this\.level\)\.moves;/);
+    const restart = source.slice(source.indexOf('async restartGame('), source.indexOf('async restartGame(') + 800);
+    expect(restart).toMatch(/const config = levelConfig\(this\.level, this\.mode\);\s*this\.moves = config\.moves;/);
     expect(restart).not.toMatch(/this\.moves = 30;/);
   });
 });
