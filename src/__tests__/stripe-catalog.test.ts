@@ -91,4 +91,34 @@ describe('payment intent route', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('unknown_product');
   });
+
+  test('charges the catalog price for a priced product, ignoring the client amount', async () => {
+    const register = await request(app)
+      .post('/api/auth/register')
+      .send({
+        playerId: `stripe_amt_${Date.now()}`,
+        email: `stripe_amt_${Date.now()}@example.com`,
+        password: 'secret123',
+      });
+    const original = (StripeService as any).createPaymentIntent;
+    const calls: any[] = [];
+    (StripeService as any).createPaymentIntent = async (args: any) => {
+      calls.push(args);
+      return { success: true, clientSecret: 'cs_test', paymentIntentId: 'pi_test' };
+    };
+    try {
+      const res = await request(app)
+        .post('/api/stripe/payment-intent')
+        .set('Authorization', `Bearer ${register.body.token}`)
+        .send({ productId: 'remove_ads', amount: 0.01, currency: 'eur', metadata: { priceCents: '1' } });
+      expect(res.status).toBe(200);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].amount).toBe(4.99);
+      expect(calls[0].currency).toBe('usd');
+      expect(calls[0].metadata.priceCents).toBe('499');
+      expect(calls[0].metadata.productId).toBe('remove_ads');
+    } finally {
+      (StripeService as any).createPaymentIntent = original;
+    }
+  });
 });

@@ -9,7 +9,7 @@ import { adminAuth } from '../middleware/admin-auth.js';
 import DataLoader from '../data/DataLoader.js';
 import EconomyValidator from '../data/validators/EconomyValidator.js';
 import CacheManager from '../core/cache/CacheManager.js';
-import { Logger } from '../core/logger/index.js';
+import { Logger, getRecentLogs } from '../core/logger/index.js';
 import EconomyService from '../services/economy/UnifiedEconomyService.js';
 import UnityService from '../services/unity/UnifiedUnityService.js';
 
@@ -169,8 +169,13 @@ router.post('/unity/deploy', async (req, res) => {
 
 // Get system logs
 router.get('/logs', (req, res) => {
-  // Logs go to stdout as JSON; no queryable log store is wired yet.
-  res.status(501).json({ success: false, error: 'not_implemented', requestId: req.requestId });
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+  const logs = getRecentLogs({
+    limit,
+    level: typeof req.query.level === 'string' ? req.query.level : undefined,
+    context: typeof req.query.context === 'string' ? req.query.context : undefined,
+  });
+  res.json({ success: true, logs, requestId: req.requestId });
 });
 
 // Clear cache

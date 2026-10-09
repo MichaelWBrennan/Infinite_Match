@@ -1,0 +1,4 @@
+id,name,type,description,initial,maximum,isTradable,isConsumable
+coins,Coins,soft_currency,Primary soft currency earned through gameplay,1000,999999,False,False
+stars,Stars,hard_currency,Earned by completing levels and the lucky wheel,0,999999,False,False
+energy,Energy,consumable,Needed to start a level. Regenerates over time,100,100,False,True

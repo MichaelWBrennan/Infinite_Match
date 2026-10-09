@@ -1,0 +1,8 @@
+id,name,cost_currency,cost_amount,description,type,rewards,category
+bomb,Bomb,coins,150,Clears a 3x3 area,item,bomb:1,powerups
+rocket,Rocket,coins,200,Clears a full row or column,item,rocket:1,powerups
+rainbow,Rainbow Gem,coins,300,Clears every gem of one colour,item,rainbow:1,powerups
+lightning,Lightning,coins,300,Clears a column,item,lightning:1,powerups
+diamond,Diamond,coins,400,Clears all gems of the tapped colour,item,diamond:1,powerups
+target,Target Gem,coins,250,Clears the tapped gem and its neighbours,item,target:1,powerups
+star,Star,coins,350,Clears the tapped row and column,item,star:1,powerups

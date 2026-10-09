@@ -45,6 +45,7 @@ import experimentsRoutes from '../routes/experiments.js';
 import battlepassRoutes from '../routes/battlepass.js';
 import subscriptionsRoutes from '../routes/subscriptions.js';
 import { adminAuth } from '../middleware/admin-auth.js';
+import aiOptimizedRoutes from '../routes/ai-optimized-routes.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -352,10 +353,11 @@ class GameServer {
     this.app.use('/api/subscriptions', subscriptionsRoutes);
     // Battle pass config is public. The premium reward claim returns 501 until built.
     this.app.use('/api/battlepass', battlepassRoutes);
+    // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
+    this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
     // Not mounted:
     // - economy: its write routes would reopen the exploits fixed in account-economy.
     // - crm: webhook and push send are logging stubs that deliver nothing.
-    // - ai-optimized: AI generation calls have no timeout and hung the request in testing.
 
     // Platform-specific API routes
     this.setupPlatformRoutes();

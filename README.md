@@ -16,6 +16,9 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Session-gated analytics, ARPU, ads, entitlements, and monetization routes.
 - Consent, device-token registration, and experiment assignment. Each uses the signed-in player's own identity.
 - Battle pass config (`GET /api/battlepass/config`).
+- Economy statistics (`GET /api/admin/economy/stats`). Reads `config/currencies.csv`, `config/inventory.csv`, and `config/catalog.csv`. Returns 503 `economy_data_missing` if a file is absent.
+- Admin logs (`GET /api/admin/logs`). Returns the last 500 log entries from memory, with only timestamp, level, message, and context. Logs also go to stdout.
+- AI-optimized routes (`/api/ai-optimized/*`). Mounted behind admin auth. Returns 503 `ai_not_configured` when no OpenAI key is set, and 504 `generation_timeout` after 30 seconds. A failed AI call (including an unconfigured client) now fails its own request instead of leaving it waiting.
 - Operator admin routes (`/api/admin/*`). Access requires `ADMIN_API_TOKEN` (at least 32 characters) and `ADMIN_IDS`. Without both, every admin request is refused. See `.env.example`.
 - Store subscription webhooks (`/api/subscriptions/*`). Apple payloads must chain to a pinned Apple Root CA G3 (`APPLE_ROOT_CA_G3`). Google payloads need a valid Pub/Sub OIDC token for the configured audience and service account. Unverified payloads are rejected, and the routes return 503 until configured.
 - Stripe payment intents (`/api/stripe/payment-intent`). The price comes from a server-side catalog. Only `remove_ads` ($4.99) and `unlock_all_themes` ($7.99) can be bought. The webhook records a purchase only when the charged amount matches the catalog.
@@ -36,10 +39,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - A season pass purchase. No price exists in the repository, so the product is not sold.
 - Stripe checkout UI. The client module in `src/frontend/` is not loaded by any page, so the game has no payment screen yet.
 - Economy write routes (`/api/economy/*`) are intentionally not mounted. Players cannot write economy data.
-- Economy statistics need the CSV files `config/currencies.csv`, `inventory.csv`, and `catalog.csv`, which are not in the repository. Until they are added, the admin endpoint returns 503 `economy_data_missing`.
-- Admin logs (`/api/admin/logs`) return 501. Logs go to stdout only.
 - Customer relationship messaging (`src/routes/crm.js`). Its webhook and push send only log and report success. Nothing is delivered, so it is not mounted.
-- AI-optimized routes (`src/routes/ai-optimized-routes.js`). A generation request hung with no timeout, so the router is not mounted.
 
 ## 🎮 Gameplay Features
 

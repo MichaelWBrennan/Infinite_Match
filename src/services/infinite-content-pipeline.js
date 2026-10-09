@@ -305,7 +305,7 @@ class InfiniteContentPipeline {
       const offerType = this.selectOptimalOfferType(marketInsights);
       const targetSegment = this.selectTargetSegment(marketInsights);
 
-      const offer = await this.aiContentGenerator.generatePersonalizedOffers('system', offerType);
+      const offer = await this.personalizationEngine.generatePersonalizedOffers('system', offerType);
 
       // Enhance with market data
       offer.marketOptimization = this.optimizeForMarket(offer, marketInsights);

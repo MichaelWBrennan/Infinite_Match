@@ -9,6 +9,7 @@ import experimentsRoutes from '../routes/experiments.js';
 import battlepassRoutes from '../routes/battlepass.js';
 import subscriptionsRoutes from '../routes/subscriptions.js';
 import { verifyAdminCredentials } from '../middleware/admin-auth.js';
+import { Logger } from '../core/logger/index.js';
 
 // Mirrors the mounts in src/server/index.ts for the routers that were unmounted before.
 const app = express();
@@ -67,21 +68,27 @@ describe('admin authentication', () => {
     expect(res.status).toBe(401);
   });
 
-  test('economy stats say when the economy CSVs are missing, instead of a generic error', async () => {
+  test('economy stats report on the bundled economy CSVs', async () => {
     const res = await request(app)
       .get('/api/admin/economy/stats')
       .set('x-admin-token', ADMIN_TOKEN)
       .set('x-admin-id', ADMIN_ID);
-    expect([200, 503]).toContain(res.status);
-    if (res.status === 503) expect(res.body.error).toBe('economy_data_missing');
+    expect(res.status).toBe(200);
+    expect(res.body.stats).toBeDefined();
   });
 
-  test('admin logs endpoint is honest about being unbuilt, not a crash', async () => {
+  test('admin logs return recent entries and honour the context filter', async () => {
+    const marker = `marker-${Date.now()}`;
+    new Logger('WiredRoutesTest').info(marker);
     const res = await request(app)
-      .get('/api/admin/logs')
+      .get('/api/admin/logs?context=WiredRoutesTest&limit=50')
       .set('x-admin-token', ADMIN_TOKEN)
       .set('x-admin-id', ADMIN_ID);
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(200);
+    expect(res.body.logs.some((entry: any) => entry.message === marker)).toBe(true);
+    expect(res.body.logs.every((entry: any) => entry.context === 'WiredRoutesTest')).toBe(true);
+    // Only the safe fields are returned, never the metadata.
+    expect(Object.keys(res.body.logs[0]).sort()).toEqual(['context', 'level', 'message', 'timestamp']);
   });
 
   test('admin security events are returned to an authorised admin', async () => {

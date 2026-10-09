@@ -4,6 +4,7 @@
  */
 
 import winston from 'winston';
+import Transport from 'winston-transport';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import AppConfig from '../config/index.js';
 
@@ -49,6 +50,39 @@ if (AppConfig.analytics.logging.file?.enabled || false) {
       format: combine(timestamp(), errors({ stack: true }), json()),
     }),
   );
+}
+
+// Recent entries kept in memory for the admin logs endpoint. Only the timestamp,
+// level, message, and context are kept. Other metadata can hold personal data.
+const RECENT_LOG_LIMIT = 500;
+interface RecentLogEntry {
+  timestamp: string;
+  level: string;
+  message: string;
+  context?: string | undefined;
+}
+const recentLogs: RecentLogEntry[] = [];
+
+class RecentLogTransport extends Transport {
+  override log(info: any, callback: () => void): void {
+    recentLogs.push({
+      timestamp: String(info.timestamp ?? new Date().toISOString()),
+      level: String(info.level),
+      message: String(info.message),
+      context: info.context ? String(info.context) : undefined,
+    });
+    if (recentLogs.length > RECENT_LOG_LIMIT) recentLogs.shift();
+    callback();
+  }
+}
+transports.push(new RecentLogTransport());
+
+/** Newest first. Optional exact-match filters on level and context. */
+export function getRecentLogs({ limit = 100, level, context }: { limit?: number; level?: string; context?: string } = {}): RecentLogEntry[] {
+  return recentLogs
+    .filter((entry) => (!level || entry.level === level) && (!context || entry.context === context))
+    .slice(-Math.max(0, limit))
+    .reverse();
 }
 
 // Create logger instance
