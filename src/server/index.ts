@@ -314,7 +314,13 @@ class GameServer {
     // a WebGL build directory actually exists).
     const webglDir = resolveWebGLDir();
     if (webglDir) {
+      // Mounted under an explicit prefix on purpose. Mounting it at `/` let it
+      // shadow the root game assets: express.static answers `/` with the
+      // directory's own index.html and served WebGL/shared-game.js (an older
+      // copy) in place of the root one. Unity's index.html uses relative
+      // paths, so everything still resolves under /webgl.
       this.app.use(
+        '/webgl',
         express.static(webglDir, {
           setHeaders: (res) => {
             // Set platform-specific headers
