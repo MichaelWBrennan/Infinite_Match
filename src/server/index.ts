@@ -33,6 +33,11 @@ import playerAccountRoutes from '../routes/player-accounts.js';
 import authRoutes from '../routes/auth.js';
 import accountEconomyRoutes from '../routes/account-economy.js';
 import stripeRoutes from '../routes/stripe.js';
+import entitlementsRoutes from '../routes/entitlements.js';
+import monetizationRoutes from '../routes/monetization.js';
+import arpuRoutes from '../routes/arpu.js';
+import analyticsRoutes from '../routes/analytics.js';
+import adsRoutes from '../routes/ads.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -322,6 +327,14 @@ class GameServer {
     this.app.use('/api/account-economy', accountEconomyRoutes);
     // stripe-payment.js calls these endpoints; the router was never mounted.
     this.app.use('/api/stripe', stripeRoutes);
+    // Session-gated routers that were written but never mounted. Each route
+    // checks security.sessionValidation. Economy is deliberately not mounted:
+    // its write routes only require a normal player session.
+    this.app.use('/api/entitlements', entitlementsRoutes);
+    this.app.use('/api/monetization', monetizationRoutes);
+    this.app.use('/api/arpu', arpuRoutes);
+    this.app.use('/api/analytics', analyticsRoutes);
+    this.app.use('/api/ads', adsRoutes);
 
     // Platform-specific API routes
     this.setupPlatformRoutes();
