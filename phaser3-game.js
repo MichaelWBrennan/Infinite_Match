@@ -1122,37 +1122,6 @@ class PhaserMatch3Game {
         }, 1000);
     }
 
-    pauseGame() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-        this.isGameRunning = false;
-    }
-
-    resumeGame() {
-        this.isGameRunning = true;
-        this.startTimer();
-    }
-
-    endGame() {
-        this.isGameRunning = false;
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-        }
-        
-        // Calculate stars based on score
-        let stars = 0;
-        stars = this.starsFor(this.score);
-        
-        console.log(`🎯 Game ended! Score: ${this.score}, Stars: ${stars}`);
-        
-        // Notify parent game system
-        if (window.game && window.game.endGame) {
-            window.game.endGame();
-        }
-    }
-
     updateUI() {
         this.scoreText.setText(`Score: ${this.score.toLocaleString()}`);
         this.movesText.setText(`Moves: ${this.moves}`);

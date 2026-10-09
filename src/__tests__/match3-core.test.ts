@@ -442,7 +442,7 @@ describe('levels', () => {
     test('a power-up takes effect only after the server confirms the spend', async () => {
       const game = makeGame(43);
       signedIn(game, { bomb: { count: 3 } });
-      let confirm: (ok: boolean) => void = () => {};
+      let confirm: any = () => {};
       game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
       const scoreBefore = game.score;
 
@@ -472,7 +472,7 @@ describe('levels', () => {
     test('input is blocked while a server check is pending', async () => {
       const game = makeGame(45);
       signedIn(game, { bomb: { count: 3 } });
-      let confirm: (ok: boolean) => void = () => {};
+      let confirm: any = () => {};
       game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
       game.usePowerUp('bomb');
       game.usePowerUp('bomb'); // ignored while pending
@@ -483,3 +483,34 @@ describe('levels', () => {
   });
 });
 
+
+describe('pause and end-of-game (single definitions)', () => {
+  test('pauseGame and resumeGame toggle the paused flag', () => {
+    const game = makeGame(51);
+    game.isGameRunning = true;
+    game.pauseGame();
+    expect(game.isPaused).toBe(true);
+    game.isPaused = false;
+    game.resumeGame();
+    expect(game.isPaused).toBe(false);
+    // resumeGame starts a real one-second timer; stop it so it cannot fire after the test.
+    clearInterval(game.timerInterval);
+    game.timerInterval = null;
+  });
+
+  test('endGame stops the run and shows the end screen with the earned stars', () => {
+    const game = makeGame(52);
+    // makeGame stubs endGame for the timer tests; remove the stub to reach the real method.
+    delete game.endGame;
+    game.isGameRunning = true;
+    game.score = 99999;
+    game.analytics = { gamesPlayed: 0, totalScore: 0, totalTime: 0 };
+    const shown: number[] = [];
+    game.showEndGameScreen = (stars: number) => shown.push(stars);
+    game.saveUserData = () => {};
+    game.endGame();
+    expect(game.isGameRunning).toBe(false);
+    expect(game.analytics.gamesPlayed).toBe(1);
+    expect(shown).toEqual([game.starsFor(99999)]);
+  });
+});

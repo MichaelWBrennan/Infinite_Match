@@ -5,10 +5,8 @@
  */
 
 import { Logger } from '../../core/logger/index.js';
-import { AppConfig } from '../../core/config/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { aiCacheManager } from '../ai-cache-manager.js';
-import security from '../../core/security/index.js';
 import crypto from 'crypto';
 import { pickWheelReward } from './item-catalog.js';
 
