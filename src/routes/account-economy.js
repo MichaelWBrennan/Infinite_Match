@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from '../core/security/index.js';
+import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import AccountEconomyService from '../services/economy/AccountEconomyService.js';
 
@@ -279,7 +279,7 @@ router.get('/stats', security.sessionValidation, async (req, res) => {
 });
 
 // Get service statistics (admin only)
-router.get('/service/stats', security.sessionValidation, security.requireRole('admin'), async (req, res) => {
+router.get('/service/stats', security.sessionValidation, requireMinRole('admin'), async (req, res) => {
   try {
     const stats = accountEconomyService.getStats();
 

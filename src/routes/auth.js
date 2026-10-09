@@ -5,7 +5,8 @@
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from '../core/security/index.js';
+import security, { syncPlatformAccount, getPlatformSyncStatus } from '../core/security/index.js';
+import { accountManager } from './player-accounts.js';
 import { mfaProvider } from '../core/security/mfa.js';
 import { Logger } from '../core/logger/index.js';
 import { asyncHandler } from '../core/middleware/index.js';
@@ -41,18 +42,20 @@ router.post(
 
     const { playerId, deviceInfo } = req.body;
 
-    // Implement real user authentication
-    const authResult = await security.authenticateUser(playerId, req.body.password, { deviceInfo });
-    if (!authResult.success) {
+    let session;
+    try {
+      const authResult = await accountManager.authenticatePlayer(playerId, req.body.password, deviceInfo);
+      session = authResult.session;
+    } catch (error) {
       return res.status(401).json({
         success: false,
-        error: authResult.error,
+        error: error.message,
         requestId: req.requestId,
       });
     }
 
-    const sessionId = authResult.sessionId;
-    const token = authResult.token;
+    const sessionId = session.sessionId;
+    const token = session.token;
 
     security.logSecurityEvent('player_login', {
       playerId,
@@ -83,24 +86,27 @@ router.post('/register', security.authRateLimit, validateRegister, async (req, r
 
     const { playerId, email, deviceInfo } = req.body;
 
-    // Implement real user registration
-    const registrationResult = await security.registerUser({
-      playerId,
-      email,
-      password: req.body.password,
-      deviceInfo,
-    });
-
-    if (!registrationResult.success) {
+    try {
+      await accountManager.createAccount({
+        playerId,
+        email,
+        password: req.body.password,
+        displayName: playerId,
+        platform: deviceInfo?.platform || 'webgl',
+        deviceInfo,
+      });
+    } catch (error) {
       return res.status(400).json({
         success: false,
-        error: registrationResult.error,
+        error: error.message,
         requestId: req.requestId,
       });
     }
 
-    const sessionId = registrationResult.sessionId;
-    const token = registrationResult.token;
+    // A fresh account is signed in immediately, as the game UI expects.
+    const session = await accountManager.createSession(playerId, deviceInfo);
+    const sessionId = session.sessionId;
+    const token = session.token;
 
     security.logSecurityEvent('player_register', {
       playerId,
@@ -188,12 +194,18 @@ router.post('/refresh', security.sessionValidation, (req, res) => {
 });
 
 // Get user profile endpoint
-router.get('/profile', security.sessionValidation, (req, res) => {
+router.get('/profile', security.sessionValidation, asyncHandler(async (req, res) => {
   try {
     const { playerId } = req.user;
 
-    // Get actual user profile from database
-    const profile = await security.getUserProfile(playerId);
+    // Load the account from the shared account store.
+    let profile = null;
+    try {
+      const result = await accountManager.getAccount(playerId);
+      profile = result?.account ?? null;
+    } catch {
+      profile = null;
+    }
     if (!profile) {
       return res.status(404).json({
         success: false,
@@ -215,7 +227,7 @@ router.get('/profile', security.sessionValidation, (req, res) => {
       requestId: req.requestId,
     });
   }
-});
+}));
 
 // MFA Setup Routes
 router.post(
@@ -321,7 +333,7 @@ router.post(
 
     try {
       // Store platform sync data
-      const syncResult = await security.syncPlatformAccount({
+      const syncResult = await syncPlatformAccount({
         playerId,
         platform,
         platformUserId,
@@ -369,7 +381,7 @@ router.get(
     const { playerId } = req.user;
 
     try {
-      const syncStatus = await security.getPlatformSyncStatus(playerId);
+      const syncStatus = await getPlatformSyncStatus(playerId);
 
       res.json({
         success: true,

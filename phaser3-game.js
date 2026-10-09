@@ -58,6 +58,7 @@ class PhaserMatch3Game {
 
     init() {
         console.log('🎮 Initializing Phaser 3 Match-3 Game...');
+        const self = this;
         
         // Initialize Phaser 3 game
         const config = {
@@ -66,10 +67,13 @@ class PhaserMatch3Game {
             height: 600,
             parent: 'phaser-game-container',
             backgroundColor: '#2c3e50',
+            // Phaser invokes these with the Scene as `this`. The methods below
+            // reach the scene through `this.scene`, which was never assigned
+            // (preload threw "Cannot read properties of null"), so each callback
+            // records the scene before delegating.
             scene: {
-                preload: this.preload.bind(this),
-                create: this.create.bind(this),
-                update: this.update.bind(this)
+                preload: function () { self.scene = this; self.preload(); },
+                create: function () { self.scene = this; self.create(); }
             },
             physics: {
                 default: 'arcade',
@@ -154,7 +158,6 @@ class PhaserMatch3Game {
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
         
-        this.scene = this.scene;
         this.createGameBoard();
         this.createUI();
         this.createPowerUps();

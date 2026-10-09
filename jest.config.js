@@ -2,6 +2,9 @@ export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
+  // dist/ holds compiled output (including stale copies of the tests). Running
+  // those re-runs old code and fails on modules that only exist in src/.
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
 
   testMatch: [
     '**/__tests__/**/*.test.ts',

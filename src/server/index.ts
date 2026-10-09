@@ -30,6 +30,8 @@ import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
 import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
 import playerAccountRoutes from '../routes/player-accounts.js';
+import authRoutes from '../routes/auth.js';
+import accountEconomyRoutes from '../routes/account-economy.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -240,6 +242,10 @@ class GameServer {
               '\'self\'',
               '\'unsafe-inline\'',
             ],
+            // helmet defaults `script-src-attr` to 'none', which blocks every
+            // inline `onclick="..."` handler in index.html (Play, Settings,
+            // Login, News...). The game UI relies on those attributes.
+            scriptSrcAttr: ['\'unsafe-inline\''],
             connectSrc: [
               '\'self\'',
             ],
@@ -303,6 +309,11 @@ class GameServer {
     this.app.use('/api/aso', asoRoutes);
     this.app.use('/api/multiplayer', multiplayerRoutes);
     this.app.use('/api/accounts', playerAccountRoutes);
+    // The game shell (script.js) calls these for login, registration, platform
+    // sync and account economy sync. The route modules existed but were never
+    // mounted, so every call returned 404.
+    this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/account-economy', accountEconomyRoutes);
 
     // Platform-specific API routes
     this.setupPlatformRoutes();

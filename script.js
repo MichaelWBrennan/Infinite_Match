@@ -95,7 +95,7 @@ class InfiniteMatchGame {
         ];
         
         let currentStep = 0;
-        const runNextStep = () => {
+        let runNextStep = () => {
             if (currentStep < loadingSteps.length) {
                 const step = loadingSteps[currentStep];
                 updateProgress(step.progress, step.text);
@@ -1004,6 +1004,13 @@ class InfiniteMatchGame {
                 return;
             }
 
+            // Economy endpoints require a signed-in session. Guests have no
+            // token, so skip the sync instead of calling a route that will 401.
+            if (!this.getAuthToken()) {
+                console.log('Guest session: account economy sync starts after login');
+                return;
+            }
+
             // Initialize player economy
             const response = await fetch('/api/account-economy/initialize', {
                 method: 'POST',
@@ -1041,8 +1048,10 @@ class InfiniteMatchGame {
 
     // Get current platform
     getCurrentPlatform() {
-        if (window.platformDetector) {
-            return window.platformDetector.getCurrentPlatform();
+        // platform-detection.js exposes the detected platform as a property;
+        // it has no getCurrentPlatform() method.
+        if (window.platformDetector && window.platformDetector.currentPlatform) {
+            return window.platformDetector.currentPlatform;
         }
         return 'local';
     }
