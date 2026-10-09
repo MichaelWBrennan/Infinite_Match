@@ -321,6 +321,16 @@ export const logSecurityEvent = (eventType, details) => {
   return eventId;
 };
 
+/**
+ * Most recent security events, newest first. Used by the admin security viewer.
+ */
+export const getSecurityEvents = async ({ limit = 100, eventType } = {}) => {
+  return [...securityEvents.values()]
+    .filter((event) => !eventType || event.eventType === eventType)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, Math.max(0, limit));
+};
+
 export const markIPSuspicious = (ip, reason) => {
   suspiciousIPs.set(ip, {
     reason,
@@ -405,6 +415,7 @@ export default {
   validateSession,
   destroySession,
   logSecurityEvent,
+  getSecurityEvents,
   markIPSuspicious,
   cleanupOldData,
 };

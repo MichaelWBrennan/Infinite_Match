@@ -95,7 +95,7 @@ class InfiniteMatchGame {
         ];
         
         let currentStep = 0;
-        const runNextStep = () => {
+        let runNextStep = () => {
             if (currentStep < loadingSteps.length) {
                 const step = loadingSteps[currentStep];
                 updateProgress(step.progress, step.text);
@@ -250,6 +250,535 @@ class InfiniteMatchGame {
         this.showScreen('title-screen');
     }
 
+    // ----- Community screen: season, friends, guild, and events. Values come from the server. -----
+    // Text is set with textContent, never innerHTML, because names are chosen by players.
+    showCommunity(tab = 'battlepass') {
+        this.showScreen('community-screen');
+        this.showCommunityTab(tab);
+    }
+
+    showCommunityTab(tab) {
+        const tabs = ['battlepass', 'friends', 'guild', 'events'];
+        const current = tabs.includes(tab) ? tab : 'battlepass';
+        this.communityTab = current;
+        document.querySelectorAll('.community-tab').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.tab === current);
+        });
+        const body = document.getElementById('community-body');
+        if (!body) return;
+        // A message from the last action (for example, a refused claim) shows once at the top.
+        const flash = this.communityFlash;
+        this.communityFlash = null;
+        const show = (nodes) => {
+            if (this.communityTab !== current) return; // a newer tab was opened while this loaded
+            const top = flash ? [this.communityNote(flash)] : [];
+            body.replaceChildren(...top, ...nodes);
+        };
+        show([this.communityNote('Loading…')]);
+        const loaders = {
+            battlepass: () => this.loadCommunitySeason(show),
+            friends: () => this.loadCommunityFriends(show),
+            guild: () => this.loadCommunityGuild(show),
+            events: () => this.loadCommunityEvents(show),
+        };
+        loaders[current]().catch(() => {
+            show([this.communityNote('Could not load this tab. Check your connection and try again.')]);
+        });
+    }
+
+    communityEl(tag, text = '', className = '') {
+        const el = document.createElement(tag);
+        el.textContent = text === null || text === undefined ? '' : String(text);
+        if (className) el.className = className;
+        return el;
+    }
+
+    communityNote(text) {
+        return this.communityEl('p', text, 'community-note');
+    }
+
+    communityButton(label, onClick) {
+        const button = this.communityEl('button', label, 'community-btn');
+        button.type = 'button';
+        button.addEventListener('click', () => {
+            Promise.resolve(onClick()).catch(() => {});
+        });
+        return button;
+    }
+
+    communityRow(text, buttonLabel, onClick) {
+        const row = this.communityEl('div', '', 'community-row');
+        row.appendChild(this.communityEl('span', text));
+        if (buttonLabel) row.appendChild(this.communityButton(buttonLabel, onClick));
+        return row;
+    }
+
+    communityForm(placeholder, buttonLabel, onSubmit) {
+        const form = this.communityEl('div', '', 'community-form');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = placeholder;
+        input.maxLength = 40;
+        input.className = 'community-input';
+        const button = this.communityButton(buttonLabel, () => onSubmit(input.value.trim()));
+        form.append(input, button);
+        return form;
+    }
+
+    async communityRequest(url, options = {}) {
+        const headers = { ...(options.headers || {}) };
+        const token = this.getAuthToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+        if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+        const res = await fetch(url, { ...options, headers });
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok && data.success !== false, data };
+    }
+
+    communityError(data) {
+        return data && data.error ? String(data.error).replace(/_/g, ' ') : 'something went wrong';
+    }
+
+    // Runs a server action, remembers the outcome for the next render, and reloads the tab.
+    async communityAction(url, method, tab, body) {
+        const options = { method };
+        if (body !== undefined) options.body = JSON.stringify(body);
+        const result = await this.communityRequest(url, options);
+        this.communityFlash = result.ok ? 'Done.' : `Not done: ${this.communityError(result.data)}.`;
+        this.showCommunityTab(tab);
+    }
+
+    communityReward(reward) {
+        if (!reward) return 'nothing';
+        if (reward.coins !== undefined) return `${reward.coins} coins`;
+        return `${reward.amount} × ${reward.item}`;
+    }
+
+    async loadCommunitySeason(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to see your season progress.')]);
+        const { ok, data } = await this.communityRequest('/api/battlepass/progress');
+        if (!ok) return show([this.communityNote(`Season unavailable: ${this.communityError(data)}.`)]);
+        const p = data.progress;
+        const ends = p.status === 'active' && p.endsAt ? `ends ${new Date(p.endsAt).toLocaleDateString()}` : p.status;
+        const nodes = [
+            this.communityEl('h3', `${p.name} (${ends})`),
+            this.communityNote(`Season XP ${p.xp} · tier ${p.tier}`),
+        ];
+        if (!p.premiumUnlocked) nodes.push(this.communityNote('The premium track is locked.'));
+        for (const tier of p.tiers) {
+            const row = this.communityEl('div', '', 'community-row');
+            row.appendChild(this.communityEl('span', `Tier ${tier.level} · ${tier.xp} XP`));
+            for (const track of ['free', 'premium']) {
+                const reward = tier[track];
+                const label = `${track}: ${this.communityReward(reward)}`;
+                const claimed = (p.claimed[track] || []).includes(tier.level);
+                const canClaim = reward && tier.reached && !claimed && (track === 'free' || p.premiumUnlocked);
+                if (canClaim) {
+                    row.appendChild(this.communityButton(`Claim ${label}`, () => this.claimCommunityTier(tier.level, track)));
+                } else {
+                    row.appendChild(this.communityEl('span', claimed ? `${label} (claimed)` : label));
+                }
+            }
+            nodes.push(row);
+        }
+        show(nodes);
+    }
+
+    async claimCommunityTier(level, track) {
+        await this.communityAction('/api/battlepass/claim', 'POST', 'battlepass', { level, track });
+    }
+
+    async loadCommunityFriends(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to add friends.')]);
+        const [me, friends, board] = await Promise.all([
+            this.communityRequest('/api/social/me'),
+            this.communityRequest('/api/social/friends'),
+            this.communityRequest('/api/social/friends/leaderboard'),
+        ]);
+        if (!me.ok) return show([this.communityNote(`Friends unavailable: ${this.communityError(me.data)}.`)]);
+        const profile = me.data.profile || {};
+        const nodes = [this.communityNote(`Your friend code: ${profile.code || '—'}`)];
+        nodes.push(this.communityForm('Display name (3–16 characters)', profile.name ? 'Change name' : 'Set name', (name) =>
+            this.communityAction('/api/social/name', 'PUT', 'friends', { name })));
+        nodes.push(this.communityForm('Friend code', 'Send request', (code) =>
+            this.communityAction('/api/social/friends/request', 'POST', 'friends', { code })));
+
+        nodes.push(this.communityEl('h3', 'Requests'));
+        const incoming = (friends.ok && friends.data.incoming) || [];
+        if (incoming.length === 0) nodes.push(this.communityNote('No pending requests.'));
+        for (const r of incoming) {
+            const row = this.communityEl('div', '', 'community-row');
+            row.appendChild(this.communityEl('span', r.label));
+            const id = encodeURIComponent(r.playerId);
+            row.appendChild(this.communityButton('Accept', () => this.communityAction(`/api/social/friends/${id}/accept`, 'POST', 'friends')));
+            row.appendChild(this.communityButton('Decline', () => this.communityAction(`/api/social/friends/${id}/decline`, 'POST', 'friends')));
+            nodes.push(row);
+        }
+
+        nodes.push(this.communityEl('h3', 'Friends'));
+        const list = (friends.ok && friends.data.friends) || [];
+        if (list.length === 0) nodes.push(this.communityNote('No friends yet. Share your code to add them.'));
+        for (const f of list) {
+            const id = encodeURIComponent(f.playerId);
+            nodes.push(this.communityRow(`${f.label} · best ${f.bestScore || 0}`, 'Remove', () =>
+                this.communityAction(`/api/social/friends/${id}`, 'DELETE', 'friends')));
+        }
+
+        nodes.push(this.communityEl('h3', 'Best scores'));
+        const rows = (board.ok && board.data.leaderboard) || [];
+        if (rows.length === 0) nodes.push(this.communityNote('Add friends to see a board.'));
+        for (const row of rows) {
+            nodes.push(this.communityNote(`${row.rank}. ${row.label}${row.isYou ? ' (you)' : ''} — ${row.score}`));
+        }
+        show(nodes);
+    }
+
+    async loadCommunityGuild(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to join a guild.')]);
+        const mine = await this.communityRequest('/api/social/guilds/mine');
+        if (!mine.ok) return show([this.communityNote(`Guilds unavailable: ${this.communityError(mine.data)}.`)]);
+        const guild = mine.data.guild;
+        if (guild) {
+            const nodes = [
+                this.communityEl('h3', `${guild.name} · ${guild.memberCount} members`),
+                this.communityNote(guild.isOwner ? 'You lead this guild.' : 'You are a member.'),
+            ];
+            for (const m of guild.members || []) {
+                nodes.push(this.communityNote(`${m.label}${m.isYou ? ' (you)' : ''} — best ${m.bestScore || 0}`));
+            }
+            nodes.push(this.communityButton('Leave guild', () => this.communityAction('/api/social/guilds/leave', 'POST', 'guild')));
+            return show(nodes);
+        }
+        const nodes = [
+            this.communityNote('You are not in a guild.'),
+            this.communityForm('New guild name (3–16 characters)', 'Create guild', (name) =>
+                this.communityAction('/api/social/guilds', 'POST', 'guild', { name })),
+            this.communityEl('h3', 'Guilds to join'),
+        ];
+        const list = await this.communityRequest('/api/social/guilds');
+        const guilds = (list.ok && list.data.guilds) || [];
+        if (guilds.length === 0) nodes.push(this.communityNote('No guilds yet.'));
+        for (const g of guilds) {
+            const id = encodeURIComponent(g.id);
+            nodes.push(this.communityRow(`${g.name} · ${g.memberCount} members`, 'Join', () =>
+                this.communityAction(`/api/social/guilds/${id}/join`, 'POST', 'guild')));
+        }
+        show(nodes);
+    }
+
+    async loadCommunityEvents(show) {
+        if (!this.getAuthToken()) return show([this.communityNote('Sign in to see events and tournaments.')]);
+        const [comp, today] = await Promise.all([
+            this.communityRequest('/api/live-ops/competitions'),
+            this.communityRequest('/api/live-ops/today'),
+        ]);
+        if (!comp.ok) return show([this.communityNote(`Events unavailable: ${this.communityError(comp.data)}.`)]);
+        const nodes = [this.communityEl('h3', 'Tournaments')];
+        const tournaments = comp.data.tournaments || [];
+        if (tournaments.length === 0) nodes.push(this.communityNote('No tournament is running.'));
+        for (const t of tournaments) {
+            nodes.push(this.communityEl('p', `${t.name}${t.endsAt ? ` · ends ${new Date(t.endsAt).toLocaleDateString()}` : ''}`));
+            for (const e of t.entries || []) nodes.push(this.communityNote(`${e.rank}. ${e.label} — ${e.score}`));
+            const you = t.you;
+            nodes.push(this.communityNote(you && you.rank ? `Your place: ${you.rank}` : 'Win a level to enter the board.'));
+        }
+        nodes.push(this.communityEl('h3', 'Community challenges'));
+        const challenges = comp.data.challenges || [];
+        if (challenges.length === 0) nodes.push(this.communityNote('No challenge is running.'));
+        for (const c of challenges) {
+            const label = `${c.name}: ${c.progress}/${c.goal} wins`;
+            if (c.canClaim) {
+                nodes.push(this.communityRow(label, 'Claim reward', () =>
+                    this.communityAction(`/api/live-ops/challenges/${encodeURIComponent(c.id)}/claim`, 'POST', 'events')));
+            } else {
+                nodes.push(this.communityRow(c.claimed ? `${label} (reward claimed)` : label));
+            }
+        }
+        nodes.push(this.communityEl('h3', 'Deals'));
+        const deals = (today.ok && today.data.deals) || [];
+        if (deals.length === 0) nodes.push(this.communityNote('No deals right now.'));
+        for (const d of deals) {
+            const price = (d.priceCents / 100).toFixed(2);
+            const was = (d.catalogPriceCents / 100).toFixed(2);
+            nodes.push(this.communityNote(`${d.productId}: $${price} (was $${was})`));
+        }
+        const events = (today.ok && today.data.activeEvents) || [];
+        if (events.length > 0) nodes.push(this.communityEl('h3', 'Live events'));
+        for (const e of events) nodes.push(this.communityNote(`${e.name} — ${e.description || ''}`));
+        show(nodes);
+    }
+
+    // ----- Offers: coin packs and deals at the server's current prices, and live events. -----
+    // Prices come from GET /api/live-ops/offers, the same catalog the server charges from.
+    showOffers() {
+        this.showScreen('offers-screen');
+        this.loadOffers();
+    }
+
+    setOffersStatus(text) {
+        const el = document.getElementById('offers-status');
+        if (el) el.textContent = text;
+    }
+
+    async loadOffers() {
+        const list = document.getElementById('offers-list');
+        if (!list) return;
+        list.replaceChildren(this.communityNote('Loading offers…'));
+        try {
+            const res = await fetch('/api/live-ops/offers');
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                return list.replaceChildren(this.communityNote('Offers are not available right now.'));
+            }
+            const nodes = [this.communityEl('h3', 'Coin packs')];
+            for (const pack of data.coinPacks || []) {
+                const price = `$${(pack.priceCents / 100).toFixed(2)}`;
+                const was = pack.deal ? ` (was $${(pack.catalogPriceCents / 100).toFixed(2)})` : '';
+                const ends = pack.endsAt ? ` · deal ends ${new Date(pack.endsAt).toLocaleString()}` : '';
+                nodes.push(this.communityRow(
+                    `${Number(pack.coins).toLocaleString()} coins · ${price}${was}${ends}`,
+                    'Buy',
+                    () => this.buyCoinPack(pack.productId),
+                ));
+            }
+            if (!this.getAuthToken()) nodes.push(this.communityNote('Sign in to buy coins.'));
+
+            const events = [...(data.activeEvents || [])];
+            nodes.push(this.communityEl('h3', 'Live events'));
+            if (events.length === 0) nodes.push(this.communityNote('No event is running right now.'));
+            for (const e of events) {
+                nodes.push(this.communityNote(`${e.name} — ${e.description || ''} (ends ${new Date(e.endsAt).toLocaleString()})`));
+            }
+            if ((data.upcomingEvents || []).length > 0) {
+                nodes.push(this.communityEl('h3', 'Coming up'));
+                for (const e of data.upcomingEvents) {
+                    nodes.push(this.communityNote(`${e.name} — starts ${new Date(e.startsAt).toLocaleString()}`));
+                }
+            }
+            list.replaceChildren(...nodes);
+        } catch (error) {
+            list.replaceChildren(this.communityNote('Could not load offers. Check your connection and try again.'));
+        }
+    }
+
+    // Starts a hosted Stripe Checkout for one coin pack. The server sets the price and credits the coins.
+    async buyCoinPack(productId) {
+        if (!this.getAuthToken()) return this.setOffersStatus('Sign in to buy coins.');
+        this.setOffersStatus('Opening checkout…');
+        try {
+            const { ok, data } = await this.communityRequest('/api/stripe/checkout-session', {
+                method: 'POST',
+                body: JSON.stringify({ productId }),
+            });
+            if (!ok || !data.url) return this.setOffersStatus(`Not done: ${this.communityError(data)}.`);
+            window.location.href = data.url;
+        } catch (error) {
+            this.setOffersStatus('Could not reach the store. Try again.');
+        }
+    }
+
+    // ----- Mini-games: one paid play per game per UTC day. The server pays for the score. -----
+    showMiniGames() {
+        this.showScreen('minigames-screen');
+        this.loadMiniGames();
+    }
+
+    async loadMiniGames() {
+        const list = document.getElementById('minigames-list');
+        if (!list) return;
+        const games = [
+            { id: 'memory', name: 'Memory Match', blurb: 'Find all 8 pairs. Fewer moves score more (up to 100).' },
+            { id: 'treasure', name: 'Treasure Dig', blurb: 'Dig to find the treasure. Each dig shows how far it is (up to 12).' },
+            { id: 'rhythm', name: 'Rhythm Tap', blurb: 'Tap on the beat, 16 beats in all (up to 16).' },
+        ];
+        let played = {};
+        if (this.getAuthToken()) {
+            const r = await this.communityRequest('/api/minigames');
+            if (r.ok) played = Object.fromEntries(r.data.games.map((g) => [g.id, g.playedToday]));
+        }
+        const nodes = [];
+        if (!this.getAuthToken()) nodes.push(this.communityNote('Sign in to be paid for mini-games. You can still play.'));
+        for (const g of games) {
+            const paid = played[g.id] ? ' (paid today)' : '';
+            nodes.push(this.communityRow(`${g.name}${paid}: ${g.blurb}`, 'Play', () => this.startMinigame(g.id)));
+        }
+        list.replaceChildren(...nodes);
+    }
+
+    startMinigame(id) {
+        const stage = document.getElementById('minigame-stage');
+        if (!stage) return;
+        if (id === 'memory') this.runMemoryGame(stage);
+        else if (id === 'treasure') this.runTreasureGame(stage);
+        else if (id === 'rhythm') this.runRhythmGame(stage);
+    }
+
+    // Sends the score to the server, shows what was paid, and offers to go back to the list.
+    async finishMinigame(gameId, score, stage, summary) {
+        const nodes = [this.communityEl('h3', `Score ${score}`), this.communityNote(summary)];
+        if (!this.getAuthToken()) {
+            nodes.push(this.communityNote('Sign in to be paid for this score.'));
+        } else {
+            try {
+                const r = await this.communityRequest(`/api/minigames/${encodeURIComponent(gameId)}/complete`, {
+                    method: 'POST',
+                    body: JSON.stringify({ score }),
+                });
+                if (r.ok) {
+                    nodes.push(this.communityNote(`+${r.data.result.coins} coins. Balance ${r.data.result.balance}.`));
+                } else if (r.data.error === 'already_played_today') {
+                    nodes.push(this.communityNote('You have already been paid for this game today.'));
+                } else {
+                    nodes.push(this.communityNote(`Not paid: ${this.communityError(r.data)}.`));
+                }
+            } catch (error) {
+                nodes.push(this.communityNote('Could not reach the server. This score was not paid.'));
+            }
+        }
+        nodes.push(this.communityButton('Back to mini-games', () => {
+            stage.replaceChildren();
+            this.loadMiniGames();
+        }));
+        stage.replaceChildren(...nodes);
+    }
+
+    // Memory: flip two cards at a time. Score 100 at 8 moves, minus 5 for each extra move.
+    runMemoryGame(stage) {
+        const symbols = ['★', '♛', '♦', '♣', '♥', '☀', '☾', '✿'];
+        const deck = [...symbols, ...symbols];
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        let first = null;
+        let busy = false;
+        let moves = 0;
+        let matched = 0;
+        const status = this.communityNote('Moves: 0 · Pairs: 0 / 8');
+        const grid = this.communityEl('div', '', 'minigame-grid');
+        grid.style.gridTemplateColumns = 'repeat(4, 64px)';
+        for (const symbol of deck) {
+            const card = this.communityEl('button', '?', 'minigame-card');
+            card.type = 'button';
+            card.addEventListener('click', () => {
+                if (busy || card.classList.contains('open') || card.classList.contains('matched')) return;
+                card.textContent = symbol;
+                card.classList.add('open');
+                if (!first) {
+                    first = { card, symbol };
+                    return;
+                }
+                const other = first;
+                first = null;
+                moves++;
+                if (other.symbol === symbol) {
+                    other.card.classList.add('matched');
+                    card.classList.add('matched');
+                    matched++;
+                } else {
+                    busy = true;
+                    setTimeout(() => {
+                        for (const c of [other.card, card]) {
+                            c.textContent = '?';
+                            c.classList.remove('open');
+                        }
+                        busy = false;
+                    }, 700);
+                }
+                status.textContent = `Moves: ${moves} · Pairs: ${matched} / ${symbols.length}`;
+                if (matched === symbols.length) {
+                    const score = Math.max(0, 100 - 5 * Math.max(0, moves - symbols.length));
+                    this.finishMinigame('memory', score, stage, `Found all ${symbols.length} pairs in ${moves} moves.`);
+                }
+            });
+            grid.appendChild(card);
+        }
+        stage.replaceChildren(this.communityEl('h3', 'Memory Match'), status, grid);
+    }
+
+    // Treasure: one hidden tile in a 5 by 5 field, 12 digs. Each dig shows the distance to the
+    // treasure (0 is the treasure). Score is the digs left plus one: 1 to 12.
+    runTreasureGame(stage) {
+        const size = 5;
+        const digsTotal = 12;
+        const treasure = Math.floor(Math.random() * size * size);
+        const tr = Math.floor(treasure / size);
+        const tc = treasure % size;
+        let digs = 0;
+        let done = false;
+        const status = this.communityNote(`Digs left: ${digsTotal}. Each dig shows how far the treasure is.`);
+        const grid = this.communityEl('div', '', 'minigame-grid');
+        grid.style.gridTemplateColumns = `repeat(${size}, 56px)`;
+        for (let i = 0; i < size * size; i++) {
+            const cell = this.communityEl('button', '', 'minigame-card');
+            cell.type = 'button';
+            cell.addEventListener('click', () => {
+                if (done || cell.classList.contains('dug')) return;
+                digs++;
+                cell.classList.add('dug');
+                const distance = Math.abs(Math.floor(i / size) - tr) + Math.abs((i % size) - tc);
+                const left = digsTotal - digs;
+                if (distance === 0) {
+                    done = true;
+                    cell.textContent = '★';
+                    return this.finishMinigame('treasure', left + 1, stage, `Found the treasure with ${digs} digs.`);
+                }
+                cell.textContent = String(distance);
+                if (left === 0) {
+                    done = true;
+                    return this.finishMinigame('treasure', 0, stage, 'Out of digs. The treasure was not found.');
+                }
+                status.textContent = `Digs left: ${left}. Last dig: ${distance} away.`;
+            });
+            grid.appendChild(cell);
+        }
+        stage.replaceChildren(this.communityEl('h3', 'Treasure Dig'), status, grid);
+    }
+
+    // Rhythm: 16 beats, 600 ms apart. A tap within 150 ms of a beat scores it, once per beat.
+    runRhythmGame(stage) {
+        const beats = 16;
+        const interval = 600;
+        const window = 150;
+        const lead = 1200;
+        const hitBeats = new Set();
+        let hits = 0;
+        let started = false;
+        let finished = false;
+        let t0 = 0;
+        const status = this.communityNote('Get ready…');
+        const pad = this.communityButton('TAP', () => onTap());
+        pad.classList.add('minigame-pad');
+        const onTap = () => {
+            if (!started || finished) return;
+            const now = performance.now();
+            const i = Math.round((now - t0) / interval);
+            if (i >= 0 && i < beats && !hitBeats.has(i) && Math.abs(now - (t0 + i * interval)) <= window) {
+                hitBeats.add(i);
+                hits++;
+                status.textContent = `Hit ${hits} / ${beats}`;
+            } else {
+                status.textContent = `Off the beat. Hit ${hits} / ${beats}`;
+            }
+        };
+        stage.replaceChildren(this.communityEl('h3', 'Rhythm Tap'), status, pad);
+        setTimeout(() => {
+            t0 = performance.now();
+            started = true;
+            status.textContent = 'Tap on the beat.';
+            for (let i = 0; i < beats; i++) {
+                setTimeout(() => {
+                    pad.classList.add('beat');
+                    setTimeout(() => pad.classList.remove('beat'), 150);
+                }, i * interval);
+            }
+            setTimeout(() => {
+                finished = true;
+                this.finishMinigame('rhythm', hits, stage, `Hit ${hits} of ${beats} beats.`);
+            }, beats * interval + window + 200);
+        }, lead);
+    }
+
     showLevelSelect() {
         this.showScreen('level-select');
         this.updatePlayerStats();
@@ -257,10 +786,6 @@ class InfiniteMatchGame {
 
     showNews() {
         this.showScreen('news-screen');
-    }
-
-    showOffers() {
-        this.showScreen('offers-screen');
     }
 
     showLeaderboard() {
@@ -758,6 +1283,8 @@ class InfiniteMatchGame {
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('sessionId', data.sessionId);
                 localStorage.setItem('playerId', playerId);
+                // Lets the canvas game refresh its energy and title for the new session.
+                window.dispatchEvent(new Event('auth:changed'));
                 
                 this.showAccountStatus('Login successful!');
                 this.updateAccountUI();
@@ -821,6 +1348,8 @@ class InfiniteMatchGame {
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('sessionId', data.sessionId);
                 localStorage.setItem('playerId', playerId);
+                // Lets the canvas game refresh its energy and title for the new session.
+                window.dispatchEvent(new Event('auth:changed'));
                 
                 this.showAccountStatus('Account created successfully!');
                 this.updateAccountUI();
@@ -1004,6 +1533,13 @@ class InfiniteMatchGame {
                 return;
             }
 
+            // Economy endpoints require a signed-in session. Guests have no
+            // token, so skip the sync instead of calling a route that will 401.
+            if (!this.getAuthToken()) {
+                console.log('Guest session: account economy sync starts after login');
+                return;
+            }
+
             // Initialize player economy
             const response = await fetch('/api/account-economy/initialize', {
                 method: 'POST',
@@ -1041,8 +1577,10 @@ class InfiniteMatchGame {
 
     // Get current platform
     getCurrentPlatform() {
-        if (window.platformDetector) {
-            return window.platformDetector.getCurrentPlatform();
+        // platform-detection.js exposes the detected platform as a property;
+        // it has no getCurrentPlatform() method.
+        if (window.platformDetector && window.platformDetector.currentPlatform) {
+            return window.platformDetector.currentPlatform;
         }
         return 'local';
     }
@@ -1235,316 +1773,102 @@ class InfiniteMatchGame {
     }
 }
 
-// Global functions for HTML onclick events
-function showModeSelect() {
-    console.log('🎮 showModeSelect called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showModeSelect === 'function') {
-        console.log('🎮 Calling window.game.showModeSelect()');
-        window.game.showModeSelect();
-    } else {
-        console.error('❌ Game object not available or showModeSelect method missing');
-        
-        // Fallback: Try to show the mode select screen directly
-        console.log('🔄 Attempting fallback mode select...');
-        switchToScreen('mode-select');
-    }
-}
+// Global functions for HTML onclick events.
+//
+// Two objects, one job each:
+//   window.ui   the DOM controller (InfiniteMatchGame). Menus, settings, login, and register.
+//   window.game the Phaser game (PhaserMatch3Game). Gameplay and everything drawn on the canvas.
+// Each wrapper goes to exactly one of them. Before this split, menu calls reached the Phaser game,
+// which had no such methods, and handleLogin() threw a TypeError.
 
-function showSettings() {
-    console.log('⚙️ showSettings called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showSettings === 'function') {
-        console.log('⚙️ Calling window.game.showSettings()');
-        window.game.showSettings();
-    } else {
-        console.error('❌ Game object not available or showSettings method missing');
-        
-        // Fallback: Try to show the settings screen directly
-        console.log('🔄 Attempting fallback settings...');
-        switchToScreen('settings-screen');
-    }
-}
-
-function showTitle() {
-    console.log('showTitle called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showTitle === 'function') {
-        window.game.showTitle();
-    } else {
-        console.error('Game object not available or showTitle method missing');
-        
-        // Fallback: Try to show the title screen directly
-        console.log('🔄 Attempting fallback title...');
-        switchToScreen('title-screen');
-    }
-}
-
-function showLevelSelect() {
-    console.log('showLevelSelect called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showLevelSelect === 'function') {
-        window.game.showLevelSelect();
-    } else {
-        console.error('Game object not available or showLevelSelect method missing');
-        
-        // Fallback: Try to show the level select screen directly
-        console.log('🔄 Attempting fallback level select...');
-        switchToScreen('level-select');
-    }
-}
-
-function showNews() {
-    console.log('📰 showNews called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showNews === 'function') {
-        console.log('📰 Calling window.game.showNews()');
-        window.game.showNews();
-    } else {
-        console.error('❌ Game object not available or showNews method missing');
-        
-        // Fallback: Try to show the news screen directly
-        console.log('🔄 Attempting fallback news...');
-        switchToScreen('news-screen');
-    }
-}
-
-function showOffers() {
-    console.log('showOffers called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showOffers === 'function') {
-        window.game.showOffers();
-    } else {
-        console.error('Game object not available or showOffers method missing');
-    }
-}
-
-function showLeaderboard() {
-    console.log('showLeaderboard called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showLeaderboard === 'function') {
-        window.game.showLeaderboard();
-    } else {
-        console.error('Game object not available or showLeaderboard method missing');
-    }
-}
-
-function startGame() {
-    console.log('startGame called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.startGame === 'function') {
-        window.game.startGame();
-    } else {
-        console.error('Game object not available or startGame method missing');
-    }
-}
-
-function pauseGame() {
-    if (window.game) window.game.pauseGame();
-}
-
-function usePowerUp(type) {
-    if (window.game) window.game.usePowerUp(type);
-}
-
-function nextLevel() {
-    if (window.game) window.game.nextLevel();
-}
-
-function closeModal() {
-    if (window.game) window.game.closeModal();
-}
-
-function closeTutorial() {
-    if (window.game) window.game.closeTutorial();
-}
-
-function showAdvancedSettings() {
-    console.log('showAdvancedSettings called, game exists:', !!window.game);
-    if (ensureGameReady() && window.game && typeof window.game.showAdvancedSettings === 'function') {
-        window.game.showAdvancedSettings();
-    } else {
-        console.error('Game object not available or showAdvancedSettings method missing');
-    }
-}
-
-// Login Modal Functions
-function showLoginModal() {
-    console.log('👤 showLoginModal called, game exists:', !!window.game);
-    
-    // Try to ensure game is ready first
-    if (!window.game) {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            try {
-                window.game = new InfiniteMatchGame();
-                console.log('✅ Game initialized successfully');
-            } catch (error) {
-                console.error('❌ Failed to initialize game:', error);
-            }
-        }
-    }
-    
-    if (window.game && typeof window.game.showLoginModal === 'function') {
-        console.log('👤 Calling window.game.showLoginModal()');
-        window.game.showLoginModal();
-    } else {
-        console.error('❌ Game object not available or showLoginModal method missing');
-        
-        // Fallback: Try to show the login modal directly
-        console.log('🔄 Attempting fallback login modal...');
-        const loginModal = document.getElementById('login-modal');
-        if (loginModal) {
-            loginModal.classList.add('active');
-            console.log('✅ Fallback login modal successful');
-        } else {
-            console.error('❌ Fallback login modal failed - modal not found');
-        }
-    }
-}
-
-function closeLoginModal() {
-    if (window.game) window.game.closeLoginModal();
-}
-
-function switchLoginTab(tab) {
-    if (window.game) window.game.switchLoginTab(tab);
-}
-
-function handleLogin() {
-    if (window.game) window.game.handleLogin();
-}
-
-function handleRegister() {
-    if (window.game) window.game.handleRegister();
-}
-
-function syncWithPlatform(platform) {
-    if (window.game) window.game.syncWithPlatform(platform);
-}
-
-function selectLevel(levelNumber) {
-    if (window.game) window.game.selectLevel(levelNumber);
-}
-
-// Initialize game when page loads
-let game;
-
-// Robust game initialization function
+// Creates the DOM controller once. The page never creates a second one: each new instance runs
+// its own loading sequence and timers.
 function initializeGame() {
-    if (typeof InfiniteMatchGame !== 'undefined' && (!window.game || typeof window.game === 'undefined')) {
-        try {
-            console.log('Initializing game...');
-            window.game = new InfiniteMatchGame();
-            game = window.game; // Keep local reference for compatibility
-            console.log('✅ Game initialized successfully');
-            return true;
-        } catch (error) {
-            console.error('❌ Failed to initialize game:', error);
-            return false;
-        }
-    } else if (window.game && typeof window.game !== 'undefined') {
-        game = window.game; // Keep local reference for compatibility
-        console.log('Game already initialized');
-        return true;
-    } else {
+    if (window.ui) return true;
+    if (typeof InfiniteMatchGame === 'undefined') {
         console.error('❌ InfiniteMatchGame class not available');
+        return false;
+    }
+    try {
+        window.ui = new InfiniteMatchGame();
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to initialize the menu controller:', error);
         return false;
     }
 }
 
-// Auto-initialize game when script loads
-if (typeof InfiniteMatchGame !== 'undefined') {
-    console.log('🚀 Auto-initializing game...');
-    initializeGame();
-} else {
-    console.log('⏳ Waiting for InfiniteMatchGame class to be available...');
-    // Try again after a short delay
-    setTimeout(() => {
-        if (typeof InfiniteMatchGame !== 'undefined') {
-            console.log('🚀 Delayed auto-initialization...');
-            initializeGame();
-        }
-    }, 100);
+// Calls a DOM controller method. Logs and does nothing if the method is missing.
+function callUi(method, ...args) {
+    if (!initializeGame() || typeof window.ui[method] !== 'function') {
+        console.error(`Menu controller cannot run ${method}`);
+        return undefined;
+    }
+    return window.ui[method](...args);
 }
 
-// Ensure game is ready before calling methods
-function ensureGameReady() {
-    if (!window.game || typeof window.game === 'undefined') {
-        console.log('🔄 Game not ready, attempting to initialize...');
-        const initialized = initializeGame();
-        if (initialized) {
-            console.log('✅ Game initialized successfully');
-        } else {
-            console.error('❌ Failed to initialize game');
-        }
-        return initialized;
+// Calls a Phaser game method. Logs and does nothing before the game exists.
+function callGame(method, ...args) {
+    if (!window.game || typeof window.game[method] !== 'function') {
+        console.warn(`The game is not ready for ${method}`);
+        return undefined;
     }
-    game = window.game; // Keep local reference for compatibility
-    return true;
+    return window.game[method](...args);
 }
+
+// Menus, settings, and account (DOM controller).
+function showModeSelect() { return callUi('showModeSelect'); }
+function showSettings() { return callUi('showSettings'); }
+function showTitle() { return callUi('showTitle'); }
+function showLevelSelect() { return callUi('showLevelSelect'); }
+function showNews() { return callUi('showNews'); }
+function showOffers() { return callUi('showOffers'); }
+function showLeaderboard() { return callUi('showLeaderboard'); }
+function showCommunity(tab) { return callUi('showCommunity', tab); }
+function showMiniGames() { return callUi('showMiniGames'); }
+// Mode cards. Classic and timed open the level list; endless starts a run at once.
+function chooseMode(mode) {
+    callGame('setMode', mode);
+    if (mode === 'endless') {
+        revealCanvas();
+        return callGame('startEndless');
+    }
+    return callUi('showLevelSelect');
+}
+function closeModal() { return callUi('closeModal'); }
+function closeTutorial() { return callUi('closeTutorial'); }
+function showAdvancedSettings() { return callUi('showAdvancedSettings'); }
+function closeLoginModal() { return callUi('closeLoginModal'); }
+function switchLoginTab(tab) { return callUi('switchLoginTab', tab); }
+function handleLogin() { return callUi('handleLogin'); }
+function handleRegister() { return callUi('handleRegister'); }
+function syncWithPlatform(platform) { return callUi('syncWithPlatform', platform); }
+
+function showLoginModal() {
+    if (initializeGame() && typeof window.ui.showLoginModal === 'function') {
+        return window.ui.showLoginModal();
+    }
+    // Last resort when the controller is missing: show the modal markup directly.
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal) loginModal.classList.add('active');
+    else console.error('❌ Login modal not found');
+    return undefined;
+}
+
+// Gameplay (Phaser game).
+// Gameplay entry points bring the canvas back if a DOM menu hid it.
+function revealCanvas() {
+    if (typeof window.showGameCanvas === 'function') window.showGameCanvas();
+}
+
+function startGame() { revealCanvas(); return callGame('requestStart'); }
+function pauseGame() { return callGame('pauseGame'); }
+function usePowerUp(type) { return callGame('usePowerUp', type); }
+function nextLevel() { revealCanvas(); return callGame('nextLevel'); }
+function selectLevel(levelNumber) { revealCanvas(); return callGame('selectLevel', levelNumber); }
+
+// Create the DOM controller as soon as this script loads, so menus work before any click.
+initializeGame();
 
 // Make sure global functions are available immediately
 window.showModeSelect = showModeSelect;
@@ -1646,13 +1970,14 @@ document.addEventListener('touchstart', (e) => {
 document.addEventListener('keydown', (e) => {
     switch(e.key) {
         case 'Escape':
-            if (window.game && window.game.currentScreen === 'game-screen') {
+            if (window.game && window.game.isGameRunning) {
                 window.game.pauseGame();
             }
             break;
         case 'Enter':
-            if (window.game && window.game.currentScreen === 'title-screen') {
-                window.game.showModeSelect();
+            // On the canvas title screen, Enter presses Play.
+            if (window.game && window.game.titleShowing) {
+                window.game.requestStart();
             }
             break;
     }

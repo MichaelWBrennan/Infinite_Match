@@ -1,6 +1,58 @@
 // Phaser 3 Match-3 Game with All Features
 // Replaces Unity WebGL while keeping all existing functionality
 
+// Level generator. Levels are procedural, so the game has no fixed cap.
+// Target score grows steadily. Every 10th level is a boss: double target and
+// fewer moves. Moves never drop below 12.
+// Tuning overrides from the server. Each level's target is multiplied by its override (1 when
+// none). Loaded once when the page starts. The server applies the same overrides to every win.
+let levelOverrides = { levels: {} };
+
+// Overlay objects are boxes or texts. A button's label is kept on the box, so both go together.
+function destroyOverlayObjects(objects) {
+    (objects || []).forEach((obj) => {
+        if (obj.labelText) obj.labelText.destroy();
+        obj.destroy();
+    });
+}
+if (typeof fetch === 'function') {
+    fetch('/api/level-results/targets')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && d.levels) levelOverrides = { levels: d.levels }; })
+        .catch(() => {});
+}
+
+// Game modes. classic: the level's moves and a 60-second clock. timed: the clock only, with no
+// move limit. endless: no target and no clock. A run ends when no move is left.
+function levelConfig(level, mode = 'classic') {
+    const n = Math.max(1, Math.floor(Number(level) || 1));
+    const isBoss = n % 10 === 0;
+    const multiplier = (levelOverrides && levelOverrides.levels && levelOverrides.levels[n]) || 1;
+    const targetScore = Math.round((800 + n * 60) * (isBoss ? 2 : 1) * multiplier);
+    const moves = Math.max(12, 30 - Math.floor(n / 25) - (isBoss ? 5 : 0));
+    if (mode === 'timed') return { level: n, targetScore, moves: 999, isBoss, isDaily: false, mode, timeLimit: 60 };
+    if (mode === 'endless') {
+        return { level: n, targetScore: Number.MAX_SAFE_INTEGER, moves: Number.MAX_SAFE_INTEGER, isBoss: false, isDaily: false, mode, timeLimit: 0 };
+    }
+    return { level: n, targetScore, moves, isBoss, isDaily: false, mode: 'classic', timeLimit: 60 };
+}
+
+// The same challenge for everyone on a given day. The date string picks a level
+// from a fixed range, so no server call is needed.
+function dailyChallengeLevel(dateString) {
+    let hash = 2166136261;
+    for (const ch of String(dateString)) {
+        hash ^= ch.charCodeAt(0);
+        hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    const config = levelConfig(1 + (hash % 300));
+    return { ...config, isDaily: true };
+}
+
+// Power-ups that need a tapped gem. They arm on press and fire on the next tap.
+const TARGETED_POWERUPS = ['diamond', 'target', 'star'];
+const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star'];
+
 class PhaserMatch3Game {
     constructor() {
         this.game = null;
@@ -13,9 +65,14 @@ class PhaserMatch3Game {
         this.score = 0;
         this.moves = 30;
         this.time = 60;
+        // Game mode and clock. timeLimit 0 means no clock (endless).
+        this.mode = 'classic';
+        this.timeLimit = 60;
+        this.runStartedAt = 0;
         this.level = 3;
-        this.gems = 450;
-        this.stars = 1250;
+        this.targetScore = 1000; // score that wins the level
+        // Stars belong to the server. Guests have none, and signed-in players see the synced value.
+        this.stars = 0;
         this.energy = 100;
         this.maxEnergy = 100;
         this.achievements = [];
@@ -58,6 +115,7 @@ class PhaserMatch3Game {
 
     init() {
         console.log('🎮 Initializing Phaser 3 Match-3 Game...');
+        const self = this;
         
         // Initialize Phaser 3 game
         const config = {
@@ -66,10 +124,13 @@ class PhaserMatch3Game {
             height: 600,
             parent: 'phaser-game-container',
             backgroundColor: '#2c3e50',
+            // Phaser invokes these with the Scene as `this`. The methods below
+            // reach the scene through `this.scene`, which was never assigned
+            // (preload threw "Cannot read properties of null"), so each callback
+            // records the scene before delegating.
             scene: {
-                preload: this.preload.bind(this),
-                create: this.create.bind(this),
-                update: this.update.bind(this)
+                preload: function () { self.scene = this; self.preload(); },
+                create: function () { self.scene = this; self.create(); }
             },
             physics: {
                 default: 'arcade',
@@ -142,6 +203,21 @@ class PhaserMatch3Game {
         graphics.fillStyle(0xffe66d);
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_lightning', 64, 64);
+
+        graphics.clear();
+        graphics.fillStyle(0x9b59b6);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_diamond', 64, 64);
+
+        graphics.clear();
+        graphics.fillStyle(0xe67e22);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_target', 64, 64);
+
+        graphics.clear();
+        graphics.fillStyle(0xf1c40f);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_star', 64, 64);
         
         graphics.destroy();
     }
@@ -154,47 +230,448 @@ class PhaserMatch3Game {
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
         
-        this.scene = this.scene;
         this.createGameBoard();
         this.createUI();
         this.createPowerUps();
         this.setupInput();
         this.setupAnimations();
         
-        // Start the game
-        this.startGame();
+        // Nothing starts on load. The title overlay waits for Play, which claims an attempt first.
+        this.showTitleOverlay();
+        this.syncAccountFromServer();
+        // Signing in happens in the DOM login modal. When it finishes, refresh energy and the title.
+        window.addEventListener('auth:changed', () => {
+            this.syncAccountFromServer();
+            if (this.titleShowing) this.showTitleOverlay();
+        });
+    }
+
+    // Title screen, drawn on the canvas. Play starts the first board; sign-in opens the login modal.
+    showTitleOverlay() {
+        this.titleShowing = true;
+        const signedIn = !!this.getAuthToken();
+        this.openOverlay('Infinite Match');
+        this.overlayText(400, 150, 'Match gems, clear the board, and build your kingdom.', { size: 20, width: 600 });
+        this.overlayText(400, 200, signedIn
+            ? 'Signed in. Energy, coins, and rewards are saved to your account.'
+            : 'Sign in to save energy, coins, and purchases to your account.', { size: 16, width: 600 });
+        this.overlayButton(400, 300, 300, 60, 0x4ecdc4, 'Play', () => this.requestStart());
+        this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
+    }
+
+    // Opens the DOM login modal. It sits above the canvas (z-index 2000).
+    openSignIn() {
+        if (typeof window.showLoginModal === 'function') window.showLoginModal();
+    }
+
+    // The Play button. Starts the current level: applies its target and move limit, and claims
+    // an attempt first when signed in.
+    async requestStart() {
+        this.titleShowing = false;
+        this.closeOverlay();
+        return this.selectLevel(Math.floor(this.level));
+    }
+
+    // Advances to the next numbered level. Used by the DOM controller's "next level" control.
+    nextLevel() {
+        return this.selectLevel(Math.floor(this.level) + 1);
+    }
+
+    // ----- Match-3 core ---------------------------------------------------
+    // The board model (this.board: boardSize x boardSize array of gem type
+    // strings, or null for an empty cell) is the source of truth. Sprites in
+    // this.gemSprites are views of it: each sprite's texture and position follow
+    // the model cell it occupies.
+
+    cellX(col) {
+        return this.boardX + col * this.cellStep;
+    }
+
+    cellY(row) {
+        return this.boardY + row * this.cellStep;
+    }
+
+    randomGem() {
+        return this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
+    }
+
+    isInBounds(row, col) {
+        return row >= 0 && row < this.boardSize && col >= 0 && col < this.boardSize;
+    }
+
+    isAdjacent(r1, c1, r2, c2) {
+        return Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1;
     }
 
     createGameBoard() {
-        const boardX = 100;
-        const boardY = 100;
-        const gemSize = 60;
-        const spacing = 5;
-        
-        this.board = [];
-        this.gemSprites = [];
-        
-        for (let row = 0; row < this.boardSize; row++) {
-            this.board[row] = [];
-            this.gemSprites[row] = [];
-            
-            for (let col = 0; col < this.boardSize; col++) {
-                const gemType = this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
-                this.board[row][col] = gemType;
-                
-                const x = boardX + col * (gemSize + spacing);
-                const y = boardY + row * (gemSize + spacing);
-                
-                const gem = this.scene.add.image(x, y, `gem_${gemType}`);
-                gem.setDisplaySize(gemSize, gemSize);
-                gem.setInteractive();
-                gem.setData('row', row);
-                gem.setData('col', col);
-                gem.setData('type', gemType);
-                
-                this.gemSprites[row][col] = gem;
+        this.boardX = 250;
+        this.boardY = 80;
+        this.gemSize = 50;
+        this.cellStep = 54;
+        this.gemScale = this.gemSize / 64; // gem textures are 64px
+        this.selectedGem = null;
+
+        const n = this.boardSize;
+        this.board = Array.from({ length: n }, () => new Array(n).fill(null));
+        this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
+
+        // Deal gems row by row, never completing a run, so the board starts stable.
+        for (let row = 0; row < n; row++) {
+            for (let col = 0; col < n; col++) {
+                this.board[row][col] = this.randomGemAvoidingMatch(row, col);
             }
         }
+
+        for (let row = 0; row < n; row++) {
+            for (let col = 0; col < n; col++) {
+                this.gemSprites[row][col] = this.createGemSprite(row, col, this.board[row][col]);
+            }
+        }
+    }
+
+    createGemSprite(row, col, type) {
+        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), `gem_${type}`);
+        gem.setScale(this.gemScale);
+        gem.setInteractive();
+        gem.setData('row', row);
+        gem.setData('col', col);
+        gem.setData('type', type);
+        gem.on('pointerdown', () => this.selectGem(gem));
+        return gem;
+    }
+
+    // Picks a gem type for (row, col) that does not complete a run with the two
+    // cells above or to the left (those are already filled when dealing).
+    randomGemAvoidingMatch(row, col) {
+        const b = this.board;
+        const banned = new Set();
+        if (col >= 2 && b[row][col - 1] === b[row][col - 2]) banned.add(b[row][col - 1]);
+        if (row >= 2 && b[row - 1][col] === b[row - 2][col]) banned.add(b[row - 1][col]);
+        const options = this.gemTypes.filter(t => !banned.has(t));
+        return options[Math.floor(Math.random() * options.length)];
+    }
+
+    // Returns a Set of "row,col" keys for every gem that is part of a run of
+    // three or more identical gems, horizontally or vertically.
+    findMatches() {
+        const n = this.boardSize;
+        const b = this.board;
+        const found = new Set();
+        const scan = (cells) => {
+            let i = 0;
+            while (i < cells.length) {
+                const t = b[cells[i][0]][cells[i][1]];
+                let j = i + 1;
+                while (t && j < cells.length && b[cells[j][0]][cells[j][1]] === t) j++;
+                if (t && j - i >= 3) {
+                    for (let k = i; k < j; k++) found.add(`${cells[k][0]},${cells[k][1]}`);
+                }
+                i = j;
+            }
+        };
+        for (let r = 0; r < n; r++) {
+            scan(Array.from({ length: n }, (_, c) => [r, c]));
+        }
+        for (let c = 0; c < n; c++) {
+            scan(Array.from({ length: n }, (_, r) => [r, c]));
+        }
+        return found;
+    }
+
+    hasPossibleMove() {
+        const n = this.boardSize;
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                for (const [dr, dc] of [[0, 1], [1, 0]]) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (!this.isInBounds(nr, nc)) continue;
+                    this.swapModel(r, c, nr, nc);
+                    const ok = this.findMatches().size > 0;
+                    this.swapModel(r, c, nr, nc);
+                    if (ok) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Re-deals gem types across the board until it has no formed match and at
+    // least one legal move. Used when the board is deadlocked or after restart.
+    reshuffleBoard() {
+        const n = this.boardSize;
+        for (let attempt = 0; attempt < 200; attempt++) {
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    this.board[r][c] = this.randomGem();
+                }
+            }
+            if (this.findMatches().size === 0 && this.hasPossibleMove()) break;
+        }
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const sprite = this.gemSprites[r][c];
+                sprite.setTexture(`gem_${this.board[r][c]}`);
+                sprite.setData('type', this.board[r][c]);
+            }
+        }
+    }
+
+    selectGem(gem) {
+        if (!this.isGameRunning || this.isPaused || this.powerUpPending) return;
+
+        if (this.armedPowerUp) {
+            this.fireTargetedPowerUp(gem);
+            return;
+        }
+
+        if (!this.selectedGem) {
+            this.setSelectedGem(gem);
+            return;
+        }
+        if (this.selectedGem === gem) {
+            this.setSelectedGem(null);
+            return;
+        }
+
+        const first = this.selectedGem;
+        const r1 = first.getData('row');
+        const c1 = first.getData('col');
+        const r2 = gem.getData('row');
+        const c2 = gem.getData('col');
+
+        if (this.isAdjacent(r1, c1, r2, c2)) {
+            this.setSelectedGem(null);
+            this.trySwap(r1, c1, r2, c2);
+        } else {
+            // Not adjacent: treat the tap as a new selection.
+            this.setSelectedGem(gem);
+        }
+    }
+
+    setSelectedGem(gem) {
+        this.gemSprites.forEach(row => row.forEach(g => {
+            if (g) {
+                g.clearTint();
+                g.setScale(this.gemScale);
+            }
+        }));
+        this.selectedGem = gem;
+        if (!gem) return;
+
+        gem.setTint(0xffd700);
+        gem.setScale(this.gemScale * 1.2);
+
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+        if (this.settings.sfx) {
+            this.playSound('gem_select');
+        }
+    }
+
+    swapModel(r1, c1, r2, c2) {
+        const t = this.board[r1][c1];
+        this.board[r1][c1] = this.board[r2][c2];
+        this.board[r2][c2] = t;
+    }
+
+    swapSprites(r1, c1, r2, c2) {
+        const a = this.gemSprites[r1][c1];
+        const b = this.gemSprites[r2][c2];
+        this.gemSprites[r1][c1] = b;
+        this.gemSprites[r2][c2] = a;
+        this.placeSprite(b, r1, c1, true);
+        this.placeSprite(a, r2, c2, true);
+    }
+
+    // Records a sprite's cell and moves it there (tweened or instant).
+    placeSprite(sprite, row, col, animate) {
+        sprite.setData('row', row);
+        sprite.setData('col', col);
+        this.scene.tweens.killTweensOf(sprite);
+        if (animate) {
+            this.scene.tweens.add({
+                targets: sprite,
+                x: this.cellX(col),
+                y: this.cellY(row),
+                duration: 200,
+                ease: 'Quad.easeOut',
+            });
+        } else {
+            sprite.setPosition(this.cellX(col), this.cellY(row));
+        }
+    }
+
+    shake(sprites) {
+        sprites.forEach(s => {
+            const x = s.x;
+            this.scene.tweens.add({ targets: s, x: x + 6, duration: 40, yoyo: true, repeat: 2 });
+        });
+    }
+
+    trySwap(r1, c1, r2, c2) {
+        if (!this.isGameRunning) return;
+
+        this.swapModel(r1, c1, r2, c2);
+        if (this.findMatches().size === 0) {
+            // Not a match: undo and shake to show the swap was refused. Moves are
+            // not spent.
+            this.swapModel(r1, c1, r2, c2);
+            this.shake([this.gemSprites[r1][c1], this.gemSprites[r2][c2]]);
+            return;
+        }
+
+        this.swapSprites(r1, c1, r2, c2);
+        this.moves--;
+        this.resolveBoard();
+        if (!this.hasPossibleMove()) {
+            this.reshuffleBoard();
+        }
+        this.updateUI();
+        this.checkEndConditions();
+    }
+
+    // Clears every formed match, drops gems to fill the gaps, and repeats until
+    // the board is stable. Each cascade step multiplies the points.
+    resolveBoard() {
+        let chain = 0;
+        let matches = this.findMatches();
+        while (matches.size > 0) {
+            chain++;
+            this.addScore(matches.size * 10 * chain);
+            this.removeCells(matches);
+            this.collapseColumns();
+            matches = this.findMatches();
+        }
+        if (chain > 1) {
+            this.playSound('combo');
+        }
+        return chain;
+    }
+
+    removeCells(keys) {
+        keys.forEach(key => {
+            const [r, c] = key.split(',').map(Number);
+            this.board[r][c] = null;
+            const sprite = this.gemSprites[r][c];
+            this.scene.tweens.killTweensOf(sprite);
+            this.scene.tweens.add({
+                targets: sprite,
+                alpha: 0,
+                scaleX: 0,
+                scaleY: 0,
+                duration: 150,
+                onComplete: () => sprite.setVisible(false),
+            });
+        });
+    }
+
+    // Gravity: survivors keep their order and fall to the bottom of each column;
+    // the freed sprites are reused as new gems dropping in from above.
+    collapseColumns() {
+        const n = this.boardSize;
+        for (let col = 0; col < n; col++) {
+            const survivors = [];
+            const freed = [];
+            for (let row = n - 1; row >= 0; row--) {
+                if (this.board[row][col] !== null) {
+                    survivors.push({ type: this.board[row][col], sprite: this.gemSprites[row][col] });
+                } else {
+                    freed.push(this.gemSprites[row][col]);
+                }
+            }
+
+            for (let row = n - 1, i = 0; row >= 0; row--, i++) {
+                if (i < survivors.length) {
+                    const { type, sprite } = survivors[i];
+                    this.board[row][col] = type;
+                    this.gemSprites[row][col] = sprite;
+                    this.placeSprite(sprite, row, col, true);
+                    sprite.setData('type', type);
+                } else {
+                    const type = this.randomGem();
+                    const sprite = freed[i - survivors.length];
+                    this.board[row][col] = type;
+                    this.gemSprites[row][col] = sprite;
+                    this.scene.tweens.killTweensOf(sprite);
+                    sprite.setTexture(`gem_${type}`);
+                    sprite.setAlpha(1);
+                    sprite.setScale(this.gemScale);
+                    sprite.setVisible(true);
+                    sprite.setData('type', type);
+                    const dropFromRow = -1 - (i - survivors.length);
+                    sprite.setPosition(this.cellX(col), this.cellY(dropFromRow));
+                    this.placeSprite(sprite, row, col, true);
+                }
+            }
+        }
+    }
+
+    checkEndConditions() {
+        if (!this.isGameRunning) return;
+        if (this.score >= this.targetScore || this.moves <= 0) {
+            this.endGame();
+            return;
+        }
+        // An endless run ends when no move is left on the board.
+        if (this.mode === 'endless' && !this.hasPossibleMove()) this.endGame();
+    }
+
+    // Clears the given cells (power-up effects), then resolves any cascades.
+    clearAndCascade(keys, points) {
+        this.setSelectedGem(null);
+        this.addScore(points);
+        this.removeCells(keys);
+        this.collapseColumns();
+        this.resolveBoard();
+        if (!this.hasPossibleMove()) {
+            this.reshuffleBoard();
+        }
+        this.updateUI();
+        this.checkEndConditions();
+    }
+
+    allCellKeys() {
+        const keys = new Set();
+        for (let r = 0; r < this.boardSize; r++) {
+            for (let c = 0; c < this.boardSize; c++) {
+                keys.add(`${r},${c}`);
+            }
+        }
+        return keys;
+    }
+
+    activateBomb() {
+        // 3x3 blast around a random gem.
+        const n = this.boardSize;
+        const r0 = Math.floor(Math.random() * n);
+        const c0 = Math.floor(Math.random() * n);
+        const keys = new Set();
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const r = r0 + dr;
+                const c = c0 + dc;
+                if (this.isInBounds(r, c)) keys.add(`${r},${c}`);
+            }
+        }
+        this.clearAndCascade(keys, 100);
+        this.playSound('bomb_explode');
+    }
+
+    activateRainbow() {
+        // Clears the whole board.
+        this.clearAndCascade(this.allCellKeys(), 500);
+        this.playSound('rainbow_clear');
+    }
+
+    activateLightning() {
+        // Clears one random column.
+        const col = Math.floor(Math.random() * this.boardSize);
+        const keys = new Set();
+        for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
+        this.clearAndCascade(keys, 300);
+        this.playSound('lightning_strike');
     }
 
     createUI() {
@@ -233,59 +710,84 @@ class PhaserMatch3Game {
             fontFamily: 'Arial'
         });
         
-        // Gems display
-        this.gemsText = this.scene.add.text(50, 200, 'Gems: 450', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        });
-        
         // Stars display
-        this.starsText = this.scene.add.text(50, 230, 'Stars: 1250', {
+        this.starsText = this.scene.add.text(50, 230, 'Stars: 0', {
             fontSize: '20px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         });
         
         // Shop button
-        this.shopBtn = this.scene.add.rectangle(700, 100, 120, 40, 0x4ecdc4);
+        this.shopBtn = this.scene.add.rectangle(735, 100, 110, 40, 0x4ecdc4);
         this.shopBtn.setInteractive();
         this.shopBtn.on('pointerdown', () => this.showShop());
         
-        const shopText = this.scene.add.text(700, 100, 'Shop', {
+        const shopText = this.scene.add.text(735, 100, 'Shop', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
         // Battle Pass button
-        this.battlePassBtn = this.scene.add.rectangle(700, 150, 120, 40, 0xffd700);
+        this.battlePassBtn = this.scene.add.rectangle(735, 150, 110, 40, 0xffd700);
         this.battlePassBtn.setInteractive();
         this.battlePassBtn.on('pointerdown', () => this.showBattlePass());
         
-        const battlePassText = this.scene.add.text(700, 150, 'Battle Pass', {
+        const battlePassText = this.scene.add.text(735, 150, 'Battle Pass', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
         // Loot Box button
-        this.lootBoxBtn = this.scene.add.rectangle(700, 200, 120, 40, 0xff6b6b);
+        this.lootBoxBtn = this.scene.add.rectangle(735, 200, 110, 40, 0xff6b6b);
         this.lootBoxBtn.setInteractive();
         this.lootBoxBtn.on('pointerdown', () => this.showLootBox());
         
-        const lootBoxText = this.scene.add.text(700, 200, 'Loot Box', {
+        const lootBoxText = this.scene.add.text(735, 200, 'Loot Box', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
+        
+        // Kingdom button
+        this.kingdomBtn = this.scene.add.rectangle(735, 300, 110, 40, 0x9b59b6);
+        this.kingdomBtn.setInteractive();
+        this.kingdomBtn.on('pointerdown', () => this.showKingdom());
+        
+        this.scene.add.text(735, 300, 'Kingdom', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
+
+        // Account button: opens the sign-in form from the canvas. Sign-in is the DOM login modal.
+        this.accountBtn = this.scene.add.rectangle(735, 400, 110, 40, 0x9b59b6);
+        this.accountBtn.setInteractive();
+        this.accountBtn.on('pointerdown', () => this.openSignIn());
+
+        this.scene.add.text(735, 400, this.getAuthToken() ? 'Account' : 'Sign in', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
         // Pause button
-        this.pauseBtn = this.scene.add.rectangle(700, 250, 120, 40, 0x666666);
+        // Menu button: news, offers, leaderboard, settings, and login are DOM screens. They open here.
+        this.menuBtn = this.scene.add.rectangle(735, 450, 110, 40, 0x555555);
+        this.menuBtn.setInteractive();
+        this.menuBtn.on('pointerdown', () => this.openMenu());
+        this.scene.add.text(735, 450, 'Menu', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
+
+        this.pauseBtn = this.scene.add.rectangle(735, 250, 110, 40, 0x666666);
         this.pauseBtn.setInteractive();
         this.pauseBtn.on('pointerdown', () => this.togglePause());
         
-        const pauseText = this.scene.add.text(700, 250, 'Pause', {
+        const pauseText = this.scene.add.text(735, 250, 'Pause', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -293,7 +795,7 @@ class PhaserMatch3Game {
     }
 
     createPowerUps() {
-        const powerUpY = 500;
+        const powerUpY = 530;
         const powerUpSpacing = 100;
         
         // Bomb power-up
@@ -334,22 +836,37 @@ class PhaserMatch3Game {
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
+
+        // Targeted power-ups: press to arm, then tap a gem.
+        const targeted = [
+            { type: 'diamond', x: 450, count: 1 },
+            { type: 'target', x: 550, count: 1 },
+            { type: 'star', x: 650, count: 1 },
+        ];
+        for (const { type, x, count } of targeted) {
+            const btn = this.scene.add.image(x, powerUpY, `powerup_${type}`);
+            btn.setDisplaySize(50, 50);
+            btn.setInteractive();
+            btn.setData('type', type);
+            btn.setData('count', count);
+            const text = this.scene.add.text(x, powerUpY + 40, String(count), {
+                fontSize: '16px',
+                fill: '#ffffff',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5);
+            this.powerButtons = this.powerButtons || {};
+            this.powerButtons[type] = { btn, text };
+        }
     }
 
     setupInput() {
-        // Gem selection
-        this.gemSprites.forEach(row => {
-            row.forEach(gem => {
-                gem.on('pointerdown', () => {
-                    this.selectGem(gem);
-                });
-            });
-        });
-        
-        // Power-up buttons
+        // Gems bind their own pointerdown handler in createGemSprite().
         this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
         this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
         this.lightningBtn.on('pointerdown', () => this.usePowerUp('lightning'));
+        for (const type of ['diamond', 'target', 'star']) {
+            this.powerButtons[type].btn.on('pointerdown', () => this.usePowerUp(type));
+        }
     }
 
     setupAnimations() {
@@ -375,186 +892,186 @@ class PhaserMatch3Game {
         });
     }
 
-    selectGem(gem) {
-        if (!this.isGameRunning) return;
-        
-        const row = gem.getData('row');
-        const col = gem.getData('col');
-        
-        // Remove previous selection
-        this.gemSprites.forEach(row => {
-            row.forEach(g => {
-                g.clearTint();
-                g.setScale(1);
-            });
-        });
-        
-        if (this.selectedGem === gem) {
-            this.selectedGem = null;
+    usePowerUp(powerType) {
+        if (!this.isGameRunning || this.powerUpPending) return;
+
+        if (TARGETED_POWERUPS.includes(powerType)) {
+            this.toggleArmedPowerUp(powerType);
             return;
         }
-        
-        this.selectedGem = gem;
-        gem.setTint(0xffd700); // Gold tint for selection
-        gem.setScale(1.2);
-        
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(50);
-        }
-        
-        // Play selection sound
-        if (this.settings.sfx) {
-            this.playSound('gem_select');
-        }
-    }
 
-    usePowerUp(powerType) {
-        if (!this.isGameRunning) return;
-        
-        let powerUpBtn, powerUpText;
-        switch(powerType) {
-            case 'bomb':
-                powerUpBtn = this.bombBtn;
-                powerUpText = this.bombText;
-                break;
-            case 'rainbow':
-                powerUpBtn = this.rainbowBtn;
-                powerUpText = this.rainbowText;
-                break;
-            case 'lightning':
-                powerUpBtn = this.lightningBtn;
-                powerUpText = this.lightningText;
-                break;
-        }
-        
-        let count = powerUpBtn.getData('count');
-        if (count > 0) {
-            count--;
-            powerUpBtn.setData('count', count);
-            powerUpText.setText(count.toString());
-            
-            // Apply power-up effect
-            switch (powerType) {
-                case 'bomb':
-                    this.activateBomb();
-                    break;
-                case 'rainbow':
-                    this.activateRainbow();
-                    break;
-                case 'lightning':
-                    this.activateLightning();
-                    break;
-            }
-            
-            // Show power-up animation
+        const slot = this.powerSlot(powerType);
+        if (!slot || slot.btn.getData('count') <= 0) return;
+
+        this.spendPowerUp(powerType, () => {
+            this.applyInstantPowerUp(powerType);
             this.showPowerUpAnimation(powerType);
+        });
+    }
+
+    // Maps a power-up type to its button and count label.
+    powerSlot(type) {
+        const direct = {
+            bomb: { btn: this.bombBtn, text: this.bombText },
+            rainbow: { btn: this.rainbowBtn, text: this.rainbowText },
+            lightning: { btn: this.lightningBtn, text: this.lightningText },
+        };
+        return direct[type] || (this.powerButtons && this.powerButtons[type]) || null;
+    }
+
+    setPowerCount(type, count) {
+        const slot = this.powerSlot(type);
+        if (!slot) return;
+        slot.btn.setData('count', count);
+        slot.text.setText(String(count));
+    }
+
+    applyInstantPowerUp(type) {
+        switch (type) {
+            case 'bomb': this.activateBomb(); break;
+            case 'rainbow': this.activateRainbow(); break;
+            case 'lightning': this.activateLightning(); break;
         }
     }
 
-    activateBomb() {
-        // Remove random gems
-        const gems = [];
-        this.gemSprites.forEach(row => {
-            row.forEach(gem => {
-                if (gem.visible) gems.push(gem);
-            });
-        });
-        
-        const randomGems = Phaser.Utils.Array.Shuffle(gems).slice(0, 5);
-        randomGems.forEach(gem => {
-            this.animateGemRemoval(gem);
-        });
-        
-        this.addScore(100);
-        this.playSound('bomb_explode');
+    getAuthToken() {
+        try {
+            return (typeof localStorage !== 'undefined' && localStorage.getItem('authToken')) || '';
+        } catch (error) {
+            return '';
+        }
     }
 
-    activateRainbow() {
-        // Clear entire board
-        this.gemSprites.forEach(row => {
-            row.forEach(gem => {
-                if (gem.visible) {
-                    this.animateGemRemoval(gem);
+    // Spends one charge, then runs the effect. Signed-in players are checked against
+    // the server first, so the effect runs only when the server agrees. Guests spend locally.
+    spendPowerUp(type, effect) {
+        const token = this.getAuthToken();
+        if (!token) {
+            this.setPowerCount(type, this.powerSlot(type).btn.getData('count') - 1);
+            effect();
+            return;
+        }
+
+        this.powerUpPending = true;
+        this.consumePowerUpOnServer(type, token)
+            .then((ok) => {
+                if (ok) {
+                    this.setPowerCount(type, this.powerSlot(type).btn.getData('count') - 1);
+                    effect();
+                } else {
+                    return this.syncPowerUpInventory();
                 }
+            })
+            .catch((error) => {
+                console.warn('Power-up not spent on server:', error);
+                return this.syncPowerUpInventory();
+            })
+            .finally(() => {
+                this.powerUpPending = false;
             });
-        });
-        
-        this.addScore(500);
-        this.playSound('rainbow_clear');
     }
 
-    activateLightning() {
-        // Clear entire column
-        const randomCol = Math.floor(Math.random() * this.boardSize);
-        this.gemSprites.forEach(row => {
-            const gem = row[randomCol];
-            if (gem && gem.visible) {
-                this.animateGemRemoval(gem);
+    async consumePowerUpOnServer(type, token) {
+        const response = await fetch('/api/account-economy/powerup/use', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ powerupId: type, quantity: 1 })
+        });
+        return response.ok;
+    }
+
+    // Loads power-up counts from the player's server inventory. Guests keep local counts.
+    async syncPowerUpInventory() {
+        const token = this.getAuthToken();
+        if (!token) return;
+        try {
+            const response = await fetch('/api/account-economy/data', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) return;
+            const body = await response.json();
+            const powerups = body?.data?.inventory?.powerups || {};
+            for (const type of POWERUP_TYPES) {
+                const count = powerups[type]?.count;
+                if (Number.isInteger(count) && count >= 0) this.setPowerCount(type, count);
             }
-        });
-        
-        this.addScore(300);
-        this.playSound('lightning_strike');
+        } catch (error) {
+            console.warn('Could not load power-up inventory:', error);
+        }
     }
 
-    animateGemRemoval(gem) {
-        this.scene.tweens.add({
-            targets: gem,
-            alpha: 0,
-            scaleX: 0,
-            scaleY: 0,
-            duration: 500,
-            onComplete: () => {
-                gem.setVisible(false);
-                this.fillEmptySpaces();
-            }
-        });
+    toggleArmedPowerUp(type) {
+        const { btn } = this.powerButtons[type];
+        if (this.armedPowerUp === type) {
+            this.disarmPowerUp();
+            return;
+        }
+        if (btn.getData('count') <= 0) return;
+        this.disarmPowerUp();
+        this.setSelectedGem(null);
+        this.armedPowerUp = type;
+        btn.setAlpha(0.5);
     }
 
-    fillEmptySpaces() {
-        // Move existing gems down
-        for (let col = 0; col < this.boardSize; col++) {
-            let writeRow = this.boardSize - 1;
-            for (let row = this.boardSize - 1; row >= 0; row--) {
-                if (this.gemSprites[row][col].visible) {
-                    if (writeRow !== row) {
-                        this.gemSprites[writeRow][col] = this.gemSprites[row][col];
-                        this.gemSprites[row][col] = null;
-                    }
-                    writeRow--;
+    disarmPowerUp() {
+        if (!this.armedPowerUp) return;
+        this.powerButtons[this.armedPowerUp].btn.setAlpha(1);
+        this.armedPowerUp = null;
+    }
+
+    // Which cells a targeted power-up clears, given the tapped gem. Pure: it
+    // reads the board and returns keys, so it can be tested without sprites.
+    powerUpKeys(type, r, c) {
+        const n = this.boardSize;
+        const keys = new Set();
+        if (type === 'diamond') {
+            const gemType = this.board[r][c];
+            for (let rr = 0; rr < n; rr++) {
+                for (let cc = 0; cc < n; cc++) {
+                    if (this.board[rr][cc] === gemType) keys.add(`${rr},${cc}`);
                 }
             }
-            
-            // Fill empty spaces with new gems
-            for (let row = writeRow; row >= 0; row--) {
-                const gemType = this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
-                this.board[row][col] = gemType;
-                
-                const x = 100 + col * 65;
-                const y = 100 + row * 65;
-                
-                const gem = this.scene.add.image(x, y, `gem_${gemType}`);
-                gem.setDisplaySize(60, 60);
-                gem.setInteractive();
-                gem.setData('row', row);
-                gem.setData('col', col);
-                gem.setData('type', gemType);
-                
-                gem.on('pointerdown', () => {
-                    this.selectGem(gem);
-                });
-                
-                this.gemSprites[row][col] = gem;
+        } else if (type === 'target') {
+            // The tapped gem and its four orthogonal neighbours.
+            const offsets = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
+            for (const [dr, dc] of offsets) {
+                if (this.isInBounds(r + dr, c + dc)) keys.add(`${r + dr},${c + dc}`);
+            }
+        } else if (type === 'star') {
+            // The tapped gem's whole row and column.
+            for (let i = 0; i < n; i++) {
+                keys.add(`${r},${i}`);
+                keys.add(`${i},${c}`);
             }
         }
+        return keys;
+    }
+
+    fireTargetedPowerUp(gem) {
+        const type = this.armedPowerUp;
+        const r = gem.getData('row');
+        const c = gem.getData('col');
+        this.disarmPowerUp();
+
+        this.spendPowerUp(type, () => {
+            const keys = this.powerUpKeys(type, r, c);
+            const points = { diamond: 400, target: 200, star: 250 }[type];
+            this.clearAndCascade(keys, points);
+            this.showPowerUpAnimation(type);
+        });
     }
 
     showPowerUpAnimation(powerType) {
         const animations = {
             bomb: '💥',
             rainbow: '🌈',
-            lightning: '⚡'
+            lightning: '⚡',
+            diamond: '💎',
+            target: '🎯',
+            star: '🌟'
         };
         
         const animation = this.scene.add.text(400, 300, animations[powerType], {
@@ -643,13 +1160,178 @@ class PhaserMatch3Game {
         }
     }
 
+    // Starts the first board on page load, if the player may play.
+    // Spends one attempt's energy on the server. Returns true if the attempt may start.
+    // Guests have no server economy, so they are not gated.
+    async claimAttempt(level = this.level) {
+        if (!this.getAuthToken()) return true;
+        if (this.attemptPending) return false;
+        this.attemptPending = true;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/energy/spend', {
+                method: 'POST',
+                body: JSON.stringify({ level: Math.floor(level) }),
+            });
+            if (ok && data.success) {
+                this.energy = data.result.energy;
+                // The attempt id is needed to claim this level's reward when it is won.
+                this.attemptId = data.result.attemptId;
+                this.attemptLevel = data.result.level;
+                this.updateEnergyDisplay();
+                return true;
+            }
+            if (data.error === 'energy_empty') {
+                await this.showNoEnergy();
+            } else {
+                this.showAttemptError(this.ruleMessage(data.error));
+            }
+            return false;
+        } catch (error) {
+            this.showAttemptError('Could not reach the server. Check your connection and try again.');
+            return false;
+        } finally {
+            this.attemptPending = false;
+        }
+    }
+
+    showAttemptError(message) {
+        this.openOverlay('Cannot Start');
+        this.overlayText(400, 280, message, { size: 20, width: 600 });
+        this.overlayButton(400, 380, 240, 60, 0x555555, 'OK', () => this.closeOverlay());
+    }
+
+    // Out of energy: offer a refill at the server price for the energy that is missing.
+    async showNoEnergy() {
+        this.openOverlay('Out of Energy');
+        this.overlayText(400, 200, 'Each attempt uses 1 energy. Energy comes back 1 point every minute.', { size: 20, width: 600 });
+        const { ok, data } = await this.fetchJson('/api/account-economy/data');
+        const energy = ok && data.success ? data.data.currencies.energy : null;
+        const missing = energy ? energy.maxAmount - energy.amount : 0;
+        const cost = missing * 10;
+        this.overlayButton(400, 300, 380, 60, 0x4ecdc4, `Refill energy (${cost} coins)`, () => this.refillEnergy());
+        this.overlayButton(400, 380, 240, 60, 0x555555, 'Close', () => this.closeOverlay());
+    }
+
+    // Shows the energy the server holds now (it regenerates while the player is away).
+    async syncAccountFromServer() {
+        if (!this.getAuthToken()) return;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/data');
+            if (ok && data.success) {
+                this.energy = data.data.currencies.energy.amount;
+                this.maxEnergy = data.data.currencies.energy.maxAmount;
+                this.stars = data.data.currencies.stars.amount;
+                this.updateEnergyDisplay();
+                this.updateUI();
+            }
+        } catch (error) {
+            // Keep the last known value. The server still checks every attempt.
+        }
+    }
+
+    // A win pays out once, for the attempt that was spent. Losses pay nothing.
+    async submitLevelWin(stars) {
+        const attemptId = this.attemptId;
+        this.attemptId = null;
+        if (!attemptId || stars <= 0 || !this.getAuthToken()) return;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/level/complete', {
+                method: 'POST',
+                body: JSON.stringify({
+                    level: this.attemptLevel,
+                    score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
+                    attemptId,
+                }),
+            });
+            if (ok && data.success) {
+                // The server works out the stars. Show its count, not the client's.
+                this.stars = data.result.balances.stars;
+                this.updateUI();
+            } else {
+                console.warn('Level reward not granted:', data.error);
+            }
+        } catch (error) {
+            console.warn('Could not reach the server for the level reward.', error);
+        }
+    }
+
+    // Refills energy on the server. The player then starts the attempt themselves.
+    async refillEnergy() {
+        const { ok, data } = await this.fetchJson('/api/account-economy/energy/refill', { method: 'POST' });
+        if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
+        this.energy = data.result.energy;
+        this.updateEnergyDisplay();
+        this.closeOverlay();
+    }
+
+    // Start a numbered level. Applies its target and move limit, then restarts.
+    selectLevel(levelNumber) {
+        const config = levelConfig(levelNumber, this.mode);
+        const start = () => {
+            this.level = config.level;
+            this.targetScore = config.targetScore;
+            this.moves = config.moves;
+            this.isBossLevel = config.isBoss;
+            this.restartGame(true);
+        };
+        // Guests have no server economy, so the level starts at once. Signed-in players claim an
+        // attempt first, so a refused attempt does not change the target under the old board.
+        if (!this.getAuthToken()) {
+            start();
+            return Promise.resolve();
+        }
+        return this.claimAttempt(config.level).then((ok) => {
+            if (ok) start();
+        });
+    }
+
+    // The result of this level, as the server expects it for difficulty tuning.
+    levelResultPayload(stars) {
+        const target = this.targetScore || 1000;
+        return {
+            level: Math.floor(this.level),
+            outcome: stars > 0 ? 'won' : 'lost',
+            score: Math.max(0, Math.floor(this.score)),
+            targetScore: Math.max(1, Math.floor(target)),
+            movesLeft: Math.max(0, Math.floor(this.moves)),
+            durationSeconds: this.runSeconds(),
+            isBoss: !!this.isBossLevel,
+        };
+    }
+
+    // Sends the level result for tuning. Signed-in players only. The server checks the
+    // report and recomputes the stars; a failed request never affects play.
+    reportLevelResult(stars) {
+        const token = this.getAuthToken();
+        if (!token || typeof fetch !== 'function') return;
+        fetch('/api/level-results', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(this.levelResultPayload(stars))
+        }).catch(() => {});
+    }
+
+    // Stars are relative to the level target: 1x, 1.5x, 2x.
+    starsFor(score) {
+        const target = this.targetScore || 1000;
+        if (score >= target * 2) return 3;
+        if (score >= target * 1.5) return 2;
+        if (score >= target) return 1;
+        return 0;
+    }
+
     async startGame() {
         console.log('🚀 Starting Phaser 3 game...');
         
         // Initialize platform and load user data
         await this.initializePlatform();
+        await this.syncPowerUpInventory();
         
         this.isGameRunning = true;
+        this.runStartedAt = Date.now();
         this.startTimer();
         this.updateUI();
         
@@ -668,7 +1350,59 @@ class PhaserMatch3Game {
         });
     }
 
+    // Game modes: classic (moves and a 60-second clock), timed (60 seconds, no move limit), and
+    // endless (no target, no clock, runs until no move is left).
+    setMode(mode) {
+        this.mode = ['classic', 'timed', 'endless'].includes(mode) ? mode : 'classic';
+    }
+
+    startEndless() {
+        this.setMode('endless');
+        return this.selectLevel(1);
+    }
+
+    // Seconds the run has lasted: counted down on the clock, or measured from the start.
+    runSeconds() {
+        if (this.mode !== 'endless') return Math.min(3600, Math.max(0, (this.timeLimit || 60) - this.time));
+        return Math.min(3600, Math.max(0, Math.floor((Date.now() - (this.runStartedAt || Date.now())) / 1000)));
+    }
+
+    // An endless run has no target, so it is never a level win. The server pays for the score.
+    async finishEndless() {
+        const score = Math.max(0, Math.floor(this.score));
+        this.analytics.gamesPlayed++;
+        this.analytics.totalScore += score;
+        this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
+        const result = await this.submitEndlessRun(score);
+        this.saveUserData();
+        let subtitle = 'Sign in to be paid for endless runs.';
+        if (result) subtitle = `+${result.reward.coins} coins, +${result.reward.xp} XP (best ${result.endlessBest})`;
+        this.showEndGameScreen(0, { title: 'Run Over', subtitle });
+    }
+
+    async submitEndlessRun(score) {
+        const attemptId = this.attemptId;
+        this.attemptId = null;
+        if (!attemptId || !this.getAuthToken()) return null;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/endless/complete', {
+                method: 'POST',
+                body: JSON.stringify({ score: Math.min(1000000, score), attemptId }),
+            });
+            if (ok && data.success) {
+                if (typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
+                this.updateUI();
+                return data.result;
+            }
+            console.warn('Endless run not paid:', data.error);
+        } catch (error) {
+            console.warn('Could not reach the server for the endless run.', error);
+        }
+        return null;
+    }
+
     startTimer() {
+        if (this.mode === 'endless') return; // endless: no clock
         this.timerInterval = setInterval(() => {
             this.time--;
             this.timerText.setText(`Time: ${this.time}`);
@@ -679,47 +1413,13 @@ class PhaserMatch3Game {
         }, 1000);
     }
 
-    pauseGame() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-        this.isGameRunning = false;
-    }
-
-    resumeGame() {
-        this.isGameRunning = true;
-        this.startTimer();
-    }
-
-    endGame() {
-        this.isGameRunning = false;
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-        }
-        
-        // Calculate stars based on score
-        let stars = 0;
-        if (this.score >= 5000) stars = 3;
-        else if (this.score >= 3000) stars = 2;
-        else if (this.score >= 1000) stars = 1;
-        
-        console.log(`🎯 Game ended! Score: ${this.score}, Stars: ${stars}`);
-        
-        // Notify parent game system
-        if (window.game && window.game.endGame) {
-            window.game.endGame();
-        }
-    }
-
     updateUI() {
         this.scoreText.setText(`Score: ${this.score.toLocaleString()}`);
-        this.movesText.setText(`Moves: ${this.moves}`);
-        this.timerText.setText(`Time: ${this.time}`);
+        this.movesText.setText(this.mode === 'classic' ? `Moves: ${this.moves}` : 'Moves: ∞');
+        this.timerText.setText(this.mode === 'endless' ? 'Time: ∞' : `Time: ${this.time}`);
         this.levelText.setText(`Level: ${this.level}`);
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
-        this.gemsText.setText(`Gems: ${this.gems}`);
-        this.starsText.setText(`Stars: ${this.stars}`);
+        this.starsText.setText(this.getAuthToken() ? `Stars: ${this.stars}` : 'Stars: sign in to earn');
     }
 
     togglePause() {
@@ -837,9 +1537,7 @@ class PhaserMatch3Game {
                 const data = JSON.parse(savedData);
                 this.score = data.score || 0;
                 this.level = data.level || 3;
-                this.gems = data.gems || 450;
-                this.stars = data.stars || 1250;
-                this.energy = data.energy || 100;
+                // Energy is not restored from localStorage: signed-in energy comes from the server.
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings };
                 console.log('✅ User data loaded');
@@ -854,8 +1552,6 @@ class PhaserMatch3Game {
             const data = {
                 score: this.score,
                 level: this.level,
-                gems: this.gems,
-                stars: this.stars,
                 energy: this.energy,
                 achievements: this.achievements,
                 settings: this.settings,
@@ -891,23 +1587,7 @@ class PhaserMatch3Game {
         }
     }
 
-    // Energy System
-    consumeEnergy(amount = 1) {
-        if (this.energy >= amount) {
-            this.energy -= amount;
-            this.updateEnergyDisplay();
-            this.trackEvent('energy_consumed', { amount, remaining: this.energy });
-            return true;
-        }
-        return false;
-    }
-
-    addEnergy(amount) {
-        this.energy = Math.min(this.energy + amount, this.maxEnergy);
-        this.updateEnergyDisplay();
-        this.trackEvent('energy_gained', { amount, total: this.energy });
-    }
-
+    // Energy System. Energy is spent only on the server (claimAttempt). There is no local spend.
     updateEnergyDisplay() {
         if (this.energyText) {
             this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
@@ -923,12 +1603,11 @@ class PhaserMatch3Game {
         this.createShopUI();
     }
 
+    // The battle pass lives in the DOM community screen, so it opens like the other DOM menus.
     showBattlePass() {
-        this.pauseGame();
-        this.currentScreen = 'battlepass';
+        this.openMenu();
         this.trackEvent('battlepass_opened');
-        // Show battle pass UI
-        this.createBattlePassUI();
+        if (window.ui && typeof window.ui.showCommunity === 'function') window.ui.showCommunity('battlepass');
     }
 
     showLootBox() {
@@ -940,93 +1619,6 @@ class PhaserMatch3Game {
     }
 
     // Shop UI
-    createShopUI() {
-        // Create shop overlay
-        const shopOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.8);
-        shopOverlay.setInteractive();
-        
-        const shopTitle = this.scene.add.text(400, 100, 'Shop', {
-            fontSize: '32px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Gems purchase
-        const gemsBtn = this.scene.add.rectangle(200, 200, 150, 100, 0x4ecdc4);
-        gemsBtn.setInteractive();
-        gemsBtn.on('pointerdown', () => this.purchaseGems(100));
-        
-        const gemsText = this.scene.add.text(200, 200, '100 Gems\n$0.99', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Stars purchase
-        const starsBtn = this.scene.add.rectangle(400, 200, 150, 100, 0xffd700);
-        starsBtn.setInteractive();
-        starsBtn.on('pointerdown', () => this.purchaseStars(50));
-        
-        const starsText = this.scene.add.text(400, 200, '50 Stars\n$1.99', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Energy purchase
-        const energyBtn = this.scene.add.rectangle(600, 200, 150, 100, 0xff6b6b);
-        energyBtn.setInteractive();
-        energyBtn.on('pointerdown', () => this.purchaseEnergy(20));
-        
-        const energyText = this.scene.add.text(600, 200, '20 Energy\n$0.49', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Close button
-        const closeBtn = this.scene.add.rectangle(400, 500, 100, 50, 0x666666);
-        closeBtn.setInteractive();
-        closeBtn.on('pointerdown', () => this.closeShop());
-        
-        const closeText = this.scene.add.text(400, 500, 'Close', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-    }
-
-    purchaseGems(amount) {
-        this.gems += amount;
-        this.updateUI();
-        this.trackEvent('gems_purchased', { amount, total: this.gems });
-        this.saveUserData();
-    }
-
-    purchaseStars(amount) {
-        this.stars += amount;
-        this.updateUI();
-        this.trackEvent('stars_purchased', { amount, total: this.stars });
-        this.saveUserData();
-    }
-
-    purchaseEnergy(amount) {
-        this.addEnergy(amount);
-        this.trackEvent('energy_purchased', { amount, total: this.energy });
-        this.saveUserData();
-    }
-
-    closeShop() {
-        this.currentScreen = 'game';
-        this.resumeGame();
-        // Remove shop UI
-        this.scene.children.list.forEach(child => {
-            if (child.texture && child.texture.key === 'shop') {
-                child.destroy();
-            }
-        });
-    }
-
     // Battle Pass UI
     createBattlePassUI() {
         // Create battle pass overlay
@@ -1079,135 +1671,366 @@ class PhaserMatch3Game {
     }
 
     // Loot Box UI
-    createLootBoxUI() {
-        // Create loot box overlay
-        const lbOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.8);
-        lbOverlay.setInteractive();
-        
-        const lbTitle = this.scene.add.text(400, 100, 'Loot Box', {
-            fontSize: '32px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Loot box options
-        const commonBox = this.scene.add.rectangle(200, 250, 150, 200, 0x666666);
-        commonBox.setInteractive();
-        commonBox.on('pointerdown', () => this.openLootBox('common'));
-        
-        const commonText = this.scene.add.text(200, 250, 'Common Box\n100 Gems', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        const rareBox = this.scene.add.rectangle(400, 250, 150, 200, 0x4ecdc4);
-        rareBox.setInteractive();
-        rareBox.on('pointerdown', () => this.openLootBox('rare'));
-        
-        const rareText = this.scene.add.text(400, 250, 'Rare Box\n500 Gems', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        const epicBox = this.scene.add.rectangle(600, 250, 150, 200, 0xffd700);
-        epicBox.setInteractive();
-        epicBox.on('pointerdown', () => this.openLootBox('epic'));
-        
-        const epicText = this.scene.add.text(600, 250, 'Epic Box\n1000 Gems', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Close button
-        const closeBtn = this.scene.add.rectangle(400, 500, 100, 50, 0x666666);
-        closeBtn.setInteractive();
-        closeBtn.on('pointerdown', () => this.closeLootBox());
-        
-        const closeText = this.scene.add.text(400, 500, 'Close', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
+    // ---- Server-backed shop, loot boxes and kingdom ---------------------------------
+    // Every price and reward is decided on the server. The client only shows the result.
+    // Each screen is one container, so closing it removes all of its pieces.
+
+    openOverlay(title) {
+        this.closeOverlay();
+        const background = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.85).setInteractive();
+        const heading = this.scene.add.text(400, 40, title, { fontSize: '32px', fill: '#ffffff', fontFamily: 'Arial' }).setOrigin(0.5);
+        this.activeOverlay = this.scene.add.container(0, 0, [background, heading]);
+        this.activeOverlay.setDepth(1000);
+        this.overlayStatus = this.overlayText(400, 540, '', { size: 16, color: '#ffd700', width: 700 });
+        return this.activeOverlay;
     }
 
-    openLootBox(type) {
-        const costs = { common: 100, rare: 500, epic: 1000 };
-        const cost = costs[type];
-        
-        if (this.gems >= cost) {
-            this.gems -= cost;
-            this.updateUI();
-            
-            // Simulate loot box opening
-            this.animateLootBoxOpening(type);
-            
-            this.trackEvent('lootbox_opened', { type, cost });
-            this.saveUserData();
+    overlayText(x, y, label, { size = 16, color = '#ffffff', origin = 0.5, width = null } = {}) {
+        const style = { fontSize: `${size}px`, fill: color, fontFamily: 'Arial', align: 'center' };
+        if (width) style.wordWrap = { width };
+        const text = this.scene.add.text(x, y, label, style).setOrigin(origin, 0.5);
+        this.activeOverlay.add(text);
+        return text;
+    }
+
+    overlayButton(x, y, width, height, color, label, onClick) {
+        const box = this.scene.add.rectangle(x, y, width, height, color).setInteractive();
+        box.on('pointerdown', onClick);
+        this.activeOverlay.add(box);
+        box.labelText = this.overlayText(x, y, label);
+        return box;
+    }
+
+    setOverlayStatus(message) {
+        if (this.overlayStatus) this.overlayStatus.setText(message);
+    }
+
+    closeOverlay() {
+        if (this.activeOverlay) {
+            this.activeOverlay.destroy();
+            this.activeOverlay = null;
+            this.overlayStatus = null;
         }
     }
 
-    animateLootBoxOpening(type) {
-        // Create opening animation
-        const particles = this.scene.add.particles(400, 300, 'gem_red', {
-            speed: { min: 100, max: 300 },
-            scale: { start: 1, end: 0 },
-            lifespan: 1000
-        });
-        
-        particles.explode(50);
-        
-        setTimeout(() => {
-            particles.destroy();
-            this.showLootBoxReward(type);
-        }, 1000);
+    async fetchJson(url, options = {}) {
+        const token = this.getAuthToken();
+        const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const response = await fetch(url, { ...options, headers });
+        const data = await response.json().catch(() => ({}));
+        return { ok: response.ok, status: response.status, data };
     }
 
-    showLootBoxReward(type) {
-        const rewards = {
-            common: { gems: 50, stars: 10, energy: 5 },
-            rare: { gems: 200, stars: 50, energy: 20 },
-            epic: { gems: 500, stars: 100, energy: 50 }
+    // Plain-language messages for the error codes the server returns.
+    ruleMessage(code) {
+        const messages = {
+            insufficient_coins: 'Not enough coins. Buy a coin pack in the shop.',
+            unknown_lootbox: 'That loot box is not available.',
+            unknown_product: 'That pack is not available.',
+            checkout_not_configured: 'Purchases are not available right now.',
+            checkout_failed: 'Could not start checkout. Try again.',
+            stars_required: 'Earn more stars first.',
+            room_max_level: 'This room is already at its highest level.',
+            unknown_room: 'That room does not exist.',
+            energy_empty: 'Out of energy.',
+            energy_full: 'Energy is already full.',
+            decor_limit: 'You already own the most of this decoration.',
+            decor_not_owned: 'Buy this decoration first.',
+            room_occupied: 'That room already has a decoration.',
+            room_level_too_low: 'That room needs a higher level for this decoration.',
+            room_empty: 'Nothing is in that room.',
+            unknown_decor: 'That decoration is not available.',
         };
-        
-        const reward = rewards[type];
-        this.gems += reward.gems;
-        this.stars += reward.stars;
-        this.addEnergy(reward.energy);
-        
-        this.updateUI();
-        this.saveUserData();
-        
-        // Show reward popup
-        const rewardText = this.scene.add.text(400, 300, `Reward!\n+${reward.gems} Gems\n+${reward.stars} Stars\n+${reward.energy} Energy`, {
-            fontSize: '24px',
-            fill: '#ffd700',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        this.scene.tweens.add({
-            targets: rewardText,
-            scaleX: 1.5,
-            scaleY: 1.5,
-            alpha: 0,
-            duration: 2000,
-            onComplete: () => {
-                rewardText.destroy();
-            }
+        return messages[code] || 'Something went wrong. Try again.';
+    }
+
+    createShopUI() {
+        this.openOverlay('Shop');
+        this.shopCoinsText = this.overlayText(400, 100, 'Sign in to buy coins', { size: 20, color: '#ffd700' });
+        // The button shows the coins. The price is read from the server (GET /api/live-ops/offers),
+        // so it always matches what the server charges, including any active deal.
+        const packs = [
+            { productId: 'coins_small', label: '500 coins', color: 0x4ecdc4, x: 200 },
+            { productId: 'coins_medium', label: '3,000 coins', color: 0xffd700, x: 400 },
+            { productId: 'coins_large', label: '8,000 coins', color: 0xff6b6b, x: 600 },
+        ];
+        packs.forEach((pack) => {
+            this.overlayButton(pack.x, 240, 150, 100, pack.color, pack.label, () => this.buyCoinPack(pack.productId));
         });
+        this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeShop());
+        this.refreshCoinBalance(this.shopCoinsText);
+        this.loadShopPrices(packs);
+    }
+
+    async loadShopPrices(packs) {
+        try {
+            const res = await fetch('/api/live-ops/offers');
+            const data = await res.json();
+            if (!data.success || !this.shopCoinsText || !this.shopCoinsText.active) return;
+            for (const pack of packs) {
+                const offer = (data.coinPacks || []).find((p) => p.productId === pack.productId);
+                if (!offer) continue;
+                const price = `$${(offer.priceCents / 100).toFixed(2)}${offer.deal ? ' (deal)' : ''}`;
+                this.overlayText(pack.x, 310, price, { size: 18, color: '#ffd700' });
+            }
+        } catch (error) {
+            console.warn('Could not load shop prices:', error);
+        }
+    }
+
+    async refreshCoinBalance(textObject) {
+        if (!this.getAuthToken()) return;
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/data');
+            if (ok && textObject && textObject.active) {
+                textObject.setText(`Coins: ${data.data.currencies.coins.amount}`);
+            }
+        } catch (error) {
+            console.warn('Could not load coin balance:', error);
+        }
+    }
+
+    // Starts a hosted Stripe Checkout for one coin pack. Coins are credited by the server after payment.
+    async buyCoinPack(productId) {
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to buy coins.');
+        this.setOverlayStatus('Opening checkout...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/stripe/checkout-session', {
+                method: 'POST',
+                body: JSON.stringify({ productId }),
+            });
+            if (!ok || !data.url) return this.setOverlayStatus(this.ruleMessage(data.error));
+            this.trackEvent('checkout_started', { productId });
+            window.location.href = data.url;
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the store. Try again.');
+        }
+    }
+
+    closeShop() {
+        this.closeOverlay();
+        this.currentScreen = 'game';
+        this.resumeGame();
+    }
+
+    createLootBoxUI() {
+        this.openOverlay('Loot Box');
+        this.lootCoinsText = this.overlayText(400, 100, 'Sign in to open loot boxes', { size: 20, color: '#ffd700' });
+        const boxes = [
+            { type: 'common', label: 'Common\n100 coins', color: 0x4ecdc4, x: 200 },
+            { type: 'rare', label: 'Rare\n500 coins', color: 0xffd700, x: 400 },
+            { type: 'epic', label: 'Epic\n1000 coins', color: 0xff6b6b, x: 600 },
+        ];
+        boxes.forEach((box) => {
+            this.overlayButton(box.x, 240, 150, 100, box.color, box.label, () => this.openLootBox(box.type));
+        });
+        this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeLootBox());
+        this.refreshCoinBalance(this.lootCoinsText);
+    }
+
+    // Buys one loot box. The server charges coins, rolls the reward, and grants it.
+    async openLootBox(type) {
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to open loot boxes.');
+        if (this.lootBoxPending) return;
+        this.lootBoxPending = true;
+        this.setOverlayStatus('Opening...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/account-economy/lootbox/open', {
+                method: 'POST',
+                body: JSON.stringify({ type }),
+            });
+            if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
+            const { reward, coins, energy } = data.result;
+            if (this.lootCoinsText && this.lootCoinsText.active) this.lootCoinsText.setText(`Coins: ${coins}`);
+            // The server has already granted the reward, so take its energy total rather than adding again.
+            if (typeof energy === 'number') {
+                this.energy = energy;
+                this.updateEnergyDisplay();
+            }
+            this.applyLootReward(reward);
+            this.trackEvent('lootbox_opened', { type, reward: reward.id });
+            this.setOverlayStatus(`You got: ${this.describeReward(reward)}`);
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the server. Try again.');
+        } finally {
+            this.lootBoxPending = false;
+        }
+    }
+
+    describeReward(reward) {
+        if (reward.type === 'currency') return `${reward.amount} ${reward.currencyId}`;
+        return `${reward.amount} x ${reward.itemId}`;
+    }
+
+    // Puts a server-granted reward into the on-screen counters the player sees.
+    applyLootReward(reward) {
+        // The server granted it. Re-read the balance rather than adding it here.
+        if (reward.type === 'currency' && reward.currencyId === 'stars') {
+            this.syncAccountFromServer();
+        }
     }
 
     closeLootBox() {
+        this.closeOverlay();
         this.currentScreen = 'game';
         this.resumeGame();
-        // Remove loot box UI
-        this.scene.children.list.forEach(child => {
-            if (child.texture && child.texture.key === 'lootbox') {
-                child.destroy();
+    }
+
+    showKingdom() {
+        this.pauseGame();
+        this.currentScreen = 'kingdom';
+        this.trackEvent('kingdom_opened');
+        this.createKingdomUI();
+    }
+
+    createKingdomUI() {
+        this.openOverlay('Kingdom');
+        this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
+        this.kingdomRowObjects = [];
+        this.overlayButton(250, 500, 100, 50, 0x9b59b6, 'Decor', () => this.openDecor());
+        this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeKingdom());
+        this.renderKingdom();
+    }
+
+    // The decoration screen is its own overlay. It is rebuilt after each action, so it always shows
+    // the server's state. Back returns to the Kingdom overlay.
+    openDecor(message = '') {
+        this.openOverlay('Decorate');
+        this.decorRowObjects = [];
+        this.decorCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
+        this.overlayText(400, 110, 'Buy a decoration, select it, then place it in a room. Each room holds one.', { size: 14 });
+        this.overlayButton(400, 500, 100, 40, 0x666666, 'Back', () => this.createKingdomUI());
+        this.setOverlayStatus(message || 'Loading...');
+        this.loadDecor();
+    }
+
+    async loadDecor() {
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to decorate your kingdom.');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom');
+            if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
+            if (!this.activeOverlay || !this.decorCoinsText || !this.decorCoinsText.active) return;
+            const { decor, kingdom } = data;
+            this.decorCoinsText.setText(`Coins: ${data.coins}`);
+            const selected = this.decorSelected && decor.catalog.some((item) => item.id === this.decorSelected)
+                ? this.decorSelected : null;
+            this.decorSelected = selected;
+
+            decor.catalog.forEach((item, index) => {
+                const y = 150 + index * 42;
+                const owned = decor.owned[item.id] || 0;
+                this.overlayText(60, y, `${item.name} · ${item.priceCoins} coins · room lvl ${item.requiresRoomLevel}+ · owned ${owned}/${decor.maxOwned}`, { origin: 0, size: 15 });
+                this.overlayButton(600, y, 90, 28, 0xffd700, 'Buy', () => this.decorAction('/api/kingdom/decor/buy', { decorId: item.id }, `Bought ${item.name}.`));
+                this.overlayButton(710, y, 90, 28, selected === item.id ? 0x4ecdc4 : 0x9b59b6, selected === item.id ? 'Selected' : 'Select', () => {
+                    this.decorSelected = item.id;
+                    this.openDecor();
+                });
+            });
+
+            this.overlayText(60, 330, 'Rooms', { origin: 0, size: 16, color: '#4ecdc4' });
+            kingdom.rooms.forEach((room, index) => {
+                const y = 355 + index * 24;
+                const placedId = decor.placed[room.id];
+                const placedItem = placedId ? decor.catalog.find((item) => item.id === placedId) : null;
+                this.overlayText(60, y, `${room.name} · lvl ${room.level} · ${placedItem ? placedItem.name : 'empty'}`, { origin: 0, size: 14 });
+                if (placedItem) {
+                    this.overlayButton(710, y, 90, 22, 0xe74c3c, 'Remove', () => this.decorAction('/api/kingdom/decor/remove', { roomId: room.id }, `Removed ${placedItem.name}.`));
+                } else if (selected) {
+                    const item = decor.catalog.find((c) => c.id === selected);
+                    this.overlayButton(710, y, 90, 22, 0x4ecdc4, 'Place', () => {
+                        this.decorSelected = null;
+                        this.decorAction('/api/kingdom/decor/place', { roomId: room.id, decorId: item.id }, `${item.name} placed in ${room.name}.`);
+                    });
+                } else {
+                    this.overlayButton(710, y, 90, 22, 0x666666, 'Pick one', () => this.setOverlayStatus('Select a decoration first.'));
+                }
+            });
+        } catch (error) {
+            this.setOverlayStatus('Could not load your kingdom.');
+        }
+    }
+
+    // One decoration action. The screen is rebuilt with the server's answer and a message.
+    async decorAction(url, body, okMessage) {
+        if (this.decorPending) return;
+        this.decorPending = true;
+        this.setOverlayStatus('Working...');
+        try {
+            const { ok, data } = await this.fetchJson(url, { method: 'POST', body: JSON.stringify(body) });
+            this.decorPending = false;
+            this.openDecor(ok && data.success ? okMessage : this.ruleMessage(data.error));
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the server. Try again.');
+        } finally {
+            this.decorPending = false;
+        }
+    }
+
+    async renderKingdom() {
+        destroyOverlayObjects(this.kingdomRowObjects);
+        this.kingdomRowObjects = [];
+        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to renovate your kingdom.');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom');
+            if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
+            if (!this.activeOverlay) return;
+            const bonus = Math.round((data.coinBonus || 0) * 100);
+            this.kingdomCoinsText.setText(`Coins: ${data.coins}${bonus > 0 ? `   Room bonus +${bonus}% coins` : ''}`);
+            data.kingdom.rooms.forEach((room, index) => {
+                const y = 140 + index * 55;
+                let detail = `${room.name}   Level ${room.level}/${room.maxLevel}`;
+                if (room.next) {
+                    detail += `   next: ${room.next.costCoins} coins`;
+                    if (room.next.starsRequired) detail += `, ${room.next.starsRequired} stars`;
+                }
+                this.kingdomRowObjects.push(this.overlayText(60, y, detail, { origin: 0 }));
+                if (room.canRenovate) {
+                    this.kingdomRowObjects.push(
+                        this.overlayButton(680, y, 130, 36, 0x9b59b6, 'Upgrade', () => this.renovateRoom(room.id)),
+                    );
+                } else {
+                    const reasons = {
+                        room_max_level: 'Maxed',
+                        stars_required: 'Needs stars',
+                        insufficient_coins: 'Needs coins',
+                    };
+                    this.kingdomRowObjects.push(this.overlayText(680, y, reasons[room.blockedBy] || 'Locked'));
+                }
+            });
+        } catch (error) {
+            this.setOverlayStatus('Could not load your kingdom.');
+        }
+    }
+
+    async renovateRoom(roomId) {
+        if (this.kingdomPending) return;
+        this.kingdomPending = true;
+        this.setOverlayStatus('Renovating...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom/renovate', {
+                method: 'POST',
+                body: JSON.stringify({ roomId }),
+            });
+            if (!ok || !data.success) {
+                this.setOverlayStatus(this.ruleMessage(data.error));
+            } else {
+                const { result } = data;
+                this.setOverlayStatus(`Level ${result.level} reached.${result.milestone ? ' Milestone reward granted.' : ''}`);
+                this.trackEvent('kingdom_renovated', { roomId, level: result.level });
             }
-        });
+            await this.renderKingdom();
+        } catch (error) {
+            this.setOverlayStatus('Could not reach the server. Try again.');
+        } finally {
+            this.kingdomPending = false;
+        }
+    }
+
+    closeKingdom() {
+        this.closeOverlay();
+        this.currentScreen = 'game';
+        this.resumeGame();
     }
 
     // Integration with existing game system
@@ -1216,8 +2039,6 @@ class PhaserMatch3Game {
         this.moves = state.moves || 30;
         this.time = state.time || 60;
         this.level = state.level || 3;
-        this.gems = state.gems || 450;
-        this.stars = state.stars || 1250;
         this.energy = state.energy || 100;
         this.settings = { ...this.settings, ...state.settings };
         this.updateUI();
@@ -1229,8 +2050,6 @@ class PhaserMatch3Game {
             moves: this.moves,
             time: this.time,
             level: this.level,
-            gems: this.gems,
-            stars: this.stars,
             energy: this.energy,
             settings: this.settings
         };
@@ -1266,23 +2085,29 @@ class PhaserMatch3Game {
             clearInterval(this.timerInterval);
         }
         
+        if (this.mode === 'endless') {
+            this.finishEndless();
+            return;
+        }
+
         // Calculate stars based on score
         let stars = 0;
-        if (this.score >= 5000) stars = 3;
-        else if (this.score >= 3000) stars = 2;
-        else if (this.score >= 1000) stars = 1;
+        stars = this.starsFor(this.score);
         
+        this.reportLevelResult(stars);
+        this.submitLevelWin(stars);
+
         // Update analytics
         this.analytics.gamesPlayed++;
         this.analytics.totalScore += this.score;
-        this.analytics.totalTime += (60 - this.time);
+        this.analytics.totalTime += this.runSeconds();
         
         // Track game end
         this.trackEvent('game_ended', {
             score: this.score,
             stars: stars,
             level: this.level,
-            duration: 60 - this.time
+            duration: this.runSeconds()
         });
         
         // Save user data
@@ -1294,12 +2119,12 @@ class PhaserMatch3Game {
         this.showEndGameScreen(stars);
     }
 
-    showEndGameScreen(stars) {
+    showEndGameScreen(stars, { title = null, subtitle = null } = {}) {
         // Create end game overlay
         const endOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.9);
         endOverlay.setInteractive();
         
-        const endTitle = this.scene.add.text(400, 150, 'Game Over!', {
+        const endTitle = this.scene.add.text(400, 150, title || (stars > 0 ? 'Level Complete!' : 'Level Failed'), {
             fontSize: '48px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -1311,7 +2136,7 @@ class PhaserMatch3Game {
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
-        const starsText = this.scene.add.text(400, 250, `Stars: ${stars}/3`, {
+        const starsText = this.scene.add.text(400, 250, subtitle || `Stars: ${stars}/3`, {
             fontSize: '24px',
             fill: '#ffd700',
             fontFamily: 'Arial'
@@ -1340,12 +2165,19 @@ class PhaserMatch3Game {
         }).setOrigin(0.5);
     }
 
-    restartGame() {
-        // Reset game state
+    // Every attempt spends energy on the server first. Nothing resets until the spend succeeds.
+    async restartGame(attemptClaimed = false) {
+        if (!attemptClaimed && !(await this.claimAttempt())) return;
+
+        // Reset game state. The move limit belongs to the level, not to a fixed 30.
         this.score = 0;
-        this.moves = 30;
-        this.time = 60;
-        this.energy = Math.max(this.energy - 1, 0);
+        const config = levelConfig(this.level, this.mode);
+        this.moves = config.moves;
+        this.targetScore = config.targetScore;
+        this.timeLimit = config.timeLimit;
+        this.time = config.timeLimit;
+        this.setSelectedGem(null);
+        this.reshuffleBoard();
         
         // Restart the game
         this.startGame();
@@ -1358,15 +2190,30 @@ class PhaserMatch3Game {
         });
     }
 
+    // Hides the canvas and shows the DOM menu. A running level is paused until closeMenu().
+    openMenu() {
+        this.menuPausedRun = !!this.isGameRunning && !this.isPaused;
+        this.pauseGame();
+        if (typeof window.openDomMenu === 'function') window.openDomMenu();
+    }
+
+    // Called when the player returns to the canvas. Resumes the level if the menu paused it.
+    closeMenu() {
+        if (this.menuPausedRun) {
+            this.menuPausedRun = false;
+            this.resumeGame();
+        }
+    }
+
     returnToMenu() {
         this.currentScreen = 'menu';
-        this.pauseGame();
         // Remove end game screen
         this.scene.children.list.forEach(child => {
             if (child.texture && child.texture.key === 'endgame') {
                 child.destroy();
             }
         });
+        this.openMenu();
     }
 
     destroy() {

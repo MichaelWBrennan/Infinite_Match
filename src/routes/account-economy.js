@@ -5,15 +5,24 @@
 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from '../core/security/index.js';
+import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
-import AccountEconomyService from '../services/economy/AccountEconomyService.js';
+import { accountEconomy as accountEconomyService, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
+import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
+import { endlessRewards, starsForScore, winRewards } from '../services/meta/rewards.js';
+import { levelMultiplier, readLevelOverrides } from '../services/meta/level-overrides.js';
+import { applyVip, VIP_ENTITLEMENT } from '../services/meta/vip.js';
+import { kingdomCoinMultiplier } from '../services/meta/kingdom.js';
+import { addSeasonXp } from '../services/meta/battlepass.js';
+import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-season.js';
+import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import { socialStore } from '../services/social/social-store.js';
+import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
 
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
 
-// Initialize service
-const accountEconomyService = new AccountEconomyService();
+// The shared instance: balances live in it, so every route must use the same one.
 
 // Helper function for consistent error handling
 const handleRouteError = (res, error, operation, requestId) => {
@@ -26,10 +35,27 @@ const handleRouteError = (res, error, operation, requestId) => {
 };
 
 // Validation middleware
+// Records a won level for the social boards: the player's best score, and their score and progress
+// in any running tournament or challenge. A failure is logged and does not undo the reward.
+async function recordCompetitionWin(playerId, level, score) {
+  try {
+    const active = activeCompetitions(loadCompetitions(), Date.now());
+    await socialStore.recordWin(playerId, {
+      level,
+      score,
+      tournamentIds: active.tournaments.map((t) => t.id),
+      challengeIds: active.challenges.map((c) => c.id),
+    });
+  } catch (error) {
+    logger.error('Could not record the win for boards', { error: error.message, playerId });
+  }
+}
+
 const validateCurrencyUpdate = [
   body('currencyId').isString().notEmpty().withMessage('Currency ID is required'),
   body('amount').isInt({ min: 0 }).withMessage('Amount must be a positive integer'),
-  body('operation').isIn(['add', 'spend', 'set']).withMessage('Operation must be add, spend, or set'),
+  // Players may only spend. Grants come from server flows.
+  body('operation').isIn(['spend']).withMessage('Operation must be spend'),
   body('source').optional().isString().withMessage('Source must be a string'),
 ];
 
@@ -37,12 +63,8 @@ const validateInventoryUpdate = [
   body('category').isString().notEmpty().withMessage('Category is required'),
   body('itemId').isString().notEmpty().withMessage('Item ID is required'),
   body('quantity').isInt({ min: 0 }).withMessage('Quantity must be a positive integer'),
-  body('operation').isIn(['add', 'remove', 'set']).withMessage('Operation must be add, remove, or set'),
-];
-
-const validateProgressionUpdate = [
-  body('xpGained').isInt({ min: 0 }).withMessage('XP gained must be a positive integer'),
-  body('levelCompleted').optional().isBoolean().withMessage('Level completed must be a boolean'),
+  // Players may only consume items. Grants come from server flows.
+  body('operation').isIn(['remove']).withMessage('Operation must be remove'),
 ];
 
 // Initialize player economy
@@ -74,7 +96,8 @@ router.get('/data', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
 
-    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
+    // Energy is shown as it is now, not as it was at the last save. Nothing is written here.
+    const playerEconomy = await accountEconomyService.getPlayerEconomyView(playerId);
 
     res.json({
       success: true,
@@ -171,40 +194,28 @@ router.post('/inventory/update', security.sessionValidation, validateInventoryUp
 });
 
 // Update progression
-router.post('/progression/update', security.sessionValidation, validateProgressionUpdate, async (req, res) => {
+// XP is granted only by /level/complete, which computes it on the server.
+// Accepting client XP let a player level up without limit and collect the rewards.
+router.post('/progression/update', security.sessionValidation, (req, res) => {
+  res.status(403).json({
+    success: false,
+    error: 'XP is granted by level completion',
+    requestId: req.requestId,
+  });
+});
+
+// Lucky wheel: one spin per day, reward chosen and granted on the server.
+router.post('/wheel/spin', security.sessionValidation, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-        requestId: req.requestId,
-      });
-    }
-
     const { playerId } = req.user;
-    const { xpGained, levelCompleted } = req.body;
-
-    const result = await accountEconomyService.updateProgression(
-      playerId,
-      xpGained,
-      levelCompleted
-    );
-
-    security.logSecurityEvent('progression_updated', {
-      playerId,
-      xpGained,
-      levelCompleted,
-      ip: req.ip,
-    });
-
-    res.json({
-      success: true,
-      result,
-      requestId: req.requestId,
-    });
+    const { reward, spunAt } = await accountEconomyService.spinLuckyWheel(playerId);
+    security.logSecurityEvent('lucky_wheel_spun', { playerId, reward: reward.id, ip: req.ip });
+    res.json({ success: true, result: { reward, spunAt }, requestId: req.requestId });
   } catch (error) {
-    handleRouteError(res, error, 'update progression', req.requestId);
+    if (error.message.includes('already spun')) {
+      return res.status(400).json({ success: false, error: error.message, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'spin lucky wheel', req.requestId);
   }
 });
 
@@ -214,6 +225,7 @@ router.post('/daily-reward/claim', security.sessionValidation, async (req, res) 
     const { playerId } = req.user;
 
     const result = await accountEconomyService.claimDailyReward(playerId);
+    await grantSeasonXp(playerId, 'daily_login');
 
     security.logSecurityEvent('daily_reward_claimed', {
       playerId,
@@ -279,7 +291,7 @@ router.get('/stats', security.sessionValidation, async (req, res) => {
 });
 
 // Get service statistics (admin only)
-router.get('/service/stats', security.sessionValidation, security.requireRole('admin'), async (req, res) => {
+router.get('/service/stats', security.sessionValidation, requireMinRole('admin'), async (req, res) => {
   try {
     const stats = accountEconomyService.getStats();
 
@@ -297,42 +309,31 @@ router.get('/service/stats', security.sessionValidation, security.requireRole('a
 router.post('/purchase', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { itemId, currencyId, amount } = req.body;
+    const { itemId } = req.body;
 
-    // Validate purchase
-    if (!itemId || !currencyId || !amount) {
+    // The price comes from the server catalog. A client-supplied amount is ignored.
+    const item = Object.prototype.hasOwnProperty.call(ITEM_CATALOG, itemId) ? ITEM_CATALOG[itemId] : null;
+    if (!item) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: itemId, currencyId, amount',
+        error: 'Unknown item',
         requestId: req.requestId,
       });
     }
 
-    // Check if player can afford the purchase
-    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
-    const currency = playerEconomy.currencies[currencyId];
-    
-    if (!currency || currency.amount < amount) {
-      return res.status(400).json({
-        success: false,
-        error: `Insufficient ${currencyId}`,
-        requestId: req.requestId,
-      });
-    }
+    const { currencyId, price, category } = item;
 
-    // Process purchase
     const currencyResult = await accountEconomyService.updateCurrency(
       playerId,
       currencyId,
-      amount,
+      price,
       'spend',
       'purchase'
     );
 
-    // Add item to inventory (this would be based on the item being purchased)
     const inventoryResult = await accountEconomyService.updateInventory(
       playerId,
-      'powerups',
+      category,
       itemId,
       1,
       'add'
@@ -342,7 +343,7 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
       playerId,
       itemId,
       currencyId,
-      amount,
+      price,
       ip: req.ip,
     });
 
@@ -355,6 +356,9 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
+    if (error.message.includes('Insufficient')) {
+      return res.status(400).json({ success: false, error: error.message, requestId: req.requestId });
+    }
     handleRouteError(res, error, 'purchase item', req.requestId);
   }
 });
@@ -406,44 +410,60 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
   }
 });
 
-// Complete level
+// Complete a level the player won. Needs the attempt id from energy/spend. The server works out
+// the stars from the score and the level target, and pays the server's reward for them. A reported
+// star count is ignored.
 router.post('/level/complete', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { level, score, stars, xpGained = 0 } = req.body;
+    const { level, score, attemptId } = req.body || {};
 
-    if (!level || !score) {
+    const validLevel = Number.isInteger(level) && level >= 1 && level <= LEVEL_LIMITS.maxLevel;
+    const validScore = Number.isInteger(score) && score >= 0 && score <= LEVEL_LIMITS.maxScore;
+    if (!validLevel || !validScore) {
       return res.status(400).json({
         success: false,
-        error: 'Level and score are required',
+        error: 'Invalid level or score',
         requestId: req.requestId,
       });
     }
 
-    // Update progression
-    const progressionResult = await accountEconomyService.updateProgression(
-      playerId,
-      xpGained,
-      true
-    );
-
-    // Give level completion rewards
-    const rewards = [];
-    
-    // Base coins reward
-    const coinsReward = Math.floor(score / 100);
-    if (coinsReward > 0) {
-      await accountEconomyService.updateCurrency(playerId, 'coins', coinsReward, 'add', 'level_complete');
-      rewards.push({ type: 'currency', currencyId: 'coins', amount: coinsReward });
+    // A reward needs an attempt that was paid for with energy. The stars come from the score,
+    // so a score below the target is not a win and does not use up the attempt.
+    // The level's tuning multiplier moves its target. The game reads the same overrides.
+    const stars = starsForScore(score, level, levelMultiplier(level, readLevelOverrides()));
+    if (stars === 0) {
+      return res.status(400).json({ success: false, error: 'score_below_target', requestId: req.requestId });
+    }
+    if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
+      return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
+    }
+    try {
+      await accountEconomyService.consumeAttempt(playerId, attemptId, level);
+    } catch (error) {
+      if (error instanceof EconomyRuleError) {
+        return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+      }
+      throw error;
     }
 
-    // Stars reward
-    if (stars > 0) {
-      await accountEconomyService.updateCurrency(playerId, 'stars', stars, 'add', 'level_complete');
-      rewards.push({ type: 'currency', currencyId: 'stars', amount: stars });
-    }
+    // Kingdom rooms add a coin bonus, then VIP multiplies coins. The player must hold the vip
+    // entitlement on the server. Both are read here; neither is taken from the client.
+    const economyNow = await accountEconomyService.getPlayerEconomy(playerId);
+    const base = winRewards(stars);
+    const roomBoosted = { ...base, coins: Math.floor(base.coins * kingdomCoinMultiplier(economyNow.kingdom)) };
+    const isVip = await PurchaseLedgerDb.hasPurchase(playerId, VIP_ENTITLEMENT);
+    const reward = applyVip(roomBoosted, isVip);
+    const progressionResult = await accountEconomyService.updateProgression(playerId, reward.xp, true);
 
-    // Update statistics
+    const rewards = [
+      { type: 'currency', currencyId: 'coins', amount: reward.coins },
+      { type: 'currency', currencyId: 'stars', amount: reward.stars },
+    ];
+    await accountEconomyService.updateCurrency(playerId, 'coins', reward.coins, 'add', 'level_complete');
+    await accountEconomyService.updateCurrency(playerId, 'stars', reward.stars, 'add', 'level_complete');
+
+    // Statistics show what the client reported. They are not used for any reward.
     const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
     playerEconomy.statistics.gamesPlayed++;
     playerEconomy.statistics.levelsCompleted++;
@@ -452,14 +472,18 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     playerEconomy.statistics.bestScore = Math.max(playerEconomy.statistics.bestScore, score);
     playerEconomy.statistics.lastPlayed = new Date().toISOString();
 
+    const season = await loadSeasonSafely();
+    if (season) addSeasonXp(playerEconomy, season, 'level_complete');
+
     await accountEconomyService.updatePlayerEconomyCache(playerId, playerEconomy);
+    await recordCompetitionWin(playerId, level, score);
 
     security.logSecurityEvent('level_completed', {
       playerId,
       level,
       score,
       stars,
-      xpGained,
+      xpGained: reward.xp,
       ip: req.ip,
     });
 
@@ -468,6 +492,12 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       result: {
         progression: progressionResult,
         rewards,
+        stars,
+        vip: isVip,
+        balances: {
+          coins: playerEconomy.currencies.coins.amount,
+          stars: playerEconomy.currencies.stars.amount,
+        },
         statistics: {
           gamesPlayed: playerEconomy.statistics.gamesPlayed,
           levelsCompleted: playerEconomy.statistics.levelsCompleted,
@@ -480,6 +510,98 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     });
   } catch (error) {
     handleRouteError(res, error, 'complete level', req.requestId);
+  }
+});
+
+// Buy a loot box with coins. The reward is rolled and granted on the server.
+// Endless mode: no target and no clock. A run ends when the board has no move left. The score
+// is paid as coins and XP. An endless run uses one energy point, spent as attempt level 1.
+const ENDLESS_ATTEMPT_LEVEL = 1;
+router.post('/endless/complete', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { score, attemptId } = req.body || {};
+    if (!Number.isInteger(score) || score < 0 || score > LEVEL_LIMITS.maxScore) {
+      return res.status(400).json({ success: false, error: 'Invalid score', requestId: req.requestId });
+    }
+    if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
+      return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
+    }
+    try {
+      await accountEconomyService.consumeAttempt(playerId, attemptId, ENDLESS_ATTEMPT_LEVEL);
+    } catch (error) {
+      if (error instanceof EconomyRuleError) {
+        return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+      }
+      throw error;
+    }
+
+    const reward = endlessRewards(score);
+    if (reward.xp > 0) await accountEconomyService.updateProgression(playerId, reward.xp, false);
+    if (reward.coins > 0) await accountEconomyService.updateCurrency(playerId, 'coins', reward.coins, 'add', 'endless_run');
+
+    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
+    const stats = playerEconomy.statistics;
+    stats.endlessRuns = (stats.endlessRuns || 0) + 1;
+    stats.endlessBest = Math.max(stats.endlessBest || 0, score);
+    await accountEconomyService.updatePlayerEconomyCache(playerId, playerEconomy);
+
+    res.json({
+      success: true,
+      result: {
+        reward,
+        endlessBest: stats.endlessBest,
+        balances: { coins: playerEconomy.currencies.coins.amount },
+      },
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    handleRouteError(res, error, 'complete endless run', req.requestId);
+  }
+});
+
+router.post('/lootbox/open', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { type } = req.body || {};
+    const result = await accountEconomyService.openLootbox(playerId, type);
+    security.logSecurityEvent('lootbox_opened', { playerId, type, reward: result.reward.id, ip: req.ip });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'open loot box', req.requestId);
+  }
+});
+
+// Spends the energy for one attempt at a level and returns the attempt id. Completing the level
+// needs that id, so a reward cannot be claimed without an attempt.
+router.post('/energy/spend', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const result = await accountEconomyService.spendAttemptEnergy(playerId, req.body?.level);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'spend attempt energy', req.requestId);
+  }
+});
+
+// Refill energy to full with coins. Charges only for the energy that is missing.
+router.post('/energy/refill', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const result = await accountEconomyService.refillEnergy(playerId);
+    security.logSecurityEvent('energy_refilled', { playerId, costCoins: result.costCoins, ip: req.ip });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'refill energy', req.requestId);
   }
 });
 

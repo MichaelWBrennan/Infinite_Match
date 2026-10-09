@@ -25,11 +25,34 @@ import PrometheusMonitoringService from '../services/prometheus-monitoring-servi
 import OpenSourceCloudServices from '../services/open-source-cloud-services.js';
 import { ASOOptimizationService } from '../services/aso-optimization-service.js';
 import gameRoutes from '../routes/game-routes.js';
+import { assertEconomyStoreForEnvironment } from '../services/economy/PlayerEconomyDb.js';
 import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
 import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
 import playerAccountRoutes from '../routes/player-accounts.js';
+import authRoutes from '../routes/auth.js';
+import accountEconomyRoutes from '../routes/account-economy.js';
+import stripeRoutes from '../routes/stripe.js';
+import entitlementsRoutes from '../routes/entitlements.js';
+import monetizationRoutes from '../routes/monetization.js';
+import arpuRoutes from '../routes/arpu.js';
+import analyticsRoutes from '../routes/analytics.js';
+import adsRoutes from '../routes/ads.js';
+import adminRoutes from '../routes/admin.js';
+import consentRoutes from '../routes/consent.js';
+import pushRoutes from '../routes/push.js';
+import experimentsRoutes from '../routes/experiments.js';
+import levelResultsRoutes from '../routes/level-results.js';
+import minigamesRoutes from '../routes/minigames.js';
+import { startTuningSchedule } from '../services/level-tuning-schedule.js';
+import liveOpsRoutes from '../routes/live-ops.js';
+import kingdomRoutes from '../routes/kingdom.js';
+import battlepassRoutes from '../routes/battlepass.js';
+import socialRoutes from '../routes/social.js';
+import subscriptionsRoutes from '../routes/subscriptions.js';
+import { adminAuth } from '../middleware/admin-auth.js';
+import aiOptimizedRoutes from '../routes/ai-optimized-routes.js';
 import {
   analyticsMiddleware,
   errorTrackingMiddleware,
@@ -240,6 +263,10 @@ class GameServer {
               '\'self\'',
               '\'unsafe-inline\'',
             ],
+            // helmet defaults `script-src-attr` to 'none', which blocks every
+            // inline `onclick="..."` handler in index.html (Play, Settings,
+            // Login, News...). The game UI relies on those attributes.
+            scriptSrcAttr: ['\'unsafe-inline\''],
             connectSrc: [
               '\'self\'',
             ],
@@ -272,6 +299,11 @@ class GameServer {
 
     this.app.use('/api/', limiter);
 
+    // Stripe webhooks must receive the untouched body so the signature can be
+    // verified. This raw parser has to run before express.json below; the
+    // router's own express.raw then sees the body as already parsed.
+    this.app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
     // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -303,6 +335,45 @@ class GameServer {
     this.app.use('/api/aso', asoRoutes);
     this.app.use('/api/multiplayer', multiplayerRoutes);
     this.app.use('/api/accounts', playerAccountRoutes);
+    // The game shell (script.js) calls these for login, registration, platform
+    // sync and account economy sync. The route modules existed but were never
+    // mounted, so every call returned 404.
+    this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/account-economy', accountEconomyRoutes);
+    // stripe-payment.js calls these endpoints; the router was never mounted.
+    this.app.use('/api/stripe', stripeRoutes);
+    // Session-gated routers that were written but never mounted. Each route
+    // checks security.sessionValidation. Economy is deliberately not mounted:
+    // its write routes only require a normal player session.
+    this.app.use('/api/entitlements', entitlementsRoutes);
+    this.app.use('/api/monetization', monetizationRoutes);
+    this.app.use('/api/arpu', arpuRoutes);
+    this.app.use('/api/analytics', analyticsRoutes);
+    this.app.use('/api/ads', adsRoutes);
+    // Operator-only. Requires ADMIN_API_TOKEN and ADMIN_IDS; refuses everything when unset.
+    this.app.use('/api/admin', adminRoutes);
+    // Player routes that check their own session and only act on the caller's own data.
+    this.app.use('/api/consent', consentRoutes);
+    this.app.use('/api/push', pushRoutes);
+    this.app.use('/api/experiments', experimentsRoutes);
+    this.app.use('/api/level-results', levelResultsRoutes);
+    // Daily mini-games: session-gated. Pays once per game per UTC day, with capped coins.
+    this.app.use('/api/minigames', minigamesRoutes);
+    // Live ops: today's deals and events. Session-gated.
+    this.app.use('/api/live-ops', liveOpsRoutes);
+    // Kingdom renovation: session-gated. Upgrades are priced and granted on the server.
+    this.app.use('/api/kingdom', kingdomRoutes);
+    // Store webhooks: each verifies the sender and returns 503 until its config is set.
+    this.app.use('/api/subscriptions', subscriptionsRoutes);
+    // Battle pass config is public. Progress and claims are session-gated.
+    this.app.use('/api/battlepass', battlepassRoutes);
+    // Friends, guilds, and best-score boards. Session-gated; acts on the caller's own data only.
+    this.app.use('/api/social', socialRoutes);
+    // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
+    this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
+    // Not mounted:
+    // - economy: its write routes would reopen the exploits fixed in account-economy.
+    // - crm: webhook and push send are logging stubs that deliver nothing.
 
     // Platform-specific API routes
     this.setupPlatformRoutes();
@@ -694,10 +765,13 @@ class GameServer {
   }
 
   public async start(): Promise<void> {
+    assertEconomyStoreForEnvironment(process.env);
     await this.initializeServices();
 
     this.server.listen(this.config.port, this.config.host, () => {
       this.logger.info(`🚀 Infinite Match Game Server running on port ${this.config.port}`);
+      // Scheduled level tuning is off unless LEVEL_TUNING_INTERVAL_HOURS is set.
+      startTuningSchedule({ logger: this.logger });
       this.logger.info(
         `📊 Analytics: ${this.analyticsService.isInitialized ? 'Enabled' : 'Disabled'}`,
       );

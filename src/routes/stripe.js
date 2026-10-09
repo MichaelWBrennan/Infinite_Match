@@ -9,14 +9,15 @@ import security from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import StripeService from '../services/payments/StripeService.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import { productFor } from '../services/payments/product-catalog.js';
+import { priceFor } from '../services/live-ops/live-ops.js';
 
 const router = express.Router();
 const logger = new Logger('StripeRoutes');
 
 // Validation middleware
+// The amount is set by the server from the product catalog. A client amount is ignored.
 const validatePaymentIntent = [
-  body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be greater than 0'),
-  body('currency').optional().isString().withMessage('Currency must be a string'),
   body('productId').isString().withMessage('Product ID is required'),
   body('metadata').optional().isObject().withMessage('Metadata must be an object'),
 ];
@@ -72,6 +73,44 @@ router.get('/publishable-key', security.sessionValidation, (req, res) => {
   }
 });
 
+// Hosted checkout for one catalog product. The price is quoted here, on the server.
+router.post('/checkout-session', security.sessionValidation, async (req, res) => {
+  try {
+    const { productId } = req.body || {};
+    const product = productFor(productId);
+    const price = product ? priceFor(productId, Date.now()) : null;
+    if (!product || !price) {
+      return res.status(400).json({ success: false, error: 'unknown_product', requestId: req.requestId });
+    }
+    const successUrl = process.env.STRIPE_CHECKOUT_SUCCESS_URL;
+    const cancelUrl = process.env.STRIPE_CHECKOUT_CANCEL_URL;
+    if (!successUrl || !cancelUrl) {
+      return res.status(503).json({ success: false, error: 'checkout_not_configured', requestId: req.requestId });
+    }
+    const playerId = req.user?.playerId;
+    const result = await StripeService.createCheckoutSession({
+      amountCents: price.priceCents,
+      currency: price.currency,
+      productName: product.label || productId,
+      metadata: {
+        playerId,
+        productId,
+        priceCents: String(price.priceCents),
+        quotedAtMs: String(Date.now()),
+      },
+      clientReferenceId: playerId,
+      successUrl,
+      cancelUrl,
+    });
+    if (!result.success) {
+      return res.status(400).json({ success: false, error: 'checkout_failed', requestId: req.requestId });
+    }
+    res.json({ success: true, url: result.url, sessionId: result.sessionId, requestId: req.requestId });
+  } catch (error) {
+    handleRouteError(res, error, 'create checkout session', req.requestId);
+  }
+});
+
 // Create payment intent
 router.post('/payment-intent', security.sessionValidation, validatePaymentIntent, async (req, res) => {
   try {
@@ -84,19 +123,32 @@ router.post('/payment-intent', security.sessionValidation, validatePaymentIntent
       });
     }
 
-    const { amount, currency, productId, metadata = {} } = req.body;
+    const { productId, metadata = {} } = req.body;
+    const product = productFor(productId);
+    // The price in effect now: the catalog price, or an active deal.
+    const price = product ? priceFor(productId, Date.now()) : null;
+    if (!product || !price) {
+      return res.status(400).json({
+        success: false,
+        error: 'unknown_product',
+        requestId: req.requestId,
+      });
+    }
     const playerId = req.user?.playerId;
 
-    // Add player ID to metadata
+    // Player and product come from the server, so the webhook can trust them.
     const enrichedMetadata = {
       ...metadata,
       playerId,
       productId,
+      priceCents: String(price.priceCents),
     };
+    // Only checkout sets a quote time. A client-supplied one must not change the price check.
+    delete enrichedMetadata.quotedAtMs;
 
     const result = await StripeService.createPaymentIntent({
-      amount,
-      currency,
+      amount: price.priceCents / 100,
+      currency: price.currency,
       metadata: enrichedMetadata,
       customerId: req.user?.stripeCustomerId,
     });

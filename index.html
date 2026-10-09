@@ -51,6 +51,22 @@
             min-height: 44px;
             min-width: 44px;
         }
+        .community-tabs{display:flex;gap:6px;padding:8px;flex-wrap:wrap}
+    .community-tab{flex:1;padding:8px;border:0;border-radius:8px;background:#2b2d4a;color:#fff;cursor:pointer}
+    .community-tab.active{background:#4ecdc4;color:#111}
+    .community-body{padding:12px;color:#fff;overflow:auto;max-height:70vh}
+    .community-body h3{margin:12px 0 4px}
+    .community-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff22;flex-wrap:wrap}
+    .community-note{opacity:.85;margin:4px 0}
+    .community-btn{padding:6px 10px;border:0;border-radius:6px;background:#ffd700;color:#111;cursor:pointer}
+    .community-form{display:flex;gap:6px;margin:8px 0}
+    .community-input{flex:1;padding:6px;border-radius:6px;border:1px solid #888;background:#111;color:#fff}
+        .minigame-grid{display:grid;gap:6px;justify-content:center;margin:8px auto}
+    .minigame-card{width:56px;height:56px;border:0;border-radius:8px;background:#2b2d4a;color:#fff;font-size:20px;cursor:pointer}
+    .minigame-card.open,.minigame-card.dug{background:#4ecdc4;color:#111}
+    .minigame-card.matched{background:#ffd700;color:#111}
+    .minigame-pad{width:200px;height:200px;border-radius:50%;background:#9b59b6;color:#fff;font-size:28px;border:0;cursor:pointer;display:block;margin:12px auto}
+    .minigame-pad.beat{background:#ffd700;color:#111}
     </style>
 </head>
 <body>
@@ -105,6 +121,14 @@
                     <span class="btn-icon">📰</span>
                     <span class="btn-text">NEWS</span>
                 </button>
+                <button class="menu-btn community-menu-btn" onclick="showCommunity()">
+                    <span class="btn-icon">🏆</span>
+                    <span class="btn-text">COMMUNITY</span>
+                </button>
+                <button class="menu-btn community-menu-btn" onclick="showMiniGames()">
+                    <span class="btn-icon">🎲</span>
+                    <span class="btn-text">MINI-GAMES</span>
+                </button>
             </div>
             <div class="bottom-ui">
                 <div class="player-info-mini">
@@ -137,7 +161,27 @@
                         <div class="mode-icon-large">🎯</div>
                         <h3 class="mode-title">Classic Mode</h3>
                         <p class="mode-description">Match cosmic gems to build your space empire</p>
-                        <button class="mode-play-btn" onclick="showLevelSelect()">
+                        <button class="mode-play-btn" onclick="chooseMode('classic')">
+                            <span class="play-text">START</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mode-card-royal unlocked">
+                    <div class="mode-card-bg">
+                        <div class="mode-icon-large">⏱️</div>
+                        <h3 class="mode-title">Timed</h3>
+                        <p class="mode-description">60 seconds and no move limit. Score as much as you can.</p>
+                        <button class="mode-play-btn" onclick="chooseMode('timed')">
+                            <span class="play-text">START</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mode-card-royal unlocked">
+                    <div class="mode-card-bg">
+                        <div class="mode-icon-large">♾️</div>
+                        <h3 class="mode-title">Endless</h3>
+                        <p class="mode-description">Keep matching until the board runs out of moves. Every run pays out.</p>
+                        <button class="mode-play-btn" onclick="chooseMode('endless')">
                             <span class="play-text">START</span>
                         </button>
                     </div>
@@ -545,36 +589,9 @@
             <button class="back-btn" onclick="showTitle()">←</button>
             <h2>Special Offers</h2>
         </div>
-        <div class="offers-content">
-            <div class="offer-card featured">
-                <div class="offer-badge">LIMITED TIME</div>
-                <div class="offer-image">💎</div>
-                <div class="offer-title">Infinite Gem Pack</div>
-                <div class="offer-description">500 Gems + 50 Coins</div>
-                <div class="offer-price">
-                    <span class="old-price">$9.99</span>
-                    <span class="new-price">$4.99</span>
-                </div>
-                <button class="royal-btn primary">BUY NOW</button>
-            </div>
-            <div class="offer-card">
-                <div class="offer-image">⭐</div>
-                <div class="offer-title">Starter Pack</div>
-                <div class="offer-description">100 Gems + 10 Coins</div>
-                <div class="offer-price">$1.99</div>
-                <button class="royal-btn secondary">BUY</button>
-            </div>
-            <div class="offer-card">
-                <div class="offer-image">∞</div>
-                <div class="offer-title">Infinite Bundle</div>
-                <div class="offer-description">1000 Gems + 100 Coins</div>
-                <div class="offer-price">$19.99</div>
-                <button class="royal-btn secondary">BUY</button>
-            </div>
-        </div>
+        <div id="offers-list" class="community-body" aria-live="polite"></div>
+        <p id="offers-status" class="community-note" aria-live="polite"></p>
     </div>
-
-    <!-- Leaderboard Screen -->
     <div id="leaderboard-screen" class="screen">
         <div class="screen-header">
             <button class="back-btn" onclick="showTitle()">←</button>
@@ -623,6 +640,35 @@
     </div>
 
     <!-- Modal: Item Get -->
+    <!-- Community: season, friends, guild, and events. script.js fills #community-body from the server. -->
+    <div id="community-screen" class="screen">
+        <div class="screen-header-royal">
+            <button class="back-btn-royal" onclick="showTitle()">
+                <span class="back-icon">←</span>
+            </button>
+            <h2 class="screen-title-royal">Community</h2>
+            <div class="header-spacer"></div>
+        </div>
+        <div class="community-tabs">
+            <button class="community-tab" data-tab="battlepass" onclick="ui.showCommunityTab('battlepass')">Season</button>
+            <button class="community-tab" data-tab="friends" onclick="ui.showCommunityTab('friends')">Friends</button>
+            <button class="community-tab" data-tab="guild" onclick="ui.showCommunityTab('guild')">Guild</button>
+            <button class="community-tab" data-tab="events" onclick="ui.showCommunityTab('events')">Events</button>
+        </div>
+        <div id="community-body" class="community-body" aria-live="polite"></div>
+    </div>
+    <!-- Mini-games: a list of games and a stage for the one being played. script.js fills both. -->
+    <div id="minigames-screen" class="screen">
+        <div class="screen-header-royal">
+            <button class="back-btn-royal" onclick="showTitle()">
+                <span class="back-icon">←</span>
+            </button>
+            <h2 class="screen-title-royal">Mini-games</h2>
+            <div class="header-spacer"></div>
+        </div>
+        <div id="minigames-list" class="community-body" aria-live="polite"></div>
+        <div id="minigame-stage" class="community-body"></div>
+    </div>
     <div id="item-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -816,84 +862,42 @@
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>
     <script>
-        // Declare game variable globally
+        // window.game is the Phaser game. window.ui is the DOM menu controller, which script.js
+        // creates once at load. This page never creates a second menu controller.
         window.game = null;
-        
-        // Check if Phaser 3 is available
+
+        // Check if Phaser 3 and its game class are available.
         function checkPhaser3() {
             try {
                 if (typeof Phaser !== 'undefined' && typeof PhaserMatch3Game !== 'undefined') {
                     console.log('✅ Phaser 3 and game class found');
                     return true;
-                } else {
-                    console.log('❌ Phaser 3 not available, using fallback');
-                    return false;
                 }
+                console.log('❌ Phaser 3 not available');
+                return false;
             } catch (error) {
                 console.log('❌ Error checking Phaser 3:', error);
                 return false;
             }
         }
 
-        // Initialize game function
-        function initializeGameInstance() {
-            if (typeof InfiniteMatchGame !== 'undefined' && !window.game) {
-                try {
-                    console.log('🚀 Initializing game...');
-                    window.game = new InfiniteMatchGame();
-                    console.log('✅ Game initialized successfully');
-                    console.log('Game object:', window.game);
-                    console.log('Game methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.game)));
-                    
-                    // Test button functions
-                    console.log('Testing button functions...');
-                    console.log('showModeSelect available:', typeof showModeSelect);
-                    console.log('showSettings available:', typeof showSettings);
-                    console.log('showTitle available:', typeof showTitle);
-                    console.log('showNews available:', typeof showNews);
-                    console.log('showLoginModal available:', typeof showLoginModal);
-                    
-                    // Test button click handlers
-                    console.log('Testing button click handlers...');
-                    const playBtn = document.querySelector('.play-btn');
-                    const settingsBtn = document.querySelector('.settings-btn');
-                    const loginBtn = document.querySelector('.login-btn');
-                    const newsBtn = document.querySelector('.news-btn');
-                    
-                    if (playBtn) {
-                        console.log('Play button found, onclick:', playBtn.onclick);
-                        playBtn.addEventListener('click', (e) => {
-                            console.log('Play button clicked via addEventListener');
-                        });
-                    }
-                    if (settingsBtn) {
-                        console.log('Settings button found, onclick:', settingsBtn.onclick);
-                    }
-                    if (loginBtn) {
-                        console.log('Login button found, onclick:', loginBtn.onclick);
-                    }
-                    if (newsBtn) {
-                        console.log('News button found, onclick:', newsBtn.onclick);
-                    }
-                    
-                    return true;
-                } catch (error) {
-                    console.error('❌ Failed to initialize game:', error);
-                    return false;
-                }
-            } else if (window.game) {
-                console.log('✅ Game already initialized');
-                return true;
-            } else {
-                console.error('❌ InfiniteMatchGame class not found');
-                return false;
-            }
+        // Shown when the game cannot start. The menu controller is not a fallback: it has its own
+        // gameplay, which is not gated by the server.
+        function showWebGLNotice() {
+            if (document.getElementById('webgl-notice')) return;
+            const notice = document.createElement('div');
+            notice.id = 'webgl-notice';
+            notice.setAttribute('role', 'alert');
+            notice.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#2c3e50;color:#fff;font-family:Arial,sans-serif;padding:24px;text-align:center;';
+            notice.innerHTML = '<div style="max-width:520px"><h2>Infinite Match could not start</h2>'
+                + '<p>This browser could not start the game renderer. Turn on hardware acceleration, or try a current version of Chrome, Edge, Firefox, or Safari, then reload the page.</p></div>';
+            document.body.appendChild(notice);
         }
 
         // Phaser 3 game initialization
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Starting Phaser 3 game initialization...');
-            
+
             // Detect platform capabilities
             const platformInfo = {
                 isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
@@ -902,60 +906,16 @@
                 hasWebGL2: !!window.WebGL2RenderingContext,
                 isLowEnd: navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4
             };
-            
+
             console.log('📱 Platform info:', platformInfo);
-            
-            // Check Phaser 3 availability
-            const phaserCheckPromise = checkPhaser3();
-            
-            // Initialize game instance in parallel
-            const gameInitPromise = new Promise(resolve => {
-                setTimeout(() => {
-                    const gameInitialized = initializeGameInstance();
-                    resolve(gameInitialized);
-                }, 50);
-            });
-            
-            // Wait for both to complete
-            const [phaserValid, gameInitialized] = await Promise.all([phaserCheckPromise, gameInitPromise]);
-            
-            console.log('🎮 Game initialization complete');
-            console.log('📊 Phaser 3 valid:', phaserValid);
-            console.log('🎯 Game initialized:', gameInitialized);
-            
-        if (phaserValid) {
-            console.log('🎮 Phaser 3 found, initializing game...');
-            // Initialize Phaser 3 game
-            initializePhaser3Game();
-        } else {
-            console.log('🔄 Using fallback game (Phaser 3 not available)');
-            
-            // Initialize the fallback game
-            if (typeof InfiniteMatchGame !== 'undefined') {
-                try {
-                    window.game = new InfiniteMatchGame();
-                    console.log('✅ Fallback game initialized successfully');
-                } catch (error) {
-                    console.error('❌ Failed to initialize fallback game:', error);
-                }
+
+            if (checkPhaser3()) {
+                console.log('🎮 Phaser 3 found, initializing game...');
+                initializePhaser3Game();
+            } else {
+                showWebGLNotice();
             }
-            
-            // Hide loading screen and show title screen immediately
-            document.getElementById('loading-screen').classList.remove('active');
-            document.getElementById('title-screen').classList.add('active');
-        }
-            
-            // Ensure global functions are available
-            console.log('🔧 Verifying global functions...');
-            const requiredFunctions = ['showModeSelect', 'showSettings', 'showTitle', 'showNews', 'showLoginModal'];
-            requiredFunctions.forEach(funcName => {
-                if (typeof window[funcName] === 'function') {
-                    console.log(`✅ ${funcName} available`);
-                } else {
-                    console.error(`❌ ${funcName} not available`);
-                }
-            });
-            
+
             // Add platform-specific optimizations
             if (platformInfo.isMobile) {
                 document.body.classList.add('mobile-device');
@@ -969,7 +929,7 @@
                     lastTouchEnd = now;
                 }, false);
             }
-            
+
             if (platformInfo.isLowEnd) {
                 document.body.classList.add('low-end-device');
                 // Reduce animations for low-end devices
@@ -983,27 +943,43 @@
                 document.head.appendChild(style);
             }
         });
-        
-        // Fallback initialization in case DOMContentLoaded doesn't work
-        setTimeout(() => {
-            if (!window.game && typeof InfiniteMatchGame !== 'undefined') {
-                console.log('🔄 Fallback game initialization...');
-                initializeGameInstance();
-            }
-        }, 2000);
-        
+
+        // The DOM menus (news, offers, leaderboard, settings, login) sit under the canvas. Opening one
+        // hides the canvas; "Back to game" shows it again.
+        function openDomMenu() {
+            const container = document.getElementById('phaser-game-container');
+            if (container) container.style.display = 'none';
+            const back = document.getElementById('menu-return');
+            if (back) back.style.display = 'block';
+            if (typeof showTitle === 'function') showTitle();
+        }
+
+        function showGameCanvas() {
+            const container = document.getElementById('phaser-game-container');
+            if (container) container.style.display = '';
+            const back = document.getElementById('menu-return');
+            if (back) back.style.display = 'none';
+        }
+
+        function returnToGame() {
+            showGameCanvas();
+            if (window.game && typeof window.game.closeMenu === 'function') window.game.closeMenu();
+        }
+        window.openDomMenu = openDomMenu;
+        window.showGameCanvas = showGameCanvas;
+
         // Emergency loading timeout - force show title screen after 5 seconds
         setTimeout(() => {
             const loadingScreen = document.getElementById('loading-screen');
             const titleScreen = document.getElementById('title-screen');
-            
+
             if (loadingScreen && loadingScreen.classList.contains('active')) {
                 console.log('⚠️ Loading timeout reached, forcing title screen');
                 loadingScreen.classList.remove('active');
                 if (titleScreen) {
                     titleScreen.classList.add('active');
                 }
-                
+
                 // Show error message to user
                 const loadingText = document.querySelector('.loading-text');
                 if (loadingText) {
@@ -1011,71 +987,53 @@
                 }
             }
         }, 5000);
-        
+
         // Initialize Phaser 3 game
         function initializePhaser3Game() {
             console.log('🚀 Initializing Phaser 3 game...');
-            
+
             // Show loading progress
             const progressBar = document.getElementById('loading-bar-fill');
             const progressText = document.getElementById('loading-text');
-            
+
             // Simulate loading progress
             let progress = 0;
             const progressInterval = setInterval(() => {
                 progress += Math.random() * 20;
                 if (progress > 100) progress = 100;
-                
+
                 progressBar.style.width = progress + '%';
                 progressText.textContent = `Loading Phaser 3... ${Math.round(progress)}%`;
-                
+
                 if (progress >= 100) {
                     clearInterval(progressInterval);
-                    
+
                     try {
                         // Create Phaser 3 game container
                         const gameContainer = document.createElement('div');
                         gameContainer.id = 'phaser-game-container';
                         gameContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: #2c3e50;';
                         document.body.appendChild(gameContainer);
-                        
+
                         // Initialize Phaser 3 game
                         window.game = new PhaserMatch3Game();
-                        
+
                         // Hide loading screen and show game
                         setTimeout(() => {
                             document.getElementById('loading-screen').classList.remove('active');
                             document.getElementById('title-screen').classList.add('active');
                             console.log('✅ Phaser 3 game loaded successfully');
                         }, 500);
-                        
+
                     } catch (error) {
                         console.error('❌ Failed to load Phaser 3 game:', error);
-                        // Fallback to JavaScript game
-                        fallbackToJavaScriptGame();
+                        showWebGLNotice();
                     }
                 }
             }, 100);
         }
-        
-        // Fallback to JavaScript game
-        function fallbackToJavaScriptGame() {
-            console.log('🔄 Falling back to JavaScript game...');
-            
-            // Hide loading screen and show title screen
-            document.getElementById('loading-screen').classList.remove('active');
-            document.getElementById('title-screen').classList.add('active');
-            
-            // Initialize the fallback game
-            if (typeof InfiniteMatchGame !== 'undefined') {
-                try {
-                    window.game = new InfiniteMatchGame();
-                    console.log('✅ Fallback game initialized successfully');
-                } catch (error) {
-                    console.error('❌ Failed to initialize fallback game:', error);
-                }
-            }
-        }
     </script>
+    <button id="menu-return" type="button" onclick="returnToGame()"
+        style="display:none;position:fixed;top:12px;right:12px;z-index:3000;padding:10px 16px;border:0;border-radius:8px;background:#4ecdc4;color:#fff;font:16px Arial,sans-serif;cursor:pointer;">Back to game</button>
 </body>
 </html>

@@ -1,0 +1,8 @@
+id,name,type,description,rarity,category,tradable
+bomb,Bomb,powerup,Clears a 3x3 area,common,powerups,False
+rocket,Rocket,powerup,Clears a full row or column,common,powerups,False
+rainbow,Rainbow Gem,powerup,Clears every gem of one colour,rare,powerups,False
+lightning,Lightning,powerup,Clears a column,rare,powerups,False
+diamond,Diamond,powerup,Clears all gems of the tapped colour,epic,powerups,False
+target,Target Gem,powerup,Clears the tapped gem and its neighbours,rare,powerups,False
+star,Star,powerup,Clears the tapped row and column,epic,powerups,False

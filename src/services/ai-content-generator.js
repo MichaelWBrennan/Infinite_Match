@@ -735,16 +735,22 @@ Create a ${assetType} for a match-3 mobile game:
     const batch = this.requestQueue.splice(0, this.batchSize);
 
     try {
-      // Process batch requests
-      const promises = batch.map(({ requestData, resolve, reject }) => 
-        this.openai.chat.completions.create(requestData)
-          .then(resolve)
-          .catch(reject)
-      );
+      // Each call runs inside an async function, so a synchronous throw from the client
+      // (for example an unconfigured client) becomes a rejection for that request only.
+      const promises = batch.map(async ({ requestData, resolve, reject }) => {
+        try {
+          resolve(await this.openai.chat.completions.create(requestData));
+        } catch (error) {
+          reject(error);
+        }
+      });
 
       await Promise.allSettled(promises);
     } catch (error) {
       this.logger.error('Batch processing failed', { error: error.message });
+      // Any caller still waiting on this batch must be failed, or it waits forever.
+      // Rejecting an already-settled promise has no effect.
+      for (const { reject } of batch) reject(error);
     } finally {
       this.isProcessingBatch = false;
       
@@ -756,11 +762,13 @@ Create a ${assetType} for a match-3 mobile game:
   }
 
   startBatchProcessor() {
-    setInterval(() => {
+    const timer = setInterval(() => {
       if (this.requestQueue.length > 0 && !this.isProcessingBatch) {
         this.processBatch();
       }
     }, this.batchTimeout);
+    // The batch timer must not keep the process alive on its own.
+    timer.unref?.();
   }
 
   /**

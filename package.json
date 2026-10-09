@@ -58,6 +58,7 @@
     "uuid": "^13.0.0",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
+    "winston-transport": "^4.9.0",
     "xss": "^1.0.15"
   },
   "description": "Optimized Infinite Match Unity Game",

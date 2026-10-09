@@ -13,6 +13,17 @@ const purchaseSchema = new mongoose.Schema(
     playerId: String,
     amountUsd: Number,
     currency: String,
+    // Consumables: `claimedAt` is set by the one request that credits the purchase, and
+    // `fulfilled` once the credit is stored. Entitlements are fulfilled when recorded.
+    fulfilled: { type: Boolean, default: false },
+    claimedAt: Date,
+    // Refunds, chargebacks, and store voids. `reversedAt` is set once; a reversed purchase is
+    // never granted and no longer counts as owned. `reversalClaimedAt` is taken by the one request
+    // that debits the coins, so a retry cannot debit twice.
+    reversedAt: Date,
+    reversalClaimedAt: Date,
+    reversedShortfall: Number,
+    reversalReason: String,
   },
   { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } },
 );
@@ -54,21 +65,76 @@ async function ensureConnection() {
 }
 
 export const PurchaseLedgerDb = {
+  /**
+   * Stores one purchase, keyed on transactionId. Resolves { inserted } and throws on
+   * failure, so a caller never grants an entitlement that was not saved.
+   */
   async recordPurchase(doc) {
-    try {
-      await ensureConnection();
-      if (doc.transactionId) {
-        await PurchaseModel.updateOne(
-          { transactionId: doc.transactionId },
-          { $setOnInsert: { ...doc } },
-          { upsert: true },
-        );
-      } else {
-        await new PurchaseModel(doc).save();
-      }
-    } catch (error) {
-      logger.error('recordPurchase failed', { error: error.message });
-    }
+    if (!doc?.transactionId) throw new Error('transactionId required');
+    await ensureConnection();
+    const res = await PurchaseModel.updateOne(
+      { transactionId: doc.transactionId },
+      { $setOnInsert: { ...doc } },
+      { upsert: true },
+    );
+    return { inserted: res.upsertedCount > 0 };
+  },
+  /**
+   * Atomically takes the right to fulfil an unfulfilled purchase. Resolves true for one caller only.
+   */
+  async claimFulfillment(transactionId) {
+    await ensureConnection();
+    const res = await PurchaseModel.updateOne(
+      { transactionId, fulfilled: { $ne: true }, claimedAt: { $exists: false }, reversedAt: { $exists: false } },
+      { $set: { claimedAt: new Date() } },
+    );
+    return res.modifiedCount === 1;
+  },
+  /** Gives back a claim after a failed credit, so a retry can take it again. */
+  async releaseFulfillment(transactionId) {
+    await ensureConnection();
+    await PurchaseModel.updateOne({ transactionId, fulfilled: { $ne: true } }, { $unset: { claimedAt: 1 } });
+  },
+  async markFulfilled(transactionId) {
+    await ensureConnection();
+    await PurchaseModel.updateOne({ transactionId }, { $set: { fulfilled: true } });
+  },
+  /**
+   * Reverses a consumable that was never credited. Atomic with the grant's claim: whichever of
+   * the two runs first wins, and the other one refuses. Resolves true only for the reversal.
+   */
+  async reverseUnfulfilled(transactionId, reason) {
+    await ensureConnection();
+    const res = await PurchaseModel.updateOne(
+      { transactionId, fulfilled: { $ne: true }, claimedAt: { $exists: false }, reversedAt: { $exists: false } },
+      { $set: { reversedAt: new Date(), reversedShortfall: 0, reversalReason: reason } },
+    );
+    return res.modifiedCount === 1;
+  },
+  /** Takes the right to debit a reversed consumable's coins. Resolves true for one caller only. */
+  async claimReversal(transactionId) {
+    await ensureConnection();
+    const res = await PurchaseModel.updateOne(
+      { transactionId, reversedAt: { $exists: false }, reversalClaimedAt: { $exists: false } },
+      { $set: { reversalClaimedAt: new Date() } },
+    );
+    return res.modifiedCount === 1;
+  },
+  /** Gives back a reversal claim after a failed debit, so a retry can take it again. */
+  async releaseReversal(transactionId) {
+    await ensureConnection();
+    await PurchaseModel.updateOne({ transactionId, reversedAt: { $exists: false } }, { $unset: { reversalClaimedAt: 1 } });
+  },
+  async markReversed(transactionId, { shortfall = 0, reason = 'unspecified' } = {}) {
+    await ensureConnection();
+    await PurchaseModel.updateOne(
+      { transactionId },
+      { $set: { reversedAt: new Date(), reversedShortfall: shortfall, reversalReason: reason } },
+    );
+  },
+  async findPurchaseByTransaction(transactionId) {
+    await ensureConnection();
+    return PurchaseModel.findOne({ transactionId }).lean();
   },
   async recordRefund(doc) {
     try {
@@ -112,7 +178,7 @@ export const PurchaseLedgerDb = {
   async hasPurchase(playerId, productId) {
     try {
       await ensureConnection();
-      const found = await PurchaseModel.findOne({ playerId, productId }).lean();
+      const found = await PurchaseModel.findOne({ playerId, productId, reversedAt: { $exists: false } }).lean();
       return Boolean(found);
     } catch (error) {
       logger.error('hasPurchase failed', { error: error.message });
@@ -122,7 +188,7 @@ export const PurchaseLedgerDb = {
   async listPurchases(playerId) {
     try {
       await ensureConnection();
-      return await PurchaseModel.find({ playerId }).lean();
+      return await PurchaseModel.find({ playerId, reversedAt: { $exists: false } }).lean();
     } catch (error) {
       logger.error('listPurchases failed', { error: error.message });
       return [];

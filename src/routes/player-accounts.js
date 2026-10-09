@@ -9,7 +9,9 @@ const router = express.Router();
 const logger = new Logger('PlayerAccountRoutes');
 
 // Initialize services
-const accountManager = new PlayerAccountManager();
+// Exported so /api/auth (the game shell's login/register) shares the same
+// account store instead of creating a second, empty one.
+export const accountManager = new PlayerAccountManager();
 const purchaseManager = new PurchaseManager(accountManager);
 
 // Validation middleware
