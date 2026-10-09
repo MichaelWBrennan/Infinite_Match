@@ -514,3 +514,57 @@ describe('pause and end-of-game (single definitions)', () => {
     expect(shown).toEqual([game.starsFor(99999)]);
   });
 });
+
+describe('level result reporting', () => {
+  function gameWithFetch(token: string) {
+    const game: any = makeGame(7);
+    const calls: Array<{ url: string; init: any }> = [];
+    const sandbox = (game.constructor as any).sandbox;
+    sandbox.fetch = (url: string, init: any) => {
+      calls.push({ url, init });
+      return Promise.resolve({ ok: true });
+    };
+    game.getAuthToken = () => token;
+    game.level = 6;
+    game.targetScore = 1000;
+    game.score = 1600;
+    game.moves = 4;
+    game.time = 25;
+    game.isBossLevel = true;
+    return { game, calls };
+  }
+
+  test('the payload carries the level outcome, not client-chosen stars', () => {
+    const { game } = gameWithFetch('t');
+    expect(game.levelResultPayload(2)).toEqual({
+      level: 6,
+      outcome: 'won',
+      score: 1600,
+      targetScore: 1000,
+      movesLeft: 4,
+      durationSeconds: 35,
+      isBoss: true,
+    });
+  });
+
+  test('a loss is reported as lost', () => {
+    const { game } = gameWithFetch('t');
+    game.score = 300;
+    expect(game.levelResultPayload(0).outcome).toBe('lost');
+  });
+
+  test('a signed-in player posts the result to the level results route', () => {
+    const { game, calls } = gameWithFetch('secret-token');
+    game.reportLevelResult(2);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('/api/level-results');
+    expect(calls[0].init.headers.Authorization).toBe('Bearer secret-token');
+    expect(JSON.parse(calls[0].init.body)).toMatchObject({ level: 6, outcome: 'won' });
+  });
+
+  test('guests send nothing', () => {
+    const { game, calls } = gameWithFetch('');
+    game.reportLevelResult(2);
+    expect(calls).toHaveLength(0);
+  });
+});

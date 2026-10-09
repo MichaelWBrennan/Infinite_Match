@@ -12,6 +12,8 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Power-up inventory: signed-in players load their counts from the server and confirm each use before it takes effect. Guests keep local counts.
 - Levels: procedural, no fixed cap. Every 10th level is a boss with a doubled target. Stars are relative to each level's target. A daily challenge is derived from the date.
 - Lucky wheel: one free spin per day with weighted rewards, granted on the server.
+- Level results for tuning. Signed-in players report each finished level (`POST /api/level-results`). The server checks that a win reaches the target score and recomputes the stars. Admins read `GET /api/admin/level-tuning`, which flags a level as `too_hard` (win rate under 30%) or `too_easy` (over 95%) after 20 attempts. Results are stored in `var/level-results.jsonl` (git-ignored) with no player ID.
+- Experiment assignment hashes the experiment name with the player ID, so one player is not in the same bucket for every experiment.
 - Achievements, daily reward, and login with the account economy (coins, stars, energy, inventory). Economy writes are validated on the server: no negative spends, no client-set balances, and purchases are not trusted from the client.
 - Session-gated analytics, ARPU, ads, entitlements, and monetization routes.
 - Consent, device-token registration, and experiment assignment. Each uses the signed-in player's own identity.
@@ -38,6 +40,8 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Battle pass premium rewards. `POST /api/battlepass/premium/reward` returns 501 until it grants items.
 - A season pass purchase. No price exists in the repository, so the product is not sold.
 - Stripe checkout UI. The client module in `src/frontend/` is not loaded by any page, so the game has no payment screen yet.
+- Automatic difficulty adjustment. The level-tuning report is read-only: a person changes the level config after reading it.
+- Level results are kept in a single JSONL file. That works for one server; it needs a database before scaling out.
 - Economy write routes (`/api/economy/*`) are intentionally not mounted. Players cannot write economy data.
 - Customer relationship messaging (`src/routes/crm.js`). Its webhook and push send only log and report success. Nothing is delivered, so it is not mounted.
 

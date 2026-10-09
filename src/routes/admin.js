@@ -12,6 +12,7 @@ import CacheManager from '../core/cache/CacheManager.js';
 import { Logger, getRecentLogs } from '../core/logger/index.js';
 import EconomyService from '../services/economy/UnifiedEconomyService.js';
 import UnityService from '../services/unity/UnifiedUnityService.js';
+import { readLevelResults, summarizeLevelResults } from '../services/level-tuning.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
@@ -179,6 +180,23 @@ router.get('/logs', (req, res) => {
 });
 
 // Clear cache
+// Per-level difficulty summary from player-reported results. Levels are flagged
+// too_hard or too_easy only after enough attempts.
+router.get('/level-tuning', async (req, res) => {
+  try {
+    const { records, skipped } = await readLevelResults();
+    res.json({
+      success: true,
+      generatedAt: new Date().toISOString(),
+      totalResults: records.length,
+      skippedLines: skipped,
+      levels: summarizeLevelResults(records),
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'level_tuning_unavailable' });
+  }
+});
+
 router.post('/cache/clear', async (req, res) => {
   try {
     getServices().economy.clearExpiredCache();

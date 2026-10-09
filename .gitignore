@@ -11,3 +11,6 @@ credentials.json
 
 # Unity Cloud API keys
 unity-credentials.json
+
+# Runtime data written by the server (level results, etc.)
+var/

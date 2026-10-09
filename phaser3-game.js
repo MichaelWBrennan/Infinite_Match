@@ -1076,6 +1076,35 @@ class PhaserMatch3Game {
         this.restartGame();
     }
 
+    // The result of this level, as the server expects it for difficulty tuning.
+    levelResultPayload(stars) {
+        const target = this.targetScore || 1000;
+        return {
+            level: Math.floor(this.level),
+            outcome: stars > 0 ? 'won' : 'lost',
+            score: Math.max(0, Math.floor(this.score)),
+            targetScore: Math.max(1, Math.floor(target)),
+            movesLeft: Math.max(0, Math.floor(this.moves)),
+            durationSeconds: Math.min(3600, Math.max(0, Math.floor(60 - this.time))),
+            isBoss: !!this.isBossLevel,
+        };
+    }
+
+    // Sends the level result for tuning. Signed-in players only. The server checks the
+    // report and recomputes the stars; a failed request never affects play.
+    reportLevelResult(stars) {
+        const token = this.getAuthToken();
+        if (!token || typeof fetch !== 'function') return;
+        fetch('/api/level-results', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(this.levelResultPayload(stars))
+        }).catch(() => {});
+    }
+
     // Stars are relative to the level target: 1x, 1.5x, 2x.
     starsFor(score) {
         const target = this.targetScore || 1000;
@@ -1680,6 +1709,8 @@ class PhaserMatch3Game {
         let stars = 0;
         stars = this.starsFor(this.score);
         
+        this.reportLevelResult(stars);
+
         // Update analytics
         this.analytics.gamesPlayed++;
         this.analytics.totalScore += this.score;

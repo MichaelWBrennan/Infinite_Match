@@ -15,8 +15,10 @@ function jsonl(file, obj) {
   return fs.appendFile(join(REPORTS_DIR, file), JSON.stringify(obj) + '\n', 'utf-8');
 }
 
-function stickyAssign(key, variants) {
-  const h = createHash('sha1').update(String(key)).digest('hex').slice(0, 8);
+// The hash covers the experiment name too, so one player is not put in the same
+// bucket for every experiment.
+export function stickyAssign(experiment, userId, variants) {
+  const h = createHash('sha1').update(`${experiment}:${userId}`).digest('hex').slice(0, 8);
   const n = parseInt(h, 16);
   const idx = n % variants.length;
   return variants[idx];
@@ -31,7 +33,7 @@ router.post('/assign', async (req, res) => {
         .status(400)
         .json({ success: false, error: 'userId, experiment, variants[] required' });
     }
-    const variant = stickyAssign(userId, variants);
+    const variant = stickyAssign(experiment, userId, variants);
     const evt = { type: 'assign', userId, experiment, variant, ts: Date.now() };
     await jsonl('experiments.jsonl', evt);
     res.json({ success: true, variant });
