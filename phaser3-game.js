@@ -14,6 +14,7 @@ class PhaserMatch3Game {
         this.moves = 30;
         this.time = 60;
         this.level = 3;
+        this.targetScore = 1000; // score that wins the level
         this.gems = 450;
         this.stars = 1250;
         this.energy = 100;
@@ -168,36 +169,393 @@ class PhaserMatch3Game {
         this.startGame();
     }
 
+    // ----- Match-3 core ---------------------------------------------------
+    // The board model (this.board: boardSize x boardSize array of gem type
+    // strings, or null for an empty cell) is the source of truth. Sprites in
+    // this.gemSprites are views of it: each sprite's texture and position follow
+    // the model cell it occupies.
+
+    cellX(col) {
+        return this.boardX + col * this.cellStep;
+    }
+
+    cellY(row) {
+        return this.boardY + row * this.cellStep;
+    }
+
+    randomGem() {
+        return this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
+    }
+
+    isInBounds(row, col) {
+        return row >= 0 && row < this.boardSize && col >= 0 && col < this.boardSize;
+    }
+
+    isAdjacent(r1, c1, r2, c2) {
+        return Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1;
+    }
+
     createGameBoard() {
-        const boardX = 100;
-        const boardY = 100;
-        const gemSize = 60;
-        const spacing = 5;
-        
-        this.board = [];
-        this.gemSprites = [];
-        
-        for (let row = 0; row < this.boardSize; row++) {
-            this.board[row] = [];
-            this.gemSprites[row] = [];
-            
-            for (let col = 0; col < this.boardSize; col++) {
-                const gemType = this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
-                this.board[row][col] = gemType;
-                
-                const x = boardX + col * (gemSize + spacing);
-                const y = boardY + row * (gemSize + spacing);
-                
-                const gem = this.scene.add.image(x, y, `gem_${gemType}`);
-                gem.setDisplaySize(gemSize, gemSize);
-                gem.setInteractive();
-                gem.setData('row', row);
-                gem.setData('col', col);
-                gem.setData('type', gemType);
-                
-                this.gemSprites[row][col] = gem;
+        this.boardX = 250;
+        this.boardY = 80;
+        this.gemSize = 50;
+        this.cellStep = 54;
+        this.gemScale = this.gemSize / 64; // gem textures are 64px
+        this.selectedGem = null;
+
+        const n = this.boardSize;
+        this.board = Array.from({ length: n }, () => new Array(n).fill(null));
+        this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
+
+        // Deal gems row by row, never completing a run, so the board starts stable.
+        for (let row = 0; row < n; row++) {
+            for (let col = 0; col < n; col++) {
+                this.board[row][col] = this.randomGemAvoidingMatch(row, col);
             }
         }
+
+        for (let row = 0; row < n; row++) {
+            for (let col = 0; col < n; col++) {
+                this.gemSprites[row][col] = this.createGemSprite(row, col, this.board[row][col]);
+            }
+        }
+    }
+
+    createGemSprite(row, col, type) {
+        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), `gem_${type}`);
+        gem.setScale(this.gemScale);
+        gem.setInteractive();
+        gem.setData('row', row);
+        gem.setData('col', col);
+        gem.setData('type', type);
+        gem.on('pointerdown', () => this.selectGem(gem));
+        return gem;
+    }
+
+    // Picks a gem type for (row, col) that does not complete a run with the two
+    // cells above or to the left (those are already filled when dealing).
+    randomGemAvoidingMatch(row, col) {
+        const b = this.board;
+        const banned = new Set();
+        if (col >= 2 && b[row][col - 1] === b[row][col - 2]) banned.add(b[row][col - 1]);
+        if (row >= 2 && b[row - 1][col] === b[row - 2][col]) banned.add(b[row - 1][col]);
+        const options = this.gemTypes.filter(t => !banned.has(t));
+        return options[Math.floor(Math.random() * options.length)];
+    }
+
+    // Returns a Set of "row,col" keys for every gem that is part of a run of
+    // three or more identical gems, horizontally or vertically.
+    findMatches() {
+        const n = this.boardSize;
+        const b = this.board;
+        const found = new Set();
+        const scan = (cells) => {
+            let i = 0;
+            while (i < cells.length) {
+                const t = b[cells[i][0]][cells[i][1]];
+                let j = i + 1;
+                while (t && j < cells.length && b[cells[j][0]][cells[j][1]] === t) j++;
+                if (t && j - i >= 3) {
+                    for (let k = i; k < j; k++) found.add(`${cells[k][0]},${cells[k][1]}`);
+                }
+                i = j;
+            }
+        };
+        for (let r = 0; r < n; r++) {
+            scan(Array.from({ length: n }, (_, c) => [r, c]));
+        }
+        for (let c = 0; c < n; c++) {
+            scan(Array.from({ length: n }, (_, r) => [r, c]));
+        }
+        return found;
+    }
+
+    hasPossibleMove() {
+        const n = this.boardSize;
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                for (const [dr, dc] of [[0, 1], [1, 0]]) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (!this.isInBounds(nr, nc)) continue;
+                    this.swapModel(r, c, nr, nc);
+                    const ok = this.findMatches().size > 0;
+                    this.swapModel(r, c, nr, nc);
+                    if (ok) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Re-deals gem types across the board until it has no formed match and at
+    // least one legal move. Used when the board is deadlocked or after restart.
+    reshuffleBoard() {
+        const n = this.boardSize;
+        for (let attempt = 0; attempt < 200; attempt++) {
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    this.board[r][c] = this.randomGem();
+                }
+            }
+            if (this.findMatches().size === 0 && this.hasPossibleMove()) break;
+        }
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const sprite = this.gemSprites[r][c];
+                sprite.setTexture(`gem_${this.board[r][c]}`);
+                sprite.setData('type', this.board[r][c]);
+            }
+        }
+    }
+
+    selectGem(gem) {
+        if (!this.isGameRunning || this.isPaused) return;
+
+        if (!this.selectedGem) {
+            this.setSelectedGem(gem);
+            return;
+        }
+        if (this.selectedGem === gem) {
+            this.setSelectedGem(null);
+            return;
+        }
+
+        const first = this.selectedGem;
+        const r1 = first.getData('row');
+        const c1 = first.getData('col');
+        const r2 = gem.getData('row');
+        const c2 = gem.getData('col');
+
+        if (this.isAdjacent(r1, c1, r2, c2)) {
+            this.setSelectedGem(null);
+            this.trySwap(r1, c1, r2, c2);
+        } else {
+            // Not adjacent: treat the tap as a new selection.
+            this.setSelectedGem(gem);
+        }
+    }
+
+    setSelectedGem(gem) {
+        this.gemSprites.forEach(row => row.forEach(g => {
+            if (g) {
+                g.clearTint();
+                g.setScale(this.gemScale);
+            }
+        }));
+        this.selectedGem = gem;
+        if (!gem) return;
+
+        gem.setTint(0xffd700);
+        gem.setScale(this.gemScale * 1.2);
+
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+        if (this.settings.sfx) {
+            this.playSound('gem_select');
+        }
+    }
+
+    swapModel(r1, c1, r2, c2) {
+        const t = this.board[r1][c1];
+        this.board[r1][c1] = this.board[r2][c2];
+        this.board[r2][c2] = t;
+    }
+
+    swapSprites(r1, c1, r2, c2) {
+        const a = this.gemSprites[r1][c1];
+        const b = this.gemSprites[r2][c2];
+        this.gemSprites[r1][c1] = b;
+        this.gemSprites[r2][c2] = a;
+        this.placeSprite(b, r1, c1, true);
+        this.placeSprite(a, r2, c2, true);
+    }
+
+    // Records a sprite's cell and moves it there (tweened or instant).
+    placeSprite(sprite, row, col, animate) {
+        sprite.setData('row', row);
+        sprite.setData('col', col);
+        this.scene.tweens.killTweensOf(sprite);
+        if (animate) {
+            this.scene.tweens.add({
+                targets: sprite,
+                x: this.cellX(col),
+                y: this.cellY(row),
+                duration: 200,
+                ease: 'Quad.easeOut',
+            });
+        } else {
+            sprite.setPosition(this.cellX(col), this.cellY(row));
+        }
+    }
+
+    shake(sprites) {
+        sprites.forEach(s => {
+            const x = s.x;
+            this.scene.tweens.add({ targets: s, x: x + 6, duration: 40, yoyo: true, repeat: 2 });
+        });
+    }
+
+    trySwap(r1, c1, r2, c2) {
+        if (!this.isGameRunning) return;
+
+        this.swapModel(r1, c1, r2, c2);
+        if (this.findMatches().size === 0) {
+            // Not a match: undo and shake to show the swap was refused. Moves are
+            // not spent.
+            this.swapModel(r1, c1, r2, c2);
+            this.shake([this.gemSprites[r1][c1], this.gemSprites[r2][c2]]);
+            return;
+        }
+
+        this.swapSprites(r1, c1, r2, c2);
+        this.moves--;
+        this.resolveBoard();
+        if (!this.hasPossibleMove()) {
+            this.reshuffleBoard();
+        }
+        this.updateUI();
+        this.checkEndConditions();
+    }
+
+    // Clears every formed match, drops gems to fill the gaps, and repeats until
+    // the board is stable. Each cascade step multiplies the points.
+    resolveBoard() {
+        let chain = 0;
+        let matches = this.findMatches();
+        while (matches.size > 0) {
+            chain++;
+            this.addScore(matches.size * 10 * chain);
+            this.removeCells(matches);
+            this.collapseColumns();
+            matches = this.findMatches();
+        }
+        if (chain > 1) {
+            this.playSound('combo');
+        }
+        return chain;
+    }
+
+    removeCells(keys) {
+        keys.forEach(key => {
+            const [r, c] = key.split(',').map(Number);
+            this.board[r][c] = null;
+            const sprite = this.gemSprites[r][c];
+            this.scene.tweens.killTweensOf(sprite);
+            this.scene.tweens.add({
+                targets: sprite,
+                alpha: 0,
+                scaleX: 0,
+                scaleY: 0,
+                duration: 150,
+                onComplete: () => sprite.setVisible(false),
+            });
+        });
+    }
+
+    // Gravity: survivors keep their order and fall to the bottom of each column;
+    // the freed sprites are reused as new gems dropping in from above.
+    collapseColumns() {
+        const n = this.boardSize;
+        for (let col = 0; col < n; col++) {
+            const survivors = [];
+            const freed = [];
+            for (let row = n - 1; row >= 0; row--) {
+                if (this.board[row][col] !== null) {
+                    survivors.push({ type: this.board[row][col], sprite: this.gemSprites[row][col] });
+                } else {
+                    freed.push(this.gemSprites[row][col]);
+                }
+            }
+
+            for (let row = n - 1, i = 0; row >= 0; row--, i++) {
+                if (i < survivors.length) {
+                    const { type, sprite } = survivors[i];
+                    this.board[row][col] = type;
+                    this.gemSprites[row][col] = sprite;
+                    this.placeSprite(sprite, row, col, true);
+                    sprite.setData('type', type);
+                } else {
+                    const type = this.randomGem();
+                    const sprite = freed[i - survivors.length];
+                    this.board[row][col] = type;
+                    this.gemSprites[row][col] = sprite;
+                    this.scene.tweens.killTweensOf(sprite);
+                    sprite.setTexture(`gem_${type}`);
+                    sprite.setAlpha(1);
+                    sprite.setScale(this.gemScale);
+                    sprite.setVisible(true);
+                    sprite.setData('type', type);
+                    const dropFromRow = -1 - (i - survivors.length);
+                    sprite.setPosition(this.cellX(col), this.cellY(dropFromRow));
+                    this.placeSprite(sprite, row, col, true);
+                }
+            }
+        }
+    }
+
+    checkEndConditions() {
+        if (!this.isGameRunning) return;
+        if (this.score >= this.targetScore || this.moves <= 0) {
+            this.endGame();
+        }
+    }
+
+    // Clears the given cells (power-up effects), then resolves any cascades.
+    clearAndCascade(keys, points) {
+        this.setSelectedGem(null);
+        this.addScore(points);
+        this.removeCells(keys);
+        this.collapseColumns();
+        this.resolveBoard();
+        if (!this.hasPossibleMove()) {
+            this.reshuffleBoard();
+        }
+        this.updateUI();
+        this.checkEndConditions();
+    }
+
+    allCellKeys() {
+        const keys = new Set();
+        for (let r = 0; r < this.boardSize; r++) {
+            for (let c = 0; c < this.boardSize; c++) {
+                keys.add(`${r},${c}`);
+            }
+        }
+        return keys;
+    }
+
+    activateBomb() {
+        // 3x3 blast around a random gem.
+        const n = this.boardSize;
+        const r0 = Math.floor(Math.random() * n);
+        const c0 = Math.floor(Math.random() * n);
+        const keys = new Set();
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const r = r0 + dr;
+                const c = c0 + dc;
+                if (this.isInBounds(r, c)) keys.add(`${r},${c}`);
+            }
+        }
+        this.clearAndCascade(keys, 100);
+        this.playSound('bomb_explode');
+    }
+
+    activateRainbow() {
+        // Clears the whole board.
+        this.clearAndCascade(this.allCellKeys(), 500);
+        this.playSound('rainbow_clear');
+    }
+
+    activateLightning() {
+        // Clears one random column.
+        const col = Math.floor(Math.random() * this.boardSize);
+        const keys = new Set();
+        for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
+        this.clearAndCascade(keys, 300);
+        this.playSound('lightning_strike');
     }
 
     createUI() {
@@ -251,44 +609,44 @@ class PhaserMatch3Game {
         });
         
         // Shop button
-        this.shopBtn = this.scene.add.rectangle(700, 100, 120, 40, 0x4ecdc4);
+        this.shopBtn = this.scene.add.rectangle(735, 100, 110, 40, 0x4ecdc4);
         this.shopBtn.setInteractive();
         this.shopBtn.on('pointerdown', () => this.showShop());
         
-        const shopText = this.scene.add.text(700, 100, 'Shop', {
+        const shopText = this.scene.add.text(735, 100, 'Shop', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
         // Battle Pass button
-        this.battlePassBtn = this.scene.add.rectangle(700, 150, 120, 40, 0xffd700);
+        this.battlePassBtn = this.scene.add.rectangle(735, 150, 110, 40, 0xffd700);
         this.battlePassBtn.setInteractive();
         this.battlePassBtn.on('pointerdown', () => this.showBattlePass());
         
-        const battlePassText = this.scene.add.text(700, 150, 'Battle Pass', {
+        const battlePassText = this.scene.add.text(735, 150, 'Battle Pass', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
         // Loot Box button
-        this.lootBoxBtn = this.scene.add.rectangle(700, 200, 120, 40, 0xff6b6b);
+        this.lootBoxBtn = this.scene.add.rectangle(735, 200, 110, 40, 0xff6b6b);
         this.lootBoxBtn.setInteractive();
         this.lootBoxBtn.on('pointerdown', () => this.showLootBox());
         
-        const lootBoxText = this.scene.add.text(700, 200, 'Loot Box', {
+        const lootBoxText = this.scene.add.text(735, 200, 'Loot Box', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
         // Pause button
-        this.pauseBtn = this.scene.add.rectangle(700, 250, 120, 40, 0x666666);
+        this.pauseBtn = this.scene.add.rectangle(735, 250, 110, 40, 0x666666);
         this.pauseBtn.setInteractive();
         this.pauseBtn.on('pointerdown', () => this.togglePause());
         
-        const pauseText = this.scene.add.text(700, 250, 'Pause', {
+        const pauseText = this.scene.add.text(735, 250, 'Pause', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -296,7 +654,7 @@ class PhaserMatch3Game {
     }
 
     createPowerUps() {
-        const powerUpY = 500;
+        const powerUpY = 530;
         const powerUpSpacing = 100;
         
         // Bomb power-up
@@ -340,16 +698,7 @@ class PhaserMatch3Game {
     }
 
     setupInput() {
-        // Gem selection
-        this.gemSprites.forEach(row => {
-            row.forEach(gem => {
-                gem.on('pointerdown', () => {
-                    this.selectGem(gem);
-                });
-            });
-        });
-        
-        // Power-up buttons
+        // Gems bind their own pointerdown handler in createGemSprite().
         this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
         this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
         this.lightningBtn.on('pointerdown', () => this.usePowerUp('lightning'));
@@ -376,40 +725,6 @@ class PhaserMatch3Game {
             duration: 500,
             paused: true
         });
-    }
-
-    selectGem(gem) {
-        if (!this.isGameRunning) return;
-        
-        const row = gem.getData('row');
-        const col = gem.getData('col');
-        
-        // Remove previous selection
-        this.gemSprites.forEach(row => {
-            row.forEach(g => {
-                g.clearTint();
-                g.setScale(1);
-            });
-        });
-        
-        if (this.selectedGem === gem) {
-            this.selectedGem = null;
-            return;
-        }
-        
-        this.selectedGem = gem;
-        gem.setTint(0xffd700); // Gold tint for selection
-        gem.setScale(1.2);
-        
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(50);
-        }
-        
-        // Play selection sound
-        if (this.settings.sfx) {
-            this.playSound('gem_select');
-        }
     }
 
     usePowerUp(powerType) {
@@ -452,104 +767,6 @@ class PhaserMatch3Game {
             
             // Show power-up animation
             this.showPowerUpAnimation(powerType);
-        }
-    }
-
-    activateBomb() {
-        // Remove random gems
-        const gems = [];
-        this.gemSprites.forEach(row => {
-            row.forEach(gem => {
-                if (gem.visible) gems.push(gem);
-            });
-        });
-        
-        const randomGems = Phaser.Utils.Array.Shuffle(gems).slice(0, 5);
-        randomGems.forEach(gem => {
-            this.animateGemRemoval(gem);
-        });
-        
-        this.addScore(100);
-        this.playSound('bomb_explode');
-    }
-
-    activateRainbow() {
-        // Clear entire board
-        this.gemSprites.forEach(row => {
-            row.forEach(gem => {
-                if (gem.visible) {
-                    this.animateGemRemoval(gem);
-                }
-            });
-        });
-        
-        this.addScore(500);
-        this.playSound('rainbow_clear');
-    }
-
-    activateLightning() {
-        // Clear entire column
-        const randomCol = Math.floor(Math.random() * this.boardSize);
-        this.gemSprites.forEach(row => {
-            const gem = row[randomCol];
-            if (gem && gem.visible) {
-                this.animateGemRemoval(gem);
-            }
-        });
-        
-        this.addScore(300);
-        this.playSound('lightning_strike');
-    }
-
-    animateGemRemoval(gem) {
-        this.scene.tweens.add({
-            targets: gem,
-            alpha: 0,
-            scaleX: 0,
-            scaleY: 0,
-            duration: 500,
-            onComplete: () => {
-                gem.setVisible(false);
-                this.fillEmptySpaces();
-            }
-        });
-    }
-
-    fillEmptySpaces() {
-        // Move existing gems down
-        for (let col = 0; col < this.boardSize; col++) {
-            let writeRow = this.boardSize - 1;
-            for (let row = this.boardSize - 1; row >= 0; row--) {
-                if (this.gemSprites[row][col].visible) {
-                    if (writeRow !== row) {
-                        this.gemSprites[writeRow][col] = this.gemSprites[row][col];
-                        this.gemSprites[row][col] = null;
-                    }
-                    writeRow--;
-                }
-            }
-            
-            // Fill empty spaces with new gems
-            for (let row = writeRow; row >= 0; row--) {
-                const gemType = this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
-                this.board[row][col] = gemType;
-                
-                const x = 100 + col * 65;
-                const y = 100 + row * 65;
-                
-                const gem = this.scene.add.image(x, y, `gem_${gemType}`);
-                gem.setDisplaySize(60, 60);
-                gem.setInteractive();
-                gem.setData('row', row);
-                gem.setData('col', col);
-                gem.setData('type', gemType);
-                
-                gem.on('pointerdown', () => {
-                    this.selectGem(gem);
-                });
-                
-                this.gemSprites[row][col] = gem;
-            }
         }
     }
 
@@ -1349,6 +1566,8 @@ class PhaserMatch3Game {
         this.moves = 30;
         this.time = 60;
         this.energy = Math.max(this.energy - 1, 0);
+        this.setSelectedGem(null);
+        this.reshuffleBoard();
         
         // Restart the game
         this.startGame();
