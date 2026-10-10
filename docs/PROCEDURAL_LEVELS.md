@@ -398,9 +398,19 @@ specials and shields from the current board. Forged/reused/cross-attempt
 receipts and impossible targets cannot enter a verified replay. A legacy spend
 without `attemptId` is marked **untracked** on the pending attempt and cannot
 enter competitive boards, even if the client later submits a pure-move path.
-No automatic refund is claimed if a receipt response is lost; the older
-unverified completion path remains available. A random instant booster target
-is reported by the client and geometry-checked, **not** proven randomly chosen.
+For current classic/daily clients, the spend also carries a per-tap `useId` (8–64
+ASCII letters/digits/`_`/`-`) bound to that paid attempt. Repeating the same
+`attemptId + useId + powerupId` returns the **same receipt and original counts**
+without another charge, even if the inventory is now empty or requests race.
+Reusing the key for another power-up is refused; a new attempt cannot recover
+the old receipt. The client retries a network/response failure **once with the
+same key** and applies the effect only after confirmation. A late response is
+never applied to a replacement board. Legacy calls without `useId` keep their
+existing per-call spending behavior. If both attempts fail, the client omits the
+transcript and can still claim an unverified ordinary reward; no automatic
+refund is promised for a charge whose receipt could not be recovered. A random
+instant booster target is reported by the client and geometry-checked, **not**
+proven randomly chosen.
 
 The response separates `verified` (the reported path was replayed) from
 `ranked` (eligible for competition). A receipt-backed booster win can be

@@ -1306,10 +1306,23 @@ class PhaserMatch3Game {
             return;
         }
 
+        // A stable per-tap key makes a lost response safe to retry: the server
+        // returns the original receipt instead of taking a second charge.
+        const boundAttemptId = this.attemptId && this.replayEligible ? this.attemptId : null;
+        const useId = boundAttemptId ? globalThis.crypto?.randomUUID?.()
+            || `use-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}` : null;
+        const epoch = this.boardEpoch;
+        const spend = () => this.consumePowerUpOnServer(type, token, useId, boundAttemptId);
         this.powerUpPending = true;
         this.playerUI?.refresh();
-        this.consumePowerUpOnServer(type, token)
+        spend().catch((error) => {
+            if (!useId) throw error;
+            return spend(); // One bounded retry only, with the SAME attempt and use id.
+        })
             .then((confirmation) => {
+                if (epoch !== this.boardEpoch || (boundAttemptId && boundAttemptId !== this.attemptId)) {
+                    return this.syncPowerUpInventory(); // Never apply a stale confirmation to a new board.
+                }
                 if (confirmation === true || confirmation?.ok) {
                     this.setPowerCount(type, this.powerSlot(type).btn.getData('count') - 1);
                     this.powerReceipt = confirmation?.receiptId ? { type, receiptId: confirmation.receiptId } : null;
@@ -1331,7 +1344,7 @@ class PhaserMatch3Game {
             });
     }
 
-    async consumePowerUpOnServer(type, token) {
+    async consumePowerUpOnServer(type, token, useId = null, requestedAttemptId = this.attemptId) {
         const response = await fetch('/api/account-economy/powerup/use', {
             method: 'POST',
             headers: {
@@ -1339,11 +1352,20 @@ class PhaserMatch3Game {
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ powerupId: type, quantity: 1,
-                ...(this.attemptId && this.replayEligible ? { attemptId: this.attemptId } : {}) })
+                ...(requestedAttemptId && this.replayEligible ? { attemptId: requestedAttemptId,
+                    ...(useId ? { useId } : {}) } : {}) })
         });
-        if (!response.ok) return { ok: false };
+        if (!response.ok) {
+            // A 5xx/timeout may occur after the charge was saved; recover by retrying
+            // the same use id. An explicit 4xx rule refusal is not a charge.
+            if (response.status >= 500 || [408, 429].includes(response.status)) throw new Error('powerup_response_uncertain');
+            return { ok: false };
+        }
         const payload = await response.json();
-        return { ok: payload.success === true, receiptId: payload.result?.receiptId };
+        if (payload.success !== true || (requestedAttemptId && this.replayEligible && !payload.result?.receiptId)) {
+            throw new Error('powerup_receipt_missing');
+        }
+        return { ok: true, receiptId: payload.result?.receiptId };
     }
 
     // Loads power-up counts from the player's server inventory. Guests keep local counts.

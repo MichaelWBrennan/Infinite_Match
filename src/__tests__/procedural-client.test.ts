@@ -894,14 +894,60 @@ describe('optional sound is presentation only', () => {
     }
   });
 
+  test('a lost receipt response retries the same use id and applies the effect once', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
+    game.isGameRunning = true; game.attemptId = 'pinned'; game.getAuthToken = () => 'token';
+    game.checkEndConditions = () => {}; game.showPowerUpAnimation = () => {};
+    game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    const calls: any[] = [];
+    game.consumePowerUpOnServer = async (type: string, token: string, useId: string, attemptId: string) => {
+      calls.push({ type, token, useId, attemptId });
+      if (calls.length === 1) throw new Error('response lost after spend');
+      return { ok: true, receiptId: 'recovered-receipt' };
+    };
+    game.usePowerUp('bomb');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual(calls[1]);
+    expect(calls[0]).toMatchObject({ type: 'bomb', token: 'token', attemptId: 'pinned', useId: expect.any(String) });
+    expect(calls[0].useId.length).toBeGreaterThanOrEqual(8);
+    expect(game.bombBtn.getData('count')).toBe(0);
+    expect(game.attemptMoves).toHaveLength(1);
+    expect(game.attemptMoves[0].receiptId).toBe('recovered-receipt');
+    expect(game.replayEligible).toBe(true);
+  });
+
+  test('a late receipt cannot apply an old booster to a replacement board', async () => {
+    const { game } = makeBrowserGame();
+    const def = generatedLevel({ level: 4, location, rulesVersion: 5 }, now);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'old';
+    game.getAuthToken = () => 'token'; game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    let confirm = (value: any) => { void value; };
+    game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
+    game.usePowerUp('bomb');
+    const next = generatedLevel({ level: 5, location, rulesVersion: 5 }, now);
+    game.applyGeneratedDefinition(next); game.attemptId = 'new'; game.isGameRunning = true;
+    confirm({ ok: true, receiptId: 'old-receipt' });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(JSON.parse(JSON.stringify(game.board))).toEqual(next.board);
+    expect(game.score).toBe(0); expect(game.attemptMoves).toHaveLength(0);
+    expect(game.bombBtn.getData('count')).toBe(1);
+    expect(game.powerUpPending).toBe(false);
+  });
+
   test('an uncertain booster response keeps rewards possible but disables ranked replay', async () => {
     const { game } = makeBrowserGame();
     game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
     game.isGameRunning = true; game.attemptId = 'pinned'; game.getAuthToken = () => 'token';
     game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
-    game.consumePowerUpOnServer = async () => { throw new Error('lost response'); };
+    const calls: string[] = [];
+    game.consumePowerUpOnServer = async (_type: string, _token: string, useId: string) => {
+      calls.push(useId); throw new Error('lost response');
+    };
     game.usePowerUp('bomb');
     await new Promise((resolve) => setImmediate(resolve));
+    expect(calls).toHaveLength(2); expect(calls[0]).toBe(calls[1]);
     expect(game.replayEligible).toBe(false);
     expect(game.bombBtn.getData('count')).toBe(1);
     expect(game.attemptMoves).toHaveLength(0);
@@ -927,6 +973,13 @@ describe('optional sound is presentation only', () => {
     };
     expect(await game.consumePowerUpOnServer('bomb', 'token')).toEqual({ ok: true, receiptId: 'receipt' });
     expect(payload).toEqual({ powerupId: 'bomb', quantity: 1, attemptId: 'paid-attempt' });
+    await game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt');
+    expect(payload).toEqual({ powerupId: 'bomb', quantity: 1, attemptId: 'paid-attempt', useId: 'stable-use-001' });
+    sandbox.fetch = async () => ({ ok: false, status: 503 });
+    await expect(game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt'))
+      .rejects.toThrow('powerup_response_uncertain');
+    sandbox.fetch = async () => ({ ok: false, status: 400 });
+    expect(await game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt')).toEqual({ ok: false });
   });
 
   test('unsupported audio cannot gate valid swaps or request a reward or inventory spend', () => {

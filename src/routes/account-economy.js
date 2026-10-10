@@ -370,7 +370,7 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
 router.post('/powerup/use', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { powerupId, quantity = 1, attemptId } = req.body || {};
+    const { powerupId, quantity = 1, attemptId, useId } = req.body || {};
 
     if (!powerupId) {
       return res.status(400).json({
@@ -381,13 +381,14 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
     }
 
     // Receipt issuance and inventory removal must commit together with the paid attempt.
-    const result = await accountEconomyService.spendPowerUp(playerId, powerupId, quantity, attemptId);
+    const result = await accountEconomyService.spendPowerUp(playerId, powerupId, quantity, attemptId, undefined, useId);
 
-    security.logSecurityEvent('powerup_used', {
+    security.logSecurityEvent(result.reused ? 'powerup_use_retried' : 'powerup_used', {
       playerId,
       powerupId,
       quantity,
       attemptId: attemptId || null,
+      useId: useId || null,
       receiptId: result.receiptId || null,
       ip: req.ip,
     });

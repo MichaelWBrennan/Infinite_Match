@@ -104,6 +104,42 @@ describe('paid booster receipts and completion', () => {
     expect(economy.pendingAttempt.powerupReceipts).toHaveLength(1);
   });
 
+  test('same-use retries recover one receipt and one charge, even concurrently or after inventory is empty', async () => {
+    const spent = await post('/energy/spend', { level: 4, mode: 'classic', location, rulesVersion: 5 });
+    expect(spent.status).toBe(200);
+    const attemptId = spent.body.result.attemptId;
+    const useId = 'booster-use-retry-001';
+    await accountEconomy.updateInventory(player, 'powerups', 'star', 1, 'add');
+    const body = { attemptId, powerupId: 'star', quantity: 1, useId };
+    const [first, second] = await Promise.all([post('/powerup/use', body), post('/powerup/use', body)]);
+    expect(first.status).toBe(200); expect(second.status).toBe(200);
+    expect(first.body.result.receiptId).toBe(second.body.result.receiptId);
+    expect(first.body.result).toMatchObject({ oldCount: 1, newCount: 0 });
+    expect(second.body.result).toMatchObject({ oldCount: 1, newCount: 0 });
+    expect([first.body.result.reused, second.body.result.reused].filter(Boolean)).toHaveLength(1);
+    const retry = await post('/powerup/use', body);
+    expect(retry.status).toBe(200);
+    expect(retry.body.result).toMatchObject({ receiptId: first.body.result.receiptId, reused: true, newCount: 0 });
+    const mismatch = await post('/powerup/use', { ...body, powerupId: 'bomb' });
+    expect(mismatch.status).toBe(400); expect(mismatch.body.error).toBe('powerup_use_mismatch');
+    const invalid = await post('/powerup/use', { ...body, useId: 'bad' });
+    expect(invalid.status).toBe(400); expect(invalid.body.error).toBe('invalid_powerup_use_id');
+    const unbound = await post('/powerup/use', { powerupId: 'bomb', useId });
+    expect(unbound.status).toBe(400); expect(unbound.body.error).toBe('invalid_powerup_use_id');
+    const economy = await accountEconomy.getPlayerEconomy(player);
+    expect(economy.inventory.powerups.star.count).toBe(0);
+    expect(economy.pendingAttempt.powerupReceipts).toHaveLength(1);
+
+    const replacement = await post('/energy/spend', { level: 4, mode: 'classic', location, rulesVersion: 5 });
+    expect(replacement.status).toBe(200);
+    const old = await post('/powerup/use', body);
+    expect(old.status).toBe(400); expect(old.body.error).toBe('attempt_not_found');
+    await accountEconomy.updateInventory(player, 'powerups', 'star', 1, 'add');
+    const newAttempt = await post('/powerup/use', { ...body, attemptId: replacement.body.result.attemptId });
+    expect(newAttempt.status).toBe(200);
+    expect(newAttempt.body.result.receiptId).not.toBe(first.body.result.receiptId);
+  });
+
   test('each receipt authorizes one replayed effect; a verified assisted win is paid but not ranked', async () => {
     // Spending on a new attempt replaces the prior one without reusing its receipts.
     const spent = await post('/energy/spend', { level: 4, mode: 'classic', location, rulesVersion: 5 });

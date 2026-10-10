@@ -785,8 +785,10 @@ class AccountEconomyService {
    * the pending paid attempt. A legacy spend during a run is marked unranked, not silently
    * treated as a no-booster attempt. The lock also serialises spends with completion.
    */
-  async spendPowerUp(playerId, powerupId, quantity = 1, attemptId = undefined, nowMs = Date.now()) {
+  async spendPowerUp(playerId, powerupId, quantity = 1, attemptId = undefined, nowMs = Date.now(), useId = undefined) {
     if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 20) throw new EconomyRuleError('invalid_powerup_quantity');
+    if (useId !== undefined && (attemptId === undefined || typeof useId !== 'string'
+      || !/^[a-zA-Z0-9_-]{8,64}$/.test(useId))) throw new EconomyRuleError('invalid_powerup_use_id');
     return this.withPlayerLock(playerId, async () => {
       const economy = await this.getPlayerEconomy(playerId);
       const pending = economy.pendingAttempt;
@@ -800,6 +802,14 @@ class AccountEconomyService {
         || pending.generatedLevel?.generatorVersion < 4
         || !['classic', 'daily'].includes(pending.generatedLevel?.mode))) {
         throw new EconomyRuleError('replay_unsupported');
+      }
+      // A retry after a lost response returns the original receipt, even if that
+      // charge exhausted the item. Never mint a second receipt or decrement twice.
+      const prior = useId === undefined ? null : pending.powerupReceipts?.find((receipt) => receipt.useId === useId);
+      if (prior) {
+        if (prior.type !== powerupId) throw new EconomyRuleError('powerup_use_mismatch');
+        return { success: true, category: 'powerups', itemId: powerupId, oldCount: prior.oldCount,
+          newCount: prior.newCount, operation: 'remove', receiptId: prior.id, reused: true };
       }
       const powerups = economy.inventory?.powerups;
       if (typeof powerupId !== 'string' || !powerups || !Object.hasOwn(powerups, powerupId)) {
@@ -816,7 +826,8 @@ class AccountEconomyService {
       let receiptId;
       if (attemptId !== undefined) {
         receiptId = crypto.randomUUID();
-        (pending.powerupReceipts ??= []).push({ id: receiptId, type: powerupId });
+        (pending.powerupReceipts ??= []).push({ id: receiptId, type: powerupId,
+          ...(useId === undefined ? {} : { useId, oldCount, newCount: item.count }) });
       } else if (pending) {
         pending.untrackedPowerup = true;
       }
