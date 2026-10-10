@@ -11,14 +11,14 @@
  */
 export class AICacheManager {
     logger: Logger;
-    redis: Redis;
+    redis: any;
     caches: {
-        content: any;
-        personalization: any;
-        analytics: any;
-        predictions: any;
-        profiles: any;
-        market: any;
+        content: LRUCache<{}, {}, unknown>;
+        personalization: LRUCache<{}, {}, unknown>;
+        analytics: LRUCache<{}, {}, unknown>;
+        predictions: LRUCache<{}, {}, unknown>;
+        profiles: LRUCache<{}, {}, unknown>;
+        market: LRUCache<{}, {}, unknown>;
     };
     stats: {
         hits: number;
@@ -146,5 +146,5 @@ export class AICacheManager {
 }
 export const aiCacheManager: AICacheManager;
 import { Logger } from '../core/logger/index.js';
-import Redis from 'ioredis';
+import { LRUCache } from 'lru-cache';
 //# sourceMappingURL=ai-cache-manager.d.ts.map

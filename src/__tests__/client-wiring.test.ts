@@ -114,13 +114,13 @@ describe('the canvas title and sign-in', () => {
     expect(start).toMatch(/this\.selectLevel\(Math\.floor\(this\.level\)\)/);
     const select = phaser.slice(phaser.indexOf('    selectLevel(levelNumber) {'), phaser.indexOf('    // The result of this level'));
     expect(select).toMatch(/this\.claimAttempt\(config\.level\)/);
-    const restart = phaser.slice(phaser.indexOf('    async restartGame('), phaser.indexOf('    async restartGame(') + 300);
+    const restart = phaser.slice(phaser.indexOf('    async restartGame('), phaser.indexOf('    // Hides the canvas'));
     expect(restart).toMatch(/claimAttempt\(\)/);
   });
 
   test('the attempt id is kept from the spend and sent with a win', () => {
     expect(phaser).toMatch(/this\.attemptId = data\.result\.attemptId;/);
-    const endGame = phaser.slice(phaser.indexOf('    endGame() {'), phaser.indexOf('    showEndGameScreen('));
+    const endGame = phaser.slice(phaser.indexOf('    endGame('), phaser.indexOf('    showEndGameScreen('));
     expect(endGame).toMatch(/this\.submitLevelWin\(stars\)/);
     const submit = phaser.slice(phaser.indexOf('    async submitLevelWin('), phaser.indexOf('    // Refills energy on the server.'));
     expect(submit).toMatch(/stars <= 0/);

@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { aiCacheManager } from './ai-cache-manager.js';
 import { aiMonitoringSystem } from './ai-monitoring-system.js';
-import OpenAI from 'openai';
 import { EventEmitter } from 'events';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
 /**
  * AI Error Handler - Intelligent error handling and recovery system
  *
@@ -19,9 +19,7 @@ class AIErrorHandler extends EventEmitter {
         super();
         this.logger = new Logger('AIErrorHandler');
         // OpenAI for error analysis
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
+        this.openai = createOpenAIClient();
         // Error classification patterns
         this.errorPatterns = {
             network: ['timeout', 'connection', 'network', 'unreachable'],
@@ -378,9 +376,11 @@ Classify the error and suggest recovery strategies. Return JSON:
      * Recovery strategy determination
      */
     async determineRecoveryStrategy(classification, patternAnalysis, context) {
+        // Declared before the try so the catch block can still fall back to the
+        // rule-based strategy (`patterns` was only in scope inside the try).
+        const patterns = patternAnalysis;
         try {
             const strategies = classification.suggestedStrategies || ['retry'];
-            const patterns = patternAnalysis;
             // Use AI to determine optimal strategy
             const prompt = this.buildRecoveryStrategyPrompt(classification, patterns, context);
             const response = await this.openai.chat.completions.create({
@@ -726,7 +726,7 @@ Return JSON with recovery strategy:
      */
     startErrorPatternAnalysis() {
         setInterval(() => {
-            this.analyzeErrorPatterns();
+            this.runPeriodicPatternAnalysis();
         }, 300000); // Every 5 minutes
     }
     startCircuitBreakerMonitoring() {
@@ -739,7 +739,12 @@ Return JSON with recovery strategy:
             this.optimizeRecoveryStrategies();
         }, 1800000); // Every 30 minutes
     }
-    async analyzeErrorPatterns() {
+    /**
+     * Periodic sweep over aggregate error patterns.
+     * Distinct from the per-error `analyzeErrorPatterns(error, context)`, which
+     * this duplicate definition used to shadow.
+     */
+    async runPeriodicPatternAnalysis() {
         // Analyze error patterns and update recovery strategies
         this.logger.debug('Error pattern analysis completed');
     }

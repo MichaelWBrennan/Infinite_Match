@@ -3,6 +3,7 @@
  * Industry-standard logging with structured output and multiple transports
  */
 import winston from 'winston';
+import Transport from 'winston-transport';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import AppConfig from '../config/index.js';
 const { combine, timestamp, errors, json, printf, colorize } = winston.format;
@@ -33,6 +34,31 @@ if (AppConfig.analytics.logging.file?.enabled || false) {
         maxFiles: AppConfig.analytics.logging.file?.maxFiles || '14d',
         format: combine(timestamp(), errors({ stack: true }), json()),
     }));
+}
+// Recent entries kept in memory for the admin logs endpoint. Only the timestamp,
+// level, message, and context are kept. Other metadata can hold personal data.
+const RECENT_LOG_LIMIT = 500;
+const recentLogs = [];
+class RecentLogTransport extends Transport {
+    log(info, callback) {
+        recentLogs.push({
+            timestamp: String(info.timestamp ?? new Date().toISOString()),
+            level: String(info.level),
+            message: String(info.message),
+            context: info.context ? String(info.context) : undefined,
+        });
+        if (recentLogs.length > RECENT_LOG_LIMIT)
+            recentLogs.shift();
+        callback();
+    }
+}
+transports.push(new RecentLogTransport());
+/** Newest first. Optional exact-match filters on level and context. */
+export function getRecentLogs({ limit = 100, level, context } = {}) {
+    return recentLogs
+        .filter((entry) => (!level || entry.level === level) && (!context || entry.context === context))
+        .slice(-Math.max(0, limit))
+        .reverse();
 }
 // Create logger instance
 const logger = winston.createLogger({
@@ -80,27 +106,47 @@ const requestLogger = winston.createLogger({
     ],
     exitOnError: false,
 });
+/**
+ * Normalize whatever a caller passes as log metadata into a plain object.
+ *
+ * Winston only serializes enumerable own properties, so passing an `Error`
+ * directly (e.g. `logger.error('boom', error)` from a `catch (error)` block,
+ * where `error` is `unknown` under `useUnknownInCatchVariables`) produced an
+ * empty metadata object and silently dropped the message and stack trace.
+ */
+function toLogMeta(meta) {
+    if (meta === null || meta === undefined) {
+        return {};
+    }
+    if (meta instanceof Error) {
+        return { name: meta.name, error: meta.message, stack: meta.stack };
+    }
+    if (typeof meta === 'object') {
+        return meta;
+    }
+    return { detail: meta };
+}
 // Enhanced logger with context
 export class Logger {
     context;
     constructor(context = '') {
         this.context = context;
     }
-    info(message, meta = {}) {
-        logger.info(message, { context: this.context, ...meta });
+    info(message, meta) {
+        logger.info(message, { context: this.context, ...toLogMeta(meta) });
     }
-    warn(message, meta = {}) {
-        logger.warn(message, { context: this.context, ...meta });
+    warn(message, meta) {
+        logger.warn(message, { context: this.context, ...toLogMeta(meta) });
     }
-    error(message, meta = {}) {
-        logger.error(message, { context: this.context, ...meta });
+    error(message, meta) {
+        logger.error(message, { context: this.context, ...toLogMeta(meta) });
     }
-    debug(message, meta = {}) {
-        logger.debug(message, { context: this.context, ...meta });
+    debug(message, meta) {
+        logger.debug(message, { context: this.context, ...toLogMeta(meta) });
     }
     // Security-specific logging
-    security(event, details = {}) {
-        securityLogger.info(event, { context: this.context, ...details });
+    security(event, details) {
+        securityLogger.info(event, { context: this.context, ...toLogMeta(details) });
     }
     // Request-specific logging
     request(req, res, duration) {

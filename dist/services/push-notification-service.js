@@ -11,14 +11,13 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { aiCacheManager } from './ai-cache-manager.js';
-import admin from 'firebase-admin';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
+import { createPushTransport } from './push/push-transports.js';
 import cron from 'node-cron';
 const logger = new Logger('PushNotificationService');
 class PushNotificationService {
     constructor() {
-        this.fcm = null;
-        this.apns = null;
+        this.transport = null;
         this.isInitialized = false;
         // Notification queues and scheduling
         this.notificationQueue = new Map();
@@ -45,26 +44,9 @@ class PushNotificationService {
     }
     async initialize() {
         try {
-            // Initialize Firebase Admin SDK
-            if (!admin.apps.length) {
-                const serviceAccount = {
-                    type: "service_account",
-                    project_id: process.env.FIREBASE_PROJECT_ID,
-                    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-                    private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-                    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-                    client_id: process.env.FIREBASE_CLIENT_ID,
-                    auth_uri: "https://accounts.google.com/o/oauth2/auth",
-                    token_uri: "https://oauth2.googleapis.com/token",
-                    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-                    client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`
-                };
-                admin.initializeApp({
-                    credential: admin.credential.cert(serviceAccount),
-                    databaseURL: process.env.FIREBASE_DATABASE_URL
-                });
-            }
-            this.fcm = admin.messaging();
+            // Pluggable push transports: self-hosted ntfy, W3C Web Push, or FCM's
+            // HTTP v1 API (called with native fetch — no firebase-admin SDK).
+            this.transport = createPushTransport(logger);
             this.isInitialized = true;
             // Start notification processing
             this.startNotificationProcessor();
@@ -80,43 +62,43 @@ class PushNotificationService {
     // ===== NOTIFICATION TEMPLATES =====
     initializeTemplates() {
         this.templates.set('retention', {
-            title: "We miss you! 🎮",
-            body: "Your daily streak is waiting for you!",
+            title: 'We miss you! 🎮',
+            body: 'Your daily streak is waiting for you!',
             data: { type: 'retention', action: 'daily_streak' },
             priority: 'high',
             ttl: 3600
         });
         this.templates.set('fomo', {
-            title: "Limited Time Event! ⏰",
-            body: "Special rewards available for the next 2 hours!",
+            title: 'Limited Time Event! ⏰',
+            body: 'Special rewards available for the next 2 hours!',
             data: { type: 'fomo', action: 'limited_event' },
             priority: 'high',
             ttl: 7200
         });
         this.templates.set('social', {
-            title: "Your friend is playing! 👥",
-            body: "Join them for a multiplayer challenge!",
+            title: 'Your friend is playing! 👥',
+            body: 'Join them for a multiplayer challenge!',
             data: { type: 'social', action: 'friend_activity' },
             priority: 'medium',
             ttl: 1800
         });
         this.templates.set('progression', {
-            title: "Need help? 💡",
-            body: "We've got tips to help you advance!",
+            title: 'Need help? 💡',
+            body: 'We\'ve got tips to help you advance!',
             data: { type: 'progression', action: 'help_tips' },
             priority: 'medium',
             ttl: 3600
         });
         this.templates.set('comeback', {
-            title: "Welcome back! 🎉",
-            body: "Special comeback bonus waiting for you!",
+            title: 'Welcome back! 🎉',
+            body: 'Special comeback bonus waiting for you!',
             data: { type: 'comeback', action: 'welcome_bonus' },
             priority: 'high',
             ttl: 86400
         });
         this.templates.set('achievement', {
-            title: "Achievement Unlocked! 🏆",
-            body: "You've earned a new achievement!",
+            title: 'Achievement Unlocked! 🏆',
+            body: 'You\'ve earned a new achievement!',
             data: { type: 'achievement', action: 'view_achievement' },
             priority: 'low',
             ttl: 86400
@@ -189,7 +171,7 @@ class PushNotificationService {
                 }
             };
             // Send notification
-            const response = await this.fcm.send(payload);
+            const response = await this.transport.send(payload);
             // Track metrics
             this.engagementMetrics.notificationsSent++;
             await this.trackNotificationSent(userId, templateKey, response);
@@ -239,7 +221,7 @@ class PushNotificationService {
                 return { successCount: 0, failureCount: 0 };
             }
             // Send batch notifications
-            const response = await this.fcm.sendAll(validNotifications);
+            const response = await this.transport.sendBatch(validNotifications);
             this.engagementMetrics.notificationsSent += response.successCount;
             logger.info('Batch notifications sent', {
                 successCount: response.successCount,
@@ -436,8 +418,10 @@ class PushNotificationService {
         }
     }
     async executeIntervention(userId, intervention) {
+        // Declared before the try so the catch can still report which action
+        // failed (`action` was only in scope inside the try).
+        const { action, template, priority } = intervention;
         try {
-            const { action, template, priority } = intervention;
             switch (action) {
                 case 'send_retention_notification':
                     await this.sendNotification(userId, template, {
@@ -579,7 +563,7 @@ class PushNotificationService {
             return false;
         // Check quiet hours
         const now = new Date();
-        const userTime = new Date(now.toLocaleString("en-US", { timeZone: preferences.timezone }));
+        const userTime = new Date(now.toLocaleString('en-US', { timeZone: preferences.timezone }));
         const currentHour = userTime.getHours();
         const quietStart = parseInt(preferences.quietHours.start.split(':')[0]);
         const quietEnd = parseInt(preferences.quietHours.end.split(':')[0]);
@@ -616,7 +600,7 @@ class PushNotificationService {
             // For now, we'll simulate it
             const users = [];
             // Simulate user data based on target audience
-            for (let i = 0; i < targetAudience.count || 100; i++) {
+            for (let i = 0; i < (targetAudience.count || 100); i++) {
                 users.push({
                     id: `user_${i}`,
                     preferences: await this.getUserPreferences(`user_${i}`)

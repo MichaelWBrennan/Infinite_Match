@@ -1,7 +1,7 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
+import { getJson } from '../core/utils/http.js';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { createSupabaseClient } from './ai-clients.js';
 
 /**
@@ -126,7 +126,7 @@ class MarketResearchEngine {
   async fetchAppStoreData() {
     try {
       const competitorIds = this.competitors.join(',');
-      const response = await axios.get(this.dataSources.appStore.baseUrl, {
+      const response = await getJson(this.dataSources.appStore.baseUrl, {
         params: {
           term: 'match 3 puzzle',
           country: 'us',
@@ -136,7 +136,7 @@ class MarketResearchEngine {
         },
       });
 
-      return this.processAppStoreData(response.data);
+      return this.processAppStoreData(response);
     } catch (error) {
       this.logger.error('Failed to fetch App Store data', { error: error.message });
       return null;
@@ -168,7 +168,7 @@ class MarketResearchEngine {
    */
   async fetchSensorTowerData() {
     try {
-      const response = await axios.get(`${this.dataSources.sensortower.baseUrl}/apps`, {
+      const response = await getJson(`${this.dataSources.sensortower.baseUrl}/apps`, {
         headers: {
           Authorization: `Bearer ${this.dataSources.sensortower.apiKey}`,
         },
@@ -179,7 +179,7 @@ class MarketResearchEngine {
         },
       });
 
-      return this.processSensorTowerData(response.data);
+      return this.processSensorTowerData(response);
     } catch (error) {
       this.logger.error('Failed to fetch Sensor Tower data', { error: error.message });
       return null;
@@ -191,7 +191,7 @@ class MarketResearchEngine {
    */
   async fetchAppAnnieData() {
     try {
-      const response = await axios.get(
+      const response = await getJson(
         `${this.dataSources.appannie.baseUrl}/intelligence/apps/ranking`,
         {
           headers: {
@@ -206,7 +206,7 @@ class MarketResearchEngine {
         },
       );
 
-      return this.processAppAnnieData(response.data);
+      return this.processAppAnnieData(response);
     } catch (error) {
       this.logger.error('Failed to fetch App Annie data', { error: error.message });
       return null;

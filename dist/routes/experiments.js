@@ -3,27 +3,32 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createHash } from 'crypto';
 import { Logger } from '../core/logger/index.js';
+import security from '../core/security/index.js';
 const router = express.Router();
 const logger = new Logger('ExperimentsRoutes');
 const REPORTS_DIR = 'monitoring/reports';
+router.use(security.sessionValidation);
 function jsonl(file, obj) {
     return fs.appendFile(join(REPORTS_DIR, file), JSON.stringify(obj) + '\n', 'utf-8');
 }
-function stickyAssign(key, variants) {
-    const h = createHash('sha1').update(String(key)).digest('hex').slice(0, 8);
+// The hash covers the experiment name too, so one player is not put in the same
+// bucket for every experiment.
+export function stickyAssign(experiment, userId, variants) {
+    const h = createHash('sha1').update(`${experiment}:${userId}`).digest('hex').slice(0, 8);
     const n = parseInt(h, 16);
     const idx = n % variants.length;
     return variants[idx];
 }
 router.post('/assign', async (req, res) => {
     try {
-        const { userId, experiment, variants } = req.body || {};
-        if (!userId || !experiment || !Array.isArray(variants) || variants.length < 2) {
+        const userId = req.user.playerId;
+        const { experiment, variants } = req.body || {};
+        if (!experiment || !Array.isArray(variants) || variants.length < 2) {
             return res
                 .status(400)
                 .json({ success: false, error: 'userId, experiment, variants[] required' });
         }
-        const variant = stickyAssign(userId, variants);
+        const variant = stickyAssign(experiment, userId, variants);
         const evt = { type: 'assign', userId, experiment, variant, ts: Date.now() };
         await jsonl('experiments.jsonl', evt);
         res.json({ success: true, variant });
@@ -35,9 +40,10 @@ router.post('/assign', async (req, res) => {
 });
 router.post('/funnel', async (req, res) => {
     try {
-        const { userId, step, context } = req.body || {};
-        if (!userId || !step) {
-            return res.status(400).json({ success: false, error: 'userId and step required' });
+        const userId = req.user.playerId;
+        const { step, context } = req.body || {};
+        if (!step) {
+            return res.status(400).json({ success: false, error: 'step required' });
         }
         const evt = { type: 'funnel', userId, step, context: context || null, ts: Date.now() };
         await jsonl('paywall_funnel.jsonl', evt);

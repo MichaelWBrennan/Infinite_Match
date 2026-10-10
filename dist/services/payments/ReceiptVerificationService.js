@@ -3,9 +3,9 @@
  * Server-side verification for Apple App Store and Google Play purchases.
  */
 import crypto from 'crypto';
-import fetch from 'node-fetch';
 import { AppConfig } from '../../core/config/index.js';
 import { Logger } from '../../core/logger/index.js';
+import { verifyAppleSignedPayload } from './store-notifications.js';
 let GoogleAuth;
 try {
     GoogleAuth = (await import('google-auth-library')).GoogleAuth;
@@ -14,26 +14,6 @@ catch (_) {
     GoogleAuth = null;
 }
 const logger = new Logger('ReceiptVerificationService');
-class DedupCache {
-    constructor() {
-        this.transactionIdToExpiry = new Map();
-        this.defaultTtlMs = 10 * 60 * 1000;
-    }
-    has(transactionId) {
-        const expiry = this.transactionIdToExpiry.get(transactionId);
-        if (!expiry)
-            return false;
-        if (Date.now() > expiry) {
-            this.transactionIdToExpiry.delete(transactionId);
-            return false;
-        }
-        return true;
-    }
-    add(transactionId, ttlMs = this.defaultTtlMs) {
-        this.transactionIdToExpiry.set(transactionId, Date.now() + ttlMs);
-    }
-}
-const dedupCache = new DedupCache();
 export class ReceiptVerificationService {
     static get iosEndpoints() {
         return {
@@ -43,6 +23,9 @@ export class ReceiptVerificationService {
     }
     static async verify({ platform, payload }) {
         if (platform === 'ios') {
+            // StoreKit 2 (preferred): verified offline. Legacy receipts go to verifyReceipt.
+            if (payload?.signedTransaction)
+                return this.verifyAppleSignedTransaction(payload.signedTransaction);
             return this.verifyIOSReceipt(payload);
         }
         if (platform === 'android') {
@@ -73,16 +56,19 @@ export class ReceiptVerificationService {
                 logger.warn('Apple receipt invalid', { status });
                 return { success: false, platform: 'ios', status, raw: data };
             }
+            const bundleCheck = this.checkAppleBundleAndEnvironment({
+                bundleId: data.receipt?.bundle_id,
+                environment: data.environment,
+            });
+            if (!bundleCheck.ok) {
+                return { success: false, platform: 'ios', reason: bundleCheck.reason };
+            }
             const latest = Array.isArray(data.latest_receipt_info)
                 ? data.latest_receipt_info[data.latest_receipt_info.length - 1]
                 : data.latest_receipt_info || data.receipt;
-            const transactionId = latest?.transaction_id || latest?.original_transaction_id;
+            // The original transaction ID is stable across restores, so one purchase keeps one ID.
+            const transactionId = latest?.original_transaction_id || latest?.transaction_id;
             const productId = latest?.product_id;
-            if (transactionId && dedupCache.has(transactionId)) {
-                return { success: true, platform: 'ios', duplicate: true, productId, transactionId };
-            }
-            if (transactionId)
-                dedupCache.add(transactionId);
             return {
                 success: true,
                 platform: 'ios',
@@ -96,10 +82,64 @@ export class ReceiptVerificationService {
             return { success: false, platform: 'ios', reason: 'verification_error' };
         }
     }
+    /**
+     * Checks a StoreKit 2 signed transaction (Transaction.jwsRepresentation) offline:
+     * the Apple signature chain is verified against the pinned root, then the bundle,
+     * environment and revocation fields are checked. Needs no network call to Apple.
+     */
+    static verifyAppleSignedTransaction(signedTransaction) {
+        const rootCertPem = process.env.APPLE_ROOT_CA_G3;
+        if (!rootCertPem || !process.env.APPLE_BUNDLE_ID) {
+            return { success: false, platform: 'ios', reason: 'store_not_configured' };
+        }
+        let transaction;
+        try {
+            transaction = verifyAppleSignedPayload(signedTransaction, { rootCertPem });
+        }
+        catch (error) {
+            logger.warn('Apple signed transaction rejected', { error: error.message });
+            return { success: false, platform: 'ios', reason: 'signature_invalid' };
+        }
+        const check = this.checkAppleBundleAndEnvironment({
+            bundleId: transaction.bundleId,
+            environment: transaction.environment,
+        });
+        if (!check.ok)
+            return { success: false, platform: 'ios', reason: check.reason };
+        if (transaction.revocationDate) {
+            return { success: false, platform: 'ios', reason: 'revoked' };
+        }
+        const transactionId = transaction.originalTransactionId || transaction.transactionId;
+        if (typeof transaction.productId !== 'string' || transactionId === undefined) {
+            return { success: false, platform: 'ios', reason: 'malformed_transaction' };
+        }
+        return {
+            success: true,
+            platform: 'ios',
+            productId: transaction.productId,
+            transactionId: String(transactionId),
+            environment: transaction.environment,
+        };
+    }
+    /** The app must be ours, and sandbox purchases are accepted only when explicitly allowed. */
+    static checkAppleBundleAndEnvironment({ bundleId, environment }) {
+        const expected = process.env.APPLE_BUNDLE_ID;
+        if (!expected)
+            return { ok: false, reason: 'store_not_configured' };
+        if (bundleId !== expected)
+            return { ok: false, reason: 'bundle_mismatch' };
+        if (environment === 'Sandbox' && process.env.APPLE_ALLOW_SANDBOX !== 'true') {
+            return { ok: false, reason: 'sandbox_not_allowed' };
+        }
+        return { ok: true };
+    }
     static async verifyAndroidPurchase(payload) {
         const { packageName, productId, purchaseToken } = payload || {};
         if (!packageName || !productId || !purchaseToken) {
             return { success: false, reason: 'missing_android_params' };
+        }
+        if (!process.env.GOOGLE_PACKAGE_NAME || packageName !== process.env.GOOGLE_PACKAGE_NAME) {
+            return { success: false, platform: 'android', reason: 'package_mismatch' };
         }
         if (!GoogleAuth) {
             logger.warn('google-auth-library not installed');
@@ -147,11 +187,6 @@ export class ReceiptVerificationService {
                     logger.warn('Android acknowledge error', { error: ackError.message });
                 }
             }
-            if (transactionId && dedupCache.has(transactionId)) {
-                return { success: true, platform: 'android', duplicate: true, productId, transactionId };
-            }
-            if (transactionId)
-                dedupCache.add(transactionId);
             return {
                 success: true,
                 platform: 'android',

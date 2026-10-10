@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 export default UnityCloudSecrets;
-/**
- * Unity Cloud Secrets Manager
- * Handles reading secrets from Cursor account or environment variables
- */
 declare class UnityCloudSecrets {
+    logger: Logger;
     secrets: {};
     loaded: boolean;
     /**
@@ -36,4 +33,5 @@ declare class UnityCloudSecrets {
         accessToken: any;
     };
 }
+import { Logger } from './core/logger/index.js';
 //# sourceMappingURL=unity-cloud-secrets.d.ts.map

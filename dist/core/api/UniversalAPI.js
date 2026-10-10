@@ -3,7 +3,7 @@
  * Provides unified API across all platforms with no external dependencies
  */
 import { Logger } from '../logger/index.js';
-import { PlatformDetector } from '../platform/PlatformDetector.js';
+import { PlatformDetector, } from '../platform/PlatformDetector.js';
 export class UniversalAPI {
     logger;
     platformDetector;
@@ -1169,7 +1169,7 @@ export class UniversalAPI {
         if (!this.currentPlatform) {
             return false;
         }
-        return this.currentPlatform.capabilities[feature] || false;
+        return Boolean(this.currentPlatform.capabilities[feature] || false);
     }
     /**
      * Get platform-specific recommendations

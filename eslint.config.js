@@ -5,7 +5,7 @@ import typescriptParser from '@typescript-eslint/parser';
 export default [
   js.configs.recommended,
   {
-    files: ['**/*.js', '**/*.ts'],
+    files: ['**/*.js', '**/*.ts', '**/*.mjs'],
     languageOptions: {
       parser: typescriptParser,
       ecmaVersion: 'latest',
@@ -35,6 +35,8 @@ export default [
         clearTimeout: 'readonly',
         // Browser globals
         window: 'readonly',
+        innerWidth: 'readonly',
+        innerHeight: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
         localStorage: 'readonly',
@@ -49,6 +51,7 @@ export default [
         Response: 'readonly',
         FormData: 'readonly',
         AbortController: 'readonly',
+        AbortSignal: 'readonly',
         Event: 'readonly',
         CustomEvent: 'readonly',
         EventTarget: 'readonly',

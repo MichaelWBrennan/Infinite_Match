@@ -25,10 +25,10 @@ export class LiveOpsDashboard {
     };
     initialize(): Promise<void>;
     initializeTemplates(): void;
-    createEvent(eventData: any): Promise<string>;
+    createEvent(eventData: any): Promise<`${string}-${string}-${string}-${string}-${string}`>;
     deployEvent(eventId: any): Promise<void>;
     endEvent(eventId: any): Promise<void>;
-    createCampaign(campaignData: any): Promise<string>;
+    createCampaign(campaignData: any): Promise<`${string}-${string}-${string}-${string}-${string}`>;
     executeCampaign(campaignId: any): Promise<void>;
     executeCampaignActions(player: any, campaign: any): Promise<void>;
     executeAction(player: any, action: any): Promise<void>;
@@ -42,7 +42,7 @@ export class LiveOpsDashboard {
     }[]>;
     queueIntervention(intervention: any): Promise<void>;
     processIntervention(intervention: any): Promise<void>;
-    createABTest(testData: any): Promise<string>;
+    createABTest(testData: any): Promise<`${string}-${string}-${string}-${string}-${string}`>;
     startABTest(testId: any): Promise<void>;
     assignPlayerToVariant(playerId: any, variants: any): any;
     executeABTestVariant(player: any, abTest: any, variant: any): Promise<void>;
@@ -72,6 +72,14 @@ export class LiveOpsDashboard {
     processActiveEvents(): Promise<void>;
     processActiveCampaigns(): Promise<void>;
     processActiveABTests(): Promise<void>;
+    /**
+     * Conclude a finished A/B test and attach its results.
+     *
+     * `processActiveABTests()` called this but it was never implemented, so any
+     * test reaching its end date threw "this.endABTest is not a function" and
+     * aborted the whole sweep over active tests.
+     */
+    endABTest(testId: any): Promise<any>;
     updateDashboardMetrics(): Promise<void>;
     dateToCron(date: any): string;
     hashString(str: any): number;

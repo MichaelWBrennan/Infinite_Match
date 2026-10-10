@@ -12,7 +12,7 @@ import { aiCacheManager } from '../ai-cache-manager.js';
 const logger = new Logger('UnifiedEconomyService');
 class UnifiedEconomyService {
     constructor(dataLoader, validator, cacheManager = null) {
-        this.dataPath = AppConfig.paths.config;
+        this.dataPath = AppConfig.paths?.config ?? 'config';
         this.dataLoader = dataLoader;
         this.validator = validator;
         this.cacheManager = cacheManager || aiCacheManager;

@@ -30,6 +30,10 @@ describe('Game Server', () => {
     // Reset mocks
   });
 
+  test('constructing the routed app does not bind a fixed network port', () => {
+    expect(server['server'].listening).toBe(false);
+  });
+
   describe('Health Check', () => {
     test('GET /health should return 200 with server status', async () => {
       const response = await request(app).get('/health').expect(200);

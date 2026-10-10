@@ -15,7 +15,7 @@ import { aiAnalyticsEngine } from './ai-analytics-engine.js';
 import { aiPersonalizationEngine } from './ai-personalization-engine.js';
 import pushNotificationService from './push-notification-service.js';
 import liveOpsDashboard from './live-ops-dashboard.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 const logger = new Logger('PlayerInterventionSystem');
 class PlayerInterventionSystem {
     constructor() {
@@ -84,7 +84,7 @@ class PlayerInterventionSystem {
                 { type: 'personalized_reward', amount: 500, currency: 'coins', delay: 30 },
                 { type: 'exclusive_event', template: 'comeback_special', delay: 300 },
                 { type: 'social_invite', template: 'friend_challenge', delay: 600 },
-                { type: 'progression_boost', type: 'level_skip', delay: 900 }
+                { type: 'progression_boost', template: 'level_skip', delay: 900 }
             ],
             cooldown: 1800, // 30 minutes
             successThreshold: 0.7
@@ -116,9 +116,9 @@ class PlayerInterventionSystem {
             },
             actions: [
                 { type: 'notification', template: 'progression', delay: 0 },
-                { type: 'hint', type: 'level_hint', delay: 300 },
+                { type: 'hint', template: 'level_hint', delay: 300 },
                 { type: 'reward', amount: 100, currency: 'coins', delay: 600 },
-                { type: 'power_up', type: 'free_power_up', delay: 900 }
+                { type: 'power_up', template: 'free_power_up', delay: 900 }
             ],
             cooldown: 7200, // 2 hours
             successThreshold: 0.5
@@ -133,10 +133,10 @@ class PlayerInterventionSystem {
             },
             actions: [
                 { type: 'immediate_notification', template: 'progression', delay: 0 },
-                { type: 'difficulty_adjustment', type: 'reduce_difficulty', delay: 60 },
+                { type: 'difficulty_adjustment', template: 'reduce_difficulty', delay: 60 },
                 { type: 'reward', amount: 300, currency: 'coins', delay: 300 },
-                { type: 'hint', type: 'advanced_hint', delay: 600 },
-                { type: 'power_up', type: 'super_power_up', delay: 900 }
+                { type: 'hint', template: 'advanced_hint', delay: 600 },
+                { type: 'power_up', template: 'super_power_up', delay: 900 }
             ],
             cooldown: 3600, // 1 hour
             successThreshold: 0.6
@@ -185,10 +185,10 @@ class PlayerInterventionSystem {
             },
             actions: [
                 { type: 'immediate_notification', template: 'comeback', delay: 0 },
-                { type: 'personalized_offer', type: 'custom_package', delay: 300 },
+                { type: 'personalized_offer', template: 'custom_package', delay: 300 },
                 { type: 'exclusive_event', template: 'vip_event', delay: 600 },
                 { type: 'reward', amount: 1000, currency: 'coins', delay: 900 },
-                { type: 'priority_support', type: 'vip_support', delay: 1200 }
+                { type: 'priority_support', template: 'vip_support', delay: 1200 }
             ],
             cooldown: 1800, // 30 minutes
             successThreshold: 0.8
@@ -203,11 +203,11 @@ class PlayerInterventionSystem {
             },
             actions: [
                 { type: 'immediate_notification', template: 'comeback', delay: 0 },
-                { type: 'personalized_offer', type: 'exclusive_package', delay: 180 },
+                { type: 'personalized_offer', template: 'exclusive_package', delay: 180 },
                 { type: 'exclusive_event', template: 'whale_event', delay: 360 },
                 { type: 'reward', amount: 2500, currency: 'coins', delay: 540 },
-                { type: 'priority_support', type: 'concierge_support', delay: 720 },
-                { type: 'social_recognition', type: 'vip_status', delay: 900 }
+                { type: 'priority_support', template: 'concierge_support', delay: 720 },
+                { type: 'social_recognition', template: 'vip_status', delay: 900 }
             ],
             cooldown: 900, // 15 minutes
             successThreshold: 0.9
@@ -239,7 +239,7 @@ class PlayerInterventionSystem {
             },
             actions: [
                 { type: 'notification', template: 'progression', delay: 0 },
-                { type: 'content_recommendation', type: 'engaging_content', delay: 300 },
+                { type: 'content_recommendation', template: 'engaging_content', delay: 300 },
                 { type: 'reward', amount: 100, currency: 'coins', delay: 600 }
             ],
             cooldown: 10800, // 3 hours
@@ -502,8 +502,9 @@ class PlayerInterventionSystem {
         }
     }
     async executeIntervention(intervention) {
+        // Declared before the try so the catch can still log which player failed.
+        const { playerId, rule, actions } = intervention;
         try {
-            const { playerId, rule, actions } = intervention;
             intervention.status = 'executing';
             intervention.startedAt = Date.now();
             this.activeInterventions.set(intervention.id, intervention);
@@ -642,6 +643,160 @@ class PlayerInterventionSystem {
         }
         catch (error) {
             logger.error('Failed to trigger social event', { error: error.message, playerId });
+        }
+    }
+    /**
+     * Estimate churn risk (0..1).
+     *
+     * `analyzePlayerState()` called this but it was never implemented, so
+     * building a player state threw "this.analyzeChurnRisk is not a function"
+     * and no intervention could ever be triggered.
+     */
+    async analyzeChurnRisk(playerId, playerData = {}) {
+        try {
+            const hoursInactive = (Date.now() - (playerData.lastActive ?? Date.now())) / 3600000;
+            const inactivityRisk = Math.min(1, Math.max(0, hoursInactive / 72));
+            const stallRisk = Math.min(1, (playerData.daysWithoutProgress ?? 0) / 7);
+            const neverMonetised = (playerData.totalSpent ?? 0) > 0 ? 0 : 1;
+            const base = typeof playerData.churnProbability === 'number'
+                ? playerData.churnProbability
+                : 0.3;
+            const risk = Math.min(1, Math.max(0, base * 0.4 + inactivityRisk * 0.35 + stallRisk * 0.15 + neverMonetised * 0.1));
+            return {
+                playerId,
+                risk,
+                level: risk > 0.7 ? 'high' : risk > 0.4 ? 'medium' : 'low',
+                factors: {
+                    hoursInactive: Math.round(hoursInactive),
+                    daysWithoutProgress: playerData.daysWithoutProgress ?? 0,
+                    hasSpent: (playerData.totalSpent ?? 0) > 0,
+                },
+                timestamp: Date.now(),
+            };
+        }
+        catch (error) {
+            logger.error('Failed to analyze churn risk', { error: error.message, playerId });
+            return { playerId, risk: 0.5, level: 'medium', timestamp: Date.now() };
+        }
+    }
+    /** Measure progression stall risk (0..1) from days without progress. */
+    async analyzeProgression(playerId, playerData = {}) {
+        try {
+            const daysWithoutProgress = playerData.daysWithoutProgress ?? 0;
+            const risk = Math.min(1, Math.max(0, daysWithoutProgress / 7));
+            return {
+                playerId,
+                risk,
+                level: risk > 0.6 ? 'stalled' : risk > 0.3 ? 'slow' : 'healthy',
+                currentLevel: playerData.level ?? 1,
+                daysWithoutProgress,
+                timestamp: Date.now(),
+            };
+        }
+        catch (error) {
+            logger.error('Failed to analyze progression', { error: error.message, playerId });
+            return { playerId, risk: 0.5, timestamp: Date.now() };
+        }
+    }
+    /** Measure social-disengagement risk (0..1); no friends means maximum risk. */
+    async analyzeSocialEngagement(playerId, playerData = {}) {
+        try {
+            const friendCount = playerData.friendCount ?? 0;
+            const risk = Math.min(1, Math.max(0, 1 - friendCount / 10));
+            return {
+                playerId,
+                risk,
+                friendCount,
+                level: risk > 0.7 ? 'isolated' : risk > 0.4 ? 'low_social' : 'connected',
+                timestamp: Date.now(),
+            };
+        }
+        catch (error) {
+            logger.error('Failed to analyze social engagement', { error: error.message, playerId });
+            return { playerId, risk: 0.5, timestamp: Date.now() };
+        }
+    }
+    /**
+     * Measure engagement. Exposes BOTH `score` (used by the success evaluation)
+     * and `risk` (used by calculateOverallRisk).
+     */
+    async analyzeEngagement(playerId, playerData = {}) {
+        try {
+            const sessionCount = playerData.sessionCount ?? 0;
+            const engagementDrop = playerData.engagementDrop ?? 0;
+            const score = Math.min(1, Math.max(0, (sessionCount / 50) * 0.6 + (1 - engagementDrop) * 0.4));
+            return {
+                playerId,
+                score,
+                risk: 1 - score,
+                sessionCount,
+                engagementDrop,
+                timestamp: Date.now(),
+            };
+        }
+        catch (error) {
+            logger.error('Failed to analyze engagement', { error: error.message, playerId });
+            return { playerId, score: 0.5, risk: 0.5, timestamp: Date.now() };
+        }
+    }
+    /** Build hint content for a hint action. */
+    async generateHint(playerId, action = {}) {
+        try {
+            const hints = {
+                level_hint: 'Look for matches at the bottom of the board to trigger cascades.',
+                advanced_hint: 'Combine two power-ups for a board-clearing effect.',
+                general: 'Match four or more gems in a row to create a power-up.',
+            };
+            return {
+                type: action.template || 'general',
+                text: hints[action.template] || hints.general,
+                playerId,
+                timestamp: Date.now(),
+            };
+        }
+        catch (error) {
+            logger.error('Failed to generate hint', { error: error.message, playerId });
+            return { type: 'general', text: 'Keep matching gems!', playerId };
+        }
+    }
+    /** Build a personalised offer for an offer action. */
+    async generatePersonalizedOffer(playerId, action = {}, playerData = {}) {
+        try {
+            const isSpender = (playerData.totalSpent ?? 0) > 0;
+            const basePrice = isSpender ? 4.99 : 1.99;
+            return {
+                id: uuidv4(),
+                type: action.template || 'starter_bundle',
+                title: isSpender ? 'Premium Gem Bundle' : 'Starter Bundle',
+                price: basePrice,
+                currency: playerData.preferredCurrency || 'coins',
+                contents: { coins: isSpender ? 5000 : 1000, gems: isSpender ? 200 : 50 },
+                playerId,
+                timestamp: Date.now(),
+            };
+        }
+        catch (error) {
+            logger.error('Failed to generate personalized offer', { error: error.message, playerId });
+            return null;
+        }
+    }
+    /** Build a content recommendation for a recommendation action. */
+    async generateContentRecommendation(playerId, action = {}) {
+        try {
+            const recommendations = {
+                engaging_content: 'Try the new daily challenge for bonus rewards.',
+                level_content: 'Replay earlier levels to earn three-star rewards.',
+            };
+            return {
+                type: action.template || 'engaging_content',
+                text: recommendations[action.template] || recommendations.engaging_content,
+                playerId,
+                timestamp: Date.now(),
+            };
+        }
+        catch (error) {
+            logger.error('Failed to generate content recommendation', { error: error.message, playerId });
+            return null;
         }
     }
     async provideHint(playerId, action) {

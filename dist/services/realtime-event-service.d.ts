@@ -5,7 +5,190 @@
 export class RealtimeEventService {
     constructor(io?: null);
     logger: Logger;
-    supabase: any;
+    supabase: {
+        from(table: any): {
+            select(columns: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            insert(rows: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            upsert(rows: any, options?: {}): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            update(patch: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            delete(): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+        };
+    } | (() => never);
     weatherService: WeatherService;
     calendarService: RealtimeCalendarService;
     io: any;
@@ -101,8 +284,8 @@ export class RealtimeEventService {
         title: any;
         description: any;
         event_type: any;
-        start_time: any;
-        end_time: any;
+        start_time: string;
+        end_time: string;
         timezone: any;
         priority: any;
         is_active: boolean;
@@ -191,8 +374,8 @@ export class RealtimeEventService {
         title: any;
         description: any;
         eventType: any;
-        startTime: any;
-        endTime: any;
+        startTime: string;
+        endTime: string;
         timezone: any;
         priority: any;
         isActive: any;
@@ -202,10 +385,10 @@ export class RealtimeEventService {
         metadata: any;
         createdAt: any;
         updatedAt: any;
-        duration: any;
+        duration: number;
         isOngoing: any;
-        isUpcoming: any;
-        timeRemaining: any;
+        isUpcoming: boolean;
+        timeRemaining: number;
     };
     /**
      * Check if event is ongoing
@@ -214,11 +397,11 @@ export class RealtimeEventService {
     /**
      * Check if event is upcoming
      */
-    isEventUpcoming(event: any, timezone: any): any;
+    isEventUpcoming(event: any, timezone: any): boolean;
     /**
      * Get time remaining for event
      */
-    getTimeRemaining(event: any, timezone: any): any;
+    getTimeRemaining(event: any, timezone: any): number;
     /**
      * Send event notification
      */

@@ -2,7 +2,7 @@
  * Free Universal API Compatibility Layer - 100% Open Source
  * Provides unified API across all platforms with no external dependencies
  */
-import { PlatformInfo } from '../platform/PlatformDetector.js';
+import { PlatformInfo, PlatformCapabilities } from '../platform/PlatformDetector.js';
 export interface UniversalAPIResponse<T = any> {
     success: boolean;
     data?: T;
@@ -195,7 +195,7 @@ export declare class UniversalAPI {
     /**
      * Check if feature is supported
      */
-    isFeatureSupported(feature: keyof typeof this.currentPlatform.capabilities): boolean;
+    isFeatureSupported(feature: keyof PlatformCapabilities): boolean;
     /**
      * Get platform-specific recommendations
      */

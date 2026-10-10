@@ -1,11 +1,9 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import OpenAI from 'openai';
-import { HfInference } from '@huggingface/inference';
-import { createClient } from '@supabase/supabase-js';
-import { v4 as uuidv4 } from 'uuid';
-import Redis from 'ioredis';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { LRUCache } from 'lru-cache';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
+import { createRedisClient } from './redis-client.js';
 /**
  * ASO (App Store Optimization) Service - AI-powered store listing optimization
  * Automatically optimizes store listings for maximum visibility and downloads
@@ -13,20 +11,11 @@ import { LRUCache } from 'lru-cache';
 class ASOOptimizationService {
     constructor() {
         this.logger = new Logger('ASOOptimizationService');
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
-        this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
-        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        this.openai = createOpenAIClient();
+        this.hf = createHuggingFaceClient();
+        this.supabase = createSupabaseClient();
         // Redis for caching ASO data
-        this.redis = new Redis({
-            host: process.env.REDIS_HOST || 'localhost',
-            port: process.env.REDIS_PORT || 6379,
-            password: process.env.REDIS_PASSWORD,
-            retryDelayOnFailover: 100,
-            maxRetriesPerRequest: 3,
-            lazyConnect: true,
-        });
+        this.redis = createRedisClient();
         // Cache for ASO optimizations
         this.asoCache = new LRUCache({
             max: 1000,
@@ -278,12 +267,12 @@ class ASOOptimizationService {
         // Use AI to generate optimized content
         const prompt = this.buildOptimizationPrompt(platform, gameData, analysis, targetKeywords);
         const response = await this.openai.chat.completions.create({
-            model: "gpt-4",
+            model: 'gpt-4',
             messages: [{
-                    role: "system",
+                    role: 'system',
                     content: `You are an expert ASO specialist. Optimize this ${platform} store listing for maximum visibility and downloads. Focus on ${config.optimizationFocus.join(', ')}.`
                 }, {
-                    role: "user",
+                    role: 'user',
                     content: prompt
                 }],
             max_tokens: 1000,
@@ -300,12 +289,12 @@ class ASOOptimizationService {
     Consider these competitor keywords: ${competitorKeywords.join(', ')}.
     Focus on trending, relevant keywords that will improve search visibility.`;
         const response = await this.openai.chat.completions.create({
-            model: "gpt-4",
+            model: 'gpt-4',
             messages: [{
-                    role: "system",
-                    content: "You are an expert ASO keyword specialist. Generate high-performing keywords for mobile games."
+                    role: 'system',
+                    content: 'You are an expert ASO keyword specialist. Generate high-performing keywords for mobile games.'
                 }, {
-                    role: "user",
+                    role: 'user',
                     content: prompt
                 }],
             max_tokens: 300,

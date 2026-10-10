@@ -7,8 +7,8 @@ import { AppConfig } from '../config/index.js';
 import DataLoader from '../../data/DataLoader.js';
 import EconomyValidator from '../../data/validators/EconomyValidator.js';
 import CacheManager from '../cache/CacheManager.js';
-import EconomyService from '../../services/economy/EconomyService.js';
-import HeadlessUnityService from '../../services/unity/headless-unity-service.js';
+import EconomyService from '../../services/economy/UnifiedEconomyService.js';
+import HeadlessUnityService from '../../services/unity/UnifiedUnityService.js';
 /**
  * Register all services with the container
  */

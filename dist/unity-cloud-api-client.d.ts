@@ -2,6 +2,7 @@
 export default UnityGamingServicesAPIClient;
 declare class UnityGamingServicesAPIClient {
     constructor(options?: {});
+    logger: Logger;
     projectId: any;
     environmentId: any;
     organizationId: any;
@@ -222,4 +223,5 @@ declare class UnityGamingServicesAPIClient {
      */
     downloadBuild(buildId: any, targetPath?: string): Promise<any>;
 }
+import { Logger } from './core/logger/index.js';
 //# sourceMappingURL=unity-cloud-api-client.d.ts.map

@@ -1,9 +1,29 @@
-version: '3.8'
+# Open-source infrastructure for Infinite Match.
+#
+# Every service here is free/open-source software (OSI-approved licenses) and
+# self-hosted. Start the whole stack with:
+#
+#   docker compose -f docker-compose.opensource.yml up -d
+#
+# License notes:
+#   PostgreSQL   PostgreSQL License (OSI)
+#   Valkey       BSD-3-Clause          (Redis-protocol drop-in, no RSAL/SSPL)
+#   MinIO        AGPL-3.0              (S3-compatible object storage)
+#   PostgREST    Apache-2.0            (REST API over PostgreSQL)
+#   FerretDB     Apache-2.0            (MongoDB-wire-compatible, on Postgres;
+#                                       replaces the SSPL-licensed MongoDB)
+#   Prometheus   Apache-2.0
+#   Grafana      AGPL-3.0
+#   GlitchTip    MIT                   (Sentry-SDK-compatible error tracking;
+#                                       replaces the source-available Sentry)
+#   Mailpit      MIT                   (SMTP + web UI; replaces abandoned MailHog)
+#   ntfy         BSD-2-Clause / GPL-2.0 (self-hosted push notifications)
+#   Ollama       MIT                   (local LLMs behind an OpenAI-compatible API)
 
 services:
-  # PostgreSQL Database (replaces DynamoDB, Firestore, Cosmos DB)
+  # PostgreSQL: primary relational store (economy, player data, tuning).
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: match3-postgres
     environment:
       POSTGRES_DB: match3game
@@ -20,21 +40,37 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis Cache (already open source)
-  redis:
-    image: redis:7-alpine
-    container_name: match3-redis
+  # PostgREST: the application's data API (`POSTGREST_URL`). Serves plain SQL
+  # tables over HTTP — no vendor SDK, no vendor database.
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: match3-postgrest
+    environment:
+      PGRST_DB_URI: postgres://postgres:password@postgres:5432/match3game
+      PGRST_DB_ANON_ROLE: app_user
+      PGRST_DB_SCHEMAS: public
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3001
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Valkey: cache, sessions, and BullMQ job broker (BSD-3, Redis-compatible).
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: match3-valkey
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # MinIO Object Storage (replaces AWS S3)
+  # MinIO: S3-compatible object storage (AGPL-3.0).
   minio:
     image: minio/minio:latest
     container_name: match3-minio
@@ -53,7 +89,36 @@ services:
       timeout: 20s
       retries: 3
 
-  # Prometheus Monitoring (replaces Datadog)
+  # FerretDB: MongoDB-wire-compatible document store on PostgreSQL
+  # (Apache-2.0). Drop-in for `ECONOMY_STORE=mongo` / mongoose / the mongodb
+  # driver — without MongoDB's SSPL license.
+  documentdb:
+    image: ghcr.io/ferretdb/postgres-documentdb:17
+    container_name: match3-documentdb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ferretdb
+    volumes:
+      - documentdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ferretdb:
+    image: ghcr.io/ferretdb/ferretdb:2
+    container_name: match3-ferretdb
+    environment:
+      FERRETDB_POSTGRESQL_URL: postgres://postgres:password@documentdb:5432/ferretdb
+    ports:
+      - "27017:27017"
+    depends_on:
+      documentdb:
+        condition: service_healthy
+
+  # Prometheus: metrics (replaces Datadog).
   prometheus:
     image: prom/prometheus:latest
     container_name: match3-prometheus
@@ -70,14 +135,14 @@ services:
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
 
-  # Grafana Dashboard (replaces Datadog dashboards)
+  # Grafana: dashboards (AGPL-3.0).
   grafana:
     image: grafana/grafana:latest
     container_name: match3-grafana
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
     ports:
-      - "3001:3000"
+      - "3002:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
@@ -85,68 +150,93 @@ services:
     depends_on:
       - prometheus
 
-  # PostHog Analytics (replaces Amplitude, Mixpanel)
+  # GlitchTip: error tracking that speaks the Sentry SDK protocol (MIT).
+  # Point SENTRY_DSN at it — the @sentry/node SDK works unchanged.
+  glitchtip-db:
+    image: postgres:17-alpine
+    container_name: match3-glitchtip-db
+    environment:
+      POSTGRES_DB: glitchtip
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: glitchtip
+    volumes:
+      - glitchtip_db_data:/var/lib/postgresql/data
+
+  glitchtip:
+    image: glitchtip/glitchtip:latest
+    container_name: match3-glitchtip
+    depends_on:
+      - glitchtip-db
+    environment:
+      DATABASE_URL: postgres://glitchtip:glitchtip@glitchtip-db:5432/glitchtip
+      SECRET_KEY: change-me-glitchtip-secret
+      EMAIL_URL: smtp://mailpit:1025
+      GLITCHTIP_DOMAIN: http://localhost:9003
+      ENABLE_OPEN_USER_REGISTRATION: "true"
+    ports:
+      - "9003:8000"
+
+  # PostHog: product analytics (MIT-licensed core, self-hosted). Skip with
+  # `--no-deps` profiles if you prefer leaving analytics unconfigured.
   posthog:
     image: posthog/posthog:latest
     container_name: match3-posthog
     environment:
-      POSTHOG_SECRET_KEY: your-secret-key-here
       DATABASE_URL: postgresql://postgres:password@postgres:5432/posthog
-      REDIS_URL: redis://redis:6379
-      SECRET_KEY: your-secret-key-here
+      REDIS_URL: redis://valkey:6379
+      SECRET_KEY: change-me-posthog-secret
     ports:
       - "8000:8000"
     depends_on:
       - postgres
-      - redis
+      - valkey
     volumes:
       - posthog_data:/var/lib/posthog
 
-  # Sentry Error Tracking (already open source)
-  sentry:
-    image: sentry:latest
-    container_name: match3-sentry
-    environment:
-      SENTRY_SECRET_KEY: your-secret-key-here
-      SENTRY_POSTGRES_HOST: postgres
-      SENTRY_DB_NAME: sentry
-      SENTRY_DB_USER: postgres
-      SENTRY_DB_PASSWORD: password
-      SENTRY_REDIS_HOST: redis
+  # Mailpit: SMTP catcher + web UI (MIT). Replaces abandoned MailHog.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: match3-mailpit
     ports:
-      - "9002:9000"
-    depends_on:
-      - postgres
-      - redis
-    volumes:
-      - sentry_data:/var/lib/sentry
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
 
-  # SMTP Server for Email (replaces AWS SES)
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: match3-mailhog
-    ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
-
-  # MongoDB (already open source, keep existing)
-  mongodb:
-    image: mongo:7
-    container_name: match3-mongodb
+  # ntfy: self-hosted push notifications (used by PUSH_TRANSPORT=ntfy).
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: match3-ntfy
+    command: serve
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: password
+      NTFY_BASE_URL: http://localhost:8081
+      NTFY_CACHE_FILE: /var/cache/ntfy/cache.db
+      NTFY_AUTH_FILE: /var/lib/ntfy/user.db
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
     ports:
-      - "27017:27017"
+      - "8081:80"
     volumes:
-      - mongodb_data:/data/db
+      - ntfy_cache:/var/cache/ntfy
+      - ntfy_lib:/var/lib/ntfy
+
+  # Ollama: local LLMs behind an OpenAI-compatible API (MIT). Set
+  # OLLAMA_BASE_URL=http://localhost:11434 to run AI features without any
+  # hosted AI vendor.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: match3-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
 
 volumes:
   postgres_data:
-  redis_data:
+  valkey_data:
   minio_data:
+  documentdb_data:
   prometheus_data:
   grafana_data:
+  glitchtip_db_data:
   posthog_data:
-  sentry_data:
-  mongodb_data:
+  ntfy_cache:
+  ntfy_lib:
+  ollama_models:

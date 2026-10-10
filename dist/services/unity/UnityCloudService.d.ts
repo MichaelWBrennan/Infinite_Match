@@ -2,6 +2,7 @@
  * Unity Cloud Service - Optimized for Unity Integration
  * Enhanced service for Unity Cloud Build, Gaming Services, and WebGL optimization
  */
+import { ApiResponse } from '../../core/types/ApiResponse.js';
 export interface UnityBuildConfig {
     target: 'webgl' | 'android' | 'ios';
     buildName: string;

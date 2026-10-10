@@ -22,7 +22,7 @@ class PurchaseLedgerImpl {
         try {
             await fs.mkdir(REPORTS_DIR, { recursive: true });
         }
-        catch { }
+        catch { /* directory already exists (or is not creatable); mkdir is idempotent */ }
         this.initialized = true;
     }
     async appendJsonl(prefix, obj) {

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -160,7 +160,7 @@
                     <div class="mode-card-bg">
                         <div class="mode-icon-large">🎯</div>
                         <h3 class="mode-title">Classic Mode</h3>
-                        <p class="mode-description">Match cosmic gems to build your space empire</p>
+                        <p class="mode-description">Infinite generated levels. No clock, just moves. Every board is checked for a winning path.</p>
                         <button class="mode-play-btn" onclick="chooseMode('classic')">
                             <span class="play-text">START</span>
                         </button>
@@ -180,10 +180,18 @@
                     <div class="mode-card-bg">
                         <div class="mode-icon-large">♾️</div>
                         <h3 class="mode-title">Endless</h3>
-                        <p class="mode-description">Keep matching until the board runs out of moves. Every run pays out.</p>
+                        <p class="mode-description">Unlimited generated stages, no clock. Reach each goal to advance automatically; bank your score whenever you like.</p>
                         <button class="mode-play-btn" onclick="chooseMode('endless')">
                             <span class="play-text">START</span>
                         </button>
+                    </div>
+                </div>
+                <div class="mode-card-royal unlocked">
+                    <div class="mode-card-bg">
+                        <div class="mode-icon-large">📅</div>
+                        <h3 class="mode-title">Today’s Local Level</h3>
+                        <p id="daily-level-preview" class="mode-description" aria-live="polite">New local-day puzzles with morning, afternoon, evening, night and regional forecast variants.</p>
+                        <button class="mode-play-btn" onclick="chooseMode('daily')"><span class="play-text">PLAY TODAY</span></button>
                     </div>
                 </div>
                 <div class="mode-card-royal locked">
@@ -222,6 +230,40 @@
             <div class="header-spacer"></div>
         </div>
         <div class="settings-container-royal">
+            <section class="settings-section level-region-settings" aria-labelledby="level-region-heading">
+                <h3 id="level-region-heading" class="section-title">📍 Local levels</h3>
+                <p id="level-location-summary" aria-live="polite">Your device time zone supplies a regional estimate. Device location is only requested if you press the optional button below.</p>
+                <p>Correct the estimate below, especially when travelling or near the equator. New settings affect the next board or attempt, never a board already in play.</p>
+                <label for="level-time-zone">Time zone</label>
+                <select id="level-time-zone"><option value="">Automatic (device time zone)</option></select>
+                <label for="level-country">Holiday country</label>
+                <select id="level-country"><option value="">Automatic (coarse time-zone estimate)</option></select>
+                <label for="level-region">State / province</label>
+                <select id="level-region"><option value="">Country-wide holidays</option></select>
+                <label for="level-hemisphere">Season calendar</label>
+                <select id="level-hemisphere">
+                    <option value="">Automatic hemisphere estimate</option>
+                    <option value="north">Northern hemisphere</option>
+                    <option value="south">Southern hemisphere</option>
+                </select>
+                <label class="level-holiday-choice"><input type="checkbox" id="level-holiday-themes" checked> Include regional holiday themes</label>
+                <label class="level-holiday-choice"><input type="checkbox" id="level-time-effects" checked> Include time-of-day variations</label>
+                <label class="level-holiday-choice"><input type="checkbox" id="level-weather-effects" checked> Include regional forecast variations</label>
+                <p id="level-weather-summary" aria-live="polite">Weather uses a representative regional area unless you choose a closer approximate area. It may differ from your town.</p>
+                <div class="level-weather-actions">
+                    <button class="royal-btn secondary" type="button" onclick="useWeatherLocation()">Use approximate device area</button>
+                    <button class="royal-btn secondary" type="button" onclick="clearWeatherLocation()">Use regional estimate</button>
+                </div>
+                <p>Device location is optional. Coordinates are rounded to 1° cells (~111 km north/south) before being sent or saved. No exact GPS coordinates are retained. You can also enter an approximate area.</p>
+                <div class="level-weather-grid">
+                    <label>Approximate latitude <input id="level-weather-latitude" type="number" min="-90" max="90" step="1" placeholder="Automatic" inputmode="decimal"></label>
+                    <label>Approximate longitude <input id="level-weather-longitude" type="number" min="-180" max="180" step="1" placeholder="Automatic" inputmode="decimal"></label>
+                </div>
+                <button class="royal-btn primary" type="button" onclick="saveLevelLocation()">Apply local settings</button>
+                <p id="level-location-message" role="status"></p>
+                <p class="calendar-attribution">Holiday calendar: date-holidays by commenthol (ISC code; CC BY-SA 3.0 data). <a href="licenses/date-holidays.txt" target="_blank" rel="noopener">License and source attributions</a>.</p>
+                <p class="calendar-attribution">Forecast data from MET Norway (CC BY 4.0), or an operator-configured Open-Meteo service. <a href="licenses/weather.txt" target="_blank" rel="noopener">Weather attribution and transformations</a>.</p>
+            </section>
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon">🔊</div>
@@ -231,20 +273,20 @@
                     <div class="setting-row">
                         <div class="setting-info">
                             <div class="setting-label">Music</div>
-                            <div class="setting-desc">Background music</div>
+                            <div class="setting-desc">Not implemented; no background music plays</div>
                         </div>
                         <div class="royal-toggle">
-                            <input type="checkbox" id="music-toggle" checked>
+                            <input type="checkbox" id="music-toggle" disabled aria-label="Music is not available">
                             <label for="music-toggle" class="toggle-slider"></label>
                         </div>
                     </div>
                     <div class="setting-row">
                         <div class="setting-info">
                             <div class="setting-label">Sound Effects</div>
-                            <div class="setting-desc">Game sounds</div>
+                            <div class="setting-desc">Optional local effects. Off until you choose them.</div>
                         </div>
                         <div class="royal-toggle">
-                            <input type="checkbox" id="sfx-toggle" checked>
+                            <input type="checkbox" id="sfx-toggle" aria-label="Sound effects">
                             <label for="sfx-toggle" class="toggle-slider"></label>
                         </div>
                     </div>
@@ -293,69 +335,27 @@
         </div>
     </div>
 
-    <!-- Level Select Screen -->
+    <!-- Infinite, on-demand level list; never a hand-authored map or a fixed cap. -->
     <div id="level-select" class="screen">
         <div class="screen-header-royal">
-            <button class="back-btn-royal" onclick="showModeSelect()">
-                <span class="back-icon">←</span>
-            </button>
-            <h2 class="screen-title-royal">Level Select</h2>
-            <div class="player-stats-royal">
-                <div class="stat-item-royal">
-                    <div class="stat-icon-royal">⭐</div>
-                    <div class="stat-value-royal">1,250</div>
-                </div>
-                <div class="stat-item-royal">
-                    <div class="stat-icon-royal">💎</div>
-                    <div class="stat-value-royal">450</div>
-                </div>
-            </div>
+            <button class="back-btn-royal" onclick="showModeSelect()"><span class="back-icon">←</span></button>
+            <h2 class="screen-title-royal">Infinite Levels</h2>
+            <div class="header-spacer"></div>
         </div>
         <div class="level-select-container">
-            <div class="levels-grid-royal">
-                <div class="level-card-royal completed" onclick="selectLevel(1)">
-                    <div class="level-card-bg completed-bg">
-                        <div class="level-number-royal">1</div>
-                        <div class="stars-display">⭐⭐⭐</div>
-                        <div class="level-title-royal">Launch Pad</div>
-                    </div>
-                </div>
-                <div class="level-card-royal completed" onclick="selectLevel(2)">
-                    <div class="level-card-bg completed-bg">
-                        <div class="level-number-royal">2</div>
-                        <div class="stars-display">⭐⭐⭐</div>
-                        <div class="level-title-royal">Asteroid Field</div>
-                    </div>
-                </div>
-                <div class="level-card-royal current" onclick="selectLevel(3)">
-                    <div class="level-card-bg current-bg">
-                        <div class="level-number-royal">3</div>
-                        <div class="stars-display">⭐⭐</div>
-                        <div class="level-title-royal">Space Station Alpha</div>
-                    </div>
-                </div>
-                <div class="level-card-royal locked">
-                    <div class="level-card-bg locked-bg">
-                        <div class="level-number-royal">4</div>
-                        <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Nebula Gateway</div>
-                    </div>
-                </div>
-                <div class="level-card-royal locked">
-                    <div class="level-card-bg locked-bg">
-                        <div class="level-number-royal">5</div>
-                        <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Command Center</div>
-                    </div>
-                </div>
-                <div class="level-card-royal locked">
-                    <div class="level-card-bg locked-bg">
-                        <div class="level-number-royal">6</div>
-                        <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Cosmic Observatory</div>
-                    </div>
-                </div>
+            <p class="procedural-level-note">Fresh boards for your local day. Goals, gem mixes and difficulty are generated and checked automatically.</p>
+            <div class="level-browser-controls">
+                <button type="button" class="royal-btn secondary" onclick="ui.pageLevels(-1)">Previous</button>
+                <span id="level-page-label" aria-live="polite"></span>
+                <button id="next-level-page" type="button" class="royal-btn secondary" onclick="ui.pageLevels(1)">More levels</button>
             </div>
+            <div id="procedural-level-grid" class="levels-grid-royal"></div>
+            <div class="level-browser-controls">
+                <label for="generated-level-number">Jump to any level</label>
+                <input id="generated-level-number" class="royal-input-field" type="number" min="1" max="9007199254740991" step="1" value="1">
+                <button type="button" class="royal-btn primary" onclick="ui.jumpToGeneratedLevel()">Play</button>
+            </div>
+            <p id="generated-level-message" role="status"></p>
         </div>
     </div>
 
@@ -467,7 +467,7 @@
     </div>
 
     <!-- Unity Canvas (hidden by default) -->
-    <canvas id="unity-canvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000;"></canvas>
+    <canvas id="unity-canvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; z-index: 1000;"></canvas>
 
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
@@ -689,11 +689,11 @@
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="modal">
+    <dialog id="login-modal" class="modal" aria-labelledby="account-sync-heading" oncancel="event.preventDefault(); closeLoginModal()">
         <div class="modal-content login-modal-content">
             <div class="modal-header">
-                <h3>Account Sync</h3>
-                <button class="close-btn" onclick="closeLoginModal()">×</button>
+                <h3 id="account-sync-heading">Account Sync</h3>
+                <button class="close-btn" aria-label="Close account sign in" onclick="closeLoginModal()">×</button>
             </div>
             <div class="modal-body">
                 <div class="login-tabs">
@@ -780,7 +780,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Enhanced Features -->
     <div id="tutorial-overlay" class="tutorial-overlay">
@@ -858,6 +858,12 @@
         );
       }
     </script>
+    <script src="js/procedural-levels.js"></script>
+    <script src="js/level-location.js"></script>
+    <script src="js/sound-effects.js"></script>
+    <script src="js/player-experience.js"></script>
+    <script src="js/assistive-board.js"></script>
+    <script src="js/match-feedback.js"></script>
     <script src="phaser3-game.js"></script>
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>
@@ -919,15 +925,7 @@
             // Add platform-specific optimizations
             if (platformInfo.isMobile) {
                 document.body.classList.add('mobile-device');
-                // Prevent zoom on double tap
-                let lastTouchEnd = 0;
-                document.addEventListener('touchend', function (event) {
-                    const now = (new Date()).getTime();
-                    if (now - lastTouchEnd <= 300) {
-                        event.preventDefault();
-                    }
-                    lastTouchEnd = now;
-                }, false);
+                // The board owns its gestures; never suppress zoom or fast taps across the whole document.
             }
 
             if (platformInfo.isLowEnd) {
@@ -990,47 +988,28 @@
 
         // Initialize Phaser 3 game
         function initializePhaser3Game() {
-            console.log('🚀 Initializing Phaser 3 game...');
-
-            // Show loading progress
+            if (document.getElementById('phaser-game-container')) return;
             const progressBar = document.getElementById('loading-bar-fill');
             const progressText = document.getElementById('loading-text');
-
-            // Simulate loading progress
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += Math.random() * 20;
-                if (progress > 100) progress = 100;
-
-                progressBar.style.width = progress + '%';
-                progressText.textContent = `Loading Phaser 3... ${Math.round(progress)}%`;
-
-                if (progress >= 100) {
-                    clearInterval(progressInterval);
-
-                    try {
-                        // Create Phaser 3 game container
-                        const gameContainer = document.createElement('div');
-                        gameContainer.id = 'phaser-game-container';
-                        gameContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: #2c3e50;';
-                        document.body.appendChild(gameContainer);
-
-                        // Initialize Phaser 3 game
-                        window.game = new PhaserMatch3Game();
-
-                        // Hide loading screen and show game
-                        setTimeout(() => {
-                            document.getElementById('loading-screen').classList.remove('active');
-                            document.getElementById('title-screen').classList.add('active');
-                            console.log('✅ Phaser 3 game loaded successfully');
-                        }, 500);
-
-                    } catch (error) {
-                        console.error('❌ Failed to load Phaser 3 game:', error);
-                        showWebGLNotice();
-                    }
-                }
-            }, 100);
+            progressText.textContent = 'Preparing your puzzle…';
+            const ready = () => {
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Ready to play';
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('title-screen').classList.add('active');
+            };
+            window.addEventListener('match:ready', ready, { once: true });
+            try {
+                const gameContainer = document.createElement('div');
+                gameContainer.id = 'phaser-game-container';
+                gameContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; z-index: 1000; background: #2c3e50;';
+                document.body.appendChild(gameContainer);
+                window.game = new PhaserMatch3Game();
+            } catch (error) {
+                window.removeEventListener('match:ready', ready);
+                console.error('Failed to start Phaser:', error);
+                showWebGLNotice();
+            }
         }
     </script>
     <button id="menu-return" type="button" onclick="returnToGame()"

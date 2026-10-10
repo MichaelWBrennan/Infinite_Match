@@ -15,8 +15,14 @@
  */
 export class AIContentGenerator {
     logger: Logger;
-    openai: any;
-    hf: any;
+    openai: (() => never) | import("openai").default;
+    hf: (() => never) | {
+        textGeneration({ model, inputs, parameters }?: {
+            parameters?: {} | undefined;
+        }): Promise<{
+            generated_text: any;
+        }>;
+    };
     platformConfigs: {
         poki: {
             contentStyle: string;
@@ -43,9 +49,192 @@ export class AIContentGenerator {
             contentTypes: string[];
         };
     };
-    supabase: any;
-    redis: Redis;
-    memoryCache: any;
+    supabase: {
+        from(table: any): {
+            select(columns: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            insert(rows: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            upsert(rows: any, options?: {}): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            update(patch: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            delete(): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+        };
+    } | (() => never);
+    redis: any;
+    memoryCache: LRUCache<{}, {}, unknown>;
     requestQueue: any[];
     batchSize: number;
     batchTimeout: number;
@@ -106,7 +295,7 @@ export class AIContentGenerator {
      * Generate visual assets using DALL-E
      */
     generateVisualAsset(assetType: any, description: any, style: any): Promise<{
-        id: string;
+        id: `${string}-${string}-${string}-${string}-${string}`;
         type: any;
         originalUrl: any;
         processedUrl: any;
@@ -150,7 +339,7 @@ export class AIContentGenerator {
      * Process and optimize visual assets
      */
     processVisualAsset(imageUrl: any, assetType: any): Promise<{
-        id: string;
+        id: `${string}-${string}-${string}-${string}-${string}`;
         type: any;
         originalUrl: any;
         processedUrl: any;
@@ -270,5 +459,5 @@ export class AIContentGenerator {
     parseHuggingFaceResponse(response: any, contentType: any): any;
 }
 import { Logger } from '../core/logger/index.js';
-import Redis from 'ioredis';
+import { LRUCache } from 'lru-cache';
 //# sourceMappingURL=ai-content-generator.d.ts.map

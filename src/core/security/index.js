@@ -5,14 +5,14 @@
 
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt from './jwt.js';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import helmet from 'helmet';
 import cors from 'cors';
 import hpp from 'hpp';
 import xss from 'xss';
-import mongoSanitize from 'express-mongo-sanitize';
+import { mongoSanitize } from './nosql-sanitize.js';
 import { AppConfig } from '../config/index.js';
 import { securityLogger } from '../logger/index.js';
 import { rbacProvider, ROLES, PERMISSIONS } from './rbac.js';
@@ -133,8 +133,11 @@ export const inputValidation = [
   hpp(),
   (req, res, next) => {
     if (req.body) req.body = sanitizeObject(req.body);
-    if (req.query) req.query = sanitizeObject(req.query);
-    if (req.params) req.params = sanitizeObject(req.params);
+    // Express 5 exposes `req.query`/`req.params` through getters, so their
+    // containers are sanitized in place instead of being reassigned (which
+    // throws a TypeError on Express 5).
+    if (req.query) sanitizeObjectInPlace(req.query);
+    if (req.params) sanitizeObjectInPlace(req.params);
     next();
   },
 ];
@@ -212,7 +215,7 @@ export const ipReputationCheck = (req, res, next) => {
 /**
  * Session validation middleware
  */
-export const sessionValidation = (req, res, next) => {
+export const sessionValidation = async (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
 
   if (!token) {
@@ -223,7 +226,7 @@ export const sessionValidation = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, AppConfig.security.jwt.secret);
+    const decoded = await jwt.verify(token, AppConfig.security.jwt.secret);
 
     if (!activeSessions.has(decoded.sessionId)) {
       return res.status(401).json({
@@ -265,7 +268,7 @@ export const comparePassword = async (password, hash) => {
 /**
  * JWT utilities
  */
-export const generateToken = (payload) => {
+export const generateToken = async (payload) => {
   return jwt.sign(payload, AppConfig.security.jwt.secret, {
     expiresIn: AppConfig.security.jwt.expiresIn,
   });
@@ -344,6 +347,30 @@ export const markIPSuspicious = (ip, reason) => {
 /**
  * Data sanitization
  */
+/** XSS-sanitize every string inside `obj`, mutating containers in place. */
+const sanitizeObjectInPlace = (obj, depth = 0) => {
+  if (depth > 32 || obj === null || typeof obj !== 'object') {
+    return;
+  }
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length; i++) {
+      if (typeof obj[i] === 'string') {
+        obj[i] = xss(obj[i]);
+      } else {
+        sanitizeObjectInPlace(obj[i], depth + 1);
+      }
+    }
+    return;
+  }
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      obj[key] = xss(value);
+    } else {
+      sanitizeObjectInPlace(value, depth + 1);
+    }
+  }
+};
+
 const sanitizeObject = (obj) => {
   if (typeof obj === 'string') {
     return xss(obj);

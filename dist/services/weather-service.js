@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import { createClient } from '@supabase/supabase-js';
-import axios from 'axios';
+import { getJson } from '../core/utils/http.js';
 import cron from 'node-cron';
+import { createSupabaseClient } from './ai-clients.js';
 /**
  * Real-Time Weather Service
  * Provides comprehensive weather data, caching, and real-time updates
@@ -10,7 +10,7 @@ import cron from 'node-cron';
 class WeatherService {
     constructor() {
         this.logger = new Logger('WeatherService');
-        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        this.supabase = createSupabaseClient();
         // Free Weather API configuration - 100% open source
         this.openWeatherApiKey = process.env.OPENWEATHER_API_KEY; // Optional for higher limits
         this.weatherApiEndpoint = 'https://api.openweathermap.org/data/2.5';
@@ -216,8 +216,8 @@ class WeatherService {
             hourly: 'temperature_2m,relativehumidity_2m,precipitation,weathercode',
             timezone: 'auto'
         };
-        const response = await axios.get(url, { params, timeout: 10000 });
-        return this.convertOpenMeteoData(response.data);
+        const response = await getJson(url, { params, timeout: 10000 });
+        return this.convertOpenMeteoData(response);
     }
     /**
      * Fetch from OpenWeatherMap free tier
@@ -230,8 +230,8 @@ class WeatherService {
             appid: this.openWeatherApiKey,
             units: 'metric',
         };
-        const response = await axios.get(url, { params, timeout: 10000 });
-        return response.data;
+        const response = await getJson(url, { params, timeout: 10000 });
+        return response;
     }
     /**
      * Fetch from WeatherAPI free tier
@@ -242,8 +242,8 @@ class WeatherService {
             key: this.weatherApiKey,
             q: `${latitude},${longitude}`,
         };
-        const response = await axios.get(url, { params, timeout: 10000 });
-        return response.data;
+        const response = await getJson(url, { params, timeout: 10000 });
+        return response;
     }
     /**
      * Get real weather data from multiple sources (fallback)
@@ -299,12 +299,12 @@ class WeatherService {
             throw new Error('Weather.gov only covers US territories');
         }
         const url = 'https://api.weather.gov/points/' + latitude + ',' + longitude;
-        const response = await axios.get(url, { timeout: 10000 });
-        if (response.data && response.data.properties) {
-            const forecastUrl = response.data.properties.forecast;
-            const forecastResponse = await axios.get(forecastUrl, { timeout: 10000 });
-            if (forecastResponse.data && forecastResponse.data.properties) {
-                const periods = forecastResponse.data.properties.periods;
+        const response = await getJson(url, { timeout: 10000 });
+        if (response && response.properties) {
+            const forecastUrl = response.properties.forecast;
+            const forecastResponse = await getJson(forecastUrl, { timeout: 10000 });
+            if (forecastResponse && forecastResponse.properties) {
+                const periods = forecastResponse.properties.periods;
                 const current = periods[0];
                 return {
                     name: 'Weather.gov',
@@ -348,13 +348,13 @@ class WeatherService {
             apikey: this.accuWeatherApiKey,
             q: `${latitude},${longitude}`
         };
-        const locationResponse = await axios.get(locationUrl, { params: locationParams, timeout: 10000 });
-        const locationKey = locationResponse.data.Key;
+        const locationResponse = await getJson(locationUrl, { params: locationParams, timeout: 10000 });
+        const locationKey = locationResponse.Key;
         // Get current conditions
         const conditionsUrl = `http://dataservice.accuweather.com/currentconditions/v1/${locationKey}`;
         const conditionsParams = { apikey: this.accuWeatherApiKey };
-        const conditionsResponse = await axios.get(conditionsUrl, { params: conditionsParams, timeout: 10000 });
-        const current = conditionsResponse.data[0];
+        const conditionsResponse = await getJson(conditionsUrl, { params: conditionsParams, timeout: 10000 });
+        const current = conditionsResponse[0];
         return {
             name: 'AccuWeather',
             coord: { lat: latitude, lon: longitude },
@@ -969,8 +969,8 @@ class WeatherService {
             timezone: 'auto',
             forecast_days: days
         };
-        const response = await axios.get(url, { params, timeout: 10000 });
-        return this.convertOpenMeteoForecast(response.data);
+        const response = await getJson(url, { params, timeout: 10000 });
+        return this.convertOpenMeteoForecast(response);
     }
     /**
      * Fetch forecast from OpenWeatherMap
@@ -984,8 +984,8 @@ class WeatherService {
             units: 'metric',
             cnt: days * 8, // 8 forecasts per day (3-hour intervals)
         };
-        const response = await axios.get(url, { params, timeout: 10000 });
-        return response.data;
+        const response = await getJson(url, { params, timeout: 10000 });
+        return response;
     }
     /**
      * Get local forecast data
@@ -1292,6 +1292,64 @@ class WeatherService {
         catch (error) {
             this.logger.error('Failed to load cached weather data', error);
         }
+    }
+    /**
+     * Read a value from the weather cache, honouring the configured expiry.
+     *
+     * `getCachedWeatherData()` called this but it was never implemented, so
+     * every cache lookup threw "this.getFromCache is not a function" and the
+     * weather service could never serve cached data.
+     *
+     * @param {string} key
+     * @returns {*} the cached payload, or null when absent / stale
+     */
+    getFromCache(key) {
+        try {
+            if (!key || !this.weatherCache)
+                return null;
+            const entry = this.weatherCache.get(key);
+            if (!entry)
+                return null;
+            // `getCachedWeatherData()` re-checks freshness against its own 30 minute
+            // window, so enforce only the general expiry here.
+            if (entry.timestamp && Date.now() - entry.timestamp > this.cacheExpiry) {
+                this.weatherCache.delete(key);
+                return null;
+            }
+            return entry;
+        }
+        catch (error) {
+            this.logger?.warn?.(`Failed to read cache key ${key}:`, error && error.message);
+            return null;
+        }
+    }
+    /**
+     * Rough test for whether a coordinate lies in a desert climate zone.
+     *
+     * `getWeatherTypesForLocation()` called this but it was never implemented,
+     * so generating local weather threw "this.isDesertRegion is not a function".
+     *
+     * Uses the subtropical desert belts (roughly 15-35 degrees of latitude,
+     * where the Hadley cell descending air produces arid conditions). This is a
+     * heuristic for flavour text, not a climate dataset.
+     */
+    isDesertRegion(latitude, longitude) {
+        const lat = Math.abs(Number(latitude));
+        const lon = Number(longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon))
+            return false;
+        if (lat < 15 || lat > 35)
+            return false;
+        // Longitude bands dominated by the great deserts, i.e. landmasses in the
+        // desert belt. Ocean longitudes are excluded.
+        const desertBands = [
+            [-20, 60], // Sahara / Arabian
+            [60, 90], // Thar / Central Asia
+            [110, 145], // Gobi / Australian
+            [-120, -70], // North American (Mojave / Sonoran / Chihuahuan)
+            [-75, -65], // Atacama (Southern Hemisphere)
+        ];
+        return desertBands.some(([min, max]) => lon >= min && lon <= max);
     }
     /**
      * Clean expired cache entries

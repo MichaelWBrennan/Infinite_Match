@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import analyticsService from '../services/unified-analytics-service.js';
-import cloudServices from '../services/cloud-services.js';
+import cloudServices from '../services/open-source-cloud-services.js';
 
 /**
  * Analytics middleware for Express.js

@@ -4,7 +4,6 @@
  */
 
 import crypto from 'crypto';
-import fetch from 'node-fetch';
 import { AppConfig } from '../../core/config/index.js';
 import { Logger } from '../../core/logger/index.js';
 import { verifyAppleSignedPayload } from './store-notifications.js';

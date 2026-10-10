@@ -7,7 +7,190 @@ export class InfiniteContentPipeline {
     aiContentGenerator: AIContentGenerator;
     marketResearch: MarketResearchEngine;
     personalizationEngine: AIPersonalizationEngine;
-    supabase: any;
+    supabase: {
+        from(table: any): {
+            select(columns: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            insert(rows: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            upsert(rows: any, options?: {}): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            update(patch: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            delete(): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+        };
+    } | (() => never);
     contentQueue: Map<any, any>;
     activeGenerators: Map<any, any>;
     contentMetrics: Map<any, any>;
@@ -15,6 +198,19 @@ export class InfiniteContentPipeline {
      * Initialize the content pipeline
      */
     initializePipeline(): void;
+    /**
+     * Seed the content metrics map so every tracked content type reports from
+     * zero instead of `undefined` before the first generation run completes.
+     */
+    initializeMetrics(): void;
+    /**
+     * Start background content quality monitoring.
+     *
+     * A full AI quality pass runs on the cron schedule in
+     * `setupContentSchedules()`; this adds a lighter periodic sweep that samples
+     * the newest content so regressions surface sooner.
+     */
+    startQualityMonitoring(): void;
     /**
      * Set up automated content generation schedules
      */
@@ -30,7 +226,7 @@ export class InfiniteContentPipeline {
     /**
      * Generate batch content of specific type
      */
-    generateBatchContent(contentType: any, count: any): Promise<any>;
+    generateBatchContent(contentType: any, count: any): Promise<any[]>;
     /**
      * Generate single content item
      */
@@ -47,7 +243,7 @@ export class InfiniteContentPipeline {
      * Generate visual asset with AI
      */
     generateVisual(marketInsights: any): Promise<{
-        id: string;
+        id: `${string}-${string}-${string}-${string}-${string}`;
         type: any;
         originalUrl: any;
         processedUrl: any;

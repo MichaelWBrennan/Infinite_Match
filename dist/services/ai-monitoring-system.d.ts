@@ -12,7 +12,7 @@
 export class AIMonitoringSystem extends EventEmitter<[never]> {
     constructor();
     logger: Logger;
-    redis: Redis;
+    redis: any;
     config: {
         monitoringInterval: number;
         alertCooldown: number;
@@ -67,7 +67,7 @@ export class AIMonitoringSystem extends EventEmitter<[never]> {
      */
     startHealthChecks(): void;
     checkServiceHealth(): Promise<void>;
-    checkAIServiceHealth(serviceName: any): Promise<"healthy" | "unhealthy">;
+    checkAIServiceHealth(serviceName: any): Promise<string>;
     /**
      * Alert processing
      */
@@ -145,5 +145,4 @@ export class AIMonitoringSystem extends EventEmitter<[never]> {
 export const aiMonitoringSystem: AIMonitoringSystem;
 import { EventEmitter } from 'events';
 import { Logger } from '../core/logger/index.js';
-import Redis from 'ioredis';
 //# sourceMappingURL=ai-monitoring-system.d.ts.map

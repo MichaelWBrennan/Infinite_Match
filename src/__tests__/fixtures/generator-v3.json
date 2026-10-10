@@ -1,0 +1,1298 @@
+[
+  {
+    "id": "v3-classic-1-2026-10-31-f7a3c7dd",
+    "generatorVersion": 3,
+    "specials": [
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 1,
+    "mode": "classic",
+    "isDaily": false,
+    "isBoss": false,
+    "seed": 4154705885,
+    "refillState": 107927077,
+    "boardSize": 6,
+    "board": [
+      [
+        "orange",
+        "red",
+        "blue",
+        "red",
+        "blue",
+        "yellow"
+      ],
+      [
+        "yellow",
+        "orange",
+        "red",
+        "blue",
+        "blue",
+        "yellow"
+      ],
+      [
+        "blue",
+        "orange",
+        "yellow",
+        "orange",
+        "orange",
+        "red"
+      ],
+      [
+        "blue",
+        "red",
+        "yellow",
+        "orange",
+        "yellow",
+        "orange"
+      ],
+      [
+        "orange",
+        "blue",
+        "orange",
+        "blue",
+        "blue",
+        "yellow"
+      ],
+      [
+        "blue",
+        "orange",
+        "orange",
+        "blue",
+        "yellow",
+        "red"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "red",
+      "blue"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "red": 1,
+      "blue": 1
+    },
+    "targetScore": 2400,
+    "moves": 30,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 2400
+      }
+    ],
+    "difficulty": "gentle",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 13,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 30,
+      "verifiedScore": 9140
+    }
+  },
+  {
+    "id": "v3-classic-10-2026-10-31-55869e47",
+    "generatorVersion": 3,
+    "specials": [
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 10,
+    "mode": "classic",
+    "isDaily": false,
+    "isBoss": true,
+    "seed": 1434885703,
+    "refillState": 4018593280,
+    "boardSize": 7,
+    "board": [
+      [
+        "green",
+        "green",
+        "purple",
+        "purple",
+        "yellow",
+        "green",
+        "purple"
+      ],
+      [
+        "red",
+        "orange",
+        "yellow",
+        "red",
+        "purple",
+        "orange",
+        "orange"
+      ],
+      [
+        "orange",
+        "yellow",
+        "blue",
+        "orange",
+        "purple",
+        "blue",
+        "yellow"
+      ],
+      [
+        "green",
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "orange",
+        "blue"
+      ],
+      [
+        "purple",
+        "blue",
+        "blue",
+        "green",
+        "orange",
+        "orange",
+        "blue"
+      ],
+      [
+        "yellow",
+        "yellow",
+        "green",
+        "orange",
+        "blue",
+        "purple",
+        "yellow"
+      ],
+      [
+        "green",
+        "yellow",
+        "red",
+        "orange",
+        "orange",
+        "yellow",
+        "yellow"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "blue",
+      "purple",
+      "red",
+      "green"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "blue": 1,
+      "purple": 1,
+      "red": 1,
+      "green": 1.1
+    },
+    "targetScore": 950,
+    "moves": 21,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 950
+      }
+    ],
+    "difficulty": "boss",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 10,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 21,
+      "verifiedScore": 1130
+    }
+  },
+  {
+    "id": "v3-classic-100001-2026-10-31-3a5e5926",
+    "generatorVersion": 3,
+    "specials": [
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 100001,
+    "mode": "classic",
+    "isDaily": false,
+    "isBoss": false,
+    "seed": 979261734,
+    "refillState": 1099567828,
+    "boardSize": 7,
+    "board": [
+      [
+        "red",
+        "blue",
+        "orange",
+        "red",
+        "orange",
+        "yellow",
+        "orange"
+      ],
+      [
+        "blue",
+        "yellow",
+        "blue",
+        "orange",
+        "orange",
+        "yellow",
+        "purple"
+      ],
+      [
+        "orange",
+        "yellow",
+        "yellow",
+        "orange",
+        "red",
+        "red",
+        "orange"
+      ],
+      [
+        "yellow",
+        "blue",
+        "blue",
+        "yellow",
+        "purple",
+        "yellow",
+        "orange"
+      ],
+      [
+        "blue",
+        "yellow",
+        "purple",
+        "purple",
+        "yellow",
+        "yellow",
+        "red"
+      ],
+      [
+        "orange",
+        "red",
+        "orange",
+        "orange",
+        "purple",
+        "blue",
+        "orange"
+      ],
+      [
+        "blue",
+        "blue",
+        "orange",
+        "yellow",
+        "yellow",
+        "orange",
+        "orange"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "blue",
+      "red",
+      "purple"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "blue": 1,
+      "red": 1,
+      "purple": 1
+    },
+    "targetScore": 2400,
+    "moves": 30,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 2400
+      }
+    ],
+    "difficulty": "gentle",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 21,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 30,
+      "verifiedScore": 5420
+    }
+  },
+  {
+    "id": "v3-daily-1-2026-10-31-6133bc02",
+    "generatorVersion": 3,
+    "specials": [
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 1,
+    "mode": "daily",
+    "isDaily": true,
+    "isBoss": false,
+    "seed": 1630780418,
+    "refillState": 3582652325,
+    "boardSize": 7,
+    "board": [
+      [
+        "red",
+        "orange",
+        "red",
+        "blue",
+        "red",
+        "orange",
+        "yellow"
+      ],
+      [
+        "orange",
+        "yellow",
+        "red",
+        "yellow",
+        "yellow",
+        "orange",
+        "yellow"
+      ],
+      [
+        "red",
+        "red",
+        "yellow",
+        "blue",
+        "red",
+        "yellow",
+        "orange"
+      ],
+      [
+        "red",
+        "blue",
+        "yellow",
+        "yellow",
+        "orange",
+        "orange",
+        "yellow"
+      ],
+      [
+        "blue",
+        "orange",
+        "orange",
+        "yellow",
+        "blue",
+        "orange",
+        "orange"
+      ],
+      [
+        "red",
+        "orange",
+        "yellow",
+        "orange",
+        "orange",
+        "red",
+        "red"
+      ],
+      [
+        "yellow",
+        "red",
+        "blue",
+        "blue",
+        "yellow",
+        "blue",
+        "red"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "red",
+      "blue"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "red": 1,
+      "blue": 1
+    },
+    "targetScore": 2400,
+    "moves": 27,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 2400
+      }
+    ],
+    "difficulty": "challenging",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 26,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 27,
+      "verifiedScore": 17720
+    }
+  },
+  {
+    "id": "v3-timed-5-2026-10-31-37d00c64",
+    "generatorVersion": 3,
+    "specials": [
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 5,
+    "mode": "timed",
+    "isDaily": false,
+    "isBoss": false,
+    "seed": 936381540,
+    "refillState": 2760371053,
+    "boardSize": 8,
+    "board": [
+      [
+        "red",
+        "red",
+        "yellow",
+        "blue",
+        "red",
+        "yellow",
+        "orange",
+        "blue"
+      ],
+      [
+        "purple",
+        "orange",
+        "yellow",
+        "blue",
+        "purple",
+        "orange",
+        "purple",
+        "purple"
+      ],
+      [
+        "red",
+        "blue",
+        "purple",
+        "purple",
+        "orange",
+        "yellow",
+        "orange",
+        "purple"
+      ],
+      [
+        "blue",
+        "blue",
+        "red",
+        "orange",
+        "red",
+        "purple",
+        "yellow",
+        "red"
+      ],
+      [
+        "yellow",
+        "purple",
+        "blue",
+        "yellow",
+        "purple",
+        "yellow",
+        "red",
+        "purple"
+      ],
+      [
+        "orange",
+        "red",
+        "purple",
+        "orange",
+        "red",
+        "red",
+        "blue",
+        "blue"
+      ],
+      [
+        "yellow",
+        "red",
+        "orange",
+        "yellow",
+        "red",
+        "orange",
+        "yellow",
+        "yellow"
+      ],
+      [
+        "orange",
+        "yellow",
+        "red",
+        "blue",
+        "yellow",
+        "blue",
+        "yellow",
+        "yellow"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "purple",
+      "red",
+      "blue"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "purple": 1,
+      "red": 1,
+      "blue": 1
+    },
+    "targetScore": 2250,
+    "moves": 999,
+    "timeLimit": 60,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 2250
+      }
+    ],
+    "difficulty": "challenging",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 12,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 26,
+      "verifiedScore": 2910
+    }
+  },
+  {
+    "id": "v3-endless-3-2026-10-31-136ec1cb",
+    "generatorVersion": 3,
+    "specials": [
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    ],
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 3,
+    "mode": "endless",
+    "isDaily": false,
+    "isBoss": false,
+    "seed": 326025675,
+    "refillState": 2909733252,
+    "boardSize": 7,
+    "board": [
+      [
+        "purple",
+        "yellow",
+        "orange",
+        "purple",
+        "yellow",
+        "purple",
+        "green"
+      ],
+      [
+        "orange",
+        "green",
+        "orange",
+        "green",
+        "yellow",
+        "green",
+        "orange"
+      ],
+      [
+        "orange",
+        "orange",
+        "yellow",
+        "green",
+        "green",
+        "orange",
+        "orange"
+      ],
+      [
+        "yellow",
+        "orange",
+        "orange",
+        "purple",
+        "purple",
+        "yellow",
+        "purple"
+      ],
+      [
+        "orange",
+        "yellow",
+        "purple",
+        "yellow",
+        "purple",
+        "yellow",
+        "green"
+      ],
+      [
+        "purple",
+        "orange",
+        "yellow",
+        "orange",
+        "yellow",
+        "green",
+        "purple"
+      ],
+      [
+        "yellow",
+        "purple",
+        "yellow",
+        "orange",
+        "orange",
+        "yellow",
+        "green"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "purple",
+      "green"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "purple": 1,
+      "green": 1.1
+    },
+    "targetScore": 2400,
+    "moves": 9007199254740991,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 2400
+      }
+    ],
+    "difficulty": "steady",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 24,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 28,
+      "verifiedScore": 8110
+    }
+  }
+]

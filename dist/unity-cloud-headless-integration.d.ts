@@ -2,6 +2,7 @@
 export default UnityGamingServicesHeadlessIntegration;
 declare class UnityGamingServicesHeadlessIntegration {
     constructor(options?: {});
+    logger: Logger;
     apiClient: UnityGamingServicesAPIClient;
     projectRoot: any;
     economyDir: string;
@@ -131,5 +132,6 @@ declare class UnityGamingServicesHeadlessIntegration {
      */
     run(): Promise<boolean>;
 }
+import { Logger } from './core/logger/index.js';
 import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
 //# sourceMappingURL=unity-cloud-headless-integration.d.ts.map

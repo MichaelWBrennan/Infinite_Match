@@ -65,13 +65,13 @@ export const httpsHeaders = (req, res, next) => {
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
     // Content Security Policy with HTTPS enforcement
-    res.setHeader('Content-Security-Policy', "default-src 'self' https:; " +
-        "script-src 'self' 'unsafe-inline' https:; " +
-        "style-src 'self' 'unsafe-inline' https:; " +
-        "img-src 'self' data: https:; " +
-        "font-src 'self' https:; " +
-        "connect-src 'self' https:; " +
-        "frame-ancestors 'none'; " +
+    res.setHeader('Content-Security-Policy', 'default-src \'self\' https:; ' +
+        'script-src \'self\' \'unsafe-inline\' https:; ' +
+        'style-src \'self\' \'unsafe-inline\' https:; ' +
+        'img-src \'self\' data: https:; ' +
+        'font-src \'self\' https:; ' +
+        'connect-src \'self\' https:; ' +
+        'frame-ancestors \'none\'; ' +
         'upgrade-insecure-requests');
     // Referrer Policy
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

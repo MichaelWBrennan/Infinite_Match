@@ -1,12 +1,10 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import OpenAI from 'openai';
-import { HfInference } from '@huggingface/inference';
-import { createClient } from '@supabase/supabase-js';
-import { v4 as uuidv4 } from 'uuid';
-import Redis from 'ioredis';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { LRUCache } from 'lru-cache';
 import { PostHogAnalyticsService } from './analytics/posthog-service.js';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
+import { createRedisClient } from './redis-client.js';
 /**
  * AI Personalization Engine - Advanced player personalization using ML and AI
  * Creates unique experiences for every player using behavioral analysis and predictive modeling
@@ -22,23 +20,14 @@ import { PostHogAnalyticsService } from './analytics/posthog-service.js';
 class AIPersonalizationEngine {
     constructor() {
         this.logger = new Logger('AIPersonalizationEngine');
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
+        this.openai = createOpenAIClient();
         // Hugging Face for specialized personalization models
-        this.hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+        this.hf = createHuggingFaceClient();
         // PostHog for advanced analytics and A/B testing
         this.analytics = new PostHogAnalyticsService();
-        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        this.supabase = createSupabaseClient();
         // Redis for caching player profiles and predictions
-        this.redis = new Redis({
-            host: process.env.REDIS_HOST || 'localhost',
-            port: process.env.REDIS_PORT || 6379,
-            password: process.env.REDIS_PASSWORD,
-            retryDelayOnFailover: 100,
-            maxRetriesPerRequest: 3,
-            lazyConnect: true,
-        });
+        this.redis = createRedisClient();
         // In-memory LRU cache for frequently accessed profiles
         this.profileCache = new LRUCache({
             max: 5000,
@@ -748,6 +737,50 @@ Return JSON with:
     /**
      * Machine learning model optimization
      */
+    /**
+     * Fold a behavior event into a player profile, in place.
+     *
+     * `processSingleUpdate()` called this but it was never implemented, so
+     * every queued real-time update threw "this.updateProfileFromBehavior is not
+     * a function" and no profile was ever refreshed from live behavior.
+     *
+     * Mutates `profile` (the caller caches that same object afterwards) and is
+     * deliberately defensive: profiles come from Supabase and behavior payloads
+     * are free-form, so unknown keys are stored as last-seen values rather than
+     * assumed to exist.
+     */
+    updateProfileFromBehavior(profile, behaviorData = {}) {
+        try {
+            if (!profile || typeof profile !== 'object')
+                return profile;
+            profile.lastUpdated = new Date().toISOString();
+            // Bounded rolling history of raw behavior events.
+            profile.behaviorHistory = Array.isArray(profile.behaviorHistory)
+                ? [...profile.behaviorHistory, behaviorData].slice(-50)
+                : [behaviorData];
+            // These accumulate; everything else is last-write-wins.
+            const accumulative = new Set([
+                'sessionCount', 'sessions', 'levelsCompleted', 'levelsPlayed',
+                'purchases', 'playTime', 'timeSpent', 'score',
+            ]);
+            profile.behavior = { ...(profile.behavior || {}) };
+            for (const [key, value] of Object.entries(behaviorData || {})) {
+                if (key === 'playerId' || key === 'timestamp')
+                    continue;
+                if (typeof value === 'number' && Number.isFinite(value) && accumulative.has(key)) {
+                    profile.behavior[key] = (profile.behavior[key] || 0) + value;
+                }
+                else {
+                    profile.behavior[key] = value;
+                }
+            }
+            return profile;
+        }
+        catch (error) {
+            this.logger.error('Failed to update profile from behavior', { error: error.message });
+            return profile;
+        }
+    }
     queueModelUpdate(playerId, behaviorData) {
         this.modelTrainingQueue.push({ playerId, behaviorData, timestamp: Date.now() });
         // Start training if queue is large enough
@@ -786,6 +819,31 @@ Return JSON with:
         await this.trainChurnPredictionModel(trainingData);
         // Train offer recommendation model
         await this.trainOfferRecommendationModel(trainingData);
+    }
+    /**
+     * Seed the default (untrained) personalization models.
+     *
+     * Every `trainXModel()` reads with `this.mlModels.get(id) || { weights: {},
+     * accuracy: 0 }`, so registering the known ids up front means the engine
+     * reports a stable model set before any training data has been seen.
+     */
+    initializePersonalizationModels() {
+        const defaultModels = [
+            'content_recommendation',
+            'difficulty_adjustment',
+            'churn_prediction',
+            'offer_recommendation',
+        ];
+        for (const modelId of defaultModels) {
+            if (!this.mlModels.has(modelId)) {
+                this.mlModels.set(modelId, {
+                    weights: {},
+                    accuracy: 0,
+                    lastTrained: null,
+                });
+            }
+        }
+        this.logger.info(`Initialized ${this.mlModels.size} personalization models: ${defaultModels.join(', ')}`);
     }
     async trainContentRecommendationModel(trainingData) {
         const modelId = 'content_recommendation';
@@ -972,10 +1030,13 @@ Return JSON with:
         }
     }
     // ==================== EXISTING HELPER METHODS ====================
-    async storePersonalizedOffers(playerId, offers) { }
-    async storeDifficultyOptimization(optimization) { }
-    async storeChurnPrediction(prediction) { }
+    // Persistence hook for generated offers. `storeDifficultyOptimization` and
+    // `storeChurnPrediction` are defined earlier in the class; the duplicated
+    // stubs that used to live here shadowed them.
     async storePersonalizedOffers(playerId, offers) { }
 }
 export { AIPersonalizationEngine };
+// Shared singleton instance used by the live-ops and intervention services.
+// Clients are constructed lazily, so creating this at import time is safe.
+export const aiPersonalizationEngine = new AIPersonalizationEngine();
 //# sourceMappingURL=ai-personalization-engine.js.map

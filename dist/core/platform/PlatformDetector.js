@@ -316,7 +316,7 @@ export class PlatformDetector {
             return this.currentPlatform;
         }
         catch (error) {
-            this.logger.error('Platform detection failed:', error);
+            this.logger.error('Platform detection failed:', { error });
             // Fallback to WebGL
             return this.getFallbackPlatform();
         }
@@ -472,7 +472,7 @@ export class PlatformDetector {
                     return Promise.resolve();
                 }
                 catch (error) {
-                    this.logger.warn(`API call failed: ${method}`, error);
+                    this.logger.warn(`API call failed: ${method}`, { error });
                     return Promise.resolve();
                 }
             };

@@ -94,7 +94,7 @@ router.get('/arpu', security.sessionValidation, async (req, res) => {
                                 payerIds.add(evt.playerId);
                         }
                     }
-                    catch (_) { }
+                    catch (_) { /* skip malformed or unreadable line */ }
                 }
             }
             catch (_) {

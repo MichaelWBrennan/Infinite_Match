@@ -1,0 +1,27 @@
+Procedural-level weather attribution
+
+Default forecast source: The Norwegian Meteorological Institute (MET Norway).
+Source: https://api.met.no/weatherapi/locationforecast/2.0/
+Data license: Creative Commons Attribution 4.0 International (CC BY 4.0).
+License: https://creativecommons.org/licenses/by/4.0/
+Provider policy: https://github.com/metno/weatherapi-docs/blob/master/doc/License.md
+API terms: https://github.com/metno/weatherapi-docs/blob/master/doc/TermsOfService.md
+
+This application rounds locations to 1-degree cells, samples a nearby forecast
+hour, and transforms the forecast into condition, temperature and wind bands
+for procedural puzzles. These are model forecasts, not exact-town observations
+or safety warnings. MET Norway does not endorse this game.
+
+Optional operator-configured provider: Open-Meteo.
+Source: https://open-meteo.com/
+Forecast data: CC BY 4.0; underlying sources should also be credited as required
+by the operator's selected models/data deployment.
+Server software: https://github.com/open-meteo/open-meteo (AGPL-3.0).
+The hosted free Open-Meteo endpoint is non-commercial; commercial operators
+must self-host or use a properly licensed hosted endpoint. This game does not
+silently use that hosted endpoint as its commercial default.
+
+Public representative time-zone areas: IANA tzdb zone.tab, public domain.
+These coordinates describe public reference areas, not a player's precise GPS
+position. Device-area use is opt-in; exact coordinates are discarded on-device
+before transmission. Normal gameplay uses no location permission prompt.

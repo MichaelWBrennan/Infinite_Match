@@ -3,23 +3,80 @@ import { body, validationResult } from 'express-validator';
 import { Logger } from '../core/logger/index.js';
 import { ErrorHandler, ValidationError } from '../core/errors/ErrorHandler.js';
 import { ApiResponseBuilder } from '../core/types/ApiResponse.js';
-import { ServiceContainer } from '../core/container/ServiceContainer.js';
+import { container } from '../core/container/ServiceContainer.js';
 import { analyticsMiddleware, gameEventMiddleware } from '../middleware/analytics-middleware.js';
 import security from '../core/security/index.js';
 const router = express.Router();
 const logger = new Logger('GameRoutes');
-const serviceContainer = new ServiceContainer();
+// Shared container: the server registers the live service instances here at
+// start-up. Creating a new container resolved nothing and every route threw.
+const serviceContainer = container;
 // Apply analytics middleware to all game routes
 router.use(analyticsMiddleware);
 router.use(gameEventMiddleware);
+/**
+ * Turn a caught error into a consistent 500 API response.
+ * `error` is `unknown` in a catch block, so it is normalized before use.
+ */
+const sendError = (res, error, route, fallbackCode) => {
+    const errorInfo = ErrorHandler.handle(error instanceof Error ? error : new Error(String(error)), { route });
+    const response = ApiResponseBuilder.error(errorInfo.context?.['code'] || fallbackCode, errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+    res.status(500).json(response);
+};
+/**
+ * `container.get()` THROWS when a service has not been registered, which is
+ * the case whenever the app is used before `start()` runs (tests, embedding,
+ * partial boot) or when an optional backend failed to come up.
+ *
+ * Analytics tracking and cloud persistence are side effects: they must never
+ * turn a gameplay request into a 500. A missing service therefore resolves to
+ * an inert stub that logs a warning and records nothing, so every route below
+ * can keep calling the service unconditionally.
+ */
+const getService = (name) => {
+    try {
+        return serviceContainer.get(name);
+    }
+    catch {
+        logger.warn(`Optional service '${name}' is not registered; running without it`, {
+            service: name,
+        });
+        return undefined;
+    }
+};
+/** Inert stand-in used when the analytics service is unavailable. */
+const analyticsStub = {
+    sessionId: 'unavailable',
+    trackGameStart: async () => { },
+    trackLevelComplete: async () => { },
+    trackMatchMade: async () => { },
+    trackPowerUpUsed: async () => { },
+    trackPurchase: async () => { },
+    trackError: async () => { },
+    trackPerformance: async () => { },
+    getAnalyticsSummary: () => ({ degraded: true }),
+};
+/** Inert stand-in used when the cloud service is unavailable. */
+const cloudStub = {
+    saveGameState: async () => null,
+    savePlayerDataToDynamoDB: async () => null,
+    sendGameEventNotification: async () => null,
+    getServiceStatus: () => ({ status: 'not_initialized' }),
+    getPlayerProgress: async () => null,
+    getPlayerAchievements: async () => null,
+    getLeaderboard: async () => null,
+};
+const getAnalytics = () => getService('analytics') ?? analyticsStub;
+const getCloud = () => getService('cloud') ?? cloudStub;
 // Validation middleware
 const validateRequest = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         const error = new ValidationError('Validation failed', null, { errors: errors.array() });
         const errorInfo = ErrorHandler.handle(error);
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'VALIDATION_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        return res.status(400).json(response);
+        const response = ApiResponseBuilder.error(errorInfo.context?.['code'] || 'VALIDATION_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+        res.status(400).json(response);
+        return;
     }
     next();
 };
@@ -38,8 +95,8 @@ router.post('/start', [
         const { level, difficulty, platform } = req.body;
         const userId = req.user?.id || 'anonymous';
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
-        const cloudServices = serviceContainer.get('cloud');
+        const analyticsService = getAnalytics();
+        const cloudServices = getCloud();
         // Track game start
         await analyticsService.trackGameStart(userId, {
             level,
@@ -69,9 +126,7 @@ router.post('/start', [
     }
     catch (error) {
         logger.error('Error starting game:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/start' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'GAME_START_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/start', 'GAME_START_ERROR');
     }
 });
 /**
@@ -92,8 +147,8 @@ router.post('/level-complete', [
         const { level, score, timeSpent, movesUsed, starsEarned, powerupsUsed = [] } = req.body;
         const userId = req.user?.id || 'anonymous';
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
-        const cloudServices = serviceContainer.get('cloud');
+        const analyticsService = getAnalytics();
+        const cloudServices = getCloud();
         // Track level completion
         await analyticsService.trackLevelComplete(userId, {
             level,
@@ -104,7 +159,7 @@ router.post('/level-complete', [
             powerupsUsed,
         });
         // Update player progress in cloud
-        await cloudServices.savePlayerDataToDynamoDB(process.env.AWS_DYNAMODB_TABLE, {
+        await cloudServices.savePlayerDataToDynamoDB(process.env['AWS_DYNAMODB_TABLE'] || '', {
             playerId: userId,
             level: level + 1, // Next level
             score: score,
@@ -130,9 +185,7 @@ router.post('/level-complete', [
     }
     catch (error) {
         logger.error('Error completing level:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/level-complete' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'LEVEL_COMPLETE_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/level-complete', 'LEVEL_COMPLETE_ERROR');
     }
 });
 /**
@@ -154,7 +207,7 @@ router.post('/match-made', [
         const { matchType, piecesMatched, position, level, scoreGained } = req.body;
         const userId = req.user?.id || 'anonymous';
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
+        const analyticsService = getAnalytics();
         // Track match made
         await analyticsService.trackMatchMade(userId, {
             matchType,
@@ -170,9 +223,7 @@ router.post('/match-made', [
     }
     catch (error) {
         logger.error('Error tracking match:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/match-made' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'MATCH_TRACKING_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/match-made', 'MATCH_TRACKING_ERROR');
     }
 });
 /**
@@ -189,7 +240,7 @@ router.post('/powerup-used', [
         const { type, level, position, cost } = req.body;
         const userId = req.user?.id || 'anonymous';
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
+        const analyticsService = getAnalytics();
         // Track power-up usage
         await analyticsService.trackPowerUpUsed(userId, {
             type,
@@ -202,9 +253,7 @@ router.post('/powerup-used', [
     }
     catch (error) {
         logger.error('Error tracking power-up:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/powerup-used' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'POWERUP_TRACKING_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/powerup-used', 'POWERUP_TRACKING_ERROR');
     }
 });
 /**
@@ -223,8 +272,8 @@ router.post('/purchase', [
         const { itemId, itemType, currency, amount, transactionId, platform } = req.body;
         const userId = req.user?.id || 'anonymous';
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
-        const cloudServices = serviceContainer.get('cloud');
+        const analyticsService = getAnalytics();
+        const cloudServices = getCloud();
         // Track purchase
         await analyticsService.trackPurchase(userId, {
             itemId,
@@ -249,9 +298,7 @@ router.post('/purchase', [
     }
     catch (error) {
         logger.error('Error tracking purchase:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/purchase' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'PURCHASE_TRACKING_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/purchase', 'PURCHASE_TRACKING_ERROR');
     }
 });
 /**
@@ -269,7 +316,7 @@ router.post('/error', [
         const { type, message, code, level, stackTrace } = req.body;
         const userId = req.user?.id || 'anonymous';
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
+        const analyticsService = getAnalytics();
         // Track error
         await analyticsService.trackError(userId, {
             type,
@@ -283,9 +330,7 @@ router.post('/error', [
     }
     catch (error) {
         logger.error('Error tracking error:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/error' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'ERROR_TRACKING_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/error', 'ERROR_TRACKING_ERROR');
     }
 });
 /**
@@ -315,10 +360,8 @@ router.post('/submit_data', security.sessionValidation, [
         res.json(response);
     }
     catch (error) {
-        logger.error('Game data submission failed', { error: error.message });
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/submit_data' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'GAME_DATA_SUBMISSION_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        logger.error('Game data submission failed', error);
+        sendError(res, error, 'game/submit_data', 'GAME_DATA_SUBMISSION_ERROR');
     }
 });
 /**
@@ -328,8 +371,13 @@ router.post('/submit_data', security.sessionValidation, [
 router.get('/progress', security.sessionValidation, async (req, res) => {
     try {
         const playerId = req.user?.playerId;
-        // TODO: Implement actual progress retrieval
-        const progress = {
+        if (!playerId) {
+            res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Player not authenticated'));
+            return;
+        }
+        // Get actual progress from cloud services
+        const cloudServices = getCloud();
+        const progress = await cloudServices.getPlayerProgress(playerId) || {
             playerId,
             level: 1,
             score: 0,
@@ -341,10 +389,8 @@ router.get('/progress', security.sessionValidation, async (req, res) => {
         res.json(response);
     }
     catch (error) {
-        logger.error('Failed to get player progress', { error: error.message });
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/progress' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'PROGRESS_RETRIEVAL_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        logger.error('Failed to get player progress', error);
+        sendError(res, error, 'game/progress', 'PROGRESS_RETRIEVAL_ERROR');
     }
 });
 /**
@@ -369,10 +415,8 @@ router.put('/progress', security.sessionValidation, async (req, res) => {
         res.json(response);
     }
     catch (error) {
-        logger.error('Failed to update player progress', { error: error.message });
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/progress' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'PROGRESS_UPDATE_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        logger.error('Failed to update player progress', error);
+        sendError(res, error, 'game/progress', 'PROGRESS_UPDATE_ERROR');
     }
 });
 /**
@@ -382,13 +426,11 @@ router.put('/progress', security.sessionValidation, async (req, res) => {
 router.get('/leaderboard', security.sessionValidation, async (req, res) => {
     try {
         const { type = 'score', limit = 10 } = req.query;
-        // TODO: Implement actual leaderboard retrieval
-        const leaderboard = Array.from({ length: parseInt(limit) }, (_, i) => ({
-            rank: i + 1,
-            playerId: `player_${i + 1}`,
-            score: 10000 - i * 100,
-            name: `Player ${i + 1}`,
-        }));
+        const parsedLimit = Number.parseInt(String(limit), 10);
+        const safeLimit = Number.isNaN(parsedLimit) ? 10 : Math.min(Math.max(parsedLimit, 1), 100);
+        // Get actual leaderboard from cloud services
+        const cloudServices = getCloud();
+        const leaderboard = await cloudServices.getLeaderboard(String(type), safeLimit) || [];
         const response = ApiResponseBuilder.success({
             leaderboard,
             type,
@@ -396,10 +438,8 @@ router.get('/leaderboard', security.sessionValidation, async (req, res) => {
         res.json(response);
     }
     catch (error) {
-        logger.error('Failed to get leaderboard', { error: error.message });
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/leaderboard' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'LEADERBOARD_RETRIEVAL_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        logger.error('Failed to get leaderboard', error);
+        sendError(res, error, 'game/leaderboard', 'LEADERBOARD_RETRIEVAL_ERROR');
     }
 });
 /**
@@ -408,31 +448,20 @@ router.get('/leaderboard', security.sessionValidation, async (req, res) => {
  */
 router.get('/achievements', security.sessionValidation, async (req, res) => {
     try {
-        // TODO: Implement actual achievements retrieval
-        const achievements = [
-            {
-                id: 'first_play',
-                name: 'First Play',
-                description: 'Complete your first game',
-                unlocked: true,
-                unlockedAt: new Date().toISOString(),
-            },
-            {
-                id: 'score_1000',
-                name: 'Score Master',
-                description: 'Score 1000 points in a single game',
-                unlocked: false,
-                unlockedAt: null,
-            },
-        ];
+        const playerId = req.user?.playerId;
+        if (!playerId) {
+            res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Player not authenticated'));
+            return;
+        }
+        // Get actual achievements from cloud services
+        const cloudServices = getCloud();
+        const achievements = await cloudServices.getPlayerAchievements(playerId) || [];
         const response = ApiResponseBuilder.success({ achievements });
         res.json(response);
     }
     catch (error) {
-        logger.error('Failed to get achievements', { error: error.message });
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/achievements' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'ACHIEVEMENTS_RETRIEVAL_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        logger.error('Failed to get achievements', error);
+        sendError(res, error, 'game/achievements', 'ACHIEVEMENTS_RETRIEVAL_ERROR');
     }
 });
 /**
@@ -458,10 +487,8 @@ router.post('/achievements/:achievementId/unlock', security.sessionValidation, a
         res.json(response);
     }
     catch (error) {
-        logger.error('Failed to unlock achievement', { error: error.message });
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/achievements/unlock' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'ACHIEVEMENT_UNLOCK_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        logger.error('Failed to unlock achievement', error);
+        sendError(res, error, 'game/achievements/unlock', 'ACHIEVEMENT_UNLOCK_ERROR');
     }
 });
 /**
@@ -471,8 +498,8 @@ router.post('/achievements/:achievementId/unlock', security.sessionValidation, a
 router.get('/analytics/summary', async (req, res) => {
     try {
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
-        const cloudServices = serviceContainer.get('cloud');
+        const analyticsService = getAnalytics();
+        const cloudServices = getCloud();
         const summary = analyticsService.getAnalyticsSummary();
         const cloudStatus = cloudServices.getServiceStatus();
         const response = ApiResponseBuilder.success({
@@ -483,9 +510,7 @@ router.get('/analytics/summary', async (req, res) => {
     }
     catch (error) {
         logger.error('Error getting analytics summary:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/analytics/summary' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'ANALYTICS_SUMMARY_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/analytics/summary', 'ANALYTICS_SUMMARY_ERROR');
     }
 });
 /**
@@ -503,7 +528,7 @@ router.post('/performance', [
         const { metricName, value, unit, level, deviceInfo } = req.body;
         const userId = req.user?.id || 'anonymous';
         // Get services from container
-        const analyticsService = serviceContainer.get('analytics');
+        const analyticsService = getAnalytics();
         // Track performance metric
         await analyticsService.trackPerformance(userId, {
             metricName,
@@ -517,9 +542,7 @@ router.post('/performance', [
     }
     catch (error) {
         logger.error('Error tracking performance:', error);
-        const errorInfo = ErrorHandler.handle(error, { route: 'game/performance' });
-        const response = ApiResponseBuilder.error(errorInfo.context?.code || 'PERFORMANCE_TRACKING_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
-        res.status(500).json(response);
+        sendError(res, error, 'game/performance', 'PERFORMANCE_TRACKING_ERROR');
     }
 });
 export default router;

@@ -1,4 +1,4 @@
-import type Redis from 'ioredis';
+import type { Redis } from 'ioredis';
 import { createRedisClient } from '../redis-client.js';
 import { Logger } from '../../core/logger/index.js';
 

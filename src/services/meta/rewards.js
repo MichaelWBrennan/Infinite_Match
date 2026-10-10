@@ -1,7 +1,7 @@
 /**
- * Rules the server applies to a win. The client sends its score and attempt. The server works
- * out the stars and the reward itself, so a reported star count or a reported reward cannot
- * change what a win pays.
+ * Rules the server applies to a win. V4 additionally validates the pinned objectives and
+ * bounded reported collection progress before applying these score-rating thresholds.
+ * Reported star counts, client-authored goals and reported rewards cannot change the payout.
  *
  * The level target matches levelConfig() in phaser3-game.js. A parity test checks that the two
  * stay the same, with no tuning overrides. The reward values are the tuning knobs.
@@ -34,7 +34,11 @@ export function levelTarget(level, multiplier = 1) {
 
 /** Stars for a score: 1x, 1.5x, and 2x the target. Zero means the level was not won. */
 export function starsForScore(score, level, multiplier = 1) {
-  const target = levelTarget(level, multiplier);
+  return starsForTarget(score, levelTarget(level, multiplier));
+}
+
+/** Generated attempts pin their own certified target; do not recompute it at completion. */
+export function starsForTarget(score, target) {
   if (score >= target * 2) return 3;
   if (score >= target * 1.5) return 2;
   if (score >= target) return 1;

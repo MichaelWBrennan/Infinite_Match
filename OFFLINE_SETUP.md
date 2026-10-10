@@ -1,6 +1,10 @@
 # 🚀 Complete Offline Setup
 
-Your project is now **100% self-contained** and works completely offline without any external dependencies!
+The core game and documented self-hosted services can run without hosted APIs,
+once dependencies and Docker images are available locally. Platform SDK mocks
+are test stubs, not real platform integrations. Payments/store billing and other
+optional hosted adapters do not become offline services; self-hosting still has
+infrastructure and maintenance costs. See [the architecture guide](OPENSOURCE_MIGRATION.md).
 
 ## ✅ What's Been Migrated
 
@@ -8,15 +12,17 @@ Your project is now **100% self-contained** and works completely offline without
 - ❌ Amplitude → ✅ PostHog (self-hosted)
 - ❌ Mixpanel → ✅ PostHog (self-hosted)  
 - ❌ Datadog → ✅ Prometheus + Grafana (self-hosted)
-- ✅ Sentry (kept, now self-hosted)
+- ❌ Sentry SaaS → ✅ GlitchTip (MIT, Sentry-SDK-compatible)
 
 ### **Cloud Services**
 - ❌ AWS S3 → ✅ MinIO (S3-compatible)
 - ❌ DynamoDB → ✅ PostgreSQL
 - ❌ Google Cloud → ✅ Self-hosted alternatives
 - ❌ Azure → ✅ Self-hosted alternatives
-- ✅ MongoDB (kept, already open source)
-- ✅ Redis (kept, already open source)
+- ❌ MongoDB (SSPL) → ✅ FerretDB (Apache-2.0, MongoDB wire protocol on Postgres)
+- ❌ Redis (RSAL/SSPL) → ✅ Valkey (BSD-3, Redis protocol compatible)
+- ❌ Sentry SaaS → ✅ GlitchTip (MIT, Sentry-SDK-compatible)
+- ❌ MailHog (abandoned) → ✅ Mailpit (MIT)
 
 ### **Platform SDKs**
 - ❌ External CDN scripts → ✅ Self-hosted mocks
@@ -181,13 +187,36 @@ docker-compose -f docker-compose.opensource.yml logs
 
 ## 🎉 Success!
 
-Your project is now **completely self-contained** and works offline! 
+The self-hosted core supports offline/local development, subject to the limits above.
 
-- ✅ **Zero external dependencies**
+- ✅ **No hosted APIs required for procedural gameplay**
 - ✅ **Complete data control**
 - ✅ **Significant cost savings**
 - ✅ **Full customization freedom**
-- ✅ **Privacy compliant**
+- ✅ **Privacy controls; compliance still requires operator review**
 - ✅ **Vendor independent**
 
 Enjoy your fully offline, self-hosted development environment! 🚀
+
+## Passive procedural levels and regional holidays
+
+`npm run build && npm start` serves the web client, pure seeded generator and
+bundled holiday calendar together. No external AI, geocoding, calendar API or
+level-design service is called to make these levels. Today's challenge follows
+the selected IANA time zone and rolls over at local midnight; Settings → Local
+levels offers country/state/hemisphere correction and holiday/time/weather opt-out.
+No GPS is requested normally; the optional device-area button rounds coordinates
+before sending/saving them. Daily time/weather variants have separate IDs.
+
+With a local server, regional holiday rules work even without internet. If an
+anonymous browser cannot reach that server, its generated seasonal fallback
+remains playable, but fresh weather, full holiday data and rewarded account play
+are unavailable. Cached weather is reused only while fresh for matching preferences.
+Live weather needs an accessible feed; it is never replaced with fake observations.
+Same-day cached holiday context is reused only for matching preferences, never
+for a different local day. Detailed behavior, licenses and remaining limitations:
+[Procedural levels](docs/PROCEDURAL_LEVELS.md).
+
+For an iframe-hosted Arena development preview only, start with
+`NODE_ENV=development ARENA_PREVIEW=1 HOST=0.0.0.0 npm start`. This explicit opt-in
+allows the preview's frame; production keeps the strict anti-framing headers.

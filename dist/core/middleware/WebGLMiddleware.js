@@ -272,7 +272,7 @@ export class WebGLMiddleware {
             res.json(ApiResponseBuilder.success(optimization));
         }
         catch (error) {
-            this.logger.error('Error handling platform optimization:', error);
+            this.logger.error('Error handling platform optimization:', { error });
             res
                 .status(500)
                 .json(ApiResponseBuilder.error('PLATFORM_OPTIMIZATION_ERROR', 'Failed to handle platform optimization', 'server_error', true, 'retry_request'));

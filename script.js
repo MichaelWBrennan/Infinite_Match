@@ -12,8 +12,8 @@ class InfiniteMatchGame {
             stars: 1250,
             achievements: [],
             settings: {
-                music: true,
-                sfx: true,
+                music: false,
+                sfx: false,
                 highContrast: false,
                 largeText: false,
                 reduceAnimations: false
@@ -135,8 +135,8 @@ class InfiniteMatchGame {
         });
 
         document.getElementById('sfx-toggle').addEventListener('change', (e) => {
-            this.gameState.settings.sfx = e.target.checked;
-            console.log('Sound Effects:', e.target.checked ? 'ON' : 'OFF');
+            this.gameState.settings.sfx = window.game?.setSoundEffects(e.target.checked, e) || false;
+            e.target.checked = this.gameState.settings.sfx;
         });
 
         // Enhanced settings
@@ -781,7 +781,43 @@ class InfiniteMatchGame {
 
     showLevelSelect() {
         this.showScreen('level-select');
-        this.updatePlayerStats();
+        const current = window.game?.campaignLevel || window.game?.level || 1;
+        this.levelWindow = Math.max(1, current - 2);
+        this.renderProceduralLevels();
+    }
+
+    renderProceduralLevels() {
+        const grid = document.getElementById('procedural-level-grid');
+        if (!grid) return;
+        grid.replaceChildren();
+        const start = this.levelWindow || 1;
+        const end = Math.min(Number.MAX_SAFE_INTEGER, start + 19);
+        for (let number = start; number <= end; number++) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'level-card-royal procedural-level-card';
+            button.textContent = `${number % 10 === 0 ? 'Boss' : 'Level'} ${number}`;
+            button.addEventListener('click', () => window.selectLevel(number));
+            grid.append(button);
+        }
+        document.getElementById('level-page-label').textContent = `${start}–${end}`;
+        document.getElementById('next-level-page').disabled = end === Number.MAX_SAFE_INTEGER;
+    }
+
+    pageLevels(direction) {
+        this.levelWindow = Math.max(1, Math.min(Number.MAX_SAFE_INTEGER - 19, (this.levelWindow || 1) + direction * 20));
+        this.renderProceduralLevels();
+    }
+
+    jumpToGeneratedLevel() {
+        const number = Number(document.getElementById('generated-level-number').value);
+        const message = document.getElementById('generated-level-message');
+        if (!Number.isSafeInteger(number) || number < 1) {
+            message.textContent = 'Enter a positive whole level number.';
+            return;
+        }
+        message.textContent = '';
+        return window.selectLevel(number);
     }
 
     showNews() {
@@ -1199,8 +1235,10 @@ class InfiniteMatchGame {
         const modal = document.getElementById('login-modal');
         if (modal) {
             modal.classList.add('active');
+            if (typeof modal.showModal === 'function' && !modal.open) modal.showModal();
             // Reset forms
             this.resetLoginForms();
+            document.getElementById('login-player-id')?.focus();
         } else {
             console.error('Login modal not found in DOM');
         }
@@ -1210,7 +1248,9 @@ class InfiniteMatchGame {
         const modal = document.getElementById('login-modal');
         if (modal) {
             modal.classList.remove('active');
+            if (modal.open && typeof modal.close === 'function') modal.close();
         }
+        window.game?.closeSignIn?.();
     }
 
     switchLoginTab(tab) {
@@ -1833,6 +1873,10 @@ function chooseMode(mode) {
         revealCanvas();
         return callGame('startEndless');
     }
+    if (mode === 'daily') {
+        revealCanvas();
+        return callGame('startDaily');
+    }
     return callUi('showLevelSelect');
 }
 function closeModal() { return callUi('closeModal'); }
@@ -1968,6 +2012,8 @@ document.addEventListener('touchstart', (e) => {
 
 // Add keyboard support
 document.addEventListener('keydown', (e) => {
+    // Native dialogs/forms own their Enter/Escape actions; do not also start or pause a game.
+    if (e.defaultPrevented || e.target?.closest?.('input, textarea, select, button, dialog, [contenteditable="true"]')) return;
     switch(e.key) {
         case 'Escape':
             if (window.game && window.game.isGameRunning) {
@@ -1983,10 +2029,9 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Add sound effects (placeholder)
+// Compatibility forwarding: the playable Phaser controller owns opt-in local audio.
 function playSound(soundType) {
-    // In a real implementation, you would play actual sound files
-    console.log(`Playing sound: ${soundType}`);
+    return window.game?.playSound(soundType) || false;
 }
 
 // Add haptic feedback for mobile

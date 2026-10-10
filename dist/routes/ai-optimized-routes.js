@@ -1,4 +1,5 @@
 import express from 'express';
+import { isAIConfigured } from '../services/ai-clients.js';
 import { Logger } from '../core/logger/index.js';
 import { aiCacheManager } from '../services/ai-cache-manager.js';
 import { AIContentGenerator } from '../services/ai-content-generator.js';
@@ -7,6 +8,35 @@ import { AIAnalyticsEngine } from '../services/ai-analytics-engine.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 const router = express.Router();
 const logger = new Logger('AIOptimizedRoutes');
+const GENERATION_TIMEOUT_MS = 30000;
+// Guard for every route except /health:
+//  - without OPENAI_API_KEY, fail fast with 503 instead of queueing work that cannot succeed;
+//  - a generation that runs past GENERATION_TIMEOUT_MS gets a 504, and any later
+//    write from the handler is dropped so the response is not written twice.
+router.use((req, res, next) => {
+    if (req.path === '/health')
+        return next();
+    // Hosted key or a self-hosted OpenAI-compatible server (Ollama/vLLM/...).
+    if (!isAIConfigured()) {
+        return res.status(503).json({ success: false, error: 'ai_not_configured' });
+    }
+    let finished = false;
+    const timer = setTimeout(() => {
+        if (finished)
+            return;
+        finished = true;
+        res.status(504).json({ success: false, error: 'generation_timeout' });
+        res.json = () => res;
+        res.send = () => res;
+    }, GENERATION_TIMEOUT_MS);
+    const done = () => {
+        finished = true;
+        clearTimeout(timer);
+    };
+    res.once('finish', done);
+    res.once('close', done);
+    next();
+});
 // Initialize AI services
 const aiContentGenerator = new AIContentGenerator();
 const aiPersonalizationEngine = new AIPersonalizationEngine();

@@ -4,7 +4,7 @@ import { AIPersonalizationEngine } from './ai-personalization-engine.js';
 import { MarketResearchEngine } from './market-research-engine.js';
 import { InfiniteContentPipeline } from './infinite-content-pipeline.js';
 import { AIAnalyticsEngine } from './ai-analytics-engine.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { createSupabaseClient } from './ai-clients.js';
 
 /**

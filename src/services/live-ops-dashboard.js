@@ -15,7 +15,7 @@ import { aiCacheManager } from './ai-cache-manager.js';
 import { aiAnalyticsEngine } from './ai-analytics-engine.js';
 import { aiPersonalizationEngine } from './ai-personalization-engine.js';
 import pushNotificationService from './push-notification-service.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import cron from 'node-cron';
 
 const logger = new Logger('LiveOpsDashboard');

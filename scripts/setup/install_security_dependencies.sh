@@ -28,7 +28,6 @@ npm install bcryptjs@^2.4.3 \
             express-brute-redis@^0.0.1 \
             hpp@^0.2.3 \
             xss@^1.0.14 \
-            express-mongo-sanitize@^2.2.0 \
             express-request-id@^1.0.0 \
             express-request-logger@^1.0.0 \
             winston@^3.11.0 \

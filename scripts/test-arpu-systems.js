@@ -5,7 +5,6 @@
  * Tests all ARPU systems to ensure they're working correctly
  */
 
-import fetch from 'node-fetch';
 
 const BASE_URL = 'http://localhost:3000/api/arpu';
 

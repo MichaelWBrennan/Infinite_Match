@@ -1,7 +1,7 @@
 export class PricingService {
-    constructor(tiersPath?: string, overridesPath?: any);
+    constructor(tiersPath?: string, overridesPath?: string);
     tiersPath: string;
-    overridesPath: any;
+    overridesPath: string;
     loadJson(path: any, fallback?: {}): Promise<any>;
     normalizeCurrency(currency: any, country: any): any;
     computeLocalizedPrice(usdPrice: any, currency: any): {

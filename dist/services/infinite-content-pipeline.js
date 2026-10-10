@@ -3,9 +3,9 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { AIContentGenerator } from './ai-content-generator.js';
 import { MarketResearchEngine } from './market-research-engine.js';
 import { AIPersonalizationEngine } from './ai-personalization-engine.js';
-import { createClient } from '@supabase/supabase-js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import cron from 'node-cron';
+import { createSupabaseClient } from './ai-clients.js';
 /**
  * Infinite Content Pipeline - Automated content generation and distribution system
  * Creates a perpetual content machine that generates infinite levels, events, and features
@@ -16,7 +16,7 @@ class InfiniteContentPipeline {
         this.aiContentGenerator = new AIContentGenerator();
         this.marketResearch = new MarketResearchEngine();
         this.personalizationEngine = new AIPersonalizationEngine();
-        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        this.supabase = createSupabaseClient();
         this.contentQueue = new Map();
         this.activeGenerators = new Map();
         this.contentMetrics = new Map();
@@ -35,6 +35,42 @@ class InfiniteContentPipeline {
         // Start content quality monitoring
         this.startQualityMonitoring();
         this.logger.info('Infinite Content Pipeline initialized successfully');
+    }
+    /**
+     * Seed the content metrics map so every tracked content type reports from
+     * zero instead of `undefined` before the first generation run completes.
+     */
+    initializeMetrics() {
+        const contentTypes = ['levels', 'events', 'visuals', 'offers'];
+        for (const contentType of contentTypes) {
+            if (!this.contentMetrics.has(contentType)) {
+                this.contentMetrics.set(contentType, { total: 0, today: 0 });
+            }
+        }
+        this.logger.info(`Content metrics initialized for: ${contentTypes.join(', ')}`);
+    }
+    /**
+     * Start background content quality monitoring.
+     *
+     * A full AI quality pass runs on the cron schedule in
+     * `setupContentSchedules()`; this adds a lighter periodic sweep that samples
+     * the newest content so regressions surface sooner.
+     */
+    startQualityMonitoring() {
+        const intervalMs = 60 * 60 * 1000; // hourly
+        const timer = setInterval(async () => {
+            try {
+                await this.performQualityCheck();
+            }
+            catch (error) {
+                this.logger.error('Quality monitoring sweep failed', { error: error.message });
+            }
+        }, intervalMs);
+        // Never hold the process open just for monitoring.
+        if (typeof timer.unref === 'function') {
+            timer.unref();
+        }
+        this.logger.info('Content quality monitoring started');
     }
     /**
      * Set up automated content generation schedules
@@ -215,7 +251,7 @@ class InfiniteContentPipeline {
         try {
             const offerType = this.selectOptimalOfferType(marketInsights);
             const targetSegment = this.selectTargetSegment(marketInsights);
-            const offer = await this.aiContentGenerator.generatePersonalizedOffers('system', offerType);
+            const offer = await this.personalizationEngine.generatePersonalizedOffers('system', offerType);
             // Enhance with market data
             offer.marketOptimization = this.optimizeForMarket(offer, marketInsights);
             return offer;

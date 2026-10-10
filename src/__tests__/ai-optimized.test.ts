@@ -17,6 +17,8 @@ describe('AI-optimized routes', () => {
     process.env.ADMIN_API_TOKEN = ADMIN_TOKEN;
     process.env.ADMIN_IDS = ADMIN_ID;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_BASE_URL;
+    delete process.env.OLLAMA_BASE_URL;
   });
   afterAll(() => {
     process.env = savedEnv;

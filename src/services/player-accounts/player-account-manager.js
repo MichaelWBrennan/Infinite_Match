@@ -1,8 +1,8 @@
 import { Logger } from '../../core/logger/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt from '../../core/security/jwt.js';
 import * as security from '../../core/security/index.js';
 
 /**
@@ -230,7 +230,7 @@ class PlayerAccountManager {
       security.createSession(playerId, { sessionId, playerId, deviceInfo });
 
       // Generate JWT token
-      const token = jwt.sign(
+      const token = await jwt.sign(
         { 
           playerId, 
           sessionId,
@@ -270,7 +270,7 @@ class PlayerAccountManager {
 
       // Verify JWT token
       try {
-        const decoded = jwt.verify(token, this.config.jwtSecret);
+        const decoded = await jwt.verify(token, this.config.jwtSecret);
         if (decoded.sessionId !== sessionId || decoded.playerId !== session.playerId) {
           throw new ServiceError('Invalid token');
         }

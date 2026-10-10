@@ -21,15 +21,25 @@ export class MongoService {
             process.exit(0);
         });
     }
+    /**
+     * Resolve a collection, failing fast when the service has no live connection.
+     * Centralizes the "MongoDB not connected" guard that every method repeated.
+     */
+    requireCollection(name) {
+        const db = this.connection?.db;
+        if (!db) {
+            throw new Error('MongoDB not connected');
+        }
+        return db.collection(name);
+    }
     async connect() {
         try {
-            const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/evergreen-match3';
+            const mongoUri = process.env['MONGODB_URI'] || 'mongodb://localhost:27017/evergreen-match3';
             await mongoose.connect(mongoUri, {
                 maxPoolSize: 10,
                 serverSelectionTimeoutMS: 5000,
                 socketTimeoutMS: 45000,
                 bufferCommands: false,
-                bufferMaxEntries: 0,
             });
             this.connection = mongoose.connection;
             logger.info('MongoDB connected successfully');
@@ -55,10 +65,7 @@ export class MongoService {
     // Game Analytics Collection
     async saveGameAnalytics(analytics) {
         try {
-            const collection = this.connection?.db.collection('game_analytics');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('game_analytics');
             await collection.insertOne({
                 ...analytics,
                 timestamp: new Date(),
@@ -74,10 +81,7 @@ export class MongoService {
     }
     async getGameAnalytics(playerId, startDate, endDate) {
         try {
-            const collection = this.connection?.db.collection('game_analytics');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('game_analytics');
             const query = { playerId };
             if (startDate || endDate) {
                 query.timestamp = {};
@@ -97,10 +101,7 @@ export class MongoService {
     // Player Behavior Collection
     async savePlayerBehavior(behavior) {
         try {
-            const collection = this.connection?.db.collection('player_behavior');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('player_behavior');
             await collection.updateOne({ playerId: behavior.playerId }, { $set: { ...behavior, updatedAt: new Date() } }, { upsert: true });
             logger.info('Player behavior saved', { playerId: behavior.playerId });
             return true;
@@ -112,10 +113,7 @@ export class MongoService {
     }
     async getPlayerBehavior(playerId) {
         try {
-            const collection = this.connection?.db.collection('player_behavior');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('player_behavior');
             const behavior = await collection.findOne({ playerId });
             return behavior;
         }
@@ -127,10 +125,7 @@ export class MongoService {
     // Game Events Collection
     async saveGameEvent(event) {
         try {
-            const collection = this.connection?.db.collection('game_events');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('game_events');
             await collection.insertOne({
                 ...event,
                 timestamp: new Date(),
@@ -146,10 +141,7 @@ export class MongoService {
     }
     async getGameEvents(playerId, eventType, limit = 100) {
         try {
-            const collection = this.connection?.db.collection('game_events');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('game_events');
             const query = { playerId };
             if (eventType)
                 query.type = eventType;
@@ -164,10 +156,7 @@ export class MongoService {
     // A/B Testing Collection
     async saveABTestResult(result) {
         try {
-            const collection = this.connection?.db.collection('ab_test_results');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('ab_test_results');
             await collection.insertOne({
                 ...result,
                 timestamp: new Date(),
@@ -183,10 +172,7 @@ export class MongoService {
     }
     async getABTestResults(testId) {
         try {
-            const collection = this.connection?.db.collection('ab_test_results');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('ab_test_results');
             const results = await collection.find({ testId }).sort({ timestamp: -1 }).toArray();
             return results;
         }
@@ -198,10 +184,7 @@ export class MongoService {
     // Unity Cloud Logs Collection
     async saveUnityCloudLog(log) {
         try {
-            const collection = this.connection?.db.collection('unity_cloud_logs');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('unity_cloud_logs');
             await collection.insertOne({
                 ...log,
                 timestamp: new Date(),
@@ -217,10 +200,7 @@ export class MongoService {
     }
     async getUnityCloudLogs(service, level, limit = 100) {
         try {
-            const collection = this.connection?.db.collection('unity_cloud_logs');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('unity_cloud_logs');
             const query = {};
             if (service)
                 query.service = service;
@@ -237,10 +217,7 @@ export class MongoService {
     // Performance Metrics Collection
     async savePerformanceMetrics(metrics) {
         try {
-            const collection = this.connection?.db.collection('performance_metrics');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('performance_metrics');
             await collection.insertOne({
                 ...metrics,
                 timestamp: new Date(),
@@ -256,10 +233,7 @@ export class MongoService {
     }
     async getPerformanceMetrics(service, startDate, endDate) {
         try {
-            const collection = this.connection?.db.collection('performance_metrics');
-            if (!collection) {
-                throw new Error('MongoDB not connected');
-            }
+            const collection = this.requireCollection('performance_metrics');
             const query = {};
             if (service)
                 query.service = service;
@@ -282,10 +256,11 @@ export class MongoService {
     async healthCheck() {
         const start = Date.now();
         try {
-            if (!this.connection) {
+            const db = this.connection?.db;
+            if (!db) {
                 throw new Error('MongoDB not connected');
             }
-            await this.connection.db.admin().ping();
+            await db.admin().ping();
             const latency = Date.now() - start;
             return { status: 'healthy', latency };
         }
@@ -301,10 +276,11 @@ export class MongoService {
     // Get database stats
     async getDatabaseStats() {
         try {
-            if (!this.connection) {
+            const db = this.connection?.db;
+            if (!db) {
                 throw new Error('MongoDB not connected');
             }
-            const stats = await this.connection.db.stats();
+            const stats = await db.stats();
             return stats;
         }
         catch (error) {

@@ -1,4 +1,5 @@
-import { existsSync } from 'fs';
+import { existsSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { join } from 'path';
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
@@ -19,7 +20,6 @@ import { UniversalAPI } from '../core/api/UniversalAPI.js';
 import WebGLMiddleware from '../core/middleware/WebGLMiddleware.js';
 import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
 // import { AnalyticsService } from '../services/analytics-service.js';
-import CloudServices from '../services/cloud-services.js';
 import UnifiedAnalyticsService from '../services/unified-analytics-service.js';
 import PrometheusMonitoringService from '../services/prometheus-monitoring-service.js';
 import OpenSourceCloudServices from '../services/open-source-cloud-services.js';
@@ -44,6 +44,7 @@ import consentRoutes from '../routes/consent.js';
 import pushRoutes from '../routes/push.js';
 import experimentsRoutes from '../routes/experiments.js';
 import levelResultsRoutes from '../routes/level-results.js';
+import levelsRoutes from '../routes/levels.js';
 import minigamesRoutes from '../routes/minigames.js';
 import { startTuningSchedule } from '../services/level-tuning-schedule.js';
 import liveOpsRoutes from '../routes/live-ops.js';
@@ -106,7 +107,6 @@ interface HealthCheckResponse {
     analytics: any;
     monitoring: any;
     cloud: any;
-    legacy: any;
   };
 }
 
@@ -208,9 +208,10 @@ class GameServer {
       this.asoOptimization = new ASOOptimizationService();
       this.logger.info('ASO optimization service initialized');
 
-      // Keep legacy cloud services for backward compatibility
-      this.cloudServices = CloudServices;
-      await this.cloudServices.initialize();
+      // The open-source stack (MinIO/Postgres/Valkey/SMTP) is the only cloud
+      // layer. It is also published under the legacy 'cloud' name so
+      // `getService('cloud')` lookups in the game routes keep working.
+      this.cloudServices = this.openSourceCloud;
 
       // Publish the running instances on the shared container so route modules
       // can resolve them (previously nothing registered 'analytics'/'cloud',
@@ -229,14 +230,25 @@ class GameServer {
   }
 
   private initializeSentry(): void {
-    if (process.env['SENTRY_DSN']) {
+    const dsn = process.env['SENTRY_DSN'];
+    // Error tracking is optional (self-hosted GlitchTip or Sentry). Ignore
+    // unset/placeholder DSNs — `Sentry.init` throws on invalid values, which
+    // used to take the whole server down before it could listen on a port.
+    if (!dsn || dsn.startsWith('your-') || dsn.includes('your_')) {
+      return;
+    }
+    try {
       Sentry.init({
-        dsn: process.env['SENTRY_DSN'],
+        dsn,
         environment: this.config.environment,
         tracesSampleRate: 1.0,
         integrations: [
           // Use basic integrations for now
         ],
+      });
+    } catch (error) {
+      this.logger.warn('Sentry/GlitchTip disabled: invalid SENTRY_DSN', {
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -249,15 +261,16 @@ class GameServer {
     // `expressIntegration()` above; v10 removed the standalone
     // `requestHandler()` / `tracingHandler()` middleware factories.
 
-    // Security middleware
+    // Production remains non-embeddable. The explicit development-only Arena
+    // preview opt-in permits the live preview's iframe without relaxing production.
+    const preview = this.config.environment === 'development' && process.env['ARENA_PREVIEW'] === '1';
     this.app.use(
       helmet({
-        // Stricter than helmet's default SAMEORIGIN: this game should never be
-        // embedded in a frame, including same-origin ones.
-        frameguard: { action: 'deny' },
+        frameguard: preview ? false : { action: 'deny' },
         contentSecurityPolicy: {
           directives: {
             defaultSrc: ['\'self\''],
+            frameAncestors: preview ? null : ['\'self\''],
             styleSrc: ['\'self\'', '\'unsafe-inline\''],
             scriptSrc: [
               '\'self\'',
@@ -357,6 +370,8 @@ class GameServer {
     this.app.use('/api/push', pushRoutes);
     this.app.use('/api/experiments', experimentsRoutes);
     this.app.use('/api/level-results', levelResultsRoutes);
+    // Procedural levels are public; rewarded attempts still require the player's session.
+    this.app.use('/api/levels', levelsRoutes);
     // Daily mini-games: session-gated. Pays once per game per UTC day, with capped coins.
     this.app.use('/api/minigames', minigamesRoutes);
     // Live ops: today's deals and events. Session-gated.
@@ -445,14 +460,14 @@ class GameServer {
     // Reading them unconditionally made /health throw a TypeError and return
     // 500 whenever the app was used before boot - a health endpoint must
     // always answer, so report each service as uninitialized instead.
-    const statusOf = (
+    const statusOf = async (
       service: { getHealthStatus?: () => unknown; getServiceStatus?: () => unknown } | undefined,
-    ): unknown => {
+    ): Promise<unknown> => {
       if (!service) {
         return { status: 'not_initialized' };
       }
       if (typeof service.getHealthStatus === 'function') {
-        return service.getHealthStatus();
+        return await service.getHealthStatus();
       }
       if (typeof service.getServiceStatus === 'function') {
         return service.getServiceStatus();
@@ -465,10 +480,9 @@ class GameServer {
       message: 'OK',
       timestamp: new Date().toISOString(),
       services: {
-        analytics: statusOf(this.unifiedAnalytics),
-        monitoring: statusOf(this.prometheusMonitoring),
-        cloud: statusOf(this.openSourceCloud),
-        legacy: statusOf(this.cloudServices),
+        analytics: await statusOf(this.unifiedAnalytics),
+        monitoring: await statusOf(this.prometheusMonitoring),
+        cloud: await statusOf(this.cloudServices),
       },
     };
 
@@ -784,12 +798,18 @@ class GameServer {
   }
 }
 
-// Start server
-const server = new GameServer();
-server.start().catch((error) => {
-  const logger = new Logger('ServerStartup');
-  logger.error('Failed to start server:', { error });
-  process.exit(1);
-});
+// Importing this module for route tests/embedding must not bind a port. Start
+// only when this is the actual Node entrypoint (works on the minimum Node 22).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const server = new GameServer();
+  server.start().catch((error) => {
+    const logger = new Logger('ServerStartup');
+    logger.error('Failed to start server:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    process.exit(1);
+  });
+}
 
 export default GameServer;
