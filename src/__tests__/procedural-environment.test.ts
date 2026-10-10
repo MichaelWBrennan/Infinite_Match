@@ -282,7 +282,7 @@ describe('time/weather genuinely affect certified daily variants and endless boa
     const attempt = await service.spendAttemptEnergy(player, 1, at, old);
     const target = old.targetScore;
     old.targetScore = 1;
-    const win = await service.consumeAttempt(player, attempt.attemptId, 1, later, { mode: 'level', score: target, legacyTarget: 1000000 });
+    const win = await service.consumeAttempt(player, attempt.attemptId, 1, later, { mode: 'level', score: target, legacyTarget: 1000000, objectiveProgress: { collected: old.quality.verifiedCollected } });
     expect(win.stars).toBe(1);
   });
 

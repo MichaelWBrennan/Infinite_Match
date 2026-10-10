@@ -405,7 +405,7 @@ class PhaserMatch3Game {
 
     commitEarnedAction(cells) {
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, refillState: this.levelRng.state }, cells);
+            { board: this.board, specials: this.specials, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -438,6 +438,7 @@ class PhaserMatch3Game {
             this.placeSprite(sprite, r, c, true);
             return sprite;
         }));
+        if (result.objectiveProgress) this.objectiveProgress = result.objectiveProgress;
         this.addScore(result.score);
         this.showEarnedFeedback(result);
         if (this.playerUI && !this.animationsReduced()) this.inputLockedUntil = Date.now() + 220;
@@ -446,7 +447,7 @@ class PhaserMatch3Game {
         const combo = result.events.find((event) => event.combo)?.combo;
         const names = window.InfinitePlayerExperience?.specialNames || {};
         const description = combo ? ` · ${combo.split('+').map((kind) => names[kind] || (kind === 'beam' ? 'Beam' : kind)).join(' + ')} combo` : activated.length ? ` · ${activated.length} special${activated.length === 1 ? '' : 's'} activated` : '';
-        this.playerUI?.announce(`${result.score} points${description}${earned.length ? ` · Earned ${[...new Set(earned.map((item) => names[item.type] || item.type))].join(', ')}` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : ''}${result.reshuffled ? ' Free board repair.' : ''}`);
+        this.playerUI?.announce(`${result.score} points${description}${earned.length ? ` · Earned ${[...new Set(earned.map((item) => names[item.type] || item.type))].join(', ')}` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : ''}${result.reshuffled ? ' Free board repair.' : ''}${this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress)}` : ''}`);
         this.updateUI();
     }
 
@@ -529,15 +530,16 @@ class PhaserMatch3Game {
 
     showHint() {
         if (!this.canInteractWithBoard() || !globalThis.InfiniteLevels) return null;
-        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials);
-        moves.sort((a, b) => b.count - a.count);
+        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score);
+        moves.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.count - a.count);
         if (!moves.length) return null;
         const cells = moves[0].cells;
         this.disarmPowerUp();
         this.playerUI?.refresh();
         this.setSelectedGem(null); this.hintCells = cells;
         for (const [r, c] of (cells.length === 2 ? [[cells[0], cells[1]]] : [[cells[0], cells[1]], [cells[2], cells[3]]])) this.gemSprites[r][c].setScale(this.gemScale * 1.08);
-        this.playerUI?.announce(cells.length === 2 ? `Free hint: tap the special at row ${cells[0] + 1}, column ${cells[1] + 1}. No move or charge spent.` : `Free hint: ${this.specials?.[cells[0]]?.[cells[1]] || this.specials?.[cells[2]]?.[cells[3]] ? 'swipe' : 'swap'} row ${cells[0] + 1}, column ${cells[1] + 1} with row ${cells[2] + 1}, column ${cells[3] + 1}. No move or charge spent.`);
+        const message = cells.length === 2 ? `Free hint: tap the special at row ${cells[0] + 1}, column ${cells[1] + 1}. No move or charge spent.` : `Free hint: ${this.specials?.[cells[0]]?.[cells[1]] || this.specials?.[cells[2]]?.[cells[3]] ? 'swipe' : 'swap'} row ${cells[0] + 1}, column ${cells[1] + 1} with row ${cells[2] + 1}, column ${cells[3] + 1}. No move or charge spent.`;
+        this.playerUI?.announce(message + (this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress, true)}` : ''));
         return cells;
     }
 
@@ -841,13 +843,22 @@ class PhaserMatch3Game {
         }
     }
 
+    usesLevelObjectives() {
+        return this.generatedLevel?.generatorVersion >= 4;
+    }
+
+    hasWonLevel() {
+        return this.usesLevelObjectives() ? globalThis.InfiniteLevels.objectiveStatus(this.generatedLevel, this.score, this.objectiveProgress).complete
+            : this.score >= this.targetScore;
+    }
+
     checkEndConditions() {
         if (!this.isGameRunning) return;
         if (this.mode === 'endless' && this.generatedLevel) {
-            if (this.score >= this.targetScore) this.advanceEndlessStage();
+            if (this.hasWonLevel()) this.advanceEndlessStage();
             return;
         }
-        if (this.score >= this.targetScore || this.moves <= 0) {
+        if (this.hasWonLevel() || this.moves <= 0) {
             this.endGame();
             return;
         }
@@ -858,8 +869,10 @@ class PhaserMatch3Game {
     // Clears the given cells (power-up effects), then resolves any cascades.
     clearAndCascade(keys, points) {
         if (this.usesEarnedSpecials()) {
-            const result = globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state,
-                this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points);
+            const result = this.usesLevelObjectives()
+                ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
+                    { board: this.board, specials: this.specials, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points)
+                : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points);
             if (result) { this.renderEarnedTransition(result); this.checkEndConditions(); }
             return;
         }
@@ -1364,7 +1377,7 @@ class PhaserMatch3Game {
 
     addScore(points) {
         this.score += points;
-        this.scoreText.setText(`Score: ${this.score.toLocaleString()}`);
+        this.scoreText.setText(this.mode === 'endless' && this.playerUI ? `Run: ${(this.score + (this.endlessTotalScore || 0)).toLocaleString()}` : `Score: ${this.score.toLocaleString()}`);
         this.checkAchievements();
         
         // Show score popup
@@ -1521,6 +1534,7 @@ class PhaserMatch3Game {
                 body: JSON.stringify({
                     level: this.attemptLevel,
                     score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
+                    ...(this.usesLevelObjectives() ? { objectiveProgress: this.objectiveProgress } : {}),
                     attemptId,
                 }),
             });
@@ -1651,6 +1665,7 @@ class PhaserMatch3Game {
         this.gemTypes = definition.gemTypes.slice();
         this.levelRng = { state: definition.refillState };
         this.score = 0;
+        this.objectiveProgress = definition.generatorVersion >= 4 ? globalThis.InfiniteLevels.initialObjectiveProgress(definition) : null;
         this.moves = definition.moves;
         this.targetScore = definition.targetScore;
         this.timeLimit = definition.timeLimit;
@@ -1664,7 +1679,8 @@ class PhaserMatch3Game {
         this.scene.cameras?.main?.setBackgroundColor(definition.theme.background);
         if (!this.playerUI) this.themeText?.setColor?.(definition.theme.accent);
         this.playerUI?.shell.style.setProperty('--match-level-background', definition.theme.background);
-        this.playerUI?.announce?.('');
+        this.playerUI?.announce?.(this.usesLevelObjectives() ? definition.objectives.some((goal) => goal.type === 'collect')
+            ? 'Clear the shown colors. Meet every goal.' : 'Reach the displayed score goal.' : '');
         this.updateUI();
     }
 
@@ -1683,7 +1699,7 @@ class PhaserMatch3Game {
         const nextNumber = this.level + 1;
         if (!Number.isSafeInteger(nextNumber)) { this.endGame(); return; }
         const context = window.InfiniteLevelLocation?.contextForNewStage(this.getLevelLocation()) || this.generatedLevel.context;
-        const next = globalThis.InfiniteLevels.generateLevel(nextNumber, context, 'endless', this.generatedLevel.generatorVersion >= 3 ? 3 : 2);
+        const next = globalThis.InfiniteLevels.generateLevel(nextNumber, context, 'endless', this.generatedLevel.generatorVersion || 2);
         this.applyGeneratedDefinition(next);
         this.endlessTotalScore = total;
         this.runStartedAt = startedAt;
@@ -1725,6 +1741,7 @@ class PhaserMatch3Game {
 
     // Stars are relative to the level target: 1x, 1.5x, 2x.
     starsFor(score) {
+        if (this.usesLevelObjectives()) return globalThis.InfiniteLevels.objectiveStars(this.generatedLevel, score, this.objectiveProgress);
         const target = this.targetScore || 1000;
         if (score >= target * 2) return 3;
         if (score >= target * 1.5) return 2;
@@ -1828,12 +1845,13 @@ class PhaserMatch3Game {
     }
 
     updateUI() {
-        this.scoreText.setText(`Score: ${this.score.toLocaleString()}`);
+        this.scoreText.setText(this.mode === 'endless' && this.playerUI ? `Run: ${(this.score + (this.endlessTotalScore || 0)).toLocaleString()}` : `Score: ${this.score.toLocaleString()}`);
         this.movesText.setText(['classic', 'daily'].includes(this.mode) ? `Moves: ${this.moves}` : 'Moves: ∞');
         this.timerText.setText(this.timeLimit === 0 || this.mode === 'endless' ? 'Time: ∞' : `Time: ${this.time}`);
         this.levelText.setText(this.mode === 'daily' ? 'Daily Challenge' : `${this.mode === 'endless' ? 'Stage' : 'Level'}: ${this.level}`);
-        if (this.goalText) this.goalText.setText(`Goal: ${this.targetScore.toLocaleString()} points`
-            + (this.mode === 'endless' ? `\nRun: ${(this.score + (this.endlessTotalScore || 0)).toLocaleString()}` : ''));
+        if (this.goalText && (!this.usesLevelObjectives() || !this.playerUI)) this.goalText.setText(this.usesLevelObjectives()
+            ? globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress)
+            : `Goal: ${this.targetScore.toLocaleString()} points` + (this.mode === 'endless' ? `\nRun: ${(this.score + (this.endlessTotalScore || 0)).toLocaleString()}` : ''));
         if (this.themeText) this.themeText.setText(this.generatedLevel ? `${this.generatedLevel.theme.name}\n${this.generatedLevel.context.localDate}\n${this.generatedLevel.theme.environmentLabel || ''}${this.generatedLevel.context.offline ? '\nOffline guest level' : ''}` : '');
         if (this.bankRunButton) this.bankRunButton.setVisible(this.mode === 'endless');
         if (this.bankRunLabel) this.bankRunLabel.setVisible(this.mode === 'endless');
@@ -1851,7 +1869,7 @@ class PhaserMatch3Game {
     }
 
     showTutorial() {
-        if (this.playerUI) { this.playerUI.announce(this.usesEarnedSpecials() ? 'Match 3 to score, 4+ to earn free special gems. Tap a special to activate; swipe specials together to combine. Explore has the guide. Hints are free.' : 'Match three or more. Tap two adjacent gems or swipe. Need help? The Hint button is free.'); this.tutorialShown = true; return; }
+        if (this.playerUI) { this.playerUI.announce(this.usesLevelObjectives() ? 'Complete every goal above. Match 3; 4+ earns specials. Tap specials or swipe them together. Explore has guides; hints are free.' : this.usesEarnedSpecials() ? 'Match 3 to score, 4+ to earn free special gems. Tap a special to activate; swipe specials together to combine. Explore has the guide. Hints are free.' : 'Match three or more. Tap two adjacent gems or swipe. Need help? The Hint button is free.'); this.tutorialShown = true; return; }
         const tutorial = this.scene.add.text(400, 300, 'Tap gems to match them!', {
             fontSize: '24px',
             fill: '#ffffff',
@@ -2570,6 +2588,7 @@ class PhaserMatch3Game {
         const total = this.mode === 'endless' ? this.score + (this.endlessTotalScore || 0) : this.score;
         this.overlayText(400, 170, `Score: ${total.toLocaleString()}`, { size: 26 });
         this.overlayText(400, 245, subtitle || `Stars: ${stars}/3`, { size: 20, width: 650 });
+        if (this.usesLevelObjectives()) this.overlayText(400, 292, globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress, true), { size: 16, width: 650 });
         if (stars > 0 && this.mode !== 'daily' && this.mode !== 'endless') {
             this.overlayButton(260, 350, 220, 55, 0x4ecdc4, 'Next Level', () => this.nextLevel());
             this.overlayButton(540, 350, 220, 55, 0x555555, 'Replay', () => this.restartGame());

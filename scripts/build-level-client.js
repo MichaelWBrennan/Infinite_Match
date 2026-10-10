@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const modules = ['time-zone-regions.js', 'environment.js', 'match-core.js', 'special-rules.js', 'generator.js'];
+const modules = ['time-zone-regions.js', 'environment.js', 'match-core.js', 'special-rules.js', '../meta/rewards.js', 'objective-rules.js', 'generator.js'];
 const sources = modules.map((name) => readFileSync(new URL(`../src/services/levels/${name}`, import.meta.url), 'utf8'));
 const names = [...new Set(sources.flatMap((source) => [...source.matchAll(/^export (?:const|function) (\w+)/gm)].map((match) => match[1])))];
 const body = sources.map((source) => source.replace(/^import .*;\n/gm, '')

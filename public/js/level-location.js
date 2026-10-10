@@ -132,7 +132,7 @@
                 const definition = body.level;
                 rememberContext(definition.context, location, body.serverTime);
                 if (el('daily-level-preview')) el('daily-level-preview').textContent =
-                    `${definition.theme.name} · ${definition.theme.environmentLabel} · ${lastContext.localDate}. Time/weather variants; active boards stay fixed.`;
+                    `${root.InfiniteLevels.objectiveDescription(definition)} · ${definition.theme.name} · ${definition.theme.environmentLabel} · ${lastContext.localDate}. Time/weather variants; active boards stay fixed.`;
                 if (el('level-location-summary')) el('level-location-summary').textContent =
                     `${lastContext.country || 'Global'}${lastContext.region ? ` / ${lastContext.region}` : ''} · ${lastContext.timeZone} · ${lastContext.season}`;
                 if (el('level-weather-summary')) el('level-weather-summary').textContent = lastContext.weather?.available

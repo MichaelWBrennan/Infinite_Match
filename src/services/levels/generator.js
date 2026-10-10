@@ -6,11 +6,13 @@
 import { environmentRules, blendHex } from './environment.js';
 import { hashSeed, nextRandom, legalSwaps, dealPlayableBoard, certifyBoard, simulateMove } from './match-core.js';
 import { blankSpecials, specialActions, certifySpecialBoard, simulateSpecialMove } from './special-rules.js';
+import { composeObjectives, objectiveStatus, objectiveActions, simulateObjectiveMove, certifyObjectiveLevel } from './objective-rules.js';
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from './match-core.js';
 export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from './special-rules.js';
+export { composeObjectives, levelObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, simulateObjectiveClear } from './objective-rules.js';
 
 
-export const GENERATOR_VERSION = 3;
+export const GENERATOR_VERSION = 4;
 export const GEM_TYPES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 export const LEVEL_MODES = ['classic', 'timed', 'daily', 'endless'];
 
@@ -72,7 +74,7 @@ export function generationKey(levelNumber, context, mode = 'classic', version = 
 export function generateLevel(levelNumber, context, mode = 'classic', version = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(levelNumber) || levelNumber < 1) throw new RangeError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new RangeError('invalid_mode');
-  if (![2, 3].includes(version)) throw new RangeError('unsupported_generator_version');
+  if (![2, 3, 4].includes(version)) throw new RangeError('unsupported_generator_version');
   const level = mode === 'daily' ? 1 : levelNumber;
   const theme = levelTheme(context);
   const environment = environmentRules(context);
@@ -97,15 +99,19 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
   const moveBudget = Math.max(20, Math.min(30, 30 - cycle - (isBoss ? 5 : 0) + environment.moveBonus));
   const board = dealPlayableBoard(size, palette, weights, rng);
   const refillState = rng.state;
-  const proof = version === 3 ? certifySpecialBoard(board, refillState, palette, weights, moveBudget)
+  const proof = version >= 3 ? certifySpecialBoard(board, refillState, palette, weights, moveBudget, blankSpecials(size), version >= 4)
     : certifyBoard(board, refillState, palette, weights, moveBudget);
   const fraction = isBoss ? 0.86 : 0.62 + cycle * 0.04;
   const targetScore = Math.max(100, Math.floor(Math.min(2400, proof.score * fraction) / 50) * 50);
   if (proof.witness.length !== moveBudget || proof.score < targetScore) throw new Error('level_quality_failed');
+  const goals = version >= 4 ? composeObjectives({ level, mode, seed, palette, favorite: theme.favorite, proof, targetScore, fraction })
+    : { objectives: [{ type: 'score', target: targetScore }] };
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, objectives: goals.objectives }, proof.score,
+    { collected: proof.collected }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
-    ...(version === 3 ? { specials: blankSpecials(size) } : {}),
+    ...(version >= 3 ? { specials: blankSpecials(size) } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -120,7 +126,8 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     targetScore,
     moves: mode === 'timed' ? 999 : mode === 'endless' ? Number.MAX_SAFE_INTEGER : moveBudget,
     timeLimit: mode === 'timed' ? 60 : 0,
-    objectives: [{ type: 'score', target: targetScore }],
+    objectives: goals.objectives,
+    ...(version >= 4 ? { objectiveProfile: goals.profile } : {}),
     difficulty: isBoss ? 'boss' : ['gentle', 'steady', 'steady', 'challenging', 'challenging'][cycle],
     theme,
     context: { ...context },
@@ -130,17 +137,20 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
       verifiedWithoutBoosters: true,
       verifiedMoves: moveBudget,
       verifiedScore: proof.score,
+      ...(version >= 4 ? { verifiedCollected: proof.collected, verifiedObjectives: true } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition, board = definition.board, specials = definition.specials) {
+export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
 export function simulateLevelMove(definition, state, cells) {
+  if (definition.generatorVersion >= 4) return simulateObjectiveMove(definition, state, cells);
   const { gemTypes, gemWeights } = definition;
   return definition.generatorVersion >= 3
     ? simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials)
@@ -148,6 +158,7 @@ export function simulateLevelMove(definition, state, cells) {
 }
 
 export function certifyLevel(definition) {
+  if (definition.generatorVersion >= 4) return certifyObjectiveLevel(definition);
   const { board, refillState, gemTypes, gemWeights, moves } = definition;
   // Timed/endless are certified with the bounded quality budget, not infinity/999 moves.
   const budget = definition.quality?.verifiedMoves || Math.min(30, moves);

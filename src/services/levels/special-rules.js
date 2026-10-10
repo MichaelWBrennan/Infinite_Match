@@ -177,13 +177,14 @@ function expandClears(board, specials, seeds, protectedKeys, suppressed, prismTa
   return { keys, activated };
 }
 
-function settle(plan, refillState, palette, weights, bonusScore = null) {
+function settle(plan, refillState, palette, weights, bonusScore = null, recordColors = false) {
   let { board, specials, origins } = plan;
   const n = board.length;
   const rng = { state: refillState };
   const events = [];
   let score = 0;
   let seeds = plan.seeds;
+  const collected = recordColors ? Object.fromEntries(palette.map((color) => [color, 0])) : null;
   for (let wave = 0; wave < 64; wave++) {
     const matched = earnedMatches(board, specials, wave === 0 ? plan.preferred : []);
     if (!seeds?.size && !matched.matches.size) break;
@@ -196,8 +197,13 @@ function settle(plan, refillState, palette, weights, bonusScore = null) {
     const points = wave === 0 && bonusScore !== null ? bonusScore + Math.max(0, clear.keys.size - initialSeeds.size) * 10
       : clear.keys.size * 10 * (bonusScore === null ? wave + 1 : wave);
     score += points;
+    const colors = recordColors ? Object.fromEntries(palette.map((color) => [color, 0])) : null;
+    if (recordColors) for (const key of clear.keys) {
+      const [r, c] = coordinates(key);
+      colors[board[r][c]]++; collected[board[r][c]]++;
+    }
     events.push({ cleared: [...clear.keys], created: matched.creations, activated: clear.activated,
-      points, combo: wave === 0 ? plan.combo : null });
+      points, combo: wave === 0 ? plan.combo : null, ...(recordColors ? { collected: colors } : {}) });
     for (const key of clear.keys) {
       const [r, c] = coordinates(key);
       board[r][c] = null; specials[r][c] = null; origins[r][c] = null;
@@ -220,19 +226,19 @@ function settle(plan, refillState, palette, weights, bonusScore = null) {
     board = dealPlayableBoard(n, palette, weights, rng);
     specials = blankSpecials(n); origins = blankSpecials(n);
   }
-  return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled };
+  return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled, ...(recordColors ? { collected } : {}) };
 }
 
 /** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move. */
-export function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null) {
+export function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null, recordColors = false) {
   if (specials === null) specials = Array.isArray(board) ? blankSpecials(board.length) : [];
   if (!Array.isArray(specials) || !validState(board, specials, palette, refillState)) return null;
   const plan = prepareAction(board, specials, cells);
-  return plan ? settle(plan, refillState, palette, weights) : null;
+  return plan ? settle(plan, refillState, palette, weights, null, recordColors) : null;
 }
 
 /** Existing inventory boosters keep their base award; effects can chain earned specials. No inventory logic here. */
-export function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0) {
+export function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0, recordColors = false) {
   if (specials === null) specials = Array.isArray(board) ? blankSpecials(board.length) : [];
   if (!Array.isArray(specials) || !validState(board, specials, palette, refillState) || !Number.isFinite(bonusScore) || bonusScore < 0) return null;
   if (typeof keys === 'string' || typeof keys?.[Symbol.iterator] !== 'function') return null;
@@ -241,11 +247,11 @@ export function simulateSpecialClear(board, refillState, palette, weights, keys,
   const plan = { board: cloneGrid(board), specials: cloneGrid(specials),
     origins: board.map((row, r) => row.map((_value, c) => keyOf(r, c))), seeds,
     suppressed: new Set(), prismTargets: new Map(), preferred: [], combo: null };
-  return settle(plan, refillState, palette, weights, bonusScore);
+  return settle(plan, refillState, palette, weights, bonusScore, recordColors);
 }
 
 /** Fast deterministic hint/certification candidates. Count is an immediate estimate, not an optimal win promise. */
-export function specialActions(board, specials = blankSpecials(board.length)) {
+export function specialActions(board, specials = blankSpecials(board.length), recordColors = false) {
   const n = board.length;
   const ordinary = legalSwaps(cloneGrid(board));
   const seen = new Set(ordinary.map((move) => move.cells.join(',')));
@@ -274,21 +280,36 @@ export function specialActions(board, specials = blankSpecials(board.length)) {
       }
     }
   }
+  if (recordColors) for (const action of actions) {
+    const plan = prepareAction(board, specials, action.cells);
+    const matched = earnedMatches(plan.board, plan.specials, plan.preferred);
+    const protectedKeys = new Set(matched.creations.map((item) => keyOf(item.row, item.col)));
+    const estimate = expandClears(plan.board, plan.specials, new Set([...(plan.seeds || []), ...matched.matches]),
+      protectedKeys, plan.suppressed, plan.prismTargets);
+    action.collected = {};
+    for (const key of estimate.keys) {
+      const [r, c] = coordinates(key); const color = plan.board[r][c];
+      action.collected[color] = (action.collected[color] || 0) + 1;
+    }
+    action.points = estimate.keys.size * 10;
+  }
   return actions;
 }
 
-export function certifySpecialBoard(board, refillState, palette, weights, moveBudget, specials = blankSpecials(board.length)) {
+export function certifySpecialBoard(board, refillState, palette, weights, moveBudget, specials = blankSpecials(board.length), recordColors = false) {
   let state = { board, specials, refillState };
   let score = 0;
   const witness = [];
+  const collected = recordColors ? Object.fromEntries(palette.map((color) => [color, 0])) : null;
   for (let i = 0; i < moveBudget; i++) {
     const moves = specialActions(state.board, state.specials);
     moves.sort((a, b) => b.count - a.count);
     if (!moves.length) break;
     const cells = moves[0].cells;
-    state = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    state = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials, recordColors);
     if (!state) break;
     score += state.score; witness.push(cells);
+    if (recordColors) for (const color of palette) collected[color] += state.collected[color];
   }
-  return { score, witness };
+  return { score, witness, ...(recordColors ? { collected } : {}) };
 }

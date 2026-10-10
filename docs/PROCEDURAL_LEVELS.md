@@ -8,11 +8,11 @@ AI prompts, paid inference calls, calendar API subscriptions, or daily cron jobs
 Levels are made and checked on demand.
 
 - **Classic / Infinite Journey:** numbered levels with generated 6×6, 7×7 or 8×8
-  boards, 4–6 gem types, monthly/seasonal gem mixes, score goals, and move budgets.
+  boards, 4–6 gem types, monthly/seasonal gem mixes, score/collection goals, and move budgets.
   There is no clock. The level browser generates another page whenever needed.
 - **Timed:** generated boards with a 60-second clock and no move limit.
 - **Endless:** one attempt, unlimited generated stages with finite goals. Reaching
-  a goal automatically creates the next board. There is no clock or move limit;
+  every declared stage goal automatically creates the next board. There is no clock or move limit;
   the **Bank Run** button finishes the run and submits its cumulative score once.
 - **Today's Local Level:** a new daily seed/ID at the player's next local midnight.
   It is a real generated board, not a date mapped into a fixed bank of 300 levels.
@@ -34,17 +34,17 @@ Every definition has:
 2. At least one legal opening swap.
 3. A deterministic simulation of a successful path, including earned specials/combination chains, cascades, refills,
    and free deadlock repairs, without purchasing or using boosters.
-4. A goal below the simulated score and within a bounded move budget.
+4. Every declared objective is satisfied by that same no-inventory witness within the bounded move budget; collection colors/targets are derived from actual witnessed clears.
 
 The client uses **exactly the same earned-special rules, refill PRNG, gem weights, column order and
-scoring** as the certifier. Tests play the witness through the real Phaser game
-methods and compare board/sprite state and score, not just generator metadata.
-The target is 100–2,400 points and classic/daily budgets are 20–30 moves.
+scoring and cleared-color accounting** as the certifier. Tests play the witness through the real Phaser game
+methods and compare board/sprite state, score and persistent collection progress, not just generator metadata.
+The score-rating baseline is 100–2,400 points and classic/daily budgets are 20–30 moves.
 
 This is an existence proof of a winning path, not a promise that every choice
 wins, that every puzzle is equally enjoyable, or that every human can meet a
-60-second timed deadline. The current mechanics are score-based match-3;
-obstacles, portals, and collection-goal mechanics are not introduced by this work.
+60-second timed deadline. The current mechanics are score/collection-based match-3; obstacles and portals
+are not introduced by this work.
 
 ## Earned specials — shared rules v3
 
@@ -80,13 +80,66 @@ spend an ordinary move. No energy cost/reward or inventory price is changed.
 
 The model is a color board plus a parallel `specials` grid (null/row/column/burst/prism).
 `levelActions`, `simulateLevelMove` and `certifyLevel` dispatch by the frozen
-definition's generator version; callers must preserve both grids and refill
-state between actions. Two-coordinate witness actions are taps, four-coordinate
+definition's generator version; callers must preserve both grids, refill state
+and v4 `objectiveProgress` between actions. Two-coordinate witness actions are taps, four-coordinate
 actions are swaps. Use these wrappers for new play instead of the legacy plain
 `simulateMove`/`certifyBoard` functions. Hints estimate immediate effects, not the
 optimal winning sequence. The rendered icons retain the base shape/letter and
 use font-independent vector badges. Explore provides the icon/rule guide;
 Space selects for keyboard combinations and Enter activates.
+
+
+## Varied objectives — shared rules v4
+
+Production objectives are **composed by rules**, never authored per level:
+
+| Profile | Required to win |
+| --- | --- |
+| Score | Reach the displayed score target |
+| Collect | Clear the displayed count of one gem color |
+| Collect pair | Clear both displayed color targets |
+| Score and collect | Meet both score and collection targets |
+
+Numbered classic/timed/endless levels begin with score onboarding, then one-color
+collection at levels 2–3; later profiles follow a deterministic cycle. Daily
+profiles are selected from the daily variant's seed rather than campaign progress.
+Colors must appear in the certified palette and witness. Targets are bounded,
+rounded in steps of five, and calibrated below/equal to witnessed clears (early
+single-color cap 25, pair cap 45 per color, later single/mixed cap 70). Every
+served definition checks that **all** goals are satisfied by its no-inventory
+witness. Synthetic board fixtures are tests only, not a production content bank.
+
+Collection counts **actual unique cleared cells per wave**, using each gem's base
+color before gravity. Matches, cascades, earned activations/combinations and
+optional inventory clears all count. A surviving newly earned anchor, merely
+spawning a gem, converting a Prism partner without clearing it, or a free repair
+never grants collection. Inventory base score awards do not create artificial
+collection. Pure simulation returns clear deltas and a new accumulated state:
+
+```json
+{ "collected": { "red": 12, "blue": 4 } }
+```
+
+This is `objectiveProgress`, not the objectives themselves. Pass it with board,
+specials and `refillState` into `simulateLevelMove`/`simulateObjectiveClear` and
+retain the returned progress. New attempts/replay reset it; endless resets it at
+each completed stage and preserves the original paid attempt/rules version.
+Banking a partial endless stage remains allowed and uses the unchanged cumulative
+score payout, not stage-completion rewards.
+
+**No hidden win requirement:** on collection-only levels, `targetScore` is only a
+rating baseline. Completing collection earns at least one star. Two/three stars
+still require score ≥1.5×/2× that baseline and every goal complete; the existing
+coin/XP reward table is unchanged. A mixed level explicitly displays both goals.
+An unfinished collection cannot be bypassed with a huge score.
+
+The mobile HUD uses color **plus shape and letter**, named counters, per-goal
+completion and a meter averaged across all required goals. Win/loss summaries
+show what remained; Explore → Level goal guide explains counting, extra-star
+thresholds and the frozen local variant. Hints prefer immediate useful progress
+on unfinished goals without advancing RNG or spending anything, but do not
+simulate every full cascade or promise an optimal winning strategy. Short-screen
+context text is compact; its full accessible label and guide retain the details.
 
 ## Local day, month, season and holidays
 
@@ -111,7 +164,7 @@ Midnight is calculated across DST, including 23/25-hour days and non-hour offset
   in both morning and evening boards.
 - The preview updates at the next clock/day/forecast boundary and when the tab
   regains focus. It does not poll when the page is hidden. An active board and
-  its score goal never change mid-play. New attempts and the next endless stage
+  its objectives never change mid-play. New attempts and the next endless stage
   pick up new time/weather/preferences without extra energy charges for stages.
 
 The bundled calendar covers 207 countries/territories, with state/province rules
@@ -162,7 +215,7 @@ Four fixed **local clock periods**, not astronomical sunrise/sunset:
 Rain/snow/sleet favor cooler gems; storms use six gem types; fog favors warmer,
 readable colors without obscuring the board. Cold/hot temperatures and wind
 adjust weights when the corresponding colors are present. Wet/stormy profiles
-add a bounded move allowance; the usual **20–30 moves, 100–2,400-point goals and
+add a bounded move allowance; the usual **20–30 moves, 100–2,400-point score-rating baselines and
 60-second Timed limit** remain. Every altered board is certified again. No weather
 hazard can block input, demand a booster or mutate an active paid target.
 
@@ -227,20 +280,21 @@ weather conditions, dates and endpoint URLs are ignored.
 | --- | --- |
 | `GET /api/levels/context` | Local date/season/holidays, clock period, forecast bands/source and next variant boundary |
 | `GET /api/levels/regions?country=US` | Country catalog and optional state's/province's supported codes |
-| `GET /api/levels/daily?rulesVersion=3` | Current local daily time/weather variant |
-| `GET /api/levels/12345?mode=classic&rulesVersion=3` | A generated numbered level (`classic`, `timed`, `endless`) |
+| `GET /api/levels/daily?rulesVersion=4` | Current local daily time/weather variant |
+| `GET /api/levels/12345?mode=classic&rulesVersion=4` | A generated numbered level (`classic`, `timed`, `endless`) |
 
 All are public previews, marked `Cache-Control: private, no-store`. Invalid
 numbers, time zones, countries and regional codes return 400. Definitions are
 cached in a bounded server cache keyed by normalized calendar, clock/weather
 bands, area and level. Fetch timestamps/small temperature changes do not alter
 puzzle identity. Version 2 introduced time/weather seed rules; version 3 adds
-earned specials and special-aware certification. The cache includes the rules version.
+earned specials and special-aware certification; version 4 adds shared collection
+objectives/progress. The cache includes the rules version.
 
 **Compatibility handshake:** omit `rulesVersion` to receive v2 (for deployed
-plain-gem procedural clients); send numeric/string `2` or `3` explicitly to choose
+plain-gem procedural clients); send numeric/string `2`, `3` or `4` explicitly to choose
 a supported version. Unsupported values return 400 `unsupported_rules_version`.
-The new browser always advertises 3. Frozen v2 board definitions and witnesses
+The new browser always advertises 4. Full frozen v2/v3 definitions and witnesses
 remain unchanged, rather than recertifying an old paid goal under different rules.
 
 Signed-in play obtains its definition **atomically with the energy spend**:
@@ -249,7 +303,7 @@ Signed-in play obtains its definition **atomically with the energy spend**:
 {
   "level": 1,
   "mode": "daily",
-  "rulesVersion": 3,
+  "rulesVersion": 4,
   "location": {
     "timeZone": "America/New_York",
     "country": "US",
@@ -262,11 +316,11 @@ Send this to `POST /api/account-economy/energy/spend`. The response includes
 `attemptId`, numeric `level`, energy, and `generatedLevel`. Daily starts at 1;
 endless must start at 1 and keeps that attempt while progressing through stages,
 using the original attempt's rule version. Unsupported versions are refused before
-energy spending. Internal generation/tooling defaults to v3; untagged HTTP
+energy spending. Internal generation/tooling defaults to v4; untagged HTTP
 procedural clients deliberately default to v2.
 
 Normal/daily wins still use `POST /api/account-economy/level/complete`; endless
-banking uses `/endless/complete`. Completion uses the stored target, not a new
+banking uses `/endless/complete`. Completion uses the stored definition/objectives, not a new
 calendar lookup, and validates/consumes the attempt under the player lock. Goals
 and stars supplied by the client cannot change the payout. An attempt cannot
 switch between normal/daily and endless reward paths. Existing reward caps,
@@ -275,14 +329,29 @@ bank an endless run before its paid attempt expires. The original policy of one
 pending attempt per player is unchanged: paying for a new attempt replaces an
 uncompleted earlier attempt, regardless of rules version.
 
-The server still does not replay client moves for anti-cheat: a fabricated score
-can earn the bounded payout once per paid attempt, as documented in README.
-The solver certifies **level feasibility**, not the truth of a submitted score.
+For v4 collection/mixed wins, send `objectiveProgress` alongside `level`, `score`
+and `attemptId`. The strict shape is `{collected: {...}}`: palette keys only,
+nonnegative safe integers ≤1,000,000 per color; omitted palette entries count as
+zero. Goals/targets/stars in the request are never trusted. V4 score-only goals
+can omit progress. V2/v3 remain score-only and require no new counters.
+
+Missing collection progress returns `objective_progress_required`; malformed
+progress returns `invalid_objective_progress`; unmet score returns
+`score_below_target`; unmet colors return `objectives_incomplete`. Invalid or
+incomplete claims do not consume the pending attempt. Concurrent successful
+claims still consume/reward only once. These checks occur before consumption,
+inside the existing player lock, without changing inventory/economy economics.
+
+The server still does not replay client moves for anti-cheat: fabricated score
+**or collection counters** can earn the bounded payout once per paid attempt, as
+documented in README. Strict bounds/pinned goals do not prove honest play.
+The solver certifies **level feasibility**, not the truth of submitted progress.
 
 ## Source and build
 
 - `src/services/levels/generator.js`: versioned pure generator and dispatch/quality wrappers.
 - `match-core.js`: frozen legacy PRNG/plain-gem simulation, retaining v2 compatibility.
+- `objective-rules.js`: shared composition, strict progress, counting wrappers, hints, all-goal completion, ratings and certification.
 - `special-rules.js`: pure earning, activation, combinations, origin/event tracking and special-aware certification.
 - `location-context.js`: coarse preferences, local civil dates/DST and holidays.
 - `environment.js`: shared pure clock periods and weather/temperature/wind rules.

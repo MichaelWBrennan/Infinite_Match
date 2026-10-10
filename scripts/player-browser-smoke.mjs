@@ -30,28 +30,50 @@ const results = [];
 async function snapshot(page) {
   return page.evaluate(() => {
     const g = window.game;
-    return { board: g.board, specials: g.specials, score: g.score, moves: g.moves, rng: g.levelRng.state,
+    return { board: g.board, specials: g.specials, objectiveProgress: g.objectiveProgress, score: g.score, moves: g.moves, rng: g.levelRng.state,
       charges: Array.from(g.playerUI.powerups, ([type, slot]) => [type, slot.btn.getData('count')]) };
   });
 }
 
 async function checkFit(page) {
+  await page.evaluate(() => new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve))));
   const fit = await page.evaluate(() => {
     const g = window.game;
     const shell = g.playerUI.shell.getBoundingClientRect();
     const surface = g.playerUI.surface.getBoundingClientRect();
     const canvas = g.game.canvas.getBoundingClientRect();
-    const size = g.boardSize * g.cellStep * g.scene.cameras.main.zoom;
+    const camera = g.scene.cameras.main;
+    const size = g.boardSize * g.cellStep * camera.zoom;
+    const corner = (x, y) => {
+      const point = camera.matrix.transformPoint(x - camera.scrollX, y - camera.scrollY);
+      return { x: canvas.x + point.x * canvas.width / g.game.scale.gameSize.width,
+        y: canvas.y + point.y * canvas.height / g.game.scale.gameSize.height };
+    };
+    const topLeft = corner(g.cellX(0) - g.cellStep / 2, g.cellY(0) - g.cellStep / 2);
+    const bottomRight = corner(g.cellX(g.boardSize - 1) + g.cellStep / 2, g.cellY(g.boardSize - 1) + g.cellStep / 2);
+    const board = { left: topLeft.x, top: topLeft.y, right: bottomRight.x, bottom: bottomRight.y };
+    const announcement = g.playerUI.shell.querySelector('.match-player-announcement').getBoundingClientRect();
+    const announcementCoversBoard = announcement.left < board.right && announcement.right > board.left
+      && announcement.top < board.bottom && announcement.bottom > board.top;
+    const goals = Array.from(g.playerUI.shell.querySelectorAll('.match-objective')).map((goal) => ({ ...goal.getBoundingClientRect().toJSON(),
+      label: goal.getAttribute('aria-label'), textFits: goal.scrollWidth <= goal.clientWidth + 1 }));
     const buttons = Array.from(g.playerUI.shell.querySelectorAll('footer button'))
       .filter((button) => button.getClientRects().length)
       .map((button) => ({ name: button.textContent.trim(), ...button.getBoundingClientRect().toJSON() }));
     return { width: innerWidth, height: innerHeight, bodyWidth: document.body.scrollWidth,
-      shell: shell.toJSON(), surface: surface.toJSON(), canvas: canvas.toJSON(), boardExtent: size, buttons };
+      shell: shell.toJSON(), surface: surface.toJSON(), canvas: canvas.toJSON(), boardExtent: size, buttons, goals, board, announcementCoversBoard };
   });
   assert.ok(fit.bodyWidth <= fit.width + 1, 'no horizontal page overflow');
   assert.ok(fit.surface.width > 0 && fit.surface.height > 0, 'board has a viewport');
   assert.ok(fit.boardExtent <= Math.min(fit.surface.width, fit.surface.height) + 1, 'entire board fits');
   assert.ok(fit.surface.bottom <= fit.height + 1, 'board is visible vertically');
+  assert.ok(fit.board.left >= fit.surface.left - 1 && fit.board.right <= fit.surface.right + 1
+    && fit.board.top >= fit.surface.top - 1 && fit.board.bottom <= fit.surface.bottom + 1, 'rendered board corners are not clipped');
+  assert.equal(fit.announcementCoversBoard, false, 'goal announcements cannot cover puzzle cells');
+  for (const goal of fit.goals) {
+    assert.ok(goal.left >= -1 && goal.right <= fit.width + 1 && goal.bottom <= fit.height + 1 && (goal.bottom <= fit.surface.top + 1 || goal.right <= fit.surface.left + 1), 'every goal is above or beside the board, and within the screen');
+    assert.ok(goal.textFits && goal.label, 'goals have unclipped readable text and non-color accessible names');
+  }
   for (const button of fit.buttons) {
     assert.ok(button.width >= 44 && button.height >= 44, `${button.name}: minimum ordinary control size`);
     assert.ok(button.left >= -1 && button.right <= fit.width + 1 && button.bottom <= fit.height + 1, `${button.name}: control visible`);
@@ -86,7 +108,7 @@ async function performAction(page, cells, method, mobile) {
   const expected = await page.evaluate((cells) => {
     const g = window.game;
     return window.InfiniteLevels.simulateLevelMove(g.generatedLevel,
-      { board: g.board, specials: g.specials, refillState: g.levelRng.state }, cells);
+      { board: g.board, specials: g.specials, refillState: g.levelRng.state, objectiveProgress: g.objectiveProgress }, cells);
   }, cells);
   assert.ok(expected, 'action is accepted by shared versioned rules');
   const first = await cellPoint(page, cells[0], cells[1]);
@@ -126,6 +148,7 @@ async function performAction(page, cells, method, mobile) {
   const after = await snapshot(page);
   assert.deepEqual(after.board, expected.board, `${method}: shared-rule board parity`);
   assert.deepEqual(after.specials, expected.specials ?? null, `${method}: persistent special parity`);
+  assert.deepEqual(after.objectiveProgress, expected.objectiveProgress, `${method}: collection progress parity`);
   assert.equal(after.rng, expected.refillState, `${method}: deterministic refill parity`);
   assert.equal(after.score - before.score, expected.score, `${method}: score parity`);
   assert.deepEqual(after.charges, before.charges, `${method}: earned actions do not consume inventory`);
@@ -142,6 +165,7 @@ async function performAction(page, cells, method, mobile) {
       && gem.getData('special') === (g.specials?.[r]?.[c] ?? null) && gem.getData('row') === r && gem.getData('col') === c));
   });
   assert.equal(viewsMatch, true, `${method}: no duplicated, stale or misplaced sprite`);
+  await checkFit(page);
   return expected;
 }
 
@@ -157,8 +181,8 @@ async function earnedFixture(page, kinds = [], earnFour = false) {
   await page.evaluate(({ kinds, earnFour }) => {
     const g = window.game;
     const palette = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
-    const definition = { ...window.__qaDefinition, generatorVersion: 3, boardSize: 7, gemTypes: palette,
-      gemWeights: {}, refillState: 12345, targetScore: 1000000, moves: 30,
+    const definition = { ...window.__qaDefinition, generatorVersion: 4, boardSize: 7, gemTypes: palette,
+      gemWeights: {}, refillState: 12345, targetScore: 1000000, moves: 30, objectives: [{ type: 'score', target: 1000000 }],
       board: Array.from({ length: 7 }, (_, r) => Array.from({ length: 7 }, (_, c) => palette[(r * 2 + c) % 6])),
       specials: window.InfiniteLevels.blankSpecials(7) };
     kinds.forEach((kind, index) => { definition.specials[3][3 + index] = kind; });
@@ -175,12 +199,12 @@ async function earnedFixture(page, kinds = [], earnFour = false) {
 async function exerciseLargestBoard(page, device) {
   await page.evaluate(() => {
     const g = window.game;
-    for (let number = 1; number <= 30; number++) {
+    for (let number = 1; number <= 120; number++) {
       const definition = window.InfiniteLevels.generateLevel(number, window.__qaDefinition.context);
-      if (definition.boardSize !== 8) continue;
+      if (definition.boardSize !== 8 || definition.objectiveProfile !== 'collect-pair') continue;
       g.applyGeneratedDefinition(definition); g.isGameRunning = true; g.updateUI(); return;
     }
-    throw new Error('No largest generated board in seed cohort');
+    throw new Error('No largest paired-objective board in seed cohort');
   });
   await page.waitForTimeout(80);
   const fit = await checkFit(page);
@@ -192,7 +216,7 @@ async function exerciseLargestBoard(page, device) {
 }
 
 async function exerciseEarnedSpecials(page, device) {
-  assert.equal(await page.evaluate(() => window.__qaDefinition.generatorVersion), 3, 'new frontend negotiates v3');
+  assert.equal(await page.evaluate(() => window.__qaDefinition.generatorVersion), 4, 'new frontend negotiates v4');
   const badgesVisible = await page.evaluate(() => window.InfinitePlayerExperience.specialTypes.every((kind) => {
     const canvas = window.game.scene.textures.get(`gem_red_${kind}`).getSourceImage();
     const pixels = canvas.getContext('2d').getImageData(42, 42, 15, 15).data;
@@ -233,6 +257,60 @@ async function exerciseEarnedSpecials(page, device) {
   assert.equal(await page.evaluate(() => window.game.isPaused), false);
 }
 
+async function setObjectives(page, objectives) {
+  await page.evaluate((objectives) => {
+    const g = window.game; g.generatedLevel.objectives = objectives; g.objectiveProgress = window.InfiniteLevels.initialObjectiveProgress(g.generatedLevel); g.updateUI();
+  }, objectives);
+  await page.waitForTimeout(80); await checkFit(page);
+}
+
+async function exerciseObjectives(page, device) {
+  await earnedFixture(page, [], true);
+  await setObjectives(page, [{ type: 'collect', gemType: 'red', target: 30 }, { type: 'collect', gemType: 'blue', target: 20 }]);
+  assert.equal(await page.locator('.match-objective canvas').count(), 2, 'both collection goals use shape/symbol/color gem icons');
+  await performAction(page, [2, 3, 3, 3], 'tap', device.mobile);
+  assert.equal(await page.evaluate(() => window.game.isGameRunning), true, 'one color does not bypass the pair goal');
+  const progress = await page.evaluate(() => {
+    const g = window.game; return { red: g.objectiveProgress.collected.red, blue: g.objectiveProgress.collected.blue,
+      fraction: window.InfiniteLevels.objectiveStatus(g.generatedLevel, g.score, g.objectiveProgress).fraction,
+      meter: g.playerUI.shell.querySelector('progress').value };
+  });
+  assert.ok(progress.red >= 3, 'cleared red gems accumulate in the real input path');
+  assert.ok(Math.abs(progress.meter - progress.fraction * 100) < 0.000001, 'meter represents all goals, not rating score');
+  assert.match(await page.locator('.match-objective[data-gem-type="red"]').textContent(), new RegExp(`red ${Math.min(30, progress.red)}/30`));
+  if (device.name === 'phone') await page.screenshot({ path: path.join(output, 'phone-collection-objectives.png') });
+  await page.locator('[data-action="menu"]').click();
+  await page.getByRole('button', { name: 'Level goal guide', exact: true }).click();
+  assert.match(await page.locator('.match-player-dialog').textContent(), /score is not an extra win requirement/);
+  assert.equal(await page.evaluate(() => window.game.isPaused), true);
+  await page.locator('.match-player-dialog').evaluate((dialog) => { dialog.scrollTop = dialog.scrollHeight; });
+  assert.equal(await page.getByRole('button', { name: 'Back to game', exact: true }).evaluate((button) => {
+    const bounds = button.getBoundingClientRect(); const parent = button.closest('dialog').getBoundingClientRect();
+    return bounds.top >= parent.top - 1 && bounds.bottom <= parent.bottom + 1;
+  }), true, 'goal guide keeps its close control visible after scrolling');
+  await page.getByRole('button', { name: 'Back to game', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.game.isPaused), false);
+
+  await earnedFixture(page, [], true);
+  await setObjectives(page, [{ type: 'score', target: 1 }, { type: 'collect', gemType: 'red', target: 3 }]);
+  await page.evaluate(() => { const g = window.game; g.score = 1; g.checkEndConditions(); g.updateUI(); });
+  assert.equal(await page.evaluate(() => window.game.isGameRunning), true, 'score alone cannot bypass a mixed goal');
+  assert.equal(await page.locator('.match-objective').count(), 2);
+
+  await earnedFixture(page, [], true);
+  await setObjectives(page, [{ type: 'collect', gemType: 'red', target: 3 }]);
+  await performAction(page, [2, 3, 3, 3], 'tap', device.mobile);
+  await page.waitForSelector('.match-player-dialog[open]');
+  const won = await page.evaluate(() => ({ won: window.game.hasWonLevel(), score: window.game.score, target: window.game.targetScore,
+    stars: window.game.starsFor(window.game.score) }));
+  assert.equal(won.won, true); assert.ok(won.score < won.target, 'no undisclosed score target on collection-only levels'); assert.equal(won.stars, 1);
+  assert.match(await page.locator('.match-player-dialog').textContent(), /red 3\/3 \(done\)/);
+  await page.getByRole('button', { name: 'Replay', exact: true }).click();
+  await page.waitForFunction(() => window.game.isGameRunning && !window.game.levelStarting);
+  assert.equal(await page.evaluate(() => Object.values(window.game.objectiveProgress.collected).every((count) => count === 0)), true, 'actual Replay resets counters');
+  await reset(page);
+}
+
 for (const device of cases) {
   const browser = await chromium.launch({ executablePath, args, headless: true });
   let page;
@@ -270,6 +348,7 @@ for (const device of cases) {
     if (device.mobile) await exerciseMove(page, 'swipe', true);
     await exerciseMove(page, 'keyboard', device.mobile);
     await exerciseEarnedSpecials(page, device);
+    await exerciseObjectives(page, device);
     await reset(page);
 
     // Invalid adjacent swaps give feedback even when motion is reduced, and cost nothing.
@@ -388,7 +467,7 @@ for (const device of cases) {
     await page.screenshot({ path: path.join(output, `${device.name}.png`) });
     assert.deepEqual(errors, [], 'no page JavaScript errors');
     const result = { device: device.name, viewport: `${device.width}x${device.height}`, boardSize: initialBoardSize,
-      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, largest-board/large-text',
+      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, collection-progress, pair/mixed/collection-win, objective-guide, objective-replay, largest-board/large-text',
       touchSwipe: device.mobile };
     results.push(result);
     console.log(JSON.stringify(result));

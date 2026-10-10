@@ -220,7 +220,7 @@ describe('determinism, certification and upgrade safety', () => {
       season: 'autumn', hemisphere: 'north', holidays: [], timeOfDay: { period: 'evening' }, weather: { available: false } };
     let earned = 0;
     for (let number = 1; number <= 25; number++) {
-      const definition = generateLevel(number, context);
+      const definition = generateLevel(number, context, 'classic', 3);
       let state: any = { board: definition.board, specials: definition.specials, refillState: definition.refillState };
       const proof = certifyLevel(definition);
       let total = 0;

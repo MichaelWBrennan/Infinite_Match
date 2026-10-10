@@ -437,7 +437,7 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     let completed;
     try {
       completed = await accountEconomyService.consumeAttempt(playerId, attemptId, level, undefined, {
-        mode: 'level', score,
+        mode: 'level', score, objectiveProgress: req.body.objectiveProgress,
         legacyTarget: levelTarget(level, levelMultiplier(level, readLevelOverrides())),
       });
     } catch (error) {

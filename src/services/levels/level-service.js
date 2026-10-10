@@ -8,7 +8,7 @@ const MAX_CACHED_LEVELS = 128;
 function validate(level, mode, rulesVersion = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(level) || level < 1) throw new LevelInputError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new LevelInputError('invalid_mode');
-  if (![2, 3].includes(rulesVersion)) throw new LevelInputError('unsupported_rules_version');
+  if (![2, 3, 4].includes(rulesVersion)) throw new LevelInputError('unsupported_rules_version');
 }
 
 export function levelForContext(level, mode, context, rulesVersion = GENERATOR_VERSION) {
@@ -50,10 +50,11 @@ export async function liveGeneratedLevel({ level = 1, mode = 'classic', location
 }
 
 
-/** Untagged deployed v2 clients must never be charged for an unsupported v3 target. */
+/** Untagged deployed v2 clients must never be charged for an unsupported newer-rules target. */
 export function clientRulesVersion(value) {
   if (value === undefined) return 2;
   if (value === 2 || value === '2') return 2;
   if (value === 3 || value === '3') return 3;
+  if (value === 4 || value === '4') return 4;
   throw new LevelInputError('unsupported_rules_version');
 }

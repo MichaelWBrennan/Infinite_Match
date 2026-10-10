@@ -103,7 +103,7 @@
             <header class="match-player-header"><span class="match-wordmark">INFINITE <b>MATCH</b></span><span class="match-player-level"></span></header>
             <div class="match-player-stats"><span data-stat="score">Score: 0</span><span data-stat="moves">Moves: —</span><span data-stat="timer">Time: —</span></div>
             <div class="match-player-goal" data-stat="goal"></div>
-            <progress class="match-goal-progress" aria-label="Level score goal" max="100" value="0"></progress>
+            <progress class="match-goal-progress" aria-label="Level goal progress" max="100" value="0"></progress>
             <div class="match-player-theme" data-stat="theme"></div>
             <div class="match-board-surface" tabindex="0" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, Escape clears selection."></div>
             <footer class="match-player-footer">
@@ -123,11 +123,13 @@
         const status = find('.match-dialog-status');
         const powerups = new Map();
         let focusedBeforeDialog = null;
+        let goalKey = '';
+        let goalLabels = [];
         const getField = (name) => name === 'level' ? find('.match-player-level') : find(`[data-stat="${name}"]`);
         const fields = Object.fromEntries(['score', 'moves', 'timer', 'level', 'goal', 'theme', 'energy', 'stars'].map((name) => [name, proxy(getField(name))]));
         const writeTheme = fields.theme.setText;
         fields.theme.setText = (text) => {
-            getField('theme').title = String(text);
+            getField('theme').title = String(text); getField('theme').setAttribute('aria-label', String(text));
             return writeTheme(String(text).split('\n').filter((line) => !/^\d{4}-\d{2}-\d{2}$/.test(line)).join(' · '));
         };
         const actions = {
@@ -160,8 +162,43 @@
         });
 
         function announce(message) { find('.match-player-announcement').textContent = message; }
+        function renderGoals() {
+            const progress = find('progress'); const area = getField('goal');
+            const definition = game.generatedLevel;
+            if (definition?.generatorVersion < 4 || !definition) {
+                goalKey = ''; goalLabels = []; area.classList.remove('match-objectives'); area.removeAttribute('aria-label');
+                progress.max = Math.max(1, game.targetScore || 1); progress.value = Math.min(game.score || 0, progress.max);
+                progress.setAttribute('aria-valuetext', `${game.score || 0} of ${game.targetScore || 1} points`);
+                return;
+            }
+            const state = root.InfiniteLevels.objectiveStatus(definition, game.score, game.objectiveProgress);
+            const key = `${definition.id}|${JSON.stringify(definition.objectives)}`;
+            area.classList.add('match-objectives');
+            area.setAttribute('aria-label', 'Complete every goal. Cleared gems, including special effects and cascades, count.');
+            if (key !== goalKey) {
+                goalKey = key; area.replaceChildren(); goalLabels = [];
+                for (const goal of state.items) {
+                    const item = document.createElement('span'); item.className = 'match-objective';
+                    item.dataset.objective = goal.type; if (goal.gemType) item.dataset.gemType = goal.gemType;
+                    if (goal.type === 'collect') {
+                        const icon = document.createElement('canvas'); icon.width = 64; icon.height = 64;
+                        icon.setAttribute('aria-hidden', 'true'); drawGem(icon.getContext('2d'), goal.gemType); item.append(icon);
+                    }
+                    const text = document.createElement('span'); item.append(text); area.append(item); goalLabels.push({ item, text });
+                }
+            }
+            state.items.forEach((goal, index) => {
+                const slot = goalLabels[index]; if (!slot) return;
+                const name = goal.type === 'collect' ? goal.gemType : 'Score';
+                slot.text.textContent = `${name} ${Math.min(goal.current, goal.target).toLocaleString()}/${goal.target.toLocaleString()}`;
+                slot.item.dataset.complete = String(goal.complete);
+                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
+            });
+            progress.max = 100; progress.value = state.fraction * 100;
+            progress.setAttribute('aria-valuetext', root.InfiniteLevels.objectiveSummary(definition, game.score, game.objectiveProgress, true));
+        }
         function refresh() {
-            const progress = find('progress'); progress.max = Math.max(1, game.targetScore || 1); progress.value = Math.min(game.score || 0, progress.max);
+            renderGoals();
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
             find('[data-action="hint"]').disabled = !game.isGameRunning || game.isPaused || game.powerUpPending || game.levelStarting;
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
@@ -204,11 +241,23 @@
             overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
             overlayButton('Play preferences', () => preferences(wasRunning));
             overlayButton('Special gem guide', () => specialGuide(wasRunning));
+            if (game.usesLevelObjectives()) overlayButton('Level goal guide', () => goalGuide(wasRunning));
             overlayButton('Game modes and local level settings', () => game.openMenu());
             overlayButton('Account / sign in', () => game.openSignIn());
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
             overlayButton('Season and community', () => game.showBattlePass());
+        }
+        function goalGuide(wasRunning) {
+            game.openOverlay('Your level goals');
+            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
+            content.lastElementChild.className = 'match-guide-close';
+            overlayText(root.InfiniteLevels.objectiveDescription(game.generatedLevel));
+            overlayText(`${game.generatedLevel.theme.name} · ${game.generatedLevel.context.localDate} · ${game.generatedLevel.theme.environmentLabel}`);
+            overlayText('Complete every goal above the board. Collect gems by clearing their color: matches, cascades, earned specials and optional inventory effects all count. New spawns, a newly earned gem that survives, and free board repairs do not count.');
+            overlayText('On collection-only levels, score is not an extra win requirement. Completing the collection earns at least one star; score can earn extra stars. Mixed levels require both score and collection. Hints prefer useful progress on unfinished goals, but are not a guaranteed winning strategy.');
+            overlayText(`Extra stars still require every goal: 2 stars at ${Math.ceil(game.targetScore * 1.5).toLocaleString()} points, 3 stars at ${(game.targetScore * 2).toLocaleString()} points. Collection-only completion earns at least 1 star even below the score rating baseline.`);
+            overlayText('Goals stay fixed during this attempt. Replay starts new counters. Endless resets counters only when every stage goal is complete; Bank Run can finish a partial stage.');
         }
         function specialGuide(wasRunning) {
             game.openOverlay('Earned special gems');

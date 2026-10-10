@@ -1,12 +1,12 @@
 import { describe, expect, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { certifyLevel, simulateLevelMove, generateLevel } from '../services/levels/generator.js';
+import { certifyLevel, simulateLevelMove, simulateObjectiveClear, generateLevel } from '../services/levels/generator.js';
 import { generatedLevel } from '../services/levels/level-service.js';
 
 const location = { timeZone: 'America/New_York', country: 'US', region: 'PA' };
 const now = Date.parse('2026-10-31T12:00:00Z');
-const definition = (level = 1, mode = 'classic', at = now) => generatedLevel({ level, mode, location }, at);
+const definition = (level = 1, mode = 'classic', at = now) => generatedLevel({ level, mode, location, rulesVersion: 3 }, at);
 
 function sprite(x = 0, y = 0, key = '') {
   const value: any = { x, y, key, data: {}, destroyed: false, text: '' };
@@ -118,7 +118,7 @@ describe('real Phaser core uses the certified definition', () => {
         const base = definition(10);
         const context = { ...base.context, timeOfDay: { period }, weather: { available: true, condition,
           temperatureBand: 'cold', windBand: 'windy', expiresAt: new Date(now + 3600000).toISOString() } };
-        const def = sandbox.InfiniteLevels.generateLevel(10, context);
+        const def = sandbox.InfiniteLevels.generateLevel(10, context, 'classic', 3);
         game.applyGeneratedDefinition(def);
         game.isGameRunning = true;
         const proof = certifyLevel(def);
@@ -172,7 +172,7 @@ describe('real Phaser core uses the certified definition', () => {
     };
     expect(await game.selectLevel(100001)).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 3 } });
+    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 4 } });
     expect(game.targetScore).toBe(def.targetScore);
     expect(game.attemptId).toBe('attempt');
     expect(game.attemptLevel).toBe(100001);
@@ -329,7 +329,7 @@ describe('real Phaser core uses the certified definition', () => {
     const { game } = makeBrowserGame();
     game.fetchJson = async () => { throw new Error('offline'); };
     expect(await game.selectLevel(100001)).toBe(true);
-    expect(game.generatedLevel.generatorVersion).toBe(3);
+    expect(game.generatedLevel.generatorVersion).toBe(4);
     expect(game.generatedLevel.context.offline).toBe(true);
     expect(game.attemptId).toBeNull();
     assertSprites(game);
@@ -671,5 +671,113 @@ describe('temporary server throttling is not a player settings error', () => {
     expect(game.energy).toBe(energy);
     expect(game.generatedLevel).toBeUndefined();
     expect(game.isGameRunning).toBe(false);
+  });
+});
+
+describe('objective-aware Phaser v4', () => {
+  function objectiveFixture(goals: any[] = [{ type: 'collect', gemType: 'red', target: 30 }]) {
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+    const board = Array.from({ length: 7 }, (_, r) => Array.from({ length: 7 }, (_, c) => colors[(r * 2 + c) % 6]));
+    const def = { ...definition(1), generatorVersion: 4, boardSize: 7, board, gemTypes: colors, gemWeights: {}, refillState: 12345,
+      specials: Array.from({ length: 7 }, () => Array(7).fill(null)), targetScore: 1000000, objectives: goals };
+    board[3]![0] = 'blue'; board[3]![1] = 'red'; board[3]![2] = 'red'; board[3]![4] = 'red'; board[2]![3] = 'red';
+    return def;
+  }
+
+  test.each([1, 2, 3, 4, 7, 8, 12, 21, 100001])('level %d reaches every procedurally composed goal in the actual game', (level) => {
+    const { game } = makeBrowserGame();
+    const def = generatedLevel({ level, mode: 'classic', location, rulesVersion: 4 }, now);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    for (const cells of certifyLevel(def).witness) {
+      if (!game.isGameRunning) break;
+      const expected = simulateLevelMove(def, { board: game.board, specials: game.specials, refillState: game.levelRng.state,
+        objectiveProgress: game.objectiveProgress }, cells)!;
+      if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+      expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(expected.objectiveProgress);
+      expect(game.levelRng.state).toBe(expected.refillState); assertSprites(game);
+    }
+    expect(game.hasWonLevel()).toBe(true); expect(game.endCalls).toBe(1);
+    expect(game.starsFor(game.score)).toBeGreaterThanOrEqual(1);
+  });
+
+  test('a collection-only goal ends below the rating score and replay resets counters', () => {
+    const { game } = makeBrowserGame(); const def = objectiveFixture([{ type: 'collect', gemType: 'red', target: 3 }]);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    game.trySwap(2, 3, 3, 3);
+    expect(game.objectiveProgress.collected.red).toBeGreaterThanOrEqual(3);
+    expect(game.score).toBeLessThan(def.targetScore);
+    expect(game.endCalls).toBe(1); expect(game.starsFor(game.score)).toBe(1);
+    game.applyGeneratedDefinition(def);
+    expect(Object.values(game.objectiveProgress.collected)).toEqual(Array(6).fill(0));
+    expect(game.score).toBe(0); expect(game.hasWonLevel()).toBe(false); assertSprites(game);
+  });
+
+  test('a high score cannot bypass either a mixed or a two-color collection goal', () => {
+    for (const goals of [[{ type: 'score', target: 100 }, { type: 'collect', gemType: 'red', target: 30 }],
+      [{ type: 'collect', gemType: 'red', target: 30 }, { type: 'collect', gemType: 'blue', target: 20 }]]) {
+      const { game } = makeBrowserGame(); game.applyGeneratedDefinition(objectiveFixture(goals)); game.isGameRunning = true;
+      game.score = 1000000; game.checkEndConditions(); expect(game.isGameRunning).toBe(true); expect(game.starsFor(game.score)).toBe(0);
+      game.objectiveProgress.collected.red = 30; game.checkEndConditions();
+      if (goals[0].type === 'collect') {
+        expect(game.isGameRunning).toBe(true); game.objectiveProgress.collected.blue = 20; game.checkEndConditions();
+      }
+      expect(game.endCalls).toBe(1); expect(game.hasWonLevel()).toBe(true);
+    }
+  });
+
+  test('running out of moves without all collections is a zero-star loss, regardless of score', () => {
+    const { game } = makeBrowserGame(); game.applyGeneratedDefinition(objectiveFixture()); game.isGameRunning = true;
+    game.score = 1000000; game.moves = 0; game.checkEndConditions();
+    expect(game.endCalls).toBe(1); expect(game.hasWonLevel()).toBe(false); expect(game.starsFor(game.score)).toBe(0);
+  });
+
+  test('inventory transitions and later earned moves accumulate the same shared progress', () => {
+    const { game, sandbox } = makeBrowserGame(); const def = objectiveFixture(); game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    const keys = new Set(['0,0']);
+    const expected = simulateObjectiveClear(def, { board: game.board, specials: game.specials, refillState: game.levelRng.state,
+      objectiveProgress: game.objectiveProgress }, keys, 500)!;
+    const moves = game.moves; game.clearAndCascade(keys, 500);
+    expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(expected.objectiveProgress); expect(game.moves).toBe(moves);
+    const action = sandbox.InfiniteLevels.levelActions(def, game.board, game.specials, game.objectiveProgress, game.score)[0].cells;
+    const next = simulateLevelMove(def, { board: game.board, specials: game.specials, refillState: game.levelRng.state,
+      objectiveProgress: game.objectiveProgress }, action)!;
+    if (action.length === 2) game.activateEarnedSpecial(...action); else game.trySwap(...action);
+    expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(next.objectiveProgress); assertSprites(game);
+  });
+
+  test('goal-aware free hints do not change the board, score, move count, RNG or goal counters', () => {
+    const { game } = makeBrowserGame(); const def = objectiveFixture();
+    // A stable board with a red Prism gives an immediate, visible red-clearing choice.
+    def.board = Array.from({ length: 7 }, (_, r) => Array.from({ length: 7 }, (_, c) => def.gemTypes[(r * 2 + c) % 6]));
+    def.board[3]![3] = 'red'; def.specials[3]![3] = 'prism';
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    const before = JSON.stringify({ board: game.board, specials: game.specials, score: game.score, moves: game.moves,
+      rng: game.levelRng.state, progress: game.objectiveProgress });
+    expect(game.showHint()).toEqual([3, 3]);
+    expect(JSON.stringify({ board: game.board, specials: game.specials, score: game.score, moves: game.moves,
+      rng: game.levelRng.state, progress: game.objectiveProgress })).toBe(before);
+  });
+
+  test('paid v4 completion sends counters, not client-authored goals, targets or stars', async () => {
+    const { game, sandbox } = makeBrowserGame(); game.applyGeneratedDefinition(objectiveFixture());
+    game.attemptId = 'v4_paid'; game.attemptLevel = 1; game.getAuthToken = () => 'token'; game.objectiveProgress.collected.red = 30; game.score = 30;
+    let sent: any;
+    sandbox.fetch = async (_url: string, options: any) => {
+      sent = JSON.parse(options.body); return { ok: true, json: async () => ({ success: true, result: { stars: 1, balances: { stars: 1 } } }) };
+    };
+    await game.submitLevelWin(1); expect(game.stars).toBe(1);
+    expect(sent).toEqual({ level: 1, score: 30, attemptId: 'v4_paid', objectiveProgress: game.objectiveProgress });
+    expect(game.attemptId).toBeNull();
+  });
+
+  test('endless stays on the collection stage until all goals finish, then pins v4 and resets only stage counters', () => {
+    const { game } = makeBrowserGame(); const def = { ...objectiveFixture(), mode: 'endless', level: 2 };
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'one_run'; game.endlessTotalScore = 500;
+    game.score = 1000000; game.checkEndConditions(); expect(game.level).toBe(2);
+    game.objectiveProgress.collected.red = 30; game.checkEndConditions();
+    expect(game.level).toBe(3); expect(game.generatedLevel.generatorVersion).toBe(4);
+    expect(game.endlessTotalScore).toBe(1000500); expect(game.score).toBe(0);
+    expect(Object.values(game.objectiveProgress.collected).every((count) => count === 0)).toBe(true);
+    expect(game.attemptId).toBe('one_run'); expect(game.isGameRunning).toBe(true); assertSprites(game);
   });
 });

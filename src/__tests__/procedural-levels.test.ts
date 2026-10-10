@@ -243,7 +243,7 @@ describe('public procedural level API', () => {
     assertValid(modern.body.level);
   });
 
-  test.each(['1', '4', 'invalid', '', ['2', '3']])('unsupported preview rules %j are refused', async (rulesVersion) => {
+  test.each(['1', '5', 'invalid', '', ['2', '3']])('unsupported preview rules %j are refused', async (rulesVersion) => {
     const res = await request(app).get('/api/levels/1').query({ ...north, rulesVersion });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('unsupported_rules_version');

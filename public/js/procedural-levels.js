@@ -2117,13 +2117,14 @@ function expandClears(board, specials, seeds, protectedKeys, suppressed, prismTa
   return { keys, activated };
 }
 
-function settle(plan, refillState, palette, weights, bonusScore = null) {
+function settle(plan, refillState, palette, weights, bonusScore = null, recordColors = false) {
   let { board, specials, origins } = plan;
   const n = board.length;
   const rng = { state: refillState };
   const events = [];
   let score = 0;
   let seeds = plan.seeds;
+  const collected = recordColors ? Object.fromEntries(palette.map((color) => [color, 0])) : null;
   for (let wave = 0; wave < 64; wave++) {
     const matched = earnedMatches(board, specials, wave === 0 ? plan.preferred : []);
     if (!seeds?.size && !matched.matches.size) break;
@@ -2136,8 +2137,13 @@ function settle(plan, refillState, palette, weights, bonusScore = null) {
     const points = wave === 0 && bonusScore !== null ? bonusScore + Math.max(0, clear.keys.size - initialSeeds.size) * 10
       : clear.keys.size * 10 * (bonusScore === null ? wave + 1 : wave);
     score += points;
+    const colors = recordColors ? Object.fromEntries(palette.map((color) => [color, 0])) : null;
+    if (recordColors) for (const key of clear.keys) {
+      const [r, c] = coordinates(key);
+      colors[board[r][c]]++; collected[board[r][c]]++;
+    }
     events.push({ cleared: [...clear.keys], created: matched.creations, activated: clear.activated,
-      points, combo: wave === 0 ? plan.combo : null });
+      points, combo: wave === 0 ? plan.combo : null, ...(recordColors ? { collected: colors } : {}) });
     for (const key of clear.keys) {
       const [r, c] = coordinates(key);
       board[r][c] = null; specials[r][c] = null; origins[r][c] = null;
@@ -2160,19 +2166,19 @@ function settle(plan, refillState, palette, weights, bonusScore = null) {
     board = dealPlayableBoard(n, palette, weights, rng);
     specials = blankSpecials(n); origins = blankSpecials(n);
   }
-  return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled };
+  return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled, ...(recordColors ? { collected } : {}) };
 }
 
 /** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move. */
-function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null) {
+function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null, recordColors = false) {
   if (specials === null) specials = Array.isArray(board) ? blankSpecials(board.length) : [];
   if (!Array.isArray(specials) || !validState(board, specials, palette, refillState)) return null;
   const plan = prepareAction(board, specials, cells);
-  return plan ? settle(plan, refillState, palette, weights) : null;
+  return plan ? settle(plan, refillState, palette, weights, null, recordColors) : null;
 }
 
 /** Existing inventory boosters keep their base award; effects can chain earned specials. No inventory logic here. */
-function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0) {
+function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0, recordColors = false) {
   if (specials === null) specials = Array.isArray(board) ? blankSpecials(board.length) : [];
   if (!Array.isArray(specials) || !validState(board, specials, palette, refillState) || !Number.isFinite(bonusScore) || bonusScore < 0) return null;
   if (typeof keys === 'string' || typeof keys?.[Symbol.iterator] !== 'function') return null;
@@ -2181,11 +2187,11 @@ function simulateSpecialClear(board, refillState, palette, weights, keys, specia
   const plan = { board: cloneGrid(board), specials: cloneGrid(specials),
     origins: board.map((row, r) => row.map((_value, c) => keyOf(r, c))), seeds,
     suppressed: new Set(), prismTargets: new Map(), preferred: [], combo: null };
-  return settle(plan, refillState, palette, weights, bonusScore);
+  return settle(plan, refillState, palette, weights, bonusScore, recordColors);
 }
 
 /** Fast deterministic hint/certification candidates. Count is an immediate estimate, not an optimal win promise. */
-function specialActions(board, specials = blankSpecials(board.length)) {
+function specialActions(board, specials = blankSpecials(board.length), recordColors = false) {
   const n = board.length;
   const ordinary = legalSwaps(cloneGrid(board));
   const seen = new Set(ordinary.map((move) => move.cells.join(',')));
@@ -2214,23 +2220,249 @@ function specialActions(board, specials = blankSpecials(board.length)) {
       }
     }
   }
+  if (recordColors) for (const action of actions) {
+    const plan = prepareAction(board, specials, action.cells);
+    const matched = earnedMatches(plan.board, plan.specials, plan.preferred);
+    const protectedKeys = new Set(matched.creations.map((item) => keyOf(item.row, item.col)));
+    const estimate = expandClears(plan.board, plan.specials, new Set([...(plan.seeds || []), ...matched.matches]),
+      protectedKeys, plan.suppressed, plan.prismTargets);
+    action.collected = {};
+    for (const key of estimate.keys) {
+      const [r, c] = coordinates(key); const color = plan.board[r][c];
+      action.collected[color] = (action.collected[color] || 0) + 1;
+    }
+    action.points = estimate.keys.size * 10;
+  }
   return actions;
 }
 
-function certifySpecialBoard(board, refillState, palette, weights, moveBudget, specials = blankSpecials(board.length)) {
+function certifySpecialBoard(board, refillState, palette, weights, moveBudget, specials = blankSpecials(board.length), recordColors = false) {
   let state = { board, specials, refillState };
   let score = 0;
   const witness = [];
+  const collected = recordColors ? Object.fromEntries(palette.map((color) => [color, 0])) : null;
   for (let i = 0; i < moveBudget; i++) {
     const moves = specialActions(state.board, state.specials);
     moves.sort((a, b) => b.count - a.count);
     if (!moves.length) break;
     const cells = moves[0].cells;
-    state = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    state = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials, recordColors);
     if (!state) break;
     score += state.score; witness.push(cells);
+    if (recordColors) for (const color of palette) collected[color] += state.collected[color];
   }
-  return { score, witness };
+  return { score, witness, ...(recordColors ? { collected } : {}) };
+}
+
+/**
+ * Rules the server applies to a win. V4 additionally validates the pinned objectives and
+ * bounded reported collection progress before applying these score-rating thresholds.
+ * Reported star counts, client-authored goals and reported rewards cannot change the payout.
+ *
+ * The level target matches levelConfig() in phaser3-game.js. A parity test checks that the two
+ * stay the same, with no tuning overrides. The reward values are the tuning knobs.
+ */
+
+const WIN_REWARDS = Object.freeze({
+  coinsBase: 20,
+  coinsPerStar: 5,
+  xpBase: 50,
+  xpPerStar: 50,
+});
+
+// Endless runs have no target, so they pay for the score they bank.
+const ENDLESS_REWARDS = Object.freeze({
+  pointsPerCoin: 80,
+  maxCoins: 300,
+  pointsPerXp: 200,
+  maxXp: 500,
+});
+
+/**
+ * Score that wins a level. Boss levels (every tenth) need twice as much. `multiplier` is the
+ * tuning override for this level (1 when there is none).
+ */
+function levelTarget(level, multiplier = 1) {
+  const n = Math.max(1, Math.floor(Number(level) || 1));
+  const isBoss = n % 10 === 0;
+  return Math.round((800 + n * 60) * (isBoss ? 2 : 1) * multiplier);
+}
+
+/** Stars for a score: 1x, 1.5x, and 2x the target. Zero means the level was not won. */
+function starsForScore(score, level, multiplier = 1) {
+  return starsForTarget(score, levelTarget(level, multiplier));
+}
+
+/** Generated attempts pin their own certified target; do not recompute it at completion. */
+function starsForTarget(score, target) {
+  if (score >= target * 2) return 3;
+  if (score >= target * 1.5) return 2;
+  if (score >= target) return 1;
+  return 0;
+}
+
+/** What a win of `stars` stars pays. Only called with 1 to 3 stars. */
+function winRewards(stars) {
+  return {
+    coins: WIN_REWARDS.coinsBase + WIN_REWARDS.coinsPerStar * stars,
+    xp: WIN_REWARDS.xpBase + WIN_REWARDS.xpPerStar * stars,
+    stars,
+  };
+}
+
+/** What an endless run of `score` points pays. The score is bounded by the caller. */
+function endlessRewards(score) {
+  const s = Math.max(0, Math.floor(score));
+  return {
+    coins: Math.min(ENDLESS_REWARDS.maxCoins, Math.floor(s / ENDLESS_REWARDS.pointsPerCoin)),
+    xp: Math.min(ENDLESS_REWARDS.maxXp, Math.floor(s / ENDLESS_REWARDS.pointsPerXp)),
+  };
+}
+
+/** Shared objective rules v4. Counts are cleared gems, never spawns, protected anchors or repairs. */
+
+const MAX_COLLECTED_GEMS = 1000000;
+const ownCount = (counts, color) => Object.hasOwn(counts, color) ? counts[color] : 0;
+
+/** Deterministic goals are calibrated against an already-replayed no-inventory witness. */
+function composeObjectives({ level, mode, seed, palette, favorite, proof, targetScore, fraction }) {
+  const choice = mode === 'daily' ? hashSeed(`${seed}|objectives`) % 4
+    : level === 1 ? 0 : level <= 3 ? 1 : (level - 1) % 4;
+  const profiles = ['score', 'collect', 'collect-pair', 'score-and-collect'];
+  const profile = profiles[choice];
+  const scoreGoal = { type: 'score', target: targetScore };
+  if (choice === 0) return { profile, objectives: [scoreGoal] };
+  const candidates = palette.filter((color) => proof.collected[color] >= 5)
+    .sort((a, b) => (b === favorite ? 1 : 0) - (a === favorite ? 1 : 0)
+      || proof.collected[b] - proof.collected[a] || a.localeCompare(b, 'en'));
+  if (candidates.length < (choice === 2 ? 2 : 1)) return { profile: 'score', objectives: [scoreGoal] };
+  // A witnessed palette color, never a color absent from the board/refill stream.
+  const offset = level <= 3 && mode !== 'daily' ? 0 : hashSeed(`${seed}|collection-color`) % candidates.length;
+  const selected = choice === 2 ? [candidates[offset], candidates[(offset + 1) % candidates.length]] : [candidates[offset]];
+  const limit = choice === 2 ? 45 : level <= 3 && mode !== 'daily' ? 25 : 70;
+  const goals = selected.map((gemType) => ({ type: 'collect', gemType,
+    target: Math.max(5, Math.floor(Math.min(limit, proof.collected[gemType] * fraction) / 5) * 5) }));
+  return { profile, objectives: choice === 3 ? [scoreGoal, ...goals] : goals };
+}
+
+/** Older funded definitions keep their score-only interpretation, even if caller metadata changes. */
+function levelObjectives(definition) {
+  if (!definition || typeof definition !== 'object') return null;
+  return definition.generatorVersion >= 4 ? definition.objectives : [{ type: 'score', target: definition.targetScore }];
+}
+
+function validObjectives(definition) {
+  const objectives = levelObjectives(definition);
+  if (!Array.isArray(objectives) || objectives.length < 1 || objectives.length > 2) return false;
+  const identities = new Set();
+  for (const goal of objectives) {
+    if (!goal || !Number.isSafeInteger(goal.target) || goal.target <= 0 || goal.target > MAX_COLLECTED_GEMS) return false;
+    if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
+    const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : 'score';
+    if (identities.has(identity)) return false;
+    identities.add(identity);
+  }
+  return true;
+}
+
+function initialObjectiveProgress(definition) {
+  return { collected: Object.fromEntries(definition.gemTypes.map((color) => [color, 0])) };
+}
+
+/** Strict completion/input boundary: no coercion, unknown colors, fractions, negatives or unbounded counts. */
+function validObjectiveProgress(definition, progress) {
+  const record = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
+  return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === 1 && record(progress.collected)
+    && Object.keys(progress.collected).length <= definition.gemTypes.length
+    && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
+      && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
+}
+
+function addObjectiveProgress(definition, previous, collected) {
+  if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
+  const next = initialObjectiveProgress(definition);
+  for (const color of definition.gemTypes) {
+    const increment = ownCount(collected, color);
+    if (!Number.isSafeInteger(increment) || increment < 0) throw new RangeError('invalid_collection_delta');
+    next.collected[color] = Math.min(MAX_COLLECTED_GEMS, ownCount(previous.collected, color) + increment);
+  }
+  return next;
+}
+
+/** Every declared goal is required; targetScore alone is only a rating baseline on collection-only levels. */
+function objectiveStatus(definition, score, progress) {
+  if (!validObjectives(definition)) return { complete: false, items: [], fraction: 0 };
+  const scoreValid = Number.isSafeInteger(score) && score >= 0;
+  const safeScore = scoreValid ? score : 0;
+  const validProgress = progress !== undefined && validObjectiveProgress(definition, progress);
+  const items = levelObjectives(definition).map((goal) => {
+    const current = goal.type === 'score' ? safeScore : validProgress ? ownCount(progress.collected, goal.gemType) : 0;
+    return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
+  });
+  return { items, complete: scoreValid && items.every((goal) => goal.complete),
+    fraction: items.reduce((sum, goal) => sum + Math.min(1, goal.current / goal.target), 0) / items.length };
+}
+
+/** One star for satisfying collection goals; further stars still use the pinned score thresholds. */
+function objectiveStars(definition, score, progress) {
+  return objectiveStatus(definition, score, progress).complete ? Math.max(1, starsForTarget(score, definition.targetScore)) : 0;
+}
+
+function objectiveCompletionError(definition, score, progress) {
+  if (!Number.isSafeInteger(score) || score < 0) return 'invalid_score';
+  if (!validObjectives(definition)) return 'invalid_level_objectives';
+  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect');
+  if (collects && progress === undefined) return 'objective_progress_required';
+  if (progress !== undefined && !validObjectiveProgress(definition, progress)) return 'invalid_objective_progress';
+  const status = objectiveStatus(definition, score, progress);
+  if (status.items.some((goal) => goal.type === 'score' && !goal.complete)) return 'score_below_target';
+  return status.complete ? null : 'objectives_incomplete';
+}
+
+function objectiveDescription(definition) {
+  return (levelObjectives(definition) || []).map((goal) => goal.type === 'collect'
+    ? `Collect ${goal.target} ${goal.gemType}` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+}
+
+function objectiveSummary(definition, score, progress, showRemaining = false) {
+  return objectiveStatus(definition, score, progress).items.map((goal) => {
+    const name = goal.type === 'collect' ? goal.gemType : 'Score';
+    const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
+    return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
+  }).join(' · ');
+}
+
+/** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
+function objectiveActions(definition, board, specials, progress, score = 0) {
+  const goals = objectiveStatus(definition, score, progress).items;
+  const actions = specialActions(board, specials, true);
+  for (const action of actions) {
+    action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
+      goal.type === 'score' ? action.points : action.collected[goal.gemType] || 0) / goal.target, 0);
+  }
+  return actions;
+}
+
+function simulateObjectiveMove(definition, state, cells) {
+  const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
+  if (!validObjectiveProgress(definition, previous)) return null;
+  const result = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true);
+  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
+}
+
+function simulateObjectiveClear(definition, state, keys, points) {
+  const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
+  if (!validObjectiveProgress(definition, previous)) return null;
+  const result = simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true);
+  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
+}
+
+/** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
+function certifyObjectiveLevel(definition) {
+  const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
+  const proof = certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
+  const objectiveProgress = { collected: proof.collected };
+  return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }
 
 /**
@@ -2240,7 +2472,7 @@ function certifySpecialBoard(board, refillState, palette, weights, moveBudget, s
  */
 
 
-const GENERATOR_VERSION = 3;
+const GENERATOR_VERSION = 4;
 const GEM_TYPES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 const LEVEL_MODES = ['classic', 'timed', 'daily', 'endless'];
 
@@ -2302,7 +2534,7 @@ function generationKey(levelNumber, context, mode = 'classic', version = GENERAT
 function generateLevel(levelNumber, context, mode = 'classic', version = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(levelNumber) || levelNumber < 1) throw new RangeError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new RangeError('invalid_mode');
-  if (![2, 3].includes(version)) throw new RangeError('unsupported_generator_version');
+  if (![2, 3, 4].includes(version)) throw new RangeError('unsupported_generator_version');
   const level = mode === 'daily' ? 1 : levelNumber;
   const theme = levelTheme(context);
   const environment = environmentRules(context);
@@ -2327,15 +2559,19 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
   const moveBudget = Math.max(20, Math.min(30, 30 - cycle - (isBoss ? 5 : 0) + environment.moveBonus));
   const board = dealPlayableBoard(size, palette, weights, rng);
   const refillState = rng.state;
-  const proof = version === 3 ? certifySpecialBoard(board, refillState, palette, weights, moveBudget)
+  const proof = version >= 3 ? certifySpecialBoard(board, refillState, palette, weights, moveBudget, blankSpecials(size), version >= 4)
     : certifyBoard(board, refillState, palette, weights, moveBudget);
   const fraction = isBoss ? 0.86 : 0.62 + cycle * 0.04;
   const targetScore = Math.max(100, Math.floor(Math.min(2400, proof.score * fraction) / 50) * 50);
   if (proof.witness.length !== moveBudget || proof.score < targetScore) throw new Error('level_quality_failed');
+  const goals = version >= 4 ? composeObjectives({ level, mode, seed, palette, favorite: theme.favorite, proof, targetScore, fraction })
+    : { objectives: [{ type: 'score', target: targetScore }] };
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, objectives: goals.objectives }, proof.score,
+    { collected: proof.collected }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
-    ...(version === 3 ? { specials: blankSpecials(size) } : {}),
+    ...(version >= 3 ? { specials: blankSpecials(size) } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -2350,7 +2586,8 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     targetScore,
     moves: mode === 'timed' ? 999 : mode === 'endless' ? Number.MAX_SAFE_INTEGER : moveBudget,
     timeLimit: mode === 'timed' ? 60 : 0,
-    objectives: [{ type: 'score', target: targetScore }],
+    objectives: goals.objectives,
+    ...(version >= 4 ? { objectiveProfile: goals.profile } : {}),
     difficulty: isBoss ? 'boss' : ['gentle', 'steady', 'steady', 'challenging', 'challenging'][cycle],
     theme,
     context: { ...context },
@@ -2360,17 +2597,20 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
       verifiedWithoutBoosters: true,
       verifiedMoves: moveBudget,
       verifiedScore: proof.score,
+      ...(version >= 4 ? { verifiedCollected: proof.collected, verifiedObjectives: true } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-function levelActions(definition, board = definition.board, specials = definition.specials) {
+function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
 function simulateLevelMove(definition, state, cells) {
+  if (definition.generatorVersion >= 4) return simulateObjectiveMove(definition, state, cells);
   const { gemTypes, gemWeights } = definition;
   return definition.generatorVersion >= 3
     ? simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials)
@@ -2378,6 +2618,7 @@ function simulateLevelMove(definition, state, cells) {
 }
 
 function certifyLevel(definition) {
+  if (definition.generatorVersion >= 4) return certifyObjectiveLevel(definition);
   const { board, refillState, gemTypes, gemWeights, moves } = definition;
   // Timed/endless are certified with the bounded quality budget, not infinity/999 moves.
   const budget = definition.quality?.verifiedMoves || Math.min(30, moves);
@@ -2386,5 +2627,5 @@ function certifyLevel(definition) {
     : certifyBoard(board, refillState, gemTypes, gemWeights, budget);
 }
 
-root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
+root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
 })(globalThis);
