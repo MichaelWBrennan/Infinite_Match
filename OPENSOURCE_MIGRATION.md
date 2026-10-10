@@ -29,6 +29,7 @@ why.
 | Error tracking | GlitchTip (Sentry-SDK-compatible) | Sentry SaaS | MIT |
 | Push | ntfy self-hosted + W3C Web Push (`src/services/push/push-transports.js`) | Firebase Admin SDK (FCM) | BSD-2 / MPL-2.0 |
 | Procedural levels / calendar | In-repo seeded generator + solver / date-holidays | Manual level batches, hosted calendar APIs | MIT code / ISC calendar code; CC BY-SA 3.0 calendar data |
+| Level weather | MET Norway open forecast data / self-hosted Open-Meteo-compatible feed | Paid weather/location APIs, fake fallback observations | CC BY 4.0 data / AGPL-3.0 optional server |
 | AI models | Ollama / vLLM / any OpenAI-compatible server | OpenAI hosted, Hugging Face Inference | MIT / Apache-2.0 |
 | JWT | `jose` (ESM-native) | `jsonwebtoken` | MIT |
 | Dates | Day.js + timezone plugins (`src/core/utils/datetime.js`) | `moment-timezone` (deprecated) | MIT |
@@ -188,3 +189,12 @@ AI, GPS or paid calendar API is required. [Implementation and attribution](docs/
 describes the full contract, offline behavior, limits, and the calendar parser's
 intentional transitive Moment Timezone dependency. Application date helpers remain
 on Day.js / native Intl. CI workflow changes remain deferred.
+
+
+Time and weather now alter real board generation. MET Norway is the free public
+forecast default, with explicit attribution, fair-use caching and no key. The
+optional Open-Meteo endpoint is operator-configured; its hosted free tier is
+non-commercial, so commercial use needs self-hosting or an appropriate license.
+Device-area use is explicit opt-in, rounded to a 1° grid before transmission,
+and can be cleared/disabled. See the procedural guide for deployment request
+budgets, cache limits, failed-feed behavior and current verification scope.

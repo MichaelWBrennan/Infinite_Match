@@ -1,4 +1,4 @@
-# Passive procedural levels and local daily challenges
+# Passive procedural levels, local daily variants, time and weather
 
 ## What runs without a level designer
 
@@ -16,7 +16,9 @@ Levels are made and checked on demand.
   the **Bank Run** button finishes the run and submits its cumulative score once.
 - **Today's Local Level:** a new daily seed/ID at the player's next local midnight.
   It is a real generated board, not a date mapped into a fixed bank of 300 levels.
-  Players with the same normalized date/location context get the same challenge.
+  Morning/afternoon/evening/night and forecast bands now produce separate daily
+  variants, each with its own ID. Same date, area and normalized environment
+  produce the same puzzle; tiny changes within a weather band do not reshuffle it.
 
 Difficulty cycles through gentler and harder profiles. Every tenth numbered
 stage is a harder boss profile, not a new boss combat mechanic. Scores do not
@@ -63,10 +65,12 @@ Midnight is calculated across DST, including 23/25-hour days and non-hour offset
   recurring, moving, observed and lunar-calendar dates supported by that library.
   For example, US Thanksgiving is calculated as the fourth Thursday in November.
 - An observance starting in the evening (Halloween) themes the **whole local day**,
-  so the daily seed does not change at 6 p.m.
-- The preview updates at local midnight and when the tab regains focus. An active
-  attempt is never reset mid-game. Its context stays fixed, including all stages
-  of an endless run; a new attempt picks up the new day or changed preferences.
+  independently of clock/weather variants; Halloween remains the holiday identity
+  in both morning and evening boards.
+- The preview updates at the next clock/day/forecast boundary and when the tab
+  regains focus. It does not poll when the page is hidden. An active board and
+  its score goal never change mid-play. New attempts and the next endless stage
+  pick up new time/weather/preferences without extra energy charges for stages.
 
 The bundled calendar covers 207 countries/territories, with state/province rules
 where available. Unknown country estimates still get local-date seasonal boards.
@@ -79,17 +83,89 @@ or calendar-data maintenance.
 
 ## Privacy and offline play
 
-No GPS permission, latitude/longitude, IP geolocation, geocoder, or paid location
-service is used. Explicit preferences live in local storage on that device.
-Only coarse date/region context accompanies the generated paid attempt in the
-existing account-economy store; no separate location-tracking database is created.
-Changing region settings does not change an already purchased attempt.
+Normal play requests **no location permission**. The default weather area is a
+public IANA representative point (or a country reference area), not proof of the
+player's town or holiday state. Settings can optionally request device location
+**only on the player's button press**, or accept a manually entered approximate
+area. Both coordinates are rounded on-device to a **1° grid** (~111 km north/south)
+before transmission/storage; the server independently rounds crafted requests too.
+Exact GPS coordinates are discarded, not stored or forwarded. Disabling weather
+stops forecast requests and omits the saved device-area coordinates from gameplay
+requests. Clear the approximate area and Apply to remove it from preferences.
 
-Anonymous players can play without spending server energy or earning server
-rewards. If the server is unavailable, guests still get locally seeded, playable
-seasonal boards. Full regional holiday data is server-side; the offline fallback
-uses same-day cached holiday context when available and never recycles yesterday's
-holidays. Signed-in rewarded play does not fall back to a client-authored goal.
+Explicit preferences remain device-local. Coarse date/region/forecast context is
+stored with an active paid attempt in the existing economy store; no separate
+player-location history/database is created. The feed is accessed through the
+server, so the provider receives the server's IP and coarse area, not player
+IP addresses, account IDs or authorization tokens. These controls apply to the
+procedural feature, not the separate legacy realtime/location APIs.
+
+Anonymous players can play without server energy/rewards. When disconnected,
+clock and seasonal generation continue; holidays use matching same-day context
+only, and weather uses only an **unexpired forecast for matching preferences and
+area**. Missing/stale/unreachable forecasts are labeled unavailable, never replaced
+by invented observations. Signed-in rewarded starts still require server authority.
+
+## Time-of-day and real forecast effects
+
+Four fixed **local clock periods**, not astronomical sunrise/sunset:
+
+| Period | Local hours | Typical generation effect |
+| --- | --- | --- |
+| Morning | 06:00–11:59 | More yellow/green gems, warm visual tint |
+| Afternoon | 12:00–17:59 | More orange/yellow gems |
+| Evening | 18:00–21:59 | More red/purple gems, a small move allowance |
+| Night | 22:00–05:59 | More purple/blue gems, at least five types, dark visual tint |
+
+Rain/snow/sleet favor cooler gems; storms use six gem types; fog favors warmer,
+readable colors without obscuring the board. Cold/hot temperatures and wind
+adjust weights when the corresponding colors are present. Wet/stormy profiles
+add a bounded move allowance; the usual **20–30 moves, 100–2,400-point goals and
+60-second Timed limit** remain. Every altered board is certified again. No weather
+hazard can block input, demand a booster or mutate an active paid target.
+
+The default is **MET Norway Locationforecast 2.0**, a free public global model
+forecast with CC BY 4.0 attribution. It is **forecast data**, not exact-town
+observations or safety advice. Requests carry the application's identifying
+User-Agent and are deduplicated, cached until provider `Expires`, conditionally
+revalidated with `If-Modified-Since`, and bounded by a 1.8-second timeout. Errors,
+capacity and throttling use neutral weather rather than interrupt gameplay.
+
+Configuration (no API key needed for MET Norway):
+
+```dotenv
+LEVEL_WEATHER_PROVIDER=metno
+# Use your operator contact URL/email for production identification.
+LEVEL_WEATHER_USER_AGENT=InfiniteMatch/2.0 github.com/MichaelWBrennan/Infinite_Match
+LEVEL_WEATHER_CACHE_AREAS=512
+LEVEL_WEATHER_REQUESTS_PER_SECOND=4
+```
+
+`LEVEL_WEATHER_PROVIDER=off` disables the feed. Tests default to `off`; adapter
+tests use recorded-format fixtures and a local HTTP server, not external internet.
+The sandbox cannot reach the real MET host, so the live external feed has **not**
+been verified here. Normal deployments must permit outbound HTTPS to `api.met.no`.
+
+For a FOSS/self-hosted **Open-Meteo-compatible** endpoint:
+
+```dotenv
+LEVEL_WEATHER_PROVIDER=open-meteo
+LEVEL_WEATHER_OPEN_METEO_URL=http://weather:8080/v1/forecast
+```
+
+Only operator configuration can choose the URL; players cannot cause arbitrary
+URL fetches. The Open-Meteo server is AGPL-3.0. Its hosted free endpoint is
+**non-commercial**; commercial operators must self-host or use a properly licensed
+hosted endpoint. It is not silently used as this game's commercial default.
+
+The cache is bounded (512 areas by default, configurable 1–4,096), with at most
+two concurrent fetches and four starts/second per process. Fresh entries are not
+evicted just to refetch them before provider expiry. At scale, centralize this
+adapter/cache behind a shared weather gateway or reduce each worker's request
+budget: MET's limit is **20 requests/second across the whole application**, not
+per player/worker. Public feeds have fair-use requirements and no availability SLA.
+Source/license, transformations and provider policy are linked in Settings and
+[the weather attribution notice](../public/licenses/weather.txt).
 
 ## API
 
@@ -100,18 +176,23 @@ timeZone=America/New_York&country=US&region=PA&hemisphere=north&holidayThemes=tr
 ```
 
 Omit country/hemisphere to use the coarse time-zone estimate. Omit region for
-country-wide holidays. Precise coordinates are neither used nor needed.
+country-wide holidays. Optional `timeOfDayEnabled=false`, `weatherEnabled=false`,
+and paired `weatherLatitude`/`weatherLongitude` select effects/coarse weather area.
+Exact coordinates are never needed; precision is discarded. Client-authored hours,
+weather conditions, dates and endpoint URLs are ignored.
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /api/levels/context` | Current local date/month/season, regional holidays, next local midnight |
+| `GET /api/levels/context` | Local date/season/holidays, clock period, forecast bands/source and next variant boundary |
 | `GET /api/levels/regions?country=US` | Country catalog and optional state's/province's supported codes |
-| `GET /api/levels/daily` | Today's complete generated daily definition |
+| `GET /api/levels/daily` | Current local daily time/weather variant |
 | `GET /api/levels/12345?mode=classic` | A generated numbered level (`classic`, `timed`, `endless`) |
 
 All are public previews, marked `Cache-Control: private, no-store`. Invalid
 numbers, time zones, countries and regional codes return 400. Definitions are
-cached in a bounded server cache keyed by normalized local context and level.
+cached in a bounded server cache keyed by normalized calendar, clock/weather
+bands, area and level. Fetch timestamps/small temperature changes do not alter
+puzzle identity. Generator version 2 marks the new time/weather seed rules.
 
 Signed-in play obtains its definition **atomically with the energy spend**:
 
@@ -146,11 +227,14 @@ The solver certifies **level feasibility**, not the truth of a submitted score.
 ## Source and build
 
 - `src/services/levels/generator.js`: pure generator, PRNG, board simulator and quality gate.
-- `location-context.js`: location validation, local civil dates/DST and holiday calculation.
+- `location-context.js`: coarse preferences, local civil dates/DST and holidays.
+- `environment.js`: shared pure clock periods and weather/temperature/wind rules.
+- `weather-context.js`: forecast adapters, validation, coalescing, backoff and cache.
+- `time-zone-weather-points.js`: public representative weather areas, not player GPS.
 - `time-zone-regions.js`: public-domain IANA country/hemisphere estimates, not player coordinates.
 - `level-service.js`: bounded generated-definition cache.
 - `src/routes/levels.js`: public API.
-- `public/js/level-location.js`: preferences, regional settings, daily preview refresh and guest fallback.
+- `public/js/level-location.js`: preferences, explicit rounded-area opt-in, forecast refresh and offline fallback.
 - `phaser3-game.js`: seeded board/refill integration, daily play and endless stage progression.
 
 `npm run build` derives `public/js/procedural-levels.js` from the exact server

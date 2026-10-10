@@ -1207,6 +1207,7 @@ class PhaserMatch3Game {
                 this.attemptId = data.result.attemptId;
                 this.attemptLevel = data.result.level;
                 this.claimedDefinition = data.result.generatedLevel || null;
+                this.claimedServerTime = data.serverTime || null;
                 if (mode && !this.claimedDefinition) {
                     this.showAttemptError('Update the game server to enable generated levels.');
                     return false;
@@ -1335,9 +1336,11 @@ class PhaserMatch3Game {
             await this.rewardSubmission; // Do not overwrite an attempt whose reward is still being saved.
             const location = this.getLevelLocation();
             let definition;
+            let serverTime = null;
             if (this.getAuthToken()) {
                 if (!(await this.claimAttempt(mode === 'daily' ? 1 : number, mode, location))) return false;
                 definition = this.claimedDefinition;
+                serverTime = this.claimedServerTime;
             } else {
                 this.attemptId = null;
                 const query = new URLSearchParams({ ...location, mode }).toString();
@@ -1352,6 +1355,7 @@ class PhaserMatch3Game {
                         throw new Error('Level service unavailable');
                     }
                     definition = result.data.level;
+                    serverTime = result.data.serverTime;
                 } catch {
                     let context;
                     if (window.InfiniteLevelLocation) context = window.InfiniteLevelLocation.offlineContext(location);
@@ -1366,7 +1370,7 @@ class PhaserMatch3Game {
                 }
             }
             this.endlessTotalScore = 0;
-            this.applyGeneratedDefinition(definition);
+            this.applyGeneratedDefinition(definition, serverTime);
             await this.startGame();
             return true;
         } catch (error) {
@@ -1378,7 +1382,7 @@ class PhaserMatch3Game {
         }
     }
 
-    applyGeneratedDefinition(definition) {
+    applyGeneratedDefinition(definition, serverTime = null) {
         if (this.timerInterval) clearInterval(this.timerInterval);
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {
@@ -1389,6 +1393,7 @@ class PhaserMatch3Game {
         }
         this.closeOverlay();
         this.generatedLevel = definition;
+        window.InfiniteLevelLocation?.rememberContext(definition.context, this.getLevelLocation(), serverTime);
         this.level = definition.level;
         this.mode = definition.mode;
         if (this.mode === 'classic' || this.mode === 'timed') this.campaignLevel = Math.max(this.campaignLevel || 1, this.level);
@@ -1418,13 +1423,14 @@ class PhaserMatch3Game {
     }
 
     // One paid attempt, unlimited generated stages. Each new board is certified on
-    // this device using the same algorithm and fixed context as the starting stage.
+    // this device using the same algorithm. Time/weather update only at stage boundaries.
     advanceEndlessStage() {
         const total = (this.endlessTotalScore || 0) + this.score;
         const startedAt = this.runStartedAt;
         const nextNumber = this.level + 1;
         if (!Number.isSafeInteger(nextNumber)) { this.endGame(); return; }
-        const next = globalThis.InfiniteLevels.generateLevel(nextNumber, this.generatedLevel.context, 'endless');
+        const context = window.InfiniteLevelLocation?.contextForNewStage(this.getLevelLocation()) || this.generatedLevel.context;
+        const next = globalThis.InfiniteLevels.generateLevel(nextNumber, context, 'endless');
         this.applyGeneratedDefinition(next);
         this.endlessTotalScore = total;
         this.runStartedAt = startedAt;
@@ -1576,7 +1582,7 @@ class PhaserMatch3Game {
         this.levelText.setText(this.mode === 'daily' ? 'Daily Challenge' : `${this.mode === 'endless' ? 'Stage' : 'Level'}: ${this.level}`);
         if (this.goalText) this.goalText.setText(`Goal: ${this.targetScore.toLocaleString()} points`
             + (this.mode === 'endless' ? `\nRun: ${(this.score + (this.endlessTotalScore || 0)).toLocaleString()}` : ''));
-        if (this.themeText) this.themeText.setText(this.generatedLevel ? `${this.generatedLevel.theme.name}\n${this.generatedLevel.context.localDate}` : '');
+        if (this.themeText) this.themeText.setText(this.generatedLevel ? `${this.generatedLevel.theme.name}\n${this.generatedLevel.context.localDate}\n${this.generatedLevel.theme.environmentLabel || ''}` : '');
         if (this.bankRunButton) this.bankRunButton.setVisible(this.mode === 'endless');
         if (this.bankRunLabel) this.bankRunLabel.setVisible(this.mode === 'endless');
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);

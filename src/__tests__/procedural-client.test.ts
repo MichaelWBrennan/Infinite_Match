@@ -109,6 +109,33 @@ describe('real Phaser core uses the certified definition', () => {
     }
   });
 
+  test('weather/time winning witnesses also replay through real Phaser rules and sprites', () => {
+    for (const period of ['morning', 'afternoon', 'evening', 'night']) {
+      for (const condition of ['rain', 'snow', 'storm']) {
+        const { game, sandbox } = makeBrowserGame();
+        const base = definition(10);
+        const context = { ...base.context, timeOfDay: { period }, weather: { available: true, condition,
+          temperatureBand: 'cold', windBand: 'windy', expiresAt: new Date(now + 3600000).toISOString() } };
+        const def = sandbox.InfiniteLevels.generateLevel(10, context);
+        game.applyGeneratedDefinition(def);
+        game.isGameRunning = true;
+        const proof = certifyBoard(def.board, def.refillState, def.gemTypes, def.gemWeights, def.moves);
+        for (const cells of proof.witness) {
+          if (!game.isGameRunning) break;
+          const expected = simulateMove(game.board, game.levelRng.state, def.gemTypes, def.gemWeights, cells)!;
+          const score = game.score;
+          game.trySwap(...cells);
+          expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board);
+          expect(game.score - score).toBe(expected.score);
+          expect(game.levelRng.state).toBe(expected.refillState);
+          assertSprites(game);
+        }
+        expect(game.score).toBeGreaterThanOrEqual(def.targetScore);
+        expect(game.endCalls).toBe(1);
+      }
+    }
+  });
+
   test('the opening board is identical for repeated attempts', () => {
     const { game } = makeBrowserGame();
     const def = definition(27);
@@ -176,7 +203,8 @@ describe('real Phaser core uses the certified definition', () => {
     game.checkEndConditions();
     expect(game.level).toBe(2);
     expect(game.generatedLevel.id).not.toBe(def.id);
-    expect(game.generatedLevel.context).toEqual(def.context);
+    expect(game.generatedLevel.context.localDate).toEqual(def.context.localDate);
+    expect(game.generatedLevel.context.holidays).toEqual(def.context.holidays);
     expect(game.score).toBe(0);
     expect(game.endlessTotalScore).toBe(expectedTotal);
     expect(game.attemptId).toBe('one-paid-attempt');
@@ -184,6 +212,29 @@ describe('real Phaser core uses the certified definition', () => {
     expect(game.runStartedAt).toBe(12345);
     expect(game.isGameRunning).toBe(true);
     expect(events.some((event) => event.event === 'endless_stage_started')).toBe(true);
+    assertSprites(game);
+  });
+
+  test('new time/weather only affects the next endless stage; its paid attempt and current board stay intact', () => {
+    const { game, sandbox } = makeBrowserGame();
+    const def = definition(1, 'endless');
+    game.applyGeneratedDefinition(def);
+    game.isGameRunning = true;
+    game.attemptId = 'same-paid-attempt'; game.attemptLevel = 1; game.runStartedAt = 12345;
+    const board = JSON.stringify(game.board);
+    const context = { ...def.context, evaluatedAt: '2026-10-31T16:01:00.000Z', timeOfDay: { period: 'afternoon' },
+      weather: { available: true, source: 'metno', condition: 'storm', temperatureBand: 'mild', windBand: 'windy',
+        area: { key: '42,-77' }, expiresAt: '2026-10-31T17:00:00.000Z' } };
+    sandbox.InfiniteLevelLocation.rememberContext(context, location);
+    expect(JSON.stringify(game.board)).toBe(board);
+    expect(game.generatedLevel.id).toBe(def.id);
+    game.score = def.targetScore;
+    game.checkEndConditions();
+    expect(game.level).toBe(2);
+    expect(game.generatedLevel.environmentKey).toBe('afternoon-storm-mild-windy');
+    expect(game.gemTypes.length).toBe(6);
+    expect(game.attemptId).toBe('same-paid-attempt'); expect(game.attemptLevel).toBe(1);
+    expect(game.runStartedAt).toBe(12345); expect(game.endlessTotalScore).toBe(def.targetScore);
     assertSprites(game);
   });
 
@@ -250,7 +301,7 @@ describe('real Phaser core uses the certified definition', () => {
     const { game } = makeBrowserGame();
     game.fetchJson = async () => { throw new Error('offline'); };
     expect(await game.selectLevel(100001)).toBe(true);
-    expect(game.generatedLevel.generatorVersion).toBe(1);
+    expect(game.generatedLevel.generatorVersion).toBe(2);
     expect(game.generatedLevel.context.offline).toBe(true);
     expect(game.attemptId).toBeNull();
     assertSprites(game);
@@ -266,7 +317,50 @@ describe('privacy-preserving browser location preferences', () => {
     expect(context).toMatchObject({ localDate: '2026-01-16', hemisphere: 'south', season: 'summer', country: 'AU', region: 'NSW' });
     expect(context).not.toHaveProperty('latitude');
     expect(context).not.toHaveProperty('longitude');
-    expect(readFileSync('public/js/level-location.js', 'utf8')).not.toMatch(/getCurrentPosition|watchPosition/);
+    // GPS is now explicitly opt-in, never invoked during adapter construction.
+    expect(sandbox.navigator.geolocation).toBeUndefined();
+    expect(readFileSync('public/js/level-location.js', 'utf8')).not.toContain('watchPosition');
+  });
+
+  test('device area requires an explicit action, rounds before storage/request and handles permission refusal', () => {
+    const { sandbox, saved } = makeBrowserGame();
+    const fields: any = {
+      'level-location-message': { textContent: '' },
+      'level-weather-latitude': { value: '' }, 'level-weather-longitude': { value: '' },
+    };
+    sandbox.document.getElementById = (id: string) => fields[id] || null;
+    let requested = 0;
+    sandbox.navigator.geolocation = { getCurrentPosition: (success: any) => {
+      requested++; success({ coords: { latitude: 41.978532, longitude: -76.517862 } });
+    } };
+    sandbox.InfiniteLevelLocation.current();
+    expect(requested).toBe(0);
+    sandbox.useWeatherLocation();
+    expect(requested).toBe(1);
+    expect(fields['level-weather-latitude'].value).toBe('42');
+    expect(fields['level-weather-longitude'].value).toBe('-77');
+    expect(saved.has('infinite_match_level_location_v1')).toBe(false); // Apply is required.
+    saved.set('infinite_match_level_location_v1', JSON.stringify({ ...location, weatherLatitude: 41.978532, weatherLongitude: -76.517862 }));
+    const query = sandbox.InfiniteLevelLocation.query();
+    expect(query).toContain('weatherLatitude=42'); expect(query).toContain('weatherLongitude=-77');
+    expect(query).not.toMatch(/41\.978532|76\.517862/);
+    saved.set('infinite_match_level_location_v1', JSON.stringify({ ...location, weatherLatitude: 42, weatherLongitude: -77, weatherEnabled: false }));
+    expect(sandbox.InfiniteLevelLocation.query()).not.toMatch(/weatherLatitude|weatherLongitude/);
+    sandbox.navigator.geolocation.getCurrentPosition = (_success: any, fail: any) => fail({ code: 1 });
+    sandbox.useWeatherLocation();
+    expect(fields['level-location-message'].textContent).toContain('denied');
+  });
+
+  test('cached weather is reused only for the matching area while still fresh, never synthesized', () => {
+    const { sandbox } = makeBrowserGame();
+    const def = definition();
+    const context = { ...def.context, weather: { available: true, condition: 'rain', source: 'metno',
+      temperatureBand: 'cool', windBand: 'calm', area: { key: '41,-74' }, expiresAt: new Date(now + 600000).toISOString() } };
+    sandbox.InfiniteLevelLocation.rememberContext(context, location);
+    expect(sandbox.InfiniteLevelLocation.offlineContext(location, new Date(now + 1000)).weather.available).toBe(true);
+    expect(sandbox.InfiniteLevelLocation.offlineContext(location, new Date(now + 600001)).weather.available).toBe(false);
+    expect(sandbox.InfiniteLevelLocation.offlineContext({ ...location, weatherLatitude: 0, weatherLongitude: 0 }, new Date(now + 1000)).weather.available).toBe(false);
+    expect(sandbox.InfiniteLevelLocation.offlineContext({ ...location, weatherEnabled: false }, new Date(now + 1000)).weather.source).toBe('disabled');
   });
 
   test('the daily card, location settings and unlimited level browser are wired to real entry points', () => {
@@ -276,6 +370,9 @@ describe('privacy-preserving browser location preferences', () => {
     expect(html).toContain('id="procedural-level-grid"');
     expect(html).toContain('id="level-time-zone"');
     expect(html).toContain('onclick="saveLevelLocation()"');
+    expect(html).toContain('onclick="useWeatherLocation()"');
+    expect(html).toContain('id="level-time-effects"');
+    expect(html).toContain('id="level-weather-effects"');
     expect(html.indexOf('js/procedural-levels.js')).toBeLessThan(html.indexOf('src="phaser3-game.js"'));
     expect(menus).toContain('callGame(\'startDaily\')');
     expect(menus).toContain('renderProceduralLevels()');

@@ -42,6 +42,17 @@ describe('server-authoritative generated attempts', () => {
     expect(after.body.data.currencies.energy.amount).toBe(before.body.data.currencies.energy.amount);
   });
 
+  test('invalid weather coordinates or flags are refused before spending energy', async () => {
+    const before = await request(app).get('/api/account-economy/data').set(auth());
+    for (const preference of [{ weatherLatitude: 91, weatherLongitude: 0 }, { weatherLatitude: 40 }, { weatherEnabled: 'maybe' }, { timeOfDayEnabled: [] }]) {
+      const rejected = await request(app).post('/api/account-economy/energy/spend').set(auth())
+        .send({ level: 1, mode: 'daily', location: { ...location, ...preference } });
+      expect(rejected.status).toBe(400);
+    }
+    const after = await request(app).get('/api/account-economy/data').set(auth());
+    expect(after.body.data.currencies.energy.amount).toBe(before.body.data.currencies.energy.amount);
+  });
+
   test('a paid endless run must begin at stage one, without spending on an invalid start', async () => {
     const before = await request(app).get('/api/account-economy/data').set(auth());
     const rejected = await request(app).post('/api/account-economy/energy/spend').set(auth())

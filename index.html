@@ -190,7 +190,7 @@
                     <div class="mode-card-bg">
                         <div class="mode-icon-large">📅</div>
                         <h3 class="mode-title">Today’s Local Level</h3>
-                        <p id="daily-level-preview" class="mode-description" aria-live="polite">A fresh level at local midnight, themed for your month, season and regional holidays.</p>
+                        <p id="daily-level-preview" class="mode-description" aria-live="polite">New local-day puzzles with morning, afternoon, evening, night and regional forecast variants.</p>
                         <button class="mode-play-btn" onclick="chooseMode('daily')"><span class="play-text">PLAY TODAY</span></button>
                     </div>
                 </div>
@@ -232,8 +232,8 @@
         <div class="settings-container-royal">
             <section class="settings-section level-region-settings" aria-labelledby="level-region-heading">
                 <h3 id="level-region-heading" class="section-title">📍 Local levels</h3>
-                <p id="level-location-summary" aria-live="polite">Your device time zone supplies a coarse region estimate. No GPS is requested.</p>
-                <p>Correct the estimate below, especially when travelling or near the equator. New settings affect the next attempt, never an active run.</p>
+                <p id="level-location-summary" aria-live="polite">Your device time zone supplies a regional estimate. Device location is only requested if you press the optional button below.</p>
+                <p>Correct the estimate below, especially when travelling or near the equator. New settings affect the next board or attempt, never a board already in play.</p>
                 <label for="level-time-zone">Time zone</label>
                 <select id="level-time-zone"><option value="">Automatic (device time zone)</option></select>
                 <label for="level-country">Holiday country</label>
@@ -247,9 +247,22 @@
                     <option value="south">Southern hemisphere</option>
                 </select>
                 <label class="level-holiday-choice"><input type="checkbox" id="level-holiday-themes" checked> Include regional holiday themes</label>
-                <button class="royal-btn primary" type="button" onclick="saveLevelLocation()">Apply region</button>
+                <label class="level-holiday-choice"><input type="checkbox" id="level-time-effects" checked> Include time-of-day variations</label>
+                <label class="level-holiday-choice"><input type="checkbox" id="level-weather-effects" checked> Include regional forecast variations</label>
+                <p id="level-weather-summary" aria-live="polite">Weather uses a representative regional area unless you choose a closer approximate area. It may differ from your town.</p>
+                <div class="level-weather-actions">
+                    <button class="royal-btn secondary" type="button" onclick="useWeatherLocation()">Use approximate device area</button>
+                    <button class="royal-btn secondary" type="button" onclick="clearWeatherLocation()">Use regional estimate</button>
+                </div>
+                <p>Device location is optional. Coordinates are rounded to 1° cells (~111 km north/south) before being sent or saved. No exact GPS coordinates are retained. You can also enter an approximate area.</p>
+                <div class="level-weather-grid">
+                    <label>Approximate latitude <input id="level-weather-latitude" type="number" min="-90" max="90" step="1" placeholder="Automatic" inputmode="decimal"></label>
+                    <label>Approximate longitude <input id="level-weather-longitude" type="number" min="-180" max="180" step="1" placeholder="Automatic" inputmode="decimal"></label>
+                </div>
+                <button class="royal-btn primary" type="button" onclick="saveLevelLocation()">Apply local settings</button>
                 <p id="level-location-message" role="status"></p>
                 <p class="calendar-attribution">Holiday calendar: date-holidays by commenthol (ISC code; CC BY-SA 3.0 data). <a href="licenses/date-holidays.txt" target="_blank" rel="noopener">License and source attributions</a>.</p>
+                <p class="calendar-attribution">Forecast data from MET Norway (CC BY 4.0), or an operator-configured Open-Meteo service. <a href="licenses/weather.txt" target="_blank" rel="noopener">Weather attribution and transformations</a>.</p>
             </section>
             <div class="settings-section">
                 <div class="section-header">

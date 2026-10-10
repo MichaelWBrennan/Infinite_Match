@@ -159,7 +159,10 @@ describe('local calendar, hemisphere and recurring holidays', () => {
     const morning = generatedLevel({ mode: 'daily', location: north }, instant('2026-10-31T12:00:00Z'));
     const evening = generatedLevel({ mode: 'daily', location: north }, instant('2026-11-01T02:00:00Z'));
     expect(morning.theme.name).toBe('Halloween');
-    expect(evening).toEqual(morning);
+    expect(evening.context.localDate).toBe(morning.context.localDate);
+    expect(evening.id).not.toBe(morning.id); // The chosen time/weather variants are now distinct.
+    expect(morning.environmentKey).toContain('morning');
+    expect(evening.environmentKey).toContain('night');
   });
 
   test.each([

@@ -204,11 +204,15 @@ Enjoy your fully offline, self-hosted development environment! 🚀
 bundled holiday calendar together. No external AI, geocoding, calendar API or
 level-design service is called to make these levels. Today's challenge follows
 the selected IANA time zone and rolls over at local midnight; Settings → Local
-levels offers country/state/hemisphere correction and holiday opt-out, without GPS.
+levels offers country/state/hemisphere correction and holiday/time/weather opt-out.
+No GPS is requested normally; the optional device-area button rounds coordinates
+before sending/saving them. Daily time/weather variants have separate IDs.
 
 With a local server, regional holiday rules work even without internet. If an
 anonymous browser cannot reach that server, its generated seasonal fallback
-remains playable, but full holiday data and rewarded account play are unavailable.
+remains playable, but fresh weather, full holiday data and rewarded account play
+are unavailable. Cached weather is reused only while fresh for matching preferences.
+Live weather needs an accessible feed; it is never replaced with fake observations.
 Same-day cached holiday context is reused only for matching preferences, never
 for a different local day. Detailed behavior, licenses and remaining limitations:
 [Procedural levels](docs/PROCEDURAL_LEVELS.md).

@@ -1679,12 +1679,126 @@ const TIME_ZONE_REGIONS = {
   }
 };
 
+/** Pure, shared clock/weather rules. No network, GPS, random weather or player data. */
+const DAY_PERIODS = ['morning', 'afternoon', 'evening', 'night'];
+const WEATHER_CONDITIONS = ['clear', 'partly_cloudy', 'cloudy', 'rain', 'snow', 'sleet', 'storm', 'fog'];
+const clockFormatters = new Map();
+
+function periodForHour(hour) {
+  if (hour < 6 || hour >= 22) return 'night';
+  if (hour < 12) return 'morning';
+  if (hour < 18) return 'afternoon';
+  return 'evening';
+}
+
+function clockParts(nowMs, timeZone) {
+  let formatter = clockFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-CA', { timeZone, calendar: 'gregory', numberingSystem: 'latn',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' });
+    if (clockFormatters.size >= 64) clockFormatters.delete(clockFormatters.keys().next().value);
+    clockFormatters.set(timeZone, formatter);
+  }
+  const parts = Object.fromEntries(formatter.formatToParts(new Date(nowMs)).map((part) => [part.type, part.value]));
+  const hour = Number(parts.hour) % 24;
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour, period: periodForHour(hour) };
+}
+
+/** Fixed local clock periods, not astronomical sunrise/sunset. DST uses native tzdb. */
+function timeOfDayContext(nowMs, timeZone, enabled = true) {
+  const current = clockParts(nowMs, timeZone);
+  if (!enabled) return { period: 'off', label: 'Time effects off', nextChangeAt: null };
+  const key = `${current.date}|${current.period}`;
+  let low = Math.floor(nowMs / 1000);
+  let high = low + 27 * 3600;
+  while (high - low > 1) {
+    const mid = Math.floor((high + low) / 2);
+    const value = clockParts(mid * 1000, timeZone);
+    if (`${value.date}|${value.period}` === key) low = mid;
+    else high = mid;
+  }
+  return { period: current.period, label: current.period[0].toUpperCase() + current.period.slice(1),
+    nextChangeAt: new Date(high * 1000).toISOString() };
+}
+
+function temperatureBand(temperatureC) {
+  if (!Number.isFinite(temperatureC)) return 'unknown';
+  if (temperatureC <= 0) return 'cold';
+  if (temperatureC < 10) return 'cool';
+  if (temperatureC >= 28) return 'hot';
+  return 'mild';
+}
+
+/** Only normalized, coarse bands affect mechanics: tiny forecast revisions cannot flicker the seed. */
+function environmentRules(context) {
+  const period = context.timeOfDayEnabled !== false && DAY_PERIODS.includes(context.timeOfDay?.period)
+    ? context.timeOfDay.period : 'off';
+  const enabled = context.weatherEnabled !== false;
+  const weather = context.weather || {};
+  const condition = !enabled ? 'disabled' : weather.available && WEATHER_CONDITIONS.includes(weather.condition)
+    ? weather.condition : 'unknown';
+  const known = WEATHER_CONDITIONS.includes(condition);
+  const temperature = known && ['cold', 'cool', 'mild', 'hot'].includes(weather.temperatureBand)
+    ? weather.temperatureBand : 'unknown';
+  const windy = known && weather.windBand === 'windy';
+  const clocks = {
+    off: { label: 'Time effects off', favorite: null, tint: null, moves: 0, colors: 4, bonuses: {} },
+    morning: { label: 'Morning', favorite: 'yellow', tint: '#554424', moves: 0, colors: 4, bonuses: { yellow: 0.25, green: 0.1 } },
+    afternoon: { label: 'Afternoon', favorite: 'orange', tint: '#294a54', moves: 0, colors: 4, bonuses: { orange: 0.2, yellow: 0.1 } },
+    evening: { label: 'Evening', favorite: 'red', tint: '#462842', moves: 1, colors: 4, bonuses: { red: 0.2, purple: 0.1 } },
+    night: { label: 'Night', favorite: 'purple', tint: '#0e162e', moves: 1, colors: 5, bonuses: { purple: 0.3, blue: 0.15 } },
+  };
+  const skies = {
+    disabled: { label: 'Weather effects off', favorite: null, bonuses: {}, moves: 0 },
+    unknown: { label: 'Weather unavailable', favorite: null, bonuses: {}, moves: 0 },
+    clear: { label: 'Clear', favorite: 'yellow', bonuses: { yellow: 0.3, orange: 0.1 }, moves: 0, accent: '#ffe082' },
+    partly_cloudy: { label: 'Partly cloudy', favorite: 'green', bonuses: { green: 0.2, blue: 0.1 }, moves: 0, accent: '#b8dfdb' },
+    cloudy: { label: 'Cloudy', favorite: 'blue', bonuses: { blue: 0.2, purple: 0.1 }, moves: 0, accent: '#a9cce9' },
+    rain: { label: 'Rain', favorite: 'blue', bonuses: { blue: 0.4, green: 0.1 }, moves: 1, accent: '#83c9ff' },
+    snow: { label: 'Snow', favorite: 'blue', bonuses: { blue: 0.35, purple: 0.2 }, moves: 2, accent: '#dcefff' },
+    sleet: { label: 'Sleet', favorite: 'blue', bonuses: { blue: 0.35, green: 0.15 }, moves: 2, accent: '#b1e7f2' },
+    storm: { label: 'Storm', favorite: 'purple', bonuses: { purple: 0.35, yellow: 0.25 }, moves: 2, accent: '#dcc0ff' },
+    fog: { label: 'Fog', favorite: 'orange', bonuses: { orange: 0.25, yellow: 0.2 }, moves: 1, accent: '#f4dcb0' },
+  };
+  const clock = clocks[period];
+  const sky = skies[condition];
+  const bonuses = { ...clock.bonuses };
+  for (const [color, amount] of Object.entries(sky.bonuses)) bonuses[color] = (bonuses[color] || 0) + amount;
+  if (temperature === 'cold') bonuses.blue = (bonuses.blue || 0) + 0.15;
+  if (temperature === 'hot') bonuses.orange = (bonuses.orange || 0) + 0.2;
+  if (windy) bonuses.green = (bonuses.green || 0) + 0.2;
+  const labels = [clock.label, sky.label];
+  if (temperature === 'cold' || temperature === 'hot') labels.push(temperature === 'cold' ? 'Cold' : 'Hot');
+  if (windy) labels.push('Windy');
+  return {
+    key: [period, condition, temperature, windy ? 'windy' : 'calm'].join('-'),
+    period, condition, temperatureBand: temperature, windBand: windy ? 'windy' : 'calm',
+    priorities: [clock.favorite, sky.favorite].filter(Boolean), gemBonuses: bonuses,
+    minimumColors: condition === 'storm' ? 6 : clock.colors,
+    moveBonus: clock.moves + sky.moves,
+    tint: clock.tint, accent: sky.accent || null, label: labels.join(' · '),
+  };
+}
+
+function blendHex(first, second, amount = 0.45) {
+  if (!second) return first;
+  const left = Number.parseInt(first.slice(1), 16);
+  const right = Number.parseInt(second.slice(1), 16);
+  let result = 0;
+  for (const shift of [16, 8, 0]) {
+    const channel = Math.round(((left >> shift) & 255) * (1 - amount) + ((right >> shift) & 255) * amount);
+    result |= channel << shift;
+  }
+  return `#${result.toString(16).padStart(6, '0')}`;
+}
+
 /**
  * Pure, versioned match-3 generation shared by the server and the browser.
  * No AI, network, level files, wall clock or paid boosters are needed.
  * A deterministic simulation supplies a winning witness before a level ships.
  */
-const GENERATOR_VERSION = 1;
+
+const GENERATOR_VERSION = 2;
 const GEM_TYPES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 const LEVEL_MODES = ['classic', 'timed', 'daily', 'endless'];
 
@@ -1862,15 +1976,30 @@ function levelTheme(context) {
             ? { name: holidays[0].name, background: '#2e2250', accent: '#ffd87a', favorite: 'purple' }
             : null;
   const selected = special || { ...season, favorite: seasonalFavorite };
+  const environment = environmentRules(context);
   const monthName = monthNames[context.month - 1] || 'Local';
   return {
     ...selected,
     id: special ? `holiday-${hashSeed(holidayName).toString(16)}` : `${context.season}-${context.month}`,
     name: special ? selected.name : `${monthName} · ${selected.name}`,
+    background: blendHex(selected.background, environment.tint),
+    accent: special ? selected.accent : environment.accent || selected.accent,
+    environmentLabel: environment.label,
     monthName,
     season: context.season,
     holidayNames: holidays.map((holiday) => holiday.name),
   };
+}
+
+/** Cache/seed identity excludes fetch timestamps and small changes within weather bands. */
+function generationKey(levelNumber, context, mode = 'classic') {
+  const level = mode === 'daily' ? 1 : levelNumber;
+  const rules = environmentRules(context);
+  const theme = levelTheme(context);
+  const area = context.weatherEnabled === false ? '' : context.weather?.area?.key
+    || (Number.isFinite(context.weatherLatitude) ? `${context.weatherLatitude},${context.weatherLongitude}` : '');
+  return [GENERATOR_VERSION, mode, level, context.localDate, context.timeZone,
+    context.country || '', context.region || '', context.hemisphere, theme.id, rules.key, area].join('|');
 }
 
 /** Any positive safe level number; bounded difficulty instead of impossible linear score growth. */
@@ -1879,23 +2008,26 @@ function generateLevel(levelNumber, context, mode = 'classic') {
   if (!LEVEL_MODES.includes(mode)) throw new RangeError('invalid_mode');
   const level = mode === 'daily' ? 1 : levelNumber;
   const theme = levelTheme(context);
-  const key = [GENERATOR_VERSION, mode, level, context.localDate, context.timeZone,
-    context.country || '', context.region || '', context.hemisphere, theme.id].join('|');
+  const environment = environmentRules(context);
+  const key = generationKey(level, context, mode);
   const seed = hashSeed(key);
   const rng = { state: seed };
   const cycle = mode === 'daily' ? Math.floor(nextRandom(rng) * 5) : (level - 1) % 5;
   const isBoss = mode !== 'daily' && level % 10 === 0;
   const size = 6 + Math.floor(nextRandom(rng) * 3);
-  const colorCount = isBoss ? 6 : level <= 3 && mode !== 'daily' ? 4 : 4 + Math.floor(nextRandom(rng) * 3);
-  const others = GEM_TYPES.filter((color) => color !== theme.favorite);
+  const baseColorCount = isBoss ? 6 : level <= 3 && mode !== 'daily' ? 4 : 4 + Math.floor(nextRandom(rng) * 3);
+  const colorCount = Math.max(baseColorCount, environment.minimumColors);
+  const priorities = [...new Set([theme.favorite, ...environment.priorities])];
+  const others = GEM_TYPES.filter((color) => !priorities.includes(color));
   // Seeded Fisher-Yates: month/season/holiday changes the palette and refill mix.
   for (let i = others.length - 1; i > 0; i--) {
     const j = Math.floor(nextRandom(rng) * (i + 1));
     [others[i], others[j]] = [others[j], others[i]];
   }
-  const palette = [theme.favorite, ...others].slice(0, colorCount);
-  const weights = Object.fromEntries(palette.map((color) => [color, color === theme.favorite ? 1.35 : 1]));
-  const moveBudget = Math.max(20, 30 - cycle - (isBoss ? 5 : 0));
+  const palette = [...priorities, ...others].slice(0, colorCount);
+  const weights = Object.fromEntries(palette.map((color) => [color,
+    Math.min(2.2, (color === theme.favorite ? 1.35 : 1) + (environment.gemBonuses[color] || 0))]));
+  const moveBudget = Math.max(20, Math.min(30, 30 - cycle - (isBoss ? 5 : 0) + environment.moveBonus));
   const board = dealPlayableBoard(size, palette, weights, rng);
   const refillState = rng.state;
   const proof = certifyBoard(board, refillState, palette, weights, moveBudget);
@@ -1905,6 +2037,7 @@ function generateLevel(levelNumber, context, mode = 'classic') {
   return {
     id: `v${GENERATOR_VERSION}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: GENERATOR_VERSION,
+    environmentKey: environment.key,
     level,
     mode,
     isDaily: mode === 'daily',
@@ -1932,5 +2065,5 @@ function generateLevel(levelNumber, context, mode = 'classic') {
   };
 }
 
-root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, levelTheme, generateLevel });
+root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, levelTheme, generationKey, generateLevel });
 })(globalThis);
