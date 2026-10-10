@@ -110,7 +110,9 @@ These are implementation priorities and **proposed acceptance gates**, not measu
 
 ### Measurable release gates
 
-Record the device/browser, build, seed/context, network profile and sample size for every result. Store performance traces/playtest notes separately from player identities; avoid exact location, touch-coordinate tracking or advertising identifiers.
+The [offline web first-play/fairness study kit](WEB_FIRST_PLAY_STUDY.md) is ready for an operator to conduct the learning and loss-fairness pilot, but **no real-player result has been collected**. A green local report evaluates submitted records only; it is not proof of observed people or a release decision. Other device, access, crash-free and retention gates remain open.
+
+Record device/browser, build, coarse network profile and sample size for every result. Track seed/context coverage separately using a secret-keyed group or operator-assigned non-reversible label; do not put raw seeds or precise location into study records. Store performance traces/playtest notes separately from player identities; avoid touch-coordinate tracking or advertising identifiers.
 
 | Area | Proposed gate | How to validate |
 | --- | --- | --- |
