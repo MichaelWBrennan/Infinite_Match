@@ -1,6 +1,6 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { LRUCache } from 'lru-cache';
 import { PostHogAnalyticsService } from './analytics/posthog-service.js';
 import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';

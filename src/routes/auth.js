@@ -161,7 +161,7 @@ router.post('/logout', security.sessionValidation, (req, res) => {
 });
 
 // Refresh token endpoint
-router.post('/refresh', security.sessionValidation, (req, res) => {
+router.post('/refresh', security.sessionValidation, async (req, res) => {
   try {
     const { playerId, sessionId } = req.user;
 
@@ -176,7 +176,7 @@ router.post('/refresh', security.sessionValidation, (req, res) => {
     }
 
     // Generate new token
-    const newToken = security.generateToken({ playerId, sessionId });
+    const newToken = await security.generateToken({ playerId, sessionId });
 
     res.json({
       success: true,

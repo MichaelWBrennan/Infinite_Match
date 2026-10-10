@@ -12,16 +12,15 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { aiCacheManager } from './ai-cache-manager.js';
-import admin from 'firebase-admin';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
+import { createPushTransport } from './push/push-transports.js';
 import cron from 'node-cron';
 
 const logger = new Logger('PushNotificationService');
 
 class PushNotificationService {
   constructor() {
-    this.fcm = null;
-    this.apns = null;
+    this.transport = null;
     this.isInitialized = false;
     
     // Notification queues and scheduling
@@ -54,28 +53,9 @@ class PushNotificationService {
 
   async initialize() {
     try {
-      // Initialize Firebase Admin SDK
-      if (!admin.apps.length) {
-        const serviceAccount = {
-          type: 'service_account',
-          project_id: process.env.FIREBASE_PROJECT_ID,
-          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-          private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-          client_email: process.env.FIREBASE_CLIENT_EMAIL,
-          client_id: process.env.FIREBASE_CLIENT_ID,
-          auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-          token_uri: 'https://oauth2.googleapis.com/token',
-          auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-          client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`
-        };
-
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-          databaseURL: process.env.FIREBASE_DATABASE_URL
-        });
-      }
-
-      this.fcm = admin.messaging();
+      // Pluggable push transports: self-hosted ntfy, W3C Web Push, or FCM's
+      // HTTP v1 API (called with native fetch — no firebase-admin SDK).
+      this.transport = createPushTransport(logger);
       this.isInitialized = true;
       
       // Start notification processing
@@ -214,7 +194,7 @@ class PushNotificationService {
       };
 
       // Send notification
-      const response = await this.fcm.send(payload);
+      const response = await this.transport.send(payload);
       
       // Track metrics
       this.engagementMetrics.notificationsSent++;
@@ -271,7 +251,7 @@ class PushNotificationService {
       }
 
       // Send batch notifications
-      const response = await this.fcm.sendAll(validNotifications);
+      const response = await this.transport.sendBatch(validNotifications);
       
       this.engagementMetrics.notificationsSent += response.successCount;
       

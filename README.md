@@ -59,7 +59,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Client shop. Gems, stars, and energy are no longer sold or given out by the shop, and loot boxes are paid for in coins through the server. The old client code granted currency for free.
 
 **Not built yet** (listed in the sections below, but not implemented)
-- Weather effects. The weather service needs Supabase, which is not configured here.
+- Weather effects. The weather service needs the PostgREST data layer (`POSTGREST_URL`), which is not configured here.
 - Kingdom garden layout and room art. Renovation, decorations, and the room coin bonus are built (see Built).
 - Boss mechanics beyond a higher target. This needs a design decision: what the boss does, and how the server checks a win. Seasonal events are the dated windows in `config/liveops.json`.
 - Level results, friends, guilds, and tournaments are kept in single files. That works for one server. Scaling out needs a shared database store, which is not built and has not been run against a MongoDB server.
@@ -71,6 +71,24 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Level wins check the score against the target, but the server does not replay the board. A player can still claim a win with a made-up score, once per paid attempt. Each win pays a fixed reward, so this is limited by energy. The same score feeds the best-score boards, tournaments, and challenges, so those rankings can be inflated the same way.
 - The Stripe checkout button is built but has not run against Stripe. The sandbox cannot reach Stripe.
 - Subscription entitlements (blocked): the catalog has no subscription products, and the store product IDs are not known to this repository, so events cannot be mapped to an entitlement.
+
+## 🛠 Technology & open-source stack
+
+The platform is built free/open-source-first: every capability has a
+self-hosted, OSI-licensed default, and proprietary services exist only behind
+optional adapters (payments, app stores). The 2026 stack:
+
+- **Runtime**: Node.js 22/24 LTS, ESM, TypeScript (`nodenext`), Express 5, native `fetch`.
+- **CI**: workflow modernization is deferred in a separate local-only patch; this branch leaves `.github/workflows` unchanged. See [the migration guide](OPENSOURCE_MIGRATION.md#deferred-ci-modernization) for details.
+- **Data**: PostgreSQL + PostgREST (data API), FerretDB (document store), Valkey (cache/queue), MinIO (S3-compatible object storage).
+- **AI**: Ollama or any OpenAI-compatible server (vLLM, LiteLLM) for local, open-weights models — no hosted AI vendor required.
+- **Push**: self-hosted ntfy or W3C Web Push (VAPID); FCM HTTP v1 remains an optional adapter.
+- **Observability**: PostHog (analytics), Prometheus + Grafana (metrics), GlitchTip (error tracking), Mailpit (email).
+- **Payments**: Stripe behind a payment adapter, plus Apple/Google store billing — the one unavoidable proprietary touchpoint.
+
+Bring the whole stack up with `docker compose -f docker-compose.opensource.yml up -d`
+and `.env.opensource`. Full architecture, migration notes, and the remaining
+proprietary touchpoints are documented in [OPENSOURCE_MIGRATION.md](OPENSOURCE_MIGRATION.md).
 
 ## 🎮 Gameplay Features
 

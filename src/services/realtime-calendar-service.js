@@ -1,7 +1,7 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
 import cron from 'node-cron';
-import moment from 'moment-timezone';
+import moment from '../core/utils/datetime.js';
 import { createSupabaseClient } from './ai-clients.js';
 
 /**

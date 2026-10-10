@@ -8,15 +8,17 @@ Your project is now **100% self-contained** and works completely offline without
 - ❌ Amplitude → ✅ PostHog (self-hosted)
 - ❌ Mixpanel → ✅ PostHog (self-hosted)  
 - ❌ Datadog → ✅ Prometheus + Grafana (self-hosted)
-- ✅ Sentry (kept, now self-hosted)
+- ❌ Sentry SaaS → ✅ GlitchTip (MIT, Sentry-SDK-compatible)
 
 ### **Cloud Services**
 - ❌ AWS S3 → ✅ MinIO (S3-compatible)
 - ❌ DynamoDB → ✅ PostgreSQL
 - ❌ Google Cloud → ✅ Self-hosted alternatives
 - ❌ Azure → ✅ Self-hosted alternatives
-- ✅ MongoDB (kept, already open source)
-- ✅ Redis (kept, already open source)
+- ❌ MongoDB (SSPL) → ✅ FerretDB (Apache-2.0, MongoDB wire protocol on Postgres)
+- ❌ Redis (RSAL/SSPL) → ✅ Valkey (BSD-3, Redis protocol compatible)
+- ❌ Sentry SaaS → ✅ GlitchTip (MIT, Sentry-SDK-compatible)
+- ❌ MailHog (abandoned) → ✅ Mailpit (MIT)
 
 ### **Platform SDKs**
 - ❌ External CDN scripts → ✅ Self-hosted mocks

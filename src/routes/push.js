@@ -3,22 +3,14 @@ import { Logger } from '../core/logger/index.js';
 import DeviceTokenDb from '../services/push/DeviceTokenDb.js';
 import security from '../core/security/index.js';
 import { adminAuth } from '../middleware/admin-auth.js';
-
-let admin = null;
-try {
-  // Lazy load
-  admin = await import('firebase-admin');
-  if (!admin.apps || admin.apps.length === 0) {
-    const serviceAccountJson = process.env.FCM_SERVICE_ACCOUNT_JSON || null;
-    if (serviceAccountJson) {
-      const credential = admin.credential.cert(JSON.parse(serviceAccountJson));
-      admin.initializeApp({ credential });
-    }
-  }
-} catch (_) { /* FCM credentials unavailable; push routes report themselves disabled */ }
+import { createPushTransport } from '../services/push/push-transports.js';
 
 const router = express.Router();
 const logger = new Logger('PushRoutes');
+
+// Pluggable push transports (ntfy / web-push / FCM HTTP v1 / log). The
+// transport is chosen from the environment — see services/push/push-transports.js.
+const pushTransport = createPushTransport(logger);
 
 router.post('/register', security.sessionValidation, async (req, res) => {
   try {
@@ -40,12 +32,12 @@ router.post('/send', adminAuth, async (req, res) => {
     if (!token || !title || !body) {
       return res.status(400).json({ success: false, error: 'token, title, body required' });
     }
-    if (!admin || !admin.messaging) {
-      logger.warn('FCM not configured; mock delivery');
-      return res.json({ success: true, mocked: true });
-    }
     const message = { token, notification: { title, body }, data: data || {} };
-    const id = await admin.messaging().send(message);
+    const id = await pushTransport.send(message);
+    if (pushTransport.name === 'log') {
+      logger.warn('No push transport configured; mock delivery');
+      return res.json({ success: true, id, mocked: true });
+    }
     res.json({ success: true, id });
   } catch (error) {
     logger.error('Push send error', { error: error.message });

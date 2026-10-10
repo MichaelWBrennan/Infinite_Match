@@ -16,7 +16,7 @@ import { aiAnalyticsEngine } from './ai-analytics-engine.js';
 import { aiPersonalizationEngine } from './ai-personalization-engine.js';
 import pushNotificationService from './push-notification-service.js';
 import liveOpsDashboard from './live-ops-dashboard.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 
 const logger = new Logger('PlayerInterventionSystem');
 

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Main API Gateway for Mobile
   api-gateway:
@@ -146,10 +144,11 @@ services:
       - game-network
     restart: unless-stopped
 
-  # Redis Cache
+  # Valkey cache/queue broker (BSD-3-Clause, Redis-protocol compatible).
+  # Hostname stays `redis` so existing REDIS_URL values keep working.
   redis:
-    image: redis:8.5-alpine
-    command: redis-server --appendonly yes --requirepass password
+    image: valkey/valkey:8-alpine
+    command: valkey-server --appendonly yes --requirepass password
     volumes:
       - redis_data:/data
     ports:
@@ -158,16 +157,32 @@ services:
       - game-network
     restart: unless-stopped
 
-  # MongoDB for Analytics
+  # FerretDB (Apache-2.0): MongoDB-wire-compatible document store on
+  # PostgreSQL — the open-source stand-in for SSPL-licensed MongoDB. The
+  # service keeps the `mongodb` hostname so existing MONGODB_URI values keep
+  # working.
   mongodb:
-    image: mongo:8.5
+    image: ghcr.io/ferretdb/ferretdb:2
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
-    volumes:
-      - mongodb_data:/data/db
+      - FERRETDB_POSTGRESQL_URL=postgres://postgres:password@documentdb:5432/ferretdb
     ports:
       - "27017:27017"
+    depends_on:
+      - documentdb
+    networks:
+      - game-network
+    restart: unless-stopped
+
+  # PostgreSQL backing FerretDB's document store (with the DocumentDB
+  # extension).
+  documentdb:
+    image: ghcr.io/ferretdb/postgres-documentdb:17
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=ferretdb
+    volumes:
+      - documentdb_data:/var/lib/postgresql/data
     networks:
       - game-network
     restart: unless-stopped
@@ -230,7 +245,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  mongodb_data:
+  documentdb_data:
   prometheus_data:
   grafana_data:
 

@@ -5,6 +5,7 @@ import { WeatherService } from '../services/weather-service.js';
 import { RealtimeCalendarService } from '../services/realtime-calendar-service.js';
 import { RealtimeEventService } from '../services/realtime-event-service.js';
 import { UnifiedRealtimeSystem } from '../services/unified-realtime-system.js';
+import moment from '../core/utils/datetime.js';
 
 const router = express.Router();
 const logger = new Logger('RealtimeRoutes');
@@ -518,7 +519,6 @@ router.get('/timezones', (req, res) => {
 router.get('/time/:timezone', (req, res) => {
   try {
     const { timezone } = req.params;
-    const moment = require('moment-timezone');
     const currentTime = moment.tz(timezone);
 
     res.json({

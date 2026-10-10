@@ -1,4 +1,5 @@
 import express from 'express';
+import { isAIConfigured } from '../services/ai-clients.js';
 import { Logger } from '../core/logger/index.js';
 import { aiCacheManager } from '../services/ai-cache-manager.js';
 import { AIContentGenerator } from '../services/ai-content-generator.js';
@@ -17,7 +18,8 @@ const GENERATION_TIMEOUT_MS = 30000;
 //    write from the handler is dropped so the response is not written twice.
 router.use((req, res, next) => {
   if (req.path === '/health') return next();
-  if (!process.env.OPENAI_API_KEY) {
+  // Hosted key or a self-hosted OpenAI-compatible server (Ollama/vLLM/...).
+  if (!isAIConfigured()) {
     return res.status(503).json({ success: false, error: 'ai_not_configured' });
   }
   let finished = false;

@@ -3,7 +3,7 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { WeatherService } from './weather-service.js';
 import { RealtimeCalendarService } from './realtime-calendar-service.js';
 import cron from 'node-cron';
-import moment from 'moment-timezone';
+import moment from '../core/utils/datetime.js';
 import { Server } from 'socket.io';
 import { createSupabaseClient } from './ai-clients.js';
 

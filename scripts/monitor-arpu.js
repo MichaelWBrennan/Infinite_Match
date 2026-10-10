@@ -5,7 +5,6 @@
  * Monitors ARPU systems and provides real-time insights
  */
 
-import fetch from 'node-fetch';
 
 const BASE_URL = 'http://localhost:3000/api/arpu';
 

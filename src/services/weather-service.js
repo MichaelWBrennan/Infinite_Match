@@ -1,6 +1,6 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import axios from 'axios';
+import { getJson } from '../core/utils/http.js';
 import cron from 'node-cron';
 import { createSupabaseClient } from './ai-clients.js';
 
@@ -242,8 +242,8 @@ class WeatherService {
       timezone: 'auto'
     };
 
-    const response = await axios.get(url, { params, timeout: 10000 });
-    return this.convertOpenMeteoData(response.data);
+    const response = await getJson(url, { params, timeout: 10000 });
+    return this.convertOpenMeteoData(response);
   }
 
   /**
@@ -258,8 +258,8 @@ class WeatherService {
       units: 'metric',
     };
 
-    const response = await axios.get(url, { params, timeout: 10000 });
-    return response.data;
+    const response = await getJson(url, { params, timeout: 10000 });
+    return response;
   }
 
   /**
@@ -272,8 +272,8 @@ class WeatherService {
       q: `${latitude},${longitude}`,
     };
 
-    const response = await axios.get(url, { params, timeout: 10000 });
-    return response.data;
+    const response = await getJson(url, { params, timeout: 10000 });
+    return response;
   }
 
   /**
@@ -335,14 +335,14 @@ class WeatherService {
     }
 
     const url = 'https://api.weather.gov/points/' + latitude + ',' + longitude;
-    const response = await axios.get(url, { timeout: 10000 });
+    const response = await getJson(url, { timeout: 10000 });
     
-    if (response.data && response.data.properties) {
-      const forecastUrl = response.data.properties.forecast;
-      const forecastResponse = await axios.get(forecastUrl, { timeout: 10000 });
+    if (response && response.properties) {
+      const forecastUrl = response.properties.forecast;
+      const forecastResponse = await getJson(forecastUrl, { timeout: 10000 });
       
-      if (forecastResponse.data && forecastResponse.data.properties) {
-        const periods = forecastResponse.data.properties.periods;
+      if (forecastResponse && forecastResponse.properties) {
+        const periods = forecastResponse.properties.periods;
         const current = periods[0];
         
         return {
@@ -391,15 +391,15 @@ class WeatherService {
       q: `${latitude},${longitude}`
     };
     
-    const locationResponse = await axios.get(locationUrl, { params: locationParams, timeout: 10000 });
-    const locationKey = locationResponse.data.Key;
+    const locationResponse = await getJson(locationUrl, { params: locationParams, timeout: 10000 });
+    const locationKey = locationResponse.Key;
 
     // Get current conditions
     const conditionsUrl = `http://dataservice.accuweather.com/currentconditions/v1/${locationKey}`;
     const conditionsParams = { apikey: this.accuWeatherApiKey };
     
-    const conditionsResponse = await axios.get(conditionsUrl, { params: conditionsParams, timeout: 10000 });
-    const current = conditionsResponse.data[0];
+    const conditionsResponse = await getJson(conditionsUrl, { params: conditionsParams, timeout: 10000 });
+    const current = conditionsResponse[0];
 
     return {
       name: 'AccuWeather',
@@ -1043,8 +1043,8 @@ class WeatherService {
       forecast_days: days
     };
 
-    const response = await axios.get(url, { params, timeout: 10000 });
-    return this.convertOpenMeteoForecast(response.data);
+    const response = await getJson(url, { params, timeout: 10000 });
+    return this.convertOpenMeteoForecast(response);
   }
 
   /**
@@ -1060,8 +1060,8 @@ class WeatherService {
       cnt: days * 8, // 8 forecasts per day (3-hour intervals)
     };
 
-    const response = await axios.get(url, { params, timeout: 10000 });
-    return response.data;
+    const response = await getJson(url, { params, timeout: 10000 });
+    return response;
   }
 
   /**

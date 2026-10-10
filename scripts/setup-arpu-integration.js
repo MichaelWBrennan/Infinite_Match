@@ -116,7 +116,6 @@ const testScript = `#!/usr/bin/env node
  * Tests all ARPU systems to ensure they're working correctly
  */
 
-import fetch from 'node-fetch';
 
 const BASE_URL = 'http://localhost:3000/api/arpu';
 
@@ -189,7 +188,6 @@ const monitorScript = `#!/usr/bin/env node
  * Monitors ARPU systems and provides real-time insights
  */
 
-import fetch from 'node-fetch';
 
 const BASE_URL = 'http://localhost:3000/api/arpu';
 

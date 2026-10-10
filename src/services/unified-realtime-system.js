@@ -4,7 +4,7 @@ import { WeatherService } from './weather-service.js';
 import { RealtimeCalendarService } from './realtime-calendar-service.js';
 import { RealtimeEventService } from './realtime-event-service.js';
 import cron from 'node-cron';
-import moment from 'moment-timezone';
+import moment from '../core/utils/datetime.js';
 import { createSupabaseClient } from './ai-clients.js';
 
 /**

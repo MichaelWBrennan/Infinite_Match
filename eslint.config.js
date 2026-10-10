@@ -49,6 +49,7 @@ export default [
         Response: 'readonly',
         FormData: 'readonly',
         AbortController: 'readonly',
+        AbortSignal: 'readonly',
         Event: 'readonly',
         CustomEvent: 'readonly',
         EventTarget: 'readonly',

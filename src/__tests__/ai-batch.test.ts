@@ -19,6 +19,8 @@ function settleWithin<T>(promise: Promise<T>): Promise<{ ok: true; value: T } | 
 describe('AI content batching', () => {
   beforeAll(() => {
     delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_BASE_URL;
+    delete process.env.OLLAMA_BASE_URL;
   });
   afterAll(() => {
     process.env = savedEnv;

@@ -3,7 +3,7 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { AIContentGenerator } from './ai-content-generator.js';
 import { MarketResearchEngine } from './market-research-engine.js';
 import { AIPersonalizationEngine } from './ai-personalization-engine.js';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import cron from 'node-cron';
 import { createSupabaseClient } from './ai-clients.js';
 

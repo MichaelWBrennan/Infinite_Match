@@ -19,7 +19,6 @@ import { UniversalAPI } from '../core/api/UniversalAPI.js';
 import WebGLMiddleware from '../core/middleware/WebGLMiddleware.js';
 import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
 // import { AnalyticsService } from '../services/analytics-service.js';
-import CloudServices from '../services/cloud-services.js';
 import UnifiedAnalyticsService from '../services/unified-analytics-service.js';
 import PrometheusMonitoringService from '../services/prometheus-monitoring-service.js';
 import OpenSourceCloudServices from '../services/open-source-cloud-services.js';
@@ -106,7 +105,6 @@ interface HealthCheckResponse {
     analytics: any;
     monitoring: any;
     cloud: any;
-    legacy: any;
   };
 }
 
@@ -208,9 +206,10 @@ class GameServer {
       this.asoOptimization = new ASOOptimizationService();
       this.logger.info('ASO optimization service initialized');
 
-      // Keep legacy cloud services for backward compatibility
-      this.cloudServices = CloudServices;
-      await this.cloudServices.initialize();
+      // The open-source stack (MinIO/Postgres/Valkey/SMTP) is the only cloud
+      // layer. It is also published under the legacy 'cloud' name so
+      // `getService('cloud')` lookups in the game routes keep working.
+      this.cloudServices = this.openSourceCloud;
 
       // Publish the running instances on the shared container so route modules
       // can resolve them (previously nothing registered 'analytics'/'cloud',
@@ -229,14 +228,25 @@ class GameServer {
   }
 
   private initializeSentry(): void {
-    if (process.env['SENTRY_DSN']) {
+    const dsn = process.env['SENTRY_DSN'];
+    // Error tracking is optional (self-hosted GlitchTip or Sentry). Ignore
+    // unset/placeholder DSNs — `Sentry.init` throws on invalid values, which
+    // used to take the whole server down before it could listen on a port.
+    if (!dsn || dsn.startsWith('your-') || dsn.includes('your_')) {
+      return;
+    }
+    try {
       Sentry.init({
-        dsn: process.env['SENTRY_DSN'],
+        dsn,
         environment: this.config.environment,
         tracesSampleRate: 1.0,
         integrations: [
           // Use basic integrations for now
         ],
+      });
+    } catch (error) {
+      this.logger.warn('Sentry/GlitchTip disabled: invalid SENTRY_DSN', {
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -445,14 +455,14 @@ class GameServer {
     // Reading them unconditionally made /health throw a TypeError and return
     // 500 whenever the app was used before boot - a health endpoint must
     // always answer, so report each service as uninitialized instead.
-    const statusOf = (
+    const statusOf = async (
       service: { getHealthStatus?: () => unknown; getServiceStatus?: () => unknown } | undefined,
-    ): unknown => {
+    ): Promise<unknown> => {
       if (!service) {
         return { status: 'not_initialized' };
       }
       if (typeof service.getHealthStatus === 'function') {
-        return service.getHealthStatus();
+        return await service.getHealthStatus();
       }
       if (typeof service.getServiceStatus === 'function') {
         return service.getServiceStatus();
@@ -465,10 +475,9 @@ class GameServer {
       message: 'OK',
       timestamp: new Date().toISOString(),
       services: {
-        analytics: statusOf(this.unifiedAnalytics),
-        monitoring: statusOf(this.prometheusMonitoring),
-        cloud: statusOf(this.openSourceCloud),
-        legacy: statusOf(this.cloudServices),
+        analytics: await statusOf(this.unifiedAnalytics),
+        monitoring: await statusOf(this.prometheusMonitoring),
+        cloud: await statusOf(this.cloudServices),
       },
     };
 
@@ -788,7 +797,10 @@ class GameServer {
 const server = new GameServer();
 server.start().catch((error) => {
   const logger = new Logger('ServerStartup');
-  logger.error('Failed to start server:', { error });
+  logger.error('Failed to start server:', {
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
   process.exit(1);
 });
 

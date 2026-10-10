@@ -5,7 +5,6 @@
  * Tests the Stripe integration endpoints and functionality
  */
 
-import fetch from 'node-fetch';
 import { config } from 'dotenv';
 
 // Load environment variables
