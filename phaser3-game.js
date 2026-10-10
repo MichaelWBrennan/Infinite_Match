@@ -2320,7 +2320,7 @@ class PhaserMatch3Game {
     // Plain-language messages for the error codes the server returns.
     ruleMessage(code) {
         const messages = {
-            insufficient_coins: 'Not enough coins. Buy a coin pack in the shop.',
+            insufficient_coins: 'Not enough coins yet. Win levels to earn more.',
             unknown_lootbox: 'That loot box is not available.',
             unknown_product: 'That pack is not available.',
             checkout_not_configured: 'Purchases are not available right now.',
@@ -2482,8 +2482,9 @@ class PhaserMatch3Game {
 
     createKingdomUI() {
         this.openOverlay('Kingdom');
-        this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
         this.kingdomRowObjects = [];
+        if (this.playerUI?.renderKingdomScene) { this.renderKingdom(); return; }
+        this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
         this.overlayButton(250, 500, 100, 50, 0x9b59b6, 'Decor', () => this.openDecor());
         this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeKingdom());
         this.renderKingdom();
@@ -2516,11 +2517,11 @@ class PhaserMatch3Game {
             this.decorSelected = selected;
 
             decor.catalog.forEach((item, index) => {
-                const y = 150 + index * 42;
+                const y = 145 + index * 31;
                 const owned = decor.owned[item.id] || 0;
-                this.overlayText(60, y, `${item.name} · ${item.priceCoins} coins · room lvl ${item.requiresRoomLevel}+ · owned ${owned}/${decor.maxOwned}`, { origin: 0, size: 15 });
-                this.overlayButton(600, y, 90, 28, 0xffd700, 'Buy', () => this.decorAction('/api/kingdom/decor/buy', { decorId: item.id }, `Bought ${item.name}.`));
-                this.overlayButton(710, y, 90, 28, selected === item.id ? 0x4ecdc4 : 0x9b59b6, selected === item.id ? 'Selected' : 'Select', () => {
+                this.overlayText(60, y, `${item.name} · ${item.priceCoins} coins · room lvl ${item.requiresRoomLevel}+ · owned ${owned}/${decor.maxOwned}`, { origin: 0, size: 13 });
+                this.overlayButton(600, y, 90, 26, 0xffd700, 'Buy', () => this.decorAction('/api/kingdom/decor/buy', { decorId: item.id }, `Bought ${item.name}.`));
+                this.overlayButton(710, y, 90, 26, selected === item.id ? 0x4ecdc4 : 0x9b59b6, selected === item.id ? 'Selected' : 'Select', () => {
                     this.decorSelected = item.id;
                     this.openDecor();
                 });
@@ -2566,16 +2567,58 @@ class PhaserMatch3Game {
         }
     }
 
+    kingdomSceneCallbacks(focusChoice = null) {
+        return {
+            close: () => this.closeKingdom(), signIn: () => this.openSignIn(),
+            renovate: () => this.renovateRoom('throne'),
+            choose: (decorId) => this.chooseKingdomDecor(decorId),
+            more: () => this.openDecor(), focusChoice,
+        };
+    }
+
+    async chooseKingdomDecor(decorId) {
+        if (this.kingdomPending || !this.getAuthToken()) return;
+        const overlay = this.activeOverlay;
+        this.kingdomPending = true;
+        this.setOverlayStatus('Preparing your chosen look...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom/decor/choose', {
+                method: 'POST', body: JSON.stringify({ roomId: 'throne', decorId }),
+            });
+            if (this.activeOverlay !== overlay) return;
+            if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
+            this.kingdomFocusChoice = decorId;
+            await this.renderKingdom();
+            if (this.activeOverlay === overlay) {
+                this.setOverlayStatus(data.result.unchanged ? 'That look is already on display.'
+                    : `Your chosen look brightens the hall.${data.result.costCoins ? ` ${data.result.costCoins} coins spent.` : ' Used an owned decoration.'}`);
+                this.trackEvent('kingdom_look_chosen', { decorId, bought: data.result.buy });
+            }
+        } catch (error) {
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not reach the server. Check your room before retrying.');
+        } finally {
+            this.kingdomPending = false;
+        }
+    }
+
     async renderKingdom() {
         const overlay = this.activeOverlay;
         destroyOverlayObjects(this.kingdomRowObjects);
         this.kingdomRowObjects = [];
-        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to renovate your kingdom.');
+        if (!this.getAuthToken()) {
+            if (this.playerUI?.renderKingdomScene) this.playerUI.renderKingdomScene({ guest: true }, this.kingdomSceneCallbacks());
+            return this.setOverlayStatus('Sign in to save room upgrades. Guest puzzles are always playable.');
+        }
         try {
             const { ok, data } = await this.fetchJson('/api/kingdom');
             if (this.activeOverlay !== overlay) return;
             if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
             if (!this.activeOverlay || this.activeOverlay !== overlay) return;
+            if (this.playerUI?.renderKingdomScene) {
+                this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice));
+                this.kingdomFocusChoice = null;
+                return;
+            }
             const bonus = Math.round((data.coinBonus || 0) * 100);
             this.kingdomCoinsText.setText(`Coins: ${data.coins}${bonus > 0 ? `   Room bonus +${bonus}% coins` : ''}`);
             data.kingdom.rooms.forEach((room, index) => {

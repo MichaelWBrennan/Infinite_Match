@@ -10,6 +10,8 @@ export const MAX_DECOR_OWNED = 5;
 
 export const DECOR_CATALOG = Object.freeze({
   tapestry: { name: 'Tapestry', priceCoins: 200, requiresRoomLevel: 1 },
+  mosaic: { name: 'Sun Mosaic', priceCoins: 140, requiresRoomLevel: 1 },
+  sconces: { name: 'Starlight Sconces', priceCoins: 180, requiresRoomLevel: 1 },
   banner: { name: 'Royal Banner', priceCoins: 120, requiresRoomLevel: 2 },
   statue: { name: 'Marble Statue', priceCoins: 300, requiresRoomLevel: 3 },
   fountain: { name: 'Fountain', priceCoins: 500, requiresRoomLevel: 4 },
@@ -54,6 +56,20 @@ export function planPlaceDecor(kingdom, decor, roomId, decorId) {
   if (decor.placed[roomId]) throw new DecorError('room_occupied');
   if ((kingdom.rooms[roomId] || 0) < item.requiresRoomLevel) throw new DecorError('room_level_too_low');
   return { roomId, decorId };
+}
+
+/** Preview one atomic choice: reuse an unplaced item or buy one, then swap this room's
+ * displayed decoration. All validation happens before any coin or inventory mutation. */
+export function planChooseDecor(kingdom, decor, roomId, decorId, coins) {
+  const room = KINGDOM_ROOMS.find((candidate) => candidate.id === roomId);
+  if (!room) throw new DecorError('unknown_room');
+  const item = Object.hasOwn(DECOR_CATALOG, decorId) ? DECOR_CATALOG[decorId] : null;
+  if (!item) throw new DecorError('unknown_decor');
+  if ((kingdom.rooms[roomId] || 0) < item.requiresRoomLevel) throw new DecorError('room_level_too_low');
+  if (decor.placed[roomId] === decorId) return { roomId, decorId, buy: false, costCoins: 0, unchanged: true };
+  const buy = decorInStock(decor, decorId) <= 0;
+  const costCoins = buy ? planBuyDecor(decor, decorId, coins).costCoins : 0;
+  return { roomId, decorId, buy, costCoins, unchanged: false };
 }
 
 export function planRemoveDecor(decor, roomId) {

@@ -635,6 +635,46 @@ describe('native player input keeps shared rules and economy untouched', () => {
     expect(writes).toEqual([]);
   });
 
+  test('a guest sees the room without a network request and a signed-in choice refreshes its payoff', async () => {
+    const { game } = playable();
+    const views: any[] = []; const messages: string[] = []; const calls: any[] = [];
+    game.playerUI.renderKingdomScene = (data: any, callbacks: any) => { views.push({ data, callbacks }); };
+    game.setOverlayStatus = (message: string) => messages.push(message);
+    game.activeOverlay = {};
+    game.fetchJson = async (url: string, options: any) => {
+      calls.push([url, options]);
+      return url.endsWith('/choose')
+        ? { ok: true, data: { success: true, result: { buy: true, costCoins: 140 } } }
+        : { ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 660, decor: { catalog: [] } } };
+    };
+    await game.renderKingdom();
+    expect(views[0].data.guest).toBe(true);
+    expect(calls).toHaveLength(0);
+    game.getAuthToken = () => 'test';
+    await game.chooseKingdomDecor('mosaic');
+    expect(calls.map(([url]) => url)).toEqual(['/api/kingdom/decor/choose', '/api/kingdom']);
+    expect(JSON.parse(calls[0][1].body)).toEqual({ roomId: 'throne', decorId: 'mosaic' });
+    expect(views[1].callbacks.focusChoice).toBe('mosaic');
+    expect(messages.at(-1)).toContain('140 coins spent');
+    expect(game.kingdomPending).toBe(false);
+  });
+
+  test('closing a room while its one-tap choice is in flight cannot write into another screen', async () => {
+    const { game } = playable();
+    let finish: any; let writes = 0;
+    game.getAuthToken = () => 'test';
+    game.playerUI.renderKingdomScene = () => { writes++; };
+    game.activeOverlay = {};
+    game.setOverlayStatus = () => { writes++; };
+    game.fetchJson = () => new Promise((done) => { finish = done; });
+    const pending = game.chooseKingdomDecor('sconces');
+    game.activeOverlay = {};
+    finish({ ok: true, data: { success: true, result: { buy: true, costCoins: 180 } } });
+    await pending;
+    expect(writes).toBe(1); // Initial status only; never re-render the next overlay.
+    expect(game.kingdomPending).toBe(false);
+  });
+
   test('finishing an old decoration action cannot reopen a closed modal', async () => {
     const { game } = playable();
     let resolve: any;

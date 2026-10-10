@@ -271,6 +271,7 @@
         function openOverlay(title) {
             if (!dialog.open) focusedBeforeDialog = document.activeElement;
             content.replaceChildren(); status.textContent = ''; find('h2').textContent = title;
+            dialog.classList.toggle('kingdom-room-dialog', title === 'Kingdom');
             if (!dialog.open) dialog.showModal();
             assistiveBoard?.sync();
             return { destroy: closeOverlay };
@@ -286,6 +287,77 @@
         function overlayButton(label, onClick) {
             const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
             button.addEventListener('click', onClick); content.append(button); return proxy(button);
+        }
+        let kingdomStorySkipped = false;
+        function renderKingdomScene(data, callbacks = {}) {
+            const scene = root.InfiniteKingdomScene;
+            if (!scene) return false;
+            const view = scene.roomView(data);
+            content.replaceChildren();
+            const heading = find('h2');
+            heading.textContent = 'The Hall of Echoes';
+            const back = document.createElement('button');
+            back.type = 'button'; back.className = 'match-guide-close'; back.textContent = 'Back to game';
+            back.addEventListener('click', () => callbacks.close?.()); content.append(back);
+            const summary = document.createElement('p'); summary.className = 'kingdom-room-summary';
+            summary.textContent = view.guest ? 'A glimpse of your future kingdom · Play without signing in.'
+                : `Throne Hall · Level ${view.level}/5 · ${view.coins} coins · +${view.coinBonus}% room bonus`;
+            content.append(summary);
+            const figure = document.createElement('figure'); figure.className = 'kingdom-room-art';
+            figure.setAttribute('role', 'img');
+            figure.setAttribute('aria-label', view.level === 0 ? 'The unlit hall awaits its first repair.'
+                : `The restored hall${view.selected ? ` with ${view.choices.find((choice) => choice.id === view.selected)?.name || view.selected}` : ' with an empty display'}.`);
+            figure.innerHTML = scene.artwork(view.level, view.selected); content.append(figure);
+            if (!kingdomStorySkipped) {
+                const story = document.createElement('div'); story.className = 'kingdom-room-story';
+                const words = document.createElement('p'); words.textContent = view.narrative;
+                const skip = document.createElement('button'); skip.type = 'button'; skip.textContent = 'Skip story';
+                skip.addEventListener('click', () => { kingdomStorySkipped = true; story.remove(); content.querySelector('.kingdom-room-choices h3')?.focus(); });
+                story.append(words, skip); content.append(story);
+            }
+            const renovation = document.createElement('div'); renovation.className = 'kingdom-room-renovate';
+            if (view.guest) {
+                const signIn = document.createElement('button'); signIn.type = 'button'; signIn.textContent = 'Sign in to save your hall';
+                signIn.addEventListener('click', () => callbacks.signIn?.()); renovation.append(signIn);
+            } else if (view.next) {
+                const upgrade = document.createElement('button'); upgrade.type = 'button'; upgrade.disabled = !view.canRenovate;
+                upgrade.textContent = `Repair hall · ${view.next.costCoins} coins${view.next.starsRequired ? ` · ${view.next.starsRequired} lifetime stars` : ''}`;
+                upgrade.addEventListener('click', () => callbacks.renovate?.()); renovation.append(upgrade);
+                if (!view.canRenovate) {
+                    const reason = document.createElement('span');
+                    reason.textContent = view.renovationReason === 'stars_required' ? 'Earn stars by winning levels.' : 'Earn more coins to repair.';
+                    renovation.append(reason);
+                }
+            } else {
+                renovation.textContent = 'The hall is fully restored.';
+            }
+            content.append(renovation);
+            const choices = document.createElement('section'); choices.className = 'kingdom-room-choices';
+            const title = document.createElement('h3'); title.textContent = 'Choose the first look'; title.tabIndex = -1;
+            choices.append(title);
+            const note = document.createElement('p'); note.textContent = 'One display at a time. Owned décor can be used again without paying twice.';
+            choices.append(note);
+            const cards = document.createElement('div'); cards.className = 'kingdom-room-cards';
+            for (const choice of view.choices) {
+                const button = document.createElement('button'); button.type = 'button';
+                button.className = 'kingdom-room-choice'; button.dataset.decorId = choice.id;
+                button.disabled = !choice.eligible; // Keep the selected look keyboard-focusable; the server treats reselection as a free no-op.
+                button.setAttribute('aria-pressed', String(choice.selected));
+                const preview = document.createElement('span'); preview.className = 'kingdom-room-choice-art';
+                preview.setAttribute('aria-hidden', 'true'); preview.innerHTML = scene.artwork(Math.max(1, view.level), choice.id);
+                const name = document.createElement('strong'); name.textContent = choice.name;
+                const detail = document.createElement('span'); detail.textContent = choice.caption;
+                const price = document.createElement('span'); price.className = 'kingdom-room-price';
+                price.textContent = choice.selected ? 'On display' : choice.lockedBy || (choice.costCoins ? `${choice.costCoins} coins · Choose` : 'Owned · Choose');
+                button.append(preview, name, detail, price);
+                button.addEventListener('click', () => callbacks.choose?.(choice.id));
+                cards.append(button);
+            }
+            choices.append(cards); content.append(choices);
+            const more = document.createElement('button'); more.type = 'button'; more.textContent = 'Explore all rooms and décor';
+            more.addEventListener('click', () => callbacks.more?.()); content.append(more);
+            if (callbacks.focusChoice) cards.querySelector(`[data-decor-id="${callbacks.focusChoice}"]`)?.focus({ preventScroll: true });
+            return true;
         }
         function explore() {
             const wasRunning = game.isGameRunning && !game.isPaused;
@@ -377,7 +449,7 @@
         const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomScene,
             showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
