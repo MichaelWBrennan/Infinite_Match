@@ -292,22 +292,32 @@
         function renderKingdomScene(data, callbacks = {}) {
             const scene = root.InfiniteKingdomScene;
             if (!scene) return false;
-            const view = scene.roomView(data);
+            const view = scene.roomView(data, callbacks.roomId);
             content.replaceChildren();
             const heading = find('h2');
-            heading.textContent = 'The Hall of Echoes';
+            heading.textContent = view.title;
             const back = document.createElement('button');
             back.type = 'button'; back.className = 'match-guide-close'; back.textContent = 'Back to game';
             back.addEventListener('click', () => callbacks.close?.()); content.append(back);
+            const rooms = document.createElement('nav'); rooms.className = 'kingdom-room-nav';
+            rooms.setAttribute('aria-label', 'Kingdom rooms');
+            for (const [id, name] of [['throne', 'Throne Hall'], ['library', 'Royal Library']]) {
+                const button = document.createElement('button'); button.type = 'button';
+                button.dataset.roomId = id; button.textContent = name;
+                button.setAttribute('aria-pressed', String(view.id === id));
+                button.addEventListener('click', () => callbacks.selectRoom?.(id));
+                rooms.append(button);
+            }
+            content.append(rooms);
             const summary = document.createElement('p'); summary.className = 'kingdom-room-summary';
             summary.textContent = view.guest ? 'A glimpse of your future kingdom · Play without signing in.'
-                : `Throne Hall · Level ${view.level}/5 · ${view.coins} coins · +${view.coinBonus}% room bonus`;
+                : `${view.name} · Level ${view.level}/5 · ${view.coins} coins · +${view.coinBonus}% room bonus`;
             content.append(summary);
             const figure = document.createElement('figure'); figure.className = 'kingdom-room-art';
             figure.setAttribute('role', 'img');
-            figure.setAttribute('aria-label', view.level === 0 ? 'The unlit hall awaits its first repair.'
-                : `The restored hall${view.selected ? ` with ${view.choices.find((choice) => choice.id === view.selected)?.name || view.selected}` : ' with an empty display'}.`);
-            figure.innerHTML = scene.artwork(view.level, view.selected); content.append(figure);
+            figure.setAttribute('aria-label', view.level === 0 ? `The unlit ${view.name} awaits its first repair.`
+                : `The restored ${view.name}${view.selected ? ` with ${view.choices.find((choice) => choice.id === view.selected)?.name || view.selected}` : ' with an empty display'}.`);
+            figure.innerHTML = scene.artwork(view.level, view.selected, view.id); content.append(figure);
             if (!kingdomStorySkipped) {
                 const story = document.createElement('div'); story.className = 'kingdom-room-story';
                 const words = document.createElement('p'); words.textContent = view.narrative;
@@ -317,19 +327,19 @@
             }
             const renovation = document.createElement('div'); renovation.className = 'kingdom-room-renovate';
             if (view.guest) {
-                const signIn = document.createElement('button'); signIn.type = 'button'; signIn.textContent = 'Sign in to save your hall';
+                const signIn = document.createElement('button'); signIn.type = 'button'; signIn.textContent = `Sign in to save your ${view.id === 'library' ? 'library' : 'hall'}`;
                 signIn.addEventListener('click', () => callbacks.signIn?.()); renovation.append(signIn);
             } else if (view.next) {
                 const upgrade = document.createElement('button'); upgrade.type = 'button'; upgrade.disabled = !view.canRenovate;
-                upgrade.textContent = `Repair hall · ${view.next.costCoins} coins${view.next.starsRequired ? ` · ${view.next.starsRequired} lifetime stars` : ''}`;
-                upgrade.addEventListener('click', () => callbacks.renovate?.()); renovation.append(upgrade);
+                upgrade.textContent = `Repair ${view.id === 'library' ? 'library' : 'hall'} · ${view.next.costCoins} coins${view.next.starsRequired ? ` · ${view.next.starsRequired} lifetime stars` : ''}`;
+                upgrade.addEventListener('click', () => callbacks.renovate?.(view.id)); renovation.append(upgrade);
                 if (!view.canRenovate) {
                     const reason = document.createElement('span');
                     reason.textContent = view.renovationReason === 'stars_required' ? 'Earn stars by winning levels.' : 'Earn more coins to repair.';
                     renovation.append(reason);
                 }
             } else {
-                renovation.textContent = 'The hall is fully restored.';
+                renovation.textContent = `The ${view.id === 'library' ? 'library' : 'hall'} is fully restored.`;
             }
             content.append(renovation);
             const choices = document.createElement('section'); choices.className = 'kingdom-room-choices';
@@ -344,18 +354,19 @@
                 button.disabled = !choice.eligible; // Keep the selected look keyboard-focusable; the server treats reselection as a free no-op.
                 button.setAttribute('aria-pressed', String(choice.selected));
                 const preview = document.createElement('span'); preview.className = 'kingdom-room-choice-art';
-                preview.setAttribute('aria-hidden', 'true'); preview.innerHTML = scene.artwork(Math.max(1, view.level), choice.id);
+                preview.setAttribute('aria-hidden', 'true'); preview.innerHTML = scene.artwork(Math.max(1, view.level), choice.id, view.id);
                 const name = document.createElement('strong'); name.textContent = choice.name;
                 const detail = document.createElement('span'); detail.textContent = choice.caption;
                 const price = document.createElement('span'); price.className = 'kingdom-room-price';
                 price.textContent = choice.selected ? 'On display' : choice.lockedBy || (choice.costCoins ? `${choice.costCoins} coins · Choose` : 'Owned · Choose');
                 button.append(preview, name, detail, price);
-                button.addEventListener('click', () => callbacks.choose?.(choice.id));
+                button.addEventListener('click', () => callbacks.choose?.(choice.id, view.id));
                 cards.append(button);
             }
             choices.append(cards); content.append(choices);
             const more = document.createElement('button'); more.type = 'button'; more.textContent = 'Explore all rooms and décor';
             more.addEventListener('click', () => callbacks.more?.()); content.append(more);
+            if (callbacks.focusRoom) rooms.querySelector(`[data-room-id="${view.id}"]`)?.focus({ preventScroll: true });
             if (callbacks.focusChoice) cards.querySelector(`[data-decor-id="${callbacks.focusChoice}"]`)?.focus({ preventScroll: true });
             return true;
         }

@@ -30,6 +30,22 @@ The initial foundation did not redesign match rules or the economy. The earned-s
 This is implemented and automatically tested; the human learning/enjoyment and physical-device gates below are **not yet achieved**.
 
 
+## Delivered kingdom scene increment — Royal Library (web)
+
+Explore → Kingdom now lets players switch between two original authored rooms:
+**Throne Hall** (Hall of Echoes) and **Royal Library** (Library of Lanterns).
+The library has its own book-lined SVG setting, unlit/repaired states, short skippable
+story and three room-specific first-look previews. Each room reads its own server
+level, star/coin gate, décor, inventory availability and prices. Guest previews
+remain read-only, and the broader six-room décor screen remains available.
+The room buttons are labeled native controls; focus returns to the chosen room
+button after a load, or the chosen décor after a purchase. Tab changes reuse the
+last server snapshot; repair/choice responses refresh it. Requests and old button
+callbacks are room-bound so rapid switching cannot buy or repair the other room.
+This is not a new economy or puzzle rules version. Four rooms remain numeric;
+real-device visuals, keyboard/screen-reader behavior and human discovery/interest
+are still unvalidated.
+
 ## Delivered first obstacle slice — fixed shields (rules v5)
 
 The shared engine now has numbered fixed shield terrain. A clear over a shield

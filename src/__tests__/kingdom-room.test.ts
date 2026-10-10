@@ -25,7 +25,7 @@ function scene() {
   return sandbox.InfiniteKingdomScene;
 }
 
-describe('first authored kingdom room', () => {
+describe('authored kingdom scenes', () => {
   test('the responsive dialog renders three accessible choices and a skippable story', () => {
     const { document, window } = parseHTML('<html><body><div id="host"></div></body></html>');
     const sandbox: any = { document };
@@ -62,6 +62,56 @@ describe('first authored kingdom room', () => {
     expect(dialog.classList.contains('kingdom-room-dialog')).toBe(false);
     ui.closeOverlay();
   });
+  test('library navigation presents its own story, art, gate, price and room-bound actions', () => {
+    const { document, window } = parseHTML('<html><body><div id="host"></div></body></html>');
+    const sandbox: any = { document };
+    vm.createContext(sandbox);
+    vm.runInContext(readFileSync('public/js/kingdom-scene.js', 'utf8'), sandbox);
+    vm.runInContext(readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
+    const game: any = { score: 0, targetScore: 500, settings: { sfx: false },
+      getSoundStatus: () => ({ enabled: false, supported: false, state: 'off', volume: 0.5 }),
+      canInteractWithBoard: () => false, animationsReduced: () => false, isGameRunning: false };
+    const ui = sandbox.InfinitePlayerExperience.mount(game, document.getElementById('host'));
+    const dialog: any = ui.shell.querySelector('dialog');
+    dialog.showModal = () => { dialog.open = true; }; dialog.close = () => { dialog.open = false; };
+    ui.openOverlay('Kingdom');
+    const actions: string[] = [];
+    const state = view({ throne: 1 }, 800);
+    const callbacks = (roomId: string) => ({ roomId, selectRoom: (id: string) => actions.push(`visit:${id}`),
+      renovate: (id: string) => actions.push(`repair:${id}`),
+      choose: (id: string, room: string) => actions.push(`choose:${room}:${id}`) });
+    ui.renderKingdomScene(state, callbacks('throne'));
+    const hallArt = dialog.querySelector('.kingdom-room-art svg').outerHTML;
+    const nav: any[] = [...dialog.querySelectorAll('.kingdom-room-nav button')];
+    expect(nav.map((button) => button.textContent)).toEqual(['Throne Hall', 'Royal Library']);
+    nav[1].dispatchEvent(new window.Event('click'));
+    expect(actions).toEqual(['visit:library']);
+    ui.renderKingdomScene(state, callbacks('library'));
+    expect(dialog.querySelector('h2').textContent).toBe('The Library of Lanterns');
+    expect(dialog.querySelector('[data-room-id="library"]').getAttribute('aria-pressed')).toBe('true');
+    expect(dialog.querySelector('.kingdom-room-art svg').outerHTML).not.toBe(hallArt);
+    expect(dialog.querySelector('.kingdom-room-art').getAttribute('aria-label')).toContain('Royal Library');
+    expect(dialog.querySelector('.kingdom-room-story').textContent).toContain('stories back into the light');
+    expect(dialog.querySelector('.kingdom-room-renovate button').textContent).toContain('Repair library · 200 coins');
+    expect(dialog.querySelectorAll('.kingdom-room-choice:disabled')).toHaveLength(3);
+    dialog.querySelector('.kingdom-room-renovate button').dispatchEvent(new window.Event('click'));
+    expect(actions.at(-1)).toBe('repair:library');
+    ui.renderKingdomScene(view({ throne: 1, library: 1 }, 600, { throne: 'mosaic' }, { mosaic: 1 }), callbacks('library'));
+    expect(dialog.querySelector('[data-decor-id="mosaic"] .kingdom-room-price').textContent).toContain('140 coins'); // the copy placed in the hall is not free
+    expect(dialog.querySelector('[data-decor-id="tapestry"] .kingdom-room-price').textContent).toContain('200 coins');
+    dialog.querySelector('[data-decor-id="tapestry"]').dispatchEvent(new window.Event('click'));
+    expect(actions.at(-1)).toBe('choose:library:tapestry');
+    ui.renderKingdomScene(view({ throne: 1, library: 1 }, 400, { library: 'tapestry' }, { tapestry: 1 }), callbacks('library'));
+    expect(dialog.querySelector('[data-decor-id="tapestry"]').getAttribute('aria-pressed')).toBe('true');
+    expect(dialog.querySelector('.kingdom-room-art').getAttribute('aria-label')).toContain('Tapestry');
+    expect(dialog.querySelector('.kingdom-room-story').textContent).toContain('A map for every journey');
+    dialog.querySelector('[data-room-id="throne"]').dispatchEvent(new window.Event('click'));
+    expect(actions.at(-1)).toBe('visit:throne');
+    ui.renderKingdomScene({ guest: true }, callbacks('library'));
+    expect(dialog.querySelector('.kingdom-room-renovate button').textContent).toBe('Sign in to save your library');
+    expect(dialog.querySelectorAll('.kingdom-room-choice:disabled')).toHaveLength(3);
+  });
+
   test('the server keeps three distinct level-one looks with real prices', () => {
     expect(DECOR_CATALOG.tapestry.requiresRoomLevel).toBe(1);
     expect(DECOR_CATALOG.mosaic.requiresRoomLevel).toBe(1);
@@ -98,6 +148,23 @@ describe('first authored kingdom room', () => {
     expect(chosen.selected).toBe('mosaic');
     expect(chosen.choices.find((choice: any) => choice.id === 'mosaic')).toMatchObject({ selected: true, costCoins: 0 });
     expect(chosen.narrative).toContain('Sunlight set in stone');
+  });
+
+  test('library guest and library stock are independent of the hall; art is fixed authored markup', () => {
+    const api = scene();
+    const guest = api.roomView({ guest: true }, 'library');
+    expect(guest.name).toBe('Royal Library');
+    expect(guest.choices.every((item: any) => !item.eligible)).toBe(true);
+    const state = view({ throne: 1, library: 1 }, 0, { throne: 'mosaic' }, { mosaic: 1, tapestry: 1 });
+    const library = api.roomView(state, 'library');
+    expect(library.selected).toBeNull();
+    expect(library.choices.find((item: any) => item.id === 'mosaic').costCoins).toBe(140);
+    expect(library.choices.find((item: any) => item.id === 'tapestry')).toMatchObject({ eligible: true, costCoins: 0 });
+    const variants = ['tapestry', 'mosaic', 'sconces'].map((id) => api.artwork(1, id, 'library'));
+    expect(new Set(variants).size).toBe(3);
+    expect(api.artwork(0, null, 'library')).not.toBe(api.artwork(1, null, 'library'));
+    expect(api.artwork(1, 'tapestry', 'library')).not.toBe(api.artwork(1, 'tapestry', 'throne'));
+    expect(api.artwork(1, '<script>alert(1)</script>', 'library')).not.toContain('<script>');
   });
 
   test('room artwork has distinct decoration geometry and never injects unknown ids', () => {
@@ -169,4 +236,19 @@ describe('atomic room choice API', () => {
     expect(tooHigh.status).toBe(400); expect(tooHigh.body.error).toBe('room_level_too_low');
     expect((await request(app).get('/api/kingdom').set(auth())).body.coins).toBe(280);
   });
+  test('a second room repairs independently and can use an unplaced owned look without paying twice', async () => {
+    const locked = await choose('library', 'tapestry');
+    expect(locked.status).toBe(400); expect(locked.body.error).toBe('room_level_too_low');
+    const repair = await request(app).post('/api/kingdom/renovate').set(auth()).send({ roomId: 'library' });
+    expect(repair.status).toBe(200); expect(repair.body.result.coins).toBe(80);
+    const placed = await choose('library', 'tapestry');
+    expect(placed.status).toBe(200);
+    expect(placed.body.result).toMatchObject({ roomId: 'library', buy: false, costCoins: 0, coins: 80 });
+    const duplicate = await choose('library', 'tapestry');
+    expect(duplicate.body.result).toMatchObject({ unchanged: true, costCoins: 0, coins: 80 });
+    const state = await request(app).get('/api/kingdom').set(auth());
+    expect(state.body.kingdom.rooms.find((room: any) => room.id === 'library').level).toBe(1);
+    expect(state.body.decor.placed).toMatchObject({ throne: 'sconces', library: 'tapestry' });
+  });
+
 });

@@ -2592,6 +2592,10 @@ class PhaserMatch3Game {
         this.pauseGame();
         this.currentScreen = 'kingdom';
         this.trackEvent('kingdom_opened');
+        this.kingdomRoomId = 'throne';
+        this.kingdomSceneData = null;
+        this.kingdomFocusChoice = null;
+        this.kingdomFocusRoom = false;
         this.createKingdomUI();
     }
 
@@ -2682,31 +2686,44 @@ class PhaserMatch3Game {
         }
     }
 
-    kingdomSceneCallbacks(focusChoice = null) {
+    selectKingdomRoom(roomId) {
+        if (!['throne', 'library'].includes(roomId) || roomId === this.kingdomRoomId) return;
+        this.kingdomRoomId = roomId;
+        this.kingdomFocusChoice = null;
+        this.kingdomFocusRoom = true;
+        if (this.kingdomSceneData && this.playerUI?.renderKingdomScene) {
+            this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, true));
+            this.kingdomFocusRoom = false;
+        } else this.renderKingdom();
+    }
+
+    kingdomSceneCallbacks(focusChoice = null, focusRoom = false) {
+        const roomId = this.kingdomRoomId || 'throne';
         return {
             close: () => this.closeKingdom(), signIn: () => this.openSignIn(),
-            renovate: () => this.renovateRoom('throne'),
-            choose: (decorId) => this.chooseKingdomDecor(decorId),
-            more: () => this.openDecor(), focusChoice,
+            renovate: () => ((this.kingdomRoomId || 'throne') === roomId ? this.renovateRoom(roomId) : undefined),
+            choose: (decorId) => ((this.kingdomRoomId || 'throne') === roomId ? this.chooseKingdomDecor(decorId, roomId) : undefined),
+            selectRoom: (id) => this.selectKingdomRoom(id),
+            more: () => this.openDecor(), roomId, focusChoice, focusRoom,
         };
     }
 
-    async chooseKingdomDecor(decorId) {
-        if (this.kingdomPending || !this.getAuthToken()) return;
+    async chooseKingdomDecor(decorId, roomId = this.kingdomRoomId || 'throne') {
+        if (this.kingdomPending || !this.getAuthToken() || !['throne', 'library'].includes(roomId)) return;
         const overlay = this.activeOverlay;
         this.kingdomPending = true;
         this.setOverlayStatus('Preparing your chosen look...');
         try {
             const { ok, data } = await this.fetchJson('/api/kingdom/decor/choose', {
-                method: 'POST', body: JSON.stringify({ roomId: 'throne', decorId }),
+                method: 'POST', body: JSON.stringify({ roomId, decorId }),
             });
             if (this.activeOverlay !== overlay) return;
             if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
-            this.kingdomFocusChoice = decorId;
+            if (this.kingdomRoomId === roomId || (!this.kingdomRoomId && roomId === 'throne')) this.kingdomFocusChoice = decorId;
             await this.renderKingdom();
             if (this.activeOverlay === overlay) {
                 this.setOverlayStatus(data.result.unchanged ? 'That look is already on display.'
-                    : `Your chosen look brightens the hall.${data.result.costCoins ? ` ${data.result.costCoins} coins spent.` : ' Used an owned decoration.'}`);
+                    : `Your chosen look brightens the ${roomId === 'library' ? 'library' : 'hall'}.${data.result.costCoins ? ` ${data.result.costCoins} coins spent.` : ' Used an owned decoration.'}`);
                 this.trackEvent('kingdom_look_chosen', { decorId, bought: data.result.buy });
             }
         } catch (error) {
@@ -2718,20 +2735,27 @@ class PhaserMatch3Game {
 
     async renderKingdom() {
         const overlay = this.activeOverlay;
+        const requestId = this.kingdomRenderId = (this.kingdomRenderId || 0) + 1;
         destroyOverlayObjects(this.kingdomRowObjects);
         this.kingdomRowObjects = [];
         if (!this.getAuthToken()) {
-            if (this.playerUI?.renderKingdomScene) this.playerUI.renderKingdomScene({ guest: true }, this.kingdomSceneCallbacks());
+            if (this.playerUI?.renderKingdomScene) {
+                this.kingdomSceneData = { guest: true };
+                this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, this.kingdomFocusRoom));
+                this.kingdomFocusRoom = false;
+            }
             return this.setOverlayStatus('Sign in to save room upgrades. Guest puzzles are always playable.');
         }
         try {
             const { ok, data } = await this.fetchJson('/api/kingdom');
-            if (this.activeOverlay !== overlay) return;
+            if (this.activeOverlay !== overlay || this.kingdomRenderId !== requestId) return;
             if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
             if (!this.activeOverlay || this.activeOverlay !== overlay) return;
             if (this.playerUI?.renderKingdomScene) {
-                this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice));
+                this.kingdomSceneData = data;
+                this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice, this.kingdomFocusRoom));
                 this.kingdomFocusChoice = null;
+                this.kingdomFocusRoom = false;
                 return;
             }
             const bonus = Math.round((data.coinBonus || 0) * 100);
@@ -2758,7 +2782,7 @@ class PhaserMatch3Game {
                 }
             });
         } catch (error) {
-            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not load your kingdom.');
+            if (this.activeOverlay === overlay && this.kingdomRenderId === requestId) this.setOverlayStatus('Could not load your kingdom.');
         }
     }
 

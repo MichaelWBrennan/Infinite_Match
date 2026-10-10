@@ -659,6 +659,78 @@ describe('native player input keeps shared rules and economy untouched', () => {
     expect(game.kingdomPending).toBe(false);
   });
 
+  test('room tabs reuse a snapshot and bind each repair and choice to its displayed room', async () => {
+    const { game } = playable();
+    const views: any[] = []; const calls: any[] = [];
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (data: any, callbacks: any) => views.push({ data, callbacks });
+    game.setOverlayStatus = () => {};
+    game.fetchJson = async (url: string, options: any) => {
+      calls.push([url, options]);
+      if (url.endsWith('/choose')) return { ok: true, data: { success: true, result: { buy: true, costCoins: 140 } } };
+      if (url.endsWith('/renovate')) return { ok: true, data: { success: true, result: { level: 1 } } };
+      return { ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 660, decor: { catalog: [] } } };
+    };
+    await game.renderKingdom();
+    const hall = views.at(-1).callbacks;
+    hall.selectRoom('library');
+    expect(views.at(-1).callbacks.roomId).toBe('library');
+    expect(views.at(-1).callbacks.focusRoom).toBe(true);
+    expect(calls.map(([url]) => url)).toEqual(['/api/kingdom']); // no request on tab change
+    await hall.choose('mosaic'); // stale button cannot write the hall while library is shown
+    expect(calls).toHaveLength(1);
+    await views.at(-1).callbacks.choose('mosaic');
+    expect(JSON.parse(calls[1][1].body)).toEqual({ roomId: 'library', decorId: 'mosaic' });
+    expect(views.at(-1).callbacks.focusChoice).toBe('mosaic');
+    await views.at(-1).callbacks.renovate();
+    expect(JSON.parse(calls[3][1].body)).toEqual({ roomId: 'library' });
+    views.at(-1).callbacks.selectRoom('throne');
+    expect(views.at(-1).callbacks.roomId).toBe('throne');
+    expect(calls.map(([url]) => url)).toEqual([
+      '/api/kingdom', '/api/kingdom/decor/choose', '/api/kingdom', '/api/kingdom/renovate', '/api/kingdom',
+    ]);
+  });
+
+  test('an older kingdom load cannot replace a newly selected room', async () => {
+    const { game } = playable();
+    const views: any[] = []; const pending: any[] = [];
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (_data: any, callbacks: any) => views.push(callbacks);
+    game.setOverlayStatus = () => {};
+    game.fetchJson = () => new Promise((done) => { pending.push(done); });
+    const first = game.renderKingdom();
+    game.selectKingdomRoom('library'); // no snapshot yet; starts a newer read
+    pending[1]({ ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 1 } });
+    await Promise.resolve();
+    pending[0]({ ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 2 } });
+    await first;
+    expect(views).toHaveLength(1);
+    expect(views[0].roomId).toBe('library');
+  });
+
+  test('a choice in flight keeps its original room even if the player switches tabs', async () => {
+    const { game } = playable();
+    const views: any[] = []; const calls: any[] = []; let finish: any;
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (_data: any, callbacks: any) => views.push(callbacks);
+    game.setOverlayStatus = () => {};
+    game.fetchJson = (url: string, options: any) => {
+      calls.push([url, options]);
+      if (url.endsWith('/choose')) return new Promise((done) => { finish = done; });
+      return Promise.resolve({ ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 600 } });
+    };
+    await game.renderKingdom();
+    views.at(-1).selectRoom('library');
+    const choice = views.at(-1).choose('tapestry');
+    views.at(-1).selectRoom('throne');
+    finish({ ok: true, data: { success: true, result: { buy: true, costCoins: 200 } } });
+    await choice;
+    expect(JSON.parse(calls[1][1].body)).toEqual({ roomId: 'library', decorId: 'tapestry' });
+    expect(views.at(-1).roomId).toBe('throne');
+    expect(views.at(-1).focusChoice).toBeNull();
+    expect(game.kingdomPending).toBe(false);
+  });
+
   test('closing a room while its one-tap choice is in flight cannot write into another screen', async () => {
     const { game } = playable();
     let finish: any; let writes = 0;
