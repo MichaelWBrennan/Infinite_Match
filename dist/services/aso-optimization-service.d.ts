@@ -4,11 +4,200 @@
  */
 export class ASOOptimizationService {
     logger: Logger;
-    openai: any;
-    hf: any;
-    supabase: any;
-    redis: Redis;
-    asoCache: any;
+    openai: (() => never) | import("openai").default;
+    hf: (() => never) | {
+        textGeneration({ model, inputs, parameters }?: {
+            parameters?: {} | undefined;
+        }): Promise<{
+            generated_text: any;
+        }>;
+    };
+    supabase: {
+        from(table: any): {
+            select(columns: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            insert(rows: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            upsert(rows: any, options?: {}): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            update(patch: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            delete(): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+        };
+    } | (() => never);
+    redis: any;
+    asoCache: LRUCache<{}, {}, unknown>;
     platformConfigs: {
         appstore: {
             titleMaxLength: number;
@@ -51,11 +240,11 @@ export class ASOOptimizationService {
     /**
      * Optimize store listing for a specific platform
      */
-    optimizeStoreListing(platform: any, gameData: any, targetKeywords?: any[]): Promise<any>;
+    optimizeStoreListing(platform: any, gameData: any, targetKeywords?: any[]): Promise<{}>;
     /**
      * Generate high-performing keywords for a platform
      */
-    generateKeywords(platform: any, gameCategory: any, competitorKeywords?: any[]): Promise<any>;
+    generateKeywords(platform: any, gameCategory: any, competitorKeywords?: any[]): Promise<{}>;
     /**
      * Analyze competitor ASO strategies
      */
@@ -214,12 +403,12 @@ export class ASOOptimizationService {
     analyzeKeywordDensity(analysis: any): {};
     generateVariation(platform: any, baseListing: any, index: any): any;
     analyzeCompetitorListing(url: any, platform: any): {};
-    getCachedOptimization(key: any): any;
+    getCachedOptimization(key: any): {} | undefined;
     setCachedOptimization(key: any, value: any, ttl: any): void;
     startCompetitorMonitoring(): void;
     startKeywordTrendAnalysis(): void;
     startAutomatedOptimization(): void;
 }
 import { Logger } from '../core/logger/index.js';
-import Redis from 'ioredis';
+import { LRUCache } from 'lru-cache';
 //# sourceMappingURL=aso-optimization-service.d.ts.map

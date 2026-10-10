@@ -7,12 +7,14 @@
 import UnityGamingServicesHeadlessIntegration from './unity-cloud-headless-integration.js';
 import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
 import { spawn } from 'child_process';
+import { Logger } from './core/logger/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 class UnityGamingServicesCLISimple {
     constructor() {
+        this.logger = new Logger('UnityGamingServicesCLISimple');
         this.commands = {
             deploy: this.deployCommand.bind(this),
             sync: this.syncCommand.bind(this),
@@ -51,7 +53,7 @@ class UnityGamingServicesCLISimple {
             console.error('❌ Build target required. Usage: build <target>');
             process.exit(1);
         }
-        console.log(`🚀 Triggering Unity Cloud Build for target: ${target}`);
+        this.logger.info(`Triggering Unity Cloud Build for target: ${target}`);
         await this.runWrapper(['build', target]);
     }
     async buildStatusCommand(args = []) {

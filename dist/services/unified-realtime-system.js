@@ -3,9 +3,9 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { WeatherService } from './weather-service.js';
 import { RealtimeCalendarService } from './realtime-calendar-service.js';
 import { RealtimeEventService } from './realtime-event-service.js';
-import { createClient } from '@supabase/supabase-js';
 import cron from 'node-cron';
-import moment from 'moment-timezone';
+import moment from '../core/utils/datetime.js';
+import { createSupabaseClient } from './ai-clients.js';
 /**
  * Unified Real-Time System
  * Connects weather, calendar, and events into a cohesive real-time experience
@@ -13,7 +13,7 @@ import moment from 'moment-timezone';
 class UnifiedRealtimeSystem {
     constructor(io = null) {
         this.logger = new Logger('UnifiedRealtimeSystem');
-        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        this.supabase = createSupabaseClient();
         // Initialize all services
         this.weatherService = new WeatherService();
         this.calendarService = new RealtimeCalendarService();

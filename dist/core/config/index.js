@@ -9,9 +9,10 @@ class OptimizedConfig {
     server;
     security;
     database;
-    cloud;
+    unity;
     analytics;
     game;
+    payments;
     constructor() {
         this.server = {
             port: parseInt(process.env['PORT'] || '3000', 10),
@@ -49,31 +50,12 @@ class OptimizedConfig {
                 retryDelayOnFailover: parseInt(process.env['REDIS_RETRY_DELAY'] || '100', 10),
                 maxRetriesPerRequest: parseInt(process.env['REDIS_MAX_RETRIES'] || '3', 10),
             },
-            dynamodb: {
-                region: process.env['AWS_REGION'] || 'us-east-1',
-                tableName: process.env['AWS_DYNAMODB_TABLE'] || 'match3game',
-            },
         };
-        this.cloud = {
-            aws: {
-                region: process.env['AWS_REGION'] || 'us-east-1',
-                accessKeyId: process.env['AWS_ACCESS_KEY_ID'] || '',
-                secretAccessKey: process.env['AWS_SECRET_ACCESS_KEY'] || '',
-                s3Bucket: process.env['AWS_S3_BUCKET'] || '',
-                snsTopicArn: process.env['AWS_SNS_TOPIC_ARN'] || '',
-                sqsQueueUrl: process.env['AWS_SQS_QUEUE_URL'] || '',
-                sesFromEmail: process.env['AWS_SES_FROM_EMAIL'] || '',
-            },
-            google: {
-                projectId: process.env['GOOGLE_CLOUD_PROJECT_ID'] || '',
-                keyFile: process.env['GOOGLE_CLOUD_KEY_FILE'] || '',
-            },
-            azure: {
-                storageAccount: process.env['AZURE_STORAGE_ACCOUNT'] || '',
-                cosmosEndpoint: process.env['AZURE_COSMOS_ENDPOINT'] || '',
-                cosmosKey: process.env['AZURE_COSMOS_KEY'] || '',
-                cosmosDatabase: process.env['AZURE_COSMOS_DATABASE'] || 'match3game',
-            },
+        this.unity = {
+            projectId: process.env['UNITY_PROJECT_ID'] || '',
+            environmentId: process.env['UNITY_ENV_ID'] || '',
+            clientId: process.env['UNITY_CLIENT_ID'] || '',
+            clientSecret: process.env['UNITY_CLIENT_SECRET'] || '',
         };
         this.analytics = {
             sentry: {
@@ -107,6 +89,26 @@ class OptimizedConfig {
                 minMatch: parseInt(process.env['GAME_MIN_MATCH'] || '3', 10),
             },
         };
+        this.payments = {
+            stripe: {
+                publishableKey: process.env['STRIPE_PUBLISHABLE_KEY'] || '',
+                secretKey: process.env['STRIPE_SECRET_KEY'] || '',
+                webhookSecret: process.env['STRIPE_WEBHOOK_SECRET'] || '',
+                apiVersion: process.env['STRIPE_API_VERSION'] || '2023-10-16',
+                currency: process.env['STRIPE_CURRENCY'] || 'usd',
+                country: process.env['STRIPE_COUNTRY'] || 'US',
+            },
+            apple: {
+                sharedSecret: process.env['APPLE_SHARED_SECRET'] || '',
+            },
+            google: {
+                serviceAccountKeyPath: process.env['GOOGLE_SERVICE_ACCOUNT_KEY_PATH'] || '',
+            },
+            pricing: {
+                defaultCurrency: process.env['DEFAULT_CURRENCY'] || 'USD',
+                countryOverridesPath: process.env['COUNTRY_OVERRIDES_PATH'] || 'config/pricing/overrides.json',
+            },
+        };
     }
     parseCorsOrigin(origin) {
         if (origin === '*')
@@ -129,29 +131,6 @@ class OptimizedConfig {
     }
     getRedisUrl() {
         return this.database.redis.url;
-    }
-    getAwsConfig() {
-        return {
-            region: this.cloud.aws.region,
-            credentials: {
-                accessKeyId: this.cloud.aws.accessKeyId,
-                secretAccessKey: this.cloud.aws.secretAccessKey,
-            },
-        };
-    }
-    getGoogleConfig() {
-        return {
-            projectId: this.cloud.google.projectId,
-            keyFilename: this.cloud.google.keyFile,
-        };
-    }
-    getAzureConfig() {
-        return {
-            storageAccount: this.cloud.azure.storageAccount,
-            cosmosEndpoint: this.cloud.azure.cosmosEndpoint,
-            cosmosKey: this.cloud.azure.cosmosKey,
-            cosmosDatabase: this.cloud.azure.cosmosDatabase,
-        };
     }
     validate() {
         const errors = [];
@@ -183,5 +162,8 @@ class OptimizedConfig {
         };
     }
 }
-export default new OptimizedConfig();
+const AppConfig = new OptimizedConfig();
+// Some modules import the config by name, others as the default export.
+export { AppConfig };
+export default AppConfig;
 //# sourceMappingURL=index.js.map

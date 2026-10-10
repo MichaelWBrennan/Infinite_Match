@@ -1,8 +1,7 @@
 declare const _default: PushNotificationService;
 export default _default;
 export class PushNotificationService {
-    fcm: any;
-    apns: any;
+    transport: import("./push/push-transports.js").LogTransport | import("./push/push-transports.js").NtfyTransport | import("./push/push-transports.js").WebPushTransport | import("./push/push-transports.js").FcmTransport | null;
     isInitialized: boolean;
     notificationQueue: Map<any, any>;
     scheduledNotifications: Map<any, any>;
@@ -27,13 +26,24 @@ export class PushNotificationService {
         failureCount: number;
         responses?: never;
     } | {
-        successCount: any;
-        failureCount: any;
-        responses: any;
+        successCount: number;
+        failureCount: number;
+        responses: ({
+            success: boolean;
+            messageId: any;
+            error?: never;
+        } | {
+            success: boolean;
+            error: any;
+            messageId?: never;
+        })[] | {
+            success: boolean;
+            messageId: `${string}-${string}-${string}-${string}-${string}`;
+        }[];
     }>;
-    scheduleNotification(userId: any, templateKey: any, scheduleTime: any, customData?: {}): Promise<string>;
+    scheduleNotification(userId: any, templateKey: any, scheduleTime: any, customData?: {}): Promise<`${string}-${string}-${string}-${string}-${string}`>;
     sendScheduledNotification(notificationId: any): Promise<void>;
-    createCampaign(campaignData: any): Promise<string>;
+    createCampaign(campaignData: any): Promise<`${string}-${string}-${string}-${string}-${string}`>;
     executeCampaign(campaignId: any): Promise<void>;
     setupInterventionTriggers(): void;
     checkInterventionTriggers(userId: any, playerData: any): Promise<{
@@ -44,7 +54,7 @@ export class PushNotificationService {
         playerData: any;
     }[]>;
     executeIntervention(userId: any, intervention: any): Promise<void>;
-    createABTest(testData: any): Promise<string>;
+    createABTest(testData: any): Promise<`${string}-${string}-${string}-${string}-${string}`>;
     applyABTesting(userId: any, templateKey: any): Promise<{
         title?: never;
         body?: never;

@@ -4,7 +4,7 @@
  */
 export class PostHogAnalyticsService {
     logger: Logger;
-    posthog: any;
+    posthog: PostHog | null;
     browserPostHog: any;
     experiments: Map<any, any>;
     playerCohorts: Map<any, any>;
@@ -35,7 +35,7 @@ export class PostHogAnalyticsService {
     /**
      * Get experiment variant for a player
      */
-    getExperimentVariant(playerId: any, experimentName: any): Promise<any>;
+    getExperimentVariant(playerId: any, experimentName: any): Promise<string | boolean | null | undefined>;
     /**
      * Generate AI-powered insights from player behavior
      */
@@ -100,7 +100,7 @@ export class PostHogAnalyticsService {
      */
     calculateEngagementScore(playerId: any): Promise<number>;
     getSessionId(playerId: any): string;
-    detectPlatform(): "unknown" | "mobile" | "desktop" | "tablet";
+    detectPlatform(): "mobile" | "desktop" | "unknown" | "tablet";
     getUserAgent(): string;
     getScreenResolution(): string;
     getGameState(playerId: any): Promise<{
@@ -148,4 +148,5 @@ export class PostHogAnalyticsService {
     cleanup(): Promise<void>;
 }
 import { Logger } from '../../core/logger/index.js';
+import { PostHog } from 'posthog-node';
 //# sourceMappingURL=posthog-service.d.ts.map

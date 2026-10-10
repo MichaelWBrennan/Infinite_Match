@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import axios from 'axios';
-import { createClient } from '@supabase/supabase-js';
-import { v4 as uuidv4 } from 'uuid';
+import { getJson } from '../core/utils/http.js';
+import { randomUUID as uuidv4 } from 'node:crypto';
+import { createSupabaseClient } from './ai-clients.js';
 /**
  * Market Research Engine - Real-time industry analysis and competitor monitoring
  * Uses multiple data sources to track industry trends and optimize game strategy
@@ -11,7 +11,7 @@ class MarketResearchEngine {
     constructor() {
         this.logger = new Logger('MarketResearchEngine');
         // Supabase for storing market data
-        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        this.supabase = createSupabaseClient();
         // Data sources
         this.dataSources = {
             appStore: {
@@ -98,7 +98,7 @@ class MarketResearchEngine {
     async fetchAppStoreData() {
         try {
             const competitorIds = this.competitors.join(',');
-            const response = await axios.get(this.dataSources.appStore.baseUrl, {
+            const response = await getJson(this.dataSources.appStore.baseUrl, {
                 params: {
                     term: 'match 3 puzzle',
                     country: 'us',
@@ -107,7 +107,7 @@ class MarketResearchEngine {
                     entity: 'software',
                 },
             });
-            return this.processAppStoreData(response.data);
+            return this.processAppStoreData(response);
         }
         catch (error) {
             this.logger.error('Failed to fetch App Store data', { error: error.message });
@@ -118,32 +118,27 @@ class MarketResearchEngine {
      * Fetch Google Play data
      */
     async fetchGooglePlayData() {
-        try {
-            // This would use Google Play Console API
-            // For now, return mock data structure
-            return {
-                topGames: [],
-                categories: {
-                    puzzle: { downloads: 0, revenue: 0 },
-                    casual: { downloads: 0, revenue: 0 },
-                },
-                trends: {
-                    rising: [],
-                    falling: [],
-                },
-            };
-        }
-        catch (error) {
-            this.logger.error('Failed to fetch Google Play data', { error: error.message });
-            return null;
-        }
+        // This would use the Google Play Console API.
+        // The surrounding try/catch was unreachable (the try only returned a
+        // literal), so it is removed rather than left as dead error handling.
+        return {
+            topGames: [],
+            categories: {
+                puzzle: { downloads: 0, revenue: 0 },
+                casual: { downloads: 0, revenue: 0 },
+            },
+            trends: {
+                rising: [],
+                falling: [],
+            },
+        };
     }
     /**
      * Fetch Sensor Tower data
      */
     async fetchSensorTowerData() {
         try {
-            const response = await axios.get(`${this.dataSources.sensortower.baseUrl}/apps`, {
+            const response = await getJson(`${this.dataSources.sensortower.baseUrl}/apps`, {
                 headers: {
                     Authorization: `Bearer ${this.dataSources.sensortower.apiKey}`,
                 },
@@ -153,7 +148,7 @@ class MarketResearchEngine {
                     subcategory: 'puzzle',
                 },
             });
-            return this.processSensorTowerData(response.data);
+            return this.processSensorTowerData(response);
         }
         catch (error) {
             this.logger.error('Failed to fetch Sensor Tower data', { error: error.message });
@@ -165,7 +160,7 @@ class MarketResearchEngine {
      */
     async fetchAppAnnieData() {
         try {
-            const response = await axios.get(`${this.dataSources.appannie.baseUrl}/intelligence/apps/ranking`, {
+            const response = await getJson(`${this.dataSources.appannie.baseUrl}/intelligence/apps/ranking`, {
                 headers: {
                     Authorization: `Bearer ${this.dataSources.appannie.apiKey}`,
                 },
@@ -176,7 +171,7 @@ class MarketResearchEngine {
                     countries: 'US,GB,DE,FR,JP',
                 },
             });
-            return this.processAppAnnieData(response.data);
+            return this.processAppAnnieData(response);
         }
         catch (error) {
             this.logger.error('Failed to fetch App Annie data', { error: error.message });

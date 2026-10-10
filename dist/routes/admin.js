@@ -4,28 +4,30 @@
  */
 import express from 'express';
 import security from '../core/security/index.js';
-import { Logger } from '../core/logger/index.js';
-import EconomyService from '../services/economy/index.js';
-import UnityService from '../services/unity/index.js';
+import { adminAuth } from '../middleware/admin-auth.js';
+import DataLoader from '../data/DataLoader.js';
+import EconomyValidator from '../data/validators/EconomyValidator.js';
+import CacheManager from '../core/cache/CacheManager.js';
+import { Logger, getRecentLogs } from '../core/logger/index.js';
+import EconomyService from '../services/economy/UnifiedEconomyService.js';
+import UnityService from '../services/unity/UnifiedUnityService.js';
+import { readLevelResults, summarizeLevelResults } from '../services/level-tuning.js';
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
 // Initialize services
-const economyService = new EconomyService();
-const unityService = new UnityService();
-// Admin authentication middleware (simplified)
-const adminAuth = (req, res, next) => {
-    // TODO: Implement proper admin authentication
-    const adminToken = req.headers['x-admin-token'];
-    if (!adminToken || adminToken !== process.env.ADMIN_TOKEN) {
-        return res.status(401).json({
-            success: false,
-            error: 'Unauthorized',
-            requestId: req.requestId,
-        });
+// Built on first use: config is not initialised yet when this module is imported.
+// Same dependencies the service registry uses, so the economy service can read its CSV data.
+let services = null;
+function getServices() {
+    if (!services) {
+        services = {
+            economy: new EconomyService(new DataLoader(), new EconomyValidator(), new CacheManager()),
+            unity: new UnityService(new CacheManager()),
+        };
     }
-    next();
-};
-// Apply admin authentication to all routes
+    return services;
+}
+// Operator-only: every route below requires ADMIN_API_TOKEN and ADMIN_IDS.
 router.use(adminAuth);
 // Get system health
 router.get('/health', async (req, res) => {
@@ -37,7 +39,7 @@ router.get('/health', async (req, res) => {
             memory: process.memoryUsage(),
             version: process.env.npm_package_version || '1.0.0',
             services: {
-                unity: await unityService.authenticate(),
+                unity: await getServices().unity.authenticate(),
                 economy: true, // Economy service is always available
             },
         };
@@ -59,7 +61,7 @@ router.get('/health', async (req, res) => {
 // Get economy statistics
 router.get('/economy/stats', async (req, res) => {
     try {
-        const report = await economyService.generateReport();
+        const report = await getServices().economy.generateReport();
         res.json({
             success: true,
             stats: report.summary,
@@ -68,6 +70,14 @@ router.get('/economy/stats', async (req, res) => {
     }
     catch (error) {
         logger.error('Failed to get economy statistics', { error: error.message });
+        // The economy CSVs are not in this repository. Say so, instead of a generic failure.
+        if (String(error.message).includes('ENOENT')) {
+            return res.status(503).json({
+                success: false,
+                error: 'economy_data_missing',
+                requestId: req.requestId,
+            });
+        }
         res.status(500).json({
             success: false,
             error: 'Failed to get economy statistics',
@@ -79,18 +89,11 @@ router.get('/economy/stats', async (req, res) => {
 router.get('/security/events', async (req, res) => {
     try {
         const { limit = 100 } = req.query;
-        // TODO: Implement actual security events retrieval
-        const events = [
-            {
-                id: '1',
-                type: 'login',
-                timestamp: new Date().toISOString(),
-                details: {
-                    playerId: 'player_1',
-                    ip: '127.0.0.1',
-                },
-            },
-        ];
+        // Get actual security events from security service
+        const events = await security.getSecurityEvents({
+            limit: parseInt(limit),
+            adminId: req.admin.id,
+        });
         res.json({
             success: true,
             events: events.slice(0, parseInt(limit)),
@@ -109,13 +112,13 @@ router.get('/security/events', async (req, res) => {
 // Get Unity Services status
 router.get('/unity/status', async (req, res) => {
     try {
-        const isAuthenticated = await unityService.authenticate();
+        const isAuthenticated = await getServices().unity.authenticate();
         res.json({
             success: true,
             status: {
                 authenticated: isAuthenticated,
-                projectId: unityService.projectId,
-                environmentId: unityService.environmentId,
+                projectId: getServices().unity.projectId,
+                environmentId: getServices().unity.environmentId,
             },
             requestId: req.requestId,
         });
@@ -132,8 +135,8 @@ router.get('/unity/status', async (req, res) => {
 // Deploy all economy data to Unity
 router.post('/unity/deploy', async (req, res) => {
     try {
-        const economyData = await economyService.loadEconomyData();
-        const result = await unityService.deployEconomyData(economyData);
+        const economyData = await getServices().economy.loadEconomyData();
+        const result = await getServices().unity.deployEconomyData(economyData);
         security.logSecurityEvent('admin_economy_deploy', {
             adminId: req.headers['x-admin-id'] || 'unknown',
             ip: req.ip,
@@ -154,37 +157,36 @@ router.post('/unity/deploy', async (req, res) => {
     }
 });
 // Get system logs
-router.get('/logs', async (req, res) => {
+router.get('/logs', (req, res) => {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+    const logs = getRecentLogs({
+        limit,
+        level: typeof req.query.level === 'string' ? req.query.level : undefined,
+        context: typeof req.query.context === 'string' ? req.query.context : undefined,
+    });
+    res.json({ success: true, logs, requestId: req.requestId });
+});
+// Clear cache
+// Per-level difficulty summary from player-reported results. Levels are flagged
+// too_hard or too_easy only after enough attempts.
+router.get('/level-tuning', async (req, res) => {
     try {
-        const { limit = 100 } = req.query;
-        // TODO: Implement actual log retrieval
-        const logs = [
-            {
-                timestamp: new Date().toISOString(),
-                level: 'info',
-                message: 'Server started',
-                context: 'Server',
-            },
-        ];
+        const { records, skipped } = await readLevelResults();
         res.json({
             success: true,
-            logs: logs.slice(0, parseInt(limit)),
-            requestId: req.requestId,
+            generatedAt: new Date().toISOString(),
+            totalResults: records.length,
+            skippedLines: skipped,
+            levels: summarizeLevelResults(records),
         });
     }
     catch (error) {
-        logger.error('Failed to get system logs', { error: error.message });
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get system logs',
-            requestId: req.requestId,
-        });
+        res.status(500).json({ success: false, error: 'level_tuning_unavailable' });
     }
 });
-// Clear cache
 router.post('/cache/clear', async (req, res) => {
     try {
-        economyService.clearExpiredCache();
+        getServices().economy.clearExpiredCache();
         res.json({
             success: true,
             message: 'Cache cleared successfully',

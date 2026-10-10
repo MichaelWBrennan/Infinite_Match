@@ -4,7 +4,8 @@
  */
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import security from '../core/security/index.js';
+import security, { syncPlatformAccount, getPlatformSyncStatus } from '../core/security/index.js';
+import { accountManager } from './player-accounts.js';
 import { mfaProvider } from '../core/security/mfa.js';
 import { Logger } from '../core/logger/index.js';
 import { asyncHandler } from '../core/middleware/index.js';
@@ -30,10 +31,20 @@ router.post('/login', security.authRateLimit, validateLogin, asyncHandler(async 
         });
     }
     const { playerId, deviceInfo } = req.body;
-    // TODO: Implement actual user authentication
-    // For now, we'll create a session for any valid playerId
-    const sessionId = security.createSession(playerId, { deviceInfo });
-    const token = security.generateToken({ playerId, sessionId });
+    let session;
+    try {
+        const authResult = await accountManager.authenticatePlayer(playerId, req.body.password, deviceInfo);
+        session = authResult.session;
+    }
+    catch (error) {
+        return res.status(401).json({
+            success: false,
+            error: error.message,
+            requestId: req.requestId,
+        });
+    }
+    const sessionId = session.sessionId;
+    const token = session.token;
     security.logSecurityEvent('player_login', {
         playerId,
         ip: req.ip,
@@ -58,10 +69,27 @@ router.post('/register', security.authRateLimit, validateRegister, async (req, r
             });
         }
         const { playerId, email, deviceInfo } = req.body;
-        // TODO: Implement actual user registration
-        // For now, we'll create a session for any valid registration
-        const sessionId = security.createSession(playerId, { deviceInfo, email });
-        const token = security.generateToken({ playerId, sessionId });
+        try {
+            await accountManager.createAccount({
+                playerId,
+                email,
+                password: req.body.password,
+                displayName: playerId,
+                platform: deviceInfo?.platform || 'webgl',
+                deviceInfo,
+            });
+        }
+        catch (error) {
+            return res.status(400).json({
+                success: false,
+                error: error.message,
+                requestId: req.requestId,
+            });
+        }
+        // A fresh account is signed in immediately, as the game UI expects.
+        const session = await accountManager.createSession(playerId, deviceInfo);
+        const sessionId = session.sessionId;
+        const token = session.token;
         security.logSecurityEvent('player_register', {
             playerId,
             email,
@@ -111,7 +139,7 @@ router.post('/logout', security.sessionValidation, (req, res) => {
     }
 });
 // Refresh token endpoint
-router.post('/refresh', security.sessionValidation, (req, res) => {
+router.post('/refresh', security.sessionValidation, async (req, res) => {
     try {
         const { playerId, sessionId } = req.user;
         // Validate session is still active
@@ -124,7 +152,7 @@ router.post('/refresh', security.sessionValidation, (req, res) => {
             });
         }
         // Generate new token
-        const newToken = security.generateToken({ playerId, sessionId });
+        const newToken = await security.generateToken({ playerId, sessionId });
         res.json({
             success: true,
             token: newToken,
@@ -141,16 +169,25 @@ router.post('/refresh', security.sessionValidation, (req, res) => {
     }
 });
 // Get user profile endpoint
-router.get('/profile', security.sessionValidation, (req, res) => {
+router.get('/profile', security.sessionValidation, asyncHandler(async (req, res) => {
     try {
         const { playerId } = req.user;
-        // TODO: Implement actual user profile retrieval
-        const profile = {
-            playerId,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-            // Add more profile fields as needed
-        };
+        // Load the account from the shared account store.
+        let profile = null;
+        try {
+            const result = await accountManager.getAccount(playerId);
+            profile = result?.account ?? null;
+        }
+        catch {
+            profile = null;
+        }
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                error: 'User profile not found',
+                requestId: req.requestId,
+            });
+        }
         res.json({
             success: true,
             profile,
@@ -165,7 +202,7 @@ router.get('/profile', security.sessionValidation, (req, res) => {
             requestId: req.requestId,
         });
     }
-});
+}));
 // MFA Setup Routes
 router.post('/mfa/setup', security.sessionValidation, asyncHandler(async (req, res) => {
     const { playerId, email } = req.user;
@@ -234,6 +271,75 @@ router.post('/mfa/verify', security.sessionValidation, asyncHandler(async (req, 
         res.status(500).json({
             success: false,
             error: 'MFA verification failed',
+            requestId: req.requestId,
+        });
+    }
+}));
+// Platform sync endpoint
+router.post('/platform-sync', security.sessionValidation, asyncHandler(async (req, res) => {
+    const { platform, platformUserId, platformUsername, platformData } = req.body;
+    const { playerId } = req.user;
+    if (!platform || !platformUserId) {
+        return res.status(400).json({
+            success: false,
+            error: 'Platform and platform user ID are required',
+            requestId: req.requestId,
+        });
+    }
+    try {
+        // Store platform sync data
+        const syncResult = await syncPlatformAccount({
+            playerId,
+            platform,
+            platformUserId,
+            platformUsername,
+            platformData,
+        });
+        if (!syncResult.success) {
+            return res.status(400).json({
+                success: false,
+                error: syncResult.error,
+                requestId: req.requestId,
+            });
+        }
+        security.logSecurityEvent('platform_sync', {
+            playerId,
+            platform,
+            platformUserId,
+            ip: req.ip,
+        });
+        res.json({
+            success: true,
+            message: `Successfully synced with ${platform}`,
+            syncData: syncResult.syncData,
+            requestId: req.requestId,
+        });
+    }
+    catch (error) {
+        logger.error('Platform sync failed', { error: error.message, playerId, platform });
+        res.status(500).json({
+            success: false,
+            error: 'Platform sync failed',
+            requestId: req.requestId,
+        });
+    }
+}));
+// Get platform sync status
+router.get('/platform-sync-status', security.sessionValidation, asyncHandler(async (req, res) => {
+    const { playerId } = req.user;
+    try {
+        const syncStatus = await getPlatformSyncStatus(playerId);
+        res.json({
+            success: true,
+            platforms: syncStatus,
+            requestId: req.requestId,
+        });
+    }
+    catch (error) {
+        logger.error('Failed to get platform sync status', { error: error.message, playerId });
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get platform sync status',
             requestId: req.requestId,
         });
     }

@@ -1,3 +1,5 @@
+import { existsSync } from 'fs';
+import { join } from 'path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -9,18 +11,80 @@ import * as Sentry from '@sentry/node';
 import AppConfig from '../core/config/index.js';
 import { Logger } from '../core/logger/index.js';
 import { ErrorHandler } from '../core/errors/ErrorHandler.js';
-import { ServiceContainer } from '../core/container/ServiceContainer.js';
+import { ApiResponseBuilder } from '../core/types/ApiResponse.js';
+import { container } from '../core/container/ServiceContainer.js';
+import { registerServices } from '../core/services/ServiceRegistry.js';
 import { PlatformDetector } from '../core/platform/PlatformDetector.js';
 import { UniversalAPI } from '../core/api/UniversalAPI.js';
 import WebGLMiddleware from '../core/middleware/WebGLMiddleware.js';
 import { PlatformBuildConfig } from '../core/build/PlatformBuildConfig.js';
-import { PostHogAnalyticsService } from '../services/analytics/posthog-service.js';
+// import { AnalyticsService } from '../services/analytics-service.js';
+import UnifiedAnalyticsService from '../services/unified-analytics-service.js';
+import PrometheusMonitoringService from '../services/prometheus-monitoring-service.js';
+import OpenSourceCloudServices from '../services/open-source-cloud-services.js';
 import { ASOOptimizationService } from '../services/aso-optimization-service.js';
 import gameRoutes from '../routes/game-routes.js';
+import { assertEconomyStoreForEnvironment } from '../services/economy/PlayerEconomyDb.js';
 import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
+import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
+import playerAccountRoutes from '../routes/player-accounts.js';
+import authRoutes from '../routes/auth.js';
+import accountEconomyRoutes from '../routes/account-economy.js';
+import stripeRoutes from '../routes/stripe.js';
+import entitlementsRoutes from '../routes/entitlements.js';
+import monetizationRoutes from '../routes/monetization.js';
+import arpuRoutes from '../routes/arpu.js';
+import analyticsRoutes from '../routes/analytics.js';
+import adsRoutes from '../routes/ads.js';
+import adminRoutes from '../routes/admin.js';
+import consentRoutes from '../routes/consent.js';
+import pushRoutes from '../routes/push.js';
+import experimentsRoutes from '../routes/experiments.js';
+import levelResultsRoutes from '../routes/level-results.js';
+import minigamesRoutes from '../routes/minigames.js';
+import { startTuningSchedule } from '../services/level-tuning-schedule.js';
+import liveOpsRoutes from '../routes/live-ops.js';
+import kingdomRoutes from '../routes/kingdom.js';
+import battlepassRoutes from '../routes/battlepass.js';
+import socialRoutes from '../routes/social.js';
+import subscriptionsRoutes from '../routes/subscriptions.js';
+import { adminAuth } from '../middleware/admin-auth.js';
+import aiOptimizedRoutes from '../routes/ai-optimized-routes.js';
 import { analyticsMiddleware, errorTrackingMiddleware, } from '../middleware/analytics-middleware.js';
+/**
+ * Root-level files that make up the playable game shell.
+ *
+ * These are served through an explicit allowlist rather than mounting the
+ * repository root, which would also expose `.env`, credentials and
+ * `node_modules`.
+ */
+const ROOT_GAME_ASSETS = new Set([
+    'index.html',
+    'styles.css',
+    'phaser3-game.js',
+    'script.js',
+    'platform-detection.js',
+    'shared-game.js',
+    'shared-ui.css',
+    'test-phaser3.html',
+]);
+/**
+ * Locate a WebGL build directory if one is present.
+ *
+ * The code historically assumed a lowercase `webgl/` directory; the checked-in
+ * build lives in `WebGL/` (and older layouts use `Build/`), which mismatch made
+ * every WebGL request 404. Returns null when no build exists.
+ */
+function resolveWebGLDir() {
+    for (const candidate of ['webgl', 'WebGL', 'Build']) {
+        if (existsSync(join(process.cwd(), candidate))) {
+            return candidate;
+        }
+    }
+    return null;
+}
 class GameServer {
     app;
     server;
@@ -35,7 +99,9 @@ class GameServer {
     platformBuildConfig;
     analyticsService;
     cloudServices;
-    posthogAnalytics;
+    unifiedAnalytics;
+    prometheusMonitoring;
+    openSourceCloud;
     asoOptimization;
     constructor() {
         this.app = express();
@@ -47,13 +113,17 @@ class GameServer {
         };
         this.logger = new Logger('GameServer');
         this.errorHandler = new ErrorHandler();
-        this.serviceContainer = new ServiceContainer();
+        // Use the shared container so routes (which import the same singleton)
+        // resolve the very instances initialized below.
+        this.serviceContainer = container;
         this.platformDetector = new PlatformDetector();
         this.universalAPI = new UniversalAPI();
         this.webglMiddleware = new WebGLMiddleware();
         this.platformBuildConfig = new PlatformBuildConfig();
         this.initializeSocketIO();
-        this.initializeServices();
+        // Services are initialized (awaited) in `start()`. Calling it here as well
+        // started every service twice - duplicate timers, duplicate clients and
+        // duplicated log output - via an unawaited promise.
         this.setupMiddleware();
         this.setupRoutes();
         this.setupErrorHandling();
@@ -66,6 +136,8 @@ class GameServer {
                 methods: ['GET', 'POST'],
             },
         });
+        // Initialize multiplayer services with Socket.IO
+        initializeMultiplayerServices(this.io);
     }
     async initializeServices() {
         try {
@@ -79,18 +151,37 @@ class GameServer {
             // Initialize WebGL middleware
             await this.webglMiddleware.initialize();
             this.logger.info('WebGL middleware initialized');
-            // Initialize analytics service
-            this.analyticsService = this.serviceContainer.get('analytics');
-            await this.analyticsService.initialize();
-            // Initialize PostHog analytics
-            this.posthogAnalytics = new PostHogAnalyticsService();
-            this.logger.info('PostHog analytics initialized');
+            // Initialize unified analytics service (replaces Amplitude, Mixpanel, Unity Analytics)
+            this.unifiedAnalytics = UnifiedAnalyticsService;
+            await this.unifiedAnalytics.initialize();
+            // `analyticsService` is the field the WebSocket handlers and the
+            // shutdown path read. It was never assigned, so the first socket event
+            // (and the "server running" banner) threw a TypeError.
+            this.analyticsService = this.unifiedAnalytics;
+            this.logger.info('Unified analytics service initialized');
+            // Initialize Prometheus monitoring (replaces Datadog)
+            this.prometheusMonitoring = PrometheusMonitoringService;
+            await this.prometheusMonitoring.initialize();
+            this.logger.info('Prometheus monitoring service initialized');
+            // Initialize open source cloud services (replaces AWS, Google Cloud, Azure)
+            this.openSourceCloud = OpenSourceCloudServices;
+            await this.openSourceCloud.initialize();
+            this.logger.info('Open source cloud services initialized');
             // Initialize ASO optimization service
             this.asoOptimization = new ASOOptimizationService();
             this.logger.info('ASO optimization service initialized');
-            // Initialize cloud services
-            this.cloudServices = this.serviceContainer.get('cloud');
-            await this.cloudServices.initialize();
+            // The open-source stack (MinIO/Postgres/Valkey/SMTP) is the only cloud
+            // layer. It is also published under the legacy 'cloud' name so
+            // `getService('cloud')` lookups in the game routes keep working.
+            this.cloudServices = this.openSourceCloud;
+            // Publish the running instances on the shared container so route modules
+            // can resolve them (previously nothing registered 'analytics'/'cloud',
+            // so every game route threw "Service not found").
+            registerServices();
+            this.serviceContainer.registerInstance('analytics', this.unifiedAnalytics);
+            this.serviceContainer.registerInstance('cloud', this.cloudServices);
+            this.serviceContainer.registerInstance('openSourceCloud', this.openSourceCloud);
+            this.serviceContainer.registerInstance('monitoring', this.prometheusMonitoring);
             this.logger.info('All services initialized successfully');
         }
         catch (error) {
@@ -99,9 +190,16 @@ class GameServer {
         }
     }
     initializeSentry() {
-        if (process.env['SENTRY_DSN']) {
+        const dsn = process.env['SENTRY_DSN'];
+        // Error tracking is optional (self-hosted GlitchTip or Sentry). Ignore
+        // unset/placeholder DSNs — `Sentry.init` throws on invalid values, which
+        // used to take the whole server down before it could listen on a port.
+        if (!dsn || dsn.startsWith('your-') || dsn.includes('your_')) {
+            return;
+        }
+        try {
             Sentry.init({
-                dsn: process.env['SENTRY_DSN'],
+                dsn,
                 environment: this.config.environment,
                 tracesSampleRate: 1.0,
                 integrations: [
@@ -109,17 +207,23 @@ class GameServer {
                 ],
             });
         }
+        catch (error) {
+            this.logger.warn('Sentry/GlitchTip disabled: invalid SENTRY_DSN', {
+                error: error instanceof Error ? error.message : String(error),
+            });
+        }
     }
     setupMiddleware() {
         // Initialize Sentry
         this.initializeSentry();
-        // Sentry middleware
-        if (process.env['SENTRY_DSN']) {
-            this.app.use(Sentry.requestHandler());
-            this.app.use(Sentry.tracingHandler());
-        }
+        // Sentry request/tracing instrumentation is installed automatically by
+        // `expressIntegration()` above; v10 removed the standalone
+        // `requestHandler()` / `tracingHandler()` middleware factories.
         // Security middleware
         this.app.use(helmet({
+            // Stricter than helmet's default SAMEORIGIN: this game should never be
+            // embedded in a frame, including same-origin ones.
+            frameguard: { action: 'deny' },
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ['\'self\''],
@@ -127,14 +231,13 @@ class GameServer {
                     scriptSrc: [
                         '\'self\'',
                         '\'unsafe-inline\'',
-                        'https://cdn.amplitude.com',
-                        'https://cdn.mxpnl.com',
                     ],
+                    // helmet defaults `script-src-attr` to 'none', which blocks every
+                    // inline `onclick="..."` handler in index.html (Play, Settings,
+                    // Login, News...). The game UI relies on those attributes.
+                    scriptSrcAttr: ['\'unsafe-inline\''],
                     connectSrc: [
                         '\'self\'',
-                        'https://api2.amplitude.com',
-                        'https://api.mixpanel.com',
-                        'https://browser.sentry-cdn.com',
                     ],
                     imgSrc: ['\'self\'', 'data:', 'https:'],
                     fontSrc: ['\'self\'', 'https:', 'data:'],
@@ -157,6 +260,10 @@ class GameServer {
             legacyHeaders: false,
         });
         this.app.use('/api/', limiter);
+        // Stripe webhooks must receive the untouched body so the signature can be
+        // verified. This raw parser has to run before express.json below; the
+        // router's own express.raw then sees the body as already parsed.
+        this.app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
         // Body parsing middleware
         this.app.use(express.json({ limit: '10mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -167,57 +274,165 @@ class GameServer {
     }
     setupRoutes() {
         // Make services available to routes
-        this.app.locals.asoOptimization = this.asoOptimization;
-        this.app.locals.posthogAnalytics = this.posthogAnalytics;
+        this.app.locals['asoOptimization'] = this.asoOptimization;
+        this.app.locals['unifiedAnalytics'] = this.unifiedAnalytics;
+        this.app.locals['prometheusMonitoring'] = this.prometheusMonitoring;
+        this.app.locals['openSourceCloud'] = this.openSourceCloud;
         // Health check endpoint
         this.app.get('/health', this.handleHealthCheck.bind(this));
+        // Prometheus metrics endpoint
+        this.app.get('/metrics', this.handleMetrics.bind(this));
         // API routes
         this.app.use('/api/game', gameRoutes);
         this.app.use('/api/ai', aiContentRoutes);
         this.app.use('/api/realtime', realtimeRoutes);
         this.app.use('/api/aso', asoRoutes);
+        this.app.use('/api/multiplayer', multiplayerRoutes);
+        this.app.use('/api/accounts', playerAccountRoutes);
+        // The game shell (script.js) calls these for login, registration, platform
+        // sync and account economy sync. The route modules existed but were never
+        // mounted, so every call returned 404.
+        this.app.use('/api/auth', authRoutes);
+        this.app.use('/api/account-economy', accountEconomyRoutes);
+        // stripe-payment.js calls these endpoints; the router was never mounted.
+        this.app.use('/api/stripe', stripeRoutes);
+        // Session-gated routers that were written but never mounted. Each route
+        // checks security.sessionValidation. Economy is deliberately not mounted:
+        // its write routes only require a normal player session.
+        this.app.use('/api/entitlements', entitlementsRoutes);
+        this.app.use('/api/monetization', monetizationRoutes);
+        this.app.use('/api/arpu', arpuRoutes);
+        this.app.use('/api/analytics', analyticsRoutes);
+        this.app.use('/api/ads', adsRoutes);
+        // Operator-only. Requires ADMIN_API_TOKEN and ADMIN_IDS; refuses everything when unset.
+        this.app.use('/api/admin', adminRoutes);
+        // Player routes that check their own session and only act on the caller's own data.
+        this.app.use('/api/consent', consentRoutes);
+        this.app.use('/api/push', pushRoutes);
+        this.app.use('/api/experiments', experimentsRoutes);
+        this.app.use('/api/level-results', levelResultsRoutes);
+        // Daily mini-games: session-gated. Pays once per game per UTC day, with capped coins.
+        this.app.use('/api/minigames', minigamesRoutes);
+        // Live ops: today's deals and events. Session-gated.
+        this.app.use('/api/live-ops', liveOpsRoutes);
+        // Kingdom renovation: session-gated. Upgrades are priced and granted on the server.
+        this.app.use('/api/kingdom', kingdomRoutes);
+        // Store webhooks: each verifies the sender and returns 503 until its config is set.
+        this.app.use('/api/subscriptions', subscriptionsRoutes);
+        // Battle pass config is public. Progress and claims are session-gated.
+        this.app.use('/api/battlepass', battlepassRoutes);
+        // Friends, guilds, and best-score boards. Session-gated; acts on the caller's own data only.
+        this.app.use('/api/social', socialRoutes);
+        // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
+        this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
+        // Not mounted:
+        // - economy: its write routes would reopen the exploits fixed in account-economy.
+        // - crm: webhook and push send are logging stubs that deliver nothing.
         // Platform-specific API routes
         this.setupPlatformRoutes();
-        // Serve static files for WebGL build with platform optimization
-        this.app.use(express.static('webgl', {
-            setHeaders: (res, path) => {
-                // Set platform-specific headers
-                const platform = this.platformDetector.getCurrentPlatform();
-                if (platform) {
-                    res.setHeader('X-Platform', platform.name);
-                    res.setHeader('X-Platform-Type', platform.type);
-                }
-            },
-        }));
-        // Serve Unity WebGL build with platform detection
+        // Serve static files from public directory
+        this.app.use(express.static('public'));
+        // Serve static files for WebGL build with platform optimization (only when
+        // a WebGL build directory actually exists).
+        const webglDir = resolveWebGLDir();
+        if (webglDir) {
+            // Mounted under an explicit prefix on purpose. Mounting it at `/` let it
+            // shadow the root game assets: express.static answers `/` with the
+            // directory's own index.html and served WebGL/shared-game.js (an older
+            // copy) in place of the root one. Unity's index.html uses relative
+            // paths, so everything still resolves under /webgl.
+            this.app.use('/webgl', express.static(webglDir, {
+                setHeaders: (res) => {
+                    // Set platform-specific headers
+                    const platform = this.platformDetector.getCurrentPlatform();
+                    if (platform) {
+                        res.setHeader('X-Platform', platform.name);
+                        res.setHeader('X-Platform-Type', platform.type);
+                    }
+                },
+            }));
+        }
+        // Serve the game shell.
+        //
+        // `index.html` and its sibling assets live at the repository root, but the
+        // root also holds `.env`, credentials and `node_modules`, so it must never
+        // be mounted as a static directory. Only these known game files are
+        // exposed.
         this.app.get('/', (req, res) => {
             const platform = this.platformDetector.getCurrentPlatform();
             if (platform) {
                 res.setHeader('X-Platform', platform.name);
                 res.setHeader('X-Platform-Type', platform.type);
             }
-            res.sendFile('index.html', { root: 'webgl' });
+            res.sendFile('index.html', { root: process.cwd() }, (err) => {
+                if (err) {
+                    this.logger.error('Failed to serve index.html', err);
+                    res.status(500).json({ success: false, message: 'Game shell unavailable' });
+                }
+            });
+        });
+        this.app.get('/:gameAsset', (req, res, next) => {
+            const file = req.params['gameAsset'];
+            if (!file || !ROOT_GAME_ASSETS.has(file)) {
+                next();
+                return;
+            }
+            res.sendFile(file, { root: process.cwd() }, (err) => {
+                if (err)
+                    next();
+            });
         });
         // Setup WebSocket handlers
         this.setupWebSocketHandlers();
     }
     async handleHealthCheck(req, res) {
+        // Services are only assigned during `initializeServices()` (from `start()`).
+        // Reading them unconditionally made /health throw a TypeError and return
+        // 500 whenever the app was used before boot - a health endpoint must
+        // always answer, so report each service as uninitialized instead.
+        const statusOf = async (service) => {
+            if (!service) {
+                return { status: 'not_initialized' };
+            }
+            if (typeof service.getHealthStatus === 'function') {
+                return await service.getHealthStatus();
+            }
+            if (typeof service.getServiceStatus === 'function') {
+                return service.getServiceStatus();
+            }
+            return { status: 'unknown' };
+        };
         const healthCheck = {
             uptime: process.uptime(),
             message: 'OK',
             timestamp: new Date().toISOString(),
             services: {
-                analytics: this.analyticsService.getAnalyticsSummary(),
-                cloud: this.cloudServices.getServiceStatus(),
+                analytics: await statusOf(this.unifiedAnalytics),
+                monitoring: await statusOf(this.prometheusMonitoring),
+                cloud: await statusOf(this.cloudServices),
             },
         };
         try {
-            res.status(200).json(healthCheck);
+            // Wrapped in the standard { success, data } envelope used by the rest of
+            // the API. Consumers (Docker HEALTHCHECK, CI) only read the status code,
+            // so this is a safe shape change.
+            res.status(200).json(ApiResponseBuilder.success(healthCheck));
         }
         catch (error) {
             this.logger.error('Health check failed:', { error });
             healthCheck.message = 'ERROR';
-            res.status(503).json(healthCheck);
+            res.status(503).json(ApiResponseBuilder.error('HEALTH_CHECK_FAILED', 'Health check failed'));
+        }
+    }
+    async handleMetrics(req, res) {
+        try {
+            const metrics = await this.prometheusMonitoring.getMetrics();
+            res.set('Content-Type', 'text/plain');
+            res.status(200).send(metrics);
+        }
+        catch (error) {
+            this.logger.error('Metrics endpoint failed:', { error });
+            res.status(500).json({ error: 'Failed to get metrics' });
         }
     }
     setupPlatformRoutes() {
@@ -359,6 +574,10 @@ class GameServer {
         });
     }
     setupWebSocketHandlers() {
+        if (!this.io) {
+            this.logger.warn('Socket.IO server unavailable, skipping WebSocket handlers');
+            return;
+        }
         this.io.on('connection', (socket) => {
             this.logger.info('Client connected:', socket.id);
             // Get platform info
@@ -425,17 +644,19 @@ class GameServer {
         });
     }
     setupErrorHandling() {
-        // Sentry error handler
+        // Sentry error handler (must be registered after all routes/middleware)
         if (process.env['SENTRY_DSN']) {
-            this.app.use(Sentry.errorHandler());
+            Sentry.setupExpressErrorHandler(this.app);
         }
         // Custom error tracking middleware
         this.app.use(errorTrackingMiddleware);
-        // 404 handler
-        this.app.use('*', (req, res) => {
+        // 404 handler. Express 5 / path-to-regexp v8 reject a bare `'*'` path, so
+        // the catch-all is registered without a path matcher.
+        this.app.use((req, res) => {
+            // Use the shared { success, error } envelope so clients can rely on a
+            // single error shape across 404s and handled errors alike.
             res.status(404).json({
-                success: false,
-                message: 'Route not found',
+                ...ApiResponseBuilder.error('ROUTE_NOT_FOUND', 'Route not found'),
                 path: req.originalUrl,
             });
         });
@@ -458,10 +679,21 @@ class GameServer {
         process.on('SIGTERM', () => shutdown('SIGTERM'));
         process.on('SIGINT', () => shutdown('SIGINT'));
     }
+    /**
+     * Exposes the configured Express application. Routes and middleware are
+     * wired up in the constructor, so this is usable (for tests or embedding)
+     * without calling `start()` and binding a port.
+     */
+    getApp() {
+        return this.app;
+    }
     async start() {
+        assertEconomyStoreForEnvironment(process.env);
         await this.initializeServices();
         this.server.listen(this.config.port, this.config.host, () => {
             this.logger.info(`🚀 Infinite Match Game Server running on port ${this.config.port}`);
+            // Scheduled level tuning is off unless LEVEL_TUNING_INTERVAL_HOURS is set.
+            startTuningSchedule({ logger: this.logger });
             this.logger.info(`📊 Analytics: ${this.analyticsService.isInitialized ? 'Enabled' : 'Disabled'}`);
             this.logger.info(`☁️  Cloud Services: ${this.cloudServices.isInitialized ? 'Enabled' : 'Disabled'}`);
             this.logger.info('🌐 WebSocket: Enabled');
@@ -472,7 +704,11 @@ class GameServer {
 // Start server
 const server = new GameServer();
 server.start().catch((error) => {
-    console.error('Failed to start server:', error);
+    const logger = new Logger('ServerStartup');
+    logger.error('Failed to start server:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+    });
     process.exit(1);
 });
 export default GameServer;

@@ -38,31 +38,12 @@ interface DatabaseConfig {
         retryDelayOnFailover: number;
         maxRetriesPerRequest: number;
     };
-    dynamodb: {
-        region: string;
-        tableName: string;
-    };
 }
-interface CloudConfig {
-    aws: {
-        region: string;
-        accessKeyId: string;
-        secretAccessKey: string;
-        s3Bucket: string;
-        snsTopicArn: string;
-        sqsQueueUrl: string;
-        sesFromEmail: string;
-    };
-    google: {
-        projectId: string;
-        keyFile: string;
-    };
-    azure: {
-        storageAccount: string;
-        cosmosEndpoint: string;
-        cosmosKey: string;
-        cosmosDatabase: string;
-    };
+interface UnityConfig {
+    projectId: string;
+    environmentId: string;
+    clientId: string;
+    clientSecret: string;
 }
 interface AnalyticsConfig {
     sentry: {
@@ -96,13 +77,34 @@ interface GameConfig {
         minMatch: number;
     };
 }
+interface PaymentsConfig {
+    stripe: {
+        publishableKey: string;
+        secretKey: string;
+        webhookSecret: string;
+        apiVersion: string;
+        currency: string;
+        country: string;
+    };
+    apple: {
+        sharedSecret: string;
+    };
+    google: {
+        serviceAccountKeyPath: string;
+    };
+    pricing: {
+        defaultCurrency: string;
+        countryOverridesPath: string;
+    };
+}
 declare class OptimizedConfig {
     readonly server: ServerConfig;
     readonly security: SecurityConfig;
     readonly database: DatabaseConfig;
-    readonly cloud: CloudConfig;
+    readonly unity: UnityConfig;
     readonly analytics: AnalyticsConfig;
     readonly game: GameConfig;
+    readonly payments: PaymentsConfig;
     constructor();
     private parseCorsOrigin;
     isDevelopment(): boolean;
@@ -110,28 +112,12 @@ declare class OptimizedConfig {
     isTest(): boolean;
     getDatabaseUrl(): string;
     getRedisUrl(): string;
-    getAwsConfig(): {
-        region: string;
-        credentials: {
-            accessKeyId: string;
-            secretAccessKey: string;
-        };
-    };
-    getGoogleConfig(): {
-        projectId: string;
-        keyFilename: string;
-    };
-    getAzureConfig(): {
-        storageAccount: string;
-        cosmosEndpoint: string;
-        cosmosKey: string;
-        cosmosDatabase: string;
-    };
     validate(): {
         isValid: boolean;
         errors: string[];
     };
 }
-declare const _default: OptimizedConfig;
-export default _default;
+declare const AppConfig: OptimizedConfig;
+export { AppConfig };
+export default AppConfig;
 //# sourceMappingURL=index.d.ts.map

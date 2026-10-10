@@ -8,11 +8,24 @@ export class ReceiptVerificationService {
         payload: any;
     }): Promise<{
         success: boolean;
+        platform: string;
+        reason: string | undefined;
+        productId?: never;
+        transactionId?: never;
+        environment?: never;
+    } | {
+        success: boolean;
+        platform: string;
+        productId: any;
+        transactionId: string;
+        environment: any;
+        reason?: never;
+    } | {
+        success: boolean;
         reason: string;
         platform?: never;
         status?: never;
         raw?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
     } | {
@@ -21,18 +34,16 @@ export class ReceiptVerificationService {
         status: number;
         raw: any;
         reason?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
     } | {
         success: boolean;
         platform: string;
-        duplicate: boolean;
-        productId: any;
-        transactionId: any;
-        reason?: never;
+        reason: string | undefined;
         status?: never;
         raw?: never;
+        productId?: never;
+        transactionId?: never;
     } | {
         success: boolean;
         platform: string;
@@ -41,23 +52,12 @@ export class ReceiptVerificationService {
         raw: any;
         reason?: never;
         status?: never;
-        duplicate?: never;
-    } | {
-        success: boolean;
-        platform: string;
-        reason: string;
-        status?: never;
-        raw?: never;
-        duplicate?: never;
-        productId?: never;
-        transactionId?: never;
     } | {
         success: boolean;
         reason: string;
         platform?: never;
         state?: never;
         raw?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
         acknowledged?: never;
@@ -67,7 +67,6 @@ export class ReceiptVerificationService {
         reason: string;
         state?: never;
         raw?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
         acknowledged?: never;
@@ -77,19 +76,8 @@ export class ReceiptVerificationService {
         state: any;
         raw: any;
         reason?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
-        acknowledged?: never;
-    } | {
-        success: boolean;
-        platform: string;
-        duplicate: boolean;
-        productId: any;
-        transactionId: string;
-        reason?: never;
-        state?: never;
-        raw?: never;
         acknowledged?: never;
     } | {
         success: boolean;
@@ -100,7 +88,6 @@ export class ReceiptVerificationService {
         raw: any;
         reason?: never;
         state?: never;
-        duplicate?: never;
     }>;
     static verifyIOSReceipt(payload: any): Promise<{
         success: boolean;
@@ -108,7 +95,6 @@ export class ReceiptVerificationService {
         platform?: never;
         status?: never;
         raw?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
     } | {
@@ -117,18 +103,16 @@ export class ReceiptVerificationService {
         status: number;
         raw: any;
         reason?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
     } | {
         success: boolean;
         platform: string;
-        duplicate: boolean;
-        productId: any;
-        transactionId: any;
-        reason?: never;
+        reason: string | undefined;
         status?: never;
         raw?: never;
+        productId?: never;
+        transactionId?: never;
     } | {
         success: boolean;
         platform: string;
@@ -137,24 +121,44 @@ export class ReceiptVerificationService {
         raw: any;
         reason?: never;
         status?: never;
-        duplicate?: never;
+    }>;
+    /**
+     * Checks a StoreKit 2 signed transaction (Transaction.jwsRepresentation) offline:
+     * the Apple signature chain is verified against the pinned root, then the bundle,
+     * environment and revocation fields are checked. Needs no network call to Apple.
+     */
+    static verifyAppleSignedTransaction(signedTransaction: any): {
+        success: boolean;
+        platform: string;
+        reason: string | undefined;
+        productId?: never;
+        transactionId?: never;
+        environment?: never;
     } | {
         success: boolean;
         platform: string;
+        productId: any;
+        transactionId: string;
+        environment: any;
+        reason?: never;
+    };
+    /** The app must be ours, and sandbox purchases are accepted only when explicitly allowed. */
+    static checkAppleBundleAndEnvironment({ bundleId, environment }: {
+        bundleId: any;
+        environment: any;
+    }): {
+        ok: boolean;
         reason: string;
-        status?: never;
-        raw?: never;
-        duplicate?: never;
-        productId?: never;
-        transactionId?: never;
-    }>;
+    } | {
+        ok: boolean;
+        reason?: never;
+    };
     static verifyAndroidPurchase(payload: any): Promise<{
         success: boolean;
         reason: string;
         platform?: never;
         state?: never;
         raw?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
         acknowledged?: never;
@@ -164,7 +168,6 @@ export class ReceiptVerificationService {
         reason: string;
         state?: never;
         raw?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
         acknowledged?: never;
@@ -174,19 +177,8 @@ export class ReceiptVerificationService {
         state: any;
         raw: any;
         reason?: never;
-        duplicate?: never;
         productId?: never;
         transactionId?: never;
-        acknowledged?: never;
-    } | {
-        success: boolean;
-        platform: string;
-        duplicate: boolean;
-        productId: any;
-        transactionId: string;
-        reason?: never;
-        state?: never;
-        raw?: never;
         acknowledged?: never;
     } | {
         success: boolean;
@@ -197,7 +189,6 @@ export class ReceiptVerificationService {
         raw: any;
         reason?: never;
         state?: never;
-        duplicate?: never;
     }>;
     static buildAndroidTransactionId({ productId, purchaseToken }: {
         productId: any;

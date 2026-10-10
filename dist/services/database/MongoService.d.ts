@@ -2,6 +2,11 @@ export declare class MongoService {
     private connection;
     constructor();
     private setupEventHandlers;
+    /**
+     * Resolve a collection, failing fast when the service has no live connection.
+     * Centralizes the "MongoDB not connected" guard that every method repeated.
+     */
+    private requireCollection;
     connect(): Promise<boolean>;
     disconnect(): Promise<void>;
     saveGameAnalytics(analytics: any): Promise<boolean>;

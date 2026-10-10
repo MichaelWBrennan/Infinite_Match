@@ -1,3 +1,4 @@
+export const aiPersonalizationEngine: AIPersonalizationEngine;
 /**
  * AI Personalization Engine - Advanced player personalization using ML and AI
  * Creates unique experiences for every player using behavioral analysis and predictive modeling
@@ -12,13 +13,202 @@
  */
 export class AIPersonalizationEngine {
     logger: Logger;
-    openai: any;
-    hf: any;
+    openai: (() => never) | import("openai").default;
+    hf: (() => never) | {
+        textGeneration({ model, inputs, parameters }?: {
+            parameters?: {} | undefined;
+        }): Promise<{
+            generated_text: any;
+        }>;
+    };
     analytics: PostHogAnalyticsService;
-    supabase: any;
-    redis: Redis;
-    profileCache: any;
-    predictionCache: any;
+    supabase: {
+        from(table: any): {
+            select(columns: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            insert(rows: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            upsert(rows: any, options?: {}): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            update(patch: any): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+            delete(): {
+                select(columns?: string): /*elided*/ any;
+                eq: (column: any, value: any) => /*elided*/ any;
+                neq: (column: any, value: any) => /*elided*/ any;
+                gt: (column: any, value: any) => /*elided*/ any;
+                gte: (column: any, value: any) => /*elided*/ any;
+                lt: (column: any, value: any) => /*elided*/ any;
+                lte: (column: any, value: any) => /*elided*/ any;
+                in(column: any, values: any): /*elided*/ any;
+                match(filterObject: any): /*elided*/ any;
+                order(column: any, options?: {}): /*elided*/ any;
+                limit(count: any): /*elided*/ any;
+                single(): /*elided*/ any;
+                then(onFulfilled: any, onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+                catch(onRejected: any): Promise<{
+                    data: null;
+                    error: {
+                        message: any;
+                        code: any;
+                        details: any;
+                    };
+                } | {
+                    data: any;
+                    error: null;
+                }>;
+            };
+        };
+    } | (() => never);
+    redis: any;
+    profileCache: LRUCache<{}, {}, unknown>;
+    predictionCache: LRUCache<{}, {}, unknown>;
     realTimeUpdates: Map<any, any>;
     updateQueue: any[];
     isProcessingUpdates: boolean;
@@ -145,8 +335,6 @@ export class AIPersonalizationEngine {
     getRecentActivity(playerId: any): Promise<{}>;
     storeRecommendations(playerId: any, type: any, recommendations: any): Promise<void>;
     storeDifficultyOptimization(optimization: any): Promise<void>;
-    storeDifficultyOptimization(optimization: any): Promise<void>;
-    storeChurnPrediction(prediction: any): Promise<void>;
     storeChurnPrediction(prediction: any): Promise<void>;
     /**
      * Advanced caching system for player profiles and predictions
@@ -165,9 +353,30 @@ export class AIPersonalizationEngine {
     /**
      * Machine learning model optimization
      */
+    /**
+     * Fold a behavior event into a player profile, in place.
+     *
+     * `processSingleUpdate()` called this but it was never implemented, so
+     * every queued real-time update threw "this.updateProfileFromBehavior is not
+     * a function" and no profile was ever refreshed from live behavior.
+     *
+     * Mutates `profile` (the caller caches that same object afterwards) and is
+     * deliberately defensive: profiles come from Supabase and behavior payloads
+     * are free-form, so unknown keys are stored as last-seen values rather than
+     * assumed to exist.
+     */
+    updateProfileFromBehavior(profile: any, behaviorData?: {}): any;
     queueModelUpdate(playerId: any, behaviorData: any): void;
     startModelTraining(): Promise<void>;
     trainPersonalizationModels(trainingData: any): Promise<void>;
+    /**
+     * Seed the default (untrained) personalization models.
+     *
+     * Every `trainXModel()` reads with `this.mlModels.get(id) || { weights: {},
+     * accuracy: 0 }`, so registering the known ids up front means the engine
+     * reports a stable model set before any training data has been seen.
+     */
+    initializePersonalizationModels(): void;
     trainContentRecommendationModel(trainingData: any): Promise<void>;
     trainDifficultyAdjustmentModel(trainingData: any): Promise<void>;
     trainChurnPredictionModel(trainingData: any): Promise<void>;
@@ -188,9 +397,8 @@ export class AIPersonalizationEngine {
      */
     optimizeMemory(): void;
     storePersonalizedOffers(playerId: any, offers: any): Promise<void>;
-    storePersonalizedOffers(playerId: any, offers: any): Promise<void>;
 }
 import { Logger } from '../core/logger/index.js';
 import { PostHogAnalyticsService } from './analytics/posthog-service.js';
-import Redis from 'ioredis';
+import { LRUCache } from 'lru-cache';
 //# sourceMappingURL=ai-personalization-engine.d.ts.map

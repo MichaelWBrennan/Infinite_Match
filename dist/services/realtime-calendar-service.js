@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { ServiceError } from '../core/errors/ErrorHandler.js';
-import { createClient } from '@supabase/supabase-js';
 import cron from 'node-cron';
-import moment from 'moment-timezone';
+import moment from '../core/utils/datetime.js';
+import { createSupabaseClient } from './ai-clients.js';
 /**
  * Real-Time Calendar Service
  * Provides comprehensive calendar management with timezone support and real-time updates
@@ -10,7 +10,7 @@ import moment from 'moment-timezone';
 class RealtimeCalendarService {
     constructor() {
         this.logger = new Logger('RealtimeCalendarService');
-        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        this.supabase = createSupabaseClient();
         // Calendar configuration
         this.timezone = process.env.DEFAULT_TIMEZONE || 'UTC';
         this.calendarCache = new Map();

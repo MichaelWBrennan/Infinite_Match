@@ -1,8 +1,9 @@
 export default UnifiedUnityService;
 declare class UnifiedUnityService {
     constructor(cacheManager?: null);
-    projectId: any;
-    environmentId: any;
+    projectId: string;
+    environmentId: string;
+    baseURL: string;
     cacheManager: import("../ai-cache-manager.js").AICacheManager;
     mode: string;
     authenticated: boolean;
@@ -91,8 +92,8 @@ declare class UnifiedUnityService {
      */
     getStatus(): {
         mode: string;
-        projectId: any;
-        environmentId: any;
+        projectId: string;
+        environmentId: string;
         authenticated: boolean;
         serviceStatus: {
             economy: string;
@@ -143,10 +144,10 @@ declare class UnifiedUnityService {
      * Clear all caches
      */
     clearCache(): Promise<void>;
-    createCurrencyAPI(currencyData: any): Promise<void>;
-    createInventoryItemAPI(itemData: any): Promise<void>;
-    createCatalogItemAPI(catalogData: any): Promise<void>;
-    deployCloudCodeFunctionAPI(functionData: any): Promise<void>;
-    updateRemoteConfigAPI(configData: any): Promise<void>;
+    createCurrencyAPI(currencyData: any): Promise<any>;
+    createInventoryItemAPI(itemData: any): Promise<any>;
+    createCatalogItemAPI(catalogData: any): Promise<any>;
+    deployCloudCodeFunctionAPI(functionData: any): Promise<any>;
+    updateRemoteConfigAPI(configData: any): Promise<any>;
 }
 //# sourceMappingURL=UnifiedUnityService.d.ts.map

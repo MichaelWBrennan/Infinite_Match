@@ -4,14 +4,14 @@
  */
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt from './jwt.js';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import helmet from 'helmet';
 import cors from 'cors';
 import hpp from 'hpp';
 import xss from 'xss';
-import mongoSanitize from 'express-mongo-sanitize';
+import { mongoSanitize } from './nosql-sanitize.js';
 import { AppConfig } from '../config/index.js';
 import { securityLogger } from '../logger/index.js';
 import { rbacProvider, ROLES, PERMISSIONS } from './rbac.js';
@@ -25,15 +25,15 @@ const activeSessions = new Map();
 export const helmetConfig = helmet({
     contentSecurityPolicy: {
         directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
-            imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'"],
-            fontSrc: ["'self'"],
-            objectSrc: ["'none'"],
-            mediaSrc: ["'self'"],
-            frameSrc: ["'none'"],
+            defaultSrc: ['\'self\''],
+            styleSrc: ['\'self\'', '\'unsafe-inline\''],
+            scriptSrc: ['\'self\''],
+            imgSrc: ['\'self\'', 'data:', 'https:'],
+            connectSrc: ['\'self\''],
+            fontSrc: ['\'self\''],
+            objectSrc: ['\'none\''],
+            mediaSrc: ['\'self\''],
+            frameSrc: ['\'none\''],
         },
     },
     crossOriginEmbedderPolicy: false,
@@ -107,7 +107,12 @@ export const authRateLimit = rateLimit({
 export const slowDownConfig = slowDown({
     windowMs: 1000, // 1 second
     delayAfter: 1, // allow 1 request per second
-    delayMs: 500,
+    // express-slow-down v2 no longer multiplies a numeric `delayMs` by the number
+    // of requests over the limit, so the ramp is computed explicitly.
+    delayMs: (used, req) => {
+        const delayAfter = req.slowDown.limit;
+        return (used - delayAfter) * 500;
+    },
     maxDelayMs: 20000, // max 20 seconds delay
     skipSuccessfulRequests: false,
     skipFailedRequests: false,
@@ -121,10 +126,13 @@ export const inputValidation = [
     (req, res, next) => {
         if (req.body)
             req.body = sanitizeObject(req.body);
+        // Express 5 exposes `req.query`/`req.params` through getters, so their
+        // containers are sanitized in place instead of being reassigned (which
+        // throws a TypeError on Express 5).
         if (req.query)
-            req.query = sanitizeObject(req.query);
+            sanitizeObjectInPlace(req.query);
         if (req.params)
-            req.params = sanitizeObject(req.params);
+            sanitizeObjectInPlace(req.params);
         next();
     },
 ];
@@ -192,7 +200,7 @@ export const ipReputationCheck = (req, res, next) => {
 /**
  * Session validation middleware
  */
-export const sessionValidation = (req, res, next) => {
+export const sessionValidation = async (req, res, next) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
         return res.status(401).json({
@@ -201,14 +209,20 @@ export const sessionValidation = (req, res, next) => {
         });
     }
     try {
-        const decoded = jwt.verify(token, AppConfig.security.jwt.secret);
+        const decoded = await jwt.verify(token, AppConfig.security.jwt.secret);
         if (!activeSessions.has(decoded.sessionId)) {
             return res.status(401).json({
                 error: 'Session expired or invalid',
                 requestId: req.requestId,
             });
         }
-        req.user = decoded;
+        // Routes read `req.user.id`, but the player-session token carries
+        // `playerId`, so every authenticated route saw an undefined user id and
+        // silently treated the request as anonymous.
+        req.user = {
+            ...decoded,
+            id: decoded.id ?? decoded.playerId ?? decoded.userId ?? decoded.sub,
+        };
         next();
     }
     catch (error) {
@@ -233,7 +247,7 @@ export const comparePassword = async (password, hash) => {
 /**
  * JWT utilities
  */
-export const generateToken = (payload) => {
+export const generateToken = async (payload) => {
     return jwt.sign(payload, AppConfig.security.jwt.secret, {
         expiresIn: AppConfig.security.jwt.expiresIn,
     });
@@ -242,16 +256,19 @@ export const generateToken = (payload) => {
  * Session management
  */
 export const createSession = (userId, sessionData = {}) => {
-    const sessionId = crypto.randomUUID();
     const session = {
-        sessionId,
+        sessionId: crypto.randomUUID(),
         userId,
         createdAt: Date.now(),
         lastActivity: Date.now(),
         ...sessionData,
     };
-    activeSessions.set(sessionId, session);
-    return sessionId;
+    // Key on the EFFECTIVE id. `sessionData` may legitimately supply one (the
+    // player-account manager mirrors its own session ids in here), and the old
+    // code keyed on the generated id even when `sessionData` had overridden it -
+    // which stored the session under an id it did not claim.
+    activeSessions.set(session.sessionId, session);
+    return session.sessionId;
 };
 export const validateSession = (sessionId) => {
     const session = activeSessions.get(sessionId);
@@ -278,6 +295,15 @@ export const logSecurityEvent = (eventType, details) => {
     securityLogger.info('Security event', event);
     return eventId;
 };
+/**
+ * Most recent security events, newest first. Used by the admin security viewer.
+ */
+export const getSecurityEvents = async ({ limit = 100, eventType } = {}) => {
+    return [...securityEvents.values()]
+        .filter((event) => !eventType || event.eventType === eventType)
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, Math.max(0, limit));
+};
 export const markIPSuspicious = (ip, reason) => {
     suspiciousIPs.set(ip, {
         reason,
@@ -289,6 +315,31 @@ export const markIPSuspicious = (ip, reason) => {
 /**
  * Data sanitization
  */
+/** XSS-sanitize every string inside `obj`, mutating containers in place. */
+const sanitizeObjectInPlace = (obj, depth = 0) => {
+    if (depth > 32 || obj === null || typeof obj !== 'object') {
+        return;
+    }
+    if (Array.isArray(obj)) {
+        for (let i = 0; i < obj.length; i++) {
+            if (typeof obj[i] === 'string') {
+                obj[i] = xss(obj[i]);
+            }
+            else {
+                sanitizeObjectInPlace(obj[i], depth + 1);
+            }
+        }
+        return;
+    }
+    for (const [key, value] of Object.entries(obj)) {
+        if (typeof value === 'string') {
+            obj[key] = xss(value);
+        }
+        else {
+            sanitizeObjectInPlace(value, depth + 1);
+        }
+    }
+};
 const sanitizeObject = (obj) => {
     if (typeof obj === 'string') {
         return xss(obj);
@@ -351,6 +402,7 @@ export default {
     validateSession,
     destroySession,
     logSecurityEvent,
+    getSecurityEvents,
     markIPSuspicious,
     cleanupOldData,
 };
@@ -438,5 +490,89 @@ export const requireMinRole = (minRole) => {
             });
         }
     };
+};
+// Platform sync functions
+export const syncPlatformAccount = async (syncData) => {
+    try {
+        const { playerId, platform, platformUserId, platformUsername, platformData } = syncData;
+        // In a real implementation, this would store in a database
+        // For now, we'll use in-memory storage
+        const syncKey = `${playerId}_${platform}`;
+        const syncInfo = {
+            playerId,
+            platform,
+            platformUserId,
+            platformUsername,
+            platformData,
+            syncedAt: new Date().toISOString(),
+            isActive: true
+        };
+        // Store sync data (in production, use database)
+        if (!global.platformSyncs) {
+            global.platformSyncs = new Map();
+        }
+        global.platformSyncs.set(syncKey, syncInfo);
+        securityLogger.info('Platform account synced', {
+            playerId,
+            platform,
+            platformUserId,
+            platformUsername
+        });
+        return {
+            success: true,
+            syncData: syncInfo
+        };
+    }
+    catch (error) {
+        securityLogger.error('Platform sync failed', { error: error.message, syncData });
+        return {
+            success: false,
+            error: 'Platform sync failed'
+        };
+    }
+};
+export const getPlatformSyncStatus = async (playerId) => {
+    try {
+        if (!global.platformSyncs) {
+            return {};
+        }
+        const playerSyncs = {};
+        for (const [key, syncInfo] of global.platformSyncs.entries()) {
+            if (syncInfo.playerId === playerId && syncInfo.isActive) {
+                playerSyncs[syncInfo.platform] = {
+                    platformUserId: syncInfo.platformUserId,
+                    platformUsername: syncInfo.platformUsername,
+                    syncedAt: syncInfo.syncedAt
+                };
+            }
+        }
+        return playerSyncs;
+    }
+    catch (error) {
+        securityLogger.error('Failed to get platform sync status', { error: error.message, playerId });
+        return {};
+    }
+};
+export const unlinkPlatformAccount = async (playerId, platform) => {
+    try {
+        if (!global.platformSyncs) {
+            return { success: false, error: 'No platform syncs found' };
+        }
+        const syncKey = `${playerId}_${platform}`;
+        const syncInfo = global.platformSyncs.get(syncKey);
+        if (!syncInfo) {
+            return { success: false, error: 'Platform account not found' };
+        }
+        // Mark as inactive instead of deleting
+        syncInfo.isActive = false;
+        syncInfo.unlinkedAt = new Date().toISOString();
+        global.platformSyncs.set(syncKey, syncInfo);
+        securityLogger.info('Platform account unlinked', { playerId, platform });
+        return { success: true };
+    }
+    catch (error) {
+        securityLogger.error('Failed to unlink platform account', { error: error.message, playerId, platform });
+        return { success: false, error: 'Failed to unlink platform account' };
+    }
 };
 //# sourceMappingURL=index.js.map

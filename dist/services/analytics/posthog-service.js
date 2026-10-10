@@ -1,7 +1,7 @@
 import { Logger } from '../../core/logger/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import posthog from 'posthog-js';
-import { PostHog } from '@posthog/node';
+import { PostHog } from 'posthog-node';
 /**
  * PostHog Analytics Service - Advanced analytics with AI-powered insights
  * Provides real-time player behavior analysis, A/B testing, and automated optimization
@@ -9,12 +9,19 @@ import { PostHog } from '@posthog/node';
 class PostHogAnalyticsService {
     constructor() {
         this.logger = new Logger('PostHogAnalyticsService');
-        // Initialize PostHog client
-        this.posthog = new PostHog(process.env.POSTHOG_API_KEY, {
-            host: process.env.POSTHOG_HOST || 'https://app.posthog.com',
-            flushAt: 20,
-            flushInterval: 10000,
-        });
+        // Initialize PostHog client. The SDK throws without an API key, and
+        // analytics must never stop the server from starting, so it is optional.
+        this.posthog = null;
+        if (process.env.POSTHOG_API_KEY) {
+            this.posthog = new PostHog(process.env.POSTHOG_API_KEY, {
+                host: process.env.POSTHOG_HOST || 'https://app.posthog.com',
+                flushAt: 20,
+                flushInterval: 10000,
+            });
+        }
+        else {
+            this.logger.warn('POSTHOG_API_KEY is not set - PostHog analytics will be logged locally only');
+        }
         // Initialize browser PostHog for client-side tracking
         if (typeof window !== 'undefined') {
             posthog.init(process.env.POSTHOG_PUBLIC_KEY, {
@@ -51,11 +58,13 @@ class PostHogAnalyticsService {
         try {
             const enrichedProperties = await this.enrichEventProperties(playerId, eventName, properties);
             // Track on server-side
-            this.posthog.capture({
-                distinctId: playerId,
-                event: eventName,
-                properties: enrichedProperties
-            });
+            if (this.posthog) {
+                this.posthog.capture({
+                    distinctId: playerId,
+                    event: eventName,
+                    properties: enrichedProperties
+                });
+            }
             // Track on client-side if available
             if (this.browserPostHog) {
                 this.browserPostHog.capture(eventName, enrichedProperties);
@@ -103,10 +112,12 @@ class PostHogAnalyticsService {
             };
             this.experiments.set(experimentName, experiment);
             // Create PostHog feature flag
-            await this.posthog.createFeatureFlag(experimentName, variants, {
-                active: true,
-                filters: targetAudience
-            });
+            if (this.posthog) {
+                await this.posthog.createFeatureFlag(experimentName, variants, {
+                    active: true,
+                    filters: targetAudience
+                });
+            }
             this.logger.info(`Created experiment: ${experimentName}`);
             return experiment;
         }
@@ -120,7 +131,9 @@ class PostHogAnalyticsService {
      */
     async getExperimentVariant(playerId, experimentName) {
         try {
-            const variant = await this.posthog.getFeatureFlag(experimentName, playerId);
+            const variant = this.posthog
+                ? await this.posthog.getFeatureFlag(experimentName, playerId)
+                : null;
             // Track experiment exposure
             await this.trackEvent(playerId, 'experiment_exposed', {
                 experiment_name: experimentName,
@@ -458,15 +471,17 @@ class PostHogAnalyticsService {
      */
     async getDashboardData(timeRange = '7d') {
         try {
-            const insights = await this.posthog.getInsights({
-                events: [
-                    { event: 'level_completed' },
-                    { event: 'purchase_made' },
-                    { event: 'session_start' }
-                ],
-                date_from: this.getDateFrom(timeRange),
-                date_to: new Date().toISOString()
-            });
+            const insights = this.posthog
+                ? await this.posthog.getInsights({
+                    events: [
+                        { event: 'level_completed' },
+                        { event: 'purchase_made' },
+                        { event: 'session_start' },
+                    ],
+                    date_from: this.getDateFrom(timeRange),
+                    date_to: new Date().toISOString(),
+                })
+                : null;
             return {
                 insights,
                 experiments: Array.from(this.experiments.values()),
@@ -503,7 +518,9 @@ class PostHogAnalyticsService {
      * Cleanup resources
      */
     async cleanup() {
-        await this.posthog.shutdown();
+        if (this.posthog) {
+            await this.posthog.shutdown();
+        }
         this.logger.info('PostHog Analytics Service cleaned up');
     }
 }

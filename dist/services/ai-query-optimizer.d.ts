@@ -12,7 +12,7 @@
 export class AIQueryOptimizer extends EventEmitter<[never]> {
     constructor();
     logger: Logger;
-    openai: any;
+    openai: (() => never) | import("openai").default;
     queryMetrics: Map<any, any>;
     queryHistory: any[];
     optimizationHistory: any[];

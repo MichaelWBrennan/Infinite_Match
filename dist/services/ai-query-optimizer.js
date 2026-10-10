@@ -1,8 +1,8 @@
 import { Logger } from '../core/logger/index.js';
 import { aiCacheManager } from './ai-cache-manager.js';
 import { aiMonitoringSystem } from './ai-monitoring-system.js';
-import OpenAI from 'openai';
 import { EventEmitter } from 'events';
+import { createOpenAIClient, createHuggingFaceClient, createSupabaseClient } from './ai-clients.js';
 /**
  * AI Query Optimizer - Intelligent database query optimization system
  *
@@ -19,9 +19,7 @@ class AIQueryOptimizer extends EventEmitter {
         super();
         this.logger = new Logger('AIQueryOptimizer');
         // OpenAI for query analysis
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
+        this.openai = createOpenAIClient();
         // Query performance tracking
         this.queryMetrics = new Map();
         this.queryHistory = [];

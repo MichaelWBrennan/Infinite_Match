@@ -317,7 +317,7 @@ export class PlatformBuildConfig {
             return optimizedConfig;
         }
         catch (error) {
-            this.logger.error('Failed to get optimized build config:', error);
+            this.logger.error('Failed to get optimized build config:', { error });
             return this.buildConfigs.get('webgl');
         }
     }

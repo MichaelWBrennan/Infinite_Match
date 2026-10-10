@@ -12,7 +12,7 @@
 export class AIErrorHandler extends EventEmitter<[never]> {
     constructor();
     logger: Logger;
-    openai: any;
+    openai: (() => never) | import("openai").default;
     errorPatterns: Map<any, any>;
     recoveryStrategies: {
         network: string[];
@@ -74,7 +74,6 @@ export class AIErrorHandler extends EventEmitter<[never]> {
      * Error pattern analysis
      */
     analyzeErrorPatterns(error: any, context: any): Promise<{}>;
-    analyzeErrorPatterns(): Promise<void>;
     findSimilarErrors(error: any, context: any): any[];
     calculateStringSimilarity(str1: any, str2: any): number;
     calculateContextSimilarity(context1: any, context2: any): number;
@@ -232,6 +231,12 @@ export class AIErrorHandler extends EventEmitter<[never]> {
     startErrorPatternAnalysis(): void;
     startCircuitBreakerMonitoring(): void;
     startErrorRecoveryOptimization(): void;
+    /**
+     * Periodic sweep over aggregate error patterns.
+     * Distinct from the per-error `analyzeErrorPatterns(error, context)`, which
+     * this duplicate definition used to shadow.
+     */
+    runPeriodicPatternAnalysis(): Promise<void>;
     monitorCircuitBreakers(): void;
     optimizeRecoveryStrategies(): Promise<void>;
     /**

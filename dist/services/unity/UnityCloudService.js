@@ -4,7 +4,7 @@
  */
 import { Logger } from '../../core/logger/index.js';
 import { ErrorHandler, ServiceError } from '../../core/errors/ErrorHandler.js';
-import { AppConfig } from '../../core/config/index.js';
+import AppConfig from '../../core/config/index.js';
 import { ApiResponseBuilder } from '../../core/types/ApiResponse.js';
 export class UnityCloudService {
     logger;
@@ -97,7 +97,7 @@ export class UnityCloudService {
         catch (error) {
             this.logger.error('Failed to trigger Unity Cloud Build:', error);
             const errorInfo = ErrorHandler.handle(error, { operation: 'triggerBuild', config });
-            return ApiResponseBuilder.error(errorInfo.context?.code || 'UNITY_BUILD_TRIGGER_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+            return ApiResponseBuilder.error(errorInfo.context?.['code'] || 'UNITY_BUILD_TRIGGER_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
         }
     }
     /**
@@ -122,7 +122,7 @@ export class UnityCloudService {
                 operation: 'getBuildStatus',
                 buildId,
             });
-            return ApiResponseBuilder.error(errorInfo.context?.code || 'UNITY_BUILD_STATUS_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+            return ApiResponseBuilder.error(errorInfo.context?.['code'] || 'UNITY_BUILD_STATUS_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
         }
     }
     /**
@@ -157,7 +157,7 @@ export class UnityCloudService {
                 buildId,
                 targetPath,
             });
-            return ApiResponseBuilder.error(errorInfo.context?.code || 'UNITY_BUILD_DOWNLOAD_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+            return ApiResponseBuilder.error(errorInfo.context?.['code'] || 'UNITY_BUILD_DOWNLOAD_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
         }
     }
     /**
@@ -181,7 +181,7 @@ export class UnityCloudService {
                 operation: 'updateWebGLConfig',
                 config,
             });
-            return ApiResponseBuilder.error(errorInfo.context?.code || 'UNITY_WEBGL_CONFIG_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+            return ApiResponseBuilder.error(errorInfo.context?.['code'] || 'UNITY_WEBGL_CONFIG_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
         }
     }
     /**
@@ -215,7 +215,7 @@ export class UnityCloudService {
                 operation: 'optimizeWebGLBuild',
                 buildPath,
             });
-            return ApiResponseBuilder.error(errorInfo.context?.code || 'UNITY_WEBGL_OPTIMIZATION_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+            return ApiResponseBuilder.error(errorInfo.context?.['code'] || 'UNITY_WEBGL_OPTIMIZATION_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
         }
     }
     /**
@@ -242,7 +242,7 @@ export class UnityCloudService {
         catch (error) {
             this.logger.error('Failed to get Unity Cloud service health:', error);
             const errorInfo = ErrorHandler.handle(error, { operation: 'getServiceHealth' });
-            return ApiResponseBuilder.error(errorInfo.context?.code || 'UNITY_HEALTH_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
+            return ApiResponseBuilder.error(errorInfo.context?.['code'] || 'UNITY_HEALTH_ERROR', errorInfo.message, errorInfo.type, errorInfo.recoverable, errorInfo.action, errorInfo.context);
         }
     }
     /**

@@ -7,11 +7,13 @@
 import UnityGamingServicesAPIClient from './unity-cloud-api-client.js';
 import fs from 'fs';
 import path from 'path';
+import { Logger } from './core/logger/index.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 class UnityGamingServicesHeadlessIntegration {
     constructor(options = {}) {
+        this.logger = new Logger('UnityGamingServicesHeadlessIntegration');
         this.apiClient = new UnityGamingServicesAPIClient(options);
         this.projectRoot = options.projectRoot || path.join(__dirname, '..');
         this.economyDir = path.join(this.projectRoot, 'economy');
@@ -30,7 +32,7 @@ class UnityGamingServicesHeadlessIntegration {
      * Initialize the headless integration
      */
     async initialize() {
-        console.log('🚀 Initializing Unity Cloud Headless Integration...');
+        this.logger.info('Initializing Unity Cloud Headless Integration...');
         try {
             // Authenticate with Unity Cloud
             await this.apiClient.authenticate();
