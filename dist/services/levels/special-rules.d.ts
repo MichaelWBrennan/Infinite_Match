@@ -1,3 +1,7 @@
+/**
+ * @typedef {{ board: string[][], specials: (string|null)[][] }} PresentationGrid
+ * @typedef {{ initial: PresentationGrid, cells: number[]|null, frames: Array<{before: PresentationGrid, after: PresentationGrid}> }} PresentationTrace
+ */
 export function blankSpecials(size: any): any[][];
 /** One special per connected match, precedence: line 5+ > intersecting runs > line 4. */
 export function earnedMatches(board: any, specials?: any[][], preferred?: any[]): {
@@ -9,8 +13,10 @@ export function earnedMatches(board: any, specials?: any[][], preferred?: any[])
         color: any;
     }[];
 };
-/** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move. */
-export function simulateSpecialMove(board: any, refillState: any, palette: any, weights: any, cells: any, specials?: null, recordColors?: boolean): {
+/** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move.
+ * visualTrace=true adds bounded cloned observations only; default/server/solver outputs are unchanged. */
+export function simulateSpecialMove(board: any, refillState: any, palette: any, weights: any, cells: any, specials?: null, recordColors?: boolean, visualTrace?: boolean): {
+    presentation?: PresentationTrace;
     collected?: {
         [k: string]: any;
     } | null;
@@ -42,7 +48,8 @@ export function simulateSpecialMove(board: any, refillState: any, palette: any, 
     reshuffled: boolean;
 } | null;
 /** Existing inventory boosters keep their base award; effects can chain earned specials. No inventory logic here. */
-export function simulateSpecialClear(board: any, refillState: any, palette: any, weights: any, keys: any, specials?: null, bonusScore?: number, recordColors?: boolean): {
+export function simulateSpecialClear(board: any, refillState: any, palette: any, weights: any, keys: any, specials?: null, bonusScore?: number, recordColors?: boolean, visualTrace?: boolean): {
+    presentation?: PresentationTrace;
     collected?: {
         [k: string]: any;
     } | null;
@@ -86,4 +93,17 @@ export function certifySpecialBoard(board: any, refillState: any, palette: any, 
     witness: number[][];
 };
 export const SPECIAL_TYPES: readonly string[];
+export const PRESENTATION_FRAME_LIMIT: 3;
+export type PresentationGrid = {
+    board: string[][];
+    specials: (string | null)[][];
+};
+export type PresentationTrace = {
+    initial: PresentationGrid;
+    cells: number[] | null;
+    frames: Array<{
+        before: PresentationGrid;
+        after: PresentationGrid;
+    }>;
+};
 //# sourceMappingURL=special-rules.d.ts.map

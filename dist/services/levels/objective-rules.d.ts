@@ -46,12 +46,13 @@ export function objectiveActions(definition: any, board: any, specials: any, pro
     cells: number[];
     count: number;
 }[];
-export function simulateObjectiveMove(definition: any, state: any, cells: any): {
+export function simulateObjectiveMove(definition: any, state: any, cells: any, visualTrace?: boolean): {
     objectiveProgress: {
         collected: {
             [k: string]: any;
         };
     };
+    presentation?: import("./special-rules.js").PresentationTrace;
     collected?: {
         [k: string]: any;
     } | null;
@@ -82,12 +83,13 @@ export function simulateObjectiveMove(definition: any, state: any, cells: any): 
     }[];
     reshuffled: boolean;
 } | null;
-export function simulateObjectiveClear(definition: any, state: any, keys: any, points: any): {
+export function simulateObjectiveClear(definition: any, state: any, keys: any, points: any, visualTrace?: boolean): {
     objectiveProgress: {
         collected: {
             [k: string]: any;
         };
     };
+    presentation?: import("./special-rules.js").PresentationTrace;
     collected?: {
         [k: string]: any;
     } | null;

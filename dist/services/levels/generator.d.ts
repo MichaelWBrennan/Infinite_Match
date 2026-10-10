@@ -46,7 +46,8 @@ export function levelActions(definition: any, board: any, specials: any, progres
     cells: number[];
     count: number;
 }[];
-export function simulateLevelMove(definition: any, state: any, cells: any): {
+export function simulateLevelMove(definition: any, state: any, cells: any, visualTrace?: boolean): {
+    presentation?: import("./special-rules.js").PresentationTrace;
     collected?: {
         [k: string]: any;
     } | null;

@@ -1,6 +1,11 @@
 /** Earned-special rules v3. Pure transitions: no DOM, inventory, time, network or Math.random. */
 import { matchingCells, legalSwaps, pickGem, dealPlayableBoard } from './match-core.js';
 export const SPECIAL_TYPES = Object.freeze(['row', 'column', 'burst', 'prism']);
+export const PRESENTATION_FRAME_LIMIT = 3; // Optional visual observations; never a rules or RNG input.
+/**
+ * @typedef {{ board: string[][], specials: (string|null)[][] }} PresentationGrid
+ * @typedef {{ initial: PresentationGrid, cells: number[]|null, frames: Array<{before: PresentationGrid, after: PresentationGrid}> }} PresentationTrace
+ */
 export function blankSpecials(size) {
     return Array.from({ length: size }, () => new Array(size).fill(null));
 }
@@ -208,7 +213,8 @@ function expandClears(board, specials, seeds, protectedKeys, suppressed, prismTa
     }
     return { keys, activated };
 }
-function settle(plan, refillState, palette, weights, bonusScore = null, recordColors = false) {
+/** @param {PresentationTrace|null} presentation */
+function settle(plan, refillState, palette, weights, bonusScore = null, recordColors = false, presentation = null) {
     let { board, specials, origins } = plan;
     const n = board.length;
     const rng = { state: refillState };
@@ -220,6 +226,7 @@ function settle(plan, refillState, palette, weights, bonusScore = null, recordCo
         const matched = earnedMatches(board, specials, wave === 0 ? plan.preferred : []);
         if (!seeds?.size && !matched.matches.size)
             break;
+        const before = presentation && wave < PRESENTATION_FRAME_LIMIT ? { board: cloneGrid(board), specials: cloneGrid(specials) } : null;
         const protectedKeys = new Set(matched.creations.map((item) => keyOf(item.row, item.col)));
         const initialSeeds = seeds || new Set();
         const merged = new Set([...initialSeeds, ...matched.matches]);
@@ -255,6 +262,8 @@ function settle(plan, refillState, palette, weights, bonusScore = null, recordCo
                 [board[row][col], specials[row][col], origins[row][col]] = tile;
             }
         }
+        if (before)
+            presentation.frames.push({ before, after: { board: cloneGrid(board), specials: cloneGrid(specials) } });
         seeds = null;
     }
     // An earned special is itself a legal action. Never erase one merely because plain swaps deadlock.
@@ -264,19 +273,21 @@ function settle(plan, refillState, palette, weights, bonusScore = null, recordCo
         specials = blankSpecials(n);
         origins = blankSpecials(n);
     }
-    return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled, ...(recordColors ? { collected } : {}) };
+    return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled, ...(recordColors ? { collected } : {}), ...(presentation ? { presentation } : {}) };
 }
-/** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move. */
-export function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null, recordColors = false) {
+/** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move.
+ * visualTrace=true adds bounded cloned observations only; default/server/solver outputs are unchanged. */
+export function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null, recordColors = false, visualTrace = false) {
     if (specials === null)
         specials = Array.isArray(board) ? blankSpecials(board.length) : [];
     if (!Array.isArray(specials) || !validState(board, specials, palette, refillState))
         return null;
     const plan = prepareAction(board, specials, cells);
-    return plan ? settle(plan, refillState, palette, weights, null, recordColors) : null;
+    const presentation = plan && visualTrace === true ? { initial: { board: cloneGrid(board), specials: cloneGrid(specials) }, cells: cells.slice(), frames: [] } : null;
+    return plan ? settle(plan, refillState, palette, weights, null, recordColors, presentation) : null;
 }
 /** Existing inventory boosters keep their base award; effects can chain earned specials. No inventory logic here. */
-export function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0, recordColors = false) {
+export function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0, recordColors = false, visualTrace = false) {
     if (specials === null)
         specials = Array.isArray(board) ? blankSpecials(board.length) : [];
     if (!Array.isArray(specials) || !validState(board, specials, palette, refillState) || !Number.isFinite(bonusScore) || bonusScore < 0)
@@ -289,7 +300,8 @@ export function simulateSpecialClear(board, refillState, palette, weights, keys,
     const plan = { board: cloneGrid(board), specials: cloneGrid(specials),
         origins: board.map((row, r) => row.map((_value, c) => keyOf(r, c))), seeds,
         suppressed: new Set(), prismTargets: new Map(), preferred: [], combo: null };
-    return settle(plan, refillState, palette, weights, bonusScore, recordColors);
+    const presentation = visualTrace === true ? { initial: { board: cloneGrid(board), specials: cloneGrid(specials) }, cells: null, frames: [] } : null;
+    return settle(plan, refillState, palette, weights, bonusScore, recordColors, presentation);
 }
 /** Fast deterministic hint/certification candidates. Count is an immediate estimate, not an optimal win promise. */
 export function specialActions(board, specials = blankSpecials(board.length), recordColors = false) {

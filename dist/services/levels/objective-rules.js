@@ -125,18 +125,18 @@ export function objectiveActions(definition, board, specials, progress, score = 
     }
     return actions;
 }
-export function simulateObjectiveMove(definition, state, cells) {
+export function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
     const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
     if (!validObjectiveProgress(definition, previous))
         return null;
-    const result = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true);
+    const result = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
     return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
 }
-export function simulateObjectiveClear(definition, state, keys, points) {
+export function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
     const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
     if (!validObjectiveProgress(definition, previous))
         return null;
-    const result = simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true);
+    const result = simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
     return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
 }
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
