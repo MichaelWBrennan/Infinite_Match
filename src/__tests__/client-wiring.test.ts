@@ -120,7 +120,7 @@ describe('the canvas title and sign-in', () => {
 
   test('the attempt id is kept from the spend and sent with a win', () => {
     expect(phaser).toMatch(/this\.attemptId = data\.result\.attemptId;/);
-    const endGame = phaser.slice(phaser.indexOf('    endGame() {'), phaser.indexOf('    showEndGameScreen('));
+    const endGame = phaser.slice(phaser.indexOf('    endGame('), phaser.indexOf('    showEndGameScreen('));
     expect(endGame).toMatch(/this\.submitLevelWin\(stars\)/);
     const submit = phaser.slice(phaser.indexOf('    async submitLevelWin('), phaser.indexOf('    // Refills energy on the server.'));
     expect(submit).toMatch(/stars <= 0/);

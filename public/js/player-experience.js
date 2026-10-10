@@ -107,12 +107,12 @@
             <div class="match-player-theme" data-stat="theme"></div>
             <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection."></div>
             <footer class="match-player-footer">
-                <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
+                <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="finish-feedback" aria-label="Finish match animation" hidden>Finish <small>ANIMATION</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
                 <div class="match-powerups" aria-label="Inventory boosters"></div>
                 <div class="match-player-account"><span data-stat="energy"></span><span data-stat="stars"></span><button type="button" data-action="account">Account</button><button type="button" data-action="shop">Shop</button><button type="button" data-action="kingdom">Kingdom</button><button type="button" data-action="season">Season</button></div>
                 <p class="match-instructions">Tap gems or swipe · 4+ earns free specials · swipe specials together · Explore has the guide</p>
             </footer>
-            <div class="match-player-announcement" role="status" aria-live="polite" aria-atomic="true"></div>
+            <div class="match-player-announcement"><span class="match-announcement-message" role="status" aria-live="polite" aria-atomic="true"></span><span class="match-resolution-label" aria-hidden="true" hidden></span></div>
             <dialog class="match-player-dialog" aria-labelledby="match-dialog-heading"><h2 id="match-dialog-heading"></h2><div class="match-dialog-content"></div><p class="match-dialog-status" role="status"></p></dialog>`;
         container.append(shell);
         const find = (selector) => shell.querySelector(selector);
@@ -123,6 +123,7 @@
         const status = find('.match-dialog-status');
         const powerups = new Map();
         let focusedBeforeDialog = null;
+        let resolutionBusy = false;
         let goalKey = '';
         let goalLabels = [];
         const getField = (name) => name === 'level' ? find('.match-player-level') : find(`[data-stat="${name}"]`);
@@ -133,11 +134,17 @@
             return writeTheme(String(text).split('\n').filter((line) => !/^\d{4}-\d{2}-\d{2}$/.test(line)).join(' · '));
         };
         const actions = {
+            'finish-feedback': () => game.matchFeedback?.finish('skip'),
             hint: () => game.showHint(), pause: () => { game.togglePause(); refresh(); },
             preferences: () => preferences(), menu: () => explore(), bank: () => game.endGame(),
             account: () => game.openSignIn(), shop: () => game.showShop(), kingdom: () => game.showKingdom(), season: () => game.showBattlePass(),
         };
-        for (const [name, action] of Object.entries(actions)) find(`[data-action="${name}"]`).addEventListener('click', action);
+        for (const [name, action] of Object.entries(actions)) find(`[data-action="${name}"]`).addEventListener('click', () => {
+            // A result has already been finalized. Finish its picture instead of
+            // replacing the imminent result screen with an unrelated menu.
+            if (game.feedbackResultStars !== null && game.feedbackResultStars !== undefined && name !== 'finish-feedback') game.matchFeedback?.finish('result');
+            else action();
+        });
         const powerupNames = { bomb: 'Bomb', rainbow: 'Board', lightning: 'Bolt', diamond: 'Color', target: 'Cross', star: 'Sweep' };
         for (const [type, name] of Object.entries(powerupNames)) {
             const button = document.createElement('button'); button.type = 'button';
@@ -161,7 +168,7 @@
             close?.click();
         });
 
-        function announce(message) { find('.match-player-announcement').textContent = message; }
+        function announce(message) { find('.match-announcement-message').textContent = message || ''; }
         function renderGoals() {
             const progress = find('progress'); const area = getField('goal');
             const definition = game.generatedLevel;
@@ -223,13 +230,13 @@
             renderSoundControls();
             assistiveBoard?.sync();
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
-            find('[data-action="hint"]').disabled = !game.isGameRunning || game.isPaused || game.powerUpPending || game.levelStarting;
+            find('[data-action="hint"]').disabled = !game.canInteractWithBoard();
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
-            find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending;
+            find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending || (!!game.matchFeedback?.isActive() && !game.isGameRunning);
             find('[data-action="bank"]').disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending;
             for (const [type, slot] of powerups) {
                 const button = find(`[data-powerup="${type}"]`);
-                button.disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending || slot.btn.getData('count') <= 0;
+                button.disabled = !game.canInteractWithBoard() || slot.btn.getData('count') <= 0;
                 button.setAttribute('aria-label', `${powerupNames[type]} inventory booster, ${slot.btn.getData('count')} remaining`);
                 button.setAttribute('aria-pressed', String(game.armedPowerUp === type));
             }
@@ -238,6 +245,27 @@
             shell.classList.toggle('match-large-text', !!game.settings?.largeText);
             shell.classList.toggle('match-reduced-motion', game.animationsReduced());
             document.documentElement.classList.toggle('match-reduced-motion', game.animationsReduced());
+        }
+        function setResolution(value) {
+            const busy = value?.busy === true;
+            const label = find('.match-resolution-label');
+            const text = value?.text || '';
+            if (label.textContent !== text) label.textContent = text;
+            const phase = value?.phase || 'idle';
+            if (label.dataset.phase !== phase) label.dataset.phase = phase;
+            if (resolutionBusy === busy) return; // Do not rewrite goals/64 named cells for every visual phase.
+            resolutionBusy = busy;
+            const finish = find('[data-action="finish-feedback"]');
+            const returnFocus = !busy && document.activeElement === finish;
+            finish.hidden = !busy; find('[data-action="hint"]').hidden = busy;
+            label.hidden = !busy;
+            find('.match-player-announcement').classList.toggle('match-announcement-resolving', busy);
+            surface.setAttribute('aria-busy', String(busy));
+            refresh();
+            if (returnFocus && game.isGameRunning) {
+                if (game.settings?.textBoard === true) focusBoard();
+                else surface.focus({ preventScroll: true });
+            }
         }
         function focusBoard() { if (assistiveBoard) assistiveBoard.focus(); else surface.focus({ preventScroll: true }); }
         function openOverlay(title) {
@@ -349,7 +377,7 @@
         const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, openOverlay, closeOverlay, overlayText, overlayButton,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton,
             showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 

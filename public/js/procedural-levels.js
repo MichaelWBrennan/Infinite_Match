@@ -1942,6 +1942,11 @@ function certifyBoard(board, refillState, palette, weights, moveBudget) {
 /** Earned-special rules v3. Pure transitions: no DOM, inventory, time, network or Math.random. */
 
 const SPECIAL_TYPES = Object.freeze(['row', 'column', 'burst', 'prism']);
+const PRESENTATION_FRAME_LIMIT = 3; // Optional visual observations; never a rules or RNG input.
+/**
+ * @typedef {{ board: string[][], specials: (string|null)[][] }} PresentationGrid
+ * @typedef {{ initial: PresentationGrid, cells: number[]|null, frames: Array<{before: PresentationGrid, after: PresentationGrid}> }} PresentationTrace
+ */
 function blankSpecials(size) {
   return Array.from({ length: size }, () => new Array(size).fill(null));
 }
@@ -2117,7 +2122,8 @@ function expandClears(board, specials, seeds, protectedKeys, suppressed, prismTa
   return { keys, activated };
 }
 
-function settle(plan, refillState, palette, weights, bonusScore = null, recordColors = false) {
+/** @param {PresentationTrace|null} presentation */
+function settle(plan, refillState, palette, weights, bonusScore = null, recordColors = false, presentation = null) {
   let { board, specials, origins } = plan;
   const n = board.length;
   const rng = { state: refillState };
@@ -2128,6 +2134,7 @@ function settle(plan, refillState, palette, weights, bonusScore = null, recordCo
   for (let wave = 0; wave < 64; wave++) {
     const matched = earnedMatches(board, specials, wave === 0 ? plan.preferred : []);
     if (!seeds?.size && !matched.matches.size) break;
+    const before = presentation && wave < PRESENTATION_FRAME_LIMIT ? { board: cloneGrid(board), specials: cloneGrid(specials) } : null;
     const protectedKeys = new Set(matched.creations.map((item) => keyOf(item.row, item.col)));
     const initialSeeds = seeds || new Set();
     const merged = new Set([...initialSeeds, ...matched.matches]);
@@ -2158,6 +2165,7 @@ function settle(plan, refillState, palette, weights, bonusScore = null, recordCo
         [board[row][col], specials[row][col], origins[row][col]] = tile;
       }
     }
+    if (before) presentation.frames.push({ before, after: { board: cloneGrid(board), specials: cloneGrid(specials) } });
     seeds = null;
   }
   // An earned special is itself a legal action. Never erase one merely because plain swaps deadlock.
@@ -2166,19 +2174,21 @@ function settle(plan, refillState, palette, weights, bonusScore = null, recordCo
     board = dealPlayableBoard(n, palette, weights, rng);
     specials = blankSpecials(n); origins = blankSpecials(n);
   }
-  return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled, ...(recordColors ? { collected } : {}) };
+  return { board, specials, origins, refillState: rng.state, score, cascades: events.length, events, reshuffled, ...(recordColors ? { collected } : {}), ...(presentation ? { presentation } : {}) };
 }
 
-/** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move. */
-function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null, recordColors = false) {
+/** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move.
+ * visualTrace=true adds bounded cloned observations only; default/server/solver outputs are unchanged. */
+function simulateSpecialMove(board, refillState, palette, weights, cells, specials = null, recordColors = false, visualTrace = false) {
   if (specials === null) specials = Array.isArray(board) ? blankSpecials(board.length) : [];
   if (!Array.isArray(specials) || !validState(board, specials, palette, refillState)) return null;
   const plan = prepareAction(board, specials, cells);
-  return plan ? settle(plan, refillState, palette, weights, null, recordColors) : null;
+  const presentation = plan && visualTrace === true ? { initial: { board: cloneGrid(board), specials: cloneGrid(specials) }, cells: cells.slice(), frames: [] } : null;
+  return plan ? settle(plan, refillState, palette, weights, null, recordColors, presentation) : null;
 }
 
 /** Existing inventory boosters keep their base award; effects can chain earned specials. No inventory logic here. */
-function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0, recordColors = false) {
+function simulateSpecialClear(board, refillState, palette, weights, keys, specials = null, bonusScore = 0, recordColors = false, visualTrace = false) {
   if (specials === null) specials = Array.isArray(board) ? blankSpecials(board.length) : [];
   if (!Array.isArray(specials) || !validState(board, specials, palette, refillState) || !Number.isFinite(bonusScore) || bonusScore < 0) return null;
   if (typeof keys === 'string' || typeof keys?.[Symbol.iterator] !== 'function') return null;
@@ -2187,7 +2197,8 @@ function simulateSpecialClear(board, refillState, palette, weights, keys, specia
   const plan = { board: cloneGrid(board), specials: cloneGrid(specials),
     origins: board.map((row, r) => row.map((_value, c) => keyOf(r, c))), seeds,
     suppressed: new Set(), prismTargets: new Map(), preferred: [], combo: null };
-  return settle(plan, refillState, palette, weights, bonusScore, recordColors);
+  const presentation = visualTrace === true ? { initial: { board: cloneGrid(board), specials: cloneGrid(specials) }, cells: null, frames: [] } : null;
+  return settle(plan, refillState, palette, weights, bonusScore, recordColors, presentation);
 }
 
 /** Fast deterministic hint/certification candidates. Count is an immediate estimate, not an optimal win promise. */
@@ -2443,17 +2454,17 @@ function objectiveActions(definition, board, specials, progress, score = 0) {
   return actions;
 }
 
-function simulateObjectiveMove(definition, state, cells) {
+function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
-  const result = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true);
+  const result = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
   return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
 }
 
-function simulateObjectiveClear(definition, state, keys, points) {
+function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
-  const result = simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true);
+  const result = simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
   return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
 }
 
@@ -2609,11 +2620,11 @@ function levelActions(definition, board = definition.board, specials = definitio
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
-function simulateLevelMove(definition, state, cells) {
-  if (definition.generatorVersion >= 4) return simulateObjectiveMove(definition, state, cells);
+function simulateLevelMove(definition, state, cells, visualTrace = false) {
+  if (definition.generatorVersion >= 4) return simulateObjectiveMove(definition, state, cells, visualTrace);
   const { gemTypes, gemWeights } = definition;
   return definition.generatorVersion >= 3
-    ? simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials)
+    ? simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, false, visualTrace)
     : simulateMove(state.board, state.refillState, gemTypes, gemWeights, cells);
 }
 
@@ -2627,5 +2638,5 @@ function certifyLevel(definition) {
     : certifyBoard(board, refillState, gemTypes, gemWeights, budget);
 }
 
-root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
+root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, PRESENTATION_FRAME_LIMIT, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
 })(globalThis);

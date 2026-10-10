@@ -2375,6 +2375,12 @@ body {
 .match-player-account button { font-size: 11px; padding: 6px 8px; background: #163045; }
 .match-instructions { text-align: center; color: #bfd5e5; font-size: 10px; margin: 0; }
 .match-player-announcement { text-align: center; font-size: 12px; min-height: 16px; max-height: 33px; overflow: auto; color: #d0f9e8; padding-inline: 10px; }
+.match-resolution-label { display: block; color: #f6e6b5; font-weight: 650; }
+.match-resolution-label[hidden] { display: none; }
+.match-announcement-resolving { height: 33px; }
+.match-announcement-resolving .match-announcement-message { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.match-play-tools [data-action="finish-feedback"] { background: #49556e; border-color: #e3eafd66; }
+
 .match-player-dialog { position: fixed; inset: 0; margin: auto; width: min(440px, calc(100vw - 32px)); max-height: min(82dvh, 760px); overflow: auto; padding: 24px; box-sizing: border-box; background: #152b43; color: #f8fbff; border: 1px solid #99c3e86b; border-radius: 24px; box-shadow: 0 24px 90px #0008; }
 .match-player-dialog::backdrop { background: #061224d9; }
 .match-player-dialog h2 { margin: 0 0 18px; font-size: 26px; line-height: 1.15; }

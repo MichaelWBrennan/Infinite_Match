@@ -34,7 +34,7 @@ function makeBrowserGame() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js', 'public/js/player-experience.js', 'public/js/assistive-board.js', 'phaser3-game.js']) {
+  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js', 'public/js/player-experience.js', 'public/js/assistive-board.js', 'public/js/match-feedback.js', 'phaser3-game.js']) {
     vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   }
   const game: any = Object.create(sandbox.PhaserMatch3Game.prototype);

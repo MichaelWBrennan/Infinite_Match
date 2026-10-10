@@ -8,6 +8,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 
 **Built and tested**
 - Match-3 core: swaps, matches of 3+, cascades, gravity, refill, and a no-moves reshuffle.
+- Staged resolution feedback for v3/v4 boards: actual shared-resolver snapshots show clears, earned anchors, cascades and special effects; up to three waves, bounded timing, a free Finish animation control, and immediate reduced-motion/named-cell play. Result submission is independent of the visual layer; no extra RNG, moves, inventory use or authored levels.
 - Mobile-first player experience: responsive native HTML HUD/dialogs around the Phaser board, shape-and-letter gems, tap/swipe/keyboard controls, free legal-swap hints, goal progress, high-contrast/large-text/reduced-motion preferences and opt-in haptics. Seven Chromium viewport/input smokes and deterministic rule-parity regressions cover the foundation; real-device/human/performance validation remains a release gate. [Delivered scope, prioritized experience roadmap and measurable gates](docs/PLAYER_EXPERIENCE.md).
 - Power-ups: bomb (3x3), rainbow (whole board), lightning (column), diamond (one colour), target (plus shape), star (row and column). Diamond, target, and star arm on press and fire on the next gem tap.
 - Power-up inventory: signed-in players load their counts from the server and confirm each use before it takes effect. Guests keep local counts.

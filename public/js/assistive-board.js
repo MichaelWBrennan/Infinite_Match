@@ -112,12 +112,14 @@
       coordinate = [Math.max(0, Math.min(size - 1, cursor[0])), Math.max(0, Math.min(size - 1, cursor[1]))];
       const canAct = !!size && game.canInteractWithBoard();
       const settling = game.inputLockedUntil > Date.now();
+      const resolving = game.matchFeedback?.isActive() === true;
       attribute(grid, 'aria-busy', settling || !!game.levelStarting || !!game.powerUpPending);
       attribute(grid, 'aria-disabled', !canAct);
       attribute(grid, 'aria-readonly', !canAct);
       const explanation = game.levelStarting ? 'Starting a level; actions are unavailable.' : game.powerUpPending ? 'Waiting for inventory confirmation; actions are unavailable.'
         : game.isPaused ? 'Paused. Cells can be read and navigated, but no move or activation is allowed.'
-          : !game.isGameRunning ? 'No active level. Start or replay to play.' : settling ? 'Board is settling; wait before acting.'
+          : !game.isGameRunning ? 'No active level. Start or replay to play.'
+          : resolving ? 'Board is resolving. Focus a named cell to finish visual feedback; no extra move is spent.' : settling ? 'Board is settling; wait before acting.'
             : game.armedPowerUp ? `${game.armedPowerUp} inventory booster is armed. Choosing a cell applies it; Clear selection cancels it for free.`
               : 'Choose two adjacent cells for a swap. Choosing a special selects it without firing; Enter or Activate special fires it.';
       if (state.textContent !== explanation) state.textContent = explanation;

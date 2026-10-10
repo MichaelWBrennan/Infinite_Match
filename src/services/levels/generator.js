@@ -149,11 +149,11 @@ export function levelActions(definition, board = definition.board, specials = de
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
-export function simulateLevelMove(definition, state, cells) {
-  if (definition.generatorVersion >= 4) return simulateObjectiveMove(definition, state, cells);
+export function simulateLevelMove(definition, state, cells, visualTrace = false) {
+  if (definition.generatorVersion >= 4) return simulateObjectiveMove(definition, state, cells, visualTrace);
   const { gemTypes, gemWeights } = definition;
   return definition.generatorVersion >= 3
-    ? simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials)
+    ? simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, false, visualTrace)
     : simulateMove(state.board, state.refillState, gemTypes, gemWeights, cells);
 }
 

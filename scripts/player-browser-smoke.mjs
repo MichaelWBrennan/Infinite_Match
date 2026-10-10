@@ -174,7 +174,7 @@ async function performAction(page, cells, method, mobile) {
   assert.equal(await page.evaluate(() => window.__qaInventorySpends), 0, 'earned actions never request inventory spending');
   await page.waitForFunction(() => {
     const g = window.game;
-    return !(g.inputLockedUntil > Date.now()) && g.gemSprites.every((row, r) => row.every((gem, c) =>
+    return !g.matchFeedback?.isActive() && !(g.inputLockedUntil > Date.now()) && g.gemSprites.every((row, r) => row.every((gem, c) =>
       Math.abs(gem.x - g.cellX(c)) < 0.5 && Math.abs(gem.y - g.cellY(r)) < 0.5));
   });
   const viewsMatch = await page.evaluate(() => {
@@ -346,6 +346,192 @@ async function earnedFixture(page, kinds = [], earnFour = false) {
   }, { kinds, earnFour });
   await page.waitForTimeout(80);
   await checkFit(page);
+}
+
+async function exerciseFeedback(page, device) {
+  const cancelPaths = [];
+  // Enable normal motion deliberately, also on reduced-motion QA viewports.
+  // The original OS preference is restored before the other player tests.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.evaluate(() => {
+    const g = window.game; g.settings.reduceAnimations = false; g.settings.textBoard = false;
+    document.activeElement?.blur(); g.playerUI.refresh();
+    window.__qaFeedbackRead = []; window.__qaFeedbackProtected = []; window.__qaFeedbackBlocked = []; window.__qaFeedbackLabels = []; window.__qaFeedbackPointers = [];
+    const begin = g.beginGemGesture; window.__qaFeedbackBegin = begin;
+    g.beginGemGesture = (image, pointer) => {
+      const bounds = g.game.scale.canvasBounds; const box = g.game.canvas.getBoundingClientRect();
+      window.__qaFeedbackPointers.push({ row: image.getData('row'), col: image.getData('col'), aligned: Math.abs(bounds.x - box.x) < 1 && Math.abs(bounds.y - box.y) < 1 });
+      return begin.call(g, image, pointer);
+    };
+    const controller = g.matchFeedback; const play = controller.play;
+    window.__qaFeedbackPlay = play;
+    controller.play = (result) => {
+      window.__qaFeedbackExpected = result;
+      const active = play(result);
+      if (active) {
+        const model = () => JSON.stringify({ board: g.board, specials: g.specials, progress: g.objectiveProgress, rng: g.levelRng.state,
+          score: g.score, moves: g.moves, energy: g.energy, charges: Object.values(g.powerButtons).map((slot) => slot.btn.getData('count')) });
+        const before = model();
+        g.trySwap(2, 3, 3, 3); g.activateEarnedSpecial(3, 3); g.commitEarnedAction([2, 3, 3, 3]); g.showHint(); g.usePowerUp('bomb');
+        window.__qaFeedbackBlocked.push({ unchanged: before === model(), blocked: !g.canInteractWithBoard() });
+      }
+      return active;
+    };
+    window.__qaFeedbackObserver = new window.MutationObserver(() => {
+      const status = controller.status(); const result = window.__qaFeedbackExpected;
+      window.__qaFeedbackLabels.push({ phase: status.phase, text: document.querySelector('.match-resolution-label').textContent });
+      if (!status.active || !result?.presentation || !['read', 'clear'].includes(status.phase)) return;
+      const frame = result.presentation.frames[status.wave - 1];
+      const layer = g.scene.children.getByName('match-feedback-layer');
+      const images = layer.list.filter((item) => item.type === 'Image');
+      const n = g.boardSize;
+      if (status.phase === 'read') window.__qaFeedbackRead.push({ wave: status.wave, total: result.cascades,
+        matches: images.slice(0, n * n).every((image, index) => {
+          const row = Math.floor(index / n); const col = index % n;
+          return image.visible && image.texture.key === g.gemTexture(frame.before.board[row][col], frame.before.specials[row][col])
+            && Math.abs(image.x - g.cellX(col)) < 0.5 && Math.abs(image.y - g.cellY(row)) < 0.5;
+        }), coreHidden: g.gemSprites.flat().every((image) => !image.visible), nonInteractive: images.every((image) => !image.input), images: images.length });
+      if (status.phase === 'clear') for (const item of result.events[status.wave - 1].created) {
+        const image = images[item.row * n + item.col];
+        window.__qaFeedbackProtected.push({ key: `${item.row},${item.col}`, type: item.type, preserved: image.alpha === 1
+          && image.texture.key === g.gemTexture(frame.before.board[item.row][item.col], item.type)
+          && !result.events[status.wave - 1].cleared.includes(`${item.row},${item.col}`) });
+      }
+    });
+    window.__qaFeedbackObserver.observe(document.querySelector('.match-resolution-label'), { childList: true, attributes: true, attributeFilter: ['data-phase'] });
+  });
+  const visual = async () => page.evaluate(() => {
+    const g = window.game; g.settings.textBoard = false; g.settings.reduceAnimations = false;
+    document.activeElement?.blur(); g.playerUI.refresh();
+  });
+  const start = async () => {
+    await visual(); await earnedFixture(page, ['prism', 'prism']);
+    return page.evaluate(() => {
+      const g = window.game; g.levelRng.state = 9;
+      const expected = window.InfiniteLevels.simulateLevelMove(g.generatedLevel,
+        { board: g.board, specials: g.specials, refillState: g.levelRng.state, objectiveProgress: g.objectiveProgress }, [3, 3, 3, 4]);
+      const result = g.trySwap(3, 3, 3, 4);
+      return { active: g.matchFeedback.isActive(), cascades: result.cascades, matches: JSON.stringify(result.board) === JSON.stringify(expected.board),
+        disabled: [...document.querySelectorAll('.match-powerups button')].every((button) => button.disabled), busy: g.playerUI.surface.getAttribute('aria-busy'),
+        committed: { board: g.board, specials: g.specials, objectiveProgress: g.objectiveProgress, score: g.score, moves: g.moves, rng: g.levelRng.state,
+          charges: Array.from(g.playerUI.powerups, ([type, slot]) => [type, slot.btn.getData('count')]) },
+        controls: Object.fromEntries(['finish-feedback', 'pause', 'menu'].map((name) => {
+          const box = document.querySelector(`[data-action="${name}"]`).getBoundingClientRect();
+          return [name, { x: box.x + box.width / 2, y: box.y + box.height / 2, width: box.width, height: box.height, bottom: box.bottom }];
+        })) };
+    });
+  };
+  const ready = () => page.waitForFunction(() => !window.game.matchFeedback.isActive());
+  // Actual mouse/touch input, actual Phaser textures/coordinates on each observed read phase.
+  await visual(); await earnedFixture(page, [], true); await performAction(page, [2, 3, 3, 3], 'tap', device.mobile);
+  const observations = await page.evaluate(() => ({ read: window.__qaFeedbackRead, protected: window.__qaFeedbackProtected, pointers: window.__qaFeedbackPointers }));
+  assert.deepEqual(observations.pointers.map((pointer) => [pointer.row, pointer.col]), [[2, 3], [3, 3]], 'first real inputs still target the intended cells after a goal/status row moves the canvas');
+  assert.equal(observations.pointers.every((pointer) => pointer.aligned), true, 'input bounds are refreshed before Phaser hit-testing');
+  assert.ok(observations.read.length > 0 && observations.read.every((row) => row.matches && row.coreHidden && row.nonInteractive && row.images <= 64), 'real intermediate images match the resolver, not the final board');
+  assert.ok(observations.protected.some((row) => row.type === 'row' && row.preserved), 'earned anchor badge remains visible while actual clears fade');
+
+  const readOffset = await page.evaluate(() => window.__qaFeedbackRead.length);
+  await start();
+
+  await ready();
+  const complete = await page.evaluate((offset) => ({ reason: window.game.matchFeedback.status().lastReason,
+    waves: [...new Set(window.__qaFeedbackRead.slice(offset).map((row) => row.wave))],
+    summarized: window.__qaFeedbackLabels.some((label) => label.text === '1 more cascade resolved · settled'),
+    visible: window.game.gemSprites.flat().every((image) => image.visible),
+    totals: document.querySelector('.match-announcement-message').textContent.includes('4 waves') }), readOffset);
+  // Slow software-rendered viewports may intentionally hit the bounded watchdog.
+  // Require real, faithful prefix frames and final restoration in both outcomes;
+  // a normal completion must show all three frames and the omitted-wave summary.
+  assert.ok(['complete', 'watchdog'].includes(complete.reason));
+  assert.ok(complete.waves.length >= 1 && complete.waves.length <= 3);
+  assert.deepEqual(complete.waves, [1, 2, 3].slice(0, complete.waves.length));
+  if (complete.reason === 'complete') {
+    assert.deepEqual(complete.waves, [1, 2, 3]);
+    assert.equal(complete.summarized, true, 'the real fourth wave is summarized instead of painted on a different board');
+  }
+  assert.equal(complete.totals, true); assert.equal(complete.visible, true);
+
+  const started = await start(); assert.equal(started.active, true); assert.equal(started.cascades, 4);
+  assert.equal(started.matches, true); assert.equal(started.disabled, true); assert.equal(started.busy, 'true');
+  // Do not wait two slow headless render frames before trying a subsecond Finish.
+  // Real native touch at its measured target, not a forced or synthetic click.
+  const beforeFinish = started.committed;
+  assert.ok(started.controls['finish-feedback'].width >= 44 && started.controls['finish-feedback'].height >= 44 && started.controls['finish-feedback'].bottom <= device.height + 1);
+  if (device.mobile) await page.touchscreen.tap(started.controls['finish-feedback'].x, started.controls['finish-feedback'].y);
+  else await page.getByRole('button', { name: 'Finish match animation', exact: true }).press('Enter');
+  await ready(); assert.deepEqual(await snapshot(page), beforeFinish, 'Finish changes no model/charges');
+  assert.equal(await page.evaluate(() => window.game.matchFeedback.status().lastReason), 'skip');
+  await checkFit(page);
+  assert.equal(await page.getByRole('button', { name: 'Finish match animation', exact: true }).isVisible(), false);
+  assert.equal(await page.locator('.match-board-surface').getAttribute('aria-busy'), 'false');
+  if (!device.mobile) assert.equal(await page.locator('.match-board-surface').evaluate((element) => element === document.activeElement), true, 'Finish does not strand keyboard focus on a hidden button');
+  cancelPaths.push('native-finish');
+
+  const pausedStart = await start(); const beforePause = pausedStart.committed;
+  if (device.mobile) await page.touchscreen.tap(pausedStart.controls.pause.x, pausedStart.controls.pause.y);
+  else await page.mouse.click(pausedStart.controls.pause.x, pausedStart.controls.pause.y);
+  await ready();
+  assert.equal(await page.evaluate(() => window.game.matchFeedback.status().lastReason), 'pause');
+  assert.equal(await page.evaluate(() => window.game.isPaused), true);
+  await page.waitForTimeout(1250); assert.deepEqual(await snapshot(page), beforePause, 'paused/stale feedback cannot replay a move');
+  await page.locator('[data-action="pause"]').click(); cancelPaths.push('pause-resume');
+
+  await start(); const beforeMotion = await snapshot(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await ready();
+  assert.deepEqual(await snapshot(page), beforeMotion, 'OS reduced-motion change finishes visual work only');
+  await page.emulateMedia({ reducedMotion: 'no-preference' }); cancelPaths.push('motion-change');
+
+  await start(); const beforeNamed = await snapshot(page);
+  await page.locator('[data-cell-row="0"][data-cell-col="0"]').focus(); await ready();
+  assert.deepEqual(await snapshot(page), beforeNamed, 'focusing the named board does not spend or activate');
+  assert.equal(await page.locator('.match-board-surface').evaluate((element) => element.classList.contains('match-text-board-active')), true);
+  cancelPaths.push('named-focus');
+
+  const overlayStart = await start(); const beforeOverlay = overlayStart.committed;
+  if (device.mobile) await page.touchscreen.tap(overlayStart.controls.menu.x, overlayStart.controls.menu.y);
+  else await page.mouse.click(overlayStart.controls.menu.x, overlayStart.controls.menu.y);
+  await ready();
+  assert.equal(await page.evaluate(() => window.game.matchFeedback.status().lastReason), 'pause');
+  assert.equal(await page.evaluate(() => window.game.isPaused), true);
+  assert.deepEqual(await snapshot(page), beforeOverlay, 'Explore interrupts without spending');
+  await page.getByRole('button', { name: 'Back to game', exact: true }).click(); cancelPaths.push('overlay');
+
+  await start(); const beforeHidden = await snapshot(page);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    delete document.hidden; document.dispatchEvent(new Event('visibilitychange'));
+  }); await ready(); assert.deepEqual(await snapshot(page), beforeHidden); cancelPaths.push('synthetic-background');
+  await start(); const beforeHide = await snapshot(page);
+  await page.evaluate(() => { window.dispatchEvent(new Event('pagehide')); window.dispatchEvent(new Event('pageshow')); });
+  await ready(); assert.deepEqual(await snapshot(page), beforeHide); cancelPaths.push('synthetic-pagehide');
+
+  await start(); await reset(page); const replacement = await snapshot(page);
+  await page.waitForTimeout(1250); assert.deepEqual(await snapshot(page), replacement, 'new-board epoch cancels stale visual/result callbacks');
+  cancelPaths.push('new-board');
+
+  for (const mode of ['setting', 'system', 'text']) {
+    await visual(); await page.emulateMedia({ reducedMotion: mode === 'system' ? 'reduce' : 'no-preference' });
+    await earnedFixture(page, [], true);
+    const immediate = await page.evaluate((mode) => {
+      const g = window.game; g.settings.reduceAnimations = mode === 'setting'; g.settings.textBoard = mode === 'text'; g.playerUI.refresh();
+      const result = g.trySwap(2, 3, 3, 3);
+      return { active: g.matchFeedback.isActive(), traced: !!result.presentation, locked: g.inputLockedUntil > Date.now(), ready: g.canInteractWithBoard() };
+    }, mode);
+    assert.deepEqual(immediate, { active: false, traced: false, locked: false, ready: true }, `${mode}: instantaneous accessible path`);
+  }
+  const metrics = await page.evaluate(() => {
+    const g = window.game;
+    window.__qaFeedbackObserver.disconnect(); g.matchFeedback.play = window.__qaFeedbackPlay; g.beginGemGesture = window.__qaFeedbackBegin;
+    const status = g.matchFeedback.status();
+    return { readFrames: window.__qaFeedbackRead.length, protectedAnchors: window.__qaFeedbackProtected.length,
+      faithfulFrames: window.__qaFeedbackRead.every((row) => row.matches && row.coreHidden && row.nonInteractive),
+      blockedActions: window.__qaFeedbackBlocked.length, guards: window.__qaFeedbackBlocked.every((row) => row.unchanged && row.blocked), firstTouchBoundsAligned: window.__qaFeedbackPointers.slice(0, 2).every((pointer) => pointer.aligned),
+      images: status.images, scheduledDurationMs: status.scheduledDurationMs, watchdogMs: status.watchdogMs, inventorySpends: window.__qaInventorySpends };
+  });
+  assert.equal(metrics.faithfulFrames, true); assert.equal(metrics.guards, true); assert.equal(metrics.inventorySpends, 0); assert.ok(metrics.images <= 64);
+  await visual(); await page.emulateMedia({ reducedMotion: device.motion }); await reset(page);
+  return { ...metrics, completePlayback: complete.reason, renderedWaves: complete.waves, cancelPaths, immediate: ['setting', 'system', 'text'] };
 }
 
 async function exerciseLargestBoard(page, device) {
@@ -629,6 +815,7 @@ for (const device of cases) {
     await page.locator('[data-action="hint"]').click();
     assert.match(await page.locator('.match-player-announcement').textContent(), /Free hint/);
     assert.deepEqual(await snapshot(page), beforeHint, 'hint does not consume RNG, moves, score, or inventory');
+    const feedback = await exerciseFeedback(page, device);
     await exerciseMove(page, 'tap', device.mobile);
     if (device.mobile) await exerciseMove(page, 'swipe', true);
     await exerciseMove(page, 'keyboard', device.mobile);
@@ -765,11 +952,12 @@ for (const device of cases) {
     }
     await page.screenshot({ path: path.join(output, `${device.name}.png`) });
     assert.deepEqual(errors, [], 'no page JavaScript errors');
-    const result = { device: device.name, viewport: `${device.width}x${device.height}`, boardSize: initialBoardSize,
-      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, collection-progress, pair/mixed/collection-win, objective-guide, objective-replay, opt-in-sound, volume/mute/pause/lifecycle, audio-parity, semantic-grid/AX/roving-focus, native-cell-actions, text-board-52px-scroll, largest-board/large-text',
+    const result = { device: device.name, feedback, viewport: `${device.width}x${device.height}`, boardSize: initialBoardSize,
+      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'bounded-staged-feedback, real-intermediate-textures, protected-anchors, skip/pause/motion/focus/lifecycle-cancel, instant-accessible-paths, layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, collection-progress, pair/mixed/collection-win, objective-guide, objective-replay, opt-in-sound, volume/mute/pause/lifecycle, audio-parity, semantic-grid/AX/roving-focus, native-cell-actions, text-board-52px-scroll, largest-board/large-text',
       touchSwipe: device.mobile };
     if (device.name === 'phone') {
       await page.evaluate(() => window.game.destroy());
+      assert.equal(await page.evaluate(() => window.game.matchFeedback.status().images), 0, 'teardown releases feedback images');
       assert.equal(await page.locator('.match-assistive-board').count(), 0, 'teardown removes semantic controls and pending refresh timers');
       await page.evaluate(() => document.dispatchEvent(new window.PointerEvent('pointerup', { pointerId: 1 })));
       assert.deepEqual(errors, [], 'teardown and later pointer events leave no stale callbacks');
