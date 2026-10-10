@@ -3,6 +3,19 @@ export function levelTheme(context: any): any;
 export function generationKey(levelNumber: any, context: any, mode?: string, version?: number): string;
 /** Any positive safe level number; bounded difficulty instead of impossible linear score growth. */
 export function generateLevel(levelNumber: any, context: any, mode?: string, version?: number): {
+    difficulty: string | undefined;
+    theme: any;
+    context: any;
+    quality: {
+        verifiedCollected?: any;
+        verifiedObjectives?: boolean;
+        initialMatches: number;
+        legalOpeningMoves: number;
+        verifiedWithoutBoosters: boolean;
+        verifiedMoves: number;
+        verifiedScore: number;
+    };
+    objectiveProfile?: any;
     environmentKey: string;
     level: any;
     mode: string;
@@ -19,33 +32,24 @@ export function generateLevel(levelNumber: any, context: any, mode?: string, ver
     timeLimit: number;
     objectives: {
         type: string;
+        target: any;
+    }[] | {
+        type: string;
         target: number;
     }[];
-    difficulty: string | undefined;
-    theme: any;
-    context: any;
-    quality: {
-        initialMatches: number;
-        legalOpeningMoves: number;
-        verifiedWithoutBoosters: boolean;
-        verifiedMoves: number;
-        verifiedScore: number;
-    };
     specials?: any[][];
     id: string;
     generatorVersion: number;
 };
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition: any, board?: any, specials?: any): {
+export function levelActions(definition: any, board: any, specials: any, progress: any, score?: number): {
     cells: number[];
     count: number;
 }[];
 export function simulateLevelMove(definition: any, state: any, cells: any): {
-    board: any;
-    refillState: number;
-    score: number;
-    cascades: number;
-} | {
+    collected?: {
+        [k: string]: any;
+    } | null;
     board: any;
     specials: any;
     origins: any;
@@ -53,6 +57,9 @@ export function simulateLevelMove(definition: any, state: any, cells: any): {
     score: number;
     cascades: number;
     events: {
+        collected?: {
+            [k: string]: any;
+        } | null;
         cleared: any[];
         created: {
             row: any;
@@ -69,14 +76,20 @@ export function simulateLevelMove(definition: any, state: any, cells: any): {
         combo: any;
     }[];
     reshuffled: boolean;
+} | {
+    board: any;
+    refillState: number;
+    score: number;
+    cascades: number;
 } | null;
 export function certifyLevel(definition: any): {
     score: number;
     witness: number[][];
 };
-export const GENERATOR_VERSION: 3;
+export const GENERATOR_VERSION: 4;
 export const GEM_TYPES: string[];
 export const LEVEL_MODES: string[];
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from "./match-core.js";
 export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from "./special-rules.js";
+export { composeObjectives, levelObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, simulateObjectiveClear } from "./objective-rules.js";
 //# sourceMappingURL=generator.d.ts.map

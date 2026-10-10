@@ -180,6 +180,6 @@ export function liveGeneratedLevel({ level, mode, location, rulesVersion }?: {
         attribution: any;
     }>;
 }>): Promise<any>;
-/** Untagged deployed v2 clients must never be charged for an unsupported v3 target. */
-export function clientRulesVersion(value: any): 3 | 2;
+/** Untagged deployed v2 clients must never be charged for an unsupported newer-rules target. */
+export function clientRulesVersion(value: any): 2 | 3 | 4;
 //# sourceMappingURL=level-service.d.ts.map

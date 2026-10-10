@@ -10,7 +10,10 @@ export function earnedMatches(board: any, specials?: any[][], preferred?: any[])
     }[];
 };
 /** Swap adjacent cells, or tap one earned special. A successful action costs ONE ordinary move. */
-export function simulateSpecialMove(board: any, refillState: any, palette: any, weights: any, cells: any, specials?: null): {
+export function simulateSpecialMove(board: any, refillState: any, palette: any, weights: any, cells: any, specials?: null, recordColors?: boolean): {
+    collected?: {
+        [k: string]: any;
+    } | null;
     board: any;
     specials: any;
     origins: any;
@@ -18,6 +21,9 @@ export function simulateSpecialMove(board: any, refillState: any, palette: any, 
     score: number;
     cascades: number;
     events: {
+        collected?: {
+            [k: string]: any;
+        } | null;
         cleared: any[];
         created: {
             row: any;
@@ -36,7 +42,10 @@ export function simulateSpecialMove(board: any, refillState: any, palette: any, 
     reshuffled: boolean;
 } | null;
 /** Existing inventory boosters keep their base award; effects can chain earned specials. No inventory logic here. */
-export function simulateSpecialClear(board: any, refillState: any, palette: any, weights: any, keys: any, specials?: null, bonusScore?: number): {
+export function simulateSpecialClear(board: any, refillState: any, palette: any, weights: any, keys: any, specials?: null, bonusScore?: number, recordColors?: boolean): {
+    collected?: {
+        [k: string]: any;
+    } | null;
     board: any;
     specials: any;
     origins: any;
@@ -44,6 +53,9 @@ export function simulateSpecialClear(board: any, refillState: any, palette: any,
     score: number;
     cascades: number;
     events: {
+        collected?: {
+            [k: string]: any;
+        } | null;
         cleared: any[];
         created: {
             row: any;
@@ -62,11 +74,14 @@ export function simulateSpecialClear(board: any, refillState: any, palette: any,
     reshuffled: boolean;
 } | null;
 /** Fast deterministic hint/certification candidates. Count is an immediate estimate, not an optimal win promise. */
-export function specialActions(board: any, specials?: any[][]): {
+export function specialActions(board: any, specials?: any[][], recordColors?: boolean): {
     cells: number[];
     count: number;
 }[];
-export function certifySpecialBoard(board: any, refillState: any, palette: any, weights: any, moveBudget: any, specials?: any[][]): {
+export function certifySpecialBoard(board: any, refillState: any, palette: any, weights: any, moveBudget: any, specials?: any[][], recordColors?: boolean): {
+    collected?: {
+        [k: string]: any;
+    } | null;
     score: number;
     witness: number[][];
 };

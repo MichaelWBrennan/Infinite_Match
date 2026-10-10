@@ -1,4 +1,5 @@
 import { starsForTarget } from '../meta/rewards.js';
+import { objectiveCompletionError, objectiveStars } from '../levels/objective-rules.js';
 /**
  * Account-Linked Economy Service
  * Industry-standard match-3 economy system with account synchronization
@@ -747,11 +748,19 @@ class AccountEconomyService {
             }
             let stars;
             if (completion && completion.mode === 'level') {
-                // Target validation and consumption happen together under the player lock. A
-                // midnight/holiday/tuning change cannot alter an already purchased attempt.
-                stars = starsForTarget(completion.score, definition?.targetScore ?? completion.legacyTarget);
-                if (!stars)
-                    throw new EconomyRuleError('score_below_target');
+                // Pinned-goal validation and consumption happen together under the player lock.
+                // Date/weather/tuning changes and client-authored goals cannot alter the attempt.
+                if (definition?.generatorVersion >= 4) {
+                    const reason = objectiveCompletionError(definition, completion.score, completion.objectiveProgress);
+                    if (reason)
+                        throw new EconomyRuleError(reason);
+                    stars = objectiveStars(definition, completion.score, completion.objectiveProgress);
+                }
+                else {
+                    stars = starsForTarget(completion.score, definition?.targetScore ?? completion.legacyTarget);
+                    if (!stars)
+                        throw new EconomyRuleError('score_below_target');
+                }
             }
             playerEconomy.pendingAttempt = null;
             playerEconomy.lastUpdated = new Date(nowMs).toISOString();

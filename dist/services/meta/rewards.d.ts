@@ -19,9 +19,9 @@ export function endlessRewards(score: any): {
     xp: number;
 };
 /**
- * Rules the server applies to a win. The client sends its score and attempt. The server works
- * out the stars and the reward itself, so a reported star count or a reported reward cannot
- * change what a win pays.
+ * Rules the server applies to a win. V4 additionally validates the pinned objectives and
+ * bounded reported collection progress before applying these score-rating thresholds.
+ * Reported star counts, client-authored goals and reported rewards cannot change the payout.
  *
  * The level target matches levelConfig() in phaser3-game.js. A parity test checks that the two
  * stay the same, with no tuning overrides. The reward values are the tuning knobs.

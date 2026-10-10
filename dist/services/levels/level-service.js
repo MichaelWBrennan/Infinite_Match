@@ -8,7 +8,7 @@ function validate(level, mode, rulesVersion = GENERATOR_VERSION) {
         throw new LevelInputError('invalid_level');
     if (!LEVEL_MODES.includes(mode))
         throw new LevelInputError('invalid_mode');
-    if (![2, 3].includes(rulesVersion))
+    if (![2, 3, 4].includes(rulesVersion))
         throw new LevelInputError('unsupported_rules_version');
 }
 export function levelForContext(level, mode, context, rulesVersion = GENERATOR_VERSION) {
@@ -46,7 +46,7 @@ export async function liveGeneratedLevel({ level = 1, mode = 'classic', location
     validate(level, mode, rulesVersion);
     return levelForContext(level, mode, await liveLevelContext(location, nowMs, weatherService), rulesVersion);
 }
-/** Untagged deployed v2 clients must never be charged for an unsupported v3 target. */
+/** Untagged deployed v2 clients must never be charged for an unsupported newer-rules target. */
 export function clientRulesVersion(value) {
     if (value === undefined)
         return 2;
@@ -54,6 +54,8 @@ export function clientRulesVersion(value) {
         return 2;
     if (value === 3 || value === '3')
         return 3;
+    if (value === 4 || value === '4')
+        return 4;
     throw new LevelInputError('unsupported_rules_version');
 }
 //# sourceMappingURL=level-service.js.map
