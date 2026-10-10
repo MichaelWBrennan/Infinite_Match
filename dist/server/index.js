@@ -1,4 +1,5 @@
-import { existsSync } from 'fs';
+import { existsSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { join } from 'path';
 import express from 'express';
 import cors from 'cors';
@@ -43,6 +44,7 @@ import consentRoutes from '../routes/consent.js';
 import pushRoutes from '../routes/push.js';
 import experimentsRoutes from '../routes/experiments.js';
 import levelResultsRoutes from '../routes/level-results.js';
+import levelsRoutes from '../routes/levels.js';
 import minigamesRoutes from '../routes/minigames.js';
 import { startTuningSchedule } from '../services/level-tuning-schedule.js';
 import liveOpsRoutes from '../routes/live-ops.js';
@@ -219,14 +221,15 @@ class GameServer {
         // Sentry request/tracing instrumentation is installed automatically by
         // `expressIntegration()` above; v10 removed the standalone
         // `requestHandler()` / `tracingHandler()` middleware factories.
-        // Security middleware
+        // Production remains non-embeddable. The explicit development-only Arena
+        // preview opt-in permits the live preview's iframe without relaxing production.
+        const preview = this.config.environment === 'development' && process.env['ARENA_PREVIEW'] === '1';
         this.app.use(helmet({
-            // Stricter than helmet's default SAMEORIGIN: this game should never be
-            // embedded in a frame, including same-origin ones.
-            frameguard: { action: 'deny' },
+            frameguard: preview ? false : { action: 'deny' },
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ['\'self\''],
+                    frameAncestors: preview ? null : ['\'self\''],
                     styleSrc: ['\'self\'', '\'unsafe-inline\''],
                     scriptSrc: [
                         '\'self\'',
@@ -311,6 +314,8 @@ class GameServer {
         this.app.use('/api/push', pushRoutes);
         this.app.use('/api/experiments', experimentsRoutes);
         this.app.use('/api/level-results', levelResultsRoutes);
+        // Procedural levels are public; rewarded attempts still require the player's session.
+        this.app.use('/api/levels', levelsRoutes);
         // Daily mini-games: session-gated. Pays once per game per UTC day, with capped coins.
         this.app.use('/api/minigames', minigamesRoutes);
         // Live ops: today's deals and events. Session-gated.
@@ -701,15 +706,18 @@ class GameServer {
         });
     }
 }
-// Start server
-const server = new GameServer();
-server.start().catch((error) => {
-    const logger = new Logger('ServerStartup');
-    logger.error('Failed to start server:', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+// Importing this module for route tests/embedding must not bind a port. Start
+// only when this is the actual Node entrypoint (works on the minimum Node 22).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+    const server = new GameServer();
+    server.start().catch((error) => {
+        const logger = new Logger('ServerStartup');
+        logger.error('Failed to start server:', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+        });
+        process.exit(1);
     });
-    process.exit(1);
-});
+}
 export default GameServer;
 //# sourceMappingURL=index.js.map

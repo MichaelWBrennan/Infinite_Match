@@ -433,12 +433,12 @@ export class AccountEconomyService {
      * player is never charged for points that have already come back. A new attempt replaces any
      * earlier one that was not completed.
      */
-    spendAttemptEnergy(playerId: any, level: any, nowMs?: number): Promise<any>;
+    spendAttemptEnergy(playerId: any, level: any, nowMs?: number, definition?: null): Promise<any>;
     /**
      * Consumes a spent attempt so its level can be rewarded once. Runs under the player lock and is
      * saved before any reward is granted, so a repeated or forged completion finds no attempt.
      */
-    consumeAttempt(playerId: any, attemptId: any, level: any, nowMs?: number): Promise<any>;
+    consumeAttempt(playerId: any, attemptId: any, level: any, nowMs?: number, completion?: null): Promise<any>;
     /**
      * The economy as the player should see it now: energy is brought up to date for the time that
      * has passed, without saving. Internal fields (the pending attempt) are left out.

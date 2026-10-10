@@ -30,7 +30,10 @@ export function levelTarget(level, multiplier = 1) {
 }
 /** Stars for a score: 1x, 1.5x, and 2x the target. Zero means the level was not won. */
 export function starsForScore(score, level, multiplier = 1) {
-    const target = levelTarget(level, multiplier);
+    return starsForTarget(score, levelTarget(level, multiplier));
+}
+/** Generated attempts pin their own certified target; do not recompute it at completion. */
+export function starsForTarget(score, target) {
     if (score >= target * 2)
         return 3;
     if (score >= target * 1.5)

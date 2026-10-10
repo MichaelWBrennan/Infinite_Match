@@ -4,7 +4,9 @@
  */
 export function levelTarget(level: any, multiplier?: number): number;
 /** Stars for a score: 1x, 1.5x, and 2x the target. Zero means the level was not won. */
-export function starsForScore(score: any, level: any, multiplier?: number): 1 | 3 | 0 | 2;
+export function starsForScore(score: any, level: any, multiplier?: number): 1 | 0 | 2 | 3;
+/** Generated attempts pin their own certified target; do not recompute it at completion. */
+export function starsForTarget(score: any, target: any): 1 | 0 | 2 | 3;
 /** What a win of `stars` stars pays. Only called with 1 to 3 stars. */
 export function winRewards(stars: any): {
     coins: number;

@@ -1,3 +1,4 @@
+import { starsForTarget } from '../meta/rewards.js';
 /**
  * Account-Linked Economy Service
  * Industry-standard match-3 economy system with account synchronization
@@ -697,8 +698,8 @@ class AccountEconomyService {
      * player is never charged for points that have already come back. A new attempt replaces any
      * earlier one that was not completed.
      */
-    async spendAttemptEnergy(playerId, level, nowMs = Date.now()) {
-        if (!Number.isInteger(level) || level < 1 || level > LEVEL_LIMITS.maxLevel) {
+    async spendAttemptEnergy(playerId, level, nowMs = Date.now(), definition = null) {
+        if (!Number.isSafeInteger(level) || level < 1 || level > LEVEL_LIMITS.maxLevel) {
             throw new EconomyRuleError('invalid_level');
         }
         return this.withPlayerLock(playerId, async () => {
@@ -709,7 +710,10 @@ class AccountEconomyService {
             energy.amount -= ATTEMPT_ENERGY_COST;
             energy.spent += ATTEMPT_ENERGY_COST;
             const attemptId = crypto.randomUUID();
-            playerEconomy.pendingAttempt = { id: attemptId, level, issuedAt: nowMs };
+            playerEconomy.pendingAttempt = {
+                id: attemptId, level, issuedAt: nowMs,
+                ...(definition ? { generatedLevel: structuredClone(definition) } : {}),
+            };
             playerEconomy.lastUpdated = new Date(nowMs).toISOString();
             await this.updatePlayerEconomyCache(playerId, playerEconomy);
             return {
@@ -718,6 +722,7 @@ class AccountEconomyService {
                 energy: energy.amount,
                 maxEnergy: energy.maxAmount,
                 nextRegenInMs: nextRegenInMs(energy, nowMs),
+                ...(definition ? { generatedLevel: structuredClone(definition) } : {}),
             };
         });
     }
@@ -725,7 +730,7 @@ class AccountEconomyService {
      * Consumes a spent attempt so its level can be rewarded once. Runs under the player lock and is
      * saved before any reward is granted, so a repeated or forged completion finds no attempt.
      */
-    async consumeAttempt(playerId, attemptId, level, nowMs = Date.now()) {
+    async consumeAttempt(playerId, attemptId, level, nowMs = Date.now(), completion = null) {
         return this.withPlayerLock(playerId, async () => {
             const playerEconomy = await this.getPlayerEconomy(playerId);
             const pending = playerEconomy.pendingAttempt;
@@ -736,10 +741,22 @@ class AccountEconomyService {
                 throw new EconomyRuleError('attempt_level_mismatch');
             if (nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS)
                 throw new EconomyRuleError('attempt_expired');
+            const definition = pending.generatedLevel;
+            if (definition && completion && ((completion.mode === 'endless') !== (definition.mode === 'endless'))) {
+                throw new EconomyRuleError('attempt_mode_mismatch');
+            }
+            let stars;
+            if (completion && completion.mode === 'level') {
+                // Target validation and consumption happen together under the player lock. A
+                // midnight/holiday/tuning change cannot alter an already purchased attempt.
+                stars = starsForTarget(completion.score, definition?.targetScore ?? completion.legacyTarget);
+                if (!stars)
+                    throw new EconomyRuleError('score_below_target');
+            }
             playerEconomy.pendingAttempt = null;
             playerEconomy.lastUpdated = new Date(nowMs).toISOString();
             await this.updatePlayerEconomyCache(playerId, playerEconomy);
-            return { level };
+            return { level, ...(stars === undefined ? {} : { stars }) };
         });
     }
     /**

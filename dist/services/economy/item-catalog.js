@@ -15,7 +15,7 @@ export const ITEM_CATALOG = {
 };
 // Level-complete rules. The client reports the result, so the server bounds it.
 export const LEVEL_LIMITS = {
-    maxLevel: 10000,
+    maxLevel: Number.MAX_SAFE_INTEGER,
     maxScore: 1000000,
     maxStars: 3,
     maxCoinsPerLevel: 500,
