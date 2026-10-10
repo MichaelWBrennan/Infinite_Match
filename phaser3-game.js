@@ -179,9 +179,22 @@ class PhaserMatch3Game {
         if (window.InfinitePlayerExperience && this.scene.textures?.createCanvas) {
             for (const type of Object.keys(window.InfinitePlayerExperience.visuals)) {
                 for (const special of [null, ...window.InfinitePlayerExperience.specialTypes]) {
-                    const texture = this.scene.textures.createCanvas(this.gemTexture(type, special), 64, 64);
-                    window.InfinitePlayerExperience.drawGem(texture.getContext(), type, special);
-                    texture.refresh();
+                    for (const shield of [0, 1, 2]) {
+                        const texture = this.scene.textures.createCanvas(this.gemTexture(type, special, shield), 64, 64);
+                        const context = texture.getContext();
+                        window.InfinitePlayerExperience.drawGem(context, type, special);
+                        if (shield) {
+                            // A numbered ice-blue frame is readable without hue or animation.
+                            context.save();
+                            context.strokeStyle = '#e8fbff'; context.lineWidth = shield === 2 ? 4 : 2;
+                            context.strokeRect(2, 2, 60, 60);
+                            context.fillStyle = '#12354b'; context.fillRect(41, 0, 23, 23);
+                            context.fillStyle = '#ffffff'; context.font = 'bold 17px sans-serif';
+                            context.textAlign = 'center'; context.textBaseline = 'middle';
+                            context.fillText(String(shield), 52, 12); context.restore();
+                        }
+                        texture.refresh();
+                    }
                 }
             }
             return;
@@ -385,6 +398,7 @@ class PhaserMatch3Game {
         this.board = Array.from({ length: n }, () => new Array(n).fill(null));
         this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
         this.specials = this.usesEarnedSpecials() ? (this.generatedLevel.specials || globalThis.InfiniteLevels.blankSpecials(n)).map((row) => row.slice()) : null;
+        this.shields = this.generatedLevel?.generatorVersion >= 5 ? this.generatedLevel.shields.map((row) => row.slice()) : null;
 
         if (this.generatedLevel) {
             this.board = this.generatedLevel.board.map((row) => row.slice());
@@ -407,8 +421,9 @@ class PhaserMatch3Game {
         return this.generatedLevel?.generatorVersion >= 3 && !!globalThis.InfiniteLevels?.simulateSpecialMove;
     }
 
-    gemTexture(type, special = null) {
-        return special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
+    gemTexture(type, special = null, shield = 0) {
+        const base = special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
+        return shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
     }
 
     activateEarnedSpecial(row, col) {
@@ -419,7 +434,7 @@ class PhaserMatch3Game {
     commitEarnedAction(cells) {
         if (!this.canInteractWithBoard()) return null;
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
+            { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.generatedLevel.generatorVersion < 5 && this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -427,6 +442,7 @@ class PhaserMatch3Game {
             return null;
         }
         this.moves--;
+        if (this.replayEligible) this.attemptMoves.push(cells.slice());
         this.renderEarnedTransition(result);
         this.checkEndConditions();
         return result;
@@ -443,14 +459,14 @@ class PhaserMatch3Game {
         }));
         const free = previous.flat().filter((sprite) => !kept.has(sprite));
         const drops = new Array(this.boardSize).fill(0);
-        this.board = result.board; this.specials = result.specials; this.levelRng.state = result.refillState;
+        this.board = result.board; this.specials = result.specials; if (result.shields) this.shields = result.shields; this.levelRng.state = result.refillState;
         this.gemSprites = result.board.map((row, r) => row.map((type, c) => {
             const origin = result.origins[r][c];
             const [oldRow, oldCol] = origin ? origin.split(',').map(Number) : [];
             const sprite = origin ? previous[oldRow][oldCol] : free.shift();
             this.scene.tweens.killTweensOf(sprite);
             if (!origin) sprite.setPosition(this.cellX(c), this.cellY(-1 - drops[c]++));
-            sprite.setTexture(this.gemTexture(type, this.specials[r][c]));
+            sprite.setTexture(this.gemTexture(type, this.specials[r][c], this.shields?.[r]?.[c]));
             sprite.setData('type', type); sprite.setData('special', this.specials[r][c]);
             sprite.setVisible(true); sprite.setAlpha(1); sprite.setScale(this.gemScale); sprite.clearTint();
             this.placeSprite(sprite, r, c, animateFallback);
@@ -574,7 +590,7 @@ class PhaserMatch3Game {
 
     showHint() {
         if (!this.canInteractWithBoard() || !globalThis.InfiniteLevels) return null;
-        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score);
+        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score, this.shields, this.levelRng.state);
         moves.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.count - a.count);
         if (!moves.length) return null;
         const cells = moves[0].cells;
@@ -590,7 +606,7 @@ class PhaserMatch3Game {
     }
 
     createGemSprite(row, col, type) {
-        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), this.gemTexture(type, this.specials?.[row]?.[col]));
+        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), this.gemTexture(type, this.specials?.[row]?.[col], this.shields?.[row]?.[col]));
         gem.setScale(this.gemScale);
         // Full cell hit area; shape/symbol is visual, not a smaller touch target.
         if (this.playerUI && window.Phaser?.Geom) gem.setInteractive(new Phaser.Geom.Rectangle(-3, -3, 70, 70), Phaser.Geom.Rectangle.Contains);
@@ -921,13 +937,21 @@ class PhaserMatch3Game {
     }
 
     // Clears the given cells (power-up effects), then resolves any cascades.
-    clearAndCascade(keys, points, soundCue = 'inventory') {
+    clearAndCascade(keys, points, soundCue = 'inventory', inventoryAction = null) {
+        // A signed-in effect is replayable only when its server receipt is bound to this
+        // attempt. Legacy and guest spends remain playable but cannot claim replay.
+        const receipt = this.powerReceipt;
+        const track = this.replayEligible && receipt?.receiptId && inventoryAction?.type === receipt.type;
+        if (!track) this.replayEligible = false;
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
-                    { board: this.board, specials: this.specials, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
+                    { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.generatedLevel.generatorVersion < 5 && this.matchFeedback?.canStage() === true)
                 : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points, false, this.matchFeedback?.canStage() === true);
-            if (result) { this.renderEarnedTransition(result, soundCue); this.checkEndConditions(); }
+            if (result) {
+                if (track) this.attemptMoves.push({ receiptId: receipt.receiptId, ...inventoryAction });
+                this.renderEarnedTransition(result, soundCue); this.checkEndConditions();
+            } else this.replayEligible = false;
             return;
         }
         this.setSelectedGem(null);
@@ -966,12 +990,12 @@ class PhaserMatch3Game {
                 if (this.isInBounds(r, c)) keys.add(`${r},${c}`);
             }
         }
-        this.clearAndCascade(keys, 100, 'burst');
+        this.clearAndCascade(keys, 100, 'burst', { type: 'bomb', target: [r0, c0] });
     }
 
     activateRainbow() {
         // Clears the whole board.
-        this.clearAndCascade(this.allCellKeys(), 500, 'prism');
+        this.clearAndCascade(this.allCellKeys(), 500, 'prism', { type: 'rainbow' });
     }
 
     activateLightning() {
@@ -979,7 +1003,7 @@ class PhaserMatch3Game {
         const col = Math.floor(Math.random() * this.boardSize);
         const keys = new Set();
         for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
-        this.clearAndCascade(keys, 300, 'beam');
+        this.clearAndCascade(keys, 300, 'beam', { type: 'lightning', target: [0, col] });
     }
 
     createUI() {
@@ -1285,15 +1309,19 @@ class PhaserMatch3Game {
         this.powerUpPending = true;
         this.playerUI?.refresh();
         this.consumePowerUpOnServer(type, token)
-            .then((ok) => {
-                if (ok) {
+            .then((confirmation) => {
+                if (confirmation === true || confirmation?.ok) {
                     this.setPowerCount(type, this.powerSlot(type).btn.getData('count') - 1);
-                    effect();
+                    this.powerReceipt = confirmation?.receiptId ? { type, receiptId: confirmation.receiptId } : null;
+                    try { effect(); } finally { this.powerReceipt = null; }
                 } else {
                     return this.syncPowerUpInventory();
                 }
             })
             .catch((error) => {
+                // A lost response may have spent a charge and minted a receipt we did not see.
+                // Preserve ordinary rewards without claiming a possibly incomplete replay.
+                this.replayEligible = false;
                 console.warn('Power-up not spent on server:', error);
                 return this.syncPowerUpInventory();
             })
@@ -1310,9 +1338,12 @@ class PhaserMatch3Game {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ powerupId: type, quantity: 1 })
+            body: JSON.stringify({ powerupId: type, quantity: 1,
+                ...(this.attemptId && this.replayEligible ? { attemptId: this.attemptId } : {}) })
         });
-        return response.ok;
+        if (!response.ok) return { ok: false };
+        const payload = await response.json();
+        return { ok: payload.success === true, receiptId: payload.result?.receiptId };
     }
 
     // Loads power-up counts from the player's server inventory. Guests keep local counts.
@@ -1392,13 +1423,16 @@ class PhaserMatch3Game {
         this.spendPowerUp(type, () => {
             const keys = this.powerUpKeys(type, r, c);
             const points = { diamond: 400, target: 200, star: 250 }[type];
-            this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam');
+            this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam', { type, target: [r, c] });
             this.showPowerUpAnimation(type);
         });
     }
 
     showPowerUpAnimation(powerType) {
-        if (this.playerUI) { this.playerUI.announce(`${powerType} power-up used.`); return; }
+        if (this.playerUI) {
+            this.playerUI.announce(`${powerType} power-up used.${this.powerReceipt?.receiptId ? ' Booster-assisted wins earn rewards but do not rank in competitions.' : ''}`);
+            return;
+        }
         if (this.animationsReduced()) return;
         const animations = {
             bomb: '💥',
@@ -1587,6 +1621,7 @@ class PhaserMatch3Game {
                     level: this.attemptLevel,
                     score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
                     ...(this.usesLevelObjectives() ? { objectiveProgress: this.objectiveProgress } : {}),
+                    ...(this.replayEligible && this.attemptMoves?.length ? { moves: this.attemptMoves } : {}),
                     attemptId,
                 }),
             });
@@ -1713,6 +1748,8 @@ class PhaserMatch3Game {
         this.closeOverlay();
         this.inputLockedUntil = 0;
         this.generatedLevel = definition;
+        this.attemptMoves = [];
+        this.replayEligible = definition.generatorVersion >= 4 && ['classic', 'daily'].includes(definition.mode);
         window.InfiniteLevelLocation?.rememberContext(definition.context, this.getLevelLocation(), serverTime);
         this.level = definition.level;
         this.mode = definition.mode;
@@ -1735,8 +1772,10 @@ class PhaserMatch3Game {
         this.scene.cameras?.main?.setBackgroundColor(definition.theme.background);
         if (!this.playerUI) this.themeText?.setColor?.(definition.theme.accent);
         this.playerUI?.shell.style.setProperty('--match-level-background', definition.theme.background);
-        this.playerUI?.announce?.(this.usesLevelObjectives() ? definition.objectives.some((goal) => goal.type === 'collect')
-            ? 'Clear the shown colors. Meet every goal.' : 'Reach the displayed score goal.' : '');
+        this.playerUI?.announce?.(this.usesLevelObjectives() ? definition.objectives.some((goal) => goal.type === 'clear-shields')
+            ? 'Clear each numbered shield with the shown number of gem clears, including specials. Meet every goal.'
+            : definition.objectives.some((goal) => goal.type === 'collect')
+                ? 'Clear the shown colors. Meet every goal.' : 'Reach the displayed score goal.' : '');
         this.updateUI();
     }
 

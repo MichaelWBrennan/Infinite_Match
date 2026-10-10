@@ -67,7 +67,7 @@ describe('server-authoritative generated attempts', () => {
 
   test('unsupported rules are refused before any energy or inventory spend', async () => {
     const before = await request(app).get('/api/account-economy/data').set(auth());
-    for (const rulesVersion of [1, 5, 'bad', null, [], {}]) {
+    for (const rulesVersion of [1, 6, 'bad', null, [], {}]) {
       const refused = await request(app).post('/api/account-economy/energy/spend').set(auth())
         .send({ level: 1, mode: 'classic', location, rulesVersion });
       expect(refused.status).toBe(400);
@@ -156,8 +156,8 @@ describe('server-authoritative generated attempts', () => {
     await service.initializePlayerEconomy(player, 'test');
     const before = Date.parse('2026-11-01T03:59:00Z'); // Halloween, 23:59 in New York.
     const after = before + 120000;
-    const old = generatedLevel({ mode: 'daily', location }, before);
-    const nextDay = generatedLevel({ mode: 'daily', location }, after);
+    const old = generatedLevel({ mode: 'daily', location, rulesVersion: 4 }, before);
+    const nextDay = generatedLevel({ mode: 'daily', location, rulesVersion: 4 }, after);
     expect(old.theme.name).toBe('Halloween');
     expect(nextDay.id).not.toBe(old.id);
     const attempt = await service.spendAttemptEnergy(player, 1, before, old);
@@ -286,5 +286,33 @@ describe('v4 pinned paid objectives', () => {
     const win = await service.consumeAttempt(player, attempt.attemptId, 2, at + 2000,
       { mode: 'level', score: 30, objectiveProgress: { collected: original.quality.verifiedCollected } });
     expect(win).toMatchObject({ level: 2, stars: 1 });
+  });
+});
+
+describe('v5 pinned shield attempts', () => {
+  test('goal and progress stay server-owned; malformed and incomplete claims do not spend the attempt', async () => {
+    const spent = await request(app).post('/api/account-economy/energy/spend').set(auth())
+      .send({ level: 4, mode: 'classic', location, rulesVersion: 5 });
+    expect(spent.status).toBe(200);
+    const { attemptId, generatedLevel: level } = spent.body.result;
+    expect(level.generatorVersion).toBe(5);
+    const shieldGoal = level.objectives.find((goal: any) => goal.type === 'clear-shields');
+    expect(shieldGoal.target).toBeGreaterThan(0);
+    const claim = { level: 4, attemptId, score: level.quality.verifiedScore,
+      objectiveProgress: { collected: level.quality.verifiedCollected, shieldsCleared: 0 } };
+    const incomplete = await request(app).post('/api/account-economy/level/complete').set(auth())
+      .send({ ...claim, objectives: [{ type: 'score', target: 1 }] });
+    expect(incomplete.status).toBe(400); expect(incomplete.body.error).toBe('objectives_incomplete');
+    for (const shieldsCleared of [-1, 1.5, shieldGoal.target + 1]) {
+      const invalid = await request(app).post('/api/account-economy/level/complete').set(auth())
+        .send({ ...claim, objectiveProgress: { ...claim.objectiveProgress, shieldsCleared } });
+      expect(invalid.status).toBe(400); expect(invalid.body.error).toBe('invalid_objective_progress');
+    }
+    const valid = await request(app).post('/api/account-economy/level/complete').set(auth())
+      .send({ ...claim, objectiveProgress: { ...claim.objectiveProgress, shieldsCleared: shieldGoal.target } });
+    expect(valid.status).toBe(200);
+    const replay = await request(app).post('/api/account-economy/level/complete').set(auth())
+      .send({ ...claim, objectiveProgress: { ...claim.objectiveProgress, shieldsCleared: shieldGoal.target } });
+    expect(replay.status).toBe(400); expect(replay.body.error).toBe('attempt_not_found');
   });
 });

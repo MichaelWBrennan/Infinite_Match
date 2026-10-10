@@ -1,5 +1,7 @@
 import { starsForTarget } from '../meta/rewards.js';
 import { objectiveCompletionError, objectiveStars } from '../levels/objective-rules.js';
+import { replayLevelAttempt } from '../levels/attempt-replay.js';
+import { REPLAY_POWERUPS } from '../levels/inventory-replay.js';
 /**
  * Account-Linked Economy Service
  * Industry-standard match-3 economy system with account synchronization
@@ -779,6 +781,52 @@ class AccountEconomyService {
     });
   }
 
+  /** Atomically spend one inventory item and, when requested, bind an effect receipt to
+   * the pending paid attempt. A legacy spend during a run is marked unranked, not silently
+   * treated as a no-booster attempt. The lock also serialises spends with completion.
+   */
+  async spendPowerUp(playerId, powerupId, quantity = 1, attemptId = undefined, nowMs = Date.now()) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 20) throw new EconomyRuleError('invalid_powerup_quantity');
+    return this.withPlayerLock(playerId, async () => {
+      const economy = await this.getPlayerEconomy(playerId);
+      const pending = economy.pendingAttempt;
+      if (attemptId !== undefined && (!pending || typeof attemptId !== 'string' || pending.id !== attemptId)) {
+        throw new EconomyRuleError('attempt_not_found');
+      }
+      if (attemptId !== undefined && nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS) {
+        throw new EconomyRuleError('attempt_expired');
+      }
+      if (attemptId !== undefined && (quantity !== 1 || !REPLAY_POWERUPS.includes(powerupId)
+        || pending.generatedLevel?.generatorVersion < 4
+        || !['classic', 'daily'].includes(pending.generatedLevel?.mode))) {
+        throw new EconomyRuleError('replay_unsupported');
+      }
+      const powerups = economy.inventory?.powerups;
+      if (typeof powerupId !== 'string' || !powerups || !Object.hasOwn(powerups, powerupId)) {
+        throw new EconomyRuleError('unknown_powerup');
+      }
+      const item = powerups[powerupId];
+      if (!Number.isSafeInteger(item.count) || item.count < quantity) throw new EconomyRuleError('powerup_empty');
+      const oldCount = item.count;
+      // Check every rule before changing balances or the pending attempt.
+      if (attemptId !== undefined && (pending.powerupReceipts?.length || 0) >= 20) {
+        throw new EconomyRuleError('powerup_receipt_limit');
+      }
+      item.count -= quantity;
+      let receiptId;
+      if (attemptId !== undefined) {
+        receiptId = crypto.randomUUID();
+        (pending.powerupReceipts ??= []).push({ id: receiptId, type: powerupId });
+      } else if (pending) {
+        pending.untrackedPowerup = true;
+      }
+      economy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, economy);
+      return { success: true, category: 'powerups', itemId: powerupId, oldCount,
+        newCount: item.count, operation: 'remove', ...(receiptId ? { receiptId } : {}) };
+    });
+  }
+
   /**
    * Consumes a spent attempt so its level can be rewarded once. Runs under the player lock and is
    * saved before any reward is granted, so a repeated or forged completion finds no attempt.
@@ -797,6 +845,7 @@ class AccountEconomyService {
         throw new EconomyRuleError('attempt_mode_mismatch');
       }
       let stars;
+      let replay = null;
       if (completion && completion.mode === 'level') {
         // Pinned-goal validation and consumption happen together under the player lock.
         // Date/weather/tuning changes and client-authored goals cannot alter the attempt.
@@ -804,6 +853,11 @@ class AccountEconomyService {
           const reason = objectiveCompletionError(definition, completion.score, completion.objectiveProgress);
           if (reason) throw new EconomyRuleError(reason);
           stars = objectiveStars(definition, completion.score, completion.objectiveProgress);
+          if (completion.moves !== undefined) {
+            replay = replayLevelAttempt(definition, completion.moves, completion.score, completion.objectiveProgress,
+              pending.powerupReceipts || []);
+            if (replay.error) throw new EconomyRuleError(replay.error);
+          }
         } else {
           stars = starsForTarget(completion.score, definition?.targetScore ?? completion.legacyTarget);
           if (!stars) throw new EconomyRuleError('score_below_target');
@@ -812,7 +866,10 @@ class AccountEconomyService {
       playerEconomy.pendingAttempt = null;
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
-      return { level, ...(stars === undefined ? {} : { stars }) };
+      return { level, ...(stars === undefined ? {} : { stars }),
+        ...(completion?.mode === 'level' ? { verified: replay?.verified === true,
+          ranked: replay?.verified === true && !pending.untrackedPowerup && !(pending.powerupReceipts?.length) } : {}),
+        ...(replay?.verified ? { score: replay.score } : {}) };
     });
   }
 

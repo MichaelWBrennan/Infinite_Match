@@ -370,7 +370,7 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
 router.post('/powerup/use', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { powerupId, quantity = 1 } = req.body;
+    const { powerupId, quantity = 1, attemptId } = req.body || {};
 
     if (!powerupId) {
       return res.status(400).json({
@@ -380,19 +380,15 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
       });
     }
 
-    // Remove powerup from inventory
-    const result = await accountEconomyService.updateInventory(
-      playerId,
-      'powerups',
-      powerupId,
-      quantity,
-      'remove'
-    );
+    // Receipt issuance and inventory removal must commit together with the paid attempt.
+    const result = await accountEconomyService.spendPowerUp(playerId, powerupId, quantity, attemptId);
 
     security.logSecurityEvent('powerup_used', {
       playerId,
       powerupId,
       quantity,
+      attemptId: attemptId || null,
+      receiptId: result.receiptId || null,
       ip: req.ip,
     });
 
@@ -402,12 +398,8 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
       requestId: req.requestId,
     });
   } catch (error) {
-    if (error.message.includes('Insufficient')) {
-      return res.status(400).json({
-        success: false,
-        error: error.message,
-        requestId: req.requestId,
-      });
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
     }
     handleRouteError(res, error, 'use powerup', req.requestId);
   }
@@ -437,7 +429,7 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     let completed;
     try {
       completed = await accountEconomyService.consumeAttempt(playerId, attemptId, level, undefined, {
-        mode: 'level', score, objectiveProgress: req.body.objectiveProgress,
+        mode: 'level', score, objectiveProgress: req.body.objectiveProgress, moves: req.body.moves,
         legacyTarget: levelTarget(level, levelMultiplier(level, readLevelOverrides())),
       });
     } catch (error) {
@@ -478,7 +470,9 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     if (season) addSeasonXp(playerEconomy, season, 'level_complete');
 
     await accountEconomyService.updatePlayerEconomyCache(playerId, playerEconomy);
-    await recordCompetitionWin(playerId, level, score);
+    // Only a pinned, deterministic replay may influence boards, tournaments or shared challenges.
+    // Legacy clients and unsupported modes still receive their existing account rewards.
+    if (completed.ranked) await recordCompetitionWin(playerId, level, completed.score);
 
     security.logSecurityEvent('level_completed', {
       playerId,
@@ -495,6 +489,8 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
         progression: progressionResult,
         rewards,
         stars,
+        verified: completed.verified,
+        ranked: completed.ranked,
         vip: isVip,
         balances: {
           coins: playerEconomy.currencies.coins.amount,

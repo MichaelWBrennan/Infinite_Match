@@ -31,7 +31,7 @@ export function socialStoreFile() {
 }
 
 const emptyData = () => ({
-  version: 1,
+  version: 2, // v2 scores only come from pinned replay; v1 client claims cannot remain ranked.
   profiles: {}, // playerId -> { name, code, createdAt }
   friends: {}, // playerId -> [playerId] (always symmetric)
   requests: {}, // toPlayerId -> [fromPlayerId]
@@ -81,6 +81,14 @@ export class SocialStore {
     try {
       const raw = await fs.readFile(this.path(), 'utf-8');
       this.data = { ...emptyData(), ...JSON.parse(raw) };
+      if (this.data.version < 2) {
+        // Do not migrate unverifiable scores or shared progress into verified boards.
+        // Preserve profiles, social links and payout receipts: resetting receipts would
+        // allow already-paid tournament/challenge prizes to be claimed twice.
+        this.data.bestScores = {};
+        this.data.competitions = {};
+        this.data.version = 2;
+      }
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
       this.data = emptyData();

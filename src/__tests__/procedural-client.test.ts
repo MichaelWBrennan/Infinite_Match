@@ -4,6 +4,8 @@ import vm from 'node:vm';
 import { setImmediate } from 'node:timers';
 import { certifyLevel, simulateLevelMove, simulateObjectiveClear, generateLevel } from '../services/levels/generator.js';
 import { generatedLevel } from '../services/levels/level-service.js';
+import { inventoryReplayEffect, REPLAY_POWERUPS } from '../services/levels/inventory-replay.js';
+import { initialObjectiveProgress } from '../services/levels/objective-rules.js';
 
 const location = { timeZone: 'America/New_York', country: 'US', region: 'PA' };
 const now = Date.parse('2026-10-31T12:00:00Z');
@@ -73,7 +75,7 @@ function assertSprites(game: any) {
   for (let r = 0; r < game.boardSize; r++) {
     for (let c = 0; c < game.boardSize; c++) {
       const s = game.gemSprites[r][c];
-      expect(s.key).toBe(game.gemTexture(game.board[r][c], game.specials?.[r]?.[c]));
+      expect(s.key).toBe(game.gemTexture(game.board[r][c], game.specials?.[r]?.[c], game.shields?.[r]?.[c]));
       expect(s.getData('special')).toBe(game.specials?.[r]?.[c] || null);
       expect(s.getData('type')).toBe(game.board[r][c]);
       expect(s.getData('row')).toBe(r);
@@ -173,7 +175,7 @@ describe('real Phaser core uses the certified definition', () => {
     };
     expect(await game.selectLevel(100001)).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 4 } });
+    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 5 } });
     expect(game.targetScore).toBe(def.targetScore);
     expect(game.attemptId).toBe('attempt');
     expect(game.attemptLevel).toBe(100001);
@@ -330,7 +332,7 @@ describe('real Phaser core uses the certified definition', () => {
     const { game } = makeBrowserGame();
     game.fetchJson = async () => { throw new Error('offline'); };
     expect(await game.selectLevel(100001)).toBe(true);
-    expect(game.generatedLevel.generatorVersion).toBe(4);
+    expect(game.generatedLevel.generatorVersion).toBe(5);
     expect(game.generatedLevel.context.offline).toBe(true);
     expect(game.attemptId).toBeNull();
     assertSprites(game);
@@ -836,6 +838,97 @@ describe('optional sound is presentation only', () => {
     expect(cues).toContain('test');
   });
 
+  test('only ordinary winning moves are submitted for competitive replay; inventory effects opt out', async () => {
+    const { game } = soundGame();
+    const def = generatedLevel({ level: 4, location, rulesVersion: 5 }, now);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    game.checkEndConditions = () => {};
+    const cells = certifyLevel(def).witness[0]!;
+    if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+    expect(JSON.parse(JSON.stringify(game.attemptMoves))).toEqual([cells]);
+    const bodies: any[] = [];
+    game.getAuthToken = () => 'token'; game.attemptId = 'pinned'; game.attemptLevel = 4;
+    game.fetchJson = async (_url: string, options: any) => {
+      bodies.push(JSON.parse(options.body)); return { ok: false, data: { error: 'test' } };
+    };
+    await game.submitLevelWin(1);
+    expect(bodies[0].moves).toEqual([cells]);
+    game.attemptId = 'second'; game.activateBomb();
+    expect(game.replayEligible).toBe(false);
+    await game.submitLevelWin(1);
+    expect(bodies[1].moves).toBeUndefined();
+  });
+
+  test('all six server-confirmed inventory effects record receipt-bound actions matching shared v5 terrain transitions', async () => {
+    for (const type of REPLAY_POWERUPS) {
+      const { game } = soundGame();
+      const def = generatedLevel({ level: 4, location, rulesVersion: 5 }, now);
+      game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'paid-attempt';
+      game.getAuthToken = () => 'token'; game.checkEndConditions = () => {};
+      game.showPowerUpAnimation = () => {};
+      game.consumePowerUpOnServer = async () => ({ ok: true, receiptId: `receipt-${type}` });
+      const slot = { btn: sprite().setData('count', 3), text: sprite() };
+      if (type === 'bomb' || type === 'rainbow' || type === 'lightning') {
+        game[`${type}Btn`] = slot.btn; game[`${type}Text`] = slot.text;
+        game.usePowerUp(type);
+      } else {
+        game.powerButtons = { [type]: slot };
+        game.toggleArmedPowerUp(type);
+        game.fireTargetedPowerUp(game.gemSprites[0][0]);
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+      const [action] = JSON.parse(JSON.stringify(game.attemptMoves));
+      expect(action).toMatchObject({ type, receiptId: `receipt-${type}` });
+      expect(game.replayEligible).toBe(true);
+      expect(slot.btn.getData('count')).toBe(2);
+      const state: any = { board: def.board, specials: def.specials, shields: def.shields,
+        refillState: def.refillState, objectiveProgress: initialObjectiveProgress(def) };
+      const effect = inventoryReplayEffect(def, state, action)!;
+      const result = simulateObjectiveClear(def, state, effect.keys, effect.points)!;
+      expect(game.score).toBe(result.score);
+      expect(JSON.parse(JSON.stringify(game.board))).toEqual(result.board);
+      expect(JSON.parse(JSON.stringify(game.shields))).toEqual(result.shields);
+      expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(result.objectiveProgress);
+      expect(game.levelRng.state).toBe(result.refillState);
+      expect(game.moves).toBe(def.moves);
+    }
+  });
+
+  test('an uncertain booster response keeps rewards possible but disables ranked replay', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
+    game.isGameRunning = true; game.attemptId = 'pinned'; game.getAuthToken = () => 'token';
+    game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    game.consumePowerUpOnServer = async () => { throw new Error('lost response'); };
+    game.usePowerUp('bomb');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(game.replayEligible).toBe(false);
+    expect(game.bombBtn.getData('count')).toBe(1);
+    expect(game.attemptMoves).toHaveLength(0);
+  });
+
+  test('the player is told that a confirmed booster win is not competitive', () => {
+    const { game } = makeBrowserGame();
+    const messages: string[] = [];
+    game.playerUI = { announce: (message: string) => messages.push(message) };
+    game.powerReceipt = { receiptId: 'bound', type: 'bomb' };
+    game.showPowerUpAnimation('bomb');
+    expect(messages[0]).toContain('do not rank in competitions');
+  });
+
+  test('the signed-in spend sends the pinned attempt and receives only a server-minted receipt', async () => {
+    const { game, sandbox } = makeBrowserGame();
+    game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
+    game.attemptId = 'paid-attempt';
+    let payload: any;
+    sandbox.fetch = async (_url: string, options: any) => {
+      payload = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ success: true, result: { receiptId: 'receipt' } }) };
+    };
+    expect(await game.consumePowerUpOnServer('bomb', 'token')).toEqual({ ok: true, receiptId: 'receipt' });
+    expect(payload).toEqual({ powerupId: 'bomb', quantity: 1, attemptId: 'paid-attempt' });
+  });
+
   test('unsupported audio cannot gate valid swaps or request a reward or inventory spend', () => {
     const { game } = makeBrowserGame(); delete game.playSound;
     const definition = generatedLevel({ level: 2, location, rulesVersion: 4 }, now); game.applyGeneratedDefinition(definition); game.isGameRunning = true;
@@ -970,4 +1063,40 @@ describe('named semantic controls preserve the real Phaser rules', () => {
     game.setSelectedGem(game.gemSprites[0][0]); game.setSelectedGem(null); game.showHint();
     expect(refreshes).toBeGreaterThanOrEqual(3); game.destroy(); expect(destroys).toBe(1); expect(game.playerUI).toBeNull();
   });
+});
+
+
+describe('v5 shield boards through the real Phaser methods', () => {
+  test.each([4, 8, 12])('level %d keeps fixed shield hits, counters and textures in parity with the shared witness', (level) => {
+    const { game, sandbox } = makeBrowserGame();
+    const def = generatedLevel({ level, location, rulesVersion: 5 }, now);
+    expect(def.objectives.some((goal: any) => goal.type === 'clear-shields')).toBe(true);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    assertSprites(game);
+    const initial = JSON.stringify(game.shields);
+    const hint = game.showHint();
+    expect(hint).toBeTruthy(); expect(JSON.stringify(game.shields)).toBe(initial);
+    expect(game.objectiveProgress.shieldsCleared).toBe(0);
+    const proof = certifyLevel(def);
+    for (const cells of proof.witness) {
+      if (!game.isGameRunning) break;
+      const state = { board: game.board, specials: game.specials, shields: game.shields,
+        refillState: game.levelRng.state, objectiveProgress: game.objectiveProgress };
+      const expected = simulateLevelMove(def, state, cells)!;
+      if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+      expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board);
+      expect(JSON.parse(JSON.stringify(game.shields))).toEqual(expected.shields);
+      expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(expected.objectiveProgress);
+      expect(game.levelRng.state).toBe(expected.refillState);
+      assertSprites(game);
+    }
+    expect(game.hasWonLevel()).toBe(true); expect(game.endCalls).toBe(1);
+    expect(game.objectiveProgress.shieldsCleared).toBe(def.quality.verifiedShields);
+    const named = sandbox.InfiniteAssistiveBoard.describeCell(game, 0, 0);
+    expect(named).toBeTruthy();
+    game.applyGeneratedDefinition(def);
+    expect(JSON.stringify(game.shields)).toBe(initial);
+    expect(game.objectiveProgress.shieldsCleared).toBe(0);
+    assertSprites(game);
+  }, 20000);
 });

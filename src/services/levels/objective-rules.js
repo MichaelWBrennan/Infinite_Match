@@ -2,6 +2,7 @@
 import { hashSeed } from './match-core.js';
 import { specialActions, simulateSpecialMove, simulateSpecialClear, certifySpecialBoard } from './special-rules.js';
 import { starsForTarget } from '../meta/rewards.js';
+import { validShields, shieldCount, simulateShieldMove, simulateShieldClear, certifyShieldBoard } from './shield-rules.js';
 
 export const MAX_COLLECTED_GEMS = 1000000;
 const ownCount = (counts, color) => Object.hasOwn(counts, color) ? counts[color] : 0;
@@ -39,8 +40,10 @@ export function validObjectives(definition) {
   const identities = new Set();
   for (const goal of objectives) {
     if (!goal || !Number.isSafeInteger(goal.target) || goal.target <= 0 || goal.target > MAX_COLLECTED_GEMS) return false;
-    if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
-    const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : 'score';
+    if (goal.type === 'clear-shields') {
+      if (definition.generatorVersion < 5 || !validShields(definition.shields, definition.boardSize) || goal.target !== shieldCount(definition.shields)) return false;
+    } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
+    const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : goal.type;
     if (identities.has(identity)) return false;
     identities.add(identity);
   }
@@ -48,25 +51,33 @@ export function validObjectives(definition) {
 }
 
 export function initialObjectiveProgress(definition) {
-  return { collected: Object.fromEntries(definition.gemTypes.map((color) => [color, 0])) };
+  return { collected: Object.fromEntries(definition.gemTypes.map((color) => [color, 0])),
+    ...(definition.generatorVersion >= 5 ? { shieldsCleared: 0 } : {}) };
 }
 
 /** Strict completion/input boundary: no coercion, unknown colors, fractions, negatives or unbounded counts. */
 export function validObjectiveProgress(definition, progress) {
   const record = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
-  return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === 1 && record(progress.collected)
+  return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === (definition.generatorVersion >= 5 ? 2 : 1)
+    && (definition.generatorVersion < 5 || (validShields(definition.shields, definition.boardSize)
+      && Object.hasOwn(progress, 'shieldsCleared') && Number.isSafeInteger(progress.shieldsCleared) && progress.shieldsCleared >= 0
+      && progress.shieldsCleared <= shieldCount(definition.shields))) && record(progress.collected)
     && Object.keys(progress.collected).length <= definition.gemTypes.length
     && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
       && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
 }
 
-export function addObjectiveProgress(definition, previous, collected) {
+export function addObjectiveProgress(definition, previous, collected, brokenShields = 0) {
   if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
   const next = initialObjectiveProgress(definition);
   for (const color of definition.gemTypes) {
     const increment = ownCount(collected, color);
     if (!Number.isSafeInteger(increment) || increment < 0) throw new RangeError('invalid_collection_delta');
     next.collected[color] = Math.min(MAX_COLLECTED_GEMS, ownCount(previous.collected, color) + increment);
+  }
+  if (definition.generatorVersion >= 5) {
+    if (!Number.isSafeInteger(brokenShields) || brokenShields < 0 || previous.shieldsCleared + brokenShields > shieldCount(definition.shields)) throw new RangeError('invalid_shield_delta');
+    next.shieldsCleared = previous.shieldsCleared + brokenShields;
   }
   return next;
 }
@@ -78,7 +89,8 @@ export function objectiveStatus(definition, score, progress) {
   const safeScore = scoreValid ? score : 0;
   const validProgress = progress !== undefined && validObjectiveProgress(definition, progress);
   const items = levelObjectives(definition).map((goal) => {
-    const current = goal.type === 'score' ? safeScore : validProgress ? ownCount(progress.collected, goal.gemType) : 0;
+    const current = goal.type === 'score' ? safeScore : !validProgress ? 0
+      : goal.type === 'clear-shields' ? progress.shieldsCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -93,7 +105,7 @@ export function objectiveStars(definition, score, progress) {
 export function objectiveCompletionError(definition, score, progress) {
   if (!Number.isSafeInteger(score) || score < 0) return 'invalid_score';
   if (!validObjectives(definition)) return 'invalid_level_objectives';
-  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect');
+  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields');
   if (collects && progress === undefined) return 'objective_progress_required';
   if (progress !== undefined && !validObjectiveProgress(definition, progress)) return 'invalid_objective_progress';
   const status = objectiveStatus(definition, score, progress);
@@ -103,24 +115,29 @@ export function objectiveCompletionError(definition, score, progress) {
 
 export function objectiveDescription(definition) {
   return (levelObjectives(definition) || []).map((goal) => goal.type === 'collect'
-    ? `Collect ${goal.target} ${goal.gemType}` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+    ? `Collect ${goal.target} ${goal.gemType}` : goal.type === 'clear-shields'
+      ? `Clear ${goal.target} shields (numbered hits)` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
 }
 
 export function objectiveSummary(definition, score, progress, showRemaining = false) {
   return objectiveStatus(definition, score, progress).items.map((goal) => {
-    const name = goal.type === 'collect' ? goal.gemType : 'Score';
+    const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : 'Score';
     const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
     return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
   }).join(' · ');
 }
 
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
-export function objectiveActions(definition, board, specials, progress, score = 0) {
+export function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
   for (const action of actions) {
+    const shieldResult = goals.some((goal) => goal.type === 'clear-shields') && shields
+      ? simulateShieldMove(definition, { board, specials, refillState, shields }, action.cells) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
-      goal.type === 'score' ? action.points : action.collected[goal.gemType] || 0) / goal.target, 0);
+      goal.type === 'score' ? action.points : goal.type === 'clear-shields'
+        ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
+        : action.collected[goal.gemType] || 0) / goal.target, 0);
   }
   return actions;
 }
@@ -128,21 +145,26 @@ export function objectiveActions(definition, board, specials, progress, score = 
 export function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
-  const result = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
+  const result = definition.generatorVersion >= 5
+    ? simulateShieldMove(definition, state, cells, visualTrace)
+    : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
+  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields) } : null;
 }
 
 export function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
-  const result = simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
+  const result = definition.generatorVersion >= 5
+    ? simulateShieldClear(definition, state, keys, points, visualTrace)
+    : simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
+  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields) } : null;
 }
 
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
 export function certifyObjectiveLevel(definition) {
   const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
-  const proof = certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
-  const objectiveProgress = { collected: proof.collected };
+  const proof = definition.generatorVersion >= 5 ? certifyShieldBoard(definition)
+    : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
+  const objectiveProgress = { collected: proof.collected, ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}) };
   return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }

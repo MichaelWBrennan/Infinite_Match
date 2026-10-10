@@ -181,7 +181,7 @@
             const state = root.InfiniteLevels.objectiveStatus(definition, game.score, game.objectiveProgress);
             const key = `${definition.id}|${JSON.stringify(definition.objectives)}`;
             area.classList.add('match-objectives');
-            area.setAttribute('aria-label', 'Complete every goal. Cleared gems, including special effects and cascades, count.');
+            area.setAttribute('aria-label', 'Complete every goal. Cleared gems, including special effects and cascades, count. Numbered shields take hits when gems on their fixed cells clear.');
             if (key !== goalKey) {
                 goalKey = key; area.replaceChildren(); goalLabels = [];
                 for (const goal of state.items) {
@@ -196,10 +196,10 @@
             }
             state.items.forEach((goal, index) => {
                 const slot = goalLabels[index]; if (!slot) return;
-                const name = goal.type === 'collect' ? goal.gemType : 'Score';
+                const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : 'Score';
                 slot.text.textContent = `${name} ${Math.min(goal.current, goal.target).toLocaleString()}/${goal.target.toLocaleString()}`;
                 slot.item.dataset.complete = String(goal.complete);
-                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
+                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : goal.type === 'clear-shields' ? `Clear ${goal.target} fixed shields, up to two hits each` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
             });
             progress.max = 100; progress.value = state.fraction * 100;
             progress.setAttribute('aria-valuetext', root.InfiniteLevels.objectiveSummary(definition, game.score, game.objectiveProgress, true));

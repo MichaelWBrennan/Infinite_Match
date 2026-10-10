@@ -196,7 +196,7 @@ describe('shared read-only visual observations', () => {
     expect(observed.board).toEqual(original);
   });
   test.each([2, 4, 7, 18])('generated level %s witnesses are unchanged with observation opt-in', (level) => {
-    const definition = generateLevel(level, context); const proof = certifyLevel(definition);
+    const definition = generateLevel(level, context, 'classic', 4); const proof = certifyLevel(definition);
     let input: any = { ...state(definition), objectiveProgress: undefined };
     for (const cells of proof.witness) {
       const observed = simulateLevelMove(definition, input, cells, true) as any;
