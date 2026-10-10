@@ -9,7 +9,7 @@ import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import { accountEconomy as accountEconomyService, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
 import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
-import { endlessRewards, starsForScore, winRewards } from '../services/meta/rewards.js';
+import { endlessRewards, levelTarget, winRewards } from '../services/meta/rewards.js';
 import { levelMultiplier, readLevelOverrides } from '../services/meta/level-overrides.js';
 import { applyVip, VIP_ENTITLEMENT } from '../services/meta/vip.js';
 import { kingdomCoinMultiplier } from '../services/meta/kingdom.js';
@@ -18,6 +18,9 @@ import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-sea
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { socialStore } from '../services/social/social-store.js';
 import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
+
+import { generatedLevel } from '../services/levels/level-service.js';
+import { LevelInputError } from '../services/levels/location-context.js';
 
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
@@ -428,24 +431,23 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       });
     }
 
-    // A reward needs an attempt that was paid for with energy. The stars come from the score,
-    // so a score below the target is not a win and does not use up the attempt.
-    // The level's tuning multiplier moves its target. The game reads the same overrides.
-    const stars = starsForScore(score, level, levelMultiplier(level, readLevelOverrides()));
-    if (stars === 0) {
-      return res.status(400).json({ success: false, error: 'score_below_target', requestId: req.requestId });
-    }
     if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
       return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
     }
+    let completed;
     try {
-      await accountEconomyService.consumeAttempt(playerId, attemptId, level);
+      completed = await accountEconomyService.consumeAttempt(playerId, attemptId, level, undefined, {
+        mode: 'level', score,
+        legacyTarget: levelTarget(level, levelMultiplier(level, readLevelOverrides())),
+      });
     } catch (error) {
       if (error instanceof EconomyRuleError) {
         return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
       }
       throw error;
     }
+
+    const stars = completed.stars;
 
     // Kingdom rooms add a coin bonus, then VIP multiplies coins. The player must hold the vip
     // entitlement on the server. Both are read here; neither is taken from the client.
@@ -528,7 +530,7 @@ router.post('/endless/complete', security.sessionValidation, async (req, res) =>
       return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
     }
     try {
-      await accountEconomyService.consumeAttempt(playerId, attemptId, ENDLESS_ATTEMPT_LEVEL);
+      await accountEconomyService.consumeAttempt(playerId, attemptId, ENDLESS_ATTEMPT_LEVEL, undefined, { mode: 'endless' });
     } catch (error) {
       if (error instanceof EconomyRuleError) {
         return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
@@ -580,10 +582,20 @@ router.post('/lootbox/open', security.sessionValidation, async (req, res) => {
 router.post('/energy/spend', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const result = await accountEconomyService.spendAttemptEnergy(playerId, req.body?.level);
+    // Legacy clients may omit mode. New clients receive and pin the generated
+    // definition in the SAME request that spends energy, not from client-supplied goals.
+    if (req.body?.mode === 'endless' && req.body?.level !== undefined && req.body.level !== 1) {
+      throw new LevelInputError('invalid_endless_start_level');
+    }
+    const definition = req.body?.mode === undefined ? null : generatedLevel({
+      level: req.body?.level, mode: req.body.mode, location: req.body.location ?? {},
+    });
+    const result = await accountEconomyService.spendAttemptEnergy(
+      playerId, definition?.level ?? req.body?.level, Date.now(), definition,
+    );
     res.json({ success: true, result, requestId: req.requestId });
   } catch (error) {
-    if (error instanceof EconomyRuleError) {
+    if (error instanceof EconomyRuleError || error instanceof LevelInputError) {
       return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
     }
     handleRouteError(res, error, 'spend attempt energy', req.requestId);

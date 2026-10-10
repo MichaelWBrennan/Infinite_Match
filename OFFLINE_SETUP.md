@@ -1,6 +1,10 @@
 # 🚀 Complete Offline Setup
 
-Your project is now **100% self-contained** and works completely offline without any external dependencies!
+The core game and documented self-hosted services can run without hosted APIs,
+once dependencies and Docker images are available locally. Platform SDK mocks
+are test stubs, not real platform integrations. Payments/store billing and other
+optional hosted adapters do not become offline services; self-hosting still has
+infrastructure and maintenance costs. See [the architecture guide](OPENSOURCE_MIGRATION.md).
 
 ## ✅ What's Been Migrated
 
@@ -183,13 +187,32 @@ docker-compose -f docker-compose.opensource.yml logs
 
 ## 🎉 Success!
 
-Your project is now **completely self-contained** and works offline! 
+The self-hosted core supports offline/local development, subject to the limits above.
 
-- ✅ **Zero external dependencies**
+- ✅ **No hosted APIs required for procedural gameplay**
 - ✅ **Complete data control**
 - ✅ **Significant cost savings**
 - ✅ **Full customization freedom**
-- ✅ **Privacy compliant**
+- ✅ **Privacy controls; compliance still requires operator review**
 - ✅ **Vendor independent**
 
 Enjoy your fully offline, self-hosted development environment! 🚀
+
+## Passive procedural levels and regional holidays
+
+`npm run build && npm start` serves the web client, pure seeded generator and
+bundled holiday calendar together. No external AI, geocoding, calendar API or
+level-design service is called to make these levels. Today's challenge follows
+the selected IANA time zone and rolls over at local midnight; Settings → Local
+levels offers country/state/hemisphere correction and holiday opt-out, without GPS.
+
+With a local server, regional holiday rules work even without internet. If an
+anonymous browser cannot reach that server, its generated seasonal fallback
+remains playable, but full holiday data and rewarded account play are unavailable.
+Same-day cached holiday context is reused only for matching preferences, never
+for a different local day. Detailed behavior, licenses and remaining limitations:
+[Procedural levels](docs/PROCEDURAL_LEVELS.md).
+
+For an iframe-hosted Arena development preview only, start with
+`NODE_ENV=development ARENA_PREVIEW=1 HOST=0.0.0.0 npm start`. This explicit opt-in
+allows the preview's frame; production keeps the strict anti-framing headers.

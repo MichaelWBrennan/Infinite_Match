@@ -28,6 +28,7 @@ why.
 | Metrics | Prometheus + Grafana | Datadog | Apache-2.0 / AGPL-3.0 |
 | Error tracking | GlitchTip (Sentry-SDK-compatible) | Sentry SaaS | MIT |
 | Push | ntfy self-hosted + W3C Web Push (`src/services/push/push-transports.js`) | Firebase Admin SDK (FCM) | BSD-2 / MPL-2.0 |
+| Procedural levels / calendar | In-repo seeded generator + solver / date-holidays | Manual level batches, hosted calendar APIs | MIT code / ISC calendar code; CC BY-SA 3.0 calendar data |
 | AI models | Ollama / vLLM / any OpenAI-compatible server | OpenAI hosted, Hugging Face Inference | MIT / Apache-2.0 |
 | JWT | `jose` (ESM-native) | `jsonwebtoken` | MIT |
 | Dates | Day.js + timezone plugins (`src/core/utils/datetime.js`) | `moment-timezone` (deprecated) | MIT |
@@ -173,6 +174,17 @@ Then `OLLAMA_BASE_URL=http://localhost:11434` is enough — no API key.
 The original migration (Amplitude/Mixpanel/Datadog/Sentry SaaS/multi-cloud)
 replaced roughly $1,700–6,900/month of hosted services with self-hosted
 infrastructure. The 2026 refresh extends that to the SDK layer: fewer
-dependencies (35 production packages, down from 60+), no vendor SDKs for
+dependencies (36 production packages, down from 60+), no vendor SDKs for
 cloud, database, push, or AI, and one `docker compose` file that stands up
 the entire platform on open-source software.
+
+
+## Passive procedural levels
+
+The playable root web client now uses a self-contained, seeded generator with a
+winning-path quality check, local daily challenges and automatic endless stages.
+Regional holidays come from the free self-hosted `date-holidays` calendar; no
+AI, GPS or paid calendar API is required. [Implementation and attribution](docs/PROCEDURAL_LEVELS.md)
+describes the full contract, offline behavior, limits, and the calendar parser's
+intentional transitive Moment Timezone dependency. Application date helpers remain
+on Day.js / native Intl. CI workflow changes remain deferred.

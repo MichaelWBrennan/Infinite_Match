@@ -1,9 +1,9 @@
 // Phaser 3 Match-3 Game with All Features
 // Replaces Unity WebGL while keeping all existing functionality
 
-// Level generator. Levels are procedural, so the game has no fixed cap.
-// Target score grows steadily. Every 10th level is a boss: double target and
-// fewer moves. Moves never drop below 12.
+// Legacy configuration for older standalone shells. The deployed web game uses
+// the shared, certified generator in js/procedural-levels.js and /api/levels.
+// New generated levels have bounded difficulty and reproducible boards.
 // Tuning overrides from the server. Each level's target is multiplied by its override (1 when
 // none). Loaded once when the page starts. The server applies the same overrides to every win.
 let levelOverrides = { levels: {} };
@@ -37,8 +37,8 @@ function levelConfig(level, mode = 'classic') {
     return { level: n, targetScore, moves, isBoss, isDaily: false, mode: 'classic', timeLimit: 60 };
 }
 
-// The same challenge for everyone on a given day. The date string picks a level
-// from a fixed range, so no server call is needed.
+// Compatibility-only daily configuration for older shells without the shared asset.
+// The live Daily button uses a unique regional/day seed, not this legacy fixed range.
 function dailyChallengeLevel(dateString) {
     let hash = 2166136261;
     for (const ch of String(dateString)) {
@@ -69,7 +69,13 @@ class PhaserMatch3Game {
         this.mode = 'classic';
         this.timeLimit = 60;
         this.runStartedAt = 0;
-        this.level = 3;
+        this.level = 1;
+        this.campaignLevel = 1;
+        try {
+            const saved = JSON.parse(localStorage.getItem('phaser3_game_data') || '{}');
+            if (Number.isSafeInteger(saved.level) && saved.level > 0) this.level = this.campaignLevel = saved.level;
+        } catch { /* Storage is optional; generation is not. */ }
+        this.endlessTotalScore = 0;
         this.targetScore = 1000; // score that wins the level
         // Stars belong to the server. Guests have none, and signed-in players see the synced value.
         this.stars = 0;
@@ -257,6 +263,7 @@ class PhaserMatch3Game {
             : 'Sign in to save energy, coins, and purchases to your account.', { size: 16, width: 600 });
         this.overlayButton(400, 300, 300, 60, 0x4ecdc4, 'Play', () => this.requestStart());
         this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
+        this.overlayButton(400, 460, 300, 55, 0xe09d54, 'Today’s Local Level', () => this.startDaily());
     }
 
     // Opens the DOM login modal. It sits above the canvas (z-index 2000).
@@ -269,12 +276,16 @@ class PhaserMatch3Game {
     async requestStart() {
         this.titleShowing = false;
         this.closeOverlay();
+        if (this.mode === 'classic' || this.mode === 'timed') this.level = this.campaignLevel || this.level;
         return this.selectLevel(Math.floor(this.level));
     }
 
     // Advances to the next numbered level. Used by the DOM controller's "next level" control.
     nextLevel() {
-        return this.selectLevel(Math.floor(this.level) + 1);
+        return Promise.resolve(this.rewardSubmission).then(() => {
+            if (this.mode === 'daily') return this.startDaily();
+            return this.selectLevel(Math.floor(this.level) + 1);
+        });
     }
 
     // ----- Match-3 core ---------------------------------------------------
@@ -292,6 +303,9 @@ class PhaserMatch3Game {
     }
 
     randomGem() {
+        if (this.generatedLevel && this.levelRng) {
+            return globalThis.InfiniteLevels.pickGem(this.levelRng, this.gemTypes, this.generatedLevel.gemWeights);
+        }
         return this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
     }
 
@@ -304,8 +318,8 @@ class PhaserMatch3Game {
     }
 
     createGameBoard() {
-        this.boardX = 250;
-        this.boardY = 80;
+        this.boardX = this.generatedLevel ? 450 - (this.boardSize - 1) * 54 / 2 : 250;
+        this.boardY = this.generatedLevel ? 280 - (this.boardSize - 1) * 54 / 2 : 80;
         this.gemSize = 50;
         this.cellStep = 54;
         this.gemScale = this.gemSize / 64; // gem textures are 64px
@@ -315,10 +329,12 @@ class PhaserMatch3Game {
         this.board = Array.from({ length: n }, () => new Array(n).fill(null));
         this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
 
-        // Deal gems row by row, never completing a run, so the board starts stable.
-        for (let row = 0; row < n; row++) {
-            for (let col = 0; col < n; col++) {
-                this.board[row][col] = this.randomGemAvoidingMatch(row, col);
+        if (this.generatedLevel) {
+            this.board = this.generatedLevel.board.map((row) => row.slice());
+        } else {
+            // Compatibility with older standalone shells without the generator asset.
+            for (let row = 0; row < n; row++) {
+                for (let col = 0; col < n; col++) this.board[row][col] = this.randomGemAvoidingMatch(row, col);
             }
         }
 
@@ -400,7 +416,9 @@ class PhaserMatch3Game {
     // least one legal move. Used when the board is deadlocked or after restart.
     reshuffleBoard() {
         const n = this.boardSize;
-        for (let attempt = 0; attempt < 200; attempt++) {
+        if (this.generatedLevel) {
+            this.board = globalThis.InfiniteLevels.dealPlayableBoard(n, this.gemTypes, this.generatedLevel.gemWeights, this.levelRng);
+        } else for (let attempt = 0; attempt < 200; attempt++) {
             for (let r = 0; r < n; r++) {
                 for (let c = 0; c < n; c++) {
                     this.board[r][c] = this.randomGem();
@@ -418,7 +436,7 @@ class PhaserMatch3Game {
     }
 
     selectGem(gem) {
-        if (!this.isGameRunning || this.isPaused || this.powerUpPending) return;
+        if (!this.isGameRunning || this.isPaused || this.powerUpPending || this.levelStarting) return;
 
         if (this.armedPowerUp) {
             this.fireTargetedPowerUp(gem);
@@ -537,13 +555,14 @@ class PhaserMatch3Game {
     resolveBoard() {
         let chain = 0;
         let matches = this.findMatches();
-        while (matches.size > 0) {
+        while (matches.size > 0 && chain < 64) {
             chain++;
             this.addScore(matches.size * 10 * chain);
             this.removeCells(matches);
             this.collapseColumns();
             matches = this.findMatches();
         }
+        if (matches.size) this.reshuffleBoard(); // Same bounded cascade repair as the certifier.
         if (chain > 1) {
             this.playSound('combo');
         }
@@ -610,6 +629,10 @@ class PhaserMatch3Game {
 
     checkEndConditions() {
         if (!this.isGameRunning) return;
+        if (this.mode === 'endless' && this.generatedLevel) {
+            if (this.score >= this.targetScore) this.advanceEndlessStage();
+            return;
+        }
         if (this.score >= this.targetScore || this.moves <= 0) {
             this.endGame();
             return;
@@ -792,6 +815,11 @@ class PhaserMatch3Game {
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
+        this.goalText = this.scene.add.text(50, 270, '', { fontSize: '17px', fill: '#ffe082', wordWrap: { width: 180 } });
+        this.themeText = this.scene.add.text(50, 320, '', { fontSize: '15px', fill: '#cfe5ff', wordWrap: { width: 180 } });
+        this.bankRunButton = this.scene.add.rectangle(735, 350, 110, 40, 0xe09d54).setInteractive().setVisible(false);
+        this.bankRunButton.on('pointerdown', () => { if (this.mode === 'endless' && this.isGameRunning && !this.levelStarting && !this.powerUpPending) this.endGame(); });
+        this.bankRunLabel = this.scene.add.text(735, 350, 'Bank Run', { fontSize: '16px', fill: '#ffffff' }).setOrigin(0.5).setVisible(false);
     }
 
     createPowerUps() {
@@ -1163,20 +1191,26 @@ class PhaserMatch3Game {
     // Starts the first board on page load, if the player may play.
     // Spends one attempt's energy on the server. Returns true if the attempt may start.
     // Guests have no server economy, so they are not gated.
-    async claimAttempt(level = this.level) {
+    async claimAttempt(level = this.level, mode = undefined, location = undefined) {
         if (!this.getAuthToken()) return true;
         if (this.attemptPending) return false;
         this.attemptPending = true;
         try {
             const { ok, data } = await this.fetchJson('/api/account-economy/energy/spend', {
                 method: 'POST',
-                body: JSON.stringify({ level: Math.floor(level) }),
+                body: JSON.stringify({ level: Math.floor(level), ...(mode ? { mode, location } : {}) }),
+                signal: AbortSignal.timeout(10000),
             });
             if (ok && data.success) {
                 this.energy = data.result.energy;
                 // The attempt id is needed to claim this level's reward when it is won.
                 this.attemptId = data.result.attemptId;
                 this.attemptLevel = data.result.level;
+                this.claimedDefinition = data.result.generatedLevel || null;
+                if (mode && !this.claimedDefinition) {
+                    this.showAttemptError('Update the game server to enable generated levels.');
+                    return false;
+                }
                 this.updateEnergyDisplay();
                 return true;
             }
@@ -1266,6 +1300,7 @@ class PhaserMatch3Game {
 
     // Start a numbered level. Applies its target and move limit, then restarts.
     selectLevel(levelNumber) {
+        if (globalThis.InfiniteLevels) return this.startProceduralLevel(levelNumber, this.mode);
         const config = levelConfig(levelNumber, this.mode);
         const start = () => {
             this.level = config.level;
@@ -1285,6 +1320,119 @@ class PhaserMatch3Game {
         });
     }
 
+    getLevelLocation() {
+        if (window.InfiniteLevelLocation) return window.InfiniteLevelLocation.current();
+        return { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', holidayThemes: true };
+    }
+
+    // Guests may play an offline board; signed-in rewards always require the server's
+    // definition from the atomic energy spend. Never send a client-authored target.
+    async startProceduralLevel(levelNumber, mode = 'classic') {
+        const number = Number(levelNumber);
+        if (!Number.isSafeInteger(number) || number < 1 || this.levelStarting) return false;
+        this.levelStarting = true;
+        try {
+            await this.rewardSubmission; // Do not overwrite an attempt whose reward is still being saved.
+            const location = this.getLevelLocation();
+            let definition;
+            if (this.getAuthToken()) {
+                if (!(await this.claimAttempt(mode === 'daily' ? 1 : number, mode, location))) return false;
+                definition = this.claimedDefinition;
+            } else {
+                this.attemptId = null;
+                const query = new URLSearchParams({ ...location, mode }).toString();
+                try {
+                    const path = mode === 'daily' ? 'daily' : String(number);
+                    const result = await this.fetchJson(`/api/levels/${path}?${query}`, { signal: AbortSignal.timeout(10000) });
+                    if (!result.ok || !result.data.success) {
+                        if (result.status < 500) {
+                            this.showAttemptError('Check your level number and region settings, then try again.');
+                            return false;
+                        }
+                        throw new Error('Level service unavailable');
+                    }
+                    definition = result.data.level;
+                } catch {
+                    let context;
+                    if (window.InfiniteLevelLocation) context = window.InfiniteLevelLocation.offlineContext(location);
+                    else {
+                        const date = new Date();
+                        const month = date.getUTCMonth() + 1;
+                        context = { localDate: date.toISOString().slice(0, 10), timeZone: 'UTC', country: null,
+                            region: null, hemisphere: 'north', month, holidays: [], offline: true,
+                            season: ['winter', 'spring', 'summer', 'autumn'][Math.floor((month % 12) / 3)] };
+                    }
+                    definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                }
+            }
+            this.endlessTotalScore = 0;
+            this.applyGeneratedDefinition(definition);
+            await this.startGame();
+            return true;
+        } catch (error) {
+            console.warn('Could not start a generated level:', error);
+            this.showAttemptError('Could not generate a board. Check your connection and try again.');
+            return false;
+        } finally {
+            this.levelStarting = false;
+        }
+    }
+
+    applyGeneratedDefinition(definition) {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        for (const row of this.gemSprites || []) {
+            for (const sprite of row) {
+                if (!sprite) continue;
+                this.scene.tweens.killTweensOf(sprite);
+                if (typeof sprite.destroy === 'function') sprite.destroy();
+            }
+        }
+        this.closeOverlay();
+        this.generatedLevel = definition;
+        this.level = definition.level;
+        this.mode = definition.mode;
+        if (this.mode === 'classic' || this.mode === 'timed') this.campaignLevel = Math.max(this.campaignLevel || 1, this.level);
+        this.boardSize = definition.boardSize;
+        this.gemTypes = definition.gemTypes.slice();
+        this.levelRng = { state: definition.refillState };
+        this.score = 0;
+        this.moves = definition.moves;
+        this.targetScore = definition.targetScore;
+        this.timeLimit = definition.timeLimit;
+        this.time = definition.timeLimit;
+        this.isBossLevel = definition.isBoss;
+        this.isPaused = false;
+        this.titleShowing = false;
+        this.armedPowerUp = null;
+        this.createGameBoard();
+        this.scene.cameras?.main?.setBackgroundColor(definition.theme.background);
+        this.themeText?.setColor?.(definition.theme.accent);
+        this.updateUI();
+    }
+
+    startDaily() {
+        if (globalThis.InfiniteLevels) return this.startProceduralLevel(1, 'daily');
+        const config = dailyChallengeLevel(new Date().toISOString().slice(0, 10));
+        this.setMode('classic');
+        return this.selectLevel(config.level);
+    }
+
+    // One paid attempt, unlimited generated stages. Each new board is certified on
+    // this device using the same algorithm and fixed context as the starting stage.
+    advanceEndlessStage() {
+        const total = (this.endlessTotalScore || 0) + this.score;
+        const startedAt = this.runStartedAt;
+        const nextNumber = this.level + 1;
+        if (!Number.isSafeInteger(nextNumber)) { this.endGame(); return; }
+        const next = globalThis.InfiniteLevels.generateLevel(nextNumber, this.generatedLevel.context, 'endless');
+        this.applyGeneratedDefinition(next);
+        this.endlessTotalScore = total;
+        this.runStartedAt = startedAt;
+        this.isGameRunning = true;
+        this.updateUI();
+        this.trackEvent('endless_stage_started', { stage: this.level, totalScore: total });
+    }
+
     // The result of this level, as the server expects it for difficulty tuning.
     levelResultPayload(stars) {
         const target = this.targetScore || 1000;
@@ -1302,6 +1450,8 @@ class PhaserMatch3Game {
     // Sends the level result for tuning. Signed-in players only. The server checks the
     // report and recomputes the stars; a failed request never affects play.
     reportLevelResult(stars) {
+        // Do not mix date/region variants into the legacy per-number tuning pool.
+        if (this.generatedLevel) return;
         const token = this.getAuthToken();
         if (!token || typeof fetch !== 'function') return;
         fetch('/api/level-results', {
@@ -1350,10 +1500,10 @@ class PhaserMatch3Game {
         });
     }
 
-    // Game modes: classic (moves and a 60-second clock), timed (60 seconds, no move limit), and
-    // endless (no target, no clock, runs until no move is left).
+    // Generated classic/daily use moves without a clock; timed uses 60 seconds.
+    // Generated endless advances through finite stage goals without a clock or move limit.
     setMode(mode) {
-        this.mode = ['classic', 'timed', 'endless'].includes(mode) ? mode : 'classic';
+        this.mode = ['classic', 'timed', 'daily', 'endless'].includes(mode) ? mode : 'classic';
     }
 
     startEndless() {
@@ -1363,17 +1513,21 @@ class PhaserMatch3Game {
 
     // Seconds the run has lasted: counted down on the clock, or measured from the start.
     runSeconds() {
-        if (this.mode !== 'endless') return Math.min(3600, Math.max(0, (this.timeLimit || 60) - this.time));
+        if (this.timeLimit > 0 || (this.timeLimit === undefined && this.mode !== 'endless')) {
+            return Math.min(3600, Math.max(0, (this.timeLimit || 60) - this.time));
+        }
         return Math.min(3600, Math.max(0, Math.floor((Date.now() - (this.runStartedAt || Date.now())) / 1000)));
     }
 
     // An endless run has no target, so it is never a level win. The server pays for the score.
     async finishEndless() {
-        const score = Math.max(0, Math.floor(this.score));
+        const score = Math.max(0, Math.floor(this.score + (this.endlessTotalScore || 0)));
         this.analytics.gamesPlayed++;
         this.analytics.totalScore += score;
         this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
-        const result = await this.submitEndlessRun(score);
+        const payment = this.submitEndlessRun(score);
+        this.rewardSubmission = payment;
+        const result = await payment;
         this.saveUserData();
         let subtitle = 'Sign in to be paid for endless runs.';
         if (result) subtitle = `+${result.reward.coins} coins, +${result.reward.xp} XP (best ${result.endlessBest})`;
@@ -1402,8 +1556,10 @@ class PhaserMatch3Game {
     }
 
     startTimer() {
-        if (this.mode === 'endless') return; // endless: no clock
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        if (this.timeLimit === 0 || this.mode === 'endless') return;
         this.timerInterval = setInterval(() => {
+            if (this.levelStarting || this.isPaused) return;
             this.time--;
             this.timerText.setText(`Time: ${this.time}`);
             
@@ -1415,9 +1571,14 @@ class PhaserMatch3Game {
 
     updateUI() {
         this.scoreText.setText(`Score: ${this.score.toLocaleString()}`);
-        this.movesText.setText(this.mode === 'classic' ? `Moves: ${this.moves}` : 'Moves: ∞');
-        this.timerText.setText(this.mode === 'endless' ? 'Time: ∞' : `Time: ${this.time}`);
-        this.levelText.setText(`Level: ${this.level}`);
+        this.movesText.setText(['classic', 'daily'].includes(this.mode) ? `Moves: ${this.moves}` : 'Moves: ∞');
+        this.timerText.setText(this.timeLimit === 0 || this.mode === 'endless' ? 'Time: ∞' : `Time: ${this.time}`);
+        this.levelText.setText(this.mode === 'daily' ? 'Daily Challenge' : `${this.mode === 'endless' ? 'Stage' : 'Level'}: ${this.level}`);
+        if (this.goalText) this.goalText.setText(`Goal: ${this.targetScore.toLocaleString()} points`
+            + (this.mode === 'endless' ? `\nRun: ${(this.score + (this.endlessTotalScore || 0)).toLocaleString()}` : ''));
+        if (this.themeText) this.themeText.setText(this.generatedLevel ? `${this.generatedLevel.theme.name}\n${this.generatedLevel.context.localDate}` : '');
+        if (this.bankRunButton) this.bankRunButton.setVisible(this.mode === 'endless');
+        if (this.bankRunLabel) this.bankRunLabel.setVisible(this.mode === 'endless');
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
         this.starsText.setText(this.getAuthToken() ? `Stars: ${this.stars}` : 'Stars: sign in to earn');
     }
@@ -1535,8 +1696,7 @@ class PhaserMatch3Game {
             const savedData = localStorage.getItem('phaser3_game_data');
             if (savedData) {
                 const data = JSON.parse(savedData);
-                this.score = data.score || 0;
-                this.level = data.level || 3;
+                // An old saved score/level must not overwrite a freshly generated attempt.
                 // Energy is not restored from localStorage: signed-in energy comes from the server.
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings };
@@ -1551,7 +1711,7 @@ class PhaserMatch3Game {
         try {
             const data = {
                 score: this.score,
-                level: this.level,
+                level: this.campaignLevel || this.level,
                 energy: this.energy,
                 achievements: this.achievements,
                 settings: this.settings,
@@ -2095,7 +2255,8 @@ class PhaserMatch3Game {
         stars = this.starsFor(this.score);
         
         this.reportLevelResult(stars);
-        this.submitLevelWin(stars);
+        this.rewardSubmission = this.submitLevelWin(stars);
+        if (stars > 0 && this.mode !== 'daily') this.campaignLevel = Math.max(this.campaignLevel || 1, this.level + 1);
 
         // Update analytics
         this.analytics.gamesPlayed++;
@@ -2120,53 +2281,25 @@ class PhaserMatch3Game {
     }
 
     showEndGameScreen(stars, { title = null, subtitle = null } = {}) {
-        // Create end game overlay
-        const endOverlay = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.9);
-        endOverlay.setInteractive();
-        
-        const endTitle = this.scene.add.text(400, 150, title || (stars > 0 ? 'Level Complete!' : 'Level Failed'), {
-            fontSize: '48px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        const scoreText = this.scene.add.text(400, 200, `Score: ${this.score.toLocaleString()}`, {
-            fontSize: '24px',
-            fill: '#ffd700',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        const starsText = this.scene.add.text(400, 250, subtitle || `Stars: ${stars}/3`, {
-            fontSize: '24px',
-            fill: '#ffd700',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Play again button
-        const playAgainBtn = this.scene.add.rectangle(300, 350, 150, 50, 0x4ecdc4);
-        playAgainBtn.setInteractive();
-        playAgainBtn.on('pointerdown', () => this.restartGame());
-        
-        const playAgainText = this.scene.add.text(300, 350, 'Play Again', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
-        
-        // Main menu button
-        const menuBtn = this.scene.add.rectangle(500, 350, 150, 50, 0x666666);
-        menuBtn.setInteractive();
-        menuBtn.on('pointerdown', () => this.returnToMenu());
-        
-        const menuText = this.scene.add.text(500, 350, 'Main Menu', {
-            fontSize: '20px',
-            fill: '#ffffff',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5);
+        this.openOverlay(title || (stars > 0 ? 'Level Complete!' : 'Level Failed'));
+        const total = this.mode === 'endless' ? this.score + (this.endlessTotalScore || 0) : this.score;
+        this.overlayText(400, 170, `Score: ${total.toLocaleString()}`, { size: 26 });
+        this.overlayText(400, 245, subtitle || `Stars: ${stars}/3`, { size: 20, width: 650 });
+        if (stars > 0 && this.mode !== 'daily' && this.mode !== 'endless') {
+            this.overlayButton(260, 350, 220, 55, 0x4ecdc4, 'Next Level', () => this.nextLevel());
+            this.overlayButton(540, 350, 220, 55, 0x555555, 'Replay', () => this.restartGame());
+        } else {
+            this.overlayButton(400, 350, 250, 55, 0x4ecdc4, this.mode === 'endless' ? 'New Run' : 'Replay', () => this.restartGame());
+        }
+        this.overlayButton(400, 435, 250, 55, 0x555555, 'Main Menu', () => this.returnToMenu());
     }
 
     // Every attempt spends energy on the server first. Nothing resets until the spend succeeds.
     async restartGame(attemptClaimed = false) {
+        if (globalThis.InfiniteLevels && !attemptClaimed) {
+            await this.rewardSubmission;
+            return this.selectLevel(this.mode === 'endless' || this.mode === 'daily' ? 1 : this.level);
+        }
         if (!attemptClaimed && !(await this.claimAttempt())) return;
 
         // Reset game state. The move limit belongs to the level, not to a fixed 30.

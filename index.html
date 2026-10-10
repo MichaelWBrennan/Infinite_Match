@@ -160,7 +160,7 @@
                     <div class="mode-card-bg">
                         <div class="mode-icon-large">🎯</div>
                         <h3 class="mode-title">Classic Mode</h3>
-                        <p class="mode-description">Match cosmic gems to build your space empire</p>
+                        <p class="mode-description">Infinite generated levels. No clock, just moves. Every board is checked for a winning path.</p>
                         <button class="mode-play-btn" onclick="chooseMode('classic')">
                             <span class="play-text">START</span>
                         </button>
@@ -180,10 +180,18 @@
                     <div class="mode-card-bg">
                         <div class="mode-icon-large">♾️</div>
                         <h3 class="mode-title">Endless</h3>
-                        <p class="mode-description">Keep matching until the board runs out of moves. Every run pays out.</p>
+                        <p class="mode-description">Unlimited generated stages, no clock. Reach each goal to advance automatically; bank your score whenever you like.</p>
                         <button class="mode-play-btn" onclick="chooseMode('endless')">
                             <span class="play-text">START</span>
                         </button>
+                    </div>
+                </div>
+                <div class="mode-card-royal unlocked">
+                    <div class="mode-card-bg">
+                        <div class="mode-icon-large">📅</div>
+                        <h3 class="mode-title">Today’s Local Level</h3>
+                        <p id="daily-level-preview" class="mode-description" aria-live="polite">A fresh level at local midnight, themed for your month, season and regional holidays.</p>
+                        <button class="mode-play-btn" onclick="chooseMode('daily')"><span class="play-text">PLAY TODAY</span></button>
                     </div>
                 </div>
                 <div class="mode-card-royal locked">
@@ -222,6 +230,27 @@
             <div class="header-spacer"></div>
         </div>
         <div class="settings-container-royal">
+            <section class="settings-section level-region-settings" aria-labelledby="level-region-heading">
+                <h3 id="level-region-heading" class="section-title">📍 Local levels</h3>
+                <p id="level-location-summary" aria-live="polite">Your device time zone supplies a coarse region estimate. No GPS is requested.</p>
+                <p>Correct the estimate below, especially when travelling or near the equator. New settings affect the next attempt, never an active run.</p>
+                <label for="level-time-zone">Time zone</label>
+                <select id="level-time-zone"><option value="">Automatic (device time zone)</option></select>
+                <label for="level-country">Holiday country</label>
+                <select id="level-country"><option value="">Automatic (coarse time-zone estimate)</option></select>
+                <label for="level-region">State / province</label>
+                <select id="level-region"><option value="">Country-wide holidays</option></select>
+                <label for="level-hemisphere">Season calendar</label>
+                <select id="level-hemisphere">
+                    <option value="">Automatic hemisphere estimate</option>
+                    <option value="north">Northern hemisphere</option>
+                    <option value="south">Southern hemisphere</option>
+                </select>
+                <label class="level-holiday-choice"><input type="checkbox" id="level-holiday-themes" checked> Include regional holiday themes</label>
+                <button class="royal-btn primary" type="button" onclick="saveLevelLocation()">Apply region</button>
+                <p id="level-location-message" role="status"></p>
+                <p class="calendar-attribution">Holiday calendar: date-holidays by commenthol (ISC code; CC BY-SA 3.0 data). <a href="licenses/date-holidays.txt" target="_blank" rel="noopener">License and source attributions</a>.</p>
+            </section>
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon">🔊</div>
@@ -293,69 +322,27 @@
         </div>
     </div>
 
-    <!-- Level Select Screen -->
+    <!-- Infinite, on-demand level list; never a hand-authored map or a fixed cap. -->
     <div id="level-select" class="screen">
         <div class="screen-header-royal">
-            <button class="back-btn-royal" onclick="showModeSelect()">
-                <span class="back-icon">←</span>
-            </button>
-            <h2 class="screen-title-royal">Level Select</h2>
-            <div class="player-stats-royal">
-                <div class="stat-item-royal">
-                    <div class="stat-icon-royal">⭐</div>
-                    <div class="stat-value-royal">1,250</div>
-                </div>
-                <div class="stat-item-royal">
-                    <div class="stat-icon-royal">💎</div>
-                    <div class="stat-value-royal">450</div>
-                </div>
-            </div>
+            <button class="back-btn-royal" onclick="showModeSelect()"><span class="back-icon">←</span></button>
+            <h2 class="screen-title-royal">Infinite Levels</h2>
+            <div class="header-spacer"></div>
         </div>
         <div class="level-select-container">
-            <div class="levels-grid-royal">
-                <div class="level-card-royal completed" onclick="selectLevel(1)">
-                    <div class="level-card-bg completed-bg">
-                        <div class="level-number-royal">1</div>
-                        <div class="stars-display">⭐⭐⭐</div>
-                        <div class="level-title-royal">Launch Pad</div>
-                    </div>
-                </div>
-                <div class="level-card-royal completed" onclick="selectLevel(2)">
-                    <div class="level-card-bg completed-bg">
-                        <div class="level-number-royal">2</div>
-                        <div class="stars-display">⭐⭐⭐</div>
-                        <div class="level-title-royal">Asteroid Field</div>
-                    </div>
-                </div>
-                <div class="level-card-royal current" onclick="selectLevel(3)">
-                    <div class="level-card-bg current-bg">
-                        <div class="level-number-royal">3</div>
-                        <div class="stars-display">⭐⭐</div>
-                        <div class="level-title-royal">Space Station Alpha</div>
-                    </div>
-                </div>
-                <div class="level-card-royal locked">
-                    <div class="level-card-bg locked-bg">
-                        <div class="level-number-royal">4</div>
-                        <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Nebula Gateway</div>
-                    </div>
-                </div>
-                <div class="level-card-royal locked">
-                    <div class="level-card-bg locked-bg">
-                        <div class="level-number-royal">5</div>
-                        <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Command Center</div>
-                    </div>
-                </div>
-                <div class="level-card-royal locked">
-                    <div class="level-card-bg locked-bg">
-                        <div class="level-number-royal">6</div>
-                        <div class="lock-icon-royal">🔒</div>
-                        <div class="level-title-royal">Cosmic Observatory</div>
-                    </div>
-                </div>
+            <p class="procedural-level-note">Fresh boards for your local day. Goals, gem mixes and difficulty are generated and checked automatically.</p>
+            <div class="level-browser-controls">
+                <button type="button" class="royal-btn secondary" onclick="ui.pageLevels(-1)">Previous</button>
+                <span id="level-page-label" aria-live="polite"></span>
+                <button id="next-level-page" type="button" class="royal-btn secondary" onclick="ui.pageLevels(1)">More levels</button>
             </div>
+            <div id="procedural-level-grid" class="levels-grid-royal"></div>
+            <div class="level-browser-controls">
+                <label for="generated-level-number">Jump to any level</label>
+                <input id="generated-level-number" class="royal-input-field" type="number" min="1" max="9007199254740991" step="1" value="1">
+                <button type="button" class="royal-btn primary" onclick="ui.jumpToGeneratedLevel()">Play</button>
+            </div>
+            <p id="generated-level-message" role="status"></p>
         </div>
     </div>
 
@@ -858,6 +845,8 @@
         );
       }
     </script>
+    <script src="js/procedural-levels.js"></script>
+    <script src="js/level-location.js"></script>
     <script src="phaser3-game.js"></script>
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>

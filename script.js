@@ -781,7 +781,43 @@ class InfiniteMatchGame {
 
     showLevelSelect() {
         this.showScreen('level-select');
-        this.updatePlayerStats();
+        const current = window.game?.campaignLevel || window.game?.level || 1;
+        this.levelWindow = Math.max(1, current - 2);
+        this.renderProceduralLevels();
+    }
+
+    renderProceduralLevels() {
+        const grid = document.getElementById('procedural-level-grid');
+        if (!grid) return;
+        grid.replaceChildren();
+        const start = this.levelWindow || 1;
+        const end = Math.min(Number.MAX_SAFE_INTEGER, start + 19);
+        for (let number = start; number <= end; number++) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'level-card-royal procedural-level-card';
+            button.textContent = `${number % 10 === 0 ? 'Boss' : 'Level'} ${number}`;
+            button.addEventListener('click', () => window.selectLevel(number));
+            grid.append(button);
+        }
+        document.getElementById('level-page-label').textContent = `${start}–${end}`;
+        document.getElementById('next-level-page').disabled = end === Number.MAX_SAFE_INTEGER;
+    }
+
+    pageLevels(direction) {
+        this.levelWindow = Math.max(1, Math.min(Number.MAX_SAFE_INTEGER - 19, (this.levelWindow || 1) + direction * 20));
+        this.renderProceduralLevels();
+    }
+
+    jumpToGeneratedLevel() {
+        const number = Number(document.getElementById('generated-level-number').value);
+        const message = document.getElementById('generated-level-message');
+        if (!Number.isSafeInteger(number) || number < 1) {
+            message.textContent = 'Enter a positive whole level number.';
+            return;
+        }
+        message.textContent = '';
+        return window.selectLevel(number);
     }
 
     showNews() {
@@ -1832,6 +1868,10 @@ function chooseMode(mode) {
     if (mode === 'endless') {
         revealCanvas();
         return callGame('startEndless');
+    }
+    if (mode === 'daily') {
+        revealCanvas();
+        return callGame('startDaily');
     }
     return callUi('showLevelSelect');
 }

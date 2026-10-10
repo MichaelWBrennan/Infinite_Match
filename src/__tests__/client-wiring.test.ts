@@ -114,7 +114,7 @@ describe('the canvas title and sign-in', () => {
     expect(start).toMatch(/this\.selectLevel\(Math\.floor\(this\.level\)\)/);
     const select = phaser.slice(phaser.indexOf('    selectLevel(levelNumber) {'), phaser.indexOf('    // The result of this level'));
     expect(select).toMatch(/this\.claimAttempt\(config\.level\)/);
-    const restart = phaser.slice(phaser.indexOf('    async restartGame('), phaser.indexOf('    async restartGame(') + 300);
+    const restart = phaser.slice(phaser.indexOf('    async restartGame('), phaser.indexOf('    // Hides the canvas'));
     expect(restart).toMatch(/claimAttempt\(\)/);
   });
 

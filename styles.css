@@ -2300,3 +2300,20 @@ body {
         font-size: 1rem;
     }
 }
+
+/* Procedural levels and privacy-preserving region settings. */
+.level-region-settings { color: #fff; }
+.level-region-settings p { line-height: 1.6; margin: 1rem 0; font-size: .95rem; }
+.level-region-settings > label { display: block; margin: 1rem 0 .4rem; font-weight: 600; }
+.level-region-settings select {
+    width: 100%; padding: .8rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.3);
+    background: #253052; color: #fff; font: inherit;
+}
+.level-region-settings .level-holiday-choice { display: flex; align-items: center; gap: .6rem; }
+.level-region-settings input[type="checkbox"] { accent-color: #ffd700; }
+.procedural-level-note { color: #fff; text-align: center; line-height: 1.6; margin: 1rem 0; }
+.level-browser-controls { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; align-items: center; margin: 1.5rem 0; color: #fff; }
+.level-browser-controls input { max-width: 220px; }
+.procedural-level-card { font: inherit; color: #fff; background: rgba(66,143,147,.55); padding: 1.5rem .8rem; min-height: 110px; overflow-wrap: anywhere; }
+.procedural-level-card:focus-visible { outline: 3px solid #ffd700; outline-offset: 4px; }
+#generated-level-message { color: #ffd700; text-align: center; }

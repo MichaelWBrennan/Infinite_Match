@@ -6,6 +6,7 @@
     "bullmq": "^6.3.12",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
+    "date-holidays": "^3.37.0",
     "dayjs": "^1.11.23",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -78,7 +79,7 @@
   "main": "src/server/index.js",
   "name": "infinite-match-unity-optimized",
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/build-level-client.js && tsc",
     "build:vercel": "echo 'Vercel build completed - WebGL files are already built'",
     "dev": "nodemon --exec ts-node src/server/index.ts",
     "start": "node dist/server/index.js",
