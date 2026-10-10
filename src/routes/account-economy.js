@@ -406,6 +406,25 @@ router.post('/powerup/use', security.sessionValidation, async (req, res) => {
   }
 });
 
+// A client-reported loss or explicit quit ends the matching paid attempt without any payout.
+// Moves/hints are bounded diagnostics only, never proof or tuning authority.
+router.post('/attempt/close', security.sessionValidation, async (req, res) => {
+  try {
+    const { attemptId, outcome, movesUsed, hintsUsed } = req.body || {};
+    if (typeof attemptId !== 'string' || attemptId.length < 1 || attemptId.length > 64) {
+      return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
+    }
+    const result = await accountEconomyService.closeAttempt(req.user.playerId, attemptId, outcome,
+      { movesUsed, hintsUsed });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'close attempt', req.requestId);
+  }
+});
+
 // Complete a level the player won. Needs the attempt id from energy/spend. The server works out
 // the stars from the score and the level target, and pays the server's reward for them. A reported
 // star count is ignored.
@@ -431,7 +450,8 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     try {
       completed = await accountEconomyService.consumeAttempt(playerId, attemptId, level, undefined, {
         mode: 'level', score, objectiveProgress: req.body.objectiveProgress, moves: req.body.moves,
-        legacyTarget: levelTarget(level, levelMultiplier(level, readLevelOverrides())),
+        hintsUsed: req.body.hintsUsed,
+        legacyTarget: levelTarget(level, levelMultiplier(level, readLevelOverrides())), // old in-flight attempts only
       });
     } catch (error) {
       if (error instanceof EconomyRuleError) {
@@ -588,8 +608,10 @@ router.post('/energy/spend', security.sessionValidation, async (req, res) => {
       level: req.body?.level, mode: req.body.mode, location: req.body.location ?? {},
       rulesVersion: clientRulesVersion(req.body.rulesVersion),
     });
+    const legacyTarget = definition ? null : levelTarget(req.body?.level,
+      levelMultiplier(req.body?.level, readLevelOverrides()));
     const result = await accountEconomyService.spendAttemptEnergy(
-      playerId, definition?.level ?? req.body?.level, Date.now(), definition,
+      playerId, definition?.level ?? req.body?.level, Date.now(), definition, legacyTarget,
     );
     res.json({ success: true, result, serverTime: new Date().toISOString(), requestId: req.requestId });
   } catch (error) {

@@ -799,6 +799,7 @@ describe('objective-aware Phaser v4', () => {
     expect(game.showHint()).toEqual([3, 3]);
     expect(JSON.stringify({ board: game.board, specials: game.specials, score: game.score, moves: game.moves,
       rng: game.levelRng.state, progress: game.objectiveProgress })).toBe(before);
+    expect(game.hintsUsed).toBe(1); // Assistance is recorded, but the hint costs no move or charge.
   });
 
   test('paid v4 completion sends counters, not client-authored goals, targets or stars', async () => {
@@ -810,6 +811,34 @@ describe('objective-aware Phaser v4', () => {
     };
     await game.submitLevelWin(1); expect(game.stars).toBe(1);
     expect(sent).toEqual({ level: 1, score: 30, attemptId: 'v4_paid', objectiveProgress: game.objectiveProgress });
+    expect(game.attemptId).toBeNull();
+  });
+
+  test('legacy restart displays the target pinned by the paid spend, not a later client override', async () => {
+    const { game, sandbox } = makeBrowserGame();
+    game.getAuthToken = () => 'token'; game.generatedLevel = null; game.level = 1;
+    game.scene.children = { list: [] }; game.setSelectedGem = () => {};
+    game.reshuffleBoard = () => {}; game.startGame = async () => {};
+    sandbox.fetch = async () => ({ ok: true, json: async () => ({ success: true,
+      result: { attemptId: 'legacy', level: 1, energy: 99, legacyTarget: 1350 } }) });
+    expect(await game.claimAttempt(1)).toBe(true);
+    await game.restartGame(true);
+    expect(game.targetScore).toBe(1350);
+  });
+
+  test('an actual web loss reports a bounded diagnostic close once, never a completion payout', async () => {
+    const { game, sandbox } = makeBrowserGame(); const def = objectiveFixture();
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.runStartedAt = Date.now();
+    game.attemptId = 'paid_loss'; game.getAuthToken = () => 'token'; game.moves = def.moves - 5;
+    game.hintsUsed = 2; delete game.endGame; game.showEndGameScreen = () => {};
+    const requests: any[] = [];
+    sandbox.fetch = async (url: string, options: any) => {
+      requests.push({ url, body: JSON.parse(options.body) });
+      return { ok: true, json: async () => ({ success: true, result: { closed: true } }) };
+    };
+    game.endGame(); await game.rewardSubmission;
+    expect(requests).toEqual([{ url: '/api/account-economy/attempt/close',
+      body: { attemptId: 'paid_loss', outcome: 'lost', movesUsed: 5, hintsUsed: 2 } }]);
     expect(game.attemptId).toBeNull();
   });
 

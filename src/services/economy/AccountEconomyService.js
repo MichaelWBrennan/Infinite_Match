@@ -19,6 +19,7 @@ import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.j
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
 import { loadLiveOps } from '../live-ops/live-ops.js';
 import { recordWeeklyWin } from '../live-ops/weekly-event.js';
+import { observationMeta, observeAttempt } from '../levels/attempt-observations.js';
 
 /** A rule the player cannot meet (not enough coins, room maxed). `code` is safe to show. */
 export class EconomyRuleError extends Error {
@@ -755,7 +756,7 @@ class AccountEconomyService {
    * player is never charged for points that have already come back. A new attempt replaces any
    * earlier one that was not completed.
    */
-  async spendAttemptEnergy(playerId, level, nowMs = Date.now(), definition = null) {
+  async spendAttemptEnergy(playerId, level, nowMs = Date.now(), definition = null, legacyTarget = null) {
     if (!Number.isSafeInteger(level) || level < 1 || level > LEVEL_LIMITS.maxLevel) {
       throw new EconomyRuleError('invalid_level');
     }
@@ -765,13 +766,21 @@ class AccountEconomyService {
       if (energy.amount < ATTEMPT_ENERGY_COST) throw new EconomyRuleError('energy_empty');
       energy.amount -= ATTEMPT_ENERGY_COST;
       energy.spent += ATTEMPT_ENERGY_COST;
+      const previous = playerEconomy.pendingAttempt;
+      const observation = observationMeta(definition, playerEconomy.observedStarts || 0);
+      if (observation) playerEconomy.observedStarts = (playerEconomy.observedStarts || 0) + 1;
       const attemptId = crypto.randomUUID();
       playerEconomy.pendingAttempt = {
         id: attemptId, level, issuedAt: nowMs,
         ...(definition ? { generatedLevel: structuredClone(definition) } : {}),
+        ...(!definition && Number.isSafeInteger(legacyTarget) ? { legacyTarget } : {}),
+        ...(observation ? { observation } : {}),
       };
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      if (previous?.observation) await observeAttempt(previous.observation,
+        nowMs - previous.issuedAt > ATTEMPT_MAX_AGE_MS ? 'expired' : 'replaced', {}, nowMs);
+      if (observation) await observeAttempt(observation, 'started', {}, nowMs);
       return {
         attemptId,
         level,
@@ -779,6 +788,7 @@ class AccountEconomyService {
         maxEnergy: energy.maxAmount,
         nextRegenInMs: nextRegenInMs(energy, nowMs),
         ...(definition ? { generatedLevel: structuredClone(definition) } : {}),
+        ...(!definition && Number.isSafeInteger(legacyTarget) ? { legacyTarget } : {}),
       };
     });
   }
@@ -872,7 +882,7 @@ class AccountEconomyService {
             if (replay.error) throw new EconomyRuleError(replay.error);
           }
         } else {
-          stars = starsForTarget(completion.score, definition?.targetScore ?? completion.legacyTarget);
+          stars = starsForTarget(completion.score, definition?.targetScore ?? pending.legacyTarget ?? completion.legacyTarget);
           if (!stars) throw new EconomyRuleError('score_below_target');
         }
       }
@@ -884,11 +894,38 @@ class AccountEconomyService {
       playerEconomy.pendingAttempt = null;
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      if (pending.observation && completion?.mode === 'level') await observeAttempt(pending.observation,
+        replay?.verified ? 'verified_win' : 'unverified_win', {
+          inventoryUses: pending.powerupReceipts?.length || 0, hintsUsed: completion.hintsUsed,
+          movesUsed: replay?.verified ? completion.moves?.length : null, moveBudget: definition?.moves,
+        }, nowMs);
       if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
       return { level, ...(weekly ? { weekly } : {}), ...(stars === undefined ? {} : { stars }),
         ...(completion?.mode === 'level' ? { verified: replay?.verified === true,
           ranked: replay?.verified === true && !pending.untrackedPowerup && !(pending.powerupReceipts?.length) } : {}),
         ...(replay?.verified ? { score: replay.score } : {}) };
+    });
+  }
+
+  /** A reported loss/quit ends only the matching paid attempt. No rewards are granted.
+   * These reports are diagnostics, not server proof that the board was played or lost. */
+  async closeAttempt(playerId, attemptId, outcome, signals = {}, nowMs = Date.now()) {
+    if (!['lost', 'quit'].includes(outcome)) throw new EconomyRuleError('invalid_attempt_outcome');
+    return this.withPlayerLock(playerId, async () => {
+      const economy = await this.getPlayerEconomy(playerId);
+      const pending = economy.pendingAttempt;
+      if (!pending || typeof attemptId !== 'string' || pending.id !== attemptId) {
+        throw new EconomyRuleError('attempt_not_found');
+      }
+      economy.pendingAttempt = null;
+      economy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, economy);
+      await observeAttempt(pending.observation, nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS
+        ? 'expired' : outcome === 'lost' ? 'reported_loss' : 'reported_quit', {
+        hintsUsed: signals.hintsUsed, movesUsed: signals.movesUsed, moveBudget: pending.generatedLevel?.moves,
+        inventoryUses: pending.powerupReceipts?.length || 0,
+      }, nowMs);
+      return { closed: true };
     });
   }
 

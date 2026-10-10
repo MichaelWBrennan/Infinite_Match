@@ -593,6 +593,7 @@ class PhaserMatch3Game {
         const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score, this.shields, this.levelRng.state);
         moves.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.count - a.count);
         if (!moves.length) return null;
+        this.hintsUsed = Math.min(99, (this.hintsUsed || 0) + 1); // Diagnostic only; hints stay free.
         const cells = moves[0].cells;
         this.disarmPowerUp();
         this.playerUI?.refresh();
@@ -1572,6 +1573,7 @@ class PhaserMatch3Game {
                 this.attemptId = data.result.attemptId;
                 this.attemptLevel = data.result.level;
                 this.claimedDefinition = data.result.generatedLevel || null;
+                this.claimedLegacyTarget = Number.isSafeInteger(data.result.legacyTarget) ? data.result.legacyTarget : null;
                 this.claimedServerTime = data.serverTime || null;
                 if (mode && !this.claimedDefinition) {
                     this.showAttemptError('Update the game server to enable generated levels.');
@@ -1644,6 +1646,7 @@ class PhaserMatch3Game {
                     score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
                     ...(this.usesLevelObjectives() ? { objectiveProgress: this.objectiveProgress } : {}),
                     ...(this.replayEligible && this.attemptMoves?.length ? { moves: this.attemptMoves } : {}),
+                    ...(this.hintsUsed > 0 ? { hintsUsed: this.hintsUsed } : {}),
                     attemptId,
                 }),
             });
@@ -1656,6 +1659,24 @@ class PhaserMatch3Game {
             }
         } catch (error) {
             console.warn('Could not reach the server for the level reward.', error);
+        }
+    }
+
+    // A reported loss or quit closes the paid attempt without a reward. Hint/move counts
+    // are untrusted diagnostics; only server replay can verify a win.
+    async reportAttemptOutcome(outcome) {
+        const attemptId = this.attemptId;
+        this.attemptId = null;
+        if (!attemptId || !this.getAuthToken()) return;
+        try {
+            await this.fetchJson('/api/account-economy/attempt/close', {
+                method: 'POST', body: JSON.stringify({ attemptId, outcome,
+                    movesUsed: this.generatedLevel && Number.isFinite(this.generatedLevel.moves)
+                        ? Math.min(1000, Math.max(0, this.generatedLevel.moves - this.moves)) : undefined,
+                    hintsUsed: this.hintsUsed || 0 }),
+            });
+        } catch (error) {
+            // A later attempt replaces the outstanding server attempt if this request was lost.
         }
     }
 
@@ -1771,6 +1792,7 @@ class PhaserMatch3Game {
         this.inputLockedUntil = 0;
         this.generatedLevel = definition;
         this.attemptMoves = [];
+        this.hintsUsed = 0;
         this.replayEligible = definition.generatorVersion >= 4 && ['classic', 'daily'].includes(definition.mode);
         window.InfiniteLevelLocation?.rememberContext(definition.context, this.getLevelLocation(), serverTime);
         this.level = definition.level;
@@ -1875,6 +1897,7 @@ class PhaserMatch3Game {
         await this.syncPowerUpInventory();
         
         this.isGameRunning = true;
+        this.hintsUsed = 0;
         this.runStartedAt = Date.now();
         this.startTimer();
         this.updateUI();
@@ -2768,7 +2791,8 @@ class PhaserMatch3Game {
         this.playSound(stars > 0 ? 'win' : 'loss');
         
         this.reportLevelResult(stars);
-        this.rewardSubmission = this.submitLevelWin(stars);
+        this.rewardSubmission = stars > 0 || !this.getAuthToken() || !this.attemptId
+            ? this.submitLevelWin(stars) : this.reportAttemptOutcome('lost');
         if (stars > 0 && this.mode !== 'daily') this.campaignLevel = Math.max(this.campaignLevel || 1, this.level + 1);
 
         // Update analytics
@@ -2821,7 +2845,8 @@ class PhaserMatch3Game {
         this.score = 0;
         const config = levelConfig(this.level, this.mode);
         this.moves = config.moves;
-        this.targetScore = config.targetScore;
+        this.targetScore = !this.generatedLevel && this.getAuthToken() && Number.isSafeInteger(this.claimedLegacyTarget)
+            ? this.claimedLegacyTarget : config.targetScore;
         this.timeLimit = config.timeLimit;
         this.time = config.timeLimit;
         this.setSelectedGem(null);

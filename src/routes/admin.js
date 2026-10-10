@@ -13,6 +13,7 @@ import { Logger, getRecentLogs } from '../core/logger/index.js';
 import EconomyService from '../services/economy/UnifiedEconomyService.js';
 import UnityService from '../services/unity/UnifiedUnityService.js';
 import { readLevelResults, summarizeLevelResults } from '../services/level-tuning.js';
+import { readAttemptObservations, summarizeAttemptObservations } from '../services/levels/attempt-observations.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
@@ -179,6 +180,22 @@ router.get('/logs', (req, res) => {
   res.json({ success: true, logs, requestId: req.requestId });
 });
 
+// Anonymous generated-board observations are review-only. Never expose raw JSONL rows,
+// exact clocks, player IDs, board contents, geography or sub-threshold slices.
+router.get('/attempt-observations', async (req, res) => {
+  try {
+    const { rows, skipped } = await readAttemptObservations();
+    const fromDay = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const report = summarizeAttemptObservations(rows.filter((row) => row.day >= fromDay),
+      { bySeed: req.query.bySeed === 'true' });
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ success: true, fromDay, skippedLines: skipped, ...report, requestId: req.requestId });
+  } catch (error) {
+    logger.error('Attempt observation report failed', { error: error.message });
+    res.status(503).json({ success: false, error: 'observation_report_unavailable', requestId: req.requestId });
+  }
+});
+
 // Clear cache
 // Per-level difficulty summary from player-reported results. Levels are flagged
 // too_hard or too_easy only after enough attempts.
@@ -189,6 +206,7 @@ router.get('/level-tuning', async (req, res) => {
       success: true,
       generatedAt: new Date().toISOString(),
       totalResults: records.length,
+      source: 'legacy_client_reported_only',
       skippedLines: skipped,
       levels: summarizeLevelResults(records),
     });

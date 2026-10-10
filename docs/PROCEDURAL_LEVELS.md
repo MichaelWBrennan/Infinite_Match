@@ -114,9 +114,12 @@ Older v2/v3/v4 definition IDs, generator output, paid attempts and score/goal
 behavior remain frozen. V5 clients carry `shields` in the transition state and
 send `{collected: {...}, shieldsCleared: integer}` for a paid win. The server
 requires a bounded count between zero and the original number of shields, and
-checks every pinned goal before consuming an attempt; it does **not** replay
-moves. A forged count can still claim a bounded reward, so competitive prizes
-must wait for replay integrity.
+checks every pinned goal. Current v4/v5 classic/daily clients also submit pinned
+moves for deterministic server replay (including attempt-bound inventory receipts)
+before a result is `verified`. Old clients, timed and endless paths can still
+receive existing account rewards without replay, but not competitive progress;
+this does not prove human play or safe consequential prizes. See the competitive
+replay boundary below.
 
 ## Varied objectives — shared rules v4
 
@@ -455,8 +458,14 @@ source, then runs TypeScript. Do not edit that generated browser asset manually.
 Legacy clients that omit `mode` on energy/spend retain the old reward rules and
 legacy tuning endpoints. The new generator does not pool date/region variants
 into legacy per-number difficulty reports; it calibrates every board independently.
-Existing Unity sources/binaries are not rebuilt or wired to this API here; the
-playable root web client is the integration covered by these tests.
+Generated v4/v5 classic/daily paid starts and replay-verified wins now have a
+separate, aggregate-only [difficulty observation guide](DIFFICULTY_OBSERVATIONS.md).
+The legacy self-reported tuning pool is still separate; its schedule can propose
+reviews but no longer applies changes automatically. Older legacy targets are
+pinned when energy is spent so changing the override file cannot alter that
+in-flight attempt. Neither generated board difficulty nor paid objectives are
+auto-tuned. Existing Unity sources/binaries are not rebuilt or wired to this API
+here; the playable root web client is the integration covered by these tests.
 
 ## Open-source calendar attribution
 
