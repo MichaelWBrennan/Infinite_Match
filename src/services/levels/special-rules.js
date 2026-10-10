@@ -4,7 +4,8 @@ import { matchingCells, legalSwaps, pickGem, dealPlayableBoard } from './match-c
 export const SPECIAL_TYPES = Object.freeze(['row', 'column', 'burst', 'prism']);
 export const PRESENTATION_FRAME_LIMIT = 3; // Optional visual observations; never a rules or RNG input.
 /**
- * @typedef {{ board: string[][], specials: (string|null)[][] }} PresentationGrid
+ * @typedef {{ board: string[][], specials: (string|null)[][], shields?: number[][] }} PresentationGrid
+ * Shield snapshots are attached by the v5 wrapper only; v3/v4 traces stay unchanged.
  * @typedef {{ initial: PresentationGrid, cells: number[]|null, frames: Array<{before: PresentationGrid, after: PresentationGrid}> }} PresentationTrace
  */
 export function blankSpecials(size) {

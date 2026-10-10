@@ -177,22 +177,29 @@ class PhaserMatch3Game {
 
     createGemTextures() {
         if (window.InfinitePlayerExperience && this.scene.textures?.createCanvas) {
+            const drawShieldFrame = (context, shield) => {
+                // The same original numbered frame is used both on instant-play gems
+                // and as fixed terrain above falling gems in staged presentation.
+                context.save();
+                context.strokeStyle = '#e8fbff'; context.lineWidth = shield === 2 ? 4 : 2;
+                context.strokeRect(2, 2, 60, 60);
+                context.fillStyle = '#12354b'; context.fillRect(41, 0, 23, 23);
+                context.fillStyle = '#ffffff'; context.font = 'bold 17px sans-serif';
+                context.textAlign = 'center'; context.textBaseline = 'middle';
+                context.fillText(String(shield), 52, 12); context.restore();
+            };
+            for (const shield of [1, 2]) {
+                const overlay = this.scene.textures.createCanvas(`shield_overlay_${shield}`, 64, 64);
+                drawShieldFrame(overlay.getContext(), shield);
+                overlay.refresh();
+            }
             for (const type of Object.keys(window.InfinitePlayerExperience.visuals)) {
                 for (const special of [null, ...window.InfinitePlayerExperience.specialTypes]) {
                     for (const shield of [0, 1, 2]) {
                         const texture = this.scene.textures.createCanvas(this.gemTexture(type, special, shield), 64, 64);
                         const context = texture.getContext();
                         window.InfinitePlayerExperience.drawGem(context, type, special);
-                        if (shield) {
-                            // A numbered ice-blue frame is readable without hue or animation.
-                            context.save();
-                            context.strokeStyle = '#e8fbff'; context.lineWidth = shield === 2 ? 4 : 2;
-                            context.strokeRect(2, 2, 60, 60);
-                            context.fillStyle = '#12354b'; context.fillRect(41, 0, 23, 23);
-                            context.fillStyle = '#ffffff'; context.font = 'bold 17px sans-serif';
-                            context.textAlign = 'center'; context.textBaseline = 'middle';
-                            context.fillText(String(shield), 52, 12); context.restore();
-                        }
+                        if (shield) drawShieldFrame(context, shield);
                         texture.refresh();
                     }
                 }
@@ -434,7 +441,7 @@ class PhaserMatch3Game {
     commitEarnedAction(cells) {
         if (!this.canInteractWithBoard()) return null;
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.generatedLevel.generatorVersion < 5 && this.matchFeedback?.canStage() === true);
+            { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -483,7 +490,11 @@ class PhaserMatch3Game {
         const combo = result.events.find((event) => event.combo)?.combo;
         const names = window.InfinitePlayerExperience?.specialNames || {};
         const description = combo ? ` · ${combo.split('+').map((kind) => names[kind] || (kind === 'beam' ? 'Beam' : kind)).join(' + ')} combo` : activated.length ? ` · ${activated.length} special${activated.length === 1 ? '' : 's'} activated` : '';
-        this.playerUI?.announce(`${result.score} points${result.cascades > 1 ? ` · ${result.cascades} waves` : ''}${description}${earned.length ? ` · Earned ${[...new Set(earned.map((item) => names[item.type] || item.type))].join(', ')}` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : ''}${result.reshuffled ? ' Free board repair.' : ''}${this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress)}` : ''}`);
+        const shieldHits = result.events.flatMap((event) => event.shieldHits || []);
+        const layers = shieldHits.filter((hit) => hit.remaining > 0).length;
+        const cleared = shieldHits.length - layers;
+        const shieldDescription = `${layers ? ` · ${layers} shield layer${layers === 1 ? '' : 's'} removed` : ''}${cleared ? ` · ${cleared} shield${cleared === 1 ? '' : 's'} cleared` : ''}`;
+        this.playerUI?.announce(`${result.score} points${result.cascades > 1 ? ` · ${result.cascades} waves` : ''}${description}${shieldDescription}${earned.length ? ` · Earned ${[...new Set(earned.map((item) => names[item.type] || item.type))].join(', ')}` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : ''}${result.reshuffled ? ' Free board repair.' : ''}${this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress)}` : ''}`);
         this.updateUI();
     }
 
@@ -947,7 +958,7 @@ class PhaserMatch3Game {
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
-                    { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.generatedLevel.generatorVersion < 5 && this.matchFeedback?.canStage() === true)
+                    { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
                 : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points, false, this.matchFeedback?.canStage() === true);
             if (result) {
                 if (track) this.attemptMoves.push({ receiptId: receipt.receiptId, ...inventoryAction });

@@ -1944,7 +1944,8 @@ function certifyBoard(board, refillState, palette, weights, moveBudget) {
 const SPECIAL_TYPES = Object.freeze(['row', 'column', 'burst', 'prism']);
 const PRESENTATION_FRAME_LIMIT = 3; // Optional visual observations; never a rules or RNG input.
 /**
- * @typedef {{ board: string[][], specials: (string|null)[][] }} PresentationGrid
+ * @typedef {{ board: string[][], specials: (string|null)[][], shields?: number[][] }} PresentationGrid
+ * Shield snapshots are attached by the v5 wrapper only; v3/v4 traces stay unchanged.
  * @typedef {{ initial: PresentationGrid, cells: number[]|null, frames: Array<{before: PresentationGrid, after: PresentationGrid}> }} PresentationTrace
  */
 function blankSpecials(size) {
@@ -2313,8 +2314,14 @@ function validShieldState(definition, state) {
 function withShieldHits(result, initial) {
   if (!result) return null;
   const shields = initial.map((row) => row.slice());
+  // The trace is optional and read-only. Only the first three existing visual
+  // frames receive terrain snapshots; all waves still resolve in the model.
+  const trace = result.presentation;
+  if (trace) trace.initial.shields = initial.map((row) => row.slice());
   let brokenShields = 0;
-  const events = result.events.map((event) => {
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.shields = shields.map((row) => row.slice());
     const shieldHits = [];
     for (const key of event.cleared) {
       const [row, col] = key.split(',').map(Number);
@@ -2323,6 +2330,7 @@ function withShieldHits(result, initial) {
       if (!shields[row][col]) brokenShields++;
       shieldHits.push({ row, col, remaining: shields[row][col] });
     }
+    if (visual) visual.after.shields = shields.map((row) => row.slice());
     return { ...event, shieldHits };
   });
   return { ...result, events, shields, brokenShields };

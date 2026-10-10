@@ -106,9 +106,11 @@ sufficient times by the deterministic no-inventory witness; the witness is
 replayed through v5 transitions to verify the goals. The other stages continue
 to use the v4 goal families under v5's seed. This proves feasibility, not human
 balance. Hints prefer remaining shield hits; names and HUD say how many hits
-remain and how many shields are gone. Shield stages use immediate result visuals
-rather than v3/v4's staged waves, which do not yet contain per-wave terrain
-snapshots. This is not a screen-reader/device or human-comprehension sign-off.
+remain and how many shields are gone. Optional v5 presentation snapshots capture
+the first three shield waves without altering the deterministic resolver. A fixed
+numbered terrain overlay stays in its cell while gems fall; each hit updates its
+remaining number in place. Reduced-motion/text-board modes use immediate results.
+This is not a screen-reader/device or human-comprehension sign-off.
 
 Older v2/v3/v4 definition IDs, generator output, paid attempts and score/goal
 behavior remain frozen. V5 clients carry `shields` in the transition state and

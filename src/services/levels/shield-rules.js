@@ -48,8 +48,14 @@ function validShieldState(definition, state) {
 function withShieldHits(result, initial) {
   if (!result) return null;
   const shields = initial.map((row) => row.slice());
+  // The trace is optional and read-only. Only the first three existing visual
+  // frames receive terrain snapshots; all waves still resolve in the model.
+  const trace = result.presentation;
+  if (trace) trace.initial.shields = initial.map((row) => row.slice());
   let brokenShields = 0;
-  const events = result.events.map((event) => {
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.shields = shields.map((row) => row.slice());
     const shieldHits = [];
     for (const key of event.cleared) {
       const [row, col] = key.split(',').map(Number);
@@ -58,6 +64,7 @@ function withShieldHits(result, initial) {
       if (!shields[row][col]) brokenShields++;
       shieldHits.push({ row, col, remaining: shields[row][col] });
     }
+    if (visual) visual.after.shields = shields.map((row) => row.slice());
     return { ...event, shieldHits };
   });
   return { ...result, events, shields, brokenShields };

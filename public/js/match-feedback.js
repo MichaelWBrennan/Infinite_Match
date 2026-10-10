@@ -17,7 +17,10 @@
   function matrix(value, size, values) {
     return Array.isArray(value) && value.length === size && value.every((row) => Array.isArray(row) && row.length === size && row.every((cell) => values.includes(cell)));
   }
-  function frame(value, size) { return value && matrix(value.board, size, colors) && matrix(value.specials, size, specials); }
+  function frame(value, size, shielded = false) {
+    return value && matrix(value.board, size, colors) && matrix(value.specials, size, specials)
+      && (!shielded || matrix(value.shields, size, [0, 1, 2]));
+  }
   function validKey(key, size) {
     return typeof key === 'string' && /^\d,\d$/.test(key) && key.split(',').every((value) => Number(value) < size);
   }
@@ -42,7 +45,8 @@
   function planFor(result) {
     const trace = result?.presentation;
     const size = result?.board?.length;
-    if (!Number.isInteger(size) || size < 3 || size > 8 || !frame(result, size) || !frame(trace?.initial, size)
+    const shielded = result?.shields !== undefined;
+    if (!Number.isInteger(size) || size < 3 || size > 8 || !frame(result, size, shielded) || !frame(trace?.initial, size, shielded)
         || !Number.isInteger(result.cascades) || result.cascades < 1 || result.cascades > 64 || !Array.isArray(result.events)
         || result.events.length !== result.cascades || !Array.isArray(trace.frames) || trace.frames.length !== Math.min(MAX_FRAMES, result.cascades)) return null;
     if (trace.cells !== null && (!Array.isArray(trace.cells) || ![2, 4].includes(trace.cells.length)
@@ -50,13 +54,31 @@
     const waves = [];
     for (let index = 0; index < trace.frames.length; index++) {
       const visual = trace.frames[index]; const event = result.events[index];
-      if (!frame(visual?.before, size) || !frame(visual?.after, size) || !event || !Array.isArray(event.cleared)
+      if (!frame(visual?.before, size, shielded) || !frame(visual?.after, size, shielded) || !event || !Array.isArray(event.cleared)
           || event.cleared.length > size * size || !event.cleared.every((key) => validKey(key, size))
           || new Set(event.cleared).size !== event.cleared.length || !Number.isFinite(event.points) || event.points < 0
           || !Array.isArray(event.created) || !event.created.every((item) => item && validKey(`${item.row},${item.col}`, size) && specials.slice(1).includes(item.type))
           || !Array.isArray(event.activated)) return null;
+      if (shielded) {
+        if (!Array.isArray(event.shieldHits) || event.shieldHits.length > size * size) return null;
+        const hits = new Set();
+        for (const hit of event.shieldHits) {
+          const key = `${hit?.row},${hit?.col}`;
+          if (!Number.isInteger(hit?.row) || !Number.isInteger(hit?.col) || !validKey(key, size)
+            || hits.has(key) || !event.cleared.includes(key) || ![0, 1].includes(hit.remaining)
+            || visual.before.shields[hit.row][hit.col] !== hit.remaining + 1
+            || visual.after.shields[hit.row][hit.col] !== hit.remaining) return null;
+          hits.add(key);
+        }
+        for (let row = 0; row < size; row++) for (let col = 0; col < size; col++) {
+          if (!hits.has(`${row},${col}`) && visual.before.shields[row][col] !== visual.after.shields[row][col]) return null;
+        }
+        const preceding = index ? waves[index - 1].after.shields : trace.initial.shields;
+        if (visual.before.shields.some((row, r) => row.some((hits, c) => hits !== preceding[r][c]))) return null;
+      }
       waves.push({ ...visual, event, falls: fallingCells(size, event.cleared) });
     }
+    if (shielded && result.cascades === waves.length && result.shields.some((row, r) => row.some((hits, c) => hits !== waves.at(-1).after.shields[r][c]))) return null;
     return { size, initial: trace.initial, cells: trace.cells, waves, total: result.cascades, final: result };
   }
 
@@ -65,7 +87,10 @@
     const combo = event.combo ? event.combo.split('+').map((kind) => names[kind] || kind).join(' + ') : '';
     const earned = [...new Set(event.created.map((item) => names[item.type]))].join(', ');
     const detail = combo ? `${combo} combo` : earned ? `Earned ${earned}` : event.activated.length ? `${event.activated.length} special${event.activated.length === 1 ? '' : 's'} activated` : '';
-    return `${phase}${detail ? ` · ${detail}` : ''} · +${event.points} points`;
+    const hits = event.shieldHits || [];
+    const broken = hits.filter((hit) => hit.remaining === 0).length;
+    const shieldDetail = hits.length ? ` · ${hits.length} shield hit${hits.length === 1 ? '' : 's'}${broken ? `, ${broken} cleared` : ''}` : '';
+    return `${phase}${detail ? ` · ${detail}` : ''}${shieldDetail} · +${event.points} points`;
   }
 
   function create(game, environment = root) {
@@ -74,6 +99,7 @@
     let disposed = false; let failed = false; let current = null; let lastReason = null;
     let layer = null; let footprint = null; let maskSource = null; let mask = null;
     const views = [];
+    const terrain = []; // Fixed numbered overlays; never move with falling/refilling gems.
     const removers = [];
     const motion = environment.matchMedia?.('(prefers-reduced-motion: reduce)');
 
@@ -89,7 +115,7 @@
     }
     function safely(action) { try { action(); } catch { failed = true; } }
     function stopTweens() { for (const image of views) safely(() => scene.tweens.killTweensOf(image)); if (footprint) safely(() => scene.tweens.killTweensOf(footprint)); }
-    function ensureLayer(size) {
+    function ensureLayer(size, shielded) {
       if (!layer) {
         layer = scene.add.container(0, 0).setName('match-feedback-layer').setDepth(10).setVisible(false);
         footprint = scene.add.graphics(); layer.add(footprint);
@@ -100,9 +126,22 @@
         const image = scene.add.image(0, 0, 'gem_red'); // Deliberately no input hit area.
         views.push(image); layer.add(image);
       }
-      // The footprint belongs above the images, not underneath their fill.
+      // The footprint belongs above gems; terrain belongs above both and stays fixed.
       layer.bringToTop(footprint);
+      if (shielded) while (terrain.length < size * size) {
+        const image = scene.add.image(0, 0, 'shield_overlay_1').setVisible(false);
+        terrain.push(image); layer.add(image);
+      }
+      for (const image of terrain) layer.bringToTop(image);
       maskSource.clear().fillStyle(0xffffff).fillRect(game.cellX(0) - game.cellStep / 2, game.cellY(0) - game.cellStep / 2, size * game.cellStep, size * game.cellStep);
+    }
+    function drawTerrain(snapshot, size) {
+      terrain.forEach((image, index) => {
+        const row = Math.floor(index / size); const col = index % size;
+        const hits = index < size * size ? snapshot.shields?.[row]?.[col] : 0;
+        image.setVisible(!!hits);
+        if (hits) image.setTexture(`shield_overlay_${hits}`).setPosition(game.cellX(col), game.cellY(row)).setScale(game.gemScale);
+      });
     }
     function draw(snapshot, size) {
       stopTweens(); footprint.clear().setAlpha(1);
@@ -113,6 +152,7 @@
         image.setTexture(game.gemTexture(snapshot.board[row][col], snapshot.specials[row][col]));
         image.setPosition(game.cellX(col), game.cellY(row)).setScale(game.gemScale).setAlpha(1);
       });
+      drawTerrain(snapshot, size);
     }
     function label(text, index, phase) {
       if (!current) return;
@@ -158,6 +198,7 @@
         scene.tweens.add({ targets: footprint, alpha: 0, duration: CLEAR_MS });
         later(run, CLEAR_MS, () => {
           stopTweens(); footprint.clear();
+          drawTerrain(visual.after, size); // Damage updates in place, never riding a gem.
           label(waveLabel(event, index, run.plan.total), index + 1, 'fall');
           for (const cell of visual.falls) {
             const image = views[cell.from * size + cell.col];
@@ -179,7 +220,7 @@
       const run = { plan, epoch: game.boardEpoch, core: game.gemSprites.flat(), timer: null, watchdog: null, wave: 0, phase: 'swap', startedAt: 0, nextAt: 0 };
       current = run; lastReason = null;
       guard(run, () => {
-        ensureLayer(plan.size); draw(plan.initial, plan.size); layer.setVisible(true);
+        ensureLayer(plan.size, !!plan.initial.shields?.some((row) => row.some(Boolean))); draw(plan.initial, plan.size); layer.setVisible(true);
         for (const image of run.core) image.setVisible(false);
         run.startedAt = now();
         run.watchdog = environment.setTimeout(() => guard(run, () => finish('watchdog')), WATCHDOG_MS);
@@ -211,7 +252,7 @@
       removers.splice(0).forEach((remove) => remove());
       scene.events?.off('shutdown', destroy);
       safely(() => layer?.destroy(true)); safely(() => mask?.destroy()); safely(() => maskSource?.destroy()); views.length = 0;
-      layer = footprint = mask = maskSource = null;
+      layer = footprint = mask = maskSource = null; terrain.length = 0;
     }
     listen(environment.document, 'visibilitychange', () => { if (environment.document.hidden) finish('background'); });
     listen(environment, 'pagehide', () => finish('pagehide'));
@@ -219,7 +260,7 @@
     listen(game.playerUI?.surface, 'focusin', () => { if (textView()) finish('named-cell-view'); });
     scene.events?.once('shutdown', destroy);
     return { canStage, play, finish, destroy, isActive: () => !!current,
-      status: () => ({ active: !!current, lastReason, wave: current?.wave || 0, phase: current?.phase || 'idle', images: views.length, scheduledDurationMs: MAX_DURATION_MS, watchdogMs: WATCHDOG_MS }) };
+      status: () => ({ active: !!current, lastReason, wave: current?.wave || 0, phase: current?.phase || 'idle', images: views.length + terrain.length, scheduledDurationMs: MAX_DURATION_MS, watchdogMs: WATCHDOG_MS }) };
   }
 
   root.InfiniteMatchFeedback = Object.freeze({ create, planFor, fallingCells, waveLabel, MAX_FRAMES, MAX_DURATION_MS, WATCHDOG_MS });

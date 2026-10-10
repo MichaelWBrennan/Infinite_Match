@@ -18,6 +18,12 @@ describe('fixed shield tiles, shared v5 rules', () => {
     const original = structuredClone(def.shields);
     let state: any = { ...def, objectiveProgress: initialObjectiveProgress(def) };
     const first = simulateObjectiveClear(def, state, new Set(['3,3']), 50)!;
+    const staged: any = simulateObjectiveClear(def, state, new Set(['3,3']), 50, true)!;
+    const { presentation, ...sameRules } = staged;
+    expect(sameRules).toEqual(first);
+    expect(presentation.initial.shields[3][3]).toBe(2);
+    expect(presentation.frames[0].before.shields[3][3]).toBe(2);
+    expect(presentation.frames[0].after.shields[3][3]).toBe(1);
     expect(first.shields[3][3]).toBe(1);
     expect(first.brokenShields).toBe(0);
     expect(first.events[0].shieldHits).toEqual([{ row: 3, col: 3, remaining: 1 }]);

@@ -39,13 +39,17 @@ alongside score. Generation places shields only where a no-booster witness clear
 them twice; hints, server-pinned progress checks and the browser use the shared
 v5 rules. The board has original numbered shield textures, and native goals and
 named cells expose remaining hits. Old v2/v3/v4 definitions stay frozen.
-Shield boards use instant transitions until the staged visual renderer includes
-terrain snapshots. Automated rule/Phaser parity and paid-validation tests pass;
+V5 shield boards now use bounded read/fade/fall staging with fixed numbered terrain
+frames: each hit changes the number in place, never on a falling gem. The same
+read-only three-wave trace is used for inventory clears and ordinary actions;
+read-only stage labels and one live announcement identify shield damage. Reduced
+motion, text-board preference, background/pause or failed presentation falls back
+to the already-committed board. No scoring, replay, reward or paid-definition rule
+changed. Automated rule/Phaser parity and paid-validation tests pass;
 physical devices, assistive-tech users and human fairness testing remain open.
-The Chromium smoke script now includes a shield-board touch/texture/goal check, but
-it was **not run in this sandbox** (no Chrome/Chromium executable installed).
-The current full Jest run passes 37 suites / 902 tests; the older verification
-snapshot below predates the shield increment.
+The Chromium smoke script includes a shield-board touch/texture/goal check, but
+has **not been rerun for this increment** in this sandbox (no Chrome/Chromium executable installed).
+The older verification snapshot below predates the shield increment.
 See [the rules and limits](PROCEDURAL_LEVELS.md#fixed-shield-tiles--shared-rules-v5).
 
 ## Delivered objective increment — passive collection goals (rules v4)
