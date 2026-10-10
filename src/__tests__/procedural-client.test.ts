@@ -33,7 +33,7 @@ function makeBrowserGame() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/player-experience.js', 'phaser3-game.js']) {
+  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js', 'public/js/player-experience.js', 'phaser3-game.js']) {
     vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   }
   const game: any = Object.create(sandbox.PhaserMatch3Game.prototype);
@@ -779,5 +779,122 @@ describe('objective-aware Phaser v4', () => {
     expect(game.endlessTotalScore).toBe(1000500); expect(game.score).toBe(0);
     expect(Object.values(game.objectiveProgress.collected).every((count) => count === 0)).toBe(true);
     expect(game.attemptId).toBe('one_run'); expect(game.isGameRunning).toBe(true); assertSprites(game);
+  });
+});
+
+describe('optional sound is presentation only', () => {
+  function soundGame(on = true) {
+    const result = makeBrowserGame(); const { game } = result; const cues: string[] = [];
+    delete game.playSound;
+    Object.assign(game.settings, { sfx: on, soundChoiceVersion: 1, soundVolume: 0.55 });
+    let interruptions = 0; let destruction = 0;
+    game.soundEffects = { play: (cue: string) => { cues.push(cue); return true; }, configure() {}, unlock: async () => true,
+      status: () => ({ supported: true, enabled: game.settings.sfx, volume: game.settings.soundVolume }), stop() {},
+      interrupt: () => interruptions++, destroy: () => destruction++ };
+    return { ...result, cues, interruptions: () => interruptions, destruction: () => destruction };
+  }
+  const model = (game: any) => JSON.stringify({ board: game.board, specials: game.specials, progress: game.objectiveProgress,
+    score: game.score, moves: game.moves, refillState: game.levelRng.state });
+
+  test('repeated legacy settings loads cannot turn placeholder sfx:true into opt-in', async () => {
+    const { game, saved } = makeBrowserGame();
+    saved.set('phaser3_game_data', JSON.stringify({ settings: { sfx: true, highContrast: true } }));
+    await game.loadUserData(); await game.loadUserData();
+    expect(game.settings.sfx).toBe(false); expect(game.settings.highContrast).toBe(true); expect(game.settings.soundChoiceVersion).toBe(1);
+    saved.set('phaser3_game_data', JSON.stringify({ settings: { sfx: true, soundChoiceVersion: 1, soundVolume: 0.25 } }));
+    await game.loadUserData(); expect(game.settings.sfx).toBe(true); expect(game.settings.soundVolume).toBe(0.25);
+  });
+
+  test.each([2, 4, 7, 100001])('sound on/off replays identical goal-aware level %d including every RNG refill', (level) => {
+    const definition = generatedLevel({ level, mode: 'classic', location, rulesVersion: 4 }, now);
+    const snapshots: string[][] = [];
+    for (const enabled of [false, true]) {
+      const { game, cues } = soundGame(enabled); game.applyGeneratedDefinition(definition); game.isGameRunning = true;
+      const steps = [];
+      for (const cells of certifyLevel(definition).witness) {
+        if (!game.isGameRunning) break;
+        if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+        steps.push(model(game)); assertSprites(game);
+      }
+      expect(game.hasWonLevel()).toBe(true); expect(cues.length > 0).toBe(enabled); snapshots.push(steps);
+    }
+    expect(snapshots[0]).toEqual(snapshots[1]);
+  });
+
+  test('mute, volume and keyboard M change only local preferences, even on a paused/locked board', async () => {
+    const { game, saved, cues } = soundGame(); game.applyGeneratedDefinition(generatedLevel({ level: 7, location, rulesVersion: 4 }, now));
+    game.isGameRunning = true; game.isPaused = true; game.powerUpPending = true;
+    const before = model(game); game.fetchJson = () => { throw new Error('audio must not access economy'); };
+    const key = (repeat = false) => ({ key: 'm', repeat, isTrusted: true, preventDefault() {}, stopPropagation() {} });
+    game.handleBoardKey(key()); expect(game.settings.sfx).toBe(false);
+    game.handleBoardKey(key(true)); expect(game.settings.sfx).toBe(false);
+    game.handleBoardKey(key()); expect(game.settings.sfx).toBe(true);
+    game.setSoundVolume(0.25, key()); await game.previewSound(key());
+    expect(game.settings.soundVolume).toBe(0.25); expect(model(game)).toBe(before); expect(game.isPaused).toBe(true);
+    expect(JSON.parse(saved.get('phaser3_game_data')!).settings).toMatchObject({ sfx: true, soundChoiceVersion: 1, soundVolume: 0.25 });
+    expect(cues).toContain('test');
+  });
+
+  test('unsupported audio cannot gate valid swaps or request a reward or inventory spend', () => {
+    const { game } = makeBrowserGame(); delete game.playSound;
+    const definition = generatedLevel({ level: 2, location, rulesVersion: 4 }, now); game.applyGeneratedDefinition(definition); game.isGameRunning = true;
+    game.fetchJson = () => { throw new Error('unexpected economy request'); };
+    expect(game.setSoundEffects(true, { isTrusted: true })).toBe(false);
+    const cells = certifyLevel(definition).witness[0]!;
+    const expected = simulateLevelMove(definition, { board: game.board, specials: game.specials, refillState: game.levelRng.state,
+      objectiveProgress: game.objectiveProgress }, cells)!;
+    if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+    expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board); expect(game.score).toBe(expected.score);
+  });
+
+  test('free hints and invalid-swap sounds never spend a move, advance RNG or change counters', () => {
+    const { game, cues, sandbox } = soundGame(); const definition = generatedLevel({ level: 7, location, rulesVersion: 4 }, now);
+    game.applyGeneratedDefinition(definition); game.isGameRunning = true; const before = model(game);
+    game.showHint(); expect(cues).toContain('hint'); expect(model(game)).toBe(before);
+    const legal = new Set(sandbox.InfiniteLevels.legalSwaps(game.board).map((move: any) => JSON.stringify(move.cells)));
+    let invalid: any;
+    for (let r = 0; r < game.boardSize && !invalid; r++) for (let c = 0; c < game.boardSize - 1 && !invalid; c++)
+      if (!legal.has(JSON.stringify([r, c, r, c + 1]))) invalid = [r, c, r, c + 1];
+    game.trySwap(...invalid); expect(cues).toContain('invalid'); expect(model(game)).toBe(before);
+  });
+
+  test('a failed audio backend cannot interrupt shared transitions', () => {
+    const { game } = soundGame(); game.soundEffects.play = () => { throw new Error('device audio'); };
+    const definition = generatedLevel({ level: 4, location, rulesVersion: 4 }, now); game.applyGeneratedDefinition(definition); game.isGameRunning = true;
+    const cells = certifyLevel(definition).witness[0]!;
+    const expected = simulateLevelMove(definition, { board: game.board, specials: game.specials, refillState: game.levelRng.state,
+      objectiveProgress: game.objectiveProgress }, cells)!;
+    expect(() => { if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells); }).not.toThrow();
+    expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board); expect(game.score).toBe(expected.score); assertSprites(game);
+  });
+
+  test('result sound uses all-goal success, not score alone or reward-payment success', () => {
+    for (const completed of [false, true]) {
+      const { game, cues } = soundGame(); delete game.endGame;
+      const definition = generatedLevel({ level: 2, location, rulesVersion: 4 }, now);
+      game.applyGeneratedDefinition(definition); game.isGameRunning = true;
+      game.score = completed ? 30 : 1000000;
+      if (completed) for (const goal of definition.objectives) game.objectiveProgress.collected[goal.gemType!] = goal.target;
+      game.reportLevelResult = () => {}; game.submitLevelWin = async () => {}; game.showEndGameScreen = () => {};
+      game.endGame(); expect(cues.at(-1)).toBe(completed ? 'win' : 'loss');
+    }
+  });
+
+  test('inventory effects keep one semantic cue per settled clear and do not spend an ordinary move', () => {
+    for (const [activate, cue] of [['activateBomb', 'burst'], ['activateRainbow', 'prism'], ['activateLightning', 'beam']]) {
+      const { game, cues } = soundGame();
+      const definition = generatedLevel({ level: 1, location, rulesVersion: 4 }, now);
+      definition.objectives = [{ type: 'score', target: 1000000 }]; definition.targetScore = 1000000;
+      game.applyGeneratedDefinition(definition); game.isGameRunning = true;
+      const moves = game.moves; game[activate]();
+      expect(cues).toEqual([cue]); expect(game.moves).toBe(moves); assertSprites(game);
+    }
+  });
+
+  test('pause and teardown release sound without touching the model', () => {
+    const { game, interruptions, destruction } = soundGame();
+    game.applyGeneratedDefinition(generatedLevel({ level: 2, location, rulesVersion: 4 }, now)); game.isGameRunning = true;
+    const before = model(game); game.pauseGame(); expect(interruptions()).toBe(1); expect(model(game)).toBe(before);
+    game.destroy(); expect(destruction()).toBe(1);
   });
 });

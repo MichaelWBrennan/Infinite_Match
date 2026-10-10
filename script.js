@@ -12,8 +12,8 @@ class InfiniteMatchGame {
             stars: 1250,
             achievements: [],
             settings: {
-                music: true,
-                sfx: true,
+                music: false,
+                sfx: false,
                 highContrast: false,
                 largeText: false,
                 reduceAnimations: false
@@ -135,8 +135,8 @@ class InfiniteMatchGame {
         });
 
         document.getElementById('sfx-toggle').addEventListener('change', (e) => {
-            this.gameState.settings.sfx = e.target.checked;
-            console.log('Sound Effects:', e.target.checked ? 'ON' : 'OFF');
+            this.gameState.settings.sfx = window.game?.setSoundEffects(e.target.checked, e) || false;
+            e.target.checked = this.gameState.settings.sfx;
         });
 
         // Enhanced settings
@@ -2029,10 +2029,9 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Add sound effects (placeholder)
+// Compatibility forwarding: the playable Phaser controller owns opt-in local audio.
 function playSound(soundType) {
-    // In a real implementation, you would play actual sound files
-    console.log(`Playing sound: ${soundType}`);
+    return window.game?.playSound(soundType) || false;
 }
 
 // Add haptic feedback for mobile

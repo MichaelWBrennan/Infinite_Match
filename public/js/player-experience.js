@@ -105,7 +105,7 @@
             <div class="match-player-goal" data-stat="goal"></div>
             <progress class="match-goal-progress" aria-label="Level goal progress" max="100" value="0"></progress>
             <div class="match-player-theme" data-stat="theme"></div>
-            <div class="match-board-surface" tabindex="0" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, Escape clears selection."></div>
+            <div class="match-board-surface" tabindex="0" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection."></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
                 <div class="match-powerups" aria-label="Inventory boosters"></div>
@@ -157,7 +157,7 @@
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
             // Escape invokes the same explicit close action as touch, never a second pause shortcut.
-            const close = Array.from(content.querySelectorAll('button')).find((button) => /^(Back to game|Close|OK)$/.test(button.textContent));
+            const close = Array.from(content.querySelectorAll('button')).find((button) => /^(Back to game|Back to title|Close|OK)$/.test(button.textContent));
             close?.click();
         });
 
@@ -197,8 +197,30 @@
             progress.max = 100; progress.value = state.fraction * 100;
             progress.setAttribute('aria-valuetext', root.InfiniteLevels.objectiveSummary(definition, game.score, game.objectiveProgress, true));
         }
+        function soundLabel() {
+            const state = game.getSoundStatus();
+            return state.enabled ? 'Sound on — mute' : state.supported ? 'Sound off — enable' : 'Sound unavailable';
+        }
+        function renderSoundControls() {
+            const state = game.getSoundStatus();
+            const checkbox = find('[data-sound-choice]');
+            if (checkbox) { checkbox.checked = !!game.settings.sfx; checkbox.disabled = !state.supported && !checkbox.checked; }
+            const volume = find('[data-sound-volume]');
+            if (volume) { volume.value = String(Math.round(state.volume * 100)); volume.disabled = !state.enabled || !state.supported; }
+            const output = find('[data-sound-volume-label]'); if (output) output.textContent = `${Math.round(state.volume * 100)}%`;
+            const test = find('[data-sound-test]'); if (test) test.disabled = !state.enabled || !state.supported || state.volume === 0;
+            const toggle = find('[data-sound-toggle]'); if (toggle) { toggle.textContent = soundLabel(); toggle.disabled = !state.supported && !state.enabled; }
+            const description = find('[data-sound-status]');
+            if (description) description.textContent = state.state === 'unavailable' ? 'Sound is unavailable here. The game remains fully playable in silence.'
+                : state.state === 'off' ? 'Sound is off. Enable it only if you want local effects; no music plays.'
+                    : state.state === 'volume-zero' ? 'Sound volume is zero. Raise it to hear effects.'
+                        : state.state === 'ready' ? 'Sound is on. Test the volume below; M mutes it while the board is focused.'
+                            : 'Sound is on but needs a player gesture. Press Test sound; device mute or browser media policy may still silence it.';
+            const legacy = document.getElementById('sfx-toggle'); if (legacy) legacy.checked = !!game.settings.sfx;
+        }
         function refresh() {
             renderGoals();
+            renderSoundControls();
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
             find('[data-action="hint"]').disabled = !game.isGameRunning || game.isPaused || game.powerUpPending || game.levelStarting;
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
@@ -240,6 +262,8 @@
             game.openOverlay('Explore Infinite Match');
             overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
             overlayButton('Play preferences', () => preferences(wasRunning));
+            overlayButton(soundLabel(), (event) => { game.setSoundEffects(!game.settings.sfx, event); refresh(); });
+            content.lastElementChild.dataset.soundToggle = 'true';
             overlayButton('Special gem guide', () => specialGuide(wasRunning));
             if (game.usesLevelObjectives()) overlayButton('Level goal guide', () => goalGuide(wasRunning));
             overlayButton('Game modes and local level settings', () => game.openMenu());
@@ -281,8 +305,27 @@
             if (!game.usesEarnedSpecials()) overlayText('This frozen older level uses plain-gem rules. New version-3 levels support earned specials.');
         }
         function preferences(wasRunning = game.isGameRunning && !game.isPaused) {
+            const returnToTitle = !!game.titleShowing;
             if (wasRunning) game.pauseGame();
             game.openOverlay('Play preferences');
+            overlayButton(returnToTitle ? 'Back to title' : 'Back to game', () => {
+                game.closeOverlay(); delete game.playerOverlayResume;
+                if (returnToTitle) game.showTitleOverlay();
+                else { if (wasRunning) game.resumeGame(); refresh(); surface.focus(); }
+            });
+            content.lastElementChild.className = 'match-guide-close';
+            const soundLabel = document.createElement('label'); const soundChoice = document.createElement('input');
+            soundChoice.type = 'checkbox'; soundChoice.dataset.soundChoice = 'true';
+            soundChoice.addEventListener('change', (event) => { game.setSoundEffects(soundChoice.checked, event); refresh(); });
+            soundLabel.append(soundChoice, document.createTextNode('Sound effects (optional)')); content.append(soundLabel);
+            const volumeLabel = document.createElement('label'); volumeLabel.className = 'match-sound-volume';
+            const volume = document.createElement('input'); volume.type = 'range'; volume.min = '0'; volume.max = '100'; volume.step = '1';
+            volume.dataset.soundVolume = 'true'; volume.setAttribute('aria-label', 'Sound volume');
+            const output = document.createElement('span'); output.dataset.soundVolumeLabel = 'true'; output.setAttribute('aria-hidden', 'true');
+            volume.addEventListener('input', (event) => { game.setSoundVolume(Number(volume.value) / 100, event); refresh(); });
+            volumeLabel.append(document.createTextNode('Sound volume'), volume, output); content.append(volumeLabel);
+            overlayButton('Test sound', (event) => game.previewSound(event)); content.lastElementChild.dataset.soundTest = 'true';
+            overlayText(''); content.lastElementChild.dataset.soundStatus = 'true'; content.lastElementChild.setAttribute('role', 'status');
             for (const [key, title] of Object.entries({ highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', haptics: 'Touch vibration' })) {
                 const label = document.createElement('label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
                 checkbox.checked = !!game.settings[key]; checkbox.addEventListener('change', () => {
@@ -290,12 +333,13 @@
                 });
                 label.append(checkbox, document.createTextNode(title)); content.append(label);
             }
-            overlayText('System reduced-motion preferences are respected. Hints are always free; sound is currently a placeholder.');
-            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
+            overlayText('Sound is generated locally, with no downloads or microphone permission. System reduced motion is respected; sound and vibration are separate, optional preferences. Hints are always free.');
+            refresh();
         }
+
         refresh();
         return Object.freeze({ shell, surface, fields, powerups, announce, refresh, openOverlay, closeOverlay, overlayText, overlayButton,
-            status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
+            showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
     root.InfinitePlayerExperience = Object.freeze({ visuals, specialTypes, specialNames, drawGem, boardZoom, swipeCells, keyboardCell, mount });

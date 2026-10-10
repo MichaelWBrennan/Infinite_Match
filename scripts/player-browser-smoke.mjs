@@ -311,17 +311,150 @@ async function exerciseObjectives(page, device) {
   await reset(page);
 }
 
+async function exerciseSound(page, device) {
+  assert.equal(await page.evaluate(() => window.__qaAudioContexts), 0, 'muted gameplay, hints, specials and results never create audio');
+  await reset(page);
+  const before = await snapshot(page);
+  await page.evaluate(() => {
+    const g = window.game; const audio = g.soundEffects; window.__qaSoundEvents = [];
+    g.soundEffects = { ...audio, play: (cue) => { const accepted = audio.play(cue); window.__qaSoundEvents.push({ cue, accepted }); return accepted; } };
+  });
+  await page.locator('[data-action="menu"]').click();
+  await page.getByRole('button', { name: 'Play preferences', exact: true }).click();
+  const choice = page.getByRole('checkbox', { name: 'Sound effects (optional)', exact: true });
+  assert.equal(await choice.isChecked(), false);
+  assert.equal(await page.getByRole('button', { name: 'Test sound', exact: true }).isDisabled(), true);
+  await choice.check();
+  await page.waitForFunction(() => window.game.getSoundStatus().state === 'ready');
+  assert.equal(await page.evaluate(() => window.__qaAudioContexts), 1, 'explicit checkbox choice creates/unlocks one real context');
+  const slider = page.getByRole('slider', { name: 'Sound volume', exact: true });
+  await slider.press('Home');
+  for (let index = 0; index < 25; index++) await slider.press('ArrowRight');
+  assert.equal(await page.evaluate(() => window.game.settings.soundVolume), 0.25, 'real range keys set volume');
+  await page.waitForFunction(() => window.game.getSoundStatus().activeVoices === 0);
+  await page.getByRole('button', { name: 'Test sound', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.__qaSoundEvents.some((event) => event.cue === 'test' && event.accepted)), true);
+  if (device.name === 'phone') await page.screenshot({ path: path.join(output, 'phone-sound-preferences.png') });
+  await page.getByRole('button', { name: 'Back to game', exact: true }).click();
+  assert.deepEqual(await snapshot(page), before, 'sound preferences/test do not mutate the puzzle or inventory');
+
+  await earnedFixture(page, ['prism', 'burst']);
+  await performAction(page, [3, 3, 3, 4], 'swipe', device.mobile);
+  assert.equal(await page.evaluate(() => window.__qaSoundEvents.some((event) => event.cue === 'special-combo' && event.accepted)), true, 'actual combo emits semantic local cue');
+  await page.locator('[data-action="pause"]').click();
+  const paused = await snapshot(page);
+  await page.locator('.match-board-surface').press('m');
+  assert.equal(await page.evaluate(() => window.game.settings.sfx), false);
+  assert.equal(await page.evaluate(() => window.game.isPaused), true, 'M may mute without resuming the board');
+  assert.equal(await page.evaluate(() => window.game.getSoundStatus().activeVoices), 0);
+  const mutedNodes = await page.evaluate(() => window.__qaOscillators);
+  assert.equal(await page.evaluate(() => window.game.playSound('win')), false);
+  assert.equal(await page.evaluate(() => window.__qaOscillators), mutedNodes, 'mute cannot schedule sound');
+  assert.deepEqual(await snapshot(page), paused, 'paused mute changes no game state');
+  await page.locator('.match-board-surface').press('m');
+  await page.waitForFunction(() => window.game.getSoundStatus().state === 'ready');
+  assert.equal(await page.evaluate(() => window.__qaAudioContexts), 1, 'unmute reuses the existing context');
+  await page.locator('[data-action="pause"]').click();
+
+  // Synthetic lifecycle event tests the shipped cancellation handler, not physical OS audio policy.
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  await page.waitForFunction(() => window.game.getSoundStatus().contextState !== 'running');
+  assert.equal(await page.evaluate(() => window.game.playSound('win')), false);
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  assert.equal(await page.evaluate(() => window.game.getSoundStatus().state), 'gesture-required', 'return never resumes automatically');
+  await page.locator('.match-board-surface').press('ArrowLeft');
+  await page.waitForFunction(() => window.game.getSoundStatus().state === 'ready');
+  assert.equal(await page.evaluate(() => window.game.getSoundStatus().activeVoices <= window.InfiniteSoundEffects.MAX_VOICES), true);
+  if (device.name === 'phone') await checkOfflineSound(page);
+  await reset(page);
+}
+
+async function soundFallbackCases() {
+  for (const scenario of ['legacy-placeholder', 'unavailable']) {
+    // Isolate processes: constrained --single-process Chromium cannot safely close concurrent guest contexts.
+    const browser = await chromium.launch({ executablePath, headless: true, args });
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+    try {
+      await context.addInitScript((scenario) => {
+        window.__qaAudioContexts = 0;
+        if (window.location.origin === 'null') return;
+        if (scenario === 'legacy-placeholder') {
+          localStorage.setItem('phaser3_game_data', JSON.stringify({ settings: { sfx: true, highContrast: true } }));
+          const NativeContext = window.AudioContext || window.webkitAudioContext;
+          if (NativeContext) window.AudioContext = class extends NativeContext { constructor(...args) { super(...args); window.__qaAudioContexts++; } };
+        } else { window.AudioContext = undefined; window.webkitAudioContext = undefined; }
+      }, scenario);
+      const page = await context.newPage(); const errors = []; page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(url, { waitUntil: 'domcontentloaded' }); await page.waitForSelector('.match-player-dialog[open]');
+      assert.equal(await page.evaluate(() => window.game.settings.sfx), false);
+      await page.getByRole('button', { name: 'Play preferences', exact: true }).click();
+      const choice = page.getByRole('checkbox', { name: 'Sound effects (optional)', exact: true });
+      assert.equal(await choice.isChecked(), false); assert.equal(await choice.isDisabled(), scenario === 'unavailable');
+      await page.keyboard.press('Escape'); // The title's new preference close must restore the title, not lose Play.
+      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      await page.waitForFunction(() => window.game.isGameRunning && !window.game.levelStarting);
+      assert.equal(await page.evaluate(() => window.game.settings.sfx), false, 'legacy placeholder remains off after a second settings load');
+      assert.equal(await page.evaluate(() => window.__qaAudioContexts), 0);
+      await page.evaluate(() => { window.__qaDefinition = structuredClone(window.game.generatedLevel); window.__qaInventorySpends = 0; });
+      const cells = await page.evaluate(() => window.InfiniteLevels.levelActions(window.game.generatedLevel, window.game.board, window.game.specials)[0].cells);
+      await performAction(page, cells, 'tap', true);
+      assert.deepEqual(errors, [], `${scenario}: silent fallback has no page errors`);
+    } finally { await browser.close(); }
+  }
+}
+
+async function checkOfflineSound(page) {
+  const metrics = await page.evaluate(async () => {
+    const sounds = window.InfiniteSoundEffects; const metrics = [];
+    for (const cue of sounds.cueNames) {
+      const context = new window.OfflineAudioContext(1, 22050, 44100); const master = context.createGain();
+      master.gain.value = sounds.MAX_GAIN * sounds.DEFAULT_VOLUME; master.connect(context.destination);
+      sounds.scheduleCue(context, master, cue); const buffer = await context.startRendering(); const samples = buffer.getChannelData(0);
+      let sum = 0; let peak = 0; let hash = 2166136261; let last = 0;
+      for (let index = 0; index < samples.length; index++) {
+        const sample = samples[index]; if (!Number.isFinite(sample)) throw new Error('nonfinite audio');
+        sum += sample * sample; peak = Math.max(peak, Math.abs(sample)); if (Math.abs(sample) > 0.000001) last = index;
+        hash = Math.imul(hash ^ Math.round(sample * 32767), 16777619) >>> 0;
+      }
+      metrics.push({ cue, peak, rms: Math.sqrt(sum / samples.length), lastSeconds: last / 44100, hash });
+    }
+    return metrics;
+  });
+  assert.equal(metrics.length, 16); assert.equal(new Set(metrics.map((metric) => metric.hash)).size, 16, 'every original cue renders a distinct waveform');
+  for (const metric of metrics) {
+    assert.ok(metric.rms > 0.0001 && metric.peak < 0.2, `${metric.cue}: actual finite nonzero bounded audio`);
+    assert.ok(metric.lastSeconds < 0.4, `${metric.cue}: short sound ends in silence`);
+  }
+  fs.writeFileSync(path.join(output, 'sound-render-metrics.json'), JSON.stringify(metrics, null, 2));
+}
+
 for (const device of cases) {
   const browser = await chromium.launch({ executablePath, args, headless: true });
   let page;
   try {
     const context = await browser.newContext({ viewport: { width: device.width, height: device.height },
       isMobile: device.mobile, hasTouch: device.mobile, deviceScaleFactor: 1, reducedMotion: device.motion });
+    await context.addInitScript(() => {
+      window.__qaAudioContexts = 0; window.__qaOscillators = 0;
+      const NativeContext = window.AudioContext || window.webkitAudioContext;
+      if (NativeContext) {
+        class CountingContext extends NativeContext {
+          constructor(...args) {
+            super(...args); window.__qaAudioContexts++;
+            const createOscillator = this.createOscillator.bind(this);
+            this.createOscillator = () => { window.__qaOscillators++; return createOscillator(); };
+          }
+        }
+        window.AudioContext = CountingContext;
+      }
+    });
     page = await context.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.match-player-dialog[open]', { timeout: 30000 });
+    assert.equal(await page.evaluate(() => window.__qaAudioContexts), 0, 'title creates no audio context');
+    assert.equal(await page.evaluate(() => window.game.settings.sfx), false, 'fresh play is opt-in silent');
     // Native account dialog must be usable, not hidden beneath another modal's top layer.
     if (device.name === 'phone') {
       await page.getByRole('button', { name: 'Sign in / Register', exact: true }).click();
@@ -349,6 +482,7 @@ for (const device of cases) {
     await exerciseMove(page, 'keyboard', device.mobile);
     await exerciseEarnedSpecials(page, device);
     await exerciseObjectives(page, device);
+    await exerciseSound(page, device);
     await reset(page);
 
     // Invalid adjacent swaps give feedback even when motion is reduced, and cost nothing.
@@ -456,18 +590,22 @@ for (const device of cases) {
     if (device.name === 'phone') {
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.match-player-dialog[open]');
+      assert.equal(await page.evaluate(() => window.__qaAudioContexts), 0, 'saved opt-in does not autoplay on reload');
       await page.getByRole('button', { name: 'Play', exact: true }).click();
       await page.waitForFunction(() => window.game?.isGameRunning && !window.game.levelStarting);
       const settings = await page.evaluate(() => window.game.settings);
       assert.equal(settings.highContrast, true);
       assert.equal(settings.largeText, true);
       assert.equal(settings.reduceAnimations, true);
+      assert.equal(settings.sfx, true); assert.equal(settings.soundChoiceVersion, 1); assert.equal(settings.soundVolume, 0.25);
+      await page.waitForFunction(() => window.game.getSoundStatus().state === 'ready');
+      assert.equal(await page.evaluate(() => window.__qaAudioContexts), 1, 'saved opt-in unlocks one context only after actual Play gesture');
       await checkFit(page);
     }
     await page.screenshot({ path: path.join(output, `${device.name}.png`) });
     assert.deepEqual(errors, [], 'no page JavaScript errors');
     const result = { device: device.name, viewport: `${device.width}x${device.height}`, boardSize: initialBoardSize,
-      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, collection-progress, pair/mixed/collection-win, objective-guide, objective-replay, largest-board/large-text',
+      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, collection-progress, pair/mixed/collection-win, objective-guide, objective-replay, opt-in-sound, volume/mute/pause/lifecycle, audio-parity, largest-board/large-text',
       touchSwipe: device.mobile };
     results.push(result);
     console.log(JSON.stringify(result));
@@ -477,6 +615,7 @@ for (const device of cases) {
   } finally {
     await browser.close();
   }
+  if (device.name === 'phone') await soundFallbackCases();
 }
 fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify({ url, results }, null, 2));
 console.log(`Player browser smoke passed for ${results.length} viewports. Screenshots and results: ${output}`);

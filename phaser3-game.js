@@ -83,8 +83,10 @@ class PhaserMatch3Game {
         this.maxEnergy = 100;
         this.achievements = [];
         this.settings = {
-            music: true,
-            sfx: true,
+            music: false,
+            sfx: false,
+            soundChoiceVersion: 1,
+            soundVolume: 0.55,
             highContrast: false,
             largeText: false,
             reduceAnimations: false,
@@ -124,6 +126,7 @@ class PhaserMatch3Game {
         console.log('🎮 Initializing Phaser 3 Match-3 Game...');
         const self = this;
         this.loadUserData(); // Local preferences are available on the title, not only after Play.
+        this.soundEffects = window.InfiniteSoundEffects?.create(this.settings) || null;
         this.playerUI = window.InfinitePlayerExperience?.mount(this, document.getElementById('phaser-game-container')) || null;
         
         // Initialize Phaser 3 game
@@ -141,6 +144,7 @@ class PhaserMatch3Game {
                 preload: function () { self.scene = this; self.preload(); },
                 create: function () { self.scene = this; self.create(); }
             },
+            audio: { noAudio: true }, // Local opt-in Web Audio controller; no eager Phaser context.
             physics: {
                 default: 'arcade',
                 arcade: {
@@ -168,8 +172,6 @@ class PhaserMatch3Game {
         // Load UI assets
         this.loadUIAssets();
         
-        // Load sound assets (placeholder)
-        this.loadSoundAssets();
     }
 
     createGemTextures() {
@@ -241,11 +243,6 @@ class PhaserMatch3Game {
         graphics.destroy();
     }
 
-    loadSoundAssets() {
-        // Placeholder for sound loading
-        console.log('🔊 Sound assets loaded (placeholder)');
-    }
-
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
         
@@ -281,13 +278,14 @@ class PhaserMatch3Game {
         this.titleShowing = true;
         const signedIn = !!this.getAuthToken();
         this.openOverlay('Infinite Match');
-        this.overlayText(400, 150, this.playerUI ? 'Match three or more gems to reach the score goal. Tap adjacent gems or swipe.' : 'Match gems, clear the board, and build your kingdom.', { size: 20, width: 600 });
+        this.overlayText(400, 150, this.playerUI ? 'Match gems to complete every displayed goal. Sound is optional; Play preferences has local effects (off by default).' : 'Match gems, clear the board, and build your kingdom.', { size: 20, width: 600 });
         this.overlayText(400, 200, signedIn
             ? 'Signed in. Energy, coins, and rewards are saved to your account.'
             : 'Sign in to save energy, coins, and purchases to your account.', { size: 16, width: 600 });
         this.overlayButton(400, 300, 300, 60, 0x4ecdc4, 'Play', () => this.requestStart());
         this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
         this.overlayButton(400, 460, 300, 55, 0xe09d54, 'Today’s Local Level', () => this.startDaily());
+        if (this.playerUI) this.overlayButton(400, 530, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
     }
 
     // Opens the DOM login modal. It sits above the canvas (z-index 2000).
@@ -409,6 +407,7 @@ class PhaserMatch3Game {
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
+            this.playSound('invalid');
             return null;
         }
         this.moves--;
@@ -417,7 +416,7 @@ class PhaserMatch3Game {
         return result;
     }
 
-    renderEarnedTransition(result) {
+    renderEarnedTransition(result, soundCue = null) {
         this.setSelectedGem(null); this.hintCells = null;
         const previous = this.gemSprites;
         const kept = new Set(result.origins.flat().filter(Boolean).map((key) => {
@@ -441,6 +440,7 @@ class PhaserMatch3Game {
         if (result.objectiveProgress) this.objectiveProgress = result.objectiveProgress;
         this.addScore(result.score);
         this.showEarnedFeedback(result);
+        this.playSound(soundCue || window.InfiniteSoundEffects?.cueForTransition(result) || 'match');
         if (this.playerUI && !this.animationsReduced()) this.inputLockedUntil = Date.now() + 220;
         const earned = result.events.flatMap((event) => event.created);
         const activated = result.events.flatMap((event) => event.activated);
@@ -502,6 +502,11 @@ class PhaserMatch3Game {
     }
 
     handleBoardKey(event) {
+        if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+            event.preventDefault(); event.stopPropagation();
+            if (!event.repeat) this.setSoundEffects(!this.settings.sfx, event);
+            return;
+        }
         if (!this.canInteractWithBoard()) {
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape'].includes(event.key) || event.key.toLowerCase() === 'h') {
                 event.preventDefault(); event.stopPropagation();
@@ -540,6 +545,7 @@ class PhaserMatch3Game {
         for (const [r, c] of (cells.length === 2 ? [[cells[0], cells[1]]] : [[cells[0], cells[1]], [cells[2], cells[3]]])) this.gemSprites[r][c].setScale(this.gemScale * 1.08);
         const message = cells.length === 2 ? `Free hint: tap the special at row ${cells[0] + 1}, column ${cells[1] + 1}. No move or charge spent.` : `Free hint: ${this.specials?.[cells[0]]?.[cells[1]] || this.specials?.[cells[2]]?.[cells[3]] ? 'swipe' : 'swap'} row ${cells[0] + 1}, column ${cells[1] + 1} with row ${cells[2] + 1}, column ${cells[3] + 1}. No move or charge spent.`;
         this.playerUI?.announce(message + (this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress, true)}` : ''));
+        this.playSound('hint');
         return cells;
     }
 
@@ -749,6 +755,7 @@ class PhaserMatch3Game {
             this.swapModel(r1, c1, r2, c2);
             this.shake([this.gemSprites[r1][c1], this.gemSprites[r2][c2]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
+            this.playSound('invalid');
             return;
         }
 
@@ -756,6 +763,7 @@ class PhaserMatch3Game {
         this.moves--;
         const scoreBefore = this.score;
         const chain = this.resolveBoard();
+        this.playSound(chain > 1 ? 'cascade' : 'match');
         if (!this.hasPossibleMove()) {
             this.reshuffleBoard();
         }
@@ -778,9 +786,6 @@ class PhaserMatch3Game {
             matches = this.findMatches();
         }
         if (matches.size) this.reshuffleBoard(); // Same bounded cascade repair as the certifier.
-        if (chain > 1) {
-            this.playSound('combo');
-        }
         return chain;
     }
 
@@ -867,13 +872,13 @@ class PhaserMatch3Game {
     }
 
     // Clears the given cells (power-up effects), then resolves any cascades.
-    clearAndCascade(keys, points) {
+    clearAndCascade(keys, points, soundCue = 'inventory') {
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
                     { board: this.board, specials: this.specials, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points)
                 : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points);
-            if (result) { this.renderEarnedTransition(result); this.checkEndConditions(); }
+            if (result) { this.renderEarnedTransition(result, soundCue); this.checkEndConditions(); }
             return;
         }
         this.setSelectedGem(null);
@@ -885,6 +890,7 @@ class PhaserMatch3Game {
             this.reshuffleBoard();
         }
         this.updateUI();
+        this.playSound(soundCue);
         this.checkEndConditions();
     }
 
@@ -911,14 +917,12 @@ class PhaserMatch3Game {
                 if (this.isInBounds(r, c)) keys.add(`${r},${c}`);
             }
         }
-        this.clearAndCascade(keys, 100);
-        this.playSound('bomb_explode');
+        this.clearAndCascade(keys, 100, 'burst');
     }
 
     activateRainbow() {
         // Clears the whole board.
-        this.clearAndCascade(this.allCellKeys(), 500);
-        this.playSound('rainbow_clear');
+        this.clearAndCascade(this.allCellKeys(), 500, 'prism');
     }
 
     activateLightning() {
@@ -926,8 +930,7 @@ class PhaserMatch3Game {
         const col = Math.floor(Math.random() * this.boardSize);
         const keys = new Set();
         for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
-        this.clearAndCascade(keys, 300);
-        this.playSound('lightning_strike');
+        this.clearAndCascade(keys, 300, 'beam');
     }
 
     createUI() {
@@ -1340,7 +1343,7 @@ class PhaserMatch3Game {
         this.spendPowerUp(type, () => {
             const keys = this.powerUpKeys(type, r, c);
             const points = { diamond: 400, target: 200, star: 250 }[type];
-            this.clearAndCascade(keys, points);
+            this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam');
             this.showPowerUpAnimation(type);
         });
     }
@@ -1646,6 +1649,7 @@ class PhaserMatch3Game {
     }
 
     applyGeneratedDefinition(definition, serverTime = null) {
+        this.soundEffects?.stop();
         if (this.timerInterval) clearInterval(this.timerInterval);
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {
@@ -1705,6 +1709,7 @@ class PhaserMatch3Game {
         this.runStartedAt = startedAt;
         this.isGameRunning = true;
         this.updateUI();
+        this.playSound('stage');
         this.trackEvent('endless_stage_started', { stage: this.level, totalScore: total });
     }
 
@@ -1760,6 +1765,7 @@ class PhaserMatch3Game {
         this.runStartedAt = Date.now();
         this.startTimer();
         this.updateUI();
+        this.playSound('stage');
         
         // Show tutorial for first-time players
         if (!this.tutorialShown) {
@@ -1800,6 +1806,7 @@ class PhaserMatch3Game {
         this.analytics.gamesPlayed++;
         this.analytics.totalScore += score;
         this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
+        this.playSound('bank');
         const payment = this.submitEndlessRun(score);
         this.rewardSubmission = payment;
         const result = await payment;
@@ -1889,8 +1896,37 @@ class PhaserMatch3Game {
     }
 
     playSound(soundType) {
-        // Placeholder for sound effects
-        console.log(`🔊 Playing sound: ${soundType}`);
+        if (this.isPaused || !this.settings.sfx) return false;
+        try { return this.soundEffects?.play(soundType) || false; } catch { return false; }
+    }
+
+    getSoundStatus() {
+        return this.soundEffects?.status() || { state: 'unavailable', supported: false, enabled: false, volume: 0.55 };
+    }
+
+    setSoundEffects(enabled, event) {
+        this.settings.sfx = enabled === true && this.getSoundStatus().supported;
+        this.settings.soundChoiceVersion = window.InfiniteSoundEffects?.SETTINGS_VERSION || 1;
+        this.soundEffects?.configure(this.settings);
+        this.saveUserData(); this.playerUI?.refresh();
+        this.playerUI?.announce(this.getSoundStatus().supported ? this.settings.sfx ? 'Sound on. M mutes it on the board.' : 'Sound off.' : 'Sound is unavailable in this browser. Play stays silent.');
+        if (this.settings.sfx) this.previewSound(event);
+        return this.settings.sfx;
+    }
+
+    setSoundVolume(volume, event) {
+        if (!Number.isFinite(volume)) return;
+        this.settings.soundVolume = Math.max(0, Math.min(1, volume));
+        this.soundEffects?.configure(this.settings);
+        this.saveUserData(); this.playerUI?.refresh();
+        this.soundEffects?.unlock(event);
+    }
+
+    async previewSound(event) {
+        const accepted = await this.soundEffects?.unlock(event);
+        const played = accepted && this.soundEffects.play('test');
+        this.playerUI?.refresh();
+        return !!played;
     }
 
     // Authentication and Platform Integration
@@ -1977,12 +2013,13 @@ class PhaserMatch3Game {
                 // An old saved score/level must not overwrite a freshly generated attempt.
                 // Energy is not restored from localStorage: signed-in energy comes from the server.
                 this.achievements = data.achievements || this.achievements;
-                this.settings = { ...this.settings, ...data.settings };
+                this.settings = { ...this.settings, ...data.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(data.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
                 console.log('✅ User data loaded');
             }
         } catch (error) {
             console.error('❌ Failed to load user data:', error);
         }
+        this.soundEffects?.configure(this.settings);
     }
 
     async saveUserData() {
@@ -2515,6 +2552,7 @@ class PhaserMatch3Game {
 
     // Pause/Resume
     pauseGame() {
+        this.soundEffects?.interrupt();
         this.isPaused = true;
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
@@ -2556,6 +2594,7 @@ class PhaserMatch3Game {
         // Calculate stars based on score
         let stars = 0;
         stars = this.starsFor(this.score);
+        this.playSound(stars > 0 ? 'win' : 'loss');
         
         this.reportLevelResult(stars);
         this.rewardSubmission = this.submitLevelWin(stars);
@@ -2656,6 +2695,7 @@ class PhaserMatch3Game {
     }
 
     destroy() {
+        this.soundEffects?.destroy();
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.boardResizeObserver?.disconnect();
         if (this.onAuthChanged) window.removeEventListener('auth:changed', this.onAuthChanged);
