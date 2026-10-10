@@ -1,33 +1,8 @@
-export function hashSeed(text: any): number;
-/** The serializable state is also used for the game's refill stream. */
-export function nextRandom(rng: any): number;
-export function pickGem(rng: any, palette: any, weights?: {}): any;
-export function matchingCells(board: any): Set<any>;
-export function legalSwaps(board: any): {
-    cells: number[];
-    count: number;
-}[];
-/** Stable AND playable, including the fallback; no unbounded rejection loop. */
-export function dealPlayableBoard(size: any, palette: any, weights: any, rng: any): any[][];
-/** Identical column/refill order and cascade scoring to the Phaser match-3 core. */
-export function simulateMove(initialBoard: any, refillState: any, palette: any, weights: any, cells: any): {
-    board: any;
-    refillState: number;
-    score: number;
-    cascades: number;
-} | null;
-/** Existence proof, not a claim that every choice wins or that humans meet a timed deadline. */
-export function certifyBoard(board: any, refillState: any, palette: any, weights: any, moveBudget: any): {
-    score: number;
-    witness: number[][];
-};
 export function levelTheme(context: any): any;
 /** Cache/seed identity excludes fetch timestamps and small changes within weather bands. */
-export function generationKey(levelNumber: any, context: any, mode?: string): string;
+export function generationKey(levelNumber: any, context: any, mode?: string, version?: number): string;
 /** Any positive safe level number; bounded difficulty instead of impossible linear score growth. */
-export function generateLevel(levelNumber: any, context: any, mode?: string): {
-    id: string;
-    generatorVersion: number;
+export function generateLevel(levelNumber: any, context: any, mode?: string, version?: number): {
     environmentKey: string;
     level: any;
     mode: string;
@@ -56,8 +31,52 @@ export function generateLevel(levelNumber: any, context: any, mode?: string): {
         verifiedMoves: number;
         verifiedScore: number;
     };
+    specials?: any[][];
+    id: string;
+    generatorVersion: number;
 };
-export const GENERATOR_VERSION: 2;
+/** Use the frozen definition's rules, never today's generator version, during an active attempt. */
+export function levelActions(definition: any, board?: any, specials?: any): {
+    cells: number[];
+    count: number;
+}[];
+export function simulateLevelMove(definition: any, state: any, cells: any): {
+    board: any;
+    refillState: number;
+    score: number;
+    cascades: number;
+} | {
+    board: any;
+    specials: any;
+    origins: any;
+    refillState: any;
+    score: number;
+    cascades: number;
+    events: {
+        cleared: any[];
+        created: {
+            row: any;
+            col: any;
+            type: any;
+            color: any;
+        }[];
+        activated: {
+            row: any;
+            col: any;
+            type: any;
+        }[];
+        points: number;
+        combo: any;
+    }[];
+    reshuffled: boolean;
+} | null;
+export function certifyLevel(definition: any): {
+    score: number;
+    witness: number[][];
+};
+export const GENERATOR_VERSION: 3;
 export const GEM_TYPES: string[];
 export const LEVEL_MODES: string[];
+export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from "./match-core.js";
+export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from "./special-rules.js";
 //# sourceMappingURL=generator.d.ts.map

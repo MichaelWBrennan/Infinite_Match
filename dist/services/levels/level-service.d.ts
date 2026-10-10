@@ -1,9 +1,10 @@
-export function levelForContext(level: any, mode: any, context: any): any;
+export function levelForContext(level: any, mode: any, context: any, rulesVersion?: number): any;
 /** Synchronous, no-network generation for tooling, tests and calendar-only callers. */
-export function generatedLevel({ level, mode, location }?: {
+export function generatedLevel({ level, mode, location, rulesVersion }?: {
     level?: number | undefined;
     mode?: string | undefined;
     location?: {} | undefined;
+    rulesVersion?: number | undefined;
 }, nowMs?: number): any;
 /** A single server-selected clock/forecast snapshot is frozen into a new board. */
 export function liveLevelContext(location?: {}, nowMs?: number, weatherService?: Readonly<{
@@ -148,10 +149,11 @@ export function liveLevelContext(location?: {}, nowMs?: number, weatherService?:
     timeOfDayEnabled: boolean;
     weatherEnabled: boolean;
 }>;
-export function liveGeneratedLevel({ level, mode, location }?: {
+export function liveGeneratedLevel({ level, mode, location, rulesVersion }?: {
     level?: number | undefined;
     mode?: string | undefined;
     location?: {} | undefined;
+    rulesVersion?: number | undefined;
 }, nowMs?: number, weatherService?: Readonly<{
     snapshot: (location: any, nowMs?: number) => Promise<{
         available: boolean;
@@ -178,4 +180,6 @@ export function liveGeneratedLevel({ level, mode, location }?: {
         attribution: any;
     }>;
 }>): Promise<any>;
+/** Untagged deployed v2 clients must never be charged for an unsupported v3 target. */
+export function clientRulesVersion(value: any): 3 | 2;
 //# sourceMappingURL=level-service.d.ts.map

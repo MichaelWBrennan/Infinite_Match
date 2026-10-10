@@ -17,7 +17,7 @@ import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-sea
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { socialStore } from '../services/social/social-store.js';
 import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
-import { liveGeneratedLevel } from '../services/levels/level-service.js';
+import { liveGeneratedLevel, clientRulesVersion } from '../services/levels/level-service.js';
 import { LevelInputError } from '../services/levels/location-context.js';
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
@@ -510,6 +510,7 @@ router.post('/energy/spend', security.sessionValidation, async (req, res) => {
         }
         const definition = req.body?.mode === undefined ? null : await liveGeneratedLevel({
             level: req.body?.level, mode: req.body.mode, location: req.body.location ?? {},
+            rulesVersion: clientRulesVersion(req.body.rulesVersion),
         });
         const result = await accountEconomyService.spendAttemptEnergy(playerId, definition?.level ?? req.body?.level, Date.now(), definition);
         res.json({ success: true, result, serverTime: new Date().toISOString(), requestId: req.requestId });
