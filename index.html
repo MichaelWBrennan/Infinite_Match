@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -467,7 +467,7 @@
     </div>
 
     <!-- Unity Canvas (hidden by default) -->
-    <canvas id="unity-canvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000;"></canvas>
+    <canvas id="unity-canvas" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; z-index: 1000;"></canvas>
 
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
@@ -689,11 +689,11 @@
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="modal">
+    <dialog id="login-modal" class="modal" aria-labelledby="account-sync-heading" oncancel="event.preventDefault(); closeLoginModal()">
         <div class="modal-content login-modal-content">
             <div class="modal-header">
-                <h3>Account Sync</h3>
-                <button class="close-btn" onclick="closeLoginModal()">×</button>
+                <h3 id="account-sync-heading">Account Sync</h3>
+                <button class="close-btn" aria-label="Close account sign in" onclick="closeLoginModal()">×</button>
             </div>
             <div class="modal-body">
                 <div class="login-tabs">
@@ -780,7 +780,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Enhanced Features -->
     <div id="tutorial-overlay" class="tutorial-overlay">
@@ -860,6 +860,7 @@
     </script>
     <script src="js/procedural-levels.js"></script>
     <script src="js/level-location.js"></script>
+    <script src="js/player-experience.js"></script>
     <script src="phaser3-game.js"></script>
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>
@@ -921,15 +922,7 @@
             // Add platform-specific optimizations
             if (platformInfo.isMobile) {
                 document.body.classList.add('mobile-device');
-                // Prevent zoom on double tap
-                let lastTouchEnd = 0;
-                document.addEventListener('touchend', function (event) {
-                    const now = (new Date()).getTime();
-                    if (now - lastTouchEnd <= 300) {
-                        event.preventDefault();
-                    }
-                    lastTouchEnd = now;
-                }, false);
+                // The board owns its gestures; never suppress zoom or fast taps across the whole document.
             }
 
             if (platformInfo.isLowEnd) {
@@ -992,47 +985,28 @@
 
         // Initialize Phaser 3 game
         function initializePhaser3Game() {
-            console.log('🚀 Initializing Phaser 3 game...');
-
-            // Show loading progress
+            if (document.getElementById('phaser-game-container')) return;
             const progressBar = document.getElementById('loading-bar-fill');
             const progressText = document.getElementById('loading-text');
-
-            // Simulate loading progress
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += Math.random() * 20;
-                if (progress > 100) progress = 100;
-
-                progressBar.style.width = progress + '%';
-                progressText.textContent = `Loading Phaser 3... ${Math.round(progress)}%`;
-
-                if (progress >= 100) {
-                    clearInterval(progressInterval);
-
-                    try {
-                        // Create Phaser 3 game container
-                        const gameContainer = document.createElement('div');
-                        gameContainer.id = 'phaser-game-container';
-                        gameContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; background: #2c3e50;';
-                        document.body.appendChild(gameContainer);
-
-                        // Initialize Phaser 3 game
-                        window.game = new PhaserMatch3Game();
-
-                        // Hide loading screen and show game
-                        setTimeout(() => {
-                            document.getElementById('loading-screen').classList.remove('active');
-                            document.getElementById('title-screen').classList.add('active');
-                            console.log('✅ Phaser 3 game loaded successfully');
-                        }, 500);
-
-                    } catch (error) {
-                        console.error('❌ Failed to load Phaser 3 game:', error);
-                        showWebGLNotice();
-                    }
-                }
-            }, 100);
+            progressText.textContent = 'Preparing your puzzle…';
+            const ready = () => {
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Ready to play';
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('title-screen').classList.add('active');
+            };
+            window.addEventListener('match:ready', ready, { once: true });
+            try {
+                const gameContainer = document.createElement('div');
+                gameContainer.id = 'phaser-game-container';
+                gameContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; height: 100dvh; z-index: 1000; background: #2c3e50;';
+                document.body.appendChild(gameContainer);
+                window.game = new PhaserMatch3Game();
+            } catch (error) {
+                window.removeEventListener('match:ready', ready);
+                console.error('Failed to start Phaser:', error);
+                showWebGLNotice();
+            }
         }
     </script>
     <button id="menu-return" type="button" onclick="returnToGame()"

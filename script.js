@@ -1235,8 +1235,10 @@ class InfiniteMatchGame {
         const modal = document.getElementById('login-modal');
         if (modal) {
             modal.classList.add('active');
+            if (typeof modal.showModal === 'function' && !modal.open) modal.showModal();
             // Reset forms
             this.resetLoginForms();
+            document.getElementById('login-player-id')?.focus();
         } else {
             console.error('Login modal not found in DOM');
         }
@@ -1246,7 +1248,9 @@ class InfiniteMatchGame {
         const modal = document.getElementById('login-modal');
         if (modal) {
             modal.classList.remove('active');
+            if (modal.open && typeof modal.close === 'function') modal.close();
         }
+        window.game?.closeSignIn?.();
     }
 
     switchLoginTab(tab) {
@@ -2008,6 +2012,8 @@ document.addEventListener('touchstart', (e) => {
 
 // Add keyboard support
 document.addEventListener('keydown', (e) => {
+    // Native dialogs/forms own their Enter/Escape actions; do not also start or pause a game.
+    if (e.defaultPrevented || e.target?.closest?.('input, textarea, select, button, dialog, [contenteditable="true"]')) return;
     switch(e.key) {
         case 'Escape':
             if (window.game && window.game.isGameRunning) {

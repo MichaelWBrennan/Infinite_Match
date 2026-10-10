@@ -87,7 +87,8 @@ class PhaserMatch3Game {
             sfx: true,
             highContrast: false,
             largeText: false,
-            reduceAnimations: false
+            reduceAnimations: false,
+            haptics: false
         };
         this.timerInterval = null;
         this.tutorialShown = false;
@@ -122,13 +123,15 @@ class PhaserMatch3Game {
     init() {
         console.log('🎮 Initializing Phaser 3 Match-3 Game...');
         const self = this;
+        this.loadUserData(); // Local preferences are available on the title, not only after Play.
+        this.playerUI = window.InfinitePlayerExperience?.mount(this, document.getElementById('phaser-game-container')) || null;
         
         // Initialize Phaser 3 game
         const config = {
             type: Phaser.AUTO,
             width: 800,
             height: 600,
-            parent: 'phaser-game-container',
+            parent: this.playerUI ? 'match-board-surface' : 'phaser-game-container',
             backgroundColor: '#2c3e50',
             // Phaser invokes these with the Scene as `this`. The methods below
             // reach the scene through `this.scene`, which was never assigned
@@ -146,7 +149,7 @@ class PhaserMatch3Game {
                 }
             },
             scale: {
-                mode: Phaser.Scale.FIT,
+                mode: this.playerUI ? Phaser.Scale.RESIZE : Phaser.Scale.FIT,
                 autoCenter: Phaser.Scale.CENTER_BOTH,
                 width: 800,
                 height: 600
@@ -170,6 +173,14 @@ class PhaserMatch3Game {
     }
 
     createGemTextures() {
+        if (window.InfinitePlayerExperience && this.scene.textures?.createCanvas) {
+            for (const type of Object.keys(window.InfinitePlayerExperience.visuals)) {
+                const texture = this.scene.textures.createCanvas(`gem_${type}`, 64, 64);
+                window.InfinitePlayerExperience.drawGem(texture.getContext(), type);
+                texture.refresh();
+            }
+            return;
+        }
         const gemColors = {
             red: 0xff4757,
             blue: 0x3742fa,
@@ -241,15 +252,26 @@ class PhaserMatch3Game {
         this.createPowerUps();
         this.setupInput();
         this.setupAnimations();
+        if (this.playerUI) {
+            this.scene.scale.on('resize', () => this.fitBoardViewport());
+            this.boardResizeObserver = new ResizeObserver(() => {
+                const { clientWidth: width, clientHeight: height } = this.playerUI.surface;
+                if (width > 0 && height > 0) { this.game.scale.resize(width, height); this.fitBoardViewport(); }
+            });
+            this.boardResizeObserver.observe(this.playerUI.surface);
+            this.fitBoardViewport();
+        }
         
         // Nothing starts on load. The title overlay waits for Play, which claims an attempt first.
         this.showTitleOverlay();
         this.syncAccountFromServer();
         // Signing in happens in the DOM login modal. When it finishes, refresh energy and the title.
-        window.addEventListener('auth:changed', () => {
+        this.onAuthChanged = () => {
             this.syncAccountFromServer();
-            if (this.titleShowing) this.showTitleOverlay();
-        });
+            if (this.titleShowing && !this.signInReturnState) this.showTitleOverlay();
+        };
+        window.addEventListener('auth:changed', this.onAuthChanged);
+        window.dispatchEvent?.(new Event('match:ready'));
     }
 
     // Title screen, drawn on the canvas. Play starts the first board; sign-in opens the login modal.
@@ -257,7 +279,7 @@ class PhaserMatch3Game {
         this.titleShowing = true;
         const signedIn = !!this.getAuthToken();
         this.openOverlay('Infinite Match');
-        this.overlayText(400, 150, 'Match gems, clear the board, and build your kingdom.', { size: 20, width: 600 });
+        this.overlayText(400, 150, this.playerUI ? 'Match three or more gems to reach the score goal. Tap adjacent gems or swipe.' : 'Match gems, clear the board, and build your kingdom.', { size: 20, width: 600 });
         this.overlayText(400, 200, signedIn
             ? 'Signed in. Energy, coins, and rewards are saved to your account.'
             : 'Sign in to save energy, coins, and purchases to your account.', { size: 16, width: 600 });
@@ -268,7 +290,25 @@ class PhaserMatch3Game {
 
     // Opens the DOM login modal. It sits above the canvas (z-index 2000).
     openSignIn() {
+        if (this.playerUI) {
+            this.signInReturnState = { title: !!this.titleShowing,
+                resume: this.playerOverlayResume ?? (this.isGameRunning && !this.isPaused) };
+            delete this.playerOverlayResume;
+            this.closeOverlay();
+            this.pauseGame();
+        }
         if (typeof window.showLoginModal === 'function') window.showLoginModal();
+    }
+
+    closeSignIn() {
+        if (!this.signInReturnState) return;
+        const state = this.signInReturnState;
+        this.signInReturnState = null;
+        if (state.title) this.showTitleOverlay();
+        else {
+            if (state.resume) this.resumeGame();
+            this.playerUI?.surface.focus({ preventScroll: true });
+        }
     }
 
     // The Play button. Starts the current level: applies its target and move limit, and claims
@@ -318,6 +358,8 @@ class PhaserMatch3Game {
     }
 
     createGameBoard() {
+        this.boardEpoch = (this.boardEpoch || 0) + 1;
+        this.gestureStart = null; this.hintCells = null; this.keyboardCursor = null;
         this.boardX = this.generatedLevel ? 450 - (this.boardSize - 1) * 54 / 2 : 250;
         this.boardY = this.generatedLevel ? 280 - (this.boardSize - 1) * 54 / 2 : 80;
         this.gemSize = 50;
@@ -345,14 +387,92 @@ class PhaserMatch3Game {
         }
     }
 
+    fitBoardViewport() {
+        if (!this.playerUI || !this.boardSize) return;
+        const { clientWidth: width, clientHeight: height } = this.playerUI.surface;
+        if (width <= 0 || height <= 0) return;
+        const camera = this.scene.cameras.main;
+        camera.setZoom(window.InfinitePlayerExperience.boardZoom(width, height, this.boardSize, this.cellStep));
+        camera.centerOn(this.boardX + (this.boardSize - 1) * this.cellStep / 2, this.boardY + (this.boardSize - 1) * this.cellStep / 2);
+    }
+
+    animationsReduced() {
+        return !!this.settings?.reduceAnimations || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    canInteractWithBoard() {
+        return !!this.isGameRunning && !this.isPaused && !this.powerUpPending && !this.levelStarting
+            && !(this.inputLockedUntil > Date.now()) && !(this.playerUI?.shell.querySelector('dialog').open);
+    }
+
+    beginGemGesture(gem, pointer) {
+        if (!this.canInteractWithBoard() || (this.gestureStart && this.gestureStart.id !== pointer.id)) return;
+        this.playerUI?.surface.focus({ preventScroll: true });
+        this.gestureStart = { gem, row: gem.getData('row'), col: gem.getData('col'), x: pointer.x, y: pointer.y, id: pointer.id, epoch: this.boardEpoch };
+    }
+
+    endGemGesture(pointer, cancelled = false) {
+        const gesture = this.gestureStart;
+        if (!gesture || gesture.id !== pointer.id) return;
+        this.gestureStart = null;
+        if (cancelled || /cancel/i.test(pointer.event?.type || '') || gesture.epoch !== this.boardEpoch || !this.canInteractWithBoard()) return;
+        const cells = window.InfinitePlayerExperience.swipeCells(gesture.row, gesture.col,
+            pointer.x - gesture.x, pointer.y - gesture.y, this.boardSize);
+        if (cells) { this.setSelectedGem(null); this.trySwap(...cells); }
+        else if (Math.max(Math.abs(pointer.x - gesture.x), Math.abs(pointer.y - gesture.y)) < 18) this.selectGem(gesture.gem);
+    }
+
+    handleBoardKey(event) {
+        if (!this.canInteractWithBoard()) {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape'].includes(event.key) || event.key.toLowerCase() === 'h') {
+                event.preventDefault(); event.stopPropagation();
+            }
+            return;
+        }
+        const [row, col] = this.keyboardCursor || [0, 0];
+        const cell = window.InfinitePlayerExperience.keyboardCell(row, col, event.key, this.boardSize);
+        if (cell) {
+            event.preventDefault(); event.stopPropagation(); this.keyboardCursor = cell;
+            const gem = this.gemSprites[cell[0]][cell[1]];
+            this.setSelectedGem(this.selectedGem);
+            gem.setScale(this.gemScale * 1.08);
+            const type = gem.getData('type');
+            this.playerUI?.announce(`Row ${cell[0] + 1}, column ${cell[1] + 1}: ${type} ${window.InfinitePlayerExperience.visuals[type].shape}. Enter selects.`);
+        } else if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault(); event.stopPropagation(); this.selectGem(this.gemSprites[row][col]);
+            this.playerUI?.announce(this.selectedGem ? `Selected row ${row + 1}, column ${col + 1}. Choose an adjacent gem.` : 'Selection cleared or move completed.');
+        } else if (event.key.toLowerCase() === 'h') {
+            event.preventDefault(); event.stopPropagation(); this.showHint();
+        } else if (event.key === 'Escape') {
+            event.preventDefault(); event.stopPropagation(); this.setSelectedGem(null); this.disarmPowerUp();
+            this.playerUI?.announce('Selection cleared.');
+        }
+    }
+
+    showHint() {
+        if (!this.canInteractWithBoard() || !globalThis.InfiniteLevels) return null;
+        const moves = globalThis.InfiniteLevels.legalSwaps(this.board);
+        moves.sort((a, b) => b.count - a.count);
+        if (!moves.length) return null;
+        const cells = moves[0].cells;
+        this.disarmPowerUp();
+        this.playerUI?.refresh();
+        this.setSelectedGem(null); this.hintCells = cells;
+        for (const [r, c] of [[cells[0], cells[1]], [cells[2], cells[3]]]) this.gemSprites[r][c].setScale(this.gemScale * 1.08);
+        this.playerUI?.announce(`Free hint: swap row ${cells[0] + 1}, column ${cells[1] + 1} with row ${cells[2] + 1}, column ${cells[3] + 1}. No move or charge spent.`);
+        return cells;
+    }
+
     createGemSprite(row, col, type) {
         const gem = this.scene.add.image(this.cellX(col), this.cellY(row), `gem_${type}`);
         gem.setScale(this.gemScale);
-        gem.setInteractive();
+        // Full cell hit area; shape/symbol is visual, not a smaller touch target.
+        if (this.playerUI && window.Phaser?.Geom) gem.setInteractive(new Phaser.Geom.Rectangle(-3, -3, 70, 70), Phaser.Geom.Rectangle.Contains);
+        else gem.setInteractive();
         gem.setData('row', row);
         gem.setData('col', col);
         gem.setData('type', type);
-        gem.on('pointerdown', () => this.selectGem(gem));
+        gem.on('pointerdown', (pointer) => this.playerUI ? this.beginGemGesture(gem, pointer) : this.selectGem(gem));
         return gem;
     }
 
@@ -436,7 +556,7 @@ class PhaserMatch3Game {
     }
 
     selectGem(gem) {
-        if (!this.isGameRunning || this.isPaused || this.powerUpPending || this.levelStarting) return;
+        if (!this.canInteractWithBoard()) return;
 
         if (this.armedPowerUp) {
             this.fireTargetedPowerUp(gem);
@@ -480,7 +600,7 @@ class PhaserMatch3Game {
         gem.setTint(0xffd700);
         gem.setScale(this.gemScale * 1.2);
 
-        if (navigator.vibrate) {
+        if (this.settings.haptics && navigator.vibrate) {
             navigator.vibrate(50);
         }
         if (this.settings.sfx) {
@@ -508,7 +628,7 @@ class PhaserMatch3Game {
         sprite.setData('row', row);
         sprite.setData('col', col);
         this.scene.tweens.killTweensOf(sprite);
-        if (animate) {
+        if (animate && !this.animationsReduced()) {
             this.scene.tweens.add({
                 targets: sprite,
                 x: this.cellX(col),
@@ -522,6 +642,7 @@ class PhaserMatch3Game {
     }
 
     shake(sprites) {
+        if (this.animationsReduced()) return;
         sprites.forEach(s => {
             const x = s.x;
             this.scene.tweens.add({ targets: s, x: x + 6, duration: 40, yoyo: true, repeat: 2 });
@@ -529,7 +650,8 @@ class PhaserMatch3Game {
     }
 
     trySwap(r1, c1, r2, c2) {
-        if (!this.isGameRunning) return;
+        if (!this.canInteractWithBoard() || !this.isInBounds(r1, c1) || !this.isInBounds(r2, c2) || !this.isAdjacent(r1, c1, r2, c2)) return;
+        this.hintCells = null;
 
         this.swapModel(r1, c1, r2, c2);
         if (this.findMatches().size === 0) {
@@ -537,15 +659,19 @@ class PhaserMatch3Game {
             // not spent.
             this.swapModel(r1, c1, r2, c2);
             this.shake([this.gemSprites[r1][c1], this.gemSprites[r2][c2]]);
+            this.playerUI?.announce('That swap does not make a match. No move spent.');
             return;
         }
 
         this.swapSprites(r1, c1, r2, c2);
         this.moves--;
-        this.resolveBoard();
+        const scoreBefore = this.score;
+        const chain = this.resolveBoard();
         if (!this.hasPossibleMove()) {
             this.reshuffleBoard();
         }
+        if (this.playerUI && !this.animationsReduced()) this.inputLockedUntil = Date.now() + 220;
+        this.playerUI?.announce(`${this.score - scoreBefore} points${chain > 1 ? ` · ${chain} cascades` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : 'Nice match.'}`);
         this.updateUI();
         this.checkEndConditions();
     }
@@ -575,6 +701,7 @@ class PhaserMatch3Game {
             this.board[r][c] = null;
             const sprite = this.gemSprites[r][c];
             this.scene.tweens.killTweensOf(sprite);
+            if (this.animationsReduced()) { sprite.setVisible(false); return; }
             this.scene.tweens.add({
                 targets: sprite,
                 alpha: 0,
@@ -698,6 +825,11 @@ class PhaserMatch3Game {
     }
 
     createUI() {
+        if (this.playerUI) {
+            for (const field of ['score', 'moves', 'timer', 'level', 'energy', 'stars', 'goal', 'theme']) this[`${field}Text`] = this.playerUI.fields[field];
+            this.bankRunButton = this.playerUI.bankButton; this.bankRunLabel = this.playerUI.bankButton;
+            this.updateUI(); return;
+        }
         // Score display
         this.scoreText = this.scene.add.text(50, 50, 'Score: 0', {
             fontSize: '24px',
@@ -823,6 +955,13 @@ class PhaserMatch3Game {
     }
 
     createPowerUps() {
+        if (this.playerUI) {
+            for (const type of ['bomb', 'rainbow', 'lightning']) {
+                const slot = this.playerUI.powerups.get(type); this[`${type}Btn`] = slot.btn; this[`${type}Text`] = slot.text;
+            }
+            this.powerButtons = Object.fromEntries(['diamond', 'target', 'star'].map((type) => [type, this.playerUI.powerups.get(type)]));
+            return;
+        }
         const powerUpY = 530;
         const powerUpSpacing = 100;
         
@@ -888,6 +1027,10 @@ class PhaserMatch3Game {
     }
 
     setupInput() {
+        if (this.playerUI) {
+            this.scene.input.on('pointerup', (pointer) => this.endGemGesture(pointer));
+            this.scene.input.on('pointerupoutside', (pointer) => this.endGemGesture(pointer, true));
+        }
         // Gems bind their own pointerdown handler in createGemSprite().
         this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
         this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
@@ -898,6 +1041,7 @@ class PhaserMatch3Game {
     }
 
     setupAnimations() {
+        if (this.playerUI || this.animationsReduced()) return;
         // Gem selection animation
         this.scene.tweens.add({
             targets: this.gemSprites,
@@ -921,7 +1065,7 @@ class PhaserMatch3Game {
     }
 
     usePowerUp(powerType) {
-        if (!this.isGameRunning || this.powerUpPending) return;
+        if (!this.canInteractWithBoard()) return;
 
         if (TARGETED_POWERUPS.includes(powerType)) {
             this.toggleArmedPowerUp(powerType);
@@ -981,6 +1125,7 @@ class PhaserMatch3Game {
         }
 
         this.powerUpPending = true;
+        this.playerUI?.refresh();
         this.consumePowerUpOnServer(type, token)
             .then((ok) => {
                 if (ok) {
@@ -996,6 +1141,7 @@ class PhaserMatch3Game {
             })
             .finally(() => {
                 this.powerUpPending = false;
+                this.playerUI?.refresh();
             });
     }
 
@@ -1042,6 +1188,7 @@ class PhaserMatch3Game {
         this.setSelectedGem(null);
         this.armedPowerUp = type;
         btn.setAlpha(0.5);
+        this.playerUI?.announce({ diamond: 'Color: tap a gem to clear that color.', target: 'Cross: tap a gem to clear it and its neighbours.', star: 'Sweep: tap a gem to clear its row and column.' }[type]);
     }
 
     disarmPowerUp() {
@@ -1093,6 +1240,8 @@ class PhaserMatch3Game {
     }
 
     showPowerUpAnimation(powerType) {
+        if (this.playerUI) { this.playerUI.announce(`${powerType} power-up used.`); return; }
+        if (this.animationsReduced()) return;
         const animations = {
             bomb: '💥',
             rainbow: '🌈',
@@ -1130,6 +1279,7 @@ class PhaserMatch3Game {
     }
 
     showScorePopup(points) {
+        if (this.playerUI || this.animationsReduced()) return;
         const popup = this.scene.add.text(400, 200, `+${points}`, {
             fontSize: '32px',
             fill: '#ffd700',
@@ -1168,6 +1318,7 @@ class PhaserMatch3Game {
         const achievement = this.achievements.find(a => a.id === achievementId);
         if (achievement && !achievement.unlocked) {
             achievement.unlocked = true;
+            if (this.playerUI || this.animationsReduced()) { this.playerUI?.announce(`Achievement unlocked: ${achievement.name}.`); return; }
             
             const popup = this.scene.add.text(400, 300, `🏆 ${achievement.name}`, {
                 fontSize: '24px',
@@ -1196,7 +1347,7 @@ class PhaserMatch3Game {
         if (this.attemptPending) return false;
         this.attemptPending = true;
         try {
-            const { ok, data } = await this.fetchJson('/api/account-economy/energy/spend', {
+            const { ok, data, status } = await this.fetchJson('/api/account-economy/energy/spend', {
                 method: 'POST',
                 body: JSON.stringify({ level: Math.floor(level), ...(mode ? { mode, location } : {}) }),
                 signal: AbortSignal.timeout(10000),
@@ -1215,7 +1366,9 @@ class PhaserMatch3Game {
                 this.updateEnergyDisplay();
                 return true;
             }
-            if (data.error === 'energy_empty') {
+            if (status === 429) {
+                this.showAttemptError('The server is busy. Wait a moment and try again. No new board was started.');
+            } else if (data.error === 'energy_empty') {
                 await this.showNoEnergy();
             } else {
                 this.showAttemptError(this.ruleMessage(data.error));
@@ -1232,7 +1385,7 @@ class PhaserMatch3Game {
     showAttemptError(message) {
         this.openOverlay('Cannot Start');
         this.overlayText(400, 280, message, { size: 20, width: 600 });
-        this.overlayButton(400, 380, 240, 60, 0x555555, 'OK', () => this.closeOverlay());
+        this.overlayButton(400, 380, 240, 60, 0x555555, 'OK', () => { this.closeOverlay(); if (this.playerUI && !this.isGameRunning) this.showTitleOverlay(); });
     }
 
     // Out of energy: offer a refill at the server price for the energy that is missing.
@@ -1330,8 +1483,10 @@ class PhaserMatch3Game {
     // definition from the atomic energy spend. Never send a client-authored target.
     async startProceduralLevel(levelNumber, mode = 'classic') {
         const number = Number(levelNumber);
-        if (!Number.isSafeInteger(number) || number < 1 || this.levelStarting) return false;
+        if (!Number.isSafeInteger(number) || number < 1 || this.levelStarting || this.powerUpPending) return false;
         this.levelStarting = true;
+        this.playerUI?.refresh();
+        this.playerUI?.announce('Preparing your level…');
         try {
             await this.rewardSubmission; // Do not overwrite an attempt whose reward is still being saved.
             const location = this.getLevelLocation();
@@ -1348,7 +1503,7 @@ class PhaserMatch3Game {
                     const path = mode === 'daily' ? 'daily' : String(number);
                     const result = await this.fetchJson(`/api/levels/${path}?${query}`, { signal: AbortSignal.timeout(10000) });
                     if (!result.ok || !result.data.success) {
-                        if (result.status < 500) {
+                        if (result.status < 500 && ![408, 429].includes(result.status)) {
                             this.showAttemptError('Check your level number and region settings, then try again.');
                             return false;
                         }
@@ -1379,6 +1534,7 @@ class PhaserMatch3Game {
             return false;
         } finally {
             this.levelStarting = false;
+            this.playerUI?.refresh();
         }
     }
 
@@ -1392,6 +1548,7 @@ class PhaserMatch3Game {
             }
         }
         this.closeOverlay();
+        this.inputLockedUntil = 0;
         this.generatedLevel = definition;
         window.InfiniteLevelLocation?.rememberContext(definition.context, this.getLevelLocation(), serverTime);
         this.level = definition.level;
@@ -1410,8 +1567,10 @@ class PhaserMatch3Game {
         this.titleShowing = false;
         this.armedPowerUp = null;
         this.createGameBoard();
+        this.fitBoardViewport();
         this.scene.cameras?.main?.setBackgroundColor(definition.theme.background);
-        this.themeText?.setColor?.(definition.theme.accent);
+        if (!this.playerUI) this.themeText?.setColor?.(definition.theme.accent);
+        this.playerUI?.shell.style.setProperty('--match-level-background', definition.theme.background);
         this.updateUI();
     }
 
@@ -1493,9 +1652,8 @@ class PhaserMatch3Game {
         
         // Show tutorial for first-time players
         if (!this.tutorialShown) {
-            setTimeout(() => {
-                this.showTutorial();
-            }, 1000);
+            if (this.playerUI) this.showTutorial(); // Never overwrite a player's later hint with a delayed intro.
+            else setTimeout(() => this.showTutorial(), 1000);
         }
         
         // Track game start
@@ -1582,11 +1740,12 @@ class PhaserMatch3Game {
         this.levelText.setText(this.mode === 'daily' ? 'Daily Challenge' : `${this.mode === 'endless' ? 'Stage' : 'Level'}: ${this.level}`);
         if (this.goalText) this.goalText.setText(`Goal: ${this.targetScore.toLocaleString()} points`
             + (this.mode === 'endless' ? `\nRun: ${(this.score + (this.endlessTotalScore || 0)).toLocaleString()}` : ''));
-        if (this.themeText) this.themeText.setText(this.generatedLevel ? `${this.generatedLevel.theme.name}\n${this.generatedLevel.context.localDate}\n${this.generatedLevel.theme.environmentLabel || ''}` : '');
+        if (this.themeText) this.themeText.setText(this.generatedLevel ? `${this.generatedLevel.theme.name}\n${this.generatedLevel.context.localDate}\n${this.generatedLevel.theme.environmentLabel || ''}${this.generatedLevel.context.offline ? '\nOffline guest level' : ''}` : '');
         if (this.bankRunButton) this.bankRunButton.setVisible(this.mode === 'endless');
         if (this.bankRunLabel) this.bankRunLabel.setVisible(this.mode === 'endless');
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
-        this.starsText.setText(this.getAuthToken() ? `Stars: ${this.stars}` : 'Stars: sign in to earn');
+        this.starsText.setText(this.getAuthToken() ? `Stars: ${this.stars}` : 'Guest · no paid rewards');
+        this.playerUI?.refresh();
     }
 
     togglePause() {
@@ -1598,6 +1757,7 @@ class PhaserMatch3Game {
     }
 
     showTutorial() {
+        if (this.playerUI) { this.playerUI.announce('Match three or more. Tap two adjacent gems or swipe. Need help? The Hint button is free.'); this.tutorialShown = true; return; }
         const tutorial = this.scene.add.text(400, 300, 'Tap gems to match them!', {
             fontSize: '24px',
             fill: '#ffffff',
@@ -1843,6 +2003,9 @@ class PhaserMatch3Game {
 
     openOverlay(title) {
         this.closeOverlay();
+        if (this.playerUI) {
+            this.activeOverlay = this.playerUI.openOverlay(title); this.overlayStatus = this.playerUI.status; return this.activeOverlay;
+        }
         const background = this.scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.85).setInteractive();
         const heading = this.scene.add.text(400, 40, title, { fontSize: '32px', fill: '#ffffff', fontFamily: 'Arial' }).setOrigin(0.5);
         this.activeOverlay = this.scene.add.container(0, 0, [background, heading]);
@@ -1852,6 +2015,7 @@ class PhaserMatch3Game {
     }
 
     overlayText(x, y, label, { size = 16, color = '#ffffff', origin = 0.5, width = null } = {}) {
+        if (this.playerUI) return this.playerUI.overlayText(label);
         const style = { fontSize: `${size}px`, fill: color, fontFamily: 'Arial', align: 'center' };
         if (width) style.wordWrap = { width };
         const text = this.scene.add.text(x, y, label, style).setOrigin(origin, 0.5);
@@ -1860,6 +2024,7 @@ class PhaserMatch3Game {
     }
 
     overlayButton(x, y, width, height, color, label, onClick) {
+        if (this.playerUI) return this.playerUI.overlayButton(label, onClick);
         const box = this.scene.add.rectangle(x, y, width, height, color).setInteractive();
         box.on('pointerdown', onClick);
         this.activeOverlay.add(box);
@@ -1872,6 +2037,7 @@ class PhaserMatch3Game {
     }
 
     closeOverlay() {
+        if (this.playerUI) { this.playerUI.closeOverlay(); this.activeOverlay = null; this.overlayStatus = null; return; }
         if (this.activeOverlay) {
             this.activeOverlay.destroy();
             this.activeOverlay = null;
@@ -1930,10 +2096,11 @@ class PhaserMatch3Game {
     }
 
     async loadShopPrices(packs) {
+        const overlay = this.activeOverlay;
         try {
             const res = await fetch('/api/live-ops/offers');
             const data = await res.json();
-            if (!data.success || !this.shopCoinsText || !this.shopCoinsText.active) return;
+            if (!data.success || this.activeOverlay !== overlay || !this.shopCoinsText || !this.shopCoinsText.active) return;
             for (const pack of packs) {
                 const offer = (data.coinPacks || []).find((p) => p.productId === pack.productId);
                 if (!offer) continue;
@@ -1977,7 +2144,7 @@ class PhaserMatch3Game {
     closeShop() {
         this.closeOverlay();
         this.currentScreen = 'game';
-        this.resumeGame();
+        this.resumeAfterOverlay();
     }
 
     createLootBoxUI() {
@@ -2040,7 +2207,7 @@ class PhaserMatch3Game {
     closeLootBox() {
         this.closeOverlay();
         this.currentScreen = 'game';
-        this.resumeGame();
+        this.resumeAfterOverlay();
     }
 
     showKingdom() {
@@ -2072,11 +2239,13 @@ class PhaserMatch3Game {
     }
 
     async loadDecor() {
+        const overlay = this.activeOverlay;
         if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to decorate your kingdom.');
         try {
             const { ok, data } = await this.fetchJson('/api/kingdom');
+            if (this.activeOverlay !== overlay) return;
             if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
-            if (!this.activeOverlay || !this.decorCoinsText || !this.decorCoinsText.active) return;
+            if (this.activeOverlay !== overlay || !this.activeOverlay || !this.decorCoinsText || !this.decorCoinsText.active) return;
             const { decor, kingdom } = data;
             this.decorCoinsText.setText(`Coins: ${data.coins}`);
             const selected = this.decorSelected && decor.catalog.some((item) => item.id === this.decorSelected)
@@ -2113,34 +2282,37 @@ class PhaserMatch3Game {
                 }
             });
         } catch (error) {
-            this.setOverlayStatus('Could not load your kingdom.');
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not load your kingdom.');
         }
     }
 
     // One decoration action. The screen is rebuilt with the server's answer and a message.
     async decorAction(url, body, okMessage) {
         if (this.decorPending) return;
+        const overlay = this.activeOverlay;
         this.decorPending = true;
         this.setOverlayStatus('Working...');
         try {
             const { ok, data } = await this.fetchJson(url, { method: 'POST', body: JSON.stringify(body) });
             this.decorPending = false;
-            this.openDecor(ok && data.success ? okMessage : this.ruleMessage(data.error));
+            if (this.activeOverlay === overlay) this.openDecor(ok && data.success ? okMessage : this.ruleMessage(data.error));
         } catch (error) {
-            this.setOverlayStatus('Could not reach the server. Try again.');
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not reach the server. Try again.');
         } finally {
             this.decorPending = false;
         }
     }
 
     async renderKingdom() {
+        const overlay = this.activeOverlay;
         destroyOverlayObjects(this.kingdomRowObjects);
         this.kingdomRowObjects = [];
         if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to renovate your kingdom.');
         try {
             const { ok, data } = await this.fetchJson('/api/kingdom');
+            if (this.activeOverlay !== overlay) return;
             if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
-            if (!this.activeOverlay) return;
+            if (!this.activeOverlay || this.activeOverlay !== overlay) return;
             const bonus = Math.round((data.coinBonus || 0) * 100);
             this.kingdomCoinsText.setText(`Coins: ${data.coins}${bonus > 0 ? `   Room bonus +${bonus}% coins` : ''}`);
             data.kingdom.rooms.forEach((room, index) => {
@@ -2165,12 +2337,13 @@ class PhaserMatch3Game {
                 }
             });
         } catch (error) {
-            this.setOverlayStatus('Could not load your kingdom.');
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not load your kingdom.');
         }
     }
 
     async renovateRoom(roomId) {
         if (this.kingdomPending) return;
+        const overlay = this.activeOverlay;
         this.kingdomPending = true;
         this.setOverlayStatus('Renovating...');
         try {
@@ -2178,6 +2351,7 @@ class PhaserMatch3Game {
                 method: 'POST',
                 body: JSON.stringify({ roomId }),
             });
+            if (this.activeOverlay !== overlay) return;
             if (!ok || !data.success) {
                 this.setOverlayStatus(this.ruleMessage(data.error));
             } else {
@@ -2187,7 +2361,7 @@ class PhaserMatch3Game {
             }
             await this.renderKingdom();
         } catch (error) {
-            this.setOverlayStatus('Could not reach the server. Try again.');
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not reach the server. Try again.');
         } finally {
             this.kingdomPending = false;
         }
@@ -2196,7 +2370,7 @@ class PhaserMatch3Game {
     closeKingdom() {
         this.closeOverlay();
         this.currentScreen = 'game';
-        this.resumeGame();
+        this.resumeAfterOverlay();
     }
 
     // Integration with existing game system
@@ -2233,6 +2407,8 @@ class PhaserMatch3Game {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
         }
+        this.gestureStart = null;
+        this.playerUI?.refresh();
         this.trackEvent('game_paused');
     }
 
@@ -2241,7 +2417,16 @@ class PhaserMatch3Game {
         if (this.isGameRunning) {
             this.startTimer();
         }
+        this.playerUI?.refresh();
         this.trackEvent('game_resumed');
+    }
+
+    resumeAfterOverlay() {
+        const resume = this.playerOverlayResume !== false;
+        delete this.playerOverlayResume;
+        if (resume) this.resumeGame();
+        else this.playerUI?.refresh();
+        this.playerUI?.surface.focus({ preventScroll: true });
     }
 
     // End game with all features
@@ -2331,7 +2516,9 @@ class PhaserMatch3Game {
 
     // Hides the canvas and shows the DOM menu. A running level is paused until closeMenu().
     openMenu() {
-        this.menuPausedRun = !!this.isGameRunning && !this.isPaused;
+        this.menuPausedRun = this.playerOverlayResume ?? (!!this.isGameRunning && !this.isPaused);
+        delete this.playerOverlayResume;
+        this.closeOverlay();
         this.pauseGame();
         if (typeof window.openDomMenu === 'function') window.openDomMenu();
     }
@@ -2356,6 +2543,12 @@ class PhaserMatch3Game {
     }
 
     destroy() {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.boardResizeObserver?.disconnect();
+        if (this.onAuthChanged) window.removeEventListener('auth:changed', this.onAuthChanged);
+        this.playerUI?.closeOverlay();
+        this.playerUI?.shell.remove();
+        this.playerUI = null;
         if (this.game) {
             this.game.destroy(true);
             this.game = null;

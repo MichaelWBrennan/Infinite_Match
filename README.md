@@ -8,6 +8,7 @@ This section lists what is built and tested, and what is mounted on the server. 
 
 **Built and tested**
 - Match-3 core: swaps, matches of 3+, cascades, gravity, refill, and a no-moves reshuffle.
+- Mobile-first player experience: responsive native HTML HUD/dialogs around the Phaser board, shape-and-letter gems, tap/swipe/keyboard controls, free legal-swap hints, goal progress, high-contrast/large-text/reduced-motion preferences and opt-in haptics. Seven Chromium viewport/input smokes and deterministic rule-parity regressions cover the foundation; real-device/human/performance validation remains a release gate. [Delivered scope, prioritized experience roadmap and measurable gates](docs/PLAYER_EXPERIENCE.md).
 - Power-ups: bomb (3x3), rainbow (whole board), lightning (column), diamond (one colour), target (plus shape), star (row and column). Diamond, target, and star arm on press and fire on the next gem tap.
 - Power-up inventory: signed-in players load their counts from the server and confirm each use before it takes effect. Guests keep local counts.
 - Passive procedural levels: seeded 6×6 to 8×8 boards, varied gem mixes, bounded move budgets and difficulty, and no hand-authored level cap. Every definition is checked for no starting matches, a legal swap, and a simulated winning path without boosters. Every tenth numbered stage is a harder boss profile. The playable web client and server share the same generator and refill stream; tests replay its winning paths through the actual Phaser methods.
@@ -61,7 +62,8 @@ This section lists what is built and tested, and what is mounted on the server. 
 - Client shop. Gems, stars, and energy are no longer sold or given out by the shop, and loot boxes are paid for in coins through the server. The old client code granted currency for free.
 
 **Not built yet** (listed in the sections below, but not implemented)
-- Weather effects. The weather service needs the PostgREST data layer (`POSTGREST_URL`), which is not configured here.
+- Earned match specials/combinations, varied non-score procedural objectives, meaningful sound and comprehensive assistive-grid/real-device playtesting. The player-experience roadmap prioritizes these; inventory boosters are not earned specials.
+- The legacy weather service / per-player weather reward integration needs the PostgREST data layer (`POSTGREST_URL`), which is not configured here. Procedural time/forecast effects are built through the separate provider adapter described above.
 - Kingdom garden layout and room art. Renovation, decorations, and the room coin bonus are built (see Built).
 - Boss mechanics beyond a higher target. This needs a design decision: what the boss does, and how the server checks a win. Seasonal events are the dated windows in `config/liveops.json`.
 - Level results, friends, guilds, and tournaments are kept in single files. That works for one server. Scaling out needs a shared database store, which is not built and has not been run against a MongoDB server.

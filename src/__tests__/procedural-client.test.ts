@@ -33,7 +33,7 @@ function makeBrowserGame() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'phaser3-game.js']) {
+  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/player-experience.js', 'phaser3-game.js']) {
     vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   }
   const game: any = Object.create(sandbox.PhaserMatch3Game.prototype);
@@ -377,5 +377,202 @@ describe('privacy-preserving browser location preferences', () => {
     expect(menus).toContain('callGame(\'startDaily\')');
     expect(menus).toContain('renderProceduralLevels()');
     expect(menus).toContain('Number.MAX_SAFE_INTEGER');
+  });
+});
+
+
+describe('native player input keeps shared rules and economy untouched', () => {
+  function playable() {
+    const result = makeBrowserGame();
+    const { game } = result;
+    game.applyGeneratedDefinition(definition());
+    game.isGameRunning = true;
+    game.playerUI = {
+      surface: { focus() {} }, shell: { querySelector: () => ({ open: false }) },
+      refresh() {}, announce: (message: string) => { game.announcement = message; },
+    };
+    return result;
+  }
+
+  test('native first-play guidance is immediate and cannot overwrite a later hint', async () => {
+    const { game, sandbox } = playable();
+    game.tutorialShown = false;
+    let timers = 0;
+    sandbox.setTimeout = () => { timers++; return 1; };
+    await game.startGame();
+    expect(timers).toBe(0);
+    expect(game.tutorialShown).toBe(true);
+    game.showHint();
+    expect(game.announcement).toContain('Free hint');
+  });
+
+  test('free hints preserve board, RNG, moves and score and point to a real legal swap', () => {
+    const { game, sandbox } = playable();
+    const before = JSON.stringify([game.board, game.levelRng.state, game.moves, game.score]);
+    const hint = Array.from(game.showHint());
+    expect(sandbox.InfiniteLevels.legalSwaps(game.board).some((move: any) => JSON.stringify(move.cells) === JSON.stringify(hint))).toBe(true);
+    expect(JSON.stringify([game.board, game.levelRng.state, game.moves, game.score])).toBe(before);
+    expect(game.announcement).toContain('No move or charge spent');
+  });
+
+  test.each(['isPaused', 'powerUpPending', 'levelStarting'])('%s blocks hints, swaps and selections', (flag) => {
+    const { game } = playable();
+    game[flag] = true;
+    const before = JSON.stringify(game.board);
+    expect(game.showHint()).toBeNull();
+    game.selectGem(game.gemSprites[0][0]);
+    game.trySwap(0, 0, 0, 1);
+    expect(game.selectedGem).toBeNull();
+    expect(JSON.stringify(game.board)).toBe(before);
+  });
+
+  test('a modal or visual-settle lock blocks board input', () => {
+    const { game } = playable();
+    game.playerUI.shell.querySelector = () => ({ open: true });
+    expect(game.canInteractWithBoard()).toBe(false);
+    game.playerUI.shell.querySelector = () => ({ open: false });
+    game.inputLockedUntil = Date.now() + 1000;
+    expect(game.canInteractWithBoard()).toBe(false);
+  });
+
+  test('only the starting finger may commit a gesture; new boards and cancellations invalidate it', () => {
+    const { game } = playable();
+    const swaps: any[] = [];
+    game.trySwap = (...cells: any[]) => swaps.push(cells);
+    const gem = game.gemSprites[2][2];
+    game.beginGemGesture(gem, { id: 1, x: 100, y: 100 });
+    game.endGemGesture({ id: 2, x: 140, y: 100 });
+    expect(swaps).toHaveLength(0);
+    expect(game.gestureStart.id).toBe(1);
+    game.endGemGesture({ id: 1, x: 140, y: 100 });
+    expect(swaps).toEqual([[2, 2, 2, 3]]);
+    game.beginGemGesture(gem, { id: 1, x: 100, y: 100 });
+    game.boardEpoch++;
+    game.endGemGesture({ id: 1, x: 140, y: 100 });
+    game.beginGemGesture(gem, { id: 1, x: 100, y: 100 });
+    game.endGemGesture({ id: 1, x: 140, y: 100 }, true);
+    expect(swaps).toHaveLength(1);
+  });
+
+  test('small drags remain taps; edge swipes do not wrap across the board', () => {
+    const { game } = playable();
+    const gem = game.gemSprites[0][0];
+    game.beginGemGesture(gem, { id: 1, x: 100, y: 100 });
+    game.endGemGesture({ id: 1, x: 107, y: 108 });
+    expect(game.selectedGem).toBe(gem);
+    game.setSelectedGem(null);
+    game.beginGemGesture(gem, { id: 1, x: 100, y: 100 });
+    game.endGemGesture({ id: 1, x: 60, y: 100 });
+    expect(game.selectedGem).toBeNull();
+  });
+
+  test('keyboard H is free; Escape cancels selection without pausing; arrows announce shape', () => {
+    const { game } = playable();
+    game.disarmPowerUp = () => {};
+    let prevented = 0;
+    const key = (value: string) => ({ key: value, preventDefault() { prevented++; }, stopPropagation() {} });
+    const moves = game.moves;
+    game.handleBoardKey(key('ArrowRight'));
+    expect(Array.from(game.keyboardCursor)).toEqual([0, 1]);
+    expect(game.announcement).toContain('Enter selects');
+    game.handleBoardKey(key('Enter'));
+    expect(game.selectedGem).toBe(game.gemSprites[0][1]);
+    game.handleBoardKey(key('Escape'));
+    expect(game.selectedGem).toBeNull();
+    expect(game.isPaused).toBe(false);
+    game.handleBoardKey(key('h'));
+    expect(game.moves).toBe(moves);
+    expect(prevented).toBe(4);
+  });
+
+  test('reduced motion changes presentation, never board, RNG or scores', () => {
+    const run = (reduce: boolean) => {
+      const { game } = playable();
+      game.settings.reduceAnimations = reduce;
+      const cells = game.showHint();
+      game.trySwap(...cells);
+      return JSON.stringify([game.board, game.levelRng.state, game.score, game.moves]);
+    };
+    expect(run(true)).toBe(run(false));
+  });
+
+  test('a new level cannot replace a board during a pending inventory spend', async () => {
+    const { game } = playable();
+    game.powerUpPending = true;
+    const before = JSON.stringify(game.board);
+    expect(await game.startProceduralLevel(2)).toBe(false);
+    expect(JSON.stringify(game.board)).toBe(before);
+  });
+
+  test('a stale shop response cannot write into a newly opened overlay', async () => {
+    const { game, sandbox } = playable();
+    let resolve: any;
+    sandbox.fetch = () => new Promise((done) => { resolve = done; });
+    game.activeOverlay = {};
+    game.shopCoinsText = { active: true };
+    const writes: string[] = [];
+    game.overlayText = (_x: number, _y: number, label: string) => writes.push(label);
+    const request = game.loadShopPrices([{ productId: 'coins_small' }]);
+    game.activeOverlay = {};
+    resolve({ json: async () => ({ success: true, coinPacks: [{ productId: 'coins_small', priceCents: 99 }] }) });
+    await request;
+    expect(writes).toEqual([]);
+  });
+
+  test('a stale kingdom response cannot populate preferences or another kingdom view', async () => {
+    const { game } = playable();
+    game.getAuthToken = () => 'test';
+    let resolve: any;
+    game.fetchJson = () => new Promise((done) => { resolve = done; });
+    game.activeOverlay = {};
+    const writes: string[] = [];
+    game.overlayText = (_x: number, _y: number, label: string) => writes.push(label);
+    game.kingdomCoinsText = { setText: (label: string) => writes.push(label) };
+    const request = game.renderKingdom();
+    game.activeOverlay = {};
+    resolve({ ok: true, data: { success: true, coins: 10, kingdom: { rooms: [] } } });
+    await request;
+    expect(writes).toEqual([]);
+  });
+
+  test('finishing an old decoration action cannot reopen a closed modal', async () => {
+    const { game } = playable();
+    let resolve: any;
+    game.fetchJson = () => new Promise((done) => { resolve = done; });
+    game.activeOverlay = {};
+    game.setOverlayStatus = () => {};
+    let opens = 0;
+    game.openDecor = () => { opens++; };
+    const request = game.decorAction('/fake', {}, 'Done');
+    game.activeOverlay = null;
+    resolve({ ok: true, data: { success: true } });
+    await request;
+    expect(opens).toBe(0);
+    expect(game.decorPending).toBe(false);
+  });
+});
+
+
+describe('temporary server throttling is not a player settings error', () => {
+  test.each([408, 429, 503])('guest %s response uses certified offline play, never a paid attempt', async (status) => {
+    const { game } = makeBrowserGame();
+    game.fetchJson = async () => ({ ok: false, status, data: {} });
+    expect(await game.selectLevel(1)).toBe(true);
+    expect(game.generatedLevel.context.offline).toBe(true);
+    expect(game.attemptId).toBeNull();
+    expect(game.isGameRunning).toBe(true);
+    assertSprites(game);
+  });
+
+  test('a signed-in throttled attempt stays refused with a useful message, never offline rewards', async () => {
+    const { game } = makeBrowserGame();
+    game.getAuthToken = () => 'test';
+    game.fetchJson = async () => ({ ok: false, status: 429, data: {} });
+    const energy = game.energy;
+    expect(await game.selectLevel(1)).toBe(false);
+    expect(game.lastError).toContain('server is busy');
+    expect(game.energy).toBe(energy);
+    expect(game.generatedLevel).toBeUndefined();
+    expect(game.isGameRunning).toBe(false);
   });
 });
