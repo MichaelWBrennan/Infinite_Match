@@ -2,7 +2,7 @@
 // Read-only weekly calendar validator and operator preview. Does not award currency.
 import fs from 'node:fs';
 import path from 'node:path';
-import { validateWeeklyEvents, visibleWeeklyEvent, weeklyView } from '../src/services/live-ops/weekly-event.js';
+import { validateWeeklyCalendar, validateWeeklyRotation, visibleWeeklyEvent, weeklyView } from '../src/services/live-ops/weekly-event.js';
 
 const file = path.resolve(process.env.LIVE_OPS_CONFIG || 'config/liveops.json');
 const at = process.argv[2] ? Date.parse(process.argv[2]) : Date.now();
@@ -12,9 +12,21 @@ if (!Number.isFinite(at)) {
 }
 try {
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const { errors, events } = validateWeeklyEvents(raw.weeklyEvents);
+  const { errors, events, archive } = validateWeeklyCalendar(raw.weeklyEvents, raw.weeklyEventArchive, Date.now());
   if (errors.length) throw new Error(errors.join('\n'));
-  console.log(`Weekly calendar: ${events.length} windows in ${file}`);
+  if (process.env.WEEKLY_EVENT_PREVIOUS_CONFIG) {
+    const previousFile = path.resolve(process.env.WEEKLY_EVENT_PREVIOUS_CONFIG);
+    const previousRaw = JSON.parse(fs.readFileSync(previousFile, 'utf8'));
+    const previous = validateWeeklyCalendar(previousRaw.weeklyEvents, previousRaw.weeklyEventArchive, Date.now());
+    if (previous.errors.length) throw new Error(`Previous calendar is invalid: ${previous.errors.join('\n')}`);
+    const rotationErrors = validateWeeklyRotation(
+      { weeklyEvents: previous.events, weeklyEventArchive: previous.archive },
+      { weeklyEvents: events, weeklyEventArchive: archive },
+    );
+    if (rotationErrors.length) throw new Error(rotationErrors.join('\n'));
+    console.log(`Rotation check passed against ${previousFile}`);
+  }
+  console.log(`Weekly calendar: ${events.length} scheduled windows, ${archive.length} archived weeks in ${file}`);
   for (const e of events) console.log(`${e.id} | ${new Date(e.startMs).toISOString()} — ${new Date(e.endMs).toISOString()} | ${e.milestones.map((m) => `${m.wins} wins: ${m.coins} coins`).join(', ')}`);
   const event = weeklyView(visibleWeeklyEvent({ weeklyEvents: events }, at), null, at);
   console.log(JSON.stringify({ at: new Date(at).toISOString(), disabled: process.env.WEEKLY_EVENT_DISABLED === '1', visible: event }, null, 2));

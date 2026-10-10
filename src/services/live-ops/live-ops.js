@@ -11,12 +11,12 @@ import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { Logger } from '../../core/logger/index.js';
 import { productFor } from '../payments/product-catalog.js';
-import { validateWeeklyEvents } from './weekly-event.js';
+import { validateWeeklyCalendar } from './weekly-event.js';
 
 const logger = new Logger('LiveOps');
 
 export const MIN_DEAL_PRICE_CENTS = 99;
-const EMPTY = Object.freeze({ events: Object.freeze([]), deals: Object.freeze([]), weeklyEvents: Object.freeze([]) });
+const EMPTY = Object.freeze({ events: Object.freeze([]), deals: Object.freeze([]), weeklyEvents: Object.freeze([]), weeklyEventArchive: Object.freeze([]) });
 
 export function liveOpsConfigPath() {
   return process.env.LIVE_OPS_CONFIG || resolve('config', 'liveops.json');
@@ -36,7 +36,7 @@ export function validateLiveOps(raw) {
   }
   const events = [];
   const deals = [];
-  const weekly = validateWeeklyEvents(raw.weeklyEvents);
+  const weekly = validateWeeklyCalendar(raw.weeklyEvents, raw.weeklyEventArchive);
   errors.push(...weekly.errors);
 
   (Array.isArray(raw.events) ? raw.events : []).forEach((e, i) => {
@@ -75,7 +75,7 @@ export function validateLiveOps(raw) {
   });
 
   if (errors.length > 0) return { errors, config: null };
-  return { errors, config: { events, deals, weeklyEvents: weekly.events } };
+  return { errors, config: { events, deals, weeklyEvents: weekly.events, weeklyEventArchive: weekly.archive } };
 }
 
 let cached = null;

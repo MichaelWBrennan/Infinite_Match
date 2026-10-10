@@ -10,8 +10,9 @@ import { parseHTML } from 'linkedom';
 import authRoutes from '../routes/auth.js';
 import economyRoutes from '../routes/account-economy.js';
 import liveOpsRoutes from '../routes/live-ops.js';
+import { accountEconomy } from '../services/economy/AccountEconomyService.js';
 import { loadLiveOps, validateLiveOps } from '../services/live-ops/live-ops.js';
-import { activeWeeklyEvent, claimWeeklyMilestone, recordWeeklyWin, validateWeeklyEvents, visibleWeeklyEvent, weeklyView } from '../services/live-ops/weekly-event.js';
+import { activeWeeklyEvent, claimWeeklyMilestone, recordWeeklyWin, validateWeeklyCalendar, validateWeeklyEvents, validateWeeklyRotation, visibleWeeklyEvent, weeklyView } from '../services/live-ops/weekly-event.js';
 import { certifyLevel, simulateLevelMove } from '../services/levels/generator.js';
 import { initialObjectiveProgress, objectiveStatus } from '../services/levels/objective-rules.js';
 
@@ -69,8 +70,9 @@ describe('weekly calendar validation and pure rules', () => {
   });
 
   test('operator preview succeeds through November 9 but flags the next publishing deadline', () => {
-    const run = (time: string) => spawnSync(process.execPath, ['scripts/preview-weekly-event.mjs', time],
-      { cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, LIVE_OPS_CONFIG: path.resolve('config/liveops.json'), WEEKLY_EVENT_DISABLED: '' } });
+    const run = (time: string, configFile = path.resolve('config/liveops.json'), previousFile = '') => spawnSync(process.execPath, ['scripts/preview-weekly-event.mjs', time],
+      { cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, LIVE_OPS_CONFIG: configFile,
+        WEEKLY_EVENT_PREVIOUS_CONFIG: previousFile, WEEKLY_EVENT_DISABLED: '' } });
     const rollover = run('2026-10-26T00:00:00Z');
     expect(rollover.status).toBe(0);
     expect(rollover.stdout).toContain('"id": "hall_lanterns_20261026"');
@@ -80,6 +82,90 @@ describe('weekly calendar validation and pure rules', () => {
     const deadline = run('2026-11-16T00:00:00Z');
     expect(deadline.status).toBe(1);
     expect(deadline.stderr).toContain('Publish future dates before the schedule runs out.');
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'weekly-preview-'));
+    try {
+      const file = path.join(tempDir, 'liveops.json');
+      const raw = JSON.parse(fs.readFileSync('config/liveops.json', 'utf8'));
+      raw.weeklyEventArchive = [{ ...schedule(currentMonday(Date.now()) + 7 * DAY), id: 'future_archive' }]; // cannot hide a future week as history
+      fs.writeFileSync(file, JSON.stringify(raw));
+      const invalid = run('2026-10-26T00:00:00Z', file);
+      expect(invalid.status).toBe(1);
+      expect(invalid.stderr).toContain('cannot archive a week before its UTC end');
+      const previousFile = path.join(tempDir, 'previous.json');
+      const candidateFile = path.join(tempDir, 'candidate.json');
+      const old = { ...schedule(currentMonday(Date.now()) - 7 * DAY), id: 'lanterns_previous' };
+      const current = schedule(currentMonday(Date.now()));
+      fs.writeFileSync(previousFile, JSON.stringify({ weeklyEvents: [old, current] }));
+      fs.writeFileSync(candidateFile, JSON.stringify({ weeklyEvents: [current], weeklyEventArchive: [old] }));
+      expect(run(new Date(currentMonday(Date.now())).toISOString(), candidateFile, previousFile).status).toBe(0);
+      fs.writeFileSync(candidateFile, JSON.stringify({ weeklyEvents: [{ ...current, milestones: [{ wins: 1, coins: 99 }] }], weeklyEventArchive: [old] }));
+      const edited = run(new Date(currentMonday(Date.now())).toISOString(), candidateFile, previousFile);
+      expect(edited.status).toBe(1);
+      expect(edited.stderr).toContain('published week definition changed');
+    } finally { fs.rmSync(tempDir, { recursive: true, force: true }); }
+  });
+
+  test('retiring an expired week keeps paid claim retries but never permits another grant', () => {
+    const old = { ...schedule(monday - 7 * DAY), id: 'lanterns_previous' };
+    const current = schedule(monday);
+    const first = validateLiveOps({ weeklyEvents: [old, current] }).config!;
+    const start = Date.parse(old.start);
+    const wallet: any = { currencies: { coins: { amount: 100, maxAmount: 1000, earned: 0 } } };
+    expect(recordWeeklyWin(wallet, first, start)).toMatchObject({ eventId: old.id, wins: 1 });
+    expect(claimWeeklyMilestone(wallet, first, old.id, 1, start)).toMatchObject({ duplicate: false, coins: 10 });
+    const rotated = validateWeeklyCalendar([current], [old], monday);
+    expect(rotated.errors).toEqual([]);
+    const config = { weeklyEvents: rotated.events, weeklyEventArchive: rotated.archive };
+    expect(activeWeeklyEvent(config, monday)?.id).toBe(current.id);
+    expect(visibleWeeklyEvent(config, monday)?.id).toBe(current.id);
+    expect(recordWeeklyWin(wallet, config, monday)).toMatchObject({ eventId: current.id, wins: 1 });
+    expect(wallet.weeklyEvents[old.id].claimed).toEqual([1]);
+    expect(claimWeeklyMilestone(wallet, config, old.id, 1, monday)).toMatchObject({ duplicate: true, coins: 10, balance: 110 });
+    expect(() => claimWeeklyMilestone(wallet, config, old.id, 2, monday)).toThrow('weekly_event_closed');
+    expect(wallet.currencies.coins).toMatchObject({ amount: 110, earned: 10 });
+    process.env.WEEKLY_EVENT_DISABLED = '1';
+    try {
+      expect(claimWeeklyMilestone(wallet, config, old.id, 1, monday).duplicate).toBe(true);
+      expect(() => claimWeeklyMilestone(wallet, config, old.id, 2, monday)).toThrow('weekly_event_closed');
+    } finally { delete process.env.WEEKLY_EVENT_DISABLED; }
+    // Only removing the archive definition ends retry acknowledgments; never pays again.
+    const withoutArchive = { weeklyEvents: rotated.events, weeklyEventArchive: [] };
+    expect(() => claimWeeklyMilestone(wallet, withoutArchive, old.id, 1, monday)).toThrow('weekly_event_not_found');
+    recordWeeklyWin(wallet, withoutArchive, monday);
+    expect(wallet.weeklyEvents[old.id]).toBeUndefined();
+  });
+
+  test('archive validation rejects premature retirement, overlap, reuse, oversized or malformed history', () => {
+    const last = { ...schedule(monday - 7 * DAY), id: 'lanterns_previous' };
+    const current = schedule(monday);
+    expect(validateWeeklyCalendar([current], [last], monday).errors).toEqual([]);
+    expect(validateWeeklyCalendar([current], [{ ...last, id: current.id }], monday).errors).toContain('weeklyEventArchive: ids cannot be reused');
+    expect(validateWeeklyCalendar([last, current], [last], monday).errors).toContain('weeklyEventArchive: archived weeks must end before the published schedule starts');
+    expect(validateWeeklyCalendar([current], [current], monday).errors.join(' ')).toContain('cannot archive a week before its UTC end');
+    expect(validateWeeklyCalendar([current], {}, monday).errors).toContain('weeklyEventArchive must be an array');
+    expect(validateWeeklyCalendar([current], Array.from({ length: 53 }, () => last), monday).errors.join(' ')).toContain('at most 52 weeks');
+    expect(validateLiveOps({ weeklyEvents: [current], weeklyEventArchive: [current] }).config).toBeNull();
+    const corrupt = { ...last, milestones: [{ wins: 1, coins: 101 }] };
+    expect(validateWeeklyCalendar([current], [corrupt], monday).errors.join(' ')).toContain('1-100 coins');
+  });
+
+  test('operator rollover protects previously published definitions and a 35-day archive retry floor', () => {
+    const retired = { ...schedule(monday - 7 * DAY), id: 'lanterns_previous' };
+    const active = schedule(monday);
+    const previous = validateWeeklyCalendar([retired, active], [], monday);
+    const candidate = validateWeeklyCalendar([active], [retired], monday);
+    expect(validateWeeklyRotation({ weeklyEvents: previous.events, weeklyEventArchive: previous.archive },
+      { weeklyEvents: candidate.events, weeklyEventArchive: candidate.archive }, monday)).toEqual([]);
+    const before = { weeklyEvents: previous.events, weeklyEventArchive: previous.archive };
+    const after = { weeklyEvents: candidate.events, weeklyEventArchive: candidate.archive };
+    expect(validateWeeklyRotation(before, { ...after, weeklyEvents: [] }, monday).join(' ')).toContain('must move into the archive');
+    expect(validateWeeklyRotation(before, { ...after, weeklyEventArchive: [] }, monday).join(' ')).toContain('must move into the archive');
+    expect(validateWeeklyRotation(before, { ...after, weeklyEvents: [{ ...after.weeklyEvents[0], milestones: [{ wins: 1, coins: 50 }] }] }, monday).join(' ')).toContain('definition changed');
+    expect(validateWeeklyRotation(before, after, monday - 1).join(' ')).toContain('cannot retire a week before its UTC end');
+    expect(validateWeeklyRotation(after, { weeklyEvents: after.weeklyEvents, weeklyEventArchive: [] }, monday + 34 * DAY).join(' ')).toContain('at least 35 days');
+    expect(validateWeeklyRotation(after, { weeklyEvents: after.weeklyEvents, weeklyEventArchive: [] }, monday + 35 * DAY)).toEqual([]);
+    expect(validateWeeklyRotation(after, { weeklyEvents: [retired, active], weeklyEventArchive: [] }, monday + 35 * DAY).join(' ')).toContain('cannot move an archived week back');
+    expect(validateWeeklyRotation(after, { ...after, weeklyEventArchive: [{ ...retired, id: 'invented_archive' }] }, monday).join(' ')).toContain('cannot invent archived history');
   });
 
   test('bad dates, overlaps, duplicate ids, unsorted/excessive prizes and malformed lists fail closed', () => {
@@ -192,7 +278,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/account-economy', economyRoutes);
 app.use('/api/live-ops', liveOpsRoutes);
-let token: string; let dir: string; let eventId: string;
+let token: string; let dir: string; let eventId: string; let playerId: string;
 const auth = () => ({ Authorization: `Bearer ${token}` });
 const getWeekly = () => request(app).get('/api/live-ops/weekly').set(auth());
 const claim = (wins: number) => request(app).post('/api/live-ops/weekly/claim').set(auth()).send({ eventId, wins });
@@ -232,7 +318,7 @@ beforeAll(async () => {
   process.env.LIVE_OPS_CONFIG = path.join(dir, 'liveops.json');
   fs.writeFileSync(process.env.LIVE_OPS_CONFIG, JSON.stringify({ events: [], deals: [], weeklyEvents: [current] }));
   loadLiveOps({ path: process.env.LIVE_OPS_CONFIG, reload: true });
-  const playerId = `week_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  playerId = `week_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const registered = await request(app).post('/api/auth/register').send({ playerId, email: `${playerId}@example.com`, password: 'secret123' });
   expect(registered.status).toBe(200); token = registered.body.token;
 });
@@ -293,5 +379,33 @@ describe('weekly event route and locked claim', () => {
     const won = await claim(2);
     expect(won.status).toBe(200); expect(won.body.result).toMatchObject({ duplicate: false, coins: 20 });
     expect((await claim(2)).body.result.duplicate).toBe(true);
+  });
+
+  test('a rotated archived claim is read-only across a later verified win and config reload', async () => {
+    const previous = { ...schedule(currentMonday(Date.now()) - 7 * DAY), id: 'lanterns_previous' };
+    const current = schedule(currentMonday(Date.now()));
+    const economy = await accountEconomy.getPlayerEconomy(playerId);
+    economy.weeklyEvents ??= {};
+    economy.weeklyEvents[previous.id] = { wins: 1, claimed: [1] }; // a previously saved payout
+    await accountEconomy.updatePlayerEconomyCache(playerId, economy);
+    const balance = economy.currencies.coins.amount;
+    fs.writeFileSync(process.env.LIVE_OPS_CONFIG!, JSON.stringify({ events: [], deals: [], weeklyEvents: [current], weeklyEventArchive: [previous] }));
+    loadLiveOps({ reload: true });
+    try {
+      const preview = await request(app).get('/api/live-ops/weekly/preview');
+      expect(preview.body.event.id).toBe(eventId); // history never becomes guest-visible
+      const retry = await request(app).post('/api/live-ops/weekly/claim').set(auth()).send({ eventId: previous.id, wins: 1 });
+      expect(retry.status).toBe(200);
+      expect(retry.body.result).toMatchObject({ duplicate: true, coins: 10, balance });
+      const late = await request(app).post('/api/live-ops/weekly/claim').set(auth()).send({ eventId: previous.id, wins: 2 });
+      expect(late.status).toBe(409); expect(late.body.error).toBe('weekly_event_closed');
+      await verifiedWin();
+      const after = await request(app).post('/api/live-ops/weekly/claim').set(auth()).send({ eventId: previous.id, wins: 1 });
+      expect(after.status).toBe(200); expect(after.body.result.duplicate).toBe(true);
+      expect((await accountEconomy.getPlayerEconomy(playerId)).weeklyEvents[previous.id].claimed).toEqual([1]);
+    } finally {
+      fs.writeFileSync(process.env.LIVE_OPS_CONFIG!, JSON.stringify({ events: [], deals: [], weeklyEvents: [current] }));
+      loadLiveOps({ reload: true });
+    }
   });
 });

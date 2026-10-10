@@ -11,14 +11,16 @@ const DAY_MS = 86400000;
 const WEEK_MS = 7 * DAY_MS;
 const integer = (n, min, max) => Number.isSafeInteger(n) && n >= min && n <= max;
 
-/** Validate all schedule entries, even upcoming ones. Invalid schedules fail closed. */
-export function validateWeeklyEvents(entries) {
+/** Validate scheduled or archived weeks. Archived definitions are for read-only claim retries only. */
+export function validateWeeklyEvents(entries, { archive = false, nowMs = Date.now() } = {}) {
   const errors = [];
   const events = [];
-  if (entries !== undefined && !Array.isArray(entries)) return { errors: ['weeklyEvents must be an array'], events };
-  if ((entries || []).length > 12) errors.push('weeklyEvents: publish at most 12 weeks at a time');
+  const field = archive ? 'weeklyEventArchive' : 'weeklyEvents';
+  const limit = archive ? 52 : 12;
+  if (entries !== undefined && !Array.isArray(entries)) return { errors: [`${field} must be an array`], events };
+  if ((entries || []).length > limit) errors.push(`${field}: publish at most ${limit} weeks at a time`);
   for (const [index, item] of (entries || []).entries()) {
-    const label = `weeklyEvents[${index}]`;
+    const label = `${field}[${index}]`;
     const startMs = typeof item?.start === 'string' && ISO_UTC.test(item.start) ? Date.parse(item.start) : NaN;
     const endMs = typeof item?.end === 'string' && ISO_UTC.test(item.end) ? Date.parse(item.end) : NaN;
     if (!ID.test(item?.id || '')) errors.push(`${label}: invalid id`);
@@ -28,6 +30,9 @@ export function validateWeeklyEvents(entries) {
     if (!exact(item.start, startMs) || !exact(item.end, endMs) || endMs - startMs !== WEEK_MS
       || new Date(startMs).getUTCDay() !== 1 || startMs % DAY_MS !== 0) {
       errors.push(`${label}: use a Monday 00:00 UTC start and a seven-day half-open UTC window`);
+    }
+    if (archive && Number.isFinite(endMs) && endMs > nowMs) {
+      errors.push(`${label}: cannot archive a week before its UTC end`);
     }
     const milestones = [];
     if (!Array.isArray(item?.milestones) || item.milestones.length < 1 || item.milestones.length > 3) {
@@ -48,11 +53,60 @@ export function validateWeeklyEvents(entries) {
   events.sort((a, b) => a.startMs - b.startMs);
   for (let i = 1; i < events.length; i++) {
     if (events[i].startMs < events[i - 1].endMs || events[i].id === events[i - 1].id) {
-      errors.push('weeklyEvents: windows cannot overlap and ids must be unique');
+      errors.push(`${field}: windows cannot overlap and ids must be unique`);
     }
   }
-  if (new Set(events.map((e) => e.id)).size !== events.length) errors.push('weeklyEvents: duplicate id');
+  if (new Set(events.map((e) => e.id)).size !== events.length) errors.push(`${field}: duplicate id`);
   return { errors, events: errors.length ? [] : events };
+}
+
+/** Reject reused IDs and out-of-order archives, including when one list is empty. */
+export function validateWeeklyCalendar(schedule, archive, nowMs = Date.now()) {
+  const current = validateWeeklyEvents(schedule);
+  const retired = validateWeeklyEvents(archive, { archive: true, nowMs });
+  const errors = [...current.errors, ...retired.errors];
+  if (!errors.length && current.events.length && retired.events.length) {
+    if (retired.events.at(-1).endMs > current.events[0].startMs) {
+      errors.push('weeklyEventArchive: archived weeks must end before the published schedule starts');
+    }
+  }
+  if (!errors.length) {
+    const ids = [...current.events, ...retired.events].map((event) => event.id);
+    if (new Set(ids).size !== ids.length) errors.push('weeklyEventArchive: ids cannot be reused');
+  }
+  return { errors, events: errors.length ? [] : current.events, archive: errors.length ? [] : retired.events };
+}
+
+// Operator-side comparison only. The server cannot recover a prior published
+// snapshot after restart, so run this on the deployed snapshot and candidate.
+export function validateWeeklyRotation(previous, candidate, nowMs = Date.now()) {
+  const errors = [];
+  const prevSchedule = previous.weeklyEvents || [];
+  const prevArchive = previous.weeklyEventArchive || [];
+  const nextSchedule = new Map((candidate.weeklyEvents || []).map((event) => [event.id, event]));
+  const nextArchive = new Map((candidate.weeklyEventArchive || []).map((event) => [event.id, event]));
+  const previousIds = new Set([...prevSchedule, ...prevArchive].map((event) => event.id));
+  for (const event of prevSchedule) {
+    const scheduled = nextSchedule.get(event.id);
+    const retired = nextArchive.get(event.id);
+    if (!scheduled && !retired) errors.push(`${event.id}: previously scheduled week must move into the archive, not disappear`);
+    if (retired && nowMs < event.endMs) errors.push(`${event.id}: cannot retire a week before its UTC end`);
+    if ((scheduled || retired) && JSON.stringify(scheduled || retired) !== JSON.stringify(event)) {
+      errors.push(`${event.id}: published week definition changed`);
+    }
+  }
+  for (const event of prevArchive) {
+    const retired = nextArchive.get(event.id);
+    if (nextSchedule.has(event.id)) errors.push(`${event.id}: cannot move an archived week back into the schedule`);
+    if (!retired && nowMs - event.endMs < 35 * DAY_MS) {
+      errors.push(`${event.id}: keep archived claim retries for at least 35 days after the UTC end`);
+    }
+    if (retired && JSON.stringify(retired) !== JSON.stringify(event)) errors.push(`${event.id}: archived week definition changed`);
+  }
+  for (const id of nextArchive.keys()) {
+    if (!previousIds.has(id)) errors.push(`${id}: cannot invent archived history; first publish it in the schedule`);
+  }
+  return errors;
 }
 
 export function weeklyDisabled() { return process.env.WEEKLY_EVENT_DISABLED === '1'; }
@@ -70,7 +124,7 @@ export function visibleWeeklyEvent(config, nowMs = Date.now()) {
 
 export function weeklyView(event, economy = null, nowMs = Date.now()) {
   if (!event) return null;
-  const progress = economy?.weeklyEvents?.[event.id];
+  const progress = Object.hasOwn(economy?.weeklyEvents || {}, event.id) ? economy.weeklyEvents[event.id] : null;
   const wins = integer(progress?.wins, 0, 20) ? progress.wins : 0;
   const claimed = Array.isArray(progress?.claimed) ? progress.claimed : [];
   return { id: event.id, name: event.name, description: event.description,
@@ -85,24 +139,26 @@ export function recordWeeklyWin(economy, config, nowMs = Date.now()) {
   const event = activeWeeklyEvent(config, nowMs);
   if (!event) return null;
   const records = (economy.weeklyEvents ??= {});
-  // Keep the player record bounded as operators rotate expired weeks out of the
-  // published schedule. Never prune an ID that can still be claimed.
-  const published = new Set(config.weeklyEvents.map((week) => week.id));
-  for (const id of Object.keys(records)) if (!published.has(id)) delete records[id];
-  const record = (records[event.id] ??= { wins: 0, claimed: [] });
+  // Keep records for published or archived IDs, so a lost claim response can still
+  // be acknowledged after rotation. Prune only after the operator removes the archive.
+  const retained = new Set([...(config.weeklyEvents || []), ...(config.weeklyEventArchive || [])].map((week) => week.id));
+  for (const id of Object.keys(records)) if (!retained.has(id)) delete records[id];
+  if (!Object.hasOwn(records, event.id)) records[event.id] = { wins: 0, claimed: [] };
+  const record = records[event.id];
   record.wins = Math.min(20, (integer(record.wins, 0, 20) ? record.wins : 0) + 1);
   return { eventId: event.id, wins: record.wins };
 }
 
 /** Check all rules before mutating. Caller holds the economy lock and saves once. */
 export function claimWeeklyMilestone(economy, config, eventId, goal, nowMs = Date.now()) {
-  const event = (config.weeklyEvents || []).find((e) => e.id === eventId);
+  const active = (config.weeklyEvents || []).find((e) => e.id === eventId);
+  const event = active || (config.weeklyEventArchive || []).find((e) => e.id === eventId);
   if (!event) throw new WeeklyEventError('weekly_event_not_found');
   const milestone = event.milestones.find((m) => m.wins === goal);
   if (!milestone) throw new WeeklyEventError('weekly_milestone_not_found');
-  const record = economy.weeklyEvents?.[event.id];
+  const record = Object.hasOwn(economy.weeklyEvents || {}, event.id) ? economy.weeklyEvents[event.id] : null;
   if (record?.claimed?.includes(goal)) return { duplicate: true, coins: milestone.coins, balance: economy.currencies.coins.amount };
-  if (weeklyDisabled() || nowMs < event.startMs || nowMs >= event.endMs) throw new WeeklyEventError('weekly_event_closed');
+  if (!active || weeklyDisabled() || nowMs < event.startMs || nowMs >= event.endMs) throw new WeeklyEventError('weekly_event_closed');
   if (!record || record.wins < goal) throw new WeeklyEventError('weekly_progress_required');
   const wallet = economy.currencies.coins;
   if (wallet.amount + milestone.coins > wallet.maxAmount) throw new WeeklyEventError('weekly_wallet_full');
