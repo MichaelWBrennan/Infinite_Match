@@ -131,6 +131,25 @@ async function performAction(page, cells, method, mobile) {
       await page.mouse.move(first.x, first.y); await page.mouse.down();
       await page.mouse.move(second.x, second.y, { steps: 4 }); await page.mouse.up();
     }
+  } else if (method === 'named' || method === 'named-keyboard' || method === 'named-toolbar-keyboard' || method === 'assistive-click') {
+    const button = (row, col) => page.locator(`[data-cell-row="${row}"][data-cell-col="${col}"]`);
+    const choose = (row, col) => method === 'assistive-click' ? button(row, col).dispatchEvent('click', { detail: 0 })
+      : mobile ? button(row, col).tap() : button(row, col).click();
+    if (method === 'named-keyboard') {
+      await button(cells[0], cells[1]).focus();
+      if (!second) await page.keyboard.press('Enter');
+      else {
+        await page.keyboard.press('Space');
+        await page.keyboard.press(cells[2] > cells[0] ? 'ArrowDown' : cells[2] < cells[0] ? 'ArrowUp' : cells[3] > cells[1] ? 'ArrowRight' : 'ArrowLeft');
+        await page.keyboard.press('Space');
+      }
+    } else {
+      await choose(cells[0], cells[1]);
+      if (second) await choose(cells[2], cells[3]);
+      else if (method === 'named-toolbar-keyboard') await page.locator('[data-cell-action="activate"]').press('Enter');
+      else if (mobile) await page.locator('[data-cell-action="activate"]').tap();
+      else await page.locator('[data-cell-action="activate"]').click();
+    }
   } else {
     const board = page.locator('.match-board-surface');
     await board.focus();
@@ -166,6 +185,7 @@ async function performAction(page, cells, method, mobile) {
   });
   assert.equal(viewsMatch, true, `${method}: no duplicated, stale or misplaced sprite`);
   await checkFit(page);
+  await checkNamedBoard(page);
   return expected;
 }
 
@@ -173,6 +193,138 @@ async function exerciseMove(page, method, mobile) {
   await reset(page);
   const cells = await page.evaluate(() => window.InfiniteLevels.levelActions(window.game.generatedLevel, window.game.board, window.game.specials)[0].cells);
   return performAction(page, cells, method, mobile);
+}
+
+async function checkNamedBoard(page, visible = false) {
+  await page.waitForFunction(() => document.querySelector('.match-cell-grid').getAttribute('aria-disabled') === String(!window.game.canInteractWithBoard()));
+  const info = await page.evaluate(() => {
+    const g = window.game; const grid = g.playerUI.shell.querySelector('.match-cell-grid');
+    const buttons = Array.from(grid.querySelectorAll('button')); const textVisible = g.playerUI.surface.classList.contains('match-text-board-active');
+    return { size: g.boardSize, rows: Number(grid.getAttribute('aria-rowcount')), columns: Number(grid.getAttribute('aria-colcount')),
+      rowIndices: Array.from(grid.querySelectorAll('[role="row"]'), (row) => Number(row.getAttribute('aria-rowindex'))),
+      cells: buttons.map((button) => {
+        const row = Number(button.dataset.cellRow); const col = Number(button.dataset.cellCol); const expected = window.InfiniteAssistiveBoard.describeCell(g, row, col);
+        return { row, col, actual: button.getAttribute('aria-label'), expected: expected.label,
+          selected: button.parentElement.getAttribute('aria-selected'), expectedSelected: String(expected.selected), colIndex: Number(button.parentElement.getAttribute('aria-colindex')),
+          width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height };
+      }), tabStops: buttons.filter((button) => button.tabIndex === 0).length, textVisible, pageFits: document.body.scrollWidth <= innerWidth + 1,
+      canvasHidden: g.game.canvas.getAttribute('aria-hidden') === 'true' };
+  });
+  assert.equal(info.rows, info.size); assert.equal(info.columns, info.size); assert.equal(info.cells.length, info.size ** 2);
+  assert.deepEqual(info.rowIndices, Array.from({ length: info.size }, (_, row) => row + 1));
+  assert.equal(info.tabStops, 1, 'one roving cell entry, not 64 Tab stops'); assert.equal(info.canvasHidden, true, 'canvas is not a duplicate accessible board');
+  assert.equal(info.pageFits, true, 'text cells scroll inside the board, not the whole page');
+  if (visible) assert.equal(info.textVisible, true, 'focused or explicitly enabled named cells are visible');
+  for (const cell of info.cells) {
+    assert.equal(cell.actual, cell.expected, 'semantic name matches the current model after refills');
+    assert.equal(cell.selected, cell.expectedSelected); assert.equal(cell.colIndex, cell.col + 1);
+    if (info.textVisible) assert.ok(cell.width >= 44 && cell.height >= 44, 'named cells retain ordinary target size, including off-screen scrollable cells');
+  }
+  return info;
+}
+
+async function exerciseAssistive(page, device) {
+  await reset(page);
+  const beforeMode = await snapshot(page);
+  await page.locator('[data-action="menu"]').click();
+  await page.getByRole('button', { name: 'Use text board', exact: true }).click();
+  assert.deepEqual(await snapshot(page), beforeMode, 'view switch does not change the active puzzle');
+  let info = await checkNamedBoard(page, true);
+  const session = await page.context().newCDPSession(page);
+  const tree = await session.send('Accessibility.getFullAXTree'); await session.detach();
+  const exposed = tree.nodes.filter((node) => !node.ignored);
+  assert.equal(exposed.filter((node) => node.role?.value === 'grid' && node.name?.value === 'Named gem board').length, 1);
+  assert.equal(exposed.filter((node) => node.role?.value === 'gridcell').length, info.size ** 2);
+  assert.equal(exposed.filter((node) => node.role?.value === 'button' && /^Row \d+, column \d+: /.test(node.name?.value)).length, info.size ** 2, 'actual AX tree exposes every named native action');
+  if (device.name === 'phone') fs.writeFileSync(path.join(output, 'assistive-ax-summary.json'), JSON.stringify({ grid: 'Named gem board', rows: info.rows, columns: info.columns,
+    cells: info.cells.length, tabStops: info.tabStops, sample: info.cells[0].actual, minTarget: Math.min(...info.cells.map((cell) => Math.min(cell.width, cell.height))) }, null, 2));
+  const cell = (row, col) => page.locator(`[data-cell-row="${row}"][data-cell-col="${col}"]`);
+  await cell(0, 0).focus(); await page.keyboard.press('Control+End');
+  assert.deepEqual(await page.evaluate(() => window.game.keyboardCursor), [info.size - 1, info.size - 1]);
+  await page.keyboard.press('Home'); assert.deepEqual(await page.evaluate(() => window.game.keyboardCursor), [info.size - 1, 0]);
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.press('Tab'); assert.equal(await page.locator('[data-cell-action="status"]').evaluate((button) => button === document.activeElement), true, 'Tab exits cells to the first enabled board action');
+  await cell(0, 0).focus(); await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.locator('.match-cell-grid').evaluate((grid) => grid.contains(document.activeElement)), false, 'Shift Tab leaves the grid without a trap');
+
+  const beforeHint = await snapshot(page); await page.locator('[data-action="hint"]').click();
+  const hinted = await page.evaluate(() => {
+    const g = window.game; const cells = g.hintCells;
+    return document.querySelector(`[data-cell-row="${cells[0]}"][data-cell-col="${cells[1]}"]`).getAttribute('aria-label');
+  });
+  assert.match(hinted, /hint (start|activation)/); assert.deepEqual(await snapshot(page), beforeHint);
+  await page.locator('[data-cell-action="clear"]').click();
+  assert.equal(await page.locator('.match-cell-grid').evaluate((grid) => grid.contains(document.activeElement)), true, 'clearing restores cell focus after disabling its own button');
+  await page.locator('[data-cell-action="status"]').click(); assert.match(await page.locator('.match-player-announcement').textContent(), /Score .*moves left/);
+  await exerciseMove(page, 'named', device.mobile);
+  await earnedFixture(page, ['prism', 'burst']); await performAction(page, [3, 3, 3, 4], 'named', device.mobile);
+  await earnedFixture(page, ['prism']); await performAction(page, [3, 3], 'named', device.mobile);
+  assert.equal(await cell(3, 3).evaluate((button) => button === document.activeElement), true, 'activation restores cell focus rather than leaving a newly disabled toolbar button');
+  await earnedFixture(page, ['burst']); await performAction(page, [3, 3], 'named-toolbar-keyboard', device.mobile);
+  await earnedFixture(page, ['column']); await performAction(page, [3, 3], 'named-keyboard', device.mobile);
+  await earnedFixture(page, ['row', 'column']); await performAction(page, [3, 3, 3, 4], 'named-keyboard', device.mobile);
+  await earnedFixture(page, [], true); await performAction(page, [2, 3, 3, 3], 'assistive-click', device.mobile); // Zero-detail activation contract, not a physical screen reader.
+
+  const labelBefore = await cell(0, 0).getAttribute('aria-label'); await cell(0, 0).focus();
+  const beforeModal = await snapshot(page); await page.locator('[data-action="menu"]').click();
+  await cell(0, 0).dispatchEvent('click', { detail: 0 }); assert.deepEqual(await snapshot(page), beforeModal, 'modal guard blocks synthetic accessibility activation');
+  await page.getByRole('button', { name: 'Back to game', exact: true }).click();
+  assert.equal(await cell(0, 0).evaluate((button) => button === document.activeElement), true, 'secondary dialog restores the current named cell');
+  assert.equal(await cell(0, 0).getAttribute('aria-label'), labelBefore);
+  await page.locator('[data-action="pause"]').click(); const paused = await snapshot(page);
+  await cell(0, 0).click({ force: true }); await page.keyboard.press('Control+End');
+  assert.equal(await page.evaluate(() => window.game.isPaused), true); assert.deepEqual(await snapshot(page), paused, 'reading/navigating/clicking paused cells never resumes or moves');
+  assert.equal(await page.locator('.match-cell-grid').getAttribute('aria-disabled'), 'true');
+  await page.locator('[data-action="pause"]').click();
+
+  // Pointer down cannot be carried over to a fresh board or a cancelled/dragged native gesture.
+  await cell(0, 0).scrollIntoViewIfNeeded(); const box = await cell(0, 0).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+  await page.evaluate(() => { const g = window.game; g.applyGeneratedDefinition(g.generatedLevel); g.isGameRunning = true; g.updateUI(); });
+  const fresh = await snapshot(page); await page.mouse.up(); assert.deepEqual(await snapshot(page), fresh);
+  assert.equal(await page.evaluate(() => window.game.selectedGem === null), true, 'old pointer cannot select on the replacement board');
+  await page.mouse.down(); await cell(0, 0).dispatchEvent('pointercancel', { pointerId: 1 }); await page.mouse.up();
+  assert.equal(await page.evaluate(() => window.game.selectedGem === null), true, 'cancelled native pointer cannot select');
+  await page.mouse.down();
+  await cell(0, 0).evaluate((button) => {
+    button.dispatchEvent(new window.PointerEvent('pointerdown', { pointerId: 2, isPrimary: false, button: 0, bubbles: true }));
+    button.dispatchEvent(new window.PointerEvent('click', { pointerId: 2, detail: 1, bubbles: true }));
+  });
+  assert.equal(await page.evaluate(() => window.game.selectedGem === null), true, 'another pointer cannot impersonate the owning click');
+  await page.mouse.up(); assert.equal(await page.evaluate(() => window.game.selectedGem !== null), true, 'the owning pointer still selects once');
+  await page.locator('[data-cell-action="clear"]').click();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.up();
+  assert.equal(await page.evaluate(() => window.game.selectedGem === null), true, 'a moved-and-returned native gesture cannot select');
+
+
+  await page.evaluate(() => {
+    const g = window.game;
+    for (let number = 1; number <= 120; number++) {
+      const definition = window.InfiniteLevels.generateLevel(number, window.__qaDefinition.context);
+      if (definition.boardSize === 8) { g.applyGeneratedDefinition(definition); g.isGameRunning = true; g.updateUI(); return; }
+    }
+    throw new Error('No 8x8 cohort');
+  });
+  await cell(0, 0).focus(); await page.keyboard.press('Control+End'); info = await checkNamedBoard(page, true); assert.equal(info.size, 8);
+  if (device.name === 'phone' || device.name === 'narrow-phone') await page.screenshot({ path: path.join(output, `${device.name}-text-board.png`) });
+  await page.evaluate(() => {
+    const g = window.game;
+    for (let number = 1; number <= 120; number++) {
+      const definition = window.InfiniteLevels.generateLevel(number, window.__qaDefinition.context);
+      if (definition.boardSize === 6) { g.applyGeneratedDefinition(definition); g.isGameRunning = true; g.updateUI(); return; }
+    }
+    throw new Error('No 6x6 cohort');
+  });
+  assert.deepEqual(await page.evaluate(() => window.game.keyboardCursor), [5, 5], 'focus clamps when a smaller generated board replaces a focused cell');
+  assert.equal(await cell(5, 5).evaluate((button) => button === document.activeElement), true);
+  await checkNamedBoard(page, true);
+  await reset(page);
+  await page.locator('[data-action="menu"]').click(); await page.getByRole('button', { name: 'Use visual board', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.game.settings.textBoard), false);
+  assert.equal(await page.locator('.match-board-surface').evaluate((board) => board.classList.contains('match-text-board-active')), false);
+  await cell(0, 0).focus(); assert.equal(await page.locator('.match-board-surface').evaluate((board) => board.classList.contains('match-text-board-active')), true, 'keyboard focus cannot leave named cells invisible');
+  await page.locator('.match-board-surface').focus(); await checkFit(page);
 }
 
 // Test-only model fixtures, not authored production levels: every effect is independently
@@ -483,6 +635,7 @@ for (const device of cases) {
     await exerciseEarnedSpecials(page, device);
     await exerciseObjectives(page, device);
     await exerciseSound(page, device);
+    await exerciseAssistive(page, device);
     await reset(page);
 
     // Invalid adjacent swaps give feedback even when motion is reduced, and cost nothing.
@@ -588,6 +741,10 @@ for (const device of cases) {
 
     // Preference storage survives a real reload and the next Play action.
     if (device.name === 'phone') {
+      await page.locator('[data-action="menu"]').click();
+      await page.getByRole('button', { name: 'Play preferences', exact: true }).click();
+      await page.getByRole('checkbox', { name: 'Text board (named cells and larger targets)', exact: true }).check();
+      await page.getByRole('button', { name: 'Back to game', exact: true }).click();
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.match-player-dialog[open]');
       assert.equal(await page.evaluate(() => window.__qaAudioContexts), 0, 'saved opt-in does not autoplay on reload');
@@ -597,16 +754,26 @@ for (const device of cases) {
       assert.equal(settings.highContrast, true);
       assert.equal(settings.largeText, true);
       assert.equal(settings.reduceAnimations, true);
+      assert.equal(settings.textBoard, true);
       assert.equal(settings.sfx, true); assert.equal(settings.soundChoiceVersion, 1); assert.equal(settings.soundVolume, 0.25);
       await page.waitForFunction(() => window.game.getSoundStatus().state === 'ready');
       assert.equal(await page.evaluate(() => window.__qaAudioContexts), 1, 'saved opt-in unlocks one context only after actual Play gesture');
+      await checkNamedBoard(page, true);
+      await page.locator('[data-action="menu"]').click();
+      await page.getByRole('button', { name: 'Use visual board', exact: true }).click();
       await checkFit(page);
     }
     await page.screenshot({ path: path.join(output, `${device.name}.png`) });
     assert.deepEqual(errors, [], 'no page JavaScript errors');
     const result = { device: device.name, viewport: `${device.width}x${device.height}`, boardSize: initialBoardSize,
-      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, collection-progress, pair/mixed/collection-win, objective-guide, objective-replay, opt-in-sound, volume/mute/pause/lifecycle, audio-parity, largest-board/large-text',
+      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, collection-progress, pair/mixed/collection-win, objective-guide, objective-replay, opt-in-sound, volume/mute/pause/lifecycle, audio-parity, semantic-grid/AX/roving-focus, native-cell-actions, text-board-52px-scroll, largest-board/large-text',
       touchSwipe: device.mobile };
+    if (device.name === 'phone') {
+      await page.evaluate(() => window.game.destroy());
+      assert.equal(await page.locator('.match-assistive-board').count(), 0, 'teardown removes semantic controls and pending refresh timers');
+      await page.evaluate(() => document.dispatchEvent(new window.PointerEvent('pointerup', { pointerId: 1 })));
+      assert.deepEqual(errors, [], 'teardown and later pointer events leave no stale callbacks');
+    }
     results.push(result);
     console.log(JSON.stringify(result));
   } catch (error) {

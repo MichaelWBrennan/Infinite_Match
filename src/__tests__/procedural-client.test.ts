@@ -1,6 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { setImmediate } from 'node:timers';
 import { certifyLevel, simulateLevelMove, simulateObjectiveClear, generateLevel } from '../services/levels/generator.js';
 import { generatedLevel } from '../services/levels/level-service.js';
 
@@ -33,7 +34,7 @@ function makeBrowserGame() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js', 'public/js/player-experience.js', 'phaser3-game.js']) {
+  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js', 'public/js/player-experience.js', 'public/js/assistive-board.js', 'phaser3-game.js']) {
     vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   }
   const game: any = Object.create(sandbox.PhaserMatch3Game.prototype);
@@ -896,5 +897,77 @@ describe('optional sound is presentation only', () => {
     game.applyGeneratedDefinition(generatedLevel({ level: 2, location, rulesVersion: 4 }, now)); game.isGameRunning = true;
     const before = model(game); game.pauseGame(); expect(interruptions()).toBe(1); expect(model(game)).toBe(before);
     game.destroy(); expect(destruction()).toBe(1);
+  });
+});
+
+describe('named semantic controls preserve the real Phaser rules', () => {
+  test.each([[2, 9], [3, 18], [4, 2], [4, 4], [4, 7], [4, 100001]])('v%s level %s witness can be played only through named cell actions', (rulesVersion, level) => {
+    const { game, sandbox } = makeBrowserGame();
+    const def = generatedLevel({ level, location, rulesVersion }, now);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'same-paid-attempt';
+    const proof = certifyLevel(def); const api = sandbox.InfiniteAssistiveBoard;
+    for (const cells of proof.witness) {
+      if (!game.isGameRunning) break;
+      const state = { board: game.board, specials: game.specials, refillState: game.levelRng.state, objectiveProgress: game.objectiveProgress };
+      const expected = simulateLevelMove(def, state, cells)!; const score = game.score; const moves = game.moves;
+      const beforeReading = JSON.stringify(state); api.describeCell(game, cells[0], cells[1]);
+      expect(JSON.stringify(state)).toBe(beforeReading);
+      if (cells.length === 2) expect(api.interact(game, ...cells, true)).toBe(true);
+      else {
+        expect(api.interact(game, cells[0], cells[1])).toBe(true); expect(game.moves).toBe(moves);
+        expect(api.describeCell(game, cells[0], cells[1]).selected).toBe(true);
+        expect(api.interact(game, cells[2], cells[3])).toBe(true);
+      }
+      expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board);
+      expect(JSON.parse(JSON.stringify(game.specials))).toEqual(expected.specials ?? null);
+      if (expected.objectiveProgress) expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(expected.objectiveProgress);
+      expect(game.score - score).toBe(expected.score); expect(game.moves).toBe(moves - 1); expect(game.levelRng.state).toBe(expected.refillState);
+      expect(game.attemptId).toBe('same-paid-attempt'); assertSprites(game);
+    }
+    expect(game.endCalls).toBe(1); expect(game.moves).toBeGreaterThanOrEqual(0);
+  });
+
+  test('named reading and navigation, free hints, invalid swaps and disabled actions do not spend or refill', () => {
+    const { game, sandbox } = makeBrowserGame(); game.applyGeneratedDefinition(definition(2)); game.isGameRunning = true;
+    const api = sandbox.InfiniteAssistiveBoard;
+    const before = JSON.stringify({ board: game.board, specials: game.specials, rng: game.levelRng.state, score: game.score, moves: game.moves });
+    const hint = game.showHint(); expect(api.describeCell(game, hint[0], hint[1]).hinted).toMatch(/^Hint/);
+    for (let row = 0; row < game.boardSize; row++) for (let col = 0; col < game.boardSize; col++) api.describeCell(game, row, col);
+    game.keyboardCursor = api.navigationCell(0, 0, 'End', game.boardSize, true);
+    for (const flag of ['isPaused', 'powerUpPending', 'levelStarting']) {
+      game[flag] = true; expect(api.interact(game, hint[0], hint[1])).toBe(false); game[flag] = false;
+    }
+    game.inputLockedUntil = Date.now() + 1000; expect(api.interact(game, hint[0], hint[1])).toBe(false); game.inputLockedUntil = 0;
+    const invalid = [];
+    for (let row = 0; row < game.boardSize && !invalid.length; row++) for (let col = 0; col < game.boardSize - 1; col++) {
+      if (!sandbox.InfiniteLevels.simulateLevelMove(game.generatedLevel, { board: game.board, specials: game.specials, refillState: game.levelRng.state }, [row, col, row, col + 1])) { invalid.push(row, col, row, col + 1); break; }
+    }
+    api.interact(game, invalid[0], invalid[1]); api.interact(game, invalid[2], invalid[3]);
+    expect(JSON.stringify({ board: game.board, specials: game.specials, rng: game.levelRng.state, score: game.score, moves: game.moves })).toBe(before);
+  });
+
+  test('named inventory targeting uses server-confirmed spending, never the special-activation shortcut', async () => {
+    const { game, sandbox } = makeBrowserGame(); game.applyGeneratedDefinition(definition(2)); game.isGameRunning = true;
+    const btn = sprite().setData('type', 'target').setData('count', 1);
+    game.powerButtons = { target: { btn, text: sprite() } }; game.getAuthToken = () => 'token';
+    let acknowledge = (value: boolean) => { void value; }; const calls: string[] = [];
+    game.consumePowerUpOnServer = (type: string) => { calls.push(type); return new Promise((resolve) => { acknowledge = resolve; }); };
+    const before = JSON.stringify(game.board); const moves = game.moves;
+    game.toggleArmedPowerUp('target');
+    expect(sandbox.InfiniteAssistiveBoard.interact(game, 0, 0, true)).toBe(false); expect(calls).toEqual([]);
+    expect(sandbox.InfiniteAssistiveBoard.interact(game, 0, 0)).toBe(true); expect(calls).toEqual(['target']);
+    expect(JSON.stringify(game.board)).toBe(before); expect(game.powerUpPending).toBe(true);
+    expect(sandbox.InfiniteAssistiveBoard.interact(game, 0, 1)).toBe(false); expect(calls).toHaveLength(1);
+    acknowledge(true); await new Promise((resolve) => setImmediate(resolve));
+    expect(game.powerUpPending).toBe(false); expect(btn.getData('count')).toBe(0); expect(game.moves).toBe(moves); assertSprites(game);
+  });
+
+  test('selection and hint changes notify only the assistive presentation; teardown releases it', () => {
+    const { game } = makeBrowserGame(); game.applyGeneratedDefinition(definition(2)); game.isGameRunning = true;
+    let refreshes = 0; let destroys = 0;
+    game.playerUI = { assistiveBoard: { sync: () => refreshes++, destroy: () => destroys++ }, shell: { querySelector: () => ({ open: false }), remove() {} },
+      refresh() {}, closeOverlay() {}, announce() {} };
+    game.setSelectedGem(game.gemSprites[0][0]); game.setSelectedGem(null); game.showHint();
+    expect(refreshes).toBeGreaterThanOrEqual(3); game.destroy(); expect(destroys).toBe(1); expect(game.playerUI).toBeNull();
   });
 });

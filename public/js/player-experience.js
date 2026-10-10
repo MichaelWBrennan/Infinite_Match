@@ -105,7 +105,7 @@
             <div class="match-player-goal" data-stat="goal"></div>
             <progress class="match-goal-progress" aria-label="Level goal progress" max="100" value="0"></progress>
             <div class="match-player-theme" data-stat="theme"></div>
-            <div class="match-board-surface" tabindex="0" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection."></div>
+            <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection."></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
                 <div class="match-powerups" aria-label="Inventory boosters"></div>
@@ -221,6 +221,7 @@
         function refresh() {
             renderGoals();
             renderSoundControls();
+            assistiveBoard?.sync();
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
             find('[data-action="hint"]').disabled = !game.isGameRunning || game.isPaused || game.powerUpPending || game.levelStarting;
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
@@ -238,10 +239,12 @@
             shell.classList.toggle('match-reduced-motion', game.animationsReduced());
             document.documentElement.classList.toggle('match-reduced-motion', game.animationsReduced());
         }
+        function focusBoard() { if (assistiveBoard) assistiveBoard.focus(); else surface.focus({ preventScroll: true }); }
         function openOverlay(title) {
             if (!dialog.open) focusedBeforeDialog = document.activeElement;
             content.replaceChildren(); status.textContent = ''; find('h2').textContent = title;
             if (!dialog.open) dialog.showModal();
+            assistiveBoard?.sync();
             return { destroy: closeOverlay };
         }
         function closeOverlay() {
@@ -249,6 +252,7 @@
             content.replaceChildren(); status.textContent = '';
             if (focusedBeforeDialog?.isConnected) focusedBeforeDialog.focus({ preventScroll: true });
             focusedBeforeDialog = null;
+            assistiveBoard?.sync();
         }
         function overlayText(label) { const paragraph = document.createElement('p'); paragraph.textContent = label; content.append(paragraph); return proxy(paragraph); }
         function overlayButton(label, onClick) {
@@ -260,10 +264,14 @@
             game.playerOverlayResume = wasRunning;
             if (wasRunning) game.pauseGame();
             game.openOverlay('Explore Infinite Match');
-            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
+            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard(); });
             overlayButton('Play preferences', () => preferences(wasRunning));
             overlayButton(soundLabel(), (event) => { game.setSoundEffects(!game.settings.sfx, event); refresh(); });
             content.lastElementChild.dataset.soundToggle = 'true';
+            overlayButton(game.settings.textBoard === true ? 'Use visual board' : 'Use text board', () => {
+                game.settings.textBoard = game.settings.textBoard !== true; game.saveUserData();
+                game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard();
+            });
             overlayButton('Special gem guide', () => specialGuide(wasRunning));
             if (game.usesLevelObjectives()) overlayButton('Level goal guide', () => goalGuide(wasRunning));
             overlayButton('Game modes and local level settings', () => game.openMenu());
@@ -274,7 +282,7 @@
         }
         function goalGuide(wasRunning) {
             game.openOverlay('Your level goals');
-            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
+            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard(); });
             content.lastElementChild.className = 'match-guide-close';
             overlayText(root.InfiniteLevels.objectiveDescription(game.generatedLevel));
             overlayText(`${game.generatedLevel.theme.name} · ${game.generatedLevel.context.localDate} · ${game.generatedLevel.theme.environmentLabel}`);
@@ -285,7 +293,7 @@
         }
         function specialGuide(wasRunning) {
             game.openOverlay('Earned special gems');
-            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
+            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard(); });
             content.lastElementChild.className = 'match-guide-close';
             overlayText('Earn these on the board, never from a purchase. Each activation or combination uses one ordinary move; inventory boosters are separate.');
             const legend = document.createElement('ul'); legend.className = 'match-special-guide';
@@ -311,7 +319,7 @@
             overlayButton(returnToTitle ? 'Back to title' : 'Back to game', () => {
                 game.closeOverlay(); delete game.playerOverlayResume;
                 if (returnToTitle) game.showTitleOverlay();
-                else { if (wasRunning) game.resumeGame(); refresh(); surface.focus(); }
+                else { if (wasRunning) game.resumeGame(); refresh(); focusBoard(); }
             });
             content.lastElementChild.className = 'match-guide-close';
             const soundLabel = document.createElement('label'); const soundChoice = document.createElement('input');
@@ -326,19 +334,22 @@
             volumeLabel.append(document.createTextNode('Sound volume'), volume, output); content.append(volumeLabel);
             overlayButton('Test sound', (event) => game.previewSound(event)); content.lastElementChild.dataset.soundTest = 'true';
             overlayText(''); content.lastElementChild.dataset.soundStatus = 'true'; content.lastElementChild.setAttribute('role', 'status');
-            for (const [key, title] of Object.entries({ highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', haptics: 'Touch vibration' })) {
+            for (const [key, title] of Object.entries({ textBoard: 'Text board (named cells and larger targets)', highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', haptics: 'Touch vibration' })) {
                 const label = document.createElement('label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
-                checkbox.checked = !!game.settings[key]; checkbox.addEventListener('change', () => {
+                checkbox.checked = game.settings[key] === true; checkbox.disabled = key === 'textBoard' && !assistiveBoard; checkbox.addEventListener('change', () => {
                     game.settings[key] = checkbox.checked; game.saveUserData(); refresh();
                 });
                 label.append(checkbox, document.createTextNode(title)); content.append(label);
             }
+            overlayText('Text board uses the same puzzle and rewards. Click two adjacent cells to swap; a special is selected rather than fired. Enter or Activate special fires it. Arrows, Home/End and Control Home/End navigate; Tab leaves. Narrow text boards scroll instead of shrinking targets. Keyboard focus reveals named cells even with this preference off.');
             overlayText('Sound is generated locally, with no downloads or microphone permission. System reduced motion is respected; sound and vibration are separate, optional preferences. Hints are always free.');
             refresh();
         }
 
+        const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
+        surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, openOverlay, closeOverlay, overlayText, overlayButton,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, openOverlay, closeOverlay, overlayText, overlayButton,
             showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 

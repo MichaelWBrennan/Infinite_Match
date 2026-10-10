@@ -90,7 +90,8 @@ class PhaserMatch3Game {
             highContrast: false,
             largeText: false,
             reduceAnimations: false,
-            haptics: false
+            haptics: false,
+            textBoard: false
         };
         this.timerInterval = null;
         this.tutorialShown = false;
@@ -386,6 +387,7 @@ class PhaserMatch3Game {
                 this.gemSprites[row][col] = this.createGemSprite(row, col, this.board[row][col]);
             }
         }
+        this.playerUI?.assistiveBoard?.sync();
     }
 
     usesEarnedSpecials() {
@@ -546,6 +548,7 @@ class PhaserMatch3Game {
         const message = cells.length === 2 ? `Free hint: tap the special at row ${cells[0] + 1}, column ${cells[1] + 1}. No move or charge spent.` : `Free hint: ${this.specials?.[cells[0]]?.[cells[1]] || this.specials?.[cells[2]]?.[cells[3]] ? 'swipe' : 'swap'} row ${cells[0] + 1}, column ${cells[1] + 1} with row ${cells[2] + 1}, column ${cells[3] + 1}. No move or charge spent.`;
         this.playerUI?.announce(message + (this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress, true)}` : ''));
         this.playSound('hint');
+        this.playerUI?.assistiveBoard?.sync();
         return cells;
     }
 
@@ -689,6 +692,7 @@ class PhaserMatch3Game {
             }
         }));
         this.selectedGem = gem;
+        this.playerUI?.assistiveBoard?.sync();
         if (!gem) return;
 
         gem.setTint(0xffd700);
@@ -2576,7 +2580,8 @@ class PhaserMatch3Game {
         delete this.playerOverlayResume;
         if (resume) this.resumeGame();
         else this.playerUI?.refresh();
-        this.playerUI?.surface.focus({ preventScroll: true });
+        if (this.playerUI?.focusBoard) this.playerUI.focusBoard();
+        else this.playerUI?.surface.focus({ preventScroll: true });
     }
 
     // End game with all features
@@ -2699,6 +2704,7 @@ class PhaserMatch3Game {
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.boardResizeObserver?.disconnect();
         if (this.onAuthChanged) window.removeEventListener('auth:changed', this.onAuthChanged);
+        this.playerUI?.assistiveBoard?.destroy();
         this.playerUI?.closeOverlay();
         this.playerUI?.shell.remove();
         this.playerUI = null;
