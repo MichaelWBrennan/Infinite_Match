@@ -4,7 +4,7 @@ import request from 'supertest';
 import { createServer } from 'node:http';
 import { timeOfDayContext, environmentRules } from '../services/levels/environment.js';
 import { normalizeLocation, localLevelContext } from '../services/levels/location-context.js';
-import { generateLevel, matchingCells, legalSwaps, certifyBoard, simulateMove } from '../services/levels/generator.js';
+import { generateLevel, matchingCells, legalSwaps, certifyLevel, simulateLevelMove } from '../services/levels/generator.js';
 import { liveGeneratedLevel, liveLevelContext } from '../services/levels/level-service.js';
 import { createLevelWeatherService, metCondition, wmoCondition, weatherArea } from '../services/levels/weather-context.js';
 import levelsRoutes from '../routes/levels.js';
@@ -237,11 +237,11 @@ describe('time/weather genuinely affect certified daily variants and endless boa
           } });
           expect(matchingCells(definition.board).size).toBe(0);
           expect(legalSwaps(definition.board).length).toBeGreaterThan(0);
-          const proof = certifyBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, definition.moves);
-          let state = { board: definition.board, refillState: definition.refillState, score: 0 };
+          const proof = certifyLevel(definition);
+          let state: any = { board: definition.board, specials: definition.specials, refillState: definition.refillState, score: 0 };
           let total = 0;
           for (const cells of proof.witness) {
-            state = simulateMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells)!;
+            state = simulateLevelMove(definition, state, cells)!;
             total += state.score;
           }
           expect(total).toBeGreaterThanOrEqual(definition.targetScore);

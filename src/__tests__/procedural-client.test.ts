@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { certifyBoard, simulateMove } from '../services/levels/generator.js';
+import { certifyLevel, simulateLevelMove, generateLevel } from '../services/levels/generator.js';
 import { generatedLevel } from '../services/levels/level-service.js';
 
 const location = { timeZone: 'America/New_York', country: 'US', region: 'PA' };
@@ -72,7 +72,8 @@ function assertSprites(game: any) {
   for (let r = 0; r < game.boardSize; r++) {
     for (let c = 0; c < game.boardSize; c++) {
       const s = game.gemSprites[r][c];
-      expect(s.key).toBe(`gem_${game.board[r][c]}`);
+      expect(s.key).toBe(game.gemTexture(game.board[r][c], game.specials?.[r]?.[c]));
+      expect(s.getData('special')).toBe(game.specials?.[r]?.[c] || null);
       expect(s.getData('type')).toBe(game.board[r][c]);
       expect(s.getData('row')).toBe(r);
       expect(s.getData('col')).toBe(c);
@@ -82,6 +83,7 @@ function assertSprites(game: any) {
   }
   expect(game.findMatches().size).toBe(0);
   expect(game.hasPossibleMove()).toBe(true);
+  expect(new Set(game.gemSprites.flat()).size).toBe(game.boardSize ** 2);
 }
 
 describe('real Phaser core uses the certified definition', () => {
@@ -92,12 +94,12 @@ describe('real Phaser core uses the certified definition', () => {
       game.applyGeneratedDefinition(def);
       game.isGameRunning = true;
       assertSprites(game);
-      const proof = certifyBoard(def.board, def.refillState, def.gemTypes, def.gemWeights, def.moves);
+      const proof = certifyLevel(def);
       for (const cells of proof.witness) {
         if (!game.isGameRunning) break; // The actual game stops as soon as its goal is reached.
-        const expected = simulateMove(game.board, game.levelRng.state, def.gemTypes, def.gemWeights, cells)!;
+        const expected = simulateLevelMove(def, { board: game.board, specials: game.specials, refillState: game.levelRng.state }, cells)!;
         const score = game.score;
-        game.trySwap(...cells);
+        if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
         expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board);
         expect(game.score - score).toBe(expected.score);
         expect(game.levelRng.state).toBe(expected.refillState);
@@ -119,12 +121,12 @@ describe('real Phaser core uses the certified definition', () => {
         const def = sandbox.InfiniteLevels.generateLevel(10, context);
         game.applyGeneratedDefinition(def);
         game.isGameRunning = true;
-        const proof = certifyBoard(def.board, def.refillState, def.gemTypes, def.gemWeights, def.moves);
+        const proof = certifyLevel(def);
         for (const cells of proof.witness) {
           if (!game.isGameRunning) break;
-          const expected = simulateMove(game.board, game.levelRng.state, def.gemTypes, def.gemWeights, cells)!;
+          const expected = simulateLevelMove(def, { board: game.board, specials: game.specials, refillState: game.levelRng.state }, cells)!;
           const score = game.score;
-          game.trySwap(...cells);
+          if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
           expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board);
           expect(game.score - score).toBe(expected.score);
           expect(game.levelRng.state).toBe(expected.refillState);
@@ -170,11 +172,37 @@ describe('real Phaser core uses the certified definition', () => {
     };
     expect(await game.selectLevel(100001)).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location } });
+    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 3 } });
     expect(game.targetScore).toBe(def.targetScore);
     expect(game.attemptId).toBe('attempt');
     expect(game.attemptLevel).toBe(100001);
     expect(JSON.parse(JSON.stringify(game.board))).toEqual(def.board);
+  });
+
+  test('frozen v2 definitions still replay through the legacy Phaser path', () => {
+    const { game } = makeBrowserGame();
+    const def = generateLevel(1, definition().context, 'classic', 2);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    expect(game.usesEarnedSpecials()).toBe(false);
+    expect(game.specials).toBeNull();
+    for (const cells of certifyLevel(def).witness) {
+      if (!game.isGameRunning) break;
+      const expected = simulateLevelMove(def, { board: game.board, refillState: game.levelRng.state }, cells)!;
+      game.trySwap(...cells);
+      expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board);
+      assertSprites(game);
+    }
+    expect(game.score).toBeGreaterThanOrEqual(def.targetScore);
+  });
+
+  test('an existing v2 endless attempt never upgrades its rules mid-run', () => {
+    const { game } = makeBrowserGame();
+    const def = generateLevel(1, definition().context, 'endless', 2);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'v2-paid';
+    game.score = def.targetScore;
+    game.checkEndConditions();
+    expect(game.generatedLevel.generatorVersion).toBe(2);
+    expect(game.specials).toBeNull(); expect(game.attemptId).toBe('v2-paid');
   });
 
   test('repeated clicks while starting cannot charge a second attempt', async () => {
@@ -301,7 +329,7 @@ describe('real Phaser core uses the certified definition', () => {
     const { game } = makeBrowserGame();
     game.fetchJson = async () => { throw new Error('offline'); };
     expect(await game.selectLevel(100001)).toBe(true);
-    expect(game.generatedLevel.generatorVersion).toBe(2);
+    expect(game.generatedLevel.generatorVersion).toBe(3);
     expect(game.generatedLevel.context.offline).toBe(true);
     expect(game.attemptId).toBeNull();
     assertSprites(game);
@@ -483,6 +511,75 @@ describe('native player input keeps shared rules and economy untouched', () => {
     game.handleBoardKey(key('h'));
     expect(game.moves).toBe(moves);
     expect(prevented).toBe(4);
+  });
+
+  function earnedFixture(types: string[]) {
+    const { game } = makeBrowserGame();
+    const palette = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+    const def: any = { ...definition(), boardSize: 7, gemTypes: palette, refillState: 12345, targetScore: 1000000,
+      board: Array.from({ length: 7 }, (_, r) => Array.from({ length: 7 }, (_, c) => palette[(r * 2 + c) % 6])),
+      specials: Array.from({ length: 7 }, () => Array(7).fill(null)) };
+    for (let i = 0; i < types.length; i++) def.specials[3][3 + i] = types[i];
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.settings.reduceAnimations = true;
+    game.playerUI = { surface: { focus() {} }, shell: { querySelector: () => ({ open: false }) },
+      refresh() {}, announce: (message: string) => { game.announcement = message; } };
+    let requests = 0;
+    game.spendPowerUp = () => { requests++; throw new Error('Earned specials must not spend inventory'); };
+    return { game, def, requests: () => requests };
+  }
+
+  test('tap activates an earned special for exactly one move and no inventory request', () => {
+    const { game, def, requests } = earnedFixture(['row']);
+    const expected = simulateLevelMove(def, { board: game.board, specials: game.specials, refillState: game.levelRng.state }, [3, 3])!;
+    const moves = game.moves;
+    game.selectGem(game.gemSprites[3][3]);
+    expect(game.moves).toBe(moves - 1); expect(requests()).toBe(0);
+    expect(game.score).toBe(expected.score);
+    expect(JSON.parse(JSON.stringify(game.specials))).toEqual(expected.specials);
+    assertSprites(game);
+  });
+
+  test('keyboard Space selects specials for combinations; Enter activates them', () => {
+    const { game, def, requests } = earnedFixture(['prism', 'burst']);
+    const expected = simulateLevelMove(def, { board: game.board, specials: game.specials, refillState: game.levelRng.state }, [3, 3, 3, 4])!;
+    const key = (name: string) => game.handleBoardKey({ key: name, preventDefault() {}, stopPropagation() {} });
+    game.keyboardCursor = [3, 3];
+    key('Space'); // Browser KeyboardEvent uses a single space, not the word Space.
+    key(' ');
+    expect(game.moves).toBe(def.moves); expect(game.selectedGem).toBe(game.gemSprites[3][3]);
+    key('ArrowRight'); key(' ');
+    expect(game.moves).toBe(def.moves - 1); expect(requests()).toBe(0);
+    expect(game.score).toBe(expected.score); assertSprites(game);
+    const solo = earnedFixture(['column']); solo.game.keyboardCursor = [3, 3];
+    solo.game.handleBoardKey({ key: 'Enter', preventDefault() {}, stopPropagation() {} });
+    expect(solo.game.moves).toBe(solo.def.moves - 1); expect(solo.requests()).toBe(0);
+  });
+
+  test('paused, pending, modal and animation locks also block earned activations', () => {
+    for (const flag of ['isPaused', 'powerUpPending', 'levelStarting', 'inputLockedUntil']) {
+      const { game, def, requests } = earnedFixture(['row']);
+      game[flag] = flag === 'inputLockedUntil' ? Date.now() + 1000 : true;
+      expect(game.activateEarnedSpecial(3, 3)).toBeNull();
+      expect(game.moves).toBe(def.moves); expect(requests()).toBe(0);
+    }
+  });
+
+  test('inventory blast chaining uses shared rules without spending an ordinary move', () => {
+    const { game, def } = earnedFixture(['row']);
+    const before = game.moves;
+    const expected = globalThis.JSON.parse(JSON.stringify(def));
+    game.clearAndCascade(new Set(['3,3']), 500);
+    expect(game.moves).toBe(before); expect(game.score).toBeGreaterThanOrEqual(560);
+    expect(JSON.parse(JSON.stringify(def))).toEqual(expected); assertSprites(game);
+  });
+
+  test('special hints preserve persistent special state and RNG as well as moves', () => {
+    const { game } = earnedFixture(['prism', 'prism']);
+    const before = JSON.stringify([game.board, game.specials, game.moves, game.levelRng.state]);
+    const cells = Array.from(game.showHint());
+    expect(cells).toEqual([3, 3, 3, 4]);
+    expect(game.announcement).toContain('swipe');
+    expect(JSON.stringify([game.board, game.specials, game.moves, game.levelRng.state])).toBe(before);
   });
 
   test('reduced motion changes presentation, never board, RNG or scores', () => {

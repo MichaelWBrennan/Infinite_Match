@@ -3,7 +3,7 @@ import express from 'express';
 import request from 'supertest';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { generateLevel, matchingCells, legalSwaps, certifyBoard, simulateMove } from '../services/levels/generator.js';
+import { generateLevel, matchingCells, legalSwaps, certifyLevel, simulateLevelMove, levelActions } from '../services/levels/generator.js';
 import { localLevelContext, normalizeLocation, nextLocalMidnight, locationCatalog } from '../services/levels/location-context.js';
 import { generatedLevel } from '../services/levels/level-service.js';
 import levelsRoutes from '../routes/levels.js';
@@ -61,17 +61,15 @@ describe('passive procedural generation', () => {
   test('a witness wins without buying or using any booster', () => {
     for (let number = 1; number <= 40; number++) {
       const definition = generateLevel(number, halloween);
-      const proof = certifyBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, definition.moves);
-      let board = definition.board;
-      let state = definition.refillState;
+      const proof = certifyLevel(definition);
+      let state: any = { board: definition.board, specials: definition.specials, refillState: definition.refillState };
       let score = 0;
       for (const cells of proof.witness) {
-        const move = simulateMove(board, state, definition.gemTypes, definition.gemWeights, cells)!;
-        board = move.board;
-        state = move.refillState;
+        const move = simulateLevelMove(definition, state, cells)!;
+        state = move;
         score += move.score;
-        expect(matchingCells(board).size).toBe(0);
-        expect(legalSwaps(board).length).toBeGreaterThan(0);
+        expect(matchingCells(state.board).size).toBe(0);
+        expect(levelActions(definition, state.board, state.specials).length).toBeGreaterThan(0);
       }
       expect(score).toBe(definition.quality.verifiedScore);
       expect(score).toBeGreaterThanOrEqual(definition.targetScore);
@@ -229,6 +227,26 @@ describe('public procedural level API', () => {
     expect(res.body.level.mode).toBe('daily');
     expect(res.body.level.context.refreshAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     assertValid(res.body.level);
+  });
+
+  test('untagged previews retain v2 while explicit v3 previews include earned-special state', async () => {
+    const legacy = await request(app).get('/api/levels/daily').query(north);
+    const explicitOld = await request(app).get('/api/levels/daily').query({ ...north, rulesVersion: 2 });
+    const modern = await request(app).get('/api/levels/daily').query({ ...north, rulesVersion: 3 });
+    expect(legacy.body.level.generatorVersion).toBe(2);
+    expect(explicitOld.body.level.id).toBe(legacy.body.level.id);
+    expect(legacy.body.level.specials).toBeUndefined();
+    expect(modern.status).toBe(200);
+    expect(modern.body.level.generatorVersion).toBe(3);
+    expect(modern.body.level.specials.flat().every((type: any) => type === null)).toBe(true);
+    expect(modern.body.level.id).not.toBe(legacy.body.level.id);
+    assertValid(modern.body.level);
+  });
+
+  test.each(['1', '4', 'invalid', '', ['2', '3']])('unsupported preview rules %j are refused', async (rulesVersion) => {
+    const res = await request(app).get('/api/levels/1').query({ ...north, rulesVersion });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('unsupported_rules_version');
   });
 
   test('levels beyond the old 10,000 limit are accessible', async () => {

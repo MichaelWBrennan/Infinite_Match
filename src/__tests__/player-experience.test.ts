@@ -57,6 +57,24 @@ describe('mobile-first player experience helpers', () => {
     expect(paths.sort()).toEqual(['B', 'G', 'O', 'P', 'R', 'Y']);
   });
 
+  test('earned badges use distinct font-independent geometry and retain base gem identity', () => {
+    const experience = helpers();
+    expect(Array.from(experience.specialTypes)).toEqual(['row', 'column', 'burst', 'prism']);
+    const signatures = new Set();
+    for (const kind of experience.specialTypes) {
+      const symbols: string[] = []; const paths: any[] = [];
+      const context: any = { clearRect() {}, beginPath() {}, closePath() {}, fill() {}, stroke() {},
+        moveTo: (...point: number[]) => paths.push(['move', ...point]), lineTo: (...point: number[]) => paths.push(['line', ...point]),
+        bezierCurveTo() {}, roundRect() {}, fillText: (symbol: string) => symbols.push(symbol),
+        createLinearGradient: () => ({ addColorStop() {} }) };
+      experience.drawGem(context, 'red', kind);
+      expect(symbols).toEqual(['R']); // No missing glyph can hide the earned badge.
+      expect(experience.specialNames[kind]).toBeTruthy();
+      signatures.add(JSON.stringify(paths));
+    }
+    expect(signatures.size).toBe(4);
+  });
+
   test('player UI precedes the game class and keeps canvas-only shell compatibility', () => {
     const html = fs.readFileSync('index.html', 'utf8');
     const game = fs.readFileSync('phaser3-game.js', 'utf8');

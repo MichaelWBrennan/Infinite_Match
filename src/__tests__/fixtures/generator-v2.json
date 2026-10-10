@@ -1,0 +1,427 @@
+[
+  {
+    "id": "v2-classic-1-2026-10-31-c95253c8",
+    "generatorVersion": 2,
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 1,
+    "mode": "classic",
+    "isDaily": false,
+    "isBoss": false,
+    "seed": 3377615816,
+    "refillState": 3625804304,
+    "boardSize": 6,
+    "board": [
+      [
+        "red",
+        "orange",
+        "yellow",
+        "red",
+        "red",
+        "green"
+      ],
+      [
+        "yellow",
+        "orange",
+        "red",
+        "green",
+        "yellow",
+        "green"
+      ],
+      [
+        "orange",
+        "green",
+        "orange",
+        "green",
+        "green",
+        "yellow"
+      ],
+      [
+        "green",
+        "yellow",
+        "green",
+        "yellow",
+        "yellow",
+        "orange"
+      ],
+      [
+        "orange",
+        "green",
+        "yellow",
+        "green",
+        "green",
+        "yellow"
+      ],
+      [
+        "orange",
+        "yellow",
+        "orange",
+        "orange",
+        "red",
+        "green"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "red",
+      "green"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "red": 1,
+      "green": 1.1
+    },
+    "targetScore": 2400,
+    "moves": 30,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 2400
+      }
+    ],
+    "difficulty": "gentle",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 22,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 30,
+      "verifiedScore": 4510
+    }
+  },
+  {
+    "id": "v2-classic-10-2026-10-31-46cc8714",
+    "generatorVersion": 2,
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 10,
+    "mode": "classic",
+    "isDaily": false,
+    "isBoss": true,
+    "seed": 1187809044,
+    "refillState": 3771516621,
+    "boardSize": 7,
+    "board": [
+      [
+        "green",
+        "purple",
+        "green",
+        "green",
+        "purple",
+        "blue",
+        "green"
+      ],
+      [
+        "yellow",
+        "green",
+        "purple",
+        "green",
+        "yellow",
+        "purple",
+        "blue"
+      ],
+      [
+        "orange",
+        "blue",
+        "red",
+        "yellow",
+        "red",
+        "yellow",
+        "yellow"
+      ],
+      [
+        "orange",
+        "red",
+        "red",
+        "yellow",
+        "yellow",
+        "red",
+        "blue"
+      ],
+      [
+        "green",
+        "blue",
+        "yellow",
+        "blue",
+        "purple",
+        "green",
+        "blue"
+      ],
+      [
+        "orange",
+        "green",
+        "red",
+        "yellow",
+        "green",
+        "purple",
+        "green"
+      ],
+      [
+        "yellow",
+        "orange",
+        "yellow",
+        "blue",
+        "purple",
+        "orange",
+        "green"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "purple",
+      "blue",
+      "red",
+      "green"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "purple": 1,
+      "blue": 1,
+      "red": 1,
+      "green": 1.1
+    },
+    "targetScore": 1100,
+    "moves": 21,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 1100
+      }
+    ],
+    "difficulty": "boss",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 19,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 21,
+      "verifiedScore": 1290
+    }
+  },
+  {
+    "id": "v2-classic-100001-2026-10-31-e43bc71d",
+    "generatorVersion": 2,
+    "environmentKey": "morning-unknown-unknown-calm",
+    "level": 100001,
+    "mode": "classic",
+    "isDaily": false,
+    "isBoss": false,
+    "seed": 3829122845,
+    "refillState": 1613909850,
+    "boardSize": 6,
+    "board": [
+      [
+        "yellow",
+        "green",
+        "blue",
+        "yellow",
+        "green",
+        "blue"
+      ],
+      [
+        "red",
+        "orange",
+        "green",
+        "orange",
+        "blue",
+        "orange"
+      ],
+      [
+        "red",
+        "yellow",
+        "blue",
+        "orange",
+        "yellow",
+        "purple"
+      ],
+      [
+        "purple",
+        "red",
+        "yellow",
+        "red",
+        "yellow",
+        "orange"
+      ],
+      [
+        "green",
+        "blue",
+        "red",
+        "blue",
+        "purple",
+        "red"
+      ],
+      [
+        "yellow",
+        "blue",
+        "red",
+        "orange",
+        "green",
+        "green"
+      ]
+    ],
+    "gemTypes": [
+      "orange",
+      "yellow",
+      "red",
+      "blue",
+      "green",
+      "purple"
+    ],
+    "gemWeights": {
+      "orange": 1.35,
+      "yellow": 1.25,
+      "red": 1,
+      "blue": 1,
+      "green": 1.1,
+      "purple": 1
+    },
+    "targetScore": 1150,
+    "moves": 30,
+    "timeLimit": 0,
+    "objectives": [
+      {
+        "type": "score",
+        "target": 1150
+      }
+    ],
+    "difficulty": "gentle",
+    "theme": {
+      "name": "Halloween",
+      "background": "#3b2931",
+      "accent": "#ffa658",
+      "favorite": "orange",
+      "id": "holiday-28c94070",
+      "environmentLabel": "Morning · Weather unavailable",
+      "monthName": "October",
+      "season": "autumn",
+      "holidayNames": [
+        "Halloween"
+      ]
+    },
+    "context": {
+      "timeZone": "America/New_York",
+      "country": "US",
+      "region": "PA",
+      "hemisphere": "north",
+      "locationSource": "player_setting",
+      "holidayThemes": true,
+      "timeOfDayEnabled": true,
+      "weatherEnabled": true,
+      "localDate": "2026-10-31",
+      "evaluatedAt": "2026-10-31T12:00:00.000Z",
+      "clockSource": "server",
+      "timeOfDay": {
+        "period": "morning",
+        "label": "Morning",
+        "nextChangeAt": "2026-10-31T16:00:00.000Z"
+      },
+      "year": 2026,
+      "month": 10,
+      "day": 31,
+      "season": "autumn",
+      "holidays": [
+        {
+          "name": "Halloween",
+          "type": "observance"
+        }
+      ],
+      "holidayCoverage": true,
+      "refreshAt": "2026-11-01T04:00:00.000Z"
+    },
+    "quality": {
+      "initialMatches": 0,
+      "legalOpeningMoves": 4,
+      "verifiedWithoutBoosters": true,
+      "verifiedMoves": 30,
+      "verifiedScore": 1870
+    }
+  }
+]

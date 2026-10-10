@@ -1,4 +1,4 @@
-/* Native, responsive player UI around the unchanged deterministic Phaser core.
+/* Native, responsive player UI around the shared deterministic Phaser core.
    No remote assets, trackers, paid SDKs or alternate match/scoring algorithm. */
 (function (root) {
     'use strict';
@@ -10,6 +10,9 @@
         purple: { color: '#be9cff', shape: 'hexagon', symbol: 'P' },
         orange: { color: '#ffad66', shape: 'star', symbol: 'O' },
     });
+
+    const specialTypes = Object.freeze(['row', 'column', 'burst', 'prism']);
+    const specialNames = Object.freeze({ row: 'Row Beam', column: 'Column Beam', burst: 'Burst', prism: 'Prism' });
 
     function boardZoom(width, height, size, step = 54) {
         return Math.max(0.1, Math.min((width - 8) / (size * step), (height - 8) / (size * step), 1.35));
@@ -29,7 +32,7 @@
         return direction ? [Math.max(0, Math.min(size - 1, row + direction[0])), Math.max(0, Math.min(size - 1, col + direction[1]))] : null;
     }
 
-    function drawGem(context, type) {
+    function drawGem(context, type, special = null) {
         const style = visuals[type];
         context.clearRect(0, 0, 64, 64);
         context.beginPath();
@@ -57,6 +60,26 @@
         context.lineWidth = 3; context.strokeStyle = '#10213a'; context.stroke();
         context.fillStyle = '#10213a'; context.font = 'bold 22px system-ui, sans-serif';
         context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(style.symbol, 32, style.shape === 'triangle' ? 39 : 32);
+        if (specialTypes.includes(special)) {
+            context.beginPath(); context.roundRect(36, 36, 27, 27, 9);
+            context.fillStyle = '#10213a'; context.fill(); context.lineWidth = 2; context.strokeStyle = '#ffffff'; context.stroke();
+            // Draw every badge as geometry: a missing Unicode font must never hide its identity.
+            context.beginPath(); context.fillStyle = '#ffffff'; context.lineWidth = 2.5;
+            context.lineCap = 'round'; context.lineJoin = 'round';
+            const path = (points) => points.forEach(([x, y], index) => index ? context.lineTo(x, y) : context.moveTo(x, y));
+            if (special === 'row') {
+                path([[42, 49.5], [57, 49.5]]); path([[45, 46], [41.5, 49.5], [45, 53]]); path([[54, 46], [57.5, 49.5], [54, 53]]);
+            } else if (special === 'column') {
+                path([[49.5, 42], [49.5, 57]]); path([[46, 45], [49.5, 41.5], [53, 45]]); path([[46, 54], [49.5, 57.5], [53, 54]]);
+            } else if (special === 'burst') {
+                context.lineWidth = 3; path([[49.5, 43], [49.5, 56]]); path([[43, 49.5], [56, 49.5]]);
+                for (const [x, y] of [[42, 42], [57, 42], [42, 57], [57, 57]]) { context.moveTo(x, y); context.lineTo(x + (x < 49.5 ? 2 : -2), y + (y < 49.5 ? 2 : -2)); }
+            } else {
+                path([[49.5, 40], [52, 47], [59, 49.5], [52, 52], [49.5, 59], [47, 52], [40, 49.5], [47, 47]]);
+                context.closePath(); context.fill();
+            }
+            context.stroke(); context.lineCap = 'butt'; context.lineJoin = 'miter';
+        }
     }
 
     function proxy(element) {
@@ -82,12 +105,12 @@
             <div class="match-player-goal" data-stat="goal"></div>
             <progress class="match-goal-progress" aria-label="Level score goal" max="100" value="0"></progress>
             <div class="match-player-theme" data-stat="theme"></div>
-            <div class="match-board-surface" tabindex="0" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Enter or Space selects, H requests a free hint, Escape clears selection."></div>
+            <div class="match-board-surface" tabindex="0" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, Escape clears selection."></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
-                <div class="match-powerups" aria-label="Power-ups"></div>
+                <div class="match-powerups" aria-label="Inventory boosters"></div>
                 <div class="match-player-account"><span data-stat="energy"></span><span data-stat="stars"></span><button type="button" data-action="account">Account</button><button type="button" data-action="shop">Shop</button><button type="button" data-action="kingdom">Kingdom</button><button type="button" data-action="season">Season</button></div>
-                <p class="match-instructions">Tap adjacent gems or swipe · shapes and letters identify colors · arrows + Enter also work</p>
+                <p class="match-instructions">Tap gems or swipe · 4+ earns free specials · swipe specials together · Explore has the guide</p>
             </footer>
             <div class="match-player-announcement" role="status" aria-live="polite" aria-atomic="true"></div>
             <dialog class="match-player-dialog" aria-labelledby="match-dialog-heading"><h2 id="match-dialog-heading"></h2><div class="match-dialog-content"></div><p class="match-dialog-status" role="status"></p></dialog>`;
@@ -113,7 +136,7 @@
             account: () => game.openSignIn(), shop: () => game.showShop(), kingdom: () => game.showKingdom(), season: () => game.showBattlePass(),
         };
         for (const [name, action] of Object.entries(actions)) find(`[data-action="${name}"]`).addEventListener('click', action);
-        const powerupNames = { bomb: 'Burst', rainbow: 'Rainbow', lightning: 'Column', diamond: 'Color', target: 'Cross', star: 'Sweep' };
+        const powerupNames = { bomb: 'Bomb', rainbow: 'Board', lightning: 'Bolt', diamond: 'Color', target: 'Cross', star: 'Sweep' };
         for (const [type, name] of Object.entries(powerupNames)) {
             const button = document.createElement('button'); button.type = 'button';
             const count = document.createElement('span');
@@ -147,7 +170,7 @@
             for (const [type, slot] of powerups) {
                 const button = find(`[data-powerup="${type}"]`);
                 button.disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending || slot.btn.getData('count') <= 0;
-                button.setAttribute('aria-label', `${powerupNames[type]} power-up, ${slot.btn.getData('count')} remaining`);
+                button.setAttribute('aria-label', `${powerupNames[type]} inventory booster, ${slot.btn.getData('count')} remaining`);
                 button.setAttribute('aria-pressed', String(game.armedPowerUp === type));
             }
             shell.classList.toggle('match-paused', !!game.isPaused);
@@ -180,11 +203,33 @@
             game.openOverlay('Explore Infinite Match');
             overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
             overlayButton('Play preferences', () => preferences(wasRunning));
+            overlayButton('Special gem guide', () => specialGuide(wasRunning));
             overlayButton('Game modes and local level settings', () => game.openMenu());
             overlayButton('Account / sign in', () => game.openSignIn());
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
             overlayButton('Season and community', () => game.showBattlePass());
+        }
+        function specialGuide(wasRunning) {
+            game.openOverlay('Earned special gems');
+            overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); surface.focus(); });
+            content.lastElementChild.className = 'match-guide-close';
+            overlayText('Earn these on the board, never from a purchase. Each activation or combination uses one ordinary move; inventory boosters are separate.');
+            const legend = document.createElement('ul'); legend.className = 'match-special-guide';
+            const rules = { row: '4 in a row: Row Beam clears one row.', column: '4 in a column: Column Beam clears one column.',
+                burst: 'L/T or intersecting matches: Burst clears a 3×3 area.', prism: '5+ in a line: Prism clears a color.' };
+            for (const [kind, description] of Object.entries(rules)) {
+                const item = document.createElement('li'); const icon = document.createElement('canvas');
+                icon.width = 64; icon.height = 64; icon.setAttribute('aria-hidden', 'true');
+                drawGem(icon.getContext('2d'), 'blue', kind);
+                const label = document.createElement('span'); label.textContent = description;
+                item.append(icon, label); legend.append(item);
+            }
+            content.append(legend);
+            overlayText('The moved gem is preferred as the creation anchor. Cascades can earn specials too.');
+            overlayText('Tap a special to activate it, or swipe it with a neighbour. Space selects a special for a keyboard swap; Enter activates. A Prism taps its own color, or swaps to clear its neighbour’s color.');
+            overlayText('Combine: two Beams make a cross; Beam + Burst clears three rows and columns; two Bursts clear 5×5; Prism + Beam/Burst turns that color into specials and fires them; two Prisms clear the whole board.');
+            if (!game.usesEarnedSpecials()) overlayText('This frozen older level uses plain-gem rules. New version-3 levels support earned specials.');
         }
         function preferences(wasRunning = game.isGameRunning && !game.isPaused) {
             if (wasRunning) game.pauseGame();
@@ -204,5 +249,5 @@
             status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
-    root.InfinitePlayerExperience = Object.freeze({ visuals, drawGem, boardZoom, swipeCells, keyboardCell, mount });
+    root.InfinitePlayerExperience = Object.freeze({ visuals, specialTypes, specialNames, drawGem, boardZoom, swipeCells, keyboardCell, mount });
 })(globalThis);

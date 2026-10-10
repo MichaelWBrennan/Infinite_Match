@@ -30,7 +30,7 @@ const results = [];
 async function snapshot(page) {
   return page.evaluate(() => {
     const g = window.game;
-    return { board: g.board, score: g.score, moves: g.moves, rng: g.levelRng.state,
+    return { board: g.board, specials: g.specials, score: g.score, moves: g.moves, rng: g.levelRng.state,
       charges: Array.from(g.playerUI.powerups, ([type, slot]) => [type, slot.btn.getData('count')]) };
   });
 }
@@ -81,49 +81,156 @@ async function reset(page) {
   await page.waitForTimeout(80); // Wait for camera transform to render after reset/resize.
 }
 
-async function exerciseMove(page, method, mobile) {
-  await reset(page);
+async function performAction(page, cells, method, mobile) {
   const before = await snapshot(page);
-  const { cells, expected } = await page.evaluate(() => {
+  const expected = await page.evaluate((cells) => {
     const g = window.game;
-    const cells = window.InfiniteLevels.legalSwaps(g.board)[0].cells;
-    return { cells, expected: window.InfiniteLevels.simulateMove(g.board, g.levelRng.state, g.gemTypes, g.generatedLevel.gemWeights, cells) };
-  });
+    return window.InfiniteLevels.simulateLevelMove(g.generatedLevel,
+      { board: g.board, specials: g.specials, refillState: g.levelRng.state }, cells);
+  }, cells);
+  assert.ok(expected, 'action is accepted by shared versioned rules');
   const first = await cellPoint(page, cells[0], cells[1]);
-  const second = await cellPoint(page, cells[2], cells[3]);
+  const second = cells.length === 4 ? await cellPoint(page, cells[2], cells[3]) : null;
   if (method === 'tap') {
-    if (mobile) {
-      await page.touchscreen.tap(first.x, first.y);
-      await page.waitForTimeout(70);
-      await page.touchscreen.tap(second.x, second.y);
-    } else {
-      await page.mouse.click(first.x, first.y);
-      await page.waitForTimeout(70);
-      await page.mouse.click(second.x, second.y);
-    }
+    const tap = (point) => mobile ? page.touchscreen.tap(point.x, point.y) : page.mouse.click(point.x, point.y);
+    await tap(first);
+    if (second) { await page.waitForTimeout(70); await tap(second); }
   } else if (method === 'swipe') {
-    const session = await page.context().newCDPSession(page);
-    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...first, id: 1 }] });
-    await page.waitForTimeout(50);
-    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...second, id: 1 }] });
-    await page.waitForTimeout(50);
-    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await session.detach();
+    assert.ok(second);
+    if (mobile) {
+      const session = await page.context().newCDPSession(page);
+      await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...first, id: 1 }] });
+      await page.waitForTimeout(50);
+      await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...second, id: 1 }] });
+      await page.waitForTimeout(50);
+      await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await session.detach();
+    } else {
+      await page.mouse.move(first.x, first.y); await page.mouse.down();
+      await page.mouse.move(second.x, second.y, { steps: 4 }); await page.mouse.up();
+    }
   } else {
     const board = page.locator('.match-board-surface');
     await board.focus();
+    // Start from a known cursor after a definition reset.
     for (let row = 0; row < cells[0]; row++) await board.press('ArrowDown');
     for (let col = 0; col < cells[1]; col++) await board.press('ArrowRight');
-    await board.press('Enter');
-    await board.press(cells[2] > cells[0] ? 'ArrowDown' : 'ArrowRight');
-    await board.press('Space');
+    if (!second) await board.press('Enter');
+    else {
+      await board.press('Space'); // Select rather than activate an earned special.
+      await board.press(cells[2] > cells[0] ? 'ArrowDown' : cells[2] < cells[0] ? 'ArrowUp' : cells[3] > cells[1] ? 'ArrowRight' : 'ArrowLeft');
+      await board.press('Space');
+    }
   }
   await page.waitForFunction((moves) => window.game.moves === moves - 1, before.moves, { timeout: 5000 });
   const after = await snapshot(page);
   assert.deepEqual(after.board, expected.board, `${method}: shared-rule board parity`);
+  assert.deepEqual(after.specials, expected.specials ?? null, `${method}: persistent special parity`);
   assert.equal(after.rng, expected.refillState, `${method}: deterministic refill parity`);
-  assert.equal(after.score - before.score, expected.score, `${method}: shared-rule score parity`);
-  assert.deepEqual(after.charges, before.charges, `${method}: no booster charge spent`);
+  assert.equal(after.score - before.score, expected.score, `${method}: score parity`);
+  assert.deepEqual(after.charges, before.charges, `${method}: earned actions do not consume inventory`);
+  assert.equal(await page.evaluate(() => window.__qaInventorySpends), 0, 'earned actions never request inventory spending');
+  await page.waitForFunction(() => {
+    const g = window.game;
+    return !(g.inputLockedUntil > Date.now()) && g.gemSprites.every((row, r) => row.every((gem, c) =>
+      Math.abs(gem.x - g.cellX(c)) < 0.5 && Math.abs(gem.y - g.cellY(r)) < 0.5));
+  });
+  const viewsMatch = await page.evaluate(() => {
+    const g = window.game;
+    return new Set(g.gemSprites.flat()).size === g.boardSize ** 2 && g.gemSprites.every((row, r) => row.every((gem, c) =>
+      gem.texture.key === g.gemTexture(g.board[r][c], g.specials?.[r]?.[c]) && gem.getData('type') === g.board[r][c]
+      && gem.getData('special') === (g.specials?.[r]?.[c] ?? null) && gem.getData('row') === r && gem.getData('col') === c));
+  });
+  assert.equal(viewsMatch, true, `${method}: no duplicated, stale or misplaced sprite`);
+  return expected;
+}
+
+async function exerciseMove(page, method, mobile) {
+  await reset(page);
+  const cells = await page.evaluate(() => window.InfiniteLevels.levelActions(window.game.generatedLevel, window.game.board, window.game.specials)[0].cells);
+  return performAction(page, cells, method, mobile);
+}
+
+// Test-only model fixtures, not authored production levels: every effect is independently
+// computed by the shipped shared engine, and production generation remains passive.
+async function earnedFixture(page, kinds = [], earnFour = false) {
+  await page.evaluate(({ kinds, earnFour }) => {
+    const g = window.game;
+    const palette = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+    const definition = { ...window.__qaDefinition, generatorVersion: 3, boardSize: 7, gemTypes: palette,
+      gemWeights: {}, refillState: 12345, targetScore: 1000000, moves: 30,
+      board: Array.from({ length: 7 }, (_, r) => Array.from({ length: 7 }, (_, c) => palette[(r * 2 + c) % 6])),
+      specials: window.InfiniteLevels.blankSpecials(7) };
+    kinds.forEach((kind, index) => { definition.specials[3][3 + index] = kind; });
+    if (earnFour) {
+      definition.board[3][0] = 'blue'; definition.board[3][1] = 'red'; definition.board[3][2] = 'red';
+      definition.board[3][4] = 'red'; definition.board[2][3] = 'red';
+    }
+    g.applyGeneratedDefinition(definition); g.isGameRunning = true; g.updateUI();
+  }, { kinds, earnFour });
+  await page.waitForTimeout(80);
+  await checkFit(page);
+}
+
+async function exerciseLargestBoard(page, device) {
+  await page.evaluate(() => {
+    const g = window.game;
+    for (let number = 1; number <= 30; number++) {
+      const definition = window.InfiniteLevels.generateLevel(number, window.__qaDefinition.context);
+      if (definition.boardSize !== 8) continue;
+      g.applyGeneratedDefinition(definition); g.isGameRunning = true; g.updateUI(); return;
+    }
+    throw new Error('No largest generated board in seed cohort');
+  });
+  await page.waitForTimeout(80);
+  const fit = await checkFit(page);
+  if (device.name === 'narrow-phone') await page.screenshot({ path: path.join(output, 'narrow-phone-largest-board.png') });
+  const cells = await page.evaluate(() => window.InfiniteLevels.levelActions(window.game.generatedLevel, window.game.board, window.game.specials)[0].cells);
+  await performAction(page, cells, 'tap', device.mobile);
+  await reset(page);
+  return Math.round(fit.boardExtent / 8);
+}
+
+async function exerciseEarnedSpecials(page, device) {
+  assert.equal(await page.evaluate(() => window.__qaDefinition.generatorVersion), 3, 'new frontend negotiates v3');
+  const badgesVisible = await page.evaluate(() => window.InfinitePlayerExperience.specialTypes.every((kind) => {
+    const canvas = window.game.scene.textures.get(`gem_red_${kind}`).getSourceImage();
+    const pixels = canvas.getContext('2d').getImageData(42, 42, 15, 15).data;
+    let white = 0;
+    for (let index = 0; index < pixels.length; index += 4) if (pixels[index] > 225 && pixels[index + 1] > 225 && pixels[index + 2] > 225 && pixels[index + 3] > 0) white++;
+    return white >= 10;
+  }));
+  assert.equal(badgesVisible, true, 'all earned badges have visible geometry without Unicode fonts');
+  await earnedFixture(page, [], true);
+  const earned = await performAction(page, [2, 3, 3, 3], 'tap', device.mobile);
+  assert.equal(earned.events[0].created[0].type, 'row', 'a real two-tap four-match earns a Beam');
+  await earnedFixture(page, ['row']);
+  await performAction(page, [3, 3], 'tap', device.mobile);
+  await earnedFixture(page, ['prism', 'burst']);
+  if (device.name === 'phone') await page.screenshot({ path: path.join(output, 'phone-earned-specials.png') });
+  const combined = await performAction(page, [3, 3, 3, 4], 'swipe', device.mobile);
+  assert.equal(combined.events[0].combo, 'prism+burst');
+  await earnedFixture(page, ['row', 'column']);
+  const keyboard = await performAction(page, [3, 3, 3, 4], 'keyboard', device.mobile);
+  assert.equal(keyboard.events[0].combo, 'beam+beam');
+  await earnedFixture(page, ['column']);
+  await performAction(page, [3, 3], 'keyboard', device.mobile);
+  await reset(page);
+  await page.locator('[data-action="menu"]').click();
+  await page.getByRole('button', { name: 'Special gem guide', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.game.isPaused), true);
+  assert.match(await page.locator('.match-player-dialog').textContent(), /one ordinary move/);
+  const closeVisible = () => page.getByRole('button', { name: 'Back to game', exact: true }).evaluate((button) => {
+    const bounds = button.getBoundingClientRect(); const dialog = button.closest('dialog').getBoundingClientRect();
+    return bounds.top >= dialog.top - 1 && bounds.bottom <= dialog.bottom + 1;
+  });
+  assert.equal(await closeVisible(), true, 'guide close is visible before scrolling');
+  await page.locator('.match-player-dialog').evaluate((dialog) => { dialog.scrollTop = dialog.scrollHeight; });
+  assert.equal(await closeVisible(), true, 'guide close remains visible while reading long mobile content');
+  await page.locator('.match-player-dialog').evaluate((dialog) => { dialog.scrollTop = 0; });
+  if (device.name === 'phone') await page.screenshot({ path: path.join(output, 'phone-special-guide.png') });
+  await page.getByRole('button', { name: 'Back to game', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.game.isPaused), false);
 }
 
 for (const device of cases) {
@@ -148,8 +255,13 @@ for (const device of cases) {
     await page.getByRole('button', { name: 'Play', exact: true }).click();
     await page.waitForFunction(() => window.game?.isGameRunning && !window.game.levelStarting, null, { timeout: 15000 });
     await page.waitForTimeout(100);
-    await page.evaluate(() => { window.__qaDefinition = structuredClone(window.game.generatedLevel); });
+    await page.evaluate(() => {
+      window.__qaDefinition = structuredClone(window.game.generatedLevel); window.__qaInventorySpends = 0;
+      const spend = window.game.spendPowerUp.bind(window.game);
+      window.game.spendPowerUp = (...args) => { window.__qaInventorySpends++; return spend(...args); };
+    });
     const fit = await checkFit(page);
+    const initialBoardSize = await page.evaluate(() => window.game.boardSize);
     const beforeHint = await snapshot(page);
     await page.locator('[data-action="hint"]').click();
     assert.match(await page.locator('.match-player-announcement').textContent(), /Free hint/);
@@ -157,6 +269,7 @@ for (const device of cases) {
     await exerciseMove(page, 'tap', device.mobile);
     if (device.mobile) await exerciseMove(page, 'swipe', true);
     await exerciseMove(page, 'keyboard', device.mobile);
+    await exerciseEarnedSpecials(page, device);
     await reset(page);
 
     // Invalid adjacent swaps give feedback even when motion is reduced, and cost nothing.
@@ -215,6 +328,7 @@ for (const device of cases) {
     assert.equal(stored.largeText, true);
     assert.equal(stored.reduceAnimations, true);
     assert.equal(stored.haptics, false);
+    const largestBoardCellPixels = await exerciseLargestBoard(page, device);
 
     // All main secondary navigation must be reachable without a lingering native modal.
     await page.locator('[data-action="menu"]').click();
@@ -273,8 +387,8 @@ for (const device of cases) {
     }
     await page.screenshot({ path: path.join(output, `${device.name}.png`) });
     assert.deepEqual(errors, [], 'no page JavaScript errors');
-    const result = { device: device.name, viewport: `${device.width}x${device.height}`, boardSize: await page.evaluate(() => window.game.boardSize),
-      gemCellPixels: Math.round(fit.boardExtent / await page.evaluate(() => window.game.boardSize)), errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation',
+    const result = { device: device.name, viewport: `${device.width}x${device.height}`, boardSize: initialBoardSize,
+      gemCellPixels: Math.round(fit.boardExtent / initialBoardSize), largestBoardCellPixels, errors, checks: 'layout, hint, tap, invalid-swap, keyboard, pause, preferences, navigation, special-earning, special-tap, swipe-combo, keyboard-combo, special-guide, largest-board/large-text',
       touchSwipe: device.mobile };
     results.push(result);
     console.log(JSON.stringify(result));

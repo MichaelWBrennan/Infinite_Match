@@ -32,11 +32,11 @@ Every definition has:
 
 1. No pre-existing three-in-a-row matches.
 2. At least one legal opening swap.
-3. A deterministic simulation of a successful path, including cascades, refills,
+3. A deterministic simulation of a successful path, including earned specials/combination chains, cascades, refills,
    and free deadlock repairs, without purchasing or using boosters.
 4. A goal below the simulated score and within a bounded move budget.
 
-The client uses **exactly the same refill PRNG, gem weights, column order and
+The client uses **exactly the same earned-special rules, refill PRNG, gem weights, column order and
 scoring** as the certifier. Tests play the witness through the real Phaser game
 methods and compare board/sprite state and score, not just generator metadata.
 The target is 100–2,400 points and classic/daily budgets are 20–30 moves.
@@ -45,6 +45,48 @@ This is an existence proof of a winning path, not a promise that every choice
 wins, that every puzzle is equally enjoyable, or that every human can meet a
 60-second timed deadline. The current mechanics are score-based match-3;
 obstacles, portals, and collection-goal mechanics are not introduced by this work.
+
+## Earned specials — shared rules v3
+
+New boards start with ordinary gems and earn specials through play, with no inventory requirement:
+
+| Match / use | Effect |
+| --- | --- |
+| Four in a row / column | Row Beam / Column Beam clears its row / column |
+| L/T or intersecting runs | Burst clears a clipped 3×3 area |
+| Five or more in a line | Prism clears a color |
+| Tap / Enter on a special | Activate; a Prism uses its own base color |
+| Adjacent swap involving a special | Activate after swapping; a Prism uses the other gem's color |
+| Beam + Beam | One row and one column centered on the swap destination |
+| Beam + Burst | Three rows and three columns centered on the destination |
+| Burst + Burst | Clipped 5×5 centered on the destination |
+| Prism + Beam / Burst | Convert ordinary gems of the partner color into that special, then fire them and the partner |
+| Prism + Prism | Clear the whole board |
+
+One special is earned per connected match group; precedence is Prism > Burst >
+Beam. Prefer the swapped destination, then source, then a deterministic eligible
+anchor; never overwrite an existing special. The anchor survives its creation
+wave (so four creates a special and clears/scores three cells), but can chain in
+later waves. Old specials hit by an effect fire once per wave. Match scoring is
+cleared cells × 10 × cascade wave number. Cascades are bounded at 64; free stable
+board repair handles pathological refills/deadlocks. A remaining special is
+itself a legal action, so plain-swap deadlock must not erase it unnecessarily.
+
+Every successful swap, tap or combination spends **one ordinary move**, with no
+inventory charge. Timed/endless still have no practical move limit. Inventory
+boosters remain a separate server-authoritative system: their base award is
+retained, extra special-chain clears score normally, and their use does not
+spend an ordinary move. No energy cost/reward or inventory price is changed.
+
+The model is a color board plus a parallel `specials` grid (null/row/column/burst/prism).
+`levelActions`, `simulateLevelMove` and `certifyLevel` dispatch by the frozen
+definition's generator version; callers must preserve both grids and refill
+state between actions. Two-coordinate witness actions are taps, four-coordinate
+actions are swaps. Use these wrappers for new play instead of the legacy plain
+`simulateMove`/`certifyBoard` functions. Hints estimate immediate effects, not the
+optimal winning sequence. The rendered icons retain the base shape/letter and
+use font-independent vector badges. Explore provides the icon/rule guide;
+Space selects for keyboard combinations and Enter activates.
 
 ## Local day, month, season and holidays
 
@@ -185,14 +227,21 @@ weather conditions, dates and endpoint URLs are ignored.
 | --- | --- |
 | `GET /api/levels/context` | Local date/season/holidays, clock period, forecast bands/source and next variant boundary |
 | `GET /api/levels/regions?country=US` | Country catalog and optional state's/province's supported codes |
-| `GET /api/levels/daily` | Current local daily time/weather variant |
-| `GET /api/levels/12345?mode=classic` | A generated numbered level (`classic`, `timed`, `endless`) |
+| `GET /api/levels/daily?rulesVersion=3` | Current local daily time/weather variant |
+| `GET /api/levels/12345?mode=classic&rulesVersion=3` | A generated numbered level (`classic`, `timed`, `endless`) |
 
 All are public previews, marked `Cache-Control: private, no-store`. Invalid
 numbers, time zones, countries and regional codes return 400. Definitions are
 cached in a bounded server cache keyed by normalized calendar, clock/weather
 bands, area and level. Fetch timestamps/small temperature changes do not alter
-puzzle identity. Generator version 2 marks the new time/weather seed rules.
+puzzle identity. Version 2 introduced time/weather seed rules; version 3 adds
+earned specials and special-aware certification. The cache includes the rules version.
+
+**Compatibility handshake:** omit `rulesVersion` to receive v2 (for deployed
+plain-gem procedural clients); send numeric/string `2` or `3` explicitly to choose
+a supported version. Unsupported values return 400 `unsupported_rules_version`.
+The new browser always advertises 3. Frozen v2 board definitions and witnesses
+remain unchanged, rather than recertifying an old paid goal under different rules.
 
 Signed-in play obtains its definition **atomically with the energy spend**:
 
@@ -200,6 +249,7 @@ Signed-in play obtains its definition **atomically with the energy spend**:
 {
   "level": 1,
   "mode": "daily",
+  "rulesVersion": 3,
   "location": {
     "timeZone": "America/New_York",
     "country": "US",
@@ -210,7 +260,10 @@ Signed-in play obtains its definition **atomically with the energy spend**:
 
 Send this to `POST /api/account-economy/energy/spend`. The response includes
 `attemptId`, numeric `level`, energy, and `generatedLevel`. Daily starts at 1;
-endless must start at 1 and keeps that attempt while progressing through stages.
+endless must start at 1 and keeps that attempt while progressing through stages,
+using the original attempt's rule version. Unsupported versions are refused before
+energy spending. Internal generation/tooling defaults to v3; untagged HTTP
+procedural clients deliberately default to v2.
 
 Normal/daily wins still use `POST /api/account-economy/level/complete`; endless
 banking uses `/endless/complete`. Completion uses the stored target, not a new
@@ -218,7 +271,9 @@ calendar lookup, and validates/consumes the attempt under the player lock. Goals
 and stars supplied by the client cannot change the payout. An attempt cannot
 switch between normal/daily and endless reward paths. Existing reward caps,
 energy cost, replay protection, and **3-hour paid-attempt expiry** remain in place;
-bank an endless run before its paid attempt expires.
+bank an endless run before its paid attempt expires. The original policy of one
+pending attempt per player is unchanged: paying for a new attempt replaces an
+uncompleted earlier attempt, regardless of rules version.
 
 The server still does not replay client moves for anti-cheat: a fabricated score
 can earn the bounded payout once per paid attempt, as documented in README.
@@ -226,7 +281,9 @@ The solver certifies **level feasibility**, not the truth of a submitted score.
 
 ## Source and build
 
-- `src/services/levels/generator.js`: pure generator, PRNG, board simulator and quality gate.
+- `src/services/levels/generator.js`: versioned pure generator and dispatch/quality wrappers.
+- `match-core.js`: frozen legacy PRNG/plain-gem simulation, retaining v2 compatibility.
+- `special-rules.js`: pure earning, activation, combinations, origin/event tracking and special-aware certification.
 - `location-context.js`: coarse preferences, local civil dates/DST and holidays.
 - `environment.js`: shared pure clock periods and weather/temperature/wind rules.
 - `weather-context.js`: forecast adapters, validation, coalescing, backoff and cache.

@@ -2378,6 +2378,10 @@ body {
 .match-dialog-content button { background: #286a58; width: 100%; min-height: 48px; font-size: 15px; }
 .match-dialog-content label { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 15px; }
 .match-dialog-content input { width: 22px; height: 22px; accent-color: #8ce6be; }
+.match-dialog-content .match-guide-close { position: sticky; top: 0; z-index: 1; box-shadow: 0 0 0 6px #152b43; }
+.match-special-guide { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.match-special-guide li { display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 10px; font-size: 15px; line-height: 1.45; }
+.match-special-guide canvas { width: 42px; height: 42px; }
 .match-dialog-status { color: #ffe9aa; line-height: 1.4; font-size: 14px; white-space: pre-line; }
 .match-high-contrast { --match-level-background: #07111e; color: #fff; }
 .match-high-contrast .match-player-stats > span, .match-high-contrast button { border-color: #fff; }

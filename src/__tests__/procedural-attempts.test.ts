@@ -22,7 +22,7 @@ beforeAll(async () => {
 });
 
 async function spend(level: number, mode = 'classic') {
-  const res = await request(app).post('/api/account-economy/energy/spend').set(auth()).send({ level, mode, location });
+  const res = await request(app).post('/api/account-economy/energy/spend').set(auth()).send({ level, mode, location, rulesVersion: 3 });
   expect(res.status).toBe(200);
   return res.body.result;
 }
@@ -63,10 +63,42 @@ describe('server-authoritative generated attempts', () => {
     expect(after.body.data.currencies.energy.amount).toBe(before.body.data.currencies.energy.amount);
   });
 
+  test('unsupported rules are refused before any energy or inventory spend', async () => {
+    const before = await request(app).get('/api/account-economy/data').set(auth());
+    for (const rulesVersion of [1, 4, 'bad', null, [], {}]) {
+      const refused = await request(app).post('/api/account-economy/energy/spend').set(auth())
+        .send({ level: 1, mode: 'classic', location, rulesVersion });
+      expect(refused.status).toBe(400);
+      expect(refused.body.error).toBe('unsupported_rules_version');
+    }
+    const after = await request(app).get('/api/account-economy/data').set(auth());
+    expect(after.body.data.currencies.energy.amount).toBe(before.body.data.currencies.energy.amount);
+    expect(after.body.data.inventory).toEqual(before.body.data.inventory);
+  });
+
+  test('untagged procedural clients keep v2 definitions; updated clients explicitly receive v3', async () => {
+    const legacy = await request(app).post('/api/account-economy/energy/spend').set(auth()).send({ level: 2, mode: 'classic', location });
+    expect(legacy.status).toBe(200);
+    const old = legacy.body.result;
+    expect(old.generatedLevel.generatorVersion).toBe(2);
+    expect(old.generatedLevel.specials).toBeUndefined();
+    // A newly generated preview/default must not alter the definition already paid for.
+    const modernPreview = generatedLevel({ level: 2, location, rulesVersion: 3 });
+    expect(modernPreview.id).not.toBe(old.generatedLevel.id);
+    const win = await request(app).post('/api/account-economy/level/complete').set(auth())
+      .send({ level: 2, score: old.generatedLevel.targetScore, attemptId: old.attemptId });
+    expect(win.status).toBe(200);
+    // The existing one-pending-attempt replacement policy is deliberately unchanged.
+    const modern = await spend(2);
+    expect(modern.generatedLevel.generatorVersion).toBe(3);
+    expect(modern.generatedLevel.id).not.toBe(old.generatedLevel.id);
+  });
+
   test('a generated level well past the legacy limit completes against its pinned goal', async () => {
     const attempt = await spend(100001);
     const definition = attempt.generatedLevel;
     expect(definition.level).toBe(100001);
+    expect(definition.generatorVersion).toBe(3);
     expect(definition.targetScore).toBeLessThanOrEqual(2400);
     const win = await request(app).post('/api/account-economy/level/complete').set(auth())
       .send({ level: 100001, score: definition.targetScore, attemptId: attempt.attemptId, stars: 3, targetScore: 1 });

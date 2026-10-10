@@ -41,7 +41,7 @@
     }
 
     function query(location = current()) {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams({ rulesVersion: String(root.InfiniteLevels.GENERATOR_VERSION) });
         for (const [key, value] of Object.entries(location)) {
             if (location.weatherEnabled === false && ['weatherLatitude', 'weatherLongitude'].includes(key)) continue;
             if (value !== '' && value != null) params.set(key, String(value));
