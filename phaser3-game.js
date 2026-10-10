@@ -1618,7 +1618,7 @@ class PhaserMatch3Game {
 
     // Shows the energy the server holds now (it regenerates while the player is away).
     async syncAccountFromServer() {
-        if (!this.getAuthToken()) return;
+        if (!this.getAuthToken()) { this.retentionVisitStamp = null; return; }
         try {
             const { ok, data } = await this.fetchJson('/api/account-economy/data');
             if (ok && data.success) {
@@ -1627,9 +1627,25 @@ class PhaserMatch3Game {
                 this.stars = data.data.currencies.stars.amount;
                 this.updateEnergyDisplay();
                 this.updateUI();
+                // One authenticated web open per UTC day, and only the study service can decide
+                // if this player explicitly opted in. No visit record exists before consent.
+                void this.recordRetentionVisit();
             }
         } catch (error) {
             // Keep the last known value. The server still checks every attempt.
+        }
+    }
+
+    async recordRetentionVisit() {
+        const token = this.getAuthToken();
+        if (!token) return;
+        const stamp = `${token}:${new Date().toISOString().slice(0, 10)}`;
+        if (this.retentionVisitStamp === stamp) return;
+        this.retentionVisitStamp = stamp;
+        try {
+            await this.fetchJson('/api/retention-study/visit', { method: 'POST', body: '{}' });
+        } catch (_) {
+            // Measurement is best-effort. No retry loop, rewards or gameplay dependency.
         }
     }
 
@@ -2225,6 +2241,65 @@ class PhaserMatch3Game {
         this.openMenu();
         this.trackEvent('weekly_event_opened');
         if (window.ui && typeof window.ui.showCommunity === 'function') window.ui.showCommunity('events');
+    }
+
+    // Separate from ads consent: this voluntary study only measures UTC app-open days.
+    async showRetentionResearch() {
+        if (!this.isPaused && this.isGameRunning) this.pauseGame();
+        const overlay = this.openOverlay('Optional return study');
+        const close = () => { this.closeOverlay(); this.resumeAfterOverlay(); };
+        this.overlayButton(400, 500, 240, 55, 0x555555, 'Close', close);
+        if (!this.getAuthToken()) {
+            this.overlayText(400, 230, 'Sign in if you want to join. Guest play is never measured by this study.', { width: 620 });
+            return;
+        }
+        this.overlayText(400, 140, 'Optional: help us learn whether players choose to return. This does not affect levels, hints, rewards or ads.', { width: 650 });
+        this.overlayText(400, 210, 'With your permission, the server keeps a secret-keyed code and the UTC days you open the signed-in web game for up to 35 days. No location, board, purchases, IP or account ID is kept in this study file. You can delete your study days here.', { width: 650 });
+        this.setOverlayStatus('Checking your study choice…');
+        try {
+            const { ok, data } = await this.fetchJson('/api/retention-study/me');
+            if (this.activeOverlay !== overlay) return;
+            if (!ok || !data.success) {
+                this.setOverlayStatus('The optional study is unavailable right now. Play is unchanged.');
+                return;
+            }
+            this.setOverlayStatus(data.consented ? 'You joined this optional study.' : 'You have not joined this study. Nothing is recorded.');
+            if (data.consented) {
+                this.overlayButton(400, 385, 320, 55, 0x9b59b6, 'Stop and delete my study days', () => this.confirmRetentionWithdrawal());
+            } else {
+                this.overlayButton(400, 385, 320, 55, 0x4ecdc4, 'I agree to join', async () => {
+                    if (this.researchPending || this.activeOverlay !== overlay) return;
+                    this.researchPending = true;
+                    try {
+                        const answer = await this.fetchJson('/api/retention-study/opt-in', { method: 'POST', body: '{}' });
+                        if (this.activeOverlay !== overlay) return;
+                        if (!answer.ok || !answer.data.success) this.setOverlayStatus('Study unavailable; no choice changed.');
+                        else await this.showRetentionResearch();
+                    } catch (_) { if (this.activeOverlay === overlay) this.setOverlayStatus('Could not save your choice. Try again.'); }
+                    finally { this.researchPending = false; }
+                });
+            }
+        } catch (_) {
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not load the study choice. Play is unchanged.');
+        }
+    }
+
+    confirmRetentionWithdrawal() {
+        const overlay = this.openOverlay('Delete study days?');
+        this.overlayText(400, 240, 'This permanently deletes your recorded return days. It does not remove your account, progress, ads consent, or rewards.', { width: 650 });
+        this.overlayButton(400, 365, 320, 55, 0xe67e22, 'Delete my study days', async () => {
+            if (this.researchPending || this.activeOverlay !== overlay) return;
+            this.researchPending = true;
+            try {
+                const { ok, data } = await this.fetchJson('/api/retention-study/me', { method: 'DELETE' });
+                if (this.activeOverlay !== overlay) return;
+                if (!ok || !data.success) this.setOverlayStatus('Could not delete study days. Try again.');
+                else await this.showRetentionResearch();
+            } catch (_) { if (this.activeOverlay === overlay) this.setOverlayStatus('Could not delete study days. Try again.'); }
+            finally { this.researchPending = false; }
+        });
+        this.overlayButton(400, 430, 280, 50, 0x555555, 'Keep my study days', () => this.showRetentionResearch());
+        this.overlayButton(400, 505, 240, 50, 0x555555, 'Close', () => { this.closeOverlay(); this.resumeAfterOverlay(); });
     }
 
     showLootBox() {

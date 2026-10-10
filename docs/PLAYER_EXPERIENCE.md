@@ -110,7 +110,7 @@ These are implementation priorities and **proposed acceptance gates**, not measu
 
 ### Measurable release gates
 
-The [offline web first-play/fairness study kit](WEB_FIRST_PLAY_STUDY.md) is ready for an operator to conduct the learning and loss-fairness pilot, but **no real-player result has been collected**. A green local report evaluates submitted records only; it is not proof of observed people or a release decision. Other device, access, crash-free and retention gates remain open.
+The [offline web first-play/fairness study kit](WEB_FIRST_PLAY_STUDY.md) is ready for an operator to conduct the learning and loss-fairness pilot, but **no real-player result has been collected**. A green local report evaluates submitted records only; it is not proof of observed people or a release decision. The separate [optional signed-in D1/D7 web return study](WEB_RETURN_STUDY.md) is off by default and also has no real cohort evidence yet. Other device, access and crash-free gates remain open.
 
 Record device/browser, build, coarse network profile and sample size for every result. Track seed/context coverage separately using a secret-keyed group or operator-assigned non-reversible label; do not put raw seeds or precise location into study records. Store performance traces/playtest notes separately from player identities; avoid touch-coordinate tracking or advertising identifiers.
 

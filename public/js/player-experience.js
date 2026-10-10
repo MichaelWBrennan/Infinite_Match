@@ -379,6 +379,7 @@
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
             overlayButton('Weekly event', () => game.showWeeklyEvent());
+            overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
         }
         function goalGuide(wasRunning) {

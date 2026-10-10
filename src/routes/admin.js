@@ -14,6 +14,7 @@ import EconomyService from '../services/economy/UnifiedEconomyService.js';
 import UnityService from '../services/unity/UnifiedUnityService.js';
 import { readLevelResults, summarizeLevelResults } from '../services/level-tuning.js';
 import { readAttemptObservations, summarizeAttemptObservations } from '../services/levels/attempt-observations.js';
+import { retentionStudyStore } from '../services/study/retention-study.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
@@ -193,6 +194,18 @@ router.get('/attempt-observations', async (req, res) => {
   } catch (error) {
     logger.error('Attempt observation report failed', { error: error.message });
     res.status(503).json({ success: false, error: 'observation_report_unavailable', requestId: req.requestId });
+  }
+});
+
+// Opt-in return cohorts are pseudonymous and entirely separate from ads consent or payouts.
+// Aggregate only; no day-level entries, player pseudonyms or sub-threshold rates leave this route.
+router.get('/retention-study', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ success: true, ...(await retentionStudyStore.report()), requestId: req.requestId });
+  } catch (error) {
+    logger.error('Retention study report failed', { error: error.message });
+    res.status(503).json({ success: false, error: 'retention_study_report_unavailable', requestId: req.requestId });
   }
 });
 

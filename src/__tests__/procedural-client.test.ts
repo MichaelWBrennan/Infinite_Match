@@ -826,6 +826,63 @@ describe('objective-aware Phaser v4', () => {
     expect(game.targetScore).toBe(1350);
   });
 
+  test('signed-in app open checks voluntary return study at most once per UTC day without auto-enrolling', async () => {
+    const { game } = makeBrowserGame();
+    let signedIn = true; game.getAuthToken = () => signedIn ? 'session-token' : null;
+    game.updateUI = () => {};
+    const calls: string[] = [];
+    game.fetchJson = async (url: string) => {
+      calls.push(url);
+      if (url.endsWith('/data')) return { ok: true, data: { success: true, data: {
+        currencies: { energy: { amount: 99, maxAmount: 100 }, stars: { amount: 1 } } } } };
+      return { ok: true, data: { success: true, consented: false, counted: false } };
+    };
+    await game.syncAccountFromServer();
+    await game.syncAccountFromServer();
+    expect(calls.filter((url) => url.endsWith('/visit'))).toHaveLength(1);
+    expect(calls.every((url) => !url.endsWith('/opt-in'))).toBe(true);
+    signedIn = false; await game.syncAccountFromServer();
+    expect(game.retentionVisitStamp).toBeNull();
+  });
+
+  test('guest research entry never makes a network call or collects visit data', async () => {
+    const { game } = makeBrowserGame(); game.getAuthToken = () => null;
+    game.openOverlay = () => { game.activeOverlay = {}; return game.activeOverlay; };
+    game.overlayButton = () => {};
+    game.overlayText = () => {};
+    game.fetchJson = () => { throw new Error('guest must not call study'); };
+    await expect(game.showRetentionResearch()).resolves.toBeUndefined();
+  });
+
+  test('research controls require an explicit choice and confirmation before deletion', async () => {
+    const { game } = makeBrowserGame(); game.getAuthToken = () => 'session-token';
+    game.isPaused = true;
+    const buttons: any[] = []; const calls: string[] = [];
+    let consented = false;
+    game.openOverlay = () => { game.activeOverlay = {}; buttons.length = 0; return game.activeOverlay; };
+    game.overlayButton = (_x: number, _y: number, _w: number, _h: number, _color: number, label: string, onClick: Function) => {
+      buttons.push({ label, onClick });
+    };
+    game.overlayText = () => {};
+    game.setOverlayStatus = () => {};
+    game.fetchJson = async (url: string, options: any = {}) => {
+      calls.push(`${options.method || 'GET'} ${url}`);
+      if (url.endsWith('/opt-in')) consented = true;
+      if (options.method === 'DELETE') consented = false;
+      return { ok: true, data: { success: true, consented } };
+    };
+    await game.showRetentionResearch();
+    expect(calls).toEqual(['GET /api/retention-study/me']);
+    expect(buttons.some((button) => button.label === 'I agree to join')).toBe(true);
+    await buttons.find((button) => button.label === 'I agree to join').onClick();
+    expect(calls).toEqual(['GET /api/retention-study/me', 'POST /api/retention-study/opt-in', 'GET /api/retention-study/me']);
+    buttons.find((button) => button.label === 'Stop and delete my study days').onClick();
+    expect(calls).toHaveLength(3);
+    await buttons.find((button) => button.label === 'Delete my study days').onClick();
+    expect(calls).toContain('DELETE /api/retention-study/me');
+    expect(buttons.some((button) => button.label === 'I agree to join')).toBe(true);
+  });
+
   test('an actual web loss reports a bounded diagnostic close once, never a completion payout', async () => {
     const { game, sandbox } = makeBrowserGame(); const def = objectiveFixture();
     game.applyGeneratedDefinition(def); game.isGameRunning = true; game.runStartedAt = Date.now();
