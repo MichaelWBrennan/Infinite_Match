@@ -3,7 +3,8 @@
  * No AI, network, level files, wall clock or paid boosters are needed.
  * A deterministic simulation supplies a winning witness before a level ships.
  */
-export const GENERATOR_VERSION = 1;
+import { environmentRules, blendHex } from './environment.js';
+export const GENERATOR_VERSION = 2;
 export const GEM_TYPES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 export const LEVEL_MODES = ['classic', 'timed', 'daily', 'endless'];
 export function hashSeed(text) {
@@ -189,15 +190,29 @@ export function levelTheme(context) {
                         ? { name: holidays[0].name, background: '#2e2250', accent: '#ffd87a', favorite: 'purple' }
                         : null;
     const selected = special || { ...season, favorite: seasonalFavorite };
+    const environment = environmentRules(context);
     const monthName = monthNames[context.month - 1] || 'Local';
     return {
         ...selected,
         id: special ? `holiday-${hashSeed(holidayName).toString(16)}` : `${context.season}-${context.month}`,
         name: special ? selected.name : `${monthName} · ${selected.name}`,
+        background: blendHex(selected.background, environment.tint),
+        accent: special ? selected.accent : environment.accent || selected.accent,
+        environmentLabel: environment.label,
         monthName,
         season: context.season,
         holidayNames: holidays.map((holiday) => holiday.name),
     };
+}
+/** Cache/seed identity excludes fetch timestamps and small changes within weather bands. */
+export function generationKey(levelNumber, context, mode = 'classic') {
+    const level = mode === 'daily' ? 1 : levelNumber;
+    const rules = environmentRules(context);
+    const theme = levelTheme(context);
+    const area = context.weatherEnabled === false ? '' : context.weather?.area?.key
+        || (Number.isFinite(context.weatherLatitude) ? `${context.weatherLatitude},${context.weatherLongitude}` : '');
+    return [GENERATOR_VERSION, mode, level, context.localDate, context.timeZone,
+        context.country || '', context.region || '', context.hemisphere, theme.id, rules.key, area].join('|');
 }
 /** Any positive safe level number; bounded difficulty instead of impossible linear score growth. */
 export function generateLevel(levelNumber, context, mode = 'classic') {
@@ -207,23 +222,26 @@ export function generateLevel(levelNumber, context, mode = 'classic') {
         throw new RangeError('invalid_mode');
     const level = mode === 'daily' ? 1 : levelNumber;
     const theme = levelTheme(context);
-    const key = [GENERATOR_VERSION, mode, level, context.localDate, context.timeZone,
-        context.country || '', context.region || '', context.hemisphere, theme.id].join('|');
+    const environment = environmentRules(context);
+    const key = generationKey(level, context, mode);
     const seed = hashSeed(key);
     const rng = { state: seed };
     const cycle = mode === 'daily' ? Math.floor(nextRandom(rng) * 5) : (level - 1) % 5;
     const isBoss = mode !== 'daily' && level % 10 === 0;
     const size = 6 + Math.floor(nextRandom(rng) * 3);
-    const colorCount = isBoss ? 6 : level <= 3 && mode !== 'daily' ? 4 : 4 + Math.floor(nextRandom(rng) * 3);
-    const others = GEM_TYPES.filter((color) => color !== theme.favorite);
+    const baseColorCount = isBoss ? 6 : level <= 3 && mode !== 'daily' ? 4 : 4 + Math.floor(nextRandom(rng) * 3);
+    const colorCount = Math.max(baseColorCount, environment.minimumColors);
+    const priorities = [...new Set([theme.favorite, ...environment.priorities])];
+    const others = GEM_TYPES.filter((color) => !priorities.includes(color));
     // Seeded Fisher-Yates: month/season/holiday changes the palette and refill mix.
     for (let i = others.length - 1; i > 0; i--) {
         const j = Math.floor(nextRandom(rng) * (i + 1));
         [others[i], others[j]] = [others[j], others[i]];
     }
-    const palette = [theme.favorite, ...others].slice(0, colorCount);
-    const weights = Object.fromEntries(palette.map((color) => [color, color === theme.favorite ? 1.35 : 1]));
-    const moveBudget = Math.max(20, 30 - cycle - (isBoss ? 5 : 0));
+    const palette = [...priorities, ...others].slice(0, colorCount);
+    const weights = Object.fromEntries(palette.map((color) => [color,
+        Math.min(2.2, (color === theme.favorite ? 1.35 : 1) + (environment.gemBonuses[color] || 0))]));
+    const moveBudget = Math.max(20, Math.min(30, 30 - cycle - (isBoss ? 5 : 0) + environment.moveBonus));
     const board = dealPlayableBoard(size, palette, weights, rng);
     const refillState = rng.state;
     const proof = certifyBoard(board, refillState, palette, weights, moveBudget);
@@ -234,6 +252,7 @@ export function generateLevel(levelNumber, context, mode = 'classic') {
     return {
         id: `v${GENERATOR_VERSION}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
         generatorVersion: GENERATOR_VERSION,
+        environmentKey: environment.key,
         level,
         mode,
         isDaily: mode === 'daily',

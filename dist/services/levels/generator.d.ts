@@ -22,10 +22,13 @@ export function certifyBoard(board: any, refillState: any, palette: any, weights
     witness: number[][];
 };
 export function levelTheme(context: any): any;
+/** Cache/seed identity excludes fetch timestamps and small changes within weather bands. */
+export function generationKey(levelNumber: any, context: any, mode?: string): string;
 /** Any positive safe level number; bounded difficulty instead of impossible linear score growth. */
 export function generateLevel(levelNumber: any, context: any, mode?: string): {
     id: string;
     generatorVersion: number;
+    environmentKey: string;
     level: any;
     mode: string;
     isDaily: boolean;
@@ -54,12 +57,7 @@ export function generateLevel(levelNumber: any, context: any, mode?: string): {
         verifiedScore: number;
     };
 };
-/**
- * Pure, versioned match-3 generation shared by the server and the browser.
- * No AI, network, level files, wall clock or paid boosters are needed.
- * A deterministic simulation supplies a winning witness before a level ships.
- */
-export const GENERATOR_VERSION: 1;
+export const GENERATOR_VERSION: 2;
 export const GEM_TYPES: string[];
 export const LEVEL_MODES: string[];
 //# sourceMappingURL=generator.d.ts.map

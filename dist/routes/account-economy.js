@@ -17,7 +17,7 @@ import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-sea
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { socialStore } from '../services/social/social-store.js';
 import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
-import { generatedLevel } from '../services/levels/level-service.js';
+import { liveGeneratedLevel } from '../services/levels/level-service.js';
 import { LevelInputError } from '../services/levels/location-context.js';
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
@@ -508,11 +508,11 @@ router.post('/energy/spend', security.sessionValidation, async (req, res) => {
         if (req.body?.mode === 'endless' && req.body?.level !== undefined && req.body.level !== 1) {
             throw new LevelInputError('invalid_endless_start_level');
         }
-        const definition = req.body?.mode === undefined ? null : generatedLevel({
+        const definition = req.body?.mode === undefined ? null : await liveGeneratedLevel({
             level: req.body?.level, mode: req.body.mode, location: req.body.location ?? {},
         });
         const result = await accountEconomyService.spendAttemptEnergy(playerId, definition?.level ?? req.body?.level, Date.now(), definition);
-        res.json({ success: true, result, requestId: req.requestId });
+        res.json({ success: true, result, serverTime: new Date().toISOString(), requestId: req.requestId });
     }
     catch (error) {
         if (error instanceof EconomyRuleError || error instanceof LevelInputError) {

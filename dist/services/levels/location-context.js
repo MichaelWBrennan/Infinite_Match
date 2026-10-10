@@ -4,6 +4,7 @@
  * Holiday calculations use date-holidays (ISC code / CC-BY-SA-3.0 calendar data).
  */
 import Holidays from 'date-holidays';
+import { timeOfDayContext } from './environment.js';
 import { TIME_ZONE_REGIONS } from './time-zone-regions.js';
 export class LevelInputError extends Error {
     constructor(code) {
@@ -60,12 +61,26 @@ function text(value, code, limit = 80) {
         throw new LevelInputError(code);
     return value.trim();
 }
-function boolean(value) {
+function boolean(value, code = 'invalid_holiday_themes') {
     if (value === undefined || value === '' || value === true || value === 'true')
         return true;
     if (value === false || value === 'false')
         return false;
-    throw new LevelInputError('invalid_holiday_themes');
+    throw new LevelInputError(code);
+}
+function weatherCoordinates(input) {
+    const latitude = input.weatherLatitude;
+    const longitude = input.weatherLongitude;
+    const missing = (value) => value === undefined || value === null || value === '';
+    if (missing(latitude) && missing(longitude))
+        return {};
+    const numeric = (value) => (typeof value === 'number' || (typeof value === 'string' && /^-?\d{1,3}(\.\d{1,12})?$/.test(value))) && Number.isFinite(Number(value));
+    if (!numeric(latitude) || !numeric(longitude) || Math.abs(Number(latitude)) > 90 || Math.abs(Number(longitude)) > 180) {
+        throw new LevelInputError('invalid_weather_location');
+    }
+    // Defense in depth: browsers round before sending, and the server never keeps
+    // precision from manually crafted requests either. No GPS is requested here.
+    return { weatherLatitude: Math.round(Number(latitude)), weatherLongitude: Math.round(Number(longitude)) };
 }
 export function normalizeLocation(input = {}) {
     if (!input || typeof input !== 'object' || Array.isArray(input))
@@ -97,6 +112,9 @@ export function normalizeLocation(input = {}) {
             ? countryHemisphere.get(country) : estimate?.hemisphere) || 'north',
         locationSource: requestedCountry ? 'player_setting' : estimate ? 'time_zone_estimate' : 'unknown',
         holidayThemes: boolean(input.holidayThemes),
+        timeOfDayEnabled: boolean(input.timeOfDayEnabled, 'invalid_time_effects'),
+        weatherEnabled: boolean(input.weatherEnabled, 'invalid_weather_effects'),
+        ...weatherCoordinates(input),
     };
 }
 function annualHolidays(location, year) {
@@ -127,13 +145,16 @@ export function localLevelContext(input = {}, nowMs = Date.now()) {
     const candidates = location.holidayThemes && location.country
         ? [...annualHolidays(location, year - 1), ...annualHolidays(location, year)] : [];
     // Whole local-day themes, even when an observance starts in the evening (Halloween).
-    // Theme/seed never changes halfway through a daily challenge.
+    // An active attempt remains frozen. New daily variants may change with time/weather.
     const holidays = candidates.filter((h) => h.startDate <= localDate && h.endDate >= localDate)
         .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name, 'en') : a.type === 'public' ? -1 : 1));
     const unique = [...new Map(holidays.map((h) => [h.name, { name: h.name, type: h.type }])).values()];
     return {
         ...location,
         localDate,
+        evaluatedAt: new Date(nowMs).toISOString(),
+        clockSource: 'server',
+        timeOfDay: timeOfDayContext(nowMs, location.timeZone, location.timeOfDayEnabled),
         year,
         month,
         day,
