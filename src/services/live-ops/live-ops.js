@@ -11,11 +11,12 @@ import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { Logger } from '../../core/logger/index.js';
 import { productFor } from '../payments/product-catalog.js';
+import { validateWeeklyEvents } from './weekly-event.js';
 
 const logger = new Logger('LiveOps');
 
 export const MIN_DEAL_PRICE_CENTS = 99;
-const EMPTY = Object.freeze({ events: Object.freeze([]), deals: Object.freeze([]) });
+const EMPTY = Object.freeze({ events: Object.freeze([]), deals: Object.freeze([]), weeklyEvents: Object.freeze([]) });
 
 export function liveOpsConfigPath() {
   return process.env.LIVE_OPS_CONFIG || resolve('config', 'liveops.json');
@@ -35,6 +36,8 @@ export function validateLiveOps(raw) {
   }
   const events = [];
   const deals = [];
+  const weekly = validateWeeklyEvents(raw.weeklyEvents);
+  errors.push(...weekly.errors);
 
   (Array.isArray(raw.events) ? raw.events : []).forEach((e, i) => {
     const startMs = parseTime(e?.start);
@@ -72,7 +75,7 @@ export function validateLiveOps(raw) {
   });
 
   if (errors.length > 0) return { errors, config: null };
-  return { errors, config: { events, deals } };
+  return { errors, config: { events, deals, weeklyEvents: weekly.events } };
 }
 
 let cached = null;

@@ -9,6 +9,7 @@ import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { grantSeasonXp } from '../services/meta/battlepass-season.js';
 import { PRODUCTS } from '../services/payments/product-catalog.js';
 import { priceFor } from '../services/live-ops/live-ops.js';
+import { visibleWeeklyEvent, weeklyView, claimWeeklyMilestone, WeeklyEventError, weeklyDisabled } from '../services/live-ops/weekly-event.js';
 
 const router = express.Router();
 const logger = new Logger('LiveOpsRoutes');
@@ -74,6 +75,49 @@ router.get('/today', security.sessionValidation, async (req, res) => {
   } catch (error) {
     logger.error('Live ops lookup failed', { error: error.message });
     res.status(500).json({ success: false, error: 'live_ops_error', requestId: req.requestId });
+  }
+});
+
+// Public schedule preview has no progress or player identifiers; guests can still see when
+// the next free event runs. All timestamps are server-owned UTC instants.
+router.get('/weekly/preview', (req, res) => {
+  const now = Date.now();
+  const event = weeklyView(visibleWeeklyEvent(loadLiveOps(), now), null, now);
+  res.json({ success: true, event, disabled: weeklyDisabled(), serverNow: new Date(now).toISOString(), requestId: req.requestId });
+});
+
+router.get('/weekly', security.sessionValidation, async (req, res) => {
+  try {
+    const now = Date.now();
+    const economy = await accountEconomyService.getPlayerEconomy(req.user.playerId);
+    const event = weeklyView(visibleWeeklyEvent(loadLiveOps(), now), economy, now);
+    res.json({ success: true, event, disabled: weeklyDisabled(), serverNow: new Date(now).toISOString(), requestId: req.requestId });
+  } catch (error) {
+    logger.error('Weekly event lookup failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'weekly_event_error', requestId: req.requestId });
+  }
+});
+
+router.post('/weekly/claim', security.sessionValidation, async (req, res) => {
+  try {
+    const { eventId, wins } = req.body || {};
+    const config = loadLiveOps();
+    const result = await accountEconomyService.withPlayerLock(req.user.playerId, async () => {
+      const economy = await accountEconomyService.getPlayerEconomy(req.user.playerId);
+      const claim = claimWeeklyMilestone(economy, config, eventId, wins, Date.now());
+      if (!claim.duplicate) await accountEconomyService.updatePlayerEconomyCache(req.user.playerId, economy);
+      return claim;
+    });
+    logger.info('Weekly milestone claim', { playerId: req.user.playerId, eventId, wins, duplicate: result.duplicate });
+    if (!result.duplicate) security.logSecurityEvent('weekly_milestone_claimed', {
+      playerId: req.user.playerId, eventId, wins, coins: result.coins, ip: req.ip,
+    });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof WeeklyEventError) return res.status(error.code === 'weekly_event_not_found' ? 404 : 409)
+      .json({ success: false, error: error.code, requestId: req.requestId });
+    logger.error('Weekly milestone claim failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'weekly_event_error', requestId: req.requestId });
   }
 });
 

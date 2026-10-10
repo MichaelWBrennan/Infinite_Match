@@ -378,6 +378,7 @@
             overlayButton('Account / sign in', () => game.openSignIn());
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
+            overlayButton('Weekly event', () => game.showWeeklyEvent());
             overlayButton('Season and community', () => game.showBattlePass());
         }
         function goalGuide(wasRunning) {

@@ -17,6 +17,8 @@ import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
+import { loadLiveOps } from '../live-ops/live-ops.js';
+import { recordWeeklyWin } from '../live-ops/weekly-event.js';
 
 /** A rule the player cannot meet (not enough coins, room maxed). `code` is safe to show. */
 export class EconomyRuleError extends Error {
@@ -874,10 +876,16 @@ class AccountEconomyService {
           if (!stars) throw new EconomyRuleError('score_below_target');
         }
       }
+      // Count only a verified replay, in the same locked save that consumes its attempt.
+      // A retried completion cannot enter here twice; unverified legacy/timed/endless
+      // payouts never advance the free weekly event.
+      const weekly = completion?.mode === 'level' && replay?.verified === true
+        ? recordWeeklyWin(playerEconomy, loadLiveOps(), nowMs) : null;
       playerEconomy.pendingAttempt = null;
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
-      return { level, ...(stars === undefined ? {} : { stars }),
+      if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
+      return { level, ...(weekly ? { weekly } : {}), ...(stars === undefined ? {} : { stars }),
         ...(completion?.mode === 'level' ? { verified: replay?.verified === true,
           ranked: replay?.verified === true && !pending.untrackedPowerup && !(pending.powerupReceipts?.length) } : {}),
         ...(replay?.verified ? { score: replay.score } : {}) };

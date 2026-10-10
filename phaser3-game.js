@@ -2198,6 +2198,12 @@ class PhaserMatch3Game {
         if (window.ui && typeof window.ui.showCommunity === 'function') window.ui.showCommunity('battlepass');
     }
 
+    showWeeklyEvent() {
+        this.openMenu();
+        this.trackEvent('weekly_event_opened');
+        if (window.ui && typeof window.ui.showCommunity === 'function') window.ui.showCommunity('events');
+    }
+
     showLootBox() {
         this.pauseGame();
         this.currentScreen = 'lootbox';
