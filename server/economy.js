@@ -15,6 +15,7 @@ import { ensureKingdom, kingdomCoinMultiplier } from '../src/services/meta/kingd
 import { ensureDecor } from '../src/services/meta/kingdom-decor.js';
 import { grantSeasonXp } from './season.js';
 import { recordWeeklyWin } from '../src/services/live-ops/weekly-event.js';
+import { recordVerifiedChallengeWin } from '../src/services/live-ops/score-challenge-economy.js';
 import { currentLiveOps } from './live-ops-config.js';
 import { generatedLevel, clientRulesVersion, blockerLevelsEnabled } from '../src/services/levels/level-service.js';
 import { LEVEL_MODES } from '../src/services/levels/generator.js';
@@ -280,6 +281,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     attempt.reward = reward;
     // A verified win counts toward this week's event, once, in the same save.
     recordWeeklyWin(economy, currentLiveOps(), nowMs);
+    recordVerifiedChallengeWin(economy, currentLiveOps(), score, nowMs);
     grantSeasonXp(economy, 'level_complete', nowMs);
     saveEconomy(db, playerId, economy);
     return {

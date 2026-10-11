@@ -24,6 +24,7 @@ import { applyVip } from '../meta/vip.js';
 import { loadLiveOps } from '../live-ops/live-ops.js';
 import { MAX_PRIZE_COINS } from '../live-ops/competitions.js';
 import { recordWeeklyWin } from '../live-ops/weekly-event.js';
+import { recordVerifiedChallengeWin } from '../live-ops/score-challenge-economy.js';
 import { observationMeta, observeAttempt } from '../levels/attempt-observations.js';
 
 /** A rule the player cannot meet (not enough coins, room maxed). `code` is safe to show. */
@@ -1144,6 +1145,8 @@ class AccountEconomyService {
         const { isVip = false, season = null, competitionIds = { tournamentIds: [], challengeIds: [] } } =
           typeof policies === 'function' ? await policies() : policies;
         const weekly = replay?.verified === true ? recordWeeklyWin(economy, loadLiveOps(), nowMs) : null;
+        const scoreChallenge = replay?.verified === true
+          ? recordVerifiedChallengeWin(economy, loadLiveOps(), replay.score, nowMs) : null;
         const base = winRewards(stars);
         const roomBoosted = { ...base, coins: Math.floor(base.coins * kingdomCoinMultiplier(economy.kingdom)) };
         const reward = applyVip(roomBoosted, isVip);
@@ -1203,6 +1206,7 @@ class AccountEconomyService {
           }
         }
         if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
+        if (scoreChallenge) logger.info('Score challenge win recorded', { playerId, ...scoreChallenge });
         return { result, rankedScore: ranked ? replay.score : null, competitionIds };
       }
       throw new EconomyRuleError('economy_conflict');
@@ -1223,6 +1227,8 @@ class AccountEconomyService {
       // payouts never advance the free weekly event.
       const weekly = completion?.mode === 'level' && replay?.verified === true
         ? recordWeeklyWin(playerEconomy, loadLiveOps(), nowMs) : null;
+      const scoreChallenge = completion?.mode === 'level' && replay?.verified === true
+        ? recordVerifiedChallengeWin(playerEconomy, loadLiveOps(), replay.score, nowMs) : null;
       playerEconomy.pendingAttempt = null;
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
@@ -1232,6 +1238,7 @@ class AccountEconomyService {
           movesUsed: replay?.verified ? completion.moves?.length : null, moveBudget: definition?.moves,
         }, nowMs);
       if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
+      if (scoreChallenge) logger.info('Score challenge win recorded', { playerId, ...scoreChallenge });
       return { level, ...(weekly ? { weekly } : {}), ...(stars === undefined ? {} : { stars }),
         ...(completion?.mode === 'level' ? { verified: replay?.verified === true,
           ranked: replay?.verified === true && !pending.untrackedPowerup && !(pending.powerupReceipts?.length) } : {}),

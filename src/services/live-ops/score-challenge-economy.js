@@ -40,3 +40,30 @@ export function claimChallengeTier(economy, challenge, threshold, nowMs = Date.n
   record.claimed.push(threshold);
   return { duplicate: false, coins: tier.coins, balance: wallet.amount };
 }
+
+/** Operator kill switch. Set SCORE_CHALLENGE_DISABLED=1 to stop new wins and claims. */
+export function scoreChallengeDisabled() { return process.env.SCORE_CHALLENGE_DISABLED === '1'; }
+
+export function findScoreChallenge(config, challengeId) {
+  return (config?.scoreChallenges || []).find((c) => c.id === challengeId) || null;
+}
+
+/** The challenge whose window contains nowMs, or null (also null while the kill switch is on). */
+export function activeScoreChallenge(config, nowMs = Date.now()) {
+  if (scoreChallengeDisabled()) return null;
+  return (config?.scoreChallenges || []).find((c) => challengeOpen(c, nowMs)) || null;
+}
+
+/** Settlement hook: counts a server-verified win. Never throws, so a win is never blocked by the challenge. */
+export function recordVerifiedChallengeWin(economy, config, score, nowMs = Date.now()) {
+  const challenge = activeScoreChallenge(config, nowMs);
+  if (!challenge || !integer(score, 0, MAX_SCORE)) return null;
+  return recordChallengeWin(economy, challenge, score, nowMs);
+}
+
+/** Claim route entry: resolves the challenge from validated config, then claims once. */
+export function claimScoreChallenge(economy, config, challengeId, threshold, nowMs = Date.now()) {
+  const challenge = findScoreChallenge(config, challengeId);
+  if (!challenge) throw new ScoreChallengeError('challenge_not_found');
+  return claimChallengeTier(economy, challenge, threshold, nowMs, scoreChallengeDisabled());
+}

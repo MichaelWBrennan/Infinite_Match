@@ -11,6 +11,7 @@ import { isDurableEconomy } from '../services/economy/PlayerEconomyDb.js';
 import { PRODUCTS } from '../services/payments/product-catalog.js';
 import { priceFor } from '../services/live-ops/live-ops.js';
 import { visibleWeeklyEvent, weeklyView, claimWeeklyMilestone, WeeklyEventError, weeklyDisabled } from '../services/live-ops/weekly-event.js';
+import { claimScoreChallenge, ScoreChallengeError } from '../services/live-ops/score-challenge-economy.js';
 
 const router = express.Router();
 const logger = new Logger('LiveOpsRoutes');
@@ -116,6 +117,32 @@ router.post('/weekly/claim', security.sessionValidation, async (req, res) => {
       .json({ success: false, error: error.code, requestId: req.requestId });
     logger.error('Weekly milestone claim failed', { error: error.message });
     res.status(500).json({ success: false, error: 'weekly_event_error', requestId: req.requestId });
+  }
+});
+
+// Personal score challenge: claim one earned tier's coins, once. Progress is shown by the economy data.
+router.post('/score-challenge/claim', security.sessionValidation, async (req, res) => {
+  try {
+    const { challengeId, threshold } = req.body || {};
+    const config = loadLiveOps();
+    const result = await accountEconomyService.withPlayerLock(req.user.playerId, async () => {
+      const economy = await accountEconomyService.getPlayerEconomy(req.user.playerId);
+      const claim = claimScoreChallenge(economy, config, challengeId, threshold, Date.now());
+      if (!claim.duplicate) await accountEconomyService.updatePlayerEconomyCache(req.user.playerId, economy);
+      return claim;
+    });
+    logger.info('Score challenge claim', { playerId: req.user.playerId, challengeId, threshold, duplicate: result.duplicate });
+    if (!result.duplicate) security.logSecurityEvent('score_challenge_claimed', {
+      playerId: req.user.playerId, challengeId, threshold, coins: result.coins, ip: req.ip,
+    });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error instanceof ScoreChallengeError) {
+      const status = /not_found$/.test(error.code) ? 404 : 409;
+      return res.status(status).json({ success: false, error: error.code, requestId: req.requestId });
+    }
+    logger.error('Score challenge claim failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'score_challenge_error', requestId: req.requestId });
   }
 });
 

@@ -1,6 +1,6 @@
 # Live ops v1: plan and acceptance gates
 
-**Status (2026-10-11): L1 and L2 built, not wired.** L1 is the pure definition, validator and progress module (`src/services/live-ops/score-challenge.js`). L2 is the economy functions (`src/services/live-ops/score-challenge-economy.js`): record a verified win inside the window, and claim an earned tier once. Neither is called from the completion path or a route yet, because the challenge is not in validated config until L3. Config and player-visible behaviour are unchanged.
+**Status (2026-10-11): L1 to L3 built; the challenge is wired to settlement and claims on both servers, and is OFF until a `scoreChallenges` entry is published.** L1 is the pure definition, validator and progress module (`src/services/live-ops/score-challenge.js`). L2 is the economy functions (`src/services/live-ops/score-challenge-economy.js`). L3 is the config and wiring: `scoreChallenges` is validated at load, a verified win is counted in both settlement paths (`src/services/economy/AccountEconomyService.js` and `server/economy.js`), and `POST /api/live-ops/score-challenge/claim` exists on both servers. The checked-in `config/liveops.json` has no `scoreChallenges`, so no player sees the feature yet. Player-visible progress is L4. Deals, prices and the weekly event are unchanged.
 
 ## Owner decisions (2026-10-11)
 
@@ -8,6 +8,12 @@
 - **Ceiling:** the Hall Lanterns weekly ceiling. Each tier at most 40 coins, all tiers at most 80. A test guards this against drift from `config/liveops.json`.
 - **Deals:** out of v1.
 - **Production store:** the code refuses to start in production without `ECONOMY_STORE=mongo` (`assertEconomyStoreForEnvironment`, called in `src/server/index.ts` before services start, with a test). This holds only if the deployment sets `NODE_ENV=production`, which the repository cannot verify. Confirm the deployment's environment before L3 publishes anything.
+
+## Config key and kill switch (L3)
+
+- The personal challenge lives under **`scoreChallenges`**, not `challenges`. `challenges` is already the community challenge list read by `src/services/live-ops/competitions.js` (goal and reward, one shared total). Reusing the key would make the two systems collide.
+- `SCORE_CHALLENGE_DISABLED=1` stops new wins and new claims. Saved progress is kept.
+- Claims: `POST /api/live-ops/score-challenge/claim` with `{ challengeId, threshold }`. Responses: 404 `challenge_not_found` or `challenge_tier_not_found`; 409 `challenge_progress_required`, `challenge_closed` or `challenge_wallet_full`.
 
 ## L1 rules (built)
 
@@ -51,9 +57,9 @@ Gap, from the [competitive ranking](COMPETITIVE_STRATEGY.md): live ops scores **
 
 **L1: pure definition and rules.** A validator for the chosen event type, with every field typed and bounded, and a pure function that computes progress from verified results. *Gate:* unit tests for each rule and each rejected field; no change to `weeklyEvents`; the existing live-ops tests pass.
 
-**L2: claim path and rewards.** Claims use the same single-save, idempotent path as the weekly event. Expired events grant nothing late. *Gate:* duplicate-claim, lost-response and post-window tests; the reward ceiling is enforced in the validator, not only in the UI.
+**L2: claim path and rewards (built).** Claims use the same single-save, idempotent path as the weekly event. Expired events grant nothing late. *Gate:* duplicate-claim, lost-response and post-window tests; the reward ceiling is enforced in the validator, not only in the UI.
 
-**L3: validation of every array.** `tournaments` and `challenges` are either validated or rejected at load. An unknown array name fails the load. *Gate:* a config with an unknown key fails; the checked-in file still loads.
+**L3: validation of every array (built).** An unknown top-level key fails the load. `scoreChallenges` entries are validated and duplicate ids fail. `tournaments` and `challenges` must be lists; their entries are validated per entry by `competitions.js`, which drops invalid entries and logs them. `events` and `deals` are validated as before; `events` are display-only and `deals` are prices, so neither has a claim path. *Gate met:* `src/__tests__/live-ops-config.test.ts`; the checked-in file loads; the server test `server/test/liveops.mjs` and the Express test in `weekly-event.test.ts` cover the wired claim path.
 
 **L4: client presentation.** An event card in Explore and the Community events tab, with a local end time and the UTC boundary named, and assistive labels for progress. *Gate:* unit tests for labels and countdown text; a browser check on a phone is required before publication.
 
@@ -61,7 +67,7 @@ Gap, from the [competitive ranking](COMPETITIVE_STRATEGY.md): live ops scores **
 
 ## Known blockers for this plan
 
-- **The live-ops config validator silently ignores `tournaments` and `challenges`.** This is fixed in L3.
+- **Correction (L3):** `tournaments` and `challenges` were not ignored. `competitions.js` validates them per entry. What was missing was an unknown-key check, which L3 adds.
 - **Production store.** `ECONOMY_STORE=mongo` must be confirmed (see design choice 4).
 - **Browser smoke is not green** on the baseline (see the board-variety plan). Event UI cannot be verified end to end until that is fixed.
 - **No player evidence.** Event rewards and difficulty are unvalidated until the first-play study and an event review have run.

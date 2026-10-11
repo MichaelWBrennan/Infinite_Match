@@ -329,7 +329,10 @@ beforeAll(async () => {
   const current = schedule(currentMonday(Date.now()));
   eventId = current.id;
   process.env.LIVE_OPS_CONFIG = path.join(dir, 'liveops.json');
-  fs.writeFileSync(process.env.LIVE_OPS_CONFIG, JSON.stringify({ events: [], deals: [], weeklyEvents: [current] }));
+  const monday = currentMonday(Date.now());
+  const challenge = { id: 'personal_run_route', name: 'Personal run', start: new Date(monday).toISOString(),
+    end: new Date(monday + 7 * DAY).toISOString(), target: 1000, tiers: [{ threshold: 1, coins: 15 }] };
+  fs.writeFileSync(process.env.LIVE_OPS_CONFIG, JSON.stringify({ events: [], deals: [], scoreChallenges: [challenge], weeklyEvents: [current] }));
   loadLiveOps({ path: process.env.LIVE_OPS_CONFIG, reload: true });
   playerId = `week_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const registered = await request(app).post('/api/auth/register').send({ playerId, email: `${playerId}@example.com`, password: 'secret123' });
@@ -420,5 +423,41 @@ describe('weekly event route and locked claim', () => {
       fs.writeFileSync(process.env.LIVE_OPS_CONFIG!, JSON.stringify({ events: [], deals: [], weeklyEvents: [current] }));
       loadLiveOps({ reload: true });
     }
+  });
+});
+
+describe('personal score challenge route (Express)', () => {
+  // Earlier tests reload the shared config (rotation, archive), so restore this describe's config first.
+  beforeAll(() => {
+    const monday = currentMonday(Date.now());
+    const current = schedule(monday);
+    fs.writeFileSync(process.env.LIVE_OPS_CONFIG as string, JSON.stringify({ events: [], deals: [], weeklyEvents: [current], scoreChallenges: [{
+      id: 'personal_run_route', name: 'Personal run', start: new Date(monday).toISOString(),
+      end: new Date(monday + 7 * DAY).toISOString(), target: 1000, tiers: [{ threshold: 1, coins: 15 }],
+    }] }));
+    loadLiveOps({ path: process.env.LIVE_OPS_CONFIG as string, reload: true });
+  });
+
+  test('a verified win counts toward the challenge; the claim pays one tier once', async () => {
+    const body = await verifiedWin();
+    expect(body.attemptId).toBeTruthy();
+    const claimed = await request(app).post('/api/live-ops/score-challenge/claim').set(auth())
+      .send({ challengeId: 'personal_run_route', threshold: 1 });
+    expect(claimed.status).toBe(200);
+    expect(claimed.body.result).toMatchObject({ coins: 15, duplicate: false });
+    const again = await request(app).post('/api/live-ops/score-challenge/claim').set(auth())
+      .send({ challengeId: 'personal_run_route', threshold: 1 });
+    expect(again.status).toBe(200);
+    expect(again.body.result.duplicate).toBe(true);
+  });
+
+  test('guests cannot claim, and unknown challenges and tiers are rejected', async () => {
+    expect((await request(app).post('/api/live-ops/score-challenge/claim').send({ challengeId: 'personal_run_route', threshold: 1 })).status).toBe(401);
+    const unknown = await request(app).post('/api/live-ops/score-challenge/claim').set(auth()).send({ challengeId: 'missing_one', threshold: 1 });
+    expect(unknown.status).toBe(404);
+    expect(unknown.body.error).toBe('challenge_not_found');
+    const tier = await request(app).post('/api/live-ops/score-challenge/claim').set(auth()).send({ challengeId: 'personal_run_route', threshold: 9 });
+    expect(tier.status).toBe(404);
+    expect(tier.body.error).toBe('challenge_tier_not_found');
   });
 });
