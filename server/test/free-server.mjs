@@ -280,7 +280,7 @@ describe('free server', () => {
   });
 
   it('answers unimplemented /api paths with JSON 503, never HTML 200', async () => {
-    const res = await call('GET', '/api/kingdom');
+    const res = await call('GET', '/api/battlepass/config');
     assert.equal(res.status, 503);
     assert.equal(res.json.code, 'api_unavailable');
     assert.match(res.headers.get('content-type'), /application\/json/);

@@ -11,6 +11,8 @@ import {
 import { ENERGY_PRICE_COINS, LOOTBOXES, pickLootReward } from '../src/services/meta/lootbox.js';
 import { endlessRewards, starsForTarget, winRewards } from '../src/services/meta/rewards.js';
 import { REPLAY_POWERUPS } from '../src/services/levels/inventory-replay.js';
+import { ensureKingdom, kingdomCoinMultiplier } from '../src/services/meta/kingdom.js';
+import { ensureDecor } from '../src/services/meta/kingdom-decor.js';
 import { generatedLevel, clientRulesVersion } from '../src/services/levels/level-service.js';
 import { LEVEL_MODES } from '../src/services/levels/generator.js';
 import { replayLevelAttempt } from '../src/services/levels/attempt-replay.js';
@@ -48,13 +50,15 @@ export function defaultEconomy(nowMs) {
   };
 }
 
-function loadEconomy(db, playerId) {
+export function loadEconomy(db, playerId) {
   const row = db.prepare('SELECT state FROM economy WHERE player_id = ?').get(playerId);
   if (!row) throw new ApiError(404, 'economy_not_found');
   const economy = JSON.parse(row.state);
   // Documents written before a field existed get its default on first load.
   if (!economy.dailyRewards) economy.dailyRewards = { streak: 0, lastClaimed: null };
   if (!economy.inventory) economy.inventory = { powerups: {} };
+  ensureKingdom(economy);
+  ensureDecor(economy.kingdom);
   return economy;
 }
 
@@ -63,8 +67,14 @@ function startOfLocalDay(ms) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-function saveEconomy(db, playerId, economy) {
+export function saveEconomy(db, playerId, economy) {
   db.prepare('UPDATE economy SET state = ? WHERE player_id = ?').run(JSON.stringify(economy), playerId);
+}
+
+// Kingdom rooms add a small coin bonus to coin payouts (see kingdomCoinMultiplier).
+function withCoinBonus(reward, economy) {
+  const multiplier = kingdomCoinMultiplier(economy.kingdom);
+  return { ...reward, coins: Math.floor(reward.coins * multiplier) };
 }
 
 function clampCurrency(currency) {
@@ -246,7 +256,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
       return { duplicate: false, level, stars, reward: null, balances: { stars: economy.currencies.stars.amount, coins: economy.currencies.coins.amount } };
     }
 
-    const reward = winRewards(stars);
+    const reward = withCoinBonus(winRewards(stars), economy);
     const currencies = economy.currencies;
     currencies.coins.amount += reward.coins;
     currencies.coins.earned += reward.coins;
@@ -377,7 +387,7 @@ export function settleEndless(db, playerId, body, nowMs = Date.now()) {
     }
     if (attempt.status !== 'open') throw new ApiError(400, 'attempt_closed');
     if (nowMs - attempt.createdAt > ATTEMPT_MAX_AGE_MS) throw new ApiError(400, 'attempt_expired');
-    const reward = endlessRewards(score);
+    const reward = withCoinBonus(endlessRewards(score), economy);
     if (reward.coins) grantCurrency(economy.currencies, 'coins', reward.coins);
     economy.progress.xp += reward.xp;
     attempt.status = 'won';

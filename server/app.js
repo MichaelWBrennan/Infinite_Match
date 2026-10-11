@@ -2,6 +2,7 @@
 import { createServer } from 'node:http';
 import { authenticate, login, register } from './auth.js';
 import { claimDailyReward, closeAttempt, completeLevel, getEconomyView, openLootbox, refillEnergy, settleEndless, spendEnergy, usePowerUp } from './economy.js';
+import { buyDecor, chooseDecor, getKingdom, placeDecor, removeDecor, renovateRoom } from './kingdom.js';
 import { openDatabase } from './db.js';
 import { ApiError } from './errors.js';
 
@@ -22,6 +23,12 @@ const ROUTES = {
   'POST /api/account-economy/lootbox/open': { handler: ({ body, db, player }) => ({ success: true, result: openLootbox(db, player.id, body?.type) }), auth: true },
   'POST /api/account-economy/powerup/use': { handler: ({ body, db, player, now }) => ({ success: true, result: usePowerUp(db, player.id, body, now) }), auth: true },
   'POST /api/account-economy/endless/complete': { handler: ({ body, db, player, now }) => ({ success: true, result: settleEndless(db, player.id, body, now) }), auth: true },
+  'GET /api/kingdom': { handler: ({ db, player }) => getKingdom(db, player.id), auth: true },
+  'POST /api/kingdom/renovate': { handler: ({ body, db, player }) => ({ success: true, result: renovateRoom(db, player.id, body?.roomId) }), auth: true },
+  'POST /api/kingdom/decor/buy': { handler: ({ body, db, player }) => ({ success: true, result: buyDecor(db, player.id, body?.decorId) }), auth: true },
+  'POST /api/kingdom/decor/place': { handler: ({ body, db, player }) => ({ success: true, result: placeDecor(db, player.id, body?.roomId, body?.decorId) }), auth: true },
+  'POST /api/kingdom/decor/choose': { handler: ({ body, db, player }) => ({ success: true, result: chooseDecor(db, player.id, body?.roomId, body?.decorId) }), auth: true },
+  'POST /api/kingdom/decor/remove': { handler: ({ body, db, player }) => ({ success: true, result: removeDecor(db, player.id, body?.roomId) }), auth: true },
   'POST /api/account-economy/level/complete': { handler: ({ body, db, player, now }) => ({ success: true, result: completeLevel(db, player.id, body, now) }), auth: true },
 };
 

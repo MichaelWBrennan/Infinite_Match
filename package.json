@@ -89,7 +89,7 @@
     "start": "node dist/server/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:browser": "node scripts/player-browser-smoke.mjs",
-    "test:server": "node --test server/test/free-server.mjs server/test/rewards.mjs server/test/powerups-endless.mjs",
+    "test:server": "node --test server/test/free-server.mjs server/test/rewards.mjs server/test/powerups-endless.mjs server/test/kingdom.mjs",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "lint": "eslint src/ --ext .js,.ts",
     "lint:fix": "eslint src/ --ext .js,.ts --fix",
