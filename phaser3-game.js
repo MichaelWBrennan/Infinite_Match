@@ -272,7 +272,12 @@ class PhaserMatch3Game {
 
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
-        
+        if (!this.onlineFlushBound) {
+            this.onlineFlushBound = true;
+            window.addEventListener('online', () => { this.flushPendingWins().catch(() => {}); });
+        }
+        this.flushPendingWins().catch(() => {});
+
         this.createGameBoard();
         this.createUI();
         this.createPowerUps();
@@ -1612,6 +1617,7 @@ class PhaserMatch3Game {
         if (this.attemptPending) return false;
         this.attemptPending = true;
         try {
+            await this.flushPendingWins();
             const { ok, data, status } = await this.fetchJson('/api/account-economy/energy/spend', {
                 method: 'POST',
                 body: JSON.stringify({ level: Math.floor(level), ...(mode ? { mode, location, rulesVersion: this.requestedRulesVersion(mode) } : {}) }),
@@ -1714,6 +1720,9 @@ class PhaserMatch3Game {
         });
         // A lost response may follow a committed payout. Retry the same claim only on
         // timeout/network/5xx; a receipt makes the retry read-only, never a new energy spend.
+        // Not confirmed (no network, or the server failed): keep the win and send it again on
+        // reconnect. The server pays an attempt once and answers repeats with its receipt (S4).
+        let keep = false;
         for (let attempt = 0; attempt < 2; attempt++) {
             try {
                 const { ok, status, data } = await this.fetchJson('/api/account-economy/level/complete', {
@@ -1724,14 +1733,51 @@ class PhaserMatch3Game {
                     this.updateUI();
                     return data.result;
                 }
-                if (attempt === 0 && status >= 500) continue;
+                if (status >= 500) {
+                    keep = true;
+                    if (attempt === 0) continue;
+                }
                 console.warn('Level reward not confirmed:', data?.error);
                 break;
             } catch (error) {
+                keep = true;
                 console.warn('Could not reach the server for the level reward.', error);
             }
         }
+        if (keep) this.queueWin(attemptId, body);
         return null;
+    }
+
+    // Offline reconciliation (S4). Queued wins are per account (the token's playerId) and are
+    // sent again by flushPendingWins: on start, when the browser comes back online, and before a
+    // new attempt is spent, because a new spend replaces the server's pending attempt.
+    queueWin(attemptId, body) {
+        const playerId = window.WinQueue ? window.WinQueue.playerIdFromToken(this.getAuthToken()) : '';
+        if (!playerId) return;
+        window.WinQueue.create(localStorage).add(playerId, attemptId, body, Date.now());
+    }
+
+    async flushPendingWins() {
+        const token = this.getAuthToken();
+        if (!token || !window.WinQueue || this.flushingWins) return [];
+        const playerId = window.WinQueue.playerIdFromToken(token);
+        const queue = window.WinQueue.create(localStorage);
+        if (!playerId || !queue.pendingFor(playerId, Date.now()).length) return [];
+        this.flushingWins = true;
+        try {
+            const outcomes = await window.WinQueue.flush(queue, playerId, (body) => this.fetchJson(
+                '/api/account-economy/level/complete', { method: 'POST', body, signal: AbortSignal.timeout(15000) }), Date.now());
+            for (const outcome of outcomes) {
+                if (outcome.outcome === 'settled' && outcome.result?.balances) {
+                    this.stars = outcome.result.balances.stars;
+                    this.updateUI();
+                }
+                if (outcome.outcome === 'refused') console.warn('A saved level result was not counted:', this.ruleMessage(outcome.reason));
+            }
+            return outcomes;
+        } finally {
+            this.flushingWins = false;
+        }
     }
 
     // A reported loss or quit closes the paid attempt without a reward. Hint/move counts
@@ -2544,6 +2590,8 @@ class PhaserMatch3Game {
             room_max_level: 'This room is already at its highest level.',
             unknown_room: 'That room does not exist.',
             energy_empty: 'Out of energy.',
+            attempt_expired: 'That level attempt expired before its result was sent. No reward was granted.',
+            attempt_not_found: 'A newer level attempt replaced that result, so no reward was granted for it.',
             energy_full: 'Energy is already full.',
             decor_limit: 'You already own the most of this decoration.',
             decor_not_owned: 'Buy this decoration first.',
