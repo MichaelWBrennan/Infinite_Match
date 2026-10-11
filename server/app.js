@@ -6,6 +6,7 @@ import { buyDecor, chooseDecor, getKingdom, placeDecor, removeDecor, renovateRoo
 import { claimTier, getBattlePassConfig, getProgress } from './battlepass.js';
 import { claimWeekly, getOffers, getToday, getWeekly, getWeeklyPreview } from './liveops.js';
 import { social } from './social.js';
+import { getDailyLevel, getLevel, getLevelContext, getRegions } from './levels.js';
 import { claimChallenge, getCompetitions, recordLevelWin, settleTournament } from './competitions.js';
 import { openDatabase } from './db.js';
 import { ApiError } from './errors.js';
@@ -51,6 +52,10 @@ const ROUTES = {
   'GET /api/live-ops/competitions': { handler: ({ player, now }) => getCompetitions(player.username, now), auth: true },
   'POST /api/live-ops/challenges/:id/claim': { handler: ({ db, params, player, now }) => claimChallenge(db, player, params.id, now), auth: true },
   'POST /api/live-ops/tournaments/:id/settle': { handler: ({ db, params, player, now }) => settleTournament(db, player, params.id, now), auth: true },
+  'GET /api/levels/context': { handler: ({ query, now }) => getLevelContext(query, now), auth: false },
+  'GET /api/levels/regions': { handler: ({ query, now }) => getRegions(query, now), auth: false },
+  'GET /api/levels/daily': { handler: ({ query, now }) => getDailyLevel(query, now), auth: false },
+  'GET /api/levels/:level': { handler: ({ params, query, now }) => getLevel(params.level, query, now), auth: false },
   'GET /api/kingdom': { handler: ({ db, player }) => getKingdom(db, player.id), auth: true },
   'POST /api/kingdom/renovate': { handler: ({ body, db, player }) => ({ success: true, result: renovateRoom(db, player.id, body?.roomId) }), auth: true },
   'POST /api/kingdom/decor/buy': { handler: ({ body, db, player }) => ({ success: true, result: buyDecor(db, player.id, body?.decorId) }), auth: true },

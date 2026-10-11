@@ -69,6 +69,10 @@ The machine has to stay on and online. If it sleeps, the game's account features
 | `GET /api/live-ops/competitions` | Active tournaments (top 10 and the caller's place) and community challenges (progress, and whether the caller can claim). |
 | `POST /api/live-ops/challenges/:id/claim` | Pays a community challenge once, when the shared goal is reached and the caller contributed at least one verified win. |
 | `POST /api/live-ops/tournaments/:id/settle` | Operator only (`OPERATOR_USERNAMES`, comma list). Pays finished tournament prizes once per place. |
+| `GET /api/levels/context` | The local level context for a place and time: time of day, holiday themes, and the refresh time. No weather. Public. |
+| `GET /api/levels/regions?country=` | The country and region catalog. An unknown country returns 400 `invalid_country`. Public. |
+| `GET /api/levels/daily` | Today's daily board for a place. Same place and day give the same board. Public. |
+| `GET /api/levels/:level?mode=&rulesVersion=` | A board by level number. A malformed number returns 400 `invalid_level`. Public. |
 | `GET /api/battlepass/config` | The season config from `config/battlepass/config.json` (or `BATTLEPASS_CONFIG`). Public. |
 | `GET /api/battlepass/progress` | Season XP, current tier, claimed tiers, and whether premium is unlocked. Premium is always locked here (no purchases). |
 | `POST /api/battlepass/claim` | `{level, track}` where track is `free` or `premium`. Grants the tier reward once, when the player has its XP. Premium returns 403 `premium_required`. Season XP: +50 per verified win, +10 per daily reward claim (from the config's `xpEvents`). |
@@ -85,10 +89,11 @@ Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It n
 ## Not implemented yet
 
 - `timed` level completion. Timed attempts can be spent but not yet completed.
-- Level generation uses the local context (no live weather). The existing server uses live weather when it's available. This changes only the forecast metadata, not the board rules.
-- Retention study and level-results targets.
+- Level boards use the local context only. The existing server also adds live weather to the context. This changes the forecast metadata, not the board rules.
+- Retention study and level-results targets (`/api/retention-study`, `/api/level-results`).
+- Minigames (`/api/minigames`), `account-economy/inventory/update` and `currency/update`, and `auth/platform-sync`. Only the legacy `script.js` calls these. Platform sign-in needs platform tokens that this server does not have.
 - Scores and progress for social are verified only through `level/complete`. Endless scores are not ranked.
-- Competitions: the free server does not check for a live payment receipt. Payouts are guarded by the social store reservation and an economy receipt.
+- Competition payouts do not check a live payment receipt. They are guarded by the social store reservation and an economy receipt.
 - Premium battle pass track (needs a purchase). The config grants a `rocket` item, which is not a replayable power-up, so it cannot be used in verified levels yet.
 - Payments. Stripe needs a processor, and processing fees apply. This is not free.
 
