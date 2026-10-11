@@ -46,6 +46,18 @@ This is not a new economy or puzzle rules version. Four rooms remain numeric;
 real-device visuals, keyboard/screen-reader behavior and human discovery/interest
 are still unvalidated.
 
+## Delivered kingdom scene expansion — all six rooms (web)
+
+The four remaining server-owned rooms now have their own original illustrated
+before/after scenes and optional short story beats: the Royal Garden, Armory,
+Gatehouse and Chapel. Alongside the Hall and Library, all six native room buttons
+share the same server-priced repair/stock rules and read-only guest previews.
+Tab changes reuse the latest kingdom snapshot; old room callbacks cannot spend
+in the currently selected room. A responsive two- or three-column room selector
+remains scrollable in the existing native dialog. This completes a visible first
+look for every existing room, **not** an explorable world or chapter campaign.
+Physical-device, screen-reader and first-session comprehension testing remain open.
+
 ## Delivered first obstacle slice — fixed shields (rules v5)
 
 The shared engine now has numbered fixed shield terrain. A clear over a shield

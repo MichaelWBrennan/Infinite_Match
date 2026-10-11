@@ -2687,7 +2687,7 @@ class PhaserMatch3Game {
     }
 
     selectKingdomRoom(roomId) {
-        if (!['throne', 'library'].includes(roomId) || roomId === this.kingdomRoomId) return;
+        if (!['throne', 'library', 'garden', 'armory', 'gatehouse', 'chapel'].includes(roomId) || roomId === this.kingdomRoomId) return;
         this.kingdomRoomId = roomId;
         this.kingdomFocusChoice = null;
         this.kingdomFocusRoom = true;
@@ -2709,7 +2709,7 @@ class PhaserMatch3Game {
     }
 
     async chooseKingdomDecor(decorId, roomId = this.kingdomRoomId || 'throne') {
-        if (this.kingdomPending || !this.getAuthToken() || !['throne', 'library'].includes(roomId)) return;
+        if (this.kingdomPending || !this.getAuthToken() || !['throne', 'library', 'garden', 'armory', 'gatehouse', 'chapel'].includes(roomId)) return;
         const overlay = this.activeOverlay;
         this.kingdomPending = true;
         this.setOverlayStatus('Preparing your chosen look...');
@@ -2723,7 +2723,7 @@ class PhaserMatch3Game {
             await this.renderKingdom();
             if (this.activeOverlay === overlay) {
                 this.setOverlayStatus(data.result.unchanged ? 'That look is already on display.'
-                    : `Your chosen look brightens the ${roomId === 'library' ? 'library' : 'hall'}.${data.result.costCoins ? ` ${data.result.costCoins} coins spent.` : ' Used an owned decoration.'}`);
+                    : `Your chosen look brightens the ${roomId === 'throne' ? 'hall' : roomId}.${data.result.costCoins ? ` ${data.result.costCoins} coins spent.` : ' Used an owned decoration.'}`);
                 this.trackEvent('kingdom_look_chosen', { decorId, bought: data.result.buy });
             }
         } catch (error) {

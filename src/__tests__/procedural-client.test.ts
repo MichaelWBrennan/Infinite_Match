@@ -691,6 +691,27 @@ describe('native player input keeps shared rules and economy untouched', () => {
     ]);
   });
 
+  test('another authored room can be selected and purchased without spending on the hall', async () => {
+    const { game } = playable();
+    const views: any[] = []; const calls: any[] = [];
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (_data: any, callbacks: any) => views.push(callbacks);
+    game.setOverlayStatus = () => {};
+    game.fetchJson = async (url: string, options: any) => {
+      calls.push([url, options]);
+      return url.endsWith('/choose') ? { ok: true, data: { success: true, result: { buy: true, costCoins: 140 } } }
+        : { ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 860 } };
+    };
+    await game.renderKingdom();
+    const hall = views.at(-1);
+    hall.selectRoom('garden');
+    await hall.choose('mosaic'); // stale hall action must not spend
+    await views.at(-1).choose('mosaic');
+    expect(JSON.parse(calls[1][1].body)).toEqual({ roomId: 'garden', decorId: 'mosaic' });
+    expect(views.at(-1).roomId).toBe('garden');
+    expect(views.at(-1).focusChoice).toBe('mosaic');
+  });
+
   test('an older kingdom load cannot replace a newly selected room', async () => {
     const { game } = playable();
     const views: any[] = []; const pending: any[] = [];

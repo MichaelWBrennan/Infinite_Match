@@ -2399,7 +2399,8 @@ body {
 .match-dialog-status { color: #ffe9aa; line-height: 1.4; font-size: 14px; white-space: pre-line; }
 /* Authored kingdom rooms are readable, responsive scenes—not second game boards. */
 .match-player-dialog.kingdom-room-dialog { width: min(680px, calc(100vw - 24px)); max-height: min(90dvh, 820px); padding: clamp(16px, 3vw, 24px); }
-.kingdom-room-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.kingdom-room-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 480px) { .kingdom-room-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .match-dialog-content .kingdom-room-nav button { min-width: 0; padding: 8px; background: #31536a; }
 .match-dialog-content .kingdom-room-nav button[aria-pressed="true"] { border-color: #ffe4a4; background: #695039; font-weight: 700; }
 .kingdom-room-summary { color: #e9d49b; font-weight: 700; }

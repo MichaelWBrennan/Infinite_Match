@@ -301,7 +301,8 @@
             back.addEventListener('click', () => callbacks.close?.()); content.append(back);
             const rooms = document.createElement('nav'); rooms.className = 'kingdom-room-nav';
             rooms.setAttribute('aria-label', 'Kingdom rooms');
-            for (const [id, name] of [['throne', 'Throne Hall'], ['library', 'Royal Library']]) {
+            for (const id of scene.ROOM_IDS) {
+                const name = scene.ROOM_NAMES[id];
                 const button = document.createElement('button'); button.type = 'button';
                 button.dataset.roomId = id; button.textContent = name;
                 button.setAttribute('aria-pressed', String(view.id === id));
@@ -327,11 +328,11 @@
             }
             const renovation = document.createElement('div'); renovation.className = 'kingdom-room-renovate';
             if (view.guest) {
-                const signIn = document.createElement('button'); signIn.type = 'button'; signIn.textContent = `Sign in to save your ${view.id === 'library' ? 'library' : 'hall'}`;
+                const signIn = document.createElement('button'); signIn.type = 'button'; signIn.textContent = `Sign in to save your ${view.noun}`;
                 signIn.addEventListener('click', () => callbacks.signIn?.()); renovation.append(signIn);
             } else if (view.next) {
                 const upgrade = document.createElement('button'); upgrade.type = 'button'; upgrade.disabled = !view.canRenovate;
-                upgrade.textContent = `Repair ${view.id === 'library' ? 'library' : 'hall'} · ${view.next.costCoins} coins${view.next.starsRequired ? ` · ${view.next.starsRequired} lifetime stars` : ''}`;
+                upgrade.textContent = `Repair ${view.noun} · ${view.next.costCoins} coins${view.next.starsRequired ? ` · ${view.next.starsRequired} lifetime stars` : ''}`;
                 upgrade.addEventListener('click', () => callbacks.renovate?.(view.id)); renovation.append(upgrade);
                 if (!view.canRenovate) {
                     const reason = document.createElement('span');
@@ -339,7 +340,7 @@
                     renovation.append(reason);
                 }
             } else {
-                renovation.textContent = `The ${view.id === 'library' ? 'library' : 'hall'} is fully restored.`;
+                renovation.textContent = `The ${view.noun} is fully restored.`;
             }
             content.append(renovation);
             const choices = document.createElement('section'); choices.className = 'kingdom-room-choices';

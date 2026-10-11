@@ -83,7 +83,7 @@ describe('authored kingdom scenes', () => {
     ui.renderKingdomScene(state, callbacks('throne'));
     const hallArt = dialog.querySelector('.kingdom-room-art svg').outerHTML;
     const nav: any[] = [...dialog.querySelectorAll('.kingdom-room-nav button')];
-    expect(nav.map((button) => button.textContent)).toEqual(['Throne Hall', 'Royal Library']);
+    expect(nav.map((button) => button.textContent)).toEqual(KINGDOM_ROOMS.map((room) => room.name));
     nav[1].dispatchEvent(new window.Event('click'));
     expect(actions).toEqual(['visit:library']);
     ui.renderKingdomScene(state, callbacks('library'));
@@ -110,6 +110,58 @@ describe('authored kingdom scenes', () => {
     ui.renderKingdomScene({ guest: true }, callbacks('library'));
     expect(dialog.querySelector('.kingdom-room-renovate button').textContent).toBe('Sign in to save your library');
     expect(dialog.querySelectorAll('.kingdom-room-choice:disabled')).toHaveLength(3);
+  });
+
+  test('all six room scenes use the server room list, independent stock and authored art', () => {
+    const api = scene();
+    expect([...api.ROOM_IDS]).toEqual(KINGDOM_ROOMS.map((room) => room.id));
+    const works = new Set<string>();
+    for (const room of KINGDOM_ROOMS) {
+      expect(api.ROOM_NAMES[room.id]).toBe(room.name);
+      const locked = api.roomView(view({}, 1000), room.id);
+      expect(locked.choices.every((choice: any) => !choice.eligible)).toBe(true);
+      const initial = api.artwork(0, null, room.id);
+      const repaired = api.artwork(1, null, room.id);
+      expect(initial).not.toBe(repaired);
+      expect(initial).not.toContain('<script');
+      works.add(repaired);
+      const active = api.roomView(view({ [room.id]: 1 }, 500, { [room.id]: 'mosaic' }, { mosaic: 1 }), room.id);
+      expect(active.choices.map((choice: any) => choice.id)).toEqual(['tapestry', 'mosaic', 'sconces']);
+      expect(active.selected).toBe('mosaic');
+      expect(active.choices.find((choice: any) => choice.id === 'mosaic').costCoins).toBe(0);
+      expect(active.choices.find((choice: any) => choice.id === 'tapestry').costCoins).toBe(200);
+      expect(active.narrative).toContain(active.choices.find((choice: any) => choice.id === 'mosaic').caption);
+      expect(api.artwork(1, '<script>alert(1)</script>', room.id)).not.toContain('<script');
+    }
+    expect(works.size).toBe(6);
+    expect(api.roomView({ guest: true }, '__proto__').id).toBe('throne');
+    expect(api.artwork(1, '<script>', 'garden')).not.toContain('<script');
+  });
+
+  test('garden tab preserves room-specific prices and repair actions', () => {
+    const { document, window } = parseHTML('<html><body><div id="host"></div></body></html>');
+    const sandbox: any = { document };
+    vm.createContext(sandbox);
+    vm.runInContext(readFileSync('public/js/kingdom-scene.js', 'utf8'), sandbox);
+    vm.runInContext(readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
+    const game: any = { score: 0, targetScore: 500, settings: { sfx: false },
+      getSoundStatus: () => ({ enabled: false, supported: false, state: 'off', volume: 0.5 }),
+      canInteractWithBoard: () => false, animationsReduced: () => false, isGameRunning: false };
+    const ui = sandbox.InfinitePlayerExperience.mount(game, document.getElementById('host'));
+    const dialog: any = ui.shell.querySelector('dialog');
+    dialog.showModal = () => { dialog.open = true; }; dialog.close = () => { dialog.open = false; };
+    const actions: string[] = [];
+    ui.openOverlay('Kingdom');
+    ui.renderKingdomScene(view({}, 500), { roomId: 'throne', selectRoom: (id: string) => actions.push(id) });
+    dialog.querySelector('[data-room-id="garden"]').dispatchEvent(new window.Event('click'));
+    expect(actions).toEqual(['garden']);
+    ui.renderKingdomScene(view({}, 500), { roomId: 'garden', renovate: (id: string) => actions.push(`repair:${id}`) });
+    expect(dialog.querySelector('h2').textContent).toBe('The Garden of Seasons');
+    expect(dialog.querySelector('.kingdom-room-renovate button').textContent).toContain('150 coins');
+    expect(dialog.querySelector('.kingdom-room-story').textContent).toContain('grown wild');
+    expect(dialog.querySelector('.kingdom-room-art').getAttribute('aria-label')).toContain('Royal Garden');
+    dialog.querySelector('.kingdom-room-renovate button').dispatchEvent(new window.Event('click'));
+    expect(actions.at(-1)).toBe('repair:garden');
   });
 
   test('the server keeps three distinct level-one looks with real prices', () => {
