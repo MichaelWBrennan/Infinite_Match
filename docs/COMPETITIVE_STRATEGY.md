@@ -1,6 +1,6 @@
 # Infinite Match: competitive feature audit and product strategy
 
-**Snapshot: 2026-10-10.** This is a decision document, not a claim that Infinite Match is already the category leader. Scope is *swap-based match-3 and adjacent puzzle competitors*, across gameplay, progression, social, live ops, monetization, access and operations. Store listings and developer pages describe advertised features, not independent proof of retention, fairness or current availability in every region. Features/events change frequently; recheck before committing to a launch promise. No competitor assets, character names or proprietary level layouts should be reused.
+**Snapshot: 2026-10-10.** A dated refresh of competitor claims and a platform check is in [COMPETITIVE_REFRESH_2026-10-11.md](COMPETITIVE_REFRESH_2026-10-11.md). This is a decision document, not a claim that Infinite Match is already the category leader. Scope is *swap-based match-3 and adjacent puzzle competitors*, across gameplay, progression, social, live ops, monetization, access and operations. Store listings and developer pages describe advertised features, not independent proof of retention, fairness or current availability in every region. Features/events change frequently; recheck before committing to a launch promise. No competitor assets, character names or proprietary level layouts should be reused.
 
 ## Executive decision
 
