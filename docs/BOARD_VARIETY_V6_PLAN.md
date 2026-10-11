@@ -1,6 +1,6 @@
 # Board variety, rules v6: plan and acceptance gates
 
-**Status (2026-10-11): M1 and M2 done, not shipped.** M1 is the pure rules module. M2 adds generator v6 behind the version gate, the `clear-blockers` objective, and `fixtures/golden/rules-v6.json`. `rules-v5.json` and the v2–v4 tests are unchanged. `GENERATOR_VERSION` stays 5, and `clientRulesVersion` still rejects 6, so no player receives a v6 level. M3 to M5 are not started.
+**Status (2026-10-11): M1 to M3 done, not shipped.** M1 is the pure rules module. M2 adds generator v6 behind the version gate, the `clear-blockers` objective, and `fixtures/golden/rules-v6.json`. `rules-v5.json` and the v2–v4 tests are unchanged. M3 makes replay carry blockers between moves, requires `blockersCleared` for v6, rejects a pinned v6 definition with an invalid blocker grid or objective, and lets v6 attempts reach observation telemetry. `GENERATOR_VERSION` stays 5, and `clientRulesVersion` still rejects 6, so no player receives a v6 level. M4 and M5 are not started.
 
 ## Why this is a plan first
 
@@ -64,7 +64,8 @@ The v5 shield uses a `clear-shields` objective. v6 adds `clear-blockers` as a se
 - **Match model: overlay, not locked.** The owner first chose "locked, shield-like". A locked gem needs gravity and refill to treat the cell as fixed, which changes the shared match path. The owner then chose the overlay: the gem stays normal, and a match that clears the blocker's cell removes the blocker. This is weaker than a lock, and the lock is a possible later bundle.
 - **Booster clears** remove a blocker they hit but do not spread. The plan only names player moves for spread.
 - **Stages:** blockers are placed on witness-cleared cells, up to 3, and never share a level with shields, so each v6 definition adds exactly one objective. Stage: level >= 3 with level % 4 === 2, or the daily hash stage.
-- **Replay and client:** M2 threads blockers through the v6 objective path, so hints and replay simulation use them. M3 still owns replay tamper tests. M4 owns rendering, feedback, and assistive names.
+- **Replay and client:** M2 threads blockers through the v6 objective path. M3 adds replay carry-over, tamper rejection, and a regression test that fails if carry-over is removed. M4 owns rendering, feedback, and assistive names.
+- **Replay cut point:** the server rejects any move after the objectives complete, so a witness is cut at its first winning move, as the browser does.
 
 ## Known blockers for this plan
 
