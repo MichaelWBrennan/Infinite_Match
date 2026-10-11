@@ -57,6 +57,16 @@ export const PlayerEconomyDb = {
     const doc = await Model.findOne({ playerId }).lean();
     return doc ? doc.economy : null;
   },
+  // Claim the paid attempt and store its payout/receipt in one Mongo document write.
+  // A second server holding a stale snapshot cannot settle the same attempt twice.
+  async saveEndlessIfPending(playerId, attemptId, economy) {
+    const Model = await ensureModel();
+    const result = await Model.updateOne(
+      { playerId, 'economy.pendingAttempt.id': attemptId },
+      { $set: { economy } },
+    );
+    return result.matchedCount === 1;
+  },
   async save(playerId, economy) {
     const Model = await ensureModel();
     await Model.updateOne({ playerId }, { $set: { economy } }, { upsert: true });

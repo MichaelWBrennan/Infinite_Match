@@ -406,6 +406,29 @@ describe('real Phaser core uses the certified definition', () => {
     }
   });
 
+  test('an uncertain Endless response is recovered with the exact same claim, but an explicit denial is not retried', async () => {
+    const { game } = makeBrowserGame();
+    game.attemptId = 'paid-claim'; game.getAuthToken = () => 'signed-in';
+    game.applyGeneratedDefinition(definition(1, 'endless'));
+    const bodies: any[] = [];
+    game.fetchJson = async (_url: string, options: any) => {
+      bodies.push(JSON.parse(options.body));
+      if (bodies.length === 1) throw new Error('response lost');
+      return { ok: true, data: { success: true, result: { duplicate: true, reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } };
+    };
+    const paid = await game.submitEndlessRun(100000);
+    expect(paid.duplicate).toBe(true);
+    expect(bodies).toEqual([{ score: 100000, attemptId: 'paid-claim' }, { score: 100000, attemptId: 'paid-claim' }]);
+    expect(game.attemptId).toBeNull();
+
+    game.attemptId = 'denied-claim';
+    let denials = 0;
+    game.fetchJson = async () => { denials++; return { ok: false, status: 400, data: { error: 'attempt_expired' } }; };
+    expect(await game.submitEndlessRun(100000)).toBeNull();
+    expect(denials).toBe(1);
+    expect(game.endlessBankError).toBe('attempt_expired');
+  });
+
   test('banking an endless run submits the cumulative score, not just its last stage', async () => {
     const { game } = makeBrowserGame();
     game.applyGeneratedDefinition(definition(1, 'endless'));

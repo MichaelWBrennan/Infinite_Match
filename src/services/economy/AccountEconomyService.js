@@ -17,6 +17,7 @@ import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
+import { endlessRewards } from '../meta/rewards.js';
 import { loadLiveOps } from '../live-ops/live-ops.js';
 import { recordWeeklyWin } from '../live-ops/weekly-event.js';
 import { observationMeta, observeAttempt } from '../levels/attempt-observations.js';
@@ -850,6 +851,75 @@ class AccountEconomyService {
     });
   }
 
+  /** Settle an Endless attempt, its capped payout and a bounded retry receipt in one write.
+   * The receipt is checked BEFORE pendingAttempt, so a later paid run is not affected by a retry.
+   * Local locks serialize requests in this process; Mongo's pending-id predicate prevents two
+   * workers from claiming the same pending attempt. Other legacy whole-document writes are not
+   * protected against concurrent workers; a fully cross-process serializable economy requires
+   * versioned writes across ALL economy mutations.
+   */
+  async settleEndlessAttempt(playerId, attemptId, score, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const original = await this.getPlayerEconomy(playerId);
+      const existing = original.endlessReceipts?.find((receipt) => receipt.attemptId === attemptId);
+      if (existing) {
+        if (existing.score !== score) throw new EconomyRuleError('attempt_score_mismatch');
+        return { ...existing.result, duplicate: true };
+      }
+      const pending = original.pendingAttempt;
+      if (!pending || pending.id !== attemptId) throw new EconomyRuleError('attempt_not_found');
+      if (pending.level !== 1) throw new EconomyRuleError('attempt_level_mismatch');
+      if (nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS) throw new EconomyRuleError('attempt_expired');
+      if (pending.generatedLevel && pending.generatedLevel.mode !== 'endless') {
+        throw new EconomyRuleError('attempt_mode_mismatch');
+      }
+
+      // Do not mutate the cached economy: a failed save must leave the attempt claimable.
+      const economy = structuredClone(original);
+      const reward = endlessRewards(score);
+      const progression = economy.progression;
+      if (reward.xp > 0) {
+        progression.xp += reward.xp;
+        progression.totalXp += reward.xp;
+        while (progression.xp >= progression.xpToNext) {
+          progression.xp -= progression.xpToNext;
+          progression.level += 1;
+          progression.xpToNext = Math.floor(progression.xpToNext * 1.5);
+          progression.lastLevelUp = new Date(nowMs).toISOString();
+          for (const levelReward of this.getLevelUpRewards(progression.level)) {
+            this.applyReward(economy, levelReward);
+          }
+        }
+      }
+      if (reward.coins > 0) this.applyReward(economy, {
+        type: 'currency', currencyId: 'coins', amount: reward.coins,
+      });
+      economy.statistics.endlessRuns = (economy.statistics.endlessRuns || 0) + 1;
+      economy.statistics.endlessBest = Math.max(economy.statistics.endlessBest || 0, score);
+      economy.pendingAttempt = null;
+      economy.lastUpdated = new Date(nowMs).toISOString();
+      const result = { reward, endlessBest: economy.statistics.endlessBest,
+        balances: { coins: economy.currencies.coins.amount } };
+      // Retain the last 32 claims, including zero-score banks. Eviction means a very late
+      // duplicate is rejected, never paid again. The pending attempt has already been consumed.
+      economy.endlessReceipts = [...(economy.endlessReceipts || []).slice(-31),
+        { attemptId, score, result, settledAt: economy.lastUpdated }];
+      const saved = await this.updatePlayerEconomyCache(playerId, economy, attemptId);
+      if (!saved) {
+        // A competing worker won the conditional write. Reload the durable receipt.
+        await this.discardUnsaved(playerId);
+        const fresh = await this.getPlayerEconomy(playerId);
+        const receipt = fresh.endlessReceipts?.find((item) => item.attemptId === attemptId);
+        if (receipt) {
+          if (receipt.score !== score) throw new EconomyRuleError('attempt_score_mismatch');
+          return { ...receipt.result, duplicate: true };
+        }
+        throw new EconomyRuleError('attempt_not_found');
+      }
+      return result;
+    });
+  }
+
   /**
    * Consumes a spent attempt so its level can be rewarded once. Runs under the player lock and is
    * saved before any reward is granted, so a repeated or forged completion finds no attempt.
@@ -937,6 +1007,7 @@ class AccountEconomyService {
     const playerEconomy = await this.getPlayerEconomy(playerId);
     const view = structuredClone(playerEconomy);
     delete view.pendingAttempt;
+    delete view.endlessReceipts;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
     return view;
@@ -1054,12 +1125,17 @@ class AccountEconomyService {
   /**
    * Update player economy cache
    */
-  async updatePlayerEconomyCache(playerId, playerEconomy) {
+  async updatePlayerEconomyCache(playerId, playerEconomy, expectedEndlessAttemptId = null) {
     const cacheKey = `player_economy:${playerId}`;
 
     if (isDurableEconomy()) {
       try {
-        await PlayerEconomyDb.save(playerId, playerEconomy);
+        if (expectedEndlessAttemptId !== null) {
+          const saved = await PlayerEconomyDb.saveEndlessIfPending(playerId, expectedEndlessAttemptId, playerEconomy);
+          if (!saved) return false;
+        } else {
+          await PlayerEconomyDb.save(playerId, playerEconomy);
+        }
       } catch (error) {
         // The unsaved change is still on the cached object, so drop the AI-cache copy as well.
         await this.discardUnsaved(playerId);
@@ -1077,6 +1153,7 @@ class AccountEconomyService {
     this.setCachedData(cacheKey, playerEconomy, 300000);
     
     this.cacheStats.sets++;
+    return true;
   }
 
   /**

@@ -49,7 +49,19 @@ promise of infinite saved state or unlimited rewards.
 completion/banking success, drop-off, return, support/refund reports and net
 contribution per consenting cohort before changing monetization. Endless
 banking still accepts a bounded client-reported score and is unranked; server
-replay/idempotent payout recovery are required before consequential rewards.
+replay is required before consequential rewards. Endless settlement now uses a
+single economy-document write under the in-process player lock for the attempt,
+XP (including level-up coin/star/inventory rewards), coins, stats and a bounded
+receipt. A lost response is retried once with the **same** attempt ID and score;
+a duplicate returns the original payout, while a changed score is rejected and
+no additional energy is spent until a bank is confirmed. The last 32 receipts
+are kept; older retries are rejected, never repaid. A second uncertain response
+still stops auto-continuation. In Mongo mode, the Endless write conditionally
+claims the pending ID, but other economy operations still use unconditional
+whole-document updates and per-process caches: this is **not** a general
+cross-process serializable economy or a guarantee against unrelated concurrent
+writes overwriting a receipt. Durable-mode concurrency/integration testing and
+versioned writes across all mutation paths remain prerequisites for that claim.
 Do not convert the opt-in into a surprise energy spend or a pressure loop.
 
 ## Delivered kingdom scene increment — Royal Library (web)

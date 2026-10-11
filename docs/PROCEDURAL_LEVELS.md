@@ -18,8 +18,9 @@ Levels are made and checked on demand.
   preference (off by default) banks at a completed stage when the run reaches
   100,000 points (the current 500-XP cap) or about 2h45m, then starts a fresh
   one-energy run in the same app **only after a confirmed bank**. It never buys
-  energy, auto-refills or retries an uncertain payout. If banking is refused,
-  the player gets a clear result instead of another charge. Guest stages still
+  energy or auto-refills. An uncertain payout is retried once with the same
+  attempt ID and score; a duplicate receipt returns the original reward. If
+  banking is refused, the player gets a clear result instead of another charge. Guest stages still
   advance without account spending or a clock. This is a bounded paid-run
   checkpoint, not a guarantee of literal infinity, uninterrupted offline
   account rewards, or a verified Endless score.

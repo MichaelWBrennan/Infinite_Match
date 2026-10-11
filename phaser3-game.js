@@ -2039,22 +2039,27 @@ class PhaserMatch3Game {
         this.attemptId = null;
         this.endlessBankError = null;
         if (!attemptId || !this.getAuthToken()) return null;
-        try {
-            const { ok, data } = await this.fetchJson('/api/account-economy/endless/complete', {
-                method: 'POST',
-                body: JSON.stringify({ score: Math.min(1000000, score), attemptId }),
-                signal: AbortSignal.timeout(15000),
-            });
-            if (ok && data.success) {
-                if (!this.endlessCheckpointBank && typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
-                this.updateUI();
-                return data.result;
+        // A response can be lost after the server commits. Retry exactly the same claim once;
+        // the receipt makes that read-only. Never retry an explicit rule/auth rejection.
+        const body = JSON.stringify({ score: Math.min(1000000, score), attemptId });
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const { ok, status, data } = await this.fetchJson('/api/account-economy/endless/complete', {
+                    method: 'POST', body, signal: AbortSignal.timeout(15000),
+                });
+                if (ok && data.success) {
+                    if (!this.endlessCheckpointBank && typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
+                    this.updateUI();
+                    return data.result;
+                }
+                if (attempt === 0 && status >= 500) continue;
+                this.endlessBankError = status >= 500 ? 'unknown' : (data?.error || 'unknown');
+                console.warn('Endless run not paid:', this.endlessBankError);
+                break;
+            } catch (error) {
+                this.endlessBankError = 'unknown';
+                console.warn('Could not reach the server for the endless run.', error);
             }
-            this.endlessBankError = data?.error || 'unknown';
-            console.warn('Endless run not paid:', this.endlessBankError);
-        } catch (error) {
-            this.endlessBankError = 'unknown';
-            console.warn('Could not reach the server for the endless run.', error);
         }
         return null;
     }
