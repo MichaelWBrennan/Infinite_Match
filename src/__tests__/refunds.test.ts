@@ -3,7 +3,7 @@ import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { grantPurchase } from '../services/payments/purchase-grants.js';
 import { reverseTransaction, appleTransactionIds, googleTransactionIds } from '../services/payments/refunds.js';
 import ReceiptVerificationService from '../services/payments/ReceiptVerificationService.js';
-import { accountEconomy } from '../services/economy/AccountEconomyService.js';
+import AccountEconomyService, { accountEconomy } from '../services/economy/AccountEconomyService.js';
 import StripeService from '../services/payments/StripeService.js';
 import { PlayerEconomyDb } from '../services/economy/PlayerEconomyDb.js';
 
@@ -39,7 +39,10 @@ function fakeLedger() {
     if (r && r.fulfilled !== true && !r.reversedAt) delete r.claimedAt;
   };
   db.markFulfilled = async (id: string) => {
-    row(id).fulfilled = true;
+    const r = row(id);
+    if (!r || r.reversedAt) return false;
+    r.fulfilled = true;
+    return true;
   };
   db.reverseUnfulfilled = async (id: string, reason: string) => {
     const r = row(id);
@@ -58,7 +61,10 @@ function fakeLedger() {
     if (r && !r.reversedAt) delete r.reversalClaimedAt;
   };
   db.markReversed = async (id: string, { shortfall = 0, reason = 'unspecified' } = {}) => {
-    Object.assign(row(id), { reversedAt: new Date(), reversedShortfall: shortfall, reversalReason: reason });
+    const r = row(id);
+    if (!r || r.reversedAt) return false;
+    Object.assign(r, { reversedAt: new Date(), reversedShortfall: shortfall, reversalReason: reason });
+    return true;
   };
   db.recordRefund = async (doc: any) => {
     refunds.push(doc);
@@ -271,5 +277,292 @@ describe('provider wiring', () => {
     expect(ids).toContain(expected);
     expect(ids.length).toBeGreaterThanOrEqual(5);
     expect(googleTransactionIds('')).toEqual([]);
+  });
+});
+
+// The real services and conditional ledger rules run against a copying, revision-guarded
+// economy stand-in. This catches commit-then-throw and cross-store interleavings without
+// claiming to exercise Mongo's networking or provider callbacks.
+describe('durable payment receipts and cross-store failure paths', () => {
+  let ledger: ReturnType<typeof fakeLedger>;
+  const original = {
+    load: PlayerEconomyDb.load,
+    save: PlayerEconomyDb.save,
+    insert: PlayerEconomyDb.insertIfAbsent,
+  };
+  const previousStore = process.env.ECONOMY_STORE;
+  let docs: Map<string, any>;
+  const id = () => uniq('receipt');
+  const args = (playerId: string, transactionId: string) => ({
+    playerId, transactionId, productId: 'coins_small', platform: 'stripe', durable: true,
+  });
+  const refund = (transactionId: string) => reverseTransaction({
+    transactionIds: [transactionId], reason: 'store_void', durable: true,
+  });
+  const balance = (playerId: string) => docs.get(playerId).currencies.coins.amount;
+
+  beforeEach(() => {
+    process.env.ECONOMY_STORE = 'mongo';
+    ledger = fakeLedger();
+    docs = new Map();
+    PlayerEconomyDb.load = async (playerId: string) => {
+      const doc = docs.get(playerId);
+      return doc ? structuredClone(doc) : null;
+    };
+    PlayerEconomyDb.insertIfAbsent = async (playerId: string, economy: any) => {
+      if (docs.has(playerId)) return false;
+      docs.set(playerId, structuredClone({ ...economy, writeRevision: 0 }));
+      return true;
+    };
+    PlayerEconomyDb.save = async (playerId: string, economy: any) => {
+      const current = docs.get(playerId);
+      if (!current || current.writeRevision !== economy.writeRevision) return false;
+      docs.set(playerId, structuredClone({ ...economy, writeRevision: current.writeRevision + 1 }));
+      return true;
+    };
+  });
+  afterEach(() => {
+    ledger.restore();
+    PlayerEconomyDb.load = original.load;
+    PlayerEconomyDb.save = original.save;
+    PlayerEconomyDb.insertIfAbsent = original.insert;
+    if (previousStore === undefined) delete process.env.ECONOMY_STORE;
+    else process.env.ECONOMY_STORE = previousStore;
+  });
+
+  test('credit and debit each save the balance and receipt once, and hide payment keys from the public view', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    expect(await grantPurchase(args(playerId, transactionId))).toMatchObject({ granted: true, duplicate: false });
+    expect(balance(playerId)).toBe(1500);
+    expect(await accountEconomy.creditPurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 }))
+      .toMatchObject({ duplicate: true });
+    expect(balance(playerId)).toBe(1500);
+    expect(await refund(transactionId)).toMatchObject({ taken: 500, shortfall: 0 });
+    expect(balance(playerId)).toBe(1000);
+    expect(await accountEconomy.reversePurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 }))
+      .toMatchObject({ duplicate: true, taken: 500 });
+    expect(balance(playerId)).toBe(1000);
+    expect(Object.keys(docs.get(playerId).purchaseCredits)).toHaveLength(1);
+    expect(Object.keys(docs.get(playerId).purchaseCredits)[0]).toMatch(/^[0-9a-f]{64}$/);
+    expect(Object.keys(docs.get(playerId).purchaseDebits)).toHaveLength(1);
+    const view = await accountEconomy.getPlayerEconomyView(playerId);
+    expect(view.purchaseCredits).toBeUndefined();
+    expect(view.purchaseDebits).toBeUndefined();
+  });
+
+  test('a credit write that committed but lost its acknowledgement keeps the claim; refund reconciles and debits', async () => {
+    const playerId = id();
+    const transactionId = id();
+    const save = PlayerEconomyDb.save;
+    let throwAfterCommit = true;
+    PlayerEconomyDb.save = async (p: string, economy: any) => {
+      const saved = await save(p, economy);
+      if (throwAfterCommit) { throwAfterCommit = false; throw new Error('credit acknowledgement lost'); }
+      return saved;
+    };
+    await expect(grantPurchase(args(playerId, transactionId))).rejects.toThrow('credit acknowledgement lost');
+    expect(balance(playerId)).toBe(1500);
+    expect(ledger.rows.get(transactionId).claimedAt).toBeDefined();
+    expect(ledger.rows.get(transactionId).fulfilled).toBe(false);
+    // The retry can complete a held claim from the durable receipt without paying again.
+    expect(await grantPurchase(args(playerId, transactionId))).toMatchObject({ granted: true, duplicate: true });
+    expect(balance(playerId)).toBe(1500);
+    expect(await refund(transactionId)).toMatchObject({ taken: 500, shortfall: 0 });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('a pending credit cannot be classified as uncredited by a racing refund', async () => {
+    const playerId = id();
+    const transactionId = id();
+    const save = PlayerEconomyDb.save;
+    let entered!: () => void;
+    let resume!: () => void;
+    const atSave = new Promise<void>((resolve) => { entered = resolve; });
+    const gate = new Promise<void>((resolve) => { resume = resolve; });
+    PlayerEconomyDb.save = async (p: string, economy: any) => {
+      entered();
+      await gate;
+      const saved = await save(p, economy);
+      throw new Error(`ambiguous credit: ${saved}`);
+    };
+    try {
+      const granting = grantPurchase(args(playerId, transactionId));
+      await atSave;
+      await expect(refund(transactionId)).rejects.toMatchObject({ reason: 'fulfilment_in_progress' });
+      expect(ledger.rows.get(transactionId).reversedAt).toBeUndefined();
+      resume();
+      await expect(granting).rejects.toThrow('ambiguous credit');
+      expect(ledger.rows.get(transactionId).claimedAt).toBeDefined();
+    } finally { resume(); }
+    PlayerEconomyDb.save = save;
+    expect(await refund(transactionId)).toMatchObject({ taken: 500 });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('an uncredited purchase can be reversed, and its later delivery cannot credit', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    await PurchaseLedgerDb.recordPurchase({ ...args(playerId, transactionId), fulfilled: false });
+    expect(await refund(transactionId)).toMatchObject({ reversed: true, taken: 0 });
+    expect(await grantPurchase(args(playerId, transactionId))).toMatchObject({ granted: false, reason: 'reversed' });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('a legacy released claim with a committed credit receipt cannot be reversed as uncredited', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    await PurchaseLedgerDb.recordPurchase({ ...args(playerId, transactionId), fulfilled: false });
+    await accountEconomy.creditPurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 });
+    expect(await refund(transactionId)).toMatchObject({ taken: 500 });
+    expect(ledger.rows.get(transactionId)).toMatchObject({ fulfilled: true });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('reconciliation refuses to mark an already reversed row fulfilled even if a receipt exists', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    await PurchaseLedgerDb.recordPurchase({ ...args(playerId, transactionId), fulfilled: false });
+    await accountEconomy.creditPurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 });
+    const mark = PurchaseLedgerDb.markFulfilled;
+    PurchaseLedgerDb.markFulfilled = async (tx: string) => {
+      await PurchaseLedgerDb.reverseUnfulfilled(tx, 'racing_refund');
+      return mark(tx);
+    };
+    try {
+      await expect(refund(transactionId)).rejects.toMatchObject({ reason: 'fulfilment_reversed' });
+      expect(ledger.rows.get(transactionId)).toMatchObject({ fulfilled: false, reversalReason: 'racing_refund' });
+    } finally { PurchaseLedgerDb.markFulfilled = mark; }
+  });
+
+  test('ambiguous debit retries from its receipt without debiting twice', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await grantPurchase(args(playerId, transactionId));
+    const save = PlayerEconomyDb.save;
+    let throwAfterCommit = true;
+    PlayerEconomyDb.save = async (p: string, economy: any) => {
+      const saved = await save(p, economy);
+      if (throwAfterCommit) { throwAfterCommit = false; throw new Error('debit acknowledgement lost'); }
+      return saved;
+    };
+    await expect(refund(transactionId)).rejects.toThrow('debit acknowledgement lost');
+    expect(balance(playerId)).toBe(1000);
+    expect(ledger.rows.get(transactionId).reversalClaimedAt).toBeUndefined();
+    expect(await refund(transactionId)).toMatchObject({ taken: 500, shortfall: 0 });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('a failed ledger mark after debit reconciles from its receipt on redelivery', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await grantPurchase(args(playerId, transactionId));
+    const mark = PurchaseLedgerDb.markReversed;
+    PurchaseLedgerDb.markReversed = async () => { throw new Error('ledger down'); };
+    try {
+      await expect(refund(transactionId)).rejects.toThrow('ledger down');
+      expect(ledger.rows.get(transactionId).reversalClaimedAt).toBeDefined();
+      expect(balance(playerId)).toBe(1000);
+      await expect(refund(transactionId)).rejects.toThrow('ledger down');
+      expect(balance(playerId)).toBe(1000);
+    } finally { PurchaseLedgerDb.markReversed = mark; }
+    expect(await refund(transactionId)).toMatchObject({ reversed: true, taken: 500 });
+    expect(balance(playerId)).toBe(1000);
+    expect(await refund(transactionId)).toMatchObject({ reversed: false, reason: 'already_reversed' });
+  });
+
+  test('a held historical reversal without a debit receipt stays held for manual review', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await grantPurchase(args(playerId, transactionId));
+    ledger.rows.get(transactionId).reversalClaimedAt = new Date();
+    await expect(refund(transactionId)).rejects.toMatchObject({ reason: 'reversal_in_progress' });
+    expect(balance(playerId)).toBe(1500);
+    expect(ledger.rows.get(transactionId).reversedAt).toBeUndefined();
+  });
+
+  test('stale economy writers reload receipts after a revision conflict, rather than double credit/debit', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    const staleWorker = new AccountEconomyService();
+    const stale = structuredClone(await staleWorker.getPlayerEconomy(playerId));
+    await accountEconomy.creditPurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 });
+    staleWorker.accountEconomyData.set(playerId, stale);
+    expect(await staleWorker.creditPurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 }))
+      .toMatchObject({ duplicate: true });
+    expect(balance(playerId)).toBe(1500);
+
+    staleWorker.accountEconomyData.set(playerId, structuredClone(docs.get(playerId)));
+    await accountEconomy.reversePurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 });
+    expect(await staleWorker.reversePurchaseOnce(playerId, transactionId, { currency: 'coins', amount: 500 }))
+      .toMatchObject({ duplicate: true, taken: 500 });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('credit failure without proof of commit keeps the claim held for review', async () => {
+    const playerId = id();
+    const transactionId = id();
+    PlayerEconomyDb.save = async () => { throw new Error('economy unavailable'); };
+    await expect(grantPurchase(args(playerId, transactionId))).rejects.toThrow('economy unavailable');
+    expect(ledger.rows.get(transactionId).claimedAt).toBeDefined();
+    await expect(refund(transactionId)).rejects.toMatchObject({ reason: 'fulfilment_in_progress' });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('a failed authoritative receipt read cannot reverse a purchase as uncredited', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    await PurchaseLedgerDb.recordPurchase({ ...args(playerId, transactionId), fulfilled: false });
+    PlayerEconomyDb.load = async () => { throw new Error('receipt store unavailable'); };
+    await expect(refund(transactionId)).rejects.toThrow('receipt store unavailable');
+    expect(ledger.rows.get(transactionId).reversedAt).toBeUndefined();
+  });
+
+  test('ledger mark failure after credit can be completed by a refund without re-crediting', async () => {
+    const playerId = id();
+    const transactionId = id();
+    const mark = PurchaseLedgerDb.markFulfilled;
+    PurchaseLedgerDb.markFulfilled = async () => { throw new Error('ledger unavailable'); };
+    try {
+      await expect(grantPurchase(args(playerId, transactionId))).rejects.toThrow('ledger unavailable');
+      expect(balance(playerId)).toBe(1500);
+      expect(ledger.rows.get(transactionId).claimedAt).toBeDefined();
+    } finally { PurchaseLedgerDb.markFulfilled = mark; }
+    expect(await refund(transactionId)).toMatchObject({ taken: 500 });
+    expect(balance(playerId)).toBe(1000);
+  });
+
+  test('a capped wallet is refunded only for the coins actually credited', async () => {
+    const playerId = id();
+    const transactionId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    // Set via a revision-guarded save, not by mutating the stored object.
+    const economy = structuredClone(docs.get(playerId));
+    economy.currencies.coins.amount = 999_900;
+    await accountEconomy.updatePlayerEconomyCache(playerId, economy);
+    expect(await grantPurchase(args(playerId, transactionId))).toMatchObject({ granted: true });
+    expect(balance(playerId)).toBe(999_999);
+    expect((await accountEconomy.getPurchaseCreditReceipt(playerId, transactionId)).credited).toBe(99);
+    expect(await refund(transactionId)).toMatchObject({ taken: 99, shortfall: 0 });
+    expect(balance(playerId)).toBe(999_900);
+  });
+
+  test('receipt mismatch and exhausted receipt capacity fail closed', async () => {
+    const playerId = id();
+    await accountEconomy.initializePlayerEconomy(playerId);
+    await accountEconomy.creditPurchaseOnce(playerId, 'mismatch', { currency: 'coins', amount: 500 });
+    await expect(accountEconomy.creditPurchaseOnce(playerId, 'mismatch', { currency: 'coins', amount: 3000 }))
+      .rejects.toMatchObject({ code: 'purchase_receipt_mismatch' });
+    const economy = structuredClone(docs.get(playerId));
+    economy.purchaseCredits = Object.fromEntries(Array.from({ length: 4096 }, (_, n) => [String(n), { currency: 'coins', amount: 500 }]));
+    await accountEconomy.updatePlayerEconomyCache(playerId, economy);
+    await expect(accountEconomy.creditPurchaseOnce(playerId, id(), { currency: 'coins', amount: 500 }))
+      .rejects.toMatchObject({ code: 'purchase_receipt_limit' });
   });
 });

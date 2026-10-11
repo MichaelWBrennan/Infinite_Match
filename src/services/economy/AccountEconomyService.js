@@ -35,6 +35,11 @@ export class EconomyRuleError extends Error {
 
 const logger = new Logger('AccountEconomyService');
 const XP_GROWTH_RATE = 1.2;
+const MAX_PAYMENT_RECEIPTS = 4096; // Never evict a payment receipt and permit a second grant/debit.
+const paymentKey = (transactionId) => {
+  if (typeof transactionId !== 'string' || !transactionId) throw new EconomyRuleError('invalid_transaction_id');
+  return crypto.createHash('sha256').update(transactionId).digest('hex');
+};
 
 class AccountEconomyService {
   constructor() {
@@ -681,6 +686,109 @@ class AccountEconomyService {
     });
   }
 
+  /** A purchase ledger claim can be released after an ambiguous save. A permanent economy
+   * receipt prevents the same verified provider transaction from crediting coins twice.
+   */
+  async creditPurchaseOnce(playerId, transactionId, grants) {
+    const key = paymentKey(transactionId);
+    if (grants?.currency !== 'coins' || !Number.isSafeInteger(grants.amount) || grants.amount <= 0) {
+      throw new EconomyRuleError('invalid_purchase_grant');
+    }
+    return this.withPlayerLock(playerId, async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const original = await this.getPlayerEconomy(playerId);
+        const receipt = original.purchaseCredits?.[key];
+        if (receipt) {
+          if (receipt.currency !== grants.currency || receipt.amount !== grants.amount) {
+            throw new EconomyRuleError('purchase_receipt_mismatch');
+          }
+          return { duplicate: true, balance: original.currencies.coins.amount };
+        }
+        if (Object.keys(original.purchaseCredits || {}).length >= MAX_PAYMENT_RECEIPTS) {
+          throw new EconomyRuleError('purchase_receipt_limit');
+        }
+        const economy = structuredClone(original);
+        const wallet = economy.currencies.coins;
+        const credited = Math.max(0, Math.min(grants.amount, wallet.maxAmount - wallet.amount));
+        wallet.amount += credited;
+        wallet.earned += credited;
+        economy.purchaseCredits = { ...(economy.purchaseCredits || {}),
+          [key]: { currency: grants.currency, amount: grants.amount, credited } };
+        economy.lastUpdated = new Date().toISOString();
+        try {
+          await this.updatePlayerEconomyCache(playerId, economy);
+          return { duplicate: false, balance: economy.currencies.coins.amount };
+        } catch (error) {
+          if (error.code !== 'economy_conflict' || attempt === 2) throw error;
+          // Another writer won. Reload and re-evaluate the receipt, never reapply blindly.
+        }
+      }
+      throw new EconomyRuleError('economy_conflict');
+    });
+  }
+
+  /** Bypass per-process caches when reconciling a held provider claim. No state is changed. */
+  async getPurchaseCreditReceipt(playerId, transactionId) {
+    const key = paymentKey(transactionId);
+    const economy = isDurableEconomy() ? await PlayerEconomyDb.load(playerId) : await this.getPlayerEconomy(playerId);
+    return economy?.purchaseCredits?.[key] || null;
+  }
+
+  /** A refund debits only once even if the ledger update or Mongo acknowledgement is lost. */
+  async reversePurchaseOnce(playerId, transactionId, grants) {
+    const key = paymentKey(transactionId);
+    if (grants?.currency !== 'coins' || !Number.isSafeInteger(grants.amount) || grants.amount <= 0) {
+      throw new EconomyRuleError('invalid_purchase_grant');
+    }
+    return this.withPlayerLock(playerId, async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const original = await this.getPlayerEconomy(playerId);
+        const prior = original.purchaseDebits?.[key];
+        if (prior) {
+          if (prior.currency !== grants.currency || prior.amount !== grants.amount) {
+            throw new EconomyRuleError('purchase_receipt_mismatch');
+          }
+          return { taken: prior.taken, shortfall: prior.shortfall, duplicate: true };
+        }
+        if (Object.keys(original.purchaseDebits || {}).length >= MAX_PAYMENT_RECEIPTS) {
+          throw new EconomyRuleError('purchase_receipt_limit');
+        }
+        const economy = structuredClone(original);
+        const credit = original.purchaseCredits?.[key];
+        if (credit && (credit.currency !== grants.currency || credit.amount !== grants.amount)) {
+          throw new EconomyRuleError('purchase_receipt_mismatch');
+        }
+        // Only reclaim coins actually awarded; the wallet may have been at its cap.
+        // Pre-receipt historical grants conservatively retain the legacy catalog amount.
+        const reclaimable = credit?.credited ?? grants.amount;
+        if (!Number.isSafeInteger(reclaimable) || reclaimable < 0 || reclaimable > grants.amount) {
+          throw new EconomyRuleError('purchase_receipt_mismatch');
+        }
+        const wallet = economy.currencies[grants.currency];
+        if (!wallet) throw new EconomyRuleError('unknown_currency');
+        const taken = Math.min(reclaimable, wallet.amount);
+        const shortfall = reclaimable - taken;
+        wallet.amount -= taken;
+        economy.purchaseDebits = { ...(economy.purchaseDebits || {}),
+          [key]: { currency: grants.currency, amount: grants.amount, taken, shortfall } };
+        economy.lastUpdated = new Date().toISOString();
+        try {
+          await this.updatePlayerEconomyCache(playerId, economy);
+          return { taken, shortfall, duplicate: false };
+        } catch (error) {
+          if (error.code !== 'economy_conflict' || attempt === 2) throw error;
+        }
+      }
+      throw new EconomyRuleError('economy_conflict');
+    });
+  }
+
+  async getPurchaseDebitReceipt(playerId, transactionId) {
+    const key = paymentKey(transactionId);
+    const economy = isDurableEconomy() ? await PlayerEconomyDb.load(playerId) : await this.getPlayerEconomy(playerId);
+    return economy?.purchaseDebits?.[key] || null;
+  }
+
   /** Takes coins from a loaded economy object. Does not save. */
   spendCoins(playerEconomy, amount) {
     const coins = playerEconomy.currencies.coins;
@@ -1100,6 +1208,8 @@ class AccountEconomyService {
     delete view.pendingAttempt;
     delete view.endlessReceipts;
     delete view.levelReceipts;
+    delete view.purchaseCredits;
+    delete view.purchaseDebits;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);

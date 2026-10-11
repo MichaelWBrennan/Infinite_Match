@@ -7,9 +7,9 @@
  *    player already spent cannot be taken back. The shortfall is stored on the refund record
  *    so it can be followed up. The balance never goes negative.
  *
- * The reversal is claimed once, so a repeated webhook cannot debit twice. A debit that succeeded
- * before the record was marked is logged for a manual check, and the webhook is failed so the
- * provider retries. Infrastructure failures throw GrantRetryableError.
+ * The reversal is claimed once and the economy records a permanent debit receipt. A debit
+ * that succeeded before the ledger was marked can be completed on redelivery from a
+ * matching receipt; an old unreceipted held claim still requires manual review.
  */
 
 import { Logger } from '../../core/logger/index.js';
@@ -22,8 +22,8 @@ import ReceiptVerificationService from './ReceiptVerificationService.js';
 
 const logger = new Logger('PurchaseRefunds');
 
-const defaultDebit = (playerId, grants) =>
-  accountEconomy.reverseCurrency(playerId, grants.currency, grants.amount, 'purchase_reversal');
+const defaultDebit = (playerId, grants, transactionId) =>
+  accountEconomy.reversePurchaseOnce(playerId, transactionId, grants);
 
 /**
  * Reverses the purchase stored under any of `transactionIds`. A provider can key one purchase by
@@ -53,39 +53,73 @@ export async function reverseTransaction({
   if (!product) return { reversed: false, reason: 'unknown_product' };
 
   if (product.kind === 'entitlement') {
-    await PurchaseLedgerDb.markReversed(transactionId, { shortfall: 0, reason });
+    const marked = await PurchaseLedgerDb.markReversed(transactionId, { shortfall: 0, reason });
+    if (marked === false) return { reversed: false, reason: 'already_reversed' };
     logger.info('Entitlement reversed', { transactionId, productId: row.productId, reason });
     return { reversed: true, kind: 'entitlement', shortfall: 0 };
   }
 
-  // Consumable. A purchase that was never credited has nothing to take back. It is reversed
-  // atomically with the grant's claim, so the grant cannot credit it afterwards.
-  if (row.fulfilled === false && !row.claimedAt) {
-    const reversedNow = await PurchaseLedgerDb.reverseUnfulfilled(transactionId, reason);
-    if (!reversedNow) throw new GrantRetryableError('fulfilment_in_progress');
-    logger.info('Uncredited purchase reversed', { transactionId, reason });
-    return { reversed: true, kind: 'consumable', shortfall: 0, taken: 0 };
-  }
-  if (row.fulfilled === false) throw new GrantRetryableError('fulfilment_in_progress');
-
   if (!durable) throw new GrantRetryableError('durable_economy_required');
-  const claimed = await PurchaseLedgerDb.claimReversal(transactionId);
-  if (!claimed) throw new GrantRetryableError('reversal_in_progress');
 
+  // A grant can have committed to the economy and then released its ledger claim
+  // after a lost acknowledgement. Never mark it "uncredited" without checking its
+  // permanent receipt. A held claim with no receipt is still in progress/unknown.
+  if (row.fulfilled === false) {
+    const receipt = debit === defaultDebit
+      ? await accountEconomy.getPurchaseCreditReceipt(row.playerId, transactionId) : null;
+    if (receipt) {
+      if (receipt.currency !== product.grants.currency || receipt.amount !== product.grants.amount) {
+        throw new GrantRetryableError('purchase_receipt_mismatch');
+      }
+      const marked = await PurchaseLedgerDb.markFulfilled(transactionId);
+      if (marked === false) throw new GrantRetryableError('fulfilment_reversed');
+    } else if (!row.claimedAt) {
+      const reversedNow = await PurchaseLedgerDb.reverseUnfulfilled(transactionId, reason);
+      if (!reversedNow) throw new GrantRetryableError('fulfilment_in_progress');
+      logger.info('Uncredited purchase reversed', { transactionId, reason });
+      return { reversed: true, kind: 'consumable', shortfall: 0, taken: 0 };
+    } else {
+      throw new GrantRetryableError('fulfilment_in_progress');
+    }
+  }
+
+  const claimed = await PurchaseLedgerDb.claimReversal(transactionId);
   let outcome;
-  try {
-    outcome = await debit(row.playerId, product.grants);
-  } catch (error) {
-    // Nothing was debited (the economy refused or could not save), so a retry may take the claim.
-    await PurchaseLedgerDb.releaseReversal(transactionId).catch((releaseError) =>
-      logger.error('Could not release reversal claim', { transactionId, error: releaseError.message }),
-    );
-    throw error;
+  if (!claimed) {
+    const latest = await PurchaseLedgerDb.findPurchaseByTransaction(transactionId);
+    if (latest?.reversedAt) return { reversed: false, reason: 'already_reversed' };
+    // A previous worker may have debited and crashed before marking the ledger. Do not
+    // release or steal a claim: only a matching durable debit receipt can finish it.
+    if (debit !== defaultDebit || !latest?.reversalClaimedAt) {
+      throw new GrantRetryableError('reversal_in_progress');
+    }
+    const receipt = await accountEconomy.getPurchaseDebitReceipt(row.playerId, transactionId);
+    if (!receipt) throw new GrantRetryableError('reversal_in_progress');
+    if (receipt.currency !== product.grants.currency || receipt.amount !== product.grants.amount ||
+        !Number.isSafeInteger(receipt.taken) || !Number.isSafeInteger(receipt.shortfall) ||
+        receipt.taken < 0 || receipt.shortfall < 0 ||
+        receipt.taken + receipt.shortfall > product.grants.amount) {
+      throw new GrantRetryableError('purchase_receipt_mismatch');
+    }
+    outcome = receipt;
+  } else {
+    try {
+      outcome = await debit(row.playerId, product.grants, transactionId);
+    } catch (error) {
+      // Even an ambiguous acknowledgement is safe to retry with the debit receipt.
+      await PurchaseLedgerDb.releaseReversal(transactionId).catch((releaseError) =>
+        logger.error('Could not release reversal claim', { transactionId, error: releaseError.message }),
+      );
+      throw error;
+    }
   }
   try {
-    await PurchaseLedgerDb.markReversed(transactionId, { shortfall: outcome.shortfall, reason });
+    const marked = await PurchaseLedgerDb.markReversed(transactionId, { shortfall: outcome.shortfall, reason });
+    if (marked === false) return { reversed: false, reason: 'already_reversed' };
   } catch (error) {
-    logger.error('Debited but not marked reversed; check by hand', { transactionId, error: error.message });
+    logger.error('Debited but not marked reversed; retry can reconcile its receipt', {
+      transactionId, error: error.message,
+    });
     throw error;
   }
   await PurchaseLedgerDb.recordRefund({

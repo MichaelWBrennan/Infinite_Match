@@ -97,7 +97,10 @@ export const PurchaseLedgerDb = {
   },
   async markFulfilled(transactionId) {
     await ensureConnection();
-    await PurchaseModel.updateOne({ transactionId }, { $set: { fulfilled: true } });
+    const result = await PurchaseModel.updateOne(
+      { transactionId, reversedAt: { $exists: false } }, { $set: { fulfilled: true } },
+    );
+    return result.matchedCount === 1;
   },
   /**
    * Reverses a consumable that was never credited. Atomic with the grant's claim: whichever of
@@ -127,10 +130,11 @@ export const PurchaseLedgerDb = {
   },
   async markReversed(transactionId, { shortfall = 0, reason = 'unspecified' } = {}) {
     await ensureConnection();
-    await PurchaseModel.updateOne(
-      { transactionId },
+    const result = await PurchaseModel.updateOne(
+      { transactionId, reversedAt: { $exists: false } },
       { $set: { reversedAt: new Date(), reversedShortfall: shortfall, reversalReason: reason } },
     );
+    return result.matchedCount === 1;
   },
   async findPurchaseByTransaction(transactionId) {
     await ensureConnection();

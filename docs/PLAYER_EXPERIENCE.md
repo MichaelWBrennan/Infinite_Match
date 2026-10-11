@@ -70,8 +70,18 @@ a re-entrant per-player lock with existing reward flows. The revision guard is
 not a distributed transaction: paid classic/daily and Endless wins now settle
 in one write with bounded retry receipts; the daily claim (including season XP),
 wheel prize, level-up XP/rewards and catalog purchase also each save together.
-Other flows such as provider-ledger grants and refunds still span stores, some
-route-level mutations remain outside a player lock, and reads may be briefly stale. The stand-in
+Provider-ledger coin grants and refunds now record permanent SHA-256-keyed credit/debit
+receipts alongside their balance changes in single revision-guarded economy saves.
+Uncertain credit writes retain the ledger claim; retries or refunds can confirm a
+committed credit from its durable receipt before proceeding. A refund retries an
+uncertain debit from its receipt, and takes back only the amount actually credited
+when a wallet hit its cap. Receipt capacity is fail-closed (4,096 each, no eviction).
+A held refund after debit-before-ledger-mark can complete on redelivery when a
+matching receipt exists. A held grant or refund **without** its receipt (especially
+historical unreceipted operations) still needs manual investigation; never blindly
+clear a claim. The payment ledger and economy still span stores without a
+distributed transaction. Some route-level mutations remain outside a player lock,
+and reads may be briefly stale. The stand-in
 store tests exercise stale workers and legacy revision migration; no live Mongo
 concurrency/integration test has been run. Keep single-writer deployment and
 low-stakes rewards until the remaining multi-store flows and production fault
