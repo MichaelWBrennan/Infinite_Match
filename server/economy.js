@@ -9,7 +9,8 @@ import {
   regenerateEnergy,
 } from '../src/services/meta/energy.js';
 import { ENERGY_PRICE_COINS, LOOTBOXES, pickLootReward } from '../src/services/meta/lootbox.js';
-import { starsForTarget, winRewards } from '../src/services/meta/rewards.js';
+import { endlessRewards, starsForTarget, winRewards } from '../src/services/meta/rewards.js';
+import { REPLAY_POWERUPS } from '../src/services/levels/inventory-replay.js';
 import { generatedLevel, clientRulesVersion } from '../src/services/levels/level-service.js';
 import { LEVEL_MODES } from '../src/services/levels/generator.js';
 import { replayLevelAttempt } from '../src/services/levels/attempt-replay.js';
@@ -158,7 +159,11 @@ export function spendEnergy(db, playerId, body, nowMs = Date.now()) {
     energy.spent += ATTEMPT_ENERGY_COST;
     pruneAttempts(economy, nowMs);
     const attemptId = randomUUID();
-    economy.attempts[attemptId] = { level, mode: mode ?? 'legacy', createdAt: nowMs, status: 'open', definition };
+    // Endless boards are not replayable, so only the level id is pinned for them.
+    economy.attempts[attemptId] = {
+      level, mode: mode ?? 'legacy', createdAt: nowMs, status: 'open',
+      definition: mode === 'endless' ? null : definition, receipts: [],
+    };
     saveEconomy(db, playerId, economy);
     return {
       energy: energy.amount,
@@ -202,6 +207,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     const attempt = economy.attempts[attemptId];
     if (!attempt) throw new ApiError(400, 'attempt_not_found');
 
+    if (attempt.mode === 'endless') throw new ApiError(400, 'use_endless_complete');
     // A retry after a lost response gets the original receipt, not a second payout.
     if (attempt.status === 'won') {
       return {
@@ -218,7 +224,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     if (!Array.isArray(moves) || moves.length < 1 || moves.length > MAX_MOVES) {
       throw new ApiError(400, 'replay_required');
     }
-    const replay = replayLevelAttempt(attempt.definition, moves, score, body?.objectiveProgress, []);
+    const replay = replayLevelAttempt(attempt.definition, moves, score, body?.objectiveProgress, attempt.receipts || []);
     if (replay.error) {
       // Record the rejection and return it. Throwing here would roll the write back.
       attempt.status = 'rejected';
@@ -313,6 +319,73 @@ export function openLootbox(db, playerId, type) {
       balances: { coins: coins.amount, stars: economy.currencies.stars.amount },
       inventory: { powerups: { ...economy.inventory.powerups } },
     };
+  });
+}
+
+// Spends one power-up from the inventory and issues a receipt bound to the open attempt.
+// The receipt is the only thing the level replay accepts for a power-up, so the player cannot
+// use an item they do not own. A repeated useId returns the original receipt without spending again.
+export function usePowerUp(db, playerId, body, nowMs = Date.now()) {
+  const powerupId = typeof body?.powerupId === 'string' ? body.powerupId : '';
+  if (!REPLAY_POWERUPS.includes(powerupId)) throw new ApiError(400, 'invalid_powerup');
+  if (body?.quantity !== undefined && body.quantity !== 1) throw new ApiError(400, 'invalid_quantity');
+  const attemptId = typeof body?.attemptId === 'string' ? body.attemptId : '';
+  if (!attemptId || attemptId.length > 64) throw new ApiError(400, 'attempt_required');
+  const useId = typeof body?.useId === 'string' && body.useId.length > 0 && body.useId.length <= 64 ? body.useId : null;
+
+  return transaction(db, () => {
+    const economy = loadEconomy(db, playerId);
+    const attempt = economy.attempts[attemptId];
+    if (!attempt) throw new ApiError(400, 'attempt_not_found');
+    if (attempt.status !== 'open') throw new ApiError(400, 'attempt_closed');
+    if (nowMs - attempt.createdAt > ATTEMPT_MAX_AGE_MS) throw new ApiError(400, 'attempt_expired');
+    if (!attempt.definition) throw new ApiError(400, 'powerups_need_a_replayable_level');
+    attempt.receipts = attempt.receipts || [];
+    const inventory = () => ({ ...economy.inventory.powerups });
+
+    if (useId) {
+      const existing = attempt.receipts.find((receipt) => receipt.useId === useId);
+      if (existing) return { reused: true, receiptId: existing.id, powerupId: existing.type, inventory: inventory() };
+    }
+    if (attempt.receipts.length >= 20) throw new ApiError(400, 'too_many_powerups');
+    const powerups = economy.inventory.powerups;
+    if ((powerups[powerupId] || 0) < 1) throw new ApiError(400, 'insufficient_powerup');
+    powerups[powerupId] -= 1;
+    if (powerups[powerupId] === 0) delete powerups[powerupId];
+    const receipt = { id: randomUUID(), type: powerupId, useId };
+    attempt.receipts.push(receipt);
+    saveEconomy(db, playerId, economy);
+    return { reused: false, receiptId: receipt.id, powerupId, inventory: inventory() };
+  });
+}
+
+// Endless runs have no replay in the shared rules, so the score is trusted and paid with the same
+// caps as the existing server (endlessRewards). This is the one unverified payout on the free server.
+export function settleEndless(db, playerId, body, nowMs = Date.now()) {
+  const score = body?.score;
+  if (!Number.isSafeInteger(score) || score < 0 || score > MAX_SCORE) throw new ApiError(400, 'invalid_score');
+  const attemptId = typeof body?.attemptId === 'string' ? body.attemptId : '';
+  if (!attemptId || attemptId.length > 64) throw new ApiError(400, 'attempt_required');
+
+  return transaction(db, () => {
+    const economy = loadEconomy(db, playerId);
+    const attempt = economy.attempts[attemptId];
+    if (!attempt) throw new ApiError(400, 'attempt_not_found');
+    if (attempt.mode !== 'endless') throw new ApiError(400, 'not_endless_attempt');
+    if (attempt.status === 'won') {
+      return { duplicate: true, score: attempt.score, reward: attempt.reward, balances: { coins: economy.currencies.coins.amount } };
+    }
+    if (attempt.status !== 'open') throw new ApiError(400, 'attempt_closed');
+    if (nowMs - attempt.createdAt > ATTEMPT_MAX_AGE_MS) throw new ApiError(400, 'attempt_expired');
+    const reward = endlessRewards(score);
+    if (reward.coins) grantCurrency(economy.currencies, 'coins', reward.coins);
+    economy.progress.xp += reward.xp;
+    attempt.status = 'won';
+    attempt.score = score;
+    attempt.reward = reward;
+    delete attempt.definition;
+    saveEconomy(db, playerId, economy);
+    return { duplicate: false, score, reward, balances: { coins: economy.currencies.coins.amount } };
   });
 }
 
