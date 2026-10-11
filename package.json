@@ -82,6 +82,8 @@
   "name": "infinite-match-unity-optimized",
   "scripts": {
     "build": "node scripts/build-level-client.js && tsc",
+    "vectors:build": "node scripts/build-golden-vectors.mjs",
+    "check:sync": "node --experimental-vm-modules node_modules/jest/bin/jest.js src/__tests__/canonical-sync.test.ts",
     "build:vercel": "echo 'Vercel build completed - WebGL files are already built'",
     "dev": "nodemon --exec ts-node src/server/index.ts",
     "start": "node dist/server/index.js",

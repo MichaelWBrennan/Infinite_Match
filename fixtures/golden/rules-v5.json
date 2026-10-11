@@ -1,0 +1,3468 @@
+{
+  "format": "infinite-match-golden-vectors",
+  "version": 1,
+  "rulesVersion": 5,
+  "notes": [
+    "Integers are exact; numerator = fraction * 2^32 for RNG outputs.",
+    "Weights and objective numbers are IEEE-754 doubles; port with double arithmetic in the same operation order.",
+    "hashSeed iterates UTF-16 code units (charCodeAt), not Unicode code points; see the astral-character hash case."
+  ],
+  "hash": [
+    {
+      "text": "",
+      "seed": 2166136261
+    },
+    {
+      "text": "classic|1",
+      "seed": 2522276132
+    },
+    {
+      "text": "v5|daily|1|2026-10-31|America/New_York",
+      "seed": 4036601222
+    },
+    {
+      "text": "emoji 😀 key",
+      "seed": 362678721
+    }
+  ],
+  "rng": [
+    {
+      "seed": 0,
+      "outputs": [
+        {
+          "state": 1831565813,
+          "numerator": 1144304738
+        },
+        {
+          "state": 3663131626,
+          "numerator": 1416247
+        },
+        {
+          "state": 1199730143,
+          "numerator": 958946056
+        },
+        {
+          "state": 3031295956,
+          "numerator": 627933444
+        },
+        {
+          "state": 567894473,
+          "numerator": 2007157716
+        },
+        {
+          "state": 2399460286,
+          "numerator": 2340967985
+        },
+        {
+          "state": 4231026099,
+          "numerator": 2642484575
+        },
+        {
+          "state": 1767624616,
+          "numerator": 2787370982
+        }
+      ]
+    },
+    {
+      "seed": 1,
+      "outputs": [
+        {
+          "state": 1831565814,
+          "numerator": 2693262067
+        },
+        {
+          "state": 3663131627,
+          "numerator": 11749833
+        },
+        {
+          "state": 1199730144,
+          "numerator": 2265367787
+        },
+        {
+          "state": 3031295957,
+          "numerator": 4213581821
+        },
+        {
+          "state": 567894474,
+          "numerator": 4159151403
+        },
+        {
+          "state": 2399460287,
+          "numerator": 1207330352
+        },
+        {
+          "state": 4231026100,
+          "numerator": 2632122864
+        },
+        {
+          "state": 1767624617,
+          "numerator": 3095568220
+        }
+      ]
+    },
+    {
+      "seed": 3735928559,
+      "outputs": [
+        {
+          "state": 1272527076,
+          "numerator": 4043151706
+        },
+        {
+          "state": 3104092889,
+          "numerator": 1147597007
+        },
+        {
+          "state": 640691406,
+          "numerator": 3315858022
+        },
+        {
+          "state": 2472257219,
+          "numerator": 1538288752
+        },
+        {
+          "state": 8855736,
+          "numerator": 2042435954
+        },
+        {
+          "state": 1840421549,
+          "numerator": 3600176436
+        },
+        {
+          "state": 3671987362,
+          "numerator": 484360372
+        },
+        {
+          "state": 1208585879,
+          "numerator": 1362401224
+        }
+      ]
+    },
+    {
+      "seed": 4294967295,
+      "outputs": [
+        {
+          "state": 1831565812,
+          "numerator": 3850105811
+        },
+        {
+          "state": 3663131625,
+          "numerator": 813802916
+        },
+        {
+          "state": 1199730142,
+          "numerator": 3073704848
+        },
+        {
+          "state": 3031295955,
+          "numerator": 4054706436
+        },
+        {
+          "state": 567894472,
+          "numerator": 3630262831
+        },
+        {
+          "state": 2399460285,
+          "numerator": 2315588663
+        },
+        {
+          "state": 4231026098,
+          "numerator": 2922715533
+        },
+        {
+          "state": 1767624615,
+          "numerator": 2042566601
+        }
+      ]
+    }
+  ],
+  "levels": [
+    {
+      "name": "classic-1-us-east",
+      "input": {
+        "level": 1,
+        "mode": "classic",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-classic-1-2026-10-31-f0e9ec73",
+        "generatorVersion": 5,
+        "mode": "classic",
+        "level": 1,
+        "seed": 4041862259,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 4034285959,
+        "boardSize": 8,
+        "board": [
+          [
+            "orange",
+            "yellow",
+            "green",
+            "yellow",
+            "yellow",
+            "green",
+            "green",
+            "red"
+          ],
+          [
+            "orange",
+            "yellow",
+            "orange",
+            "yellow",
+            "orange",
+            "green",
+            "green",
+            "red"
+          ],
+          [
+            "green",
+            "red",
+            "orange",
+            "red",
+            "green",
+            "orange",
+            "orange",
+            "yellow"
+          ],
+          [
+            "red",
+            "orange",
+            "red",
+            "green",
+            "red",
+            "orange",
+            "yellow",
+            "red"
+          ],
+          [
+            "red",
+            "green",
+            "green",
+            "orange",
+            "orange",
+            "yellow",
+            "yellow",
+            "orange"
+          ],
+          [
+            "green",
+            "yellow",
+            "red",
+            "orange",
+            "orange",
+            "green",
+            "orange",
+            "yellow"
+          ],
+          [
+            "orange",
+            "yellow",
+            "orange",
+            "green",
+            "green",
+            "yellow",
+            "red",
+            "red"
+          ],
+          [
+            "green",
+            "green",
+            "orange",
+            "red",
+            "yellow",
+            "green",
+            "red",
+            "green"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "green",
+          "red"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "green": 1.1,
+          "red": 1
+        },
+        "targetScore": 2400,
+        "moves": 30,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 2400
+          }
+        ],
+        "objectiveProfile": "score",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 25,
+        "firstLegalSwap": [
+          0,
+          1,
+          0,
+          2
+        ],
+        "firstMove": {
+          "score": 30,
+          "refillState": 939048806,
+          "board": [
+            [
+              "orange",
+              "green",
+              "red",
+              "yellow",
+              "orange",
+              "green",
+              "green",
+              "red"
+            ],
+            [
+              "orange",
+              "yellow",
+              "orange",
+              "yellow",
+              "orange",
+              "green",
+              "green",
+              "red"
+            ],
+            [
+              "green",
+              "red",
+              "orange",
+              "red",
+              "green",
+              "orange",
+              "orange",
+              "yellow"
+            ],
+            [
+              "red",
+              "orange",
+              "red",
+              "green",
+              "red",
+              "orange",
+              "yellow",
+              "red"
+            ],
+            [
+              "red",
+              "green",
+              "green",
+              "orange",
+              "orange",
+              "yellow",
+              "yellow",
+              "orange"
+            ],
+            [
+              "green",
+              "yellow",
+              "red",
+              "orange",
+              "orange",
+              "green",
+              "orange",
+              "yellow"
+            ],
+            [
+              "orange",
+              "yellow",
+              "orange",
+              "green",
+              "green",
+              "yellow",
+              "red",
+              "red"
+            ],
+            [
+              "green",
+              "green",
+              "orange",
+              "red",
+              "yellow",
+              "green",
+              "red",
+              "green"
+            ]
+          ],
+          "collected": {
+            "orange": 0,
+            "yellow": 3,
+            "green": 0,
+            "red": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 0,
+              "yellow": 3,
+              "green": 0,
+              "red": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 25,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 30,
+          "verifiedScore": 9440,
+          "verifiedCollected": {
+            "orange": 120,
+            "yellow": 134,
+            "green": 110,
+            "red": 85
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 0
+        }
+      }
+    },
+    {
+      "name": "classic-4-us-east-shield-stage",
+      "input": {
+        "level": 4,
+        "mode": "classic",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-classic-4-2026-10-31-f4eb051e",
+        "generatorVersion": 5,
+        "mode": "classic",
+        "level": 4,
+        "seed": 4109042974,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 1638065191,
+        "boardSize": 8,
+        "board": [
+          [
+            "blue",
+            "blue",
+            "green",
+            "red",
+            "green",
+            "yellow",
+            "orange",
+            "red"
+          ],
+          [
+            "green",
+            "orange",
+            "red",
+            "blue",
+            "orange",
+            "green",
+            "yellow",
+            "green"
+          ],
+          [
+            "green",
+            "red",
+            "yellow",
+            "yellow",
+            "green",
+            "green",
+            "red",
+            "green"
+          ],
+          [
+            "red",
+            "blue",
+            "yellow",
+            "yellow",
+            "orange",
+            "yellow",
+            "yellow",
+            "orange"
+          ],
+          [
+            "blue",
+            "yellow",
+            "purple",
+            "blue",
+            "orange",
+            "green",
+            "purple",
+            "purple"
+          ],
+          [
+            "green",
+            "green",
+            "orange",
+            "red",
+            "green",
+            "yellow",
+            "yellow",
+            "orange"
+          ],
+          [
+            "yellow",
+            "orange",
+            "yellow",
+            "purple",
+            "green",
+            "green",
+            "yellow",
+            "orange"
+          ],
+          [
+            "yellow",
+            "orange",
+            "purple",
+            "purple",
+            "blue",
+            "purple",
+            "red",
+            "green"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "red",
+          "blue",
+          "green",
+          "purple"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "red": 1,
+          "blue": 1,
+          "green": 1.1,
+          "purple": 1
+        },
+        "targetScore": 1950,
+        "moves": 27,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 1950
+          },
+          {
+            "type": "clear-shields",
+            "target": 3
+          }
+        ],
+        "objectiveProfile": "clear-shields",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            2,
+            0,
+            0,
+            2,
+            2,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 15,
+        "firstLegalSwap": [
+          0,
+          4,
+          0,
+          5
+        ],
+        "firstMove": {
+          "score": 30,
+          "refillState": 2837795334,
+          "board": [
+            [
+              "blue",
+              "blue",
+              "green",
+              "red",
+              "yellow",
+              "green",
+              "orange",
+              "red"
+            ],
+            [
+              "green",
+              "orange",
+              "red",
+              "blue",
+              "orange",
+              "purple",
+              "yellow",
+              "green"
+            ],
+            [
+              "green",
+              "red",
+              "yellow",
+              "yellow",
+              "green",
+              "blue",
+              "red",
+              "green"
+            ],
+            [
+              "red",
+              "blue",
+              "yellow",
+              "yellow",
+              "orange",
+              "yellow",
+              "yellow",
+              "orange"
+            ],
+            [
+              "blue",
+              "yellow",
+              "purple",
+              "blue",
+              "orange",
+              "green",
+              "purple",
+              "purple"
+            ],
+            [
+              "green",
+              "green",
+              "orange",
+              "red",
+              "green",
+              "yellow",
+              "yellow",
+              "orange"
+            ],
+            [
+              "yellow",
+              "orange",
+              "yellow",
+              "purple",
+              "green",
+              "green",
+              "yellow",
+              "orange"
+            ],
+            [
+              "yellow",
+              "orange",
+              "purple",
+              "purple",
+              "blue",
+              "purple",
+              "red",
+              "green"
+            ]
+          ],
+          "collected": {
+            "orange": 0,
+            "yellow": 0,
+            "red": 0,
+            "blue": 0,
+            "green": 3,
+            "purple": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 0,
+              "yellow": 0,
+              "red": 0,
+              "blue": 0,
+              "green": 3,
+              "purple": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 15,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 27,
+          "verifiedScore": 2650,
+          "verifiedCollected": {
+            "orange": 41,
+            "yellow": 40,
+            "red": 37,
+            "blue": 25,
+            "green": 35,
+            "purple": 23
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 3
+        }
+      }
+    },
+    {
+      "name": "classic-8-us-east-shield-stage",
+      "input": {
+        "level": 8,
+        "mode": "classic",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-classic-8-2026-10-31-c4412e8a",
+        "generatorVersion": 5,
+        "mode": "classic",
+        "level": 8,
+        "seed": 3292606090,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 821628307,
+        "boardSize": 8,
+        "board": [
+          [
+            "yellow",
+            "purple",
+            "orange",
+            "purple",
+            "orange",
+            "purple",
+            "blue",
+            "yellow"
+          ],
+          [
+            "blue",
+            "orange",
+            "yellow",
+            "orange",
+            "blue",
+            "blue",
+            "yellow",
+            "yellow"
+          ],
+          [
+            "yellow",
+            "blue",
+            "blue",
+            "orange",
+            "orange",
+            "purple",
+            "blue",
+            "blue"
+          ],
+          [
+            "orange",
+            "yellow",
+            "purple",
+            "blue",
+            "blue",
+            "orange",
+            "orange",
+            "purple"
+          ],
+          [
+            "yellow",
+            "purple",
+            "yellow",
+            "blue",
+            "yellow",
+            "purple",
+            "yellow",
+            "orange"
+          ],
+          [
+            "yellow",
+            "yellow",
+            "purple",
+            "yellow",
+            "orange",
+            "blue",
+            "purple",
+            "yellow"
+          ],
+          [
+            "purple",
+            "yellow",
+            "blue",
+            "blue",
+            "yellow",
+            "orange",
+            "blue",
+            "blue"
+          ],
+          [
+            "purple",
+            "orange",
+            "yellow",
+            "orange",
+            "blue",
+            "orange",
+            "purple",
+            "orange"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "blue",
+          "purple"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "blue": 1,
+          "purple": 1
+        },
+        "targetScore": 2400,
+        "moves": 28,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 2400
+          },
+          {
+            "type": "clear-shields",
+            "target": 3
+          }
+        ],
+        "objectiveProfile": "clear-shields",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2
+          ],
+          [
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 32,
+        "firstLegalSwap": [
+          0,
+          2,
+          0,
+          3
+        ],
+        "firstMove": {
+          "score": 180,
+          "refillState": 125851440,
+          "board": [
+            [
+              "yellow",
+              "purple",
+              "purple",
+              "yellow",
+              "purple",
+              "orange",
+              "blue",
+              "yellow"
+            ],
+            [
+              "blue",
+              "orange",
+              "yellow",
+              "blue",
+              "orange",
+              "purple",
+              "yellow",
+              "yellow"
+            ],
+            [
+              "yellow",
+              "blue",
+              "blue",
+              "purple",
+              "yellow",
+              "purple",
+              "blue",
+              "blue"
+            ],
+            [
+              "orange",
+              "yellow",
+              "purple",
+              "blue",
+              "blue",
+              "orange",
+              "orange",
+              "purple"
+            ],
+            [
+              "yellow",
+              "purple",
+              "yellow",
+              "blue",
+              "yellow",
+              "purple",
+              "yellow",
+              "orange"
+            ],
+            [
+              "yellow",
+              "yellow",
+              "purple",
+              "yellow",
+              "orange",
+              "blue",
+              "purple",
+              "yellow"
+            ],
+            [
+              "purple",
+              "yellow",
+              "blue",
+              "blue",
+              "yellow",
+              "orange",
+              "blue",
+              "blue"
+            ],
+            [
+              "purple",
+              "orange",
+              "yellow",
+              "orange",
+              "blue",
+              "orange",
+              "purple",
+              "orange"
+            ]
+          ],
+          "collected": {
+            "orange": 6,
+            "yellow": 0,
+            "blue": 3,
+            "purple": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 6,
+              "yellow": 0,
+              "blue": 3,
+              "purple": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 32,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 28,
+          "verifiedScore": 18150,
+          "verifiedCollected": {
+            "orange": 243,
+            "yellow": 204,
+            "blue": 185,
+            "purple": 184
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 3
+        }
+      }
+    },
+    {
+      "name": "classic-10-boss",
+      "input": {
+        "level": 10,
+        "mode": "classic",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-classic-10-2026-10-31-4e7c7959",
+        "generatorVersion": 5,
+        "mode": "classic",
+        "level": 10,
+        "seed": 1316780377,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 1564968865,
+        "boardSize": 6,
+        "board": [
+          [
+            "orange",
+            "purple",
+            "yellow",
+            "red",
+            "orange",
+            "green"
+          ],
+          [
+            "green",
+            "orange",
+            "orange",
+            "purple",
+            "orange",
+            "green"
+          ],
+          [
+            "orange",
+            "orange",
+            "purple",
+            "orange",
+            "purple",
+            "yellow"
+          ],
+          [
+            "yellow",
+            "yellow",
+            "green",
+            "green",
+            "purple",
+            "purple"
+          ],
+          [
+            "blue",
+            "red",
+            "yellow",
+            "green",
+            "green",
+            "orange"
+          ],
+          [
+            "green",
+            "orange",
+            "yellow",
+            "orange",
+            "orange",
+            "red"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "blue",
+          "green",
+          "purple",
+          "red"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "blue": 1,
+          "green": 1.1,
+          "purple": 1,
+          "red": 1
+        },
+        "targetScore": 1000,
+        "moves": 21,
+        "objectives": [
+          {
+            "type": "collect",
+            "gemType": "orange",
+            "target": 20
+          }
+        ],
+        "objectiveProfile": "collect",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 14,
+        "firstLegalSwap": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "firstMove": {
+          "score": 30,
+          "refillState": 2764699008,
+          "board": [
+            [
+              "purple",
+              "yellow",
+              "yellow",
+              "red",
+              "orange",
+              "green"
+            ],
+            [
+              "green",
+              "red",
+              "orange",
+              "purple",
+              "orange",
+              "green"
+            ],
+            [
+              "orange",
+              "red",
+              "purple",
+              "orange",
+              "purple",
+              "yellow"
+            ],
+            [
+              "yellow",
+              "yellow",
+              "green",
+              "green",
+              "purple",
+              "purple"
+            ],
+            [
+              "blue",
+              "red",
+              "yellow",
+              "green",
+              "green",
+              "orange"
+            ],
+            [
+              "green",
+              "orange",
+              "yellow",
+              "orange",
+              "orange",
+              "red"
+            ]
+          ],
+          "collected": {
+            "orange": 3,
+            "yellow": 0,
+            "blue": 0,
+            "green": 0,
+            "purple": 0,
+            "red": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 3,
+              "yellow": 0,
+              "blue": 0,
+              "green": 0,
+              "purple": 0,
+              "red": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 14,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 21,
+          "verifiedScore": 1180,
+          "verifiedCollected": {
+            "orange": 25,
+            "yellow": 23,
+            "blue": 5,
+            "green": 19,
+            "purple": 19,
+            "red": 12
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 0
+        }
+      }
+    },
+    {
+      "name": "classic-17-us-east",
+      "input": {
+        "level": 17,
+        "mode": "classic",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-classic-17-2026-10-31-8797cc4e",
+        "generatorVersion": 5,
+        "mode": "classic",
+        "level": 17,
+        "seed": 2274872398,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 4098861911,
+        "boardSize": 8,
+        "board": [
+          [
+            "yellow",
+            "orange",
+            "orange",
+            "yellow",
+            "yellow",
+            "blue",
+            "blue",
+            "orange"
+          ],
+          [
+            "orange",
+            "purple",
+            "orange",
+            "purple",
+            "orange",
+            "orange",
+            "blue",
+            "orange"
+          ],
+          [
+            "yellow",
+            "blue",
+            "yellow",
+            "orange",
+            "orange",
+            "purple",
+            "purple",
+            "yellow"
+          ],
+          [
+            "yellow",
+            "yellow",
+            "purple",
+            "orange",
+            "purple",
+            "purple",
+            "orange",
+            "orange"
+          ],
+          [
+            "purple",
+            "blue",
+            "blue",
+            "yellow",
+            "purple",
+            "yellow",
+            "purple",
+            "blue"
+          ],
+          [
+            "yellow",
+            "yellow",
+            "blue",
+            "purple",
+            "yellow",
+            "yellow",
+            "purple",
+            "orange"
+          ],
+          [
+            "yellow",
+            "blue",
+            "yellow",
+            "yellow",
+            "orange",
+            "blue",
+            "orange",
+            "purple"
+          ],
+          [
+            "purple",
+            "orange",
+            "purple",
+            "purple",
+            "blue",
+            "blue",
+            "orange",
+            "purple"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "purple",
+          "blue"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "purple": 1,
+          "blue": 1
+        },
+        "targetScore": 2400,
+        "moves": 29,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 2400
+          }
+        ],
+        "objectiveProfile": "score",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 37,
+        "firstLegalSwap": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "firstMove": {
+          "score": 120,
+          "refillState": 3403085044,
+          "board": [
+            [
+              "orange",
+              "orange",
+              "yellow",
+              "purple",
+              "yellow",
+              "blue",
+              "blue",
+              "orange"
+            ],
+            [
+              "purple",
+              "purple",
+              "orange",
+              "purple",
+              "orange",
+              "orange",
+              "blue",
+              "orange"
+            ],
+            [
+              "yellow",
+              "blue",
+              "yellow",
+              "orange",
+              "orange",
+              "purple",
+              "purple",
+              "yellow"
+            ],
+            [
+              "orange",
+              "yellow",
+              "purple",
+              "orange",
+              "purple",
+              "purple",
+              "orange",
+              "orange"
+            ],
+            [
+              "purple",
+              "blue",
+              "blue",
+              "yellow",
+              "purple",
+              "yellow",
+              "purple",
+              "blue"
+            ],
+            [
+              "yellow",
+              "yellow",
+              "blue",
+              "purple",
+              "yellow",
+              "yellow",
+              "purple",
+              "orange"
+            ],
+            [
+              "yellow",
+              "blue",
+              "yellow",
+              "yellow",
+              "orange",
+              "blue",
+              "orange",
+              "purple"
+            ],
+            [
+              "purple",
+              "orange",
+              "purple",
+              "purple",
+              "blue",
+              "blue",
+              "orange",
+              "purple"
+            ]
+          ],
+          "collected": {
+            "orange": 3,
+            "yellow": 6,
+            "purple": 0,
+            "blue": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 3,
+              "yellow": 6,
+              "purple": 0,
+              "blue": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 37,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 29,
+          "verifiedScore": 26030,
+          "verifiedCollected": {
+            "orange": 242,
+            "yellow": 228,
+            "purple": 212,
+            "blue": 178
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 0
+        }
+      }
+    },
+    {
+      "name": "daily-us-east",
+      "input": {
+        "level": 1,
+        "mode": "daily",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-daily-1-2026-10-31-590ce108",
+        "generatorVersion": 5,
+        "mode": "daily",
+        "level": 1,
+        "seed": 1494016264,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 3445888171,
+        "boardSize": 7,
+        "board": [
+          [
+            "orange",
+            "orange",
+            "yellow",
+            "blue",
+            "purple",
+            "yellow",
+            "yellow"
+          ],
+          [
+            "purple",
+            "blue",
+            "yellow",
+            "blue",
+            "blue",
+            "purple",
+            "orange"
+          ],
+          [
+            "orange",
+            "orange",
+            "blue",
+            "yellow",
+            "blue",
+            "yellow",
+            "blue"
+          ],
+          [
+            "orange",
+            "yellow",
+            "blue",
+            "orange",
+            "yellow",
+            "yellow",
+            "purple"
+          ],
+          [
+            "blue",
+            "orange",
+            "yellow",
+            "yellow",
+            "orange",
+            "purple",
+            "blue"
+          ],
+          [
+            "purple",
+            "purple",
+            "blue",
+            "yellow",
+            "orange",
+            "orange",
+            "purple"
+          ],
+          [
+            "orange",
+            "orange",
+            "yellow",
+            "purple",
+            "yellow",
+            "yellow",
+            "purple"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "blue",
+          "purple"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "blue": 1,
+          "purple": 1
+        },
+        "targetScore": 2400,
+        "moves": 30,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 2400
+          }
+        ],
+        "objectiveProfile": "score",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 24,
+        "firstLegalSwap": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "firstMove": {
+          "score": 30,
+          "refillState": 350651018,
+          "board": [
+            [
+              "purple",
+              "orange",
+              "yellow",
+              "blue",
+              "purple",
+              "yellow",
+              "yellow"
+            ],
+            [
+              "orange",
+              "blue",
+              "yellow",
+              "blue",
+              "blue",
+              "purple",
+              "orange"
+            ],
+            [
+              "purple",
+              "orange",
+              "blue",
+              "yellow",
+              "blue",
+              "yellow",
+              "blue"
+            ],
+            [
+              "purple",
+              "yellow",
+              "blue",
+              "orange",
+              "yellow",
+              "yellow",
+              "purple"
+            ],
+            [
+              "blue",
+              "orange",
+              "yellow",
+              "yellow",
+              "orange",
+              "purple",
+              "blue"
+            ],
+            [
+              "purple",
+              "purple",
+              "blue",
+              "yellow",
+              "orange",
+              "orange",
+              "purple"
+            ],
+            [
+              "orange",
+              "orange",
+              "yellow",
+              "purple",
+              "yellow",
+              "yellow",
+              "purple"
+            ]
+          ],
+          "collected": {
+            "orange": 3,
+            "yellow": 0,
+            "blue": 0,
+            "purple": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 3,
+              "yellow": 0,
+              "blue": 0,
+              "purple": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 24,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 30,
+          "verifiedScore": 21460,
+          "verifiedCollected": {
+            "orange": 226,
+            "yellow": 197,
+            "blue": 160,
+            "purple": 141
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 0
+        }
+      }
+    },
+    {
+      "name": "timed-5-us-east",
+      "input": {
+        "level": 5,
+        "mode": "timed",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-timed-5-2026-10-31-28546ae2",
+        "generatorVersion": 5,
+        "mode": "timed",
+        "level": 5,
+        "seed": 676621026,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 796927120,
+        "boardSize": 7,
+        "board": [
+          [
+            "yellow",
+            "yellow",
+            "red",
+            "green",
+            "orange",
+            "blue",
+            "blue"
+          ],
+          [
+            "blue",
+            "blue",
+            "orange",
+            "green",
+            "yellow",
+            "purple",
+            "blue"
+          ],
+          [
+            "yellow",
+            "orange",
+            "red",
+            "purple",
+            "yellow",
+            "red",
+            "orange"
+          ],
+          [
+            "blue",
+            "orange",
+            "blue",
+            "blue",
+            "orange",
+            "green",
+            "blue"
+          ],
+          [
+            "red",
+            "blue",
+            "blue",
+            "purple",
+            "red",
+            "green",
+            "yellow"
+          ],
+          [
+            "green",
+            "blue",
+            "green",
+            "orange",
+            "green",
+            "red",
+            "orange"
+          ],
+          [
+            "purple",
+            "yellow",
+            "yellow",
+            "orange",
+            "purple",
+            "purple",
+            "red"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "purple",
+          "green",
+          "red",
+          "blue"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "purple": 1,
+          "green": 1.1,
+          "red": 1,
+          "blue": 1
+        },
+        "targetScore": 2300,
+        "moves": 999,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 2300
+          }
+        ],
+        "objectiveProfile": "score",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 9,
+        "firstLegalSwap": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "firstMove": {
+          "score": 30,
+          "refillState": 1996657263,
+          "board": [
+            [
+              "yellow",
+              "blue",
+              "red",
+              "green",
+              "orange",
+              "blue",
+              "blue"
+            ],
+            [
+              "blue",
+              "green",
+              "blue",
+              "green",
+              "yellow",
+              "purple",
+              "blue"
+            ],
+            [
+              "yellow",
+              "yellow",
+              "red",
+              "purple",
+              "yellow",
+              "red",
+              "orange"
+            ],
+            [
+              "blue",
+              "yellow",
+              "blue",
+              "blue",
+              "orange",
+              "green",
+              "blue"
+            ],
+            [
+              "red",
+              "blue",
+              "blue",
+              "purple",
+              "red",
+              "green",
+              "yellow"
+            ],
+            [
+              "green",
+              "blue",
+              "green",
+              "orange",
+              "green",
+              "red",
+              "orange"
+            ],
+            [
+              "purple",
+              "yellow",
+              "yellow",
+              "orange",
+              "purple",
+              "purple",
+              "red"
+            ]
+          ],
+          "collected": {
+            "orange": 3,
+            "yellow": 0,
+            "purple": 0,
+            "green": 0,
+            "red": 0,
+            "blue": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 3,
+              "yellow": 0,
+              "purple": 0,
+              "green": 0,
+              "red": 0,
+              "blue": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 9,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 26,
+          "verifiedScore": 2980,
+          "verifiedCollected": {
+            "orange": 49,
+            "yellow": 42,
+            "purple": 25,
+            "green": 29,
+            "red": 18,
+            "blue": 42
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 0
+        }
+      }
+    },
+    {
+      "name": "endless-12-us-east",
+      "input": {
+        "level": 12,
+        "mode": "endless",
+        "location": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-endless-12-2026-10-31-46daeb9b",
+        "generatorVersion": 5,
+        "mode": "endless",
+        "level": 12,
+        "seed": 1188752283,
+        "environmentKey": "morning-unknown-unknown-calm",
+        "context": {
+          "timeZone": "America/New_York",
+          "country": "US",
+          "region": "PA",
+          "hemisphere": "north",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "morning",
+            "label": "Morning",
+            "nextChangeAt": "2026-10-31T16:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "autumn",
+          "holidays": [
+            {
+              "name": "Halloween",
+              "type": "observance"
+            }
+          ],
+          "holidayCoverage": true,
+          "refreshAt": "2026-11-01T04:00:00.000Z"
+        },
+        "refillState": 3268506584,
+        "boardSize": 6,
+        "board": [
+          [
+            "yellow",
+            "orange",
+            "orange",
+            "blue",
+            "yellow",
+            "green"
+          ],
+          [
+            "orange",
+            "orange",
+            "yellow",
+            "orange",
+            "orange",
+            "yellow"
+          ],
+          [
+            "yellow",
+            "yellow",
+            "orange",
+            "orange",
+            "blue",
+            "blue"
+          ],
+          [
+            "yellow",
+            "yellow",
+            "green",
+            "blue",
+            "green",
+            "yellow"
+          ],
+          [
+            "orange",
+            "green",
+            "orange",
+            "orange",
+            "green",
+            "green"
+          ],
+          [
+            "orange",
+            "yellow",
+            "blue",
+            "orange",
+            "yellow",
+            "orange"
+          ]
+        ],
+        "gemTypes": [
+          "orange",
+          "yellow",
+          "green",
+          "blue"
+        ],
+        "gemWeights": {
+          "orange": 1.35,
+          "yellow": 1.25,
+          "green": 1.1,
+          "blue": 1
+        },
+        "targetScore": 2400,
+        "moves": 9007199254740991,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 2400
+          },
+          {
+            "type": "clear-shields",
+            "target": 3
+          }
+        ],
+        "objectiveProfile": "clear-shields",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            2,
+            2,
+            2,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 14,
+        "firstLegalSwap": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "firstMove": {
+          "score": 60,
+          "refillState": 1372999574,
+          "board": [
+            [
+              "yellow",
+              "yellow",
+              "blue",
+              "blue",
+              "yellow",
+              "green"
+            ],
+            [
+              "orange",
+              "orange",
+              "yellow",
+              "orange",
+              "orange",
+              "yellow"
+            ],
+            [
+              "green",
+              "yellow",
+              "orange",
+              "orange",
+              "blue",
+              "blue"
+            ],
+            [
+              "green",
+              "yellow",
+              "green",
+              "blue",
+              "green",
+              "yellow"
+            ],
+            [
+              "orange",
+              "green",
+              "orange",
+              "orange",
+              "green",
+              "green"
+            ],
+            [
+              "orange",
+              "yellow",
+              "blue",
+              "orange",
+              "yellow",
+              "orange"
+            ]
+          ],
+          "collected": {
+            "orange": 3,
+            "yellow": 3,
+            "green": 0,
+            "blue": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "orange": 3,
+              "yellow": 3,
+              "green": 0,
+              "blue": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 14,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 29,
+          "verifiedScore": 7180,
+          "verifiedCollected": {
+            "orange": 106,
+            "yellow": 107,
+            "green": 97,
+            "blue": 80
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 3
+        }
+      }
+    },
+    {
+      "name": "classic-3-southern-hemisphere",
+      "input": {
+        "level": 3,
+        "mode": "classic",
+        "location": {
+          "timeZone": "Australia/Sydney",
+          "country": "AU",
+          "region": "NSW"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-classic-3-2026-10-31-bf3f9319",
+        "generatorVersion": 5,
+        "mode": "classic",
+        "level": 3,
+        "seed": 3208614681,
+        "environmentKey": "night-unknown-unknown-calm",
+        "context": {
+          "timeZone": "Australia/Sydney",
+          "country": "AU",
+          "region": "NSW",
+          "hemisphere": "south",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "night",
+            "label": "Night",
+            "nextChangeAt": "2026-10-31T13:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "spring",
+          "holidays": [],
+          "holidayCoverage": true,
+          "refreshAt": "2026-10-31T13:00:00.000Z"
+        },
+        "refillState": 737636898,
+        "boardSize": 8,
+        "board": [
+          [
+            "blue",
+            "green",
+            "blue",
+            "blue",
+            "purple",
+            "yellow",
+            "yellow",
+            "purple"
+          ],
+          [
+            "red",
+            "red",
+            "purple",
+            "yellow",
+            "yellow",
+            "blue",
+            "red",
+            "yellow"
+          ],
+          [
+            "purple",
+            "yellow",
+            "red",
+            "red",
+            "purple",
+            "blue",
+            "purple",
+            "blue"
+          ],
+          [
+            "purple",
+            "green",
+            "blue",
+            "red",
+            "purple",
+            "green",
+            "blue",
+            "green"
+          ],
+          [
+            "green",
+            "purple",
+            "blue",
+            "yellow",
+            "green",
+            "green",
+            "purple",
+            "purple"
+          ],
+          [
+            "green",
+            "red",
+            "yellow",
+            "purple",
+            "green",
+            "red",
+            "green",
+            "blue"
+          ],
+          [
+            "purple",
+            "purple",
+            "blue",
+            "purple",
+            "yellow",
+            "purple",
+            "yellow",
+            "red"
+          ],
+          [
+            "purple",
+            "red",
+            "purple",
+            "green",
+            "red",
+            "purple",
+            "blue",
+            "green"
+          ]
+        ],
+        "gemTypes": [
+          "purple",
+          "red",
+          "blue",
+          "yellow",
+          "green"
+        ],
+        "gemWeights": {
+          "purple": 1.6500000000000001,
+          "red": 1,
+          "blue": 1.15,
+          "yellow": 1,
+          "green": 1
+        },
+        "targetScore": 2400,
+        "moves": 29,
+        "objectives": [
+          {
+            "type": "collect",
+            "gemType": "purple",
+            "target": 25
+          }
+        ],
+        "objectiveProfile": "collect",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 20,
+        "firstLegalSwap": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "firstMove": {
+          "score": 30,
+          "refillState": 1937367041,
+          "board": [
+            [
+              "green",
+              "purple",
+              "blue",
+              "purple",
+              "purple",
+              "yellow",
+              "yellow",
+              "purple"
+            ],
+            [
+              "red",
+              "red",
+              "purple",
+              "yellow",
+              "yellow",
+              "blue",
+              "red",
+              "yellow"
+            ],
+            [
+              "purple",
+              "yellow",
+              "red",
+              "red",
+              "purple",
+              "blue",
+              "purple",
+              "blue"
+            ],
+            [
+              "purple",
+              "green",
+              "blue",
+              "red",
+              "purple",
+              "green",
+              "blue",
+              "green"
+            ],
+            [
+              "green",
+              "purple",
+              "blue",
+              "yellow",
+              "green",
+              "green",
+              "purple",
+              "purple"
+            ],
+            [
+              "green",
+              "red",
+              "yellow",
+              "purple",
+              "green",
+              "red",
+              "green",
+              "blue"
+            ],
+            [
+              "purple",
+              "purple",
+              "blue",
+              "purple",
+              "yellow",
+              "purple",
+              "yellow",
+              "red"
+            ],
+            [
+              "purple",
+              "red",
+              "purple",
+              "green",
+              "red",
+              "purple",
+              "blue",
+              "green"
+            ]
+          ],
+          "collected": {
+            "purple": 0,
+            "red": 0,
+            "blue": 3,
+            "yellow": 0,
+            "green": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "purple": 0,
+              "red": 0,
+              "blue": 3,
+              "yellow": 0,
+              "green": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 20,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 29,
+          "verifiedScore": 4610,
+          "verifiedCollected": {
+            "purple": 95,
+            "red": 40,
+            "blue": 59,
+            "yellow": 49,
+            "green": 40
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 0
+        }
+      }
+    },
+    {
+      "name": "daily-southern-hemisphere",
+      "input": {
+        "level": 1,
+        "mode": "daily",
+        "location": {
+          "timeZone": "Australia/Sydney",
+          "country": "AU",
+          "region": "NSW"
+        },
+        "nowMs": 1793448000000,
+        "rulesVersion": 5
+      },
+      "expected": {
+        "id": "v5-daily-1-2026-10-31-32016934",
+        "generatorVersion": 5,
+        "mode": "daily",
+        "level": 1,
+        "seed": 838953268,
+        "environmentKey": "night-unknown-unknown-calm",
+        "context": {
+          "timeZone": "Australia/Sydney",
+          "country": "AU",
+          "region": "NSW",
+          "hemisphere": "south",
+          "locationSource": "player_setting",
+          "holidayThemes": true,
+          "timeOfDayEnabled": true,
+          "weatherEnabled": true,
+          "localDate": "2026-10-31",
+          "evaluatedAt": "2026-10-31T12:00:00.000Z",
+          "clockSource": "server",
+          "timeOfDay": {
+            "period": "night",
+            "label": "Night",
+            "nextChangeAt": "2026-10-31T13:00:00.000Z"
+          },
+          "year": 2026,
+          "month": 10,
+          "day": 31,
+          "season": "spring",
+          "holidays": [],
+          "holidayCoverage": true,
+          "refreshAt": "2026-10-31T13:00:00.000Z"
+        },
+        "refillState": 2286871899,
+        "boardSize": 6,
+        "board": [
+          [
+            "red",
+            "green",
+            "yellow",
+            "yellow",
+            "orange",
+            "purple"
+          ],
+          [
+            "purple",
+            "red",
+            "yellow",
+            "green",
+            "red",
+            "purple"
+          ],
+          [
+            "orange",
+            "red",
+            "purple",
+            "yellow",
+            "orange",
+            "orange"
+          ],
+          [
+            "green",
+            "purple",
+            "orange",
+            "orange",
+            "red",
+            "red"
+          ],
+          [
+            "yellow",
+            "yellow",
+            "purple",
+            "red",
+            "purple",
+            "orange"
+          ],
+          [
+            "red",
+            "orange",
+            "orange",
+            "green",
+            "orange",
+            "purple"
+          ]
+        ],
+        "gemTypes": [
+          "purple",
+          "orange",
+          "red",
+          "yellow",
+          "green"
+        ],
+        "gemWeights": {
+          "purple": 1.6500000000000001,
+          "orange": 1,
+          "red": 1,
+          "yellow": 1,
+          "green": 1
+        },
+        "targetScore": 1750,
+        "moves": 29,
+        "objectives": [
+          {
+            "type": "score",
+            "target": 1750
+          },
+          {
+            "type": "clear-shields",
+            "target": 3
+          }
+        ],
+        "objectiveProfile": "clear-shields",
+        "shields": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            2,
+            2,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "legalOpeningMoves": 8,
+        "firstLegalSwap": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "firstMove": {
+          "score": 30,
+          "refillState": 3486602042,
+          "board": [
+            [
+              "green",
+              "red",
+              "yellow",
+              "yellow",
+              "orange",
+              "purple"
+            ],
+            [
+              "purple",
+              "orange",
+              "yellow",
+              "green",
+              "red",
+              "purple"
+            ],
+            [
+              "orange",
+              "yellow",
+              "purple",
+              "yellow",
+              "orange",
+              "orange"
+            ],
+            [
+              "green",
+              "purple",
+              "orange",
+              "orange",
+              "red",
+              "red"
+            ],
+            [
+              "yellow",
+              "yellow",
+              "purple",
+              "red",
+              "purple",
+              "orange"
+            ],
+            [
+              "red",
+              "orange",
+              "orange",
+              "green",
+              "orange",
+              "purple"
+            ]
+          ],
+          "collected": {
+            "purple": 0,
+            "orange": 0,
+            "red": 3,
+            "yellow": 0,
+            "green": 0
+          },
+          "brokenShields": 0,
+          "objectiveProgress": {
+            "collected": {
+              "purple": 0,
+              "orange": 0,
+              "red": 3,
+              "yellow": 0,
+              "green": 0
+            },
+            "shieldsCleared": 0
+          }
+        },
+        "quality": {
+          "initialMatches": 0,
+          "legalOpeningMoves": 8,
+          "verifiedWithoutBoosters": true,
+          "verifiedMoves": 29,
+          "verifiedScore": 2540,
+          "verifiedCollected": {
+            "purple": 53,
+            "orange": 46,
+            "red": 33,
+            "yellow": 25,
+            "green": 31
+          },
+          "verifiedObjectives": true,
+          "verifiedShields": 3
+        }
+      }
+    }
+  ]
+}
