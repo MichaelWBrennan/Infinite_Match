@@ -1282,6 +1282,7 @@ class AccountEconomyService {
     delete view.purchaseDebits;
     delete view.competitionPayouts;
     delete view.energyGifts;
+    delete view.milestoneGrants;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
@@ -1305,6 +1306,26 @@ class AccountEconomyService {
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
       return { duplicate: false, credited, energy: energy.amount };
+    });
+  }
+
+  /**
+   * Grants one guild-milestone reward of coins, once per milestone key for this player (S3).
+   * Like the weekly event, it refuses rather than clip when the coin wallet would overflow, so
+   * the player can claim later. Nothing is granted on a retry.
+   */
+  async creditMilestoneReward(playerId, milestoneKey, amount, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      if (playerEconomy.milestoneGrants?.[milestoneKey]) return { duplicate: true, coins: 0 };
+      const wallet = playerEconomy.currencies.coins;
+      if (wallet.amount + amount > wallet.maxAmount) throw new EconomyRuleError('milestone_wallet_full');
+      this.applyReward(playerEconomy, { type: 'currency', currencyId: 'coins', amount });
+      playerEconomy.milestoneGrants = { ...(playerEconomy.milestoneGrants || {}),
+        [milestoneKey]: { coins: amount, at: new Date(nowMs).toISOString() } };
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { duplicate: false, coins: amount };
     });
   }
 

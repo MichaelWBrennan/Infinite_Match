@@ -47,6 +47,16 @@ async function recordCompetitionWin(playerId, attemptId, level, score, competiti
   }
 }
 
+// Guild milestone (S3): a verified win counts once per attempt. Retries call this again and the
+// store ignores the repeat, so a lost response cannot double-count. Best-effort, like boards.
+async function recordMilestoneContribution(playerId, attemptId, verified) {
+  try {
+    await socialStore.recordMilestoneWin(playerId, attemptId, verified);
+  } catch (error) {
+    logger.error('Could not record the guild milestone win', { error: error.message, playerId });
+  }
+}
+
 // Pin competition membership when the economy claim is paid. A later receipt retry must
 // not count a win in a new event just because the active window changed.
 function competitionIdsAtWin() {
@@ -440,6 +450,7 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       }));
 
     if (rankedScore !== null) await recordCompetitionWin(playerId, attemptId, level, rankedScore, competitionIds);
+    if (result.verified === true) await recordMilestoneContribution(playerId, attemptId, true);
     if (!result.duplicate) security.logSecurityEvent('level_completed', {
       playerId, level, score, stars: result.stars, xpGained: winRewards(result.stars).xp,
       ip: req.ip,
