@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 // public/js/offline-api.js is a classic script that wraps window.fetch on the free static host.
-function runShim(href: string) {
+function runShim(href: string, globals: Record<string, unknown> = {}) {
   const native = { calls: [] as string[] };
   const sandbox: any = {
     location: new URL(href),
@@ -17,6 +17,7 @@ function runShim(href: string) {
       return Promise.resolve(new Response('native', { status: 200 }));
     },
   };
+  Object.assign(sandbox, globals);
   sandbox.window = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(readFileSync('public/js/offline-api.js', 'utf8'), sandbox);
@@ -24,6 +25,27 @@ function runShim(href: string) {
 }
 
 describe('offline API shim', () => {
+  test('with a configured https server, same-origin /api calls go to that server and nothing else is rewritten', async () => {
+    const { sandbox, native } = runShim('https://infinite-match.example/', {
+      INFINITE_MATCH_API_BASE: 'https://api.example.test/some/path',
+    });
+    expect(sandbox.InfiniteMatchApi).toMatchObject({ mode: 'remote', base: 'https://api.example.test' });
+    await sandbox.fetch('/api/account-economy/data', { method: 'GET' });
+    await sandbox.fetch('/js/procedural-levels.js');
+    expect(native.calls).toEqual([
+      'https://api.example.test/api/account-economy/data',
+      '/js/procedural-levels.js',
+    ]);
+  });
+
+  test('refuses insecure remote addresses and stays offline', () => {
+    const { sandbox } = runShim('https://infinite-match.example/', {
+      INFINITE_MATCH_API_BASE: 'http://api.example.test',
+    });
+    expect(sandbox.InfiniteMatchApi.mode).toBe('offline');
+    expect(sandbox.InfiniteMatchApi.base).toBe('');
+  });
+
   test('on the free static host, same-origin /api calls are answered locally with 503 and never reach the network', async () => {
     const { sandbox, native } = runShim('https://infinite-match.example/');
     expect(sandbox.InfiniteMatchApi.mode).toBe('offline');

@@ -1,11 +1,11 @@
 // HTTP app for the free self-hosted server. Plain node:http, no framework, no extra dependencies.
 import { createServer } from 'node:http';
 import { authenticate, login, register } from './auth.js';
-import { closeAttempt, getEconomyView, refillEnergy, spendEnergy } from './economy.js';
+import { closeAttempt, completeLevel, getEconomyView, refillEnergy, spendEnergy } from './economy.js';
 import { openDatabase } from './db.js';
 import { ApiError } from './errors.js';
 
-const MAX_BODY_BYTES = 16 * 1024;
+const MAX_BODY_BYTES = 64 * 1024;
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_LIMIT_PER_WINDOW = 20;
 
@@ -18,6 +18,7 @@ const ROUTES = {
   'POST /api/account-economy/energy/spend': { handler: ({ body, db, player, now }) => ({ success: true, result: spendEnergy(db, player.id, body, now) }), auth: true },
   'POST /api/account-economy/energy/refill': { handler: ({ db, player, now }) => ({ success: true, result: refillEnergy(db, player.id, now) }), auth: true },
   'POST /api/account-economy/attempt/close': { handler: ({ body, db, player, now }) => ({ success: true, ...closeAttempt(db, player.id, body, now) }), auth: true },
+  'POST /api/account-economy/level/complete': { handler: ({ body, db, player, now }) => ({ success: true, result: completeLevel(db, player.id, body, now) }), auth: true },
 };
 
 function jsonHeaders(origin, allowedOrigins) {
@@ -61,7 +62,7 @@ async function readJson(req) {
 }
 
 // Fixed-window counter per client address for sign-in and registration.
-function createLimiter(now = () => Date.now()) {
+function createLimiter(now = () => Date.now(), limit = AUTH_LIMIT_PER_WINDOW) {
   const windows = new Map();
   return (key) => {
     const t = now();
@@ -71,7 +72,7 @@ function createLimiter(now = () => Date.now()) {
       return true;
     }
     entry.count += 1;
-    return entry.count <= AUTH_LIMIT_PER_WINDOW;
+    return entry.count <= limit;
   };
 }
 
@@ -79,8 +80,9 @@ export function createApp({
   db = openDatabase(),
   allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
   now = () => Date.now(),
+  authLimitPerWindow = AUTH_LIMIT_PER_WINDOW,
 } = {}) {
-  const allowLogin = createLimiter(now);
+  const allowLogin = createLimiter(now, authLimitPerWindow);
 
   async function handle(req, res) {
     const url = new URL(req.url, 'http://localhost');

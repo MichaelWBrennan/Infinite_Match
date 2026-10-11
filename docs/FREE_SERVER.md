@@ -2,7 +2,7 @@
 
 A small Node server that runs on your own machine. It has no paid services: SQLite is the database, `node:sqlite` is built into Node, and the only exposure is an outbound Cloudflare Tunnel. It lives in `server/` and uses no npm dependencies.
 
-Status: **first slice, not full parity yet.** The browser game is still offline. Nothing in `public/` calls this server yet.
+Status: **partial.** Accounts, energy, generated levels, and verified level wins work. Many features are still missing (see below). The public site stays offline until you set the server address in `index.html`.
 
 ## Requirements
 
@@ -12,7 +12,7 @@ Status: **first slice, not full parity yet.** The browser game is still offline.
 ## Run it
 
 ```bash
-npm run test:server                    # 18 tests, in-memory database
+npm run test:server                    # 24 tests, in-memory database
 node server/index.js                   # serves http://127.0.0.1:8787
 ```
 
@@ -40,20 +40,28 @@ The machine has to stay on and online. If it sleeps, the game's account features
 | `POST /api/auth/login` | Same response. Unknown users and wrong passwords return the same error. |
 | `POST /api/account-economy/initialize` | Returns the economy view |
 | `GET /api/account-economy/data` | Energy, coins, and stars, with energy regenerated to the current time |
-| `POST /api/account-economy/energy/spend` | Spends 1 energy, returns an `attemptId`. Classic levels only. |
+| `POST /api/account-economy/energy/spend` | Spends 1 energy, returns an `attemptId`. With a `mode` (`classic`, `daily`, `timed`, `endless`), the server generates the board and pins it to the attempt. Send `rulesVersion: 5`, as the current client does. |
 | `POST /api/account-economy/energy/refill` | Refills missing energy for 10 coins per point |
 | `POST /api/account-economy/attempt/close` | Idempotent |
+| `POST /api/account-economy/level/complete` | Pays a win only when the server replays the moves on the board it pinned at spend time and reaches the same score and objectives. Reward = `winRewards(stars)` (coins, XP, stars). A retry returns the original result without paying again. Forged scores are rejected and the attempt is closed. Legacy attempts with no pinned board cannot win (`replay_required`). |
 
 Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It never returns HTML with a success status, which the browser client would otherwise treat as success.
 
 ## Not implemented yet
 
-- `level/complete`, which pays out rewards. It needs replay validation against the shared rules before rewards can be trusted. Until then, wins pay nothing on the free server.
-- Mode-based (generated) levels. These currently return 503 `generated_levels_unavailable`.
-- Daily rewards, power-ups, inventory, lootboxes, endless mode.
-- Kingdom, battle pass, live ops, social (friends, guilds, leaderboards), retention study.
+- Power-up receipts, inventory replay, and `timed`/`endless` completion. Those attempts can be spent but not yet completed.
+- Level generation uses the local context (no live weather). The existing server uses live weather when it's available. This changes only the forecast metadata, not the board rules.
+- Daily rewards, inventory, lootboxes, the endless run endpoint.
+- Kingdom, battle pass, live ops, social (friends, guilds, leaderboards), retention study, level-results targets.
 - Payments. Stripe needs a processor, and processing fees apply. This is not free.
-- Connecting the browser client to this server. That changes the public site's behavior, so it is a separate, deliberate step.
+
+## Connect the game to your server
+
+1. Set `ALLOWED_ORIGINS` on the server to the game's origin (for example `https://your-game.example`).
+2. In `index.html`, set the `infinite-match-api-base` meta tag to your server address, for example `https://api.your-domain.example`. Only `https://` (or `http://localhost` for development) is accepted. An invalid value leaves the game offline.
+3. Redeploy the static site.
+
+The browser then sends every same-origin `/api/*` call to your server. Anything not implemented returns a JSON 503, which the game treats as an offline feature.
 
 ## Security notes
 
@@ -65,4 +73,4 @@ Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It n
 
 ## Tests
 
-`npm run test:server` runs `server/test/free-server.mjs` with Node's built-in test runner. Jest (`npm test`) does not run it.
+`npm run test:server` runs `server/test/free-server.mjs` with Node's built-in test runner. Jest (`npm test`) does not run it. `server/test/bot.mjs` is a greedy test player that wins generated levels, so the tests exercise real verified wins.

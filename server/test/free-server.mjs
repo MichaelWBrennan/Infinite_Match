@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { createApp } from '../app.js';
 import { openDatabase } from '../db.js';
+import { playGreedy } from './bot.mjs';
 
 const PASSWORD = 'correct-horse-battery';
 
@@ -15,7 +16,7 @@ describe('free server', () => {
   before(async () => {
     clock = { now: Date.parse('2026-10-10T12:00:00Z') };
     allowed = ['https://game.example'];
-    app = createApp({ db: openDatabase(':memory:'), allowedOrigins: allowed, now: () => clock.now });
+    app = createApp({ db: openDatabase(':memory:'), allowedOrigins: allowed, now: () => clock.now, authLimitPerWindow: 10000 });
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${app.server.address().port}`;
   });
@@ -168,11 +169,114 @@ describe('free server', () => {
     assert.equal(unknown.json.closed, true);
   });
 
-  it('does not generate levels by mode yet (explicit 503, not a silent fallback)', async () => {
+  it('pins a server-generated board to a mode attempt', async () => {
     const { token } = await newPlayer();
-    const res = await call('POST', '/api/account-economy/energy/spend', { token, body: { level: 1, mode: 'classic' } });
-    assert.equal(res.status, 503);
-    assert.equal(res.json.error, 'generated_levels_unavailable');
+    const res = await call('POST', '/api/account-economy/energy/spend', { token, body: { level: 1, mode: 'classic', rulesVersion: 5 } });
+    assert.equal(res.status, 200);
+    const level = res.json.result.generatedLevel;
+    assert.ok(Array.isArray(level.board));
+    assert.ok(level.targetScore > 0);
+    assert.equal(level.mode, 'classic');
+  });
+
+  it('rejects unknown modes', async () => {
+    const { token } = await newPlayer();
+    const res = await call('POST', '/api/account-economy/energy/spend', { token, body: { level: 1, mode: 'nope' } });
+    assert.equal(res.status, 400);
+    assert.equal(res.json.error, 'invalid_mode');
+  });
+
+  async function spendGenerated(token, level = 1) {
+    const res = await call('POST', '/api/account-economy/energy/spend', { token, body: { level, mode: 'classic', rulesVersion: 5 } });
+    assert.equal(res.status, 200);
+    return res.json.result;
+  }
+
+  it('pays a verified win once, and a retry does not pay again', async () => {
+    const { token } = await newPlayer();
+    const before = (await call('GET', '/api/account-economy/data', { token })).json.data.currencies;
+    const attempt = await spendGenerated(token, 1);
+    const played = playGreedy(attempt.generatedLevel);
+    assert.equal(played.complete, true, 'the test bot should win level 1');
+
+    const body = {
+      level: 1, attemptId: attempt.attemptId, score: played.score,
+      moves: played.moves, objectiveProgress: played.objectiveProgress,
+    };
+    const win = await call('POST', '/api/account-economy/level/complete', { token, body });
+    assert.equal(win.status, 200);
+    assert.ok(win.json.result.stars >= 1);
+    assert.ok(win.json.result.reward.coins > 0);
+    assert.ok(win.json.result.reward.xp > 0);
+    assert.equal(win.json.result.balances.stars, win.json.result.stars);
+
+    const retry = await call('POST', '/api/account-economy/level/complete', { token, body });
+    assert.equal(retry.status, 200);
+    assert.equal(retry.json.result.duplicate, true);
+
+    const after = (await call('GET', '/api/account-economy/data', { token })).json.data.currencies;
+    assert.equal(after.coins.amount, before.coins.amount + win.json.result.reward.coins);
+    assert.equal(after.stars.amount, win.json.result.stars);
+  });
+
+  it('pays nothing for a tampered score and closes the attempt', async () => {
+    const { token } = await newPlayer();
+    const attempt = await spendGenerated(token, 1);
+    const played = playGreedy(attempt.generatedLevel);
+    const coinsBefore = (await call('GET', '/api/account-economy/data', { token })).json.data.currencies.coins.amount;
+
+    const forged = await call('POST', '/api/account-economy/level/complete', {
+      token,
+      body: { level: 1, attemptId: attempt.attemptId, score: played.score + 5000, moves: played.moves, objectiveProgress: played.objectiveProgress },
+    });
+    assert.equal(forged.status, 400);
+    assert.equal(forged.json.error, 'replay_result_mismatch');
+
+    const coinsAfter = (await call('GET', '/api/account-economy/data', { token })).json.data.currencies.coins.amount;
+    assert.equal(coinsAfter, coinsBefore);
+
+    const honest = await call('POST', '/api/account-economy/level/complete', {
+      token,
+      body: { level: 1, attemptId: attempt.attemptId, score: played.score, moves: played.moves, objectiveProgress: played.objectiveProgress },
+    });
+    assert.equal(honest.status, 400);
+    assert.equal(honest.json.error, 'attempt_closed');
+  });
+
+  it('refuses wins on legacy attempts that have no pinned board', async () => {
+    const { token } = await newPlayer();
+    const spend = await call('POST', '/api/account-economy/energy/spend', { token, body: { level: 2 } });
+    const res = await call('POST', '/api/account-economy/level/complete', {
+      token,
+      body: { level: 2, attemptId: spend.json.result.attemptId, score: 5000, moves: [[0, 0, 1, 0]] },
+    });
+    assert.equal(res.status, 400);
+    assert.equal(res.json.error, 'replay_required');
+  });
+
+  it('rejects a level mismatch and an unknown attempt', async () => {
+    const { token } = await newPlayer();
+    const attempt = await spendGenerated(token, 1);
+    const mismatch = await call('POST', '/api/account-economy/level/complete', {
+      token, body: { level: 2, attemptId: attempt.attemptId, score: 1, moves: [[0, 0, 1, 0]] },
+    });
+    assert.equal(mismatch.json.error, 'level_mismatch');
+    const unknown = await call('POST', '/api/account-economy/level/complete', {
+      token, body: { level: 1, attemptId: 'does-not-exist', score: 1, moves: [[0, 0, 1, 0]] },
+    });
+    assert.equal(unknown.json.error, 'attempt_not_found');
+  });
+
+  it('does not let one player complete another player\'s attempt', async () => {
+    const owner = await newPlayer();
+    const other = await newPlayer();
+    const attempt = await spendGenerated(owner.token, 1);
+    const played = playGreedy(attempt.generatedLevel);
+    const res = await call('POST', '/api/account-economy/level/complete', {
+      token: other.token,
+      body: { level: 1, attemptId: attempt.attemptId, score: played.score, moves: played.moves, objectiveProgress: played.objectiveProgress },
+    });
+    assert.equal(res.json.error, 'attempt_not_found');
   });
 
   it('answers unimplemented /api paths with JSON 503, never HTML 200', async () => {
@@ -195,7 +299,7 @@ describe('free server', () => {
   });
 
   it('rejects oversized and malformed bodies', async () => {
-    const big = await call('POST', '/api/auth/login', { raw: JSON.stringify({ playerId: 'x'.repeat(20000) }) });
+    const big = await call('POST', '/api/auth/login', { raw: JSON.stringify({ playerId: 'x'.repeat(70000) }) });
     assert.equal(big.status, 413);
     const bad = await call('POST', '/api/auth/login', { raw: '{not json' });
     assert.equal(bad.json.error, 'invalid_json');
