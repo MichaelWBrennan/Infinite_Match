@@ -1,6 +1,16 @@
 # Hall Lanterns: web weekly event operations
 
-This is a **small free event**, not a prize tournament. The first published UTC windows in `config/liveops.json` are 2026-10-05–12, 12–19 and 19–26. Three **new, unchanged-reward** windows continue on 2026-10-26–11-02, 11-02–09 and 11-09–16; the original three IDs, windows and milestone definitions are frozen. **Publish another validated week before November 16** or the event intentionally disappears. Each Monday 00:00 UTC begins a new seven-day event; the end is exclusive. The player's browser shows the end in their local time and explicitly names the UTC boundary. Progress and unclaimed rewards expire at the end; there is no late grant. Do not call an empty schema a live event.
+This is a **small free event**, not a prize tournament. The checked-in calendar now
+contains ten contiguous Monday 00:00 UTC windows from October 5 through **December
+14, 2026** (exclusive). The first six windows through November 16, their IDs and
+rewards are unchanged; four candidate windows begin November 16, 23, 30 and
+December 7 with the same modest 1/3/5-win rewards. **A Git change is not a live
+publication:** compare against the actual deployed config, deploy/restart, and
+verify the real boundary before describing these as active. Publish another
+validated week before December 14, preferably at least 14 days ahead. The
+player's browser shows the end in their local time and explicitly names the UTC
+boundary. Progress and unclaimed rewards expire at the end; there is no late
+grant. Do not call an empty schema a live event.
 
 ## Publishing and preview
 
@@ -8,16 +18,22 @@ This is a **small free event**, not a prize tournament. The first published UTC 
 2. Preview current week, the next boundary, and the end of the planned schedule **before rollout**:
    ```sh
    node scripts/preview-weekly-event.mjs
-   node scripts/preview-weekly-event.mjs 2026-10-26T00:00:00Z
-   node scripts/preview-weekly-event.mjs 2026-11-02T00:00:00Z
-   node scripts/preview-weekly-event.mjs 2026-11-09T00:00:00Z
-   node scripts/preview-weekly-event.mjs 2026-11-16T00:00:00Z # expected to exit nonzero until another week is published
+   node scripts/preview-weekly-event.mjs 2026-11-16T00:00:00Z
+   node scripts/preview-weekly-event.mjs 2026-12-07T00:00:00Z
+   node scripts/preview-weekly-event.mjs 2026-12-14T00:00:00Z # fails until another week is scheduled
+   WEEKLY_EVENT_MIN_FUTURE_DAYS=14 node scripts/preview-weekly-event.mjs # run daily in operator/CI checks
    npm test -- --runInBand src/__tests__/weekly-event.test.ts src/__tests__/store-billing.test.ts
    ```
-   `LIVE_OPS_CONFIG=/path/to/staging.json` lets the preview read a candidate without changing the checked-in file. The script validates **the weekly schedule and archive** (and optionally compares a prior snapshot); Jest validates the **whole** live-ops config. An empty preview at the final date exits nonzero to flag a publishing gap (**November 16 currently fails until another week is published**). Previewing never updates player progress or coins.
+   `LIVE_OPS_CONFIG=/path/to/staging.json` lets the preview read a candidate without changing the checked-in file. The script validates **the weekly schedule and archive** (and optionally compares a prior snapshot); Jest validates the **whole** live-ops config. An empty preview at the final date exits nonzero to flag a publishing gap
+(**December 14 fails until another week is scheduled**). The optional
+`WEEKLY_EVENT_MIN_FUTURE_DAYS` accepts 0–84 whole days and fails when less than
+that many *full* days remain after the preview instant: at a 14-day threshold,
+November 30 00:00 UTC passes, December 1 fails. This is a read-only check,
+**not** an automated publisher or an alert unless an operator runs/schedules it.
+Previewing never updates player progress or coins.
 3. Deploy/restart the web server so its cached live-ops config is reloaded, then verify `GET /api/live-ops/weekly/preview` (public), `GET /api/live-ops/weekly` (signed in), and the web **Explore → Weekly event** / Community → Events tab. Check a fresh guest can still play; make a verified classic/daily win with a test account and confirm only one increment and one claim. Test the next Monday rollover with staging's config/clock before promoting. Keep receipts/logs of the published schedule and sample checks. Never modify the server clock or player balances in production to simulate a window.
 
-**Rotating the bounded calendar (not yet done to the six seeded weeks):** keep at most 12 entries in `weeklyEvents`. Once a week has actually ended, move its **unchanged** definition into `weeklyEventArchive` (at most 52 entries) in the same candidate file as the new scheduled week. Do not put a future/active week in the archive; the server rejects it. Archive entries are not advertised, never accrue progress and cannot grant coins. A previously claimed milestone can still return a read-only `duplicate: true` acknowledgment while its archived definition and player record remain. Unclaimed milestones close at the end as before. The next verified win retains archived player records and prunes IDs no longer in either list.
+**Rotating the bounded calendar (not yet done to the ten checked-in weeks):** keep at most 12 entries in `weeklyEvents`. Once a week has actually ended, move its **unchanged** definition into `weeklyEventArchive` (at most 52 entries) in the same candidate file as the new scheduled week. Do not put a future/active week in the archive; the server rejects it. Archive entries are not advertised, never accrue progress and cannot grant coins. A previously claimed milestone can still return a read-only `duplicate: true` acknowledgment while its archived definition and player record remain. Unclaimed milestones close at the end as before. The next verified win retains archived player records and prunes IDs no longer in either list.
 
 Before publishing a candidate, **save the actual currently deployed live-ops file** and compare it to the candidate using the read-only preview:
 

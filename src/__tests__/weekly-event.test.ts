@@ -31,19 +31,20 @@ describe('weekly calendar validation and pure rules', () => {
     const config = JSON.parse(fs.readFileSync('config/liveops.json', 'utf8'));
     const result = validateLiveOps(config);
     expect(result.errors).toEqual([]);
-    expect(result.config?.weeklyEvents).toHaveLength(6);
+    expect(result.config?.weeklyEvents).toHaveLength(10);
     expect(activeWeeklyEvent(result.config, Date.parse('2026-10-10T12:00:00Z'))?.id).toBe('hall_lanterns_20261005');
     expect(activeWeeklyEvent(result.config, Date.parse('2026-10-12T00:00:00Z'))?.id).toBe('hall_lanterns_20261012');
     expect(activeWeeklyEvent(result.config, Date.parse('2026-10-26T00:00:00Z'))?.id).toBe('hall_lanterns_20261026');
     expect(activeWeeklyEvent(result.config, Date.parse('2026-11-02T00:00:00Z'))?.id).toBe('hall_lanterns_20261102');
     expect(activeWeeklyEvent(result.config, Date.parse('2026-11-09T00:00:00Z'))?.id).toBe('hall_lanterns_20261109');
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-16T00:00:00Z'))).toBeNull();
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-16T00:00:00Z'))?.id).toBe('hall_lanterns_20261116');
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-12-14T00:00:00Z'))).toBeNull();
   });
 
   test('published weeks roll over continuously with frozen original rewards and no late new grant', () => {
     const raw = JSON.parse(fs.readFileSync('config/liveops.json', 'utf8'));
     const config = validateLiveOps(raw).config!;
-    const starts = ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09'];
+    const starts = ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07'];
     for (let i = 0; i < starts.length; i++) {
       const start = Date.parse(`${starts[i]}T00:00:00Z`);
       const id = `hall_lanterns_${starts[i].replace(/-/g, '')}`;
@@ -54,7 +55,7 @@ describe('weekly calendar validation and pure rules', () => {
       if (i > 0) expect(activeWeeklyEvent(config, start - 1)?.id).toBe(config.weeklyEvents[i - 1].id);
     }
     const oct26 = Date.parse('2026-10-26T00:00:00Z');
-    const afterSchedule = Date.parse('2026-11-16T00:00:00Z');
+    const afterSchedule = Date.parse('2026-12-14T00:00:00Z');
     expect(visibleWeeklyEvent(config, oct26 - 1)?.id).toBe('hall_lanterns_20261019');
     expect(visibleWeeklyEvent(config, oct26)?.id).toBe('hall_lanterns_20261026');
     expect(visibleWeeklyEvent(config, afterSchedule)).toBeNull();
@@ -69,17 +70,26 @@ describe('weekly calendar validation and pure rules', () => {
     expect(claimWeeklyMilestone(wallet, config, 'hall_lanterns_20261026', 1, oct26)).toMatchObject({ duplicate: false, coins: 15 });
   });
 
-  test('operator preview succeeds through November 9 but flags the next publishing deadline', () => {
-    const run = (time: string, configFile = path.resolve('config/liveops.json'), previousFile = '') => spawnSync(process.execPath, ['scripts/preview-weekly-event.mjs', time],
+  test('operator preview covers December, checks the publishing horizon, and protects prior definitions', () => {
+    const run = (time: string, configFile = path.resolve('config/liveops.json'), previousFile = '', horizon = '0') => spawnSync(process.execPath, ['scripts/preview-weekly-event.mjs', time],
       { cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, LIVE_OPS_CONFIG: configFile,
-        WEEKLY_EVENT_PREVIOUS_CONFIG: previousFile, WEEKLY_EVENT_DISABLED: '' } });
+        WEEKLY_EVENT_PREVIOUS_CONFIG: previousFile, WEEKLY_EVENT_DISABLED: '', WEEKLY_EVENT_MIN_FUTURE_DAYS: horizon } });
     const rollover = run('2026-10-26T00:00:00Z');
     expect(rollover.status).toBe(0);
     expect(rollover.stdout).toContain('"id": "hall_lanterns_20261026"');
     const finalWeek = run('2026-11-09T00:00:00Z');
     expect(finalWeek.status).toBe(0);
     expect(finalWeek.stdout).toContain('"id": "hall_lanterns_20261109"');
-    const deadline = run('2026-11-16T00:00:00Z');
+    const next = run('2026-11-16T00:00:00Z');
+    expect(next.status).toBe(0);
+    expect(next.stdout).toContain('"id": "hall_lanterns_20261116"');
+    expect(run('2026-11-30T00:00:00Z', path.resolve('config/liveops.json'), '', '14').status).toBe(0);
+    const warning = run('2026-12-01T00:00:00Z', path.resolve('config/liveops.json'), '', '14');
+    expect(warning.status).toBe(1);
+    expect(warning.stderr).toContain('less than 14 full days remaining');
+    const invalidHorizon = run('2026-11-16T00:00:00Z', path.resolve('config/liveops.json'), '', '85');
+    expect(invalidHorizon.status).toBe(1);
+    const deadline = run('2026-12-14T00:00:00Z');
     expect(deadline.status).toBe(1);
     expect(deadline.stderr).toContain('Publish future dates before the schedule runs out.');
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'weekly-preview-'));
@@ -91,6 +101,9 @@ describe('weekly calendar validation and pure rules', () => {
       const invalid = run('2026-10-26T00:00:00Z', file);
       expect(invalid.status).toBe(1);
       expect(invalid.stderr).toContain('cannot archive a week before its UTC end');
+      const deployedFile = path.join(tempDir, 'deployed.json');
+      fs.writeFileSync(deployedFile, JSON.stringify({ weeklyEvents: JSON.parse(fs.readFileSync('config/liveops.json', 'utf8')).weeklyEvents.slice(0, 6), weeklyEventArchive: [] }));
+      expect(run('2026-11-16T00:00:00Z', path.resolve('config/liveops.json'), deployedFile).status).toBe(0);
       const previousFile = path.join(tempDir, 'previous.json');
       const candidateFile = path.join(tempDir, 'candidate.json');
       const old = { ...schedule(currentMonday(Date.now()) - 7 * DAY), id: 'lanterns_previous' };

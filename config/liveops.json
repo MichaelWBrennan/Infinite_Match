@@ -11,7 +11,20 @@
       "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
       "start": "2026-10-05T00:00:00Z",
       "end": "2026-10-12T00:00:00Z",
-      "milestones": [{ "wins": 1, "coins": 15 }, { "wins": 3, "coins": 25 }, { "wins": 5, "coins": 40 }]
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
     },
     {
       "id": "hall_lanterns_20261012",
@@ -19,7 +32,20 @@
       "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
       "start": "2026-10-12T00:00:00Z",
       "end": "2026-10-19T00:00:00Z",
-      "milestones": [{ "wins": 1, "coins": 15 }, { "wins": 3, "coins": 25 }, { "wins": 5, "coins": 40 }]
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
     },
     {
       "id": "hall_lanterns_20261019",
@@ -27,7 +53,20 @@
       "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
       "start": "2026-10-19T00:00:00Z",
       "end": "2026-10-26T00:00:00Z",
-      "milestones": [{ "wins": 1, "coins": 15 }, { "wins": 3, "coins": 25 }, { "wins": 5, "coins": 40 }]
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
     },
     {
       "id": "hall_lanterns_20261026",
@@ -35,7 +74,20 @@
       "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
       "start": "2026-10-26T00:00:00Z",
       "end": "2026-11-02T00:00:00Z",
-      "milestones": [{ "wins": 1, "coins": 15 }, { "wins": 3, "coins": 25 }, { "wins": 5, "coins": 40 }]
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
     },
     {
       "id": "hall_lanterns_20261102",
@@ -43,7 +95,20 @@
       "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
       "start": "2026-11-02T00:00:00Z",
       "end": "2026-11-09T00:00:00Z",
-      "milestones": [{ "wins": 1, "coins": 15 }, { "wins": 3, "coins": 25 }, { "wins": 5, "coins": 40 }]
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
     },
     {
       "id": "hall_lanterns_20261109",
@@ -51,7 +116,104 @@
       "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
       "start": "2026-11-09T00:00:00Z",
       "end": "2026-11-16T00:00:00Z",
-      "milestones": [{ "wins": 1, "coins": 15 }, { "wins": 3, "coins": 25 }, { "wins": 5, "coins": 40 }]
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
+    },
+    {
+      "id": "hall_lanterns_20261116",
+      "name": "Hall Lanterns",
+      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
+      "start": "2026-11-16T00:00:00Z",
+      "end": "2026-11-23T00:00:00Z",
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
+    },
+    {
+      "id": "hall_lanterns_20261123",
+      "name": "Hall Lanterns",
+      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
+      "start": "2026-11-23T00:00:00Z",
+      "end": "2026-11-30T00:00:00Z",
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
+    },
+    {
+      "id": "hall_lanterns_20261130",
+      "name": "Hall Lanterns",
+      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
+      "start": "2026-11-30T00:00:00Z",
+      "end": "2026-12-07T00:00:00Z",
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
+    },
+    {
+      "id": "hall_lanterns_20261207",
+      "name": "Hall Lanterns",
+      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
+      "start": "2026-12-07T00:00:00Z",
+      "end": "2026-12-14T00:00:00Z",
+      "milestones": [
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
+      ]
     }
   ]
 }
