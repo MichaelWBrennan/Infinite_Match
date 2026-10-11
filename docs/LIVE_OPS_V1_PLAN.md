@@ -7,7 +7,7 @@
 - **Event type:** personal score challenge (option A).
 - **Ceiling:** the Hall Lanterns weekly ceiling. Each tier at most 40 coins, all tiers at most 80. A test guards this against drift from `config/liveops.json`.
 - **Deals:** out of v1.
-- **Production store:** the code refuses to start in production without `ECONOMY_STORE=mongo` (`assertEconomyStoreForEnvironment`, called in `src/server/index.ts` before services start, with a test). This holds only if the deployment sets `NODE_ENV=production`, which the repository cannot verify. Confirm the deployment's environment before L3 publishes anything.
+- **Production store:** the code refuses to start in production without `ECONOMY_STORE=mongo` (`assertEconomyStoreForEnvironment`, called in `src/server/index.ts` before services start, with a test). **Confirmed by the owner (2026-10-11):** production runs `NODE_ENV=production` with `ECONOMY_STORE=mongo`. The guard applies. Publication still needs the L5 sign-off.
 
 ## Config key and kill switch (L3)
 
@@ -77,4 +77,4 @@ Gap, from the [competitive ranking](COMPETITIVE_STRATEGY.md): live ops scores **
 1. Which second event type? (A, B or C above; recommended A.)
 2. What is the per-event coin ceiling?
 3. Keep deals out of v1? (recommended yes)
-4. Confirm the deployment sets `NODE_ENV=production`, so the startup guard applies.
+4. Production store: answered (see Owner decisions).
