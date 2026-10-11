@@ -8,7 +8,7 @@ const MAX_CACHED_LEVELS = 128;
 function validate(level, mode, rulesVersion = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(level) || level < 1) throw new LevelInputError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new LevelInputError('invalid_mode');
-  if (![2, 3, 4, 5].includes(rulesVersion)) throw new LevelInputError('unsupported_rules_version');
+  if (![2, 3, 4, 5, 6].includes(rulesVersion)) throw new LevelInputError('unsupported_rules_version');
 }
 
 export function levelForContext(level, mode, context, rulesVersion = GENERATOR_VERSION) {

@@ -1,6 +1,6 @@
 # Board variety, rules v6: plan and acceptance gates
 
-**Status (2026-10-11): M1 done, provisional.** `src/services/levels/blocker-rules.js` and `src/__tests__/blocker-rules.test.ts` implement the pure spread, cap and clear rules using the recommended defaults. The owner's answers to the open questions were not received, so these defaults are unconfirmed. The generator, golden fixtures, and paid definitions are unchanged. M2 and later are not started. This is the first bundle from the parity request ("board variety, live ops, social, in that order"). It is the largest gap in the [competitive ranking](COMPETITIVE_STRATEGY.md): board obstacles score 1/5 and objectives 2/5, against 5 and 4–5 for the leaders.
+**Status (2026-10-11): M1 and M2 done, not shipped.** M1 is the pure rules module. M2 adds generator v6 behind the version gate, the `clear-blockers` objective, and `fixtures/golden/rules-v6.json`. `rules-v5.json` and the v2–v4 tests are unchanged. `GENERATOR_VERSION` stays 5, and `clientRulesVersion` still rejects 6, so no player receives a v6 level. M3 to M5 are not started.
 
 ## Why this is a plan first
 
@@ -57,6 +57,14 @@ The v5 shield uses a `clear-shields` objective. v6 adds `clear-blockers` as a se
 **M4 — client.** Phaser draws blockers; `match-feedback.js` announces spread and clears; `assistive-board.js` names blocker cells; hints avoid stalling on blockers. Rebuild the bundle. *Gates:* unit tests for named cells and feedback; the browser smoke gains a blocker case.
 
 **M5 — ship behind a flag.** Only v6 definitions for new classic levels use blockers. Daily and endless stay on v5 until a playtest. *Gates:* the first-play study (see [WEB_FIRST_PLAY_STUDY.md](WEB_FIRST_PLAY_STUDY.md)) is run before any default change.
+
+## Decisions taken (owner, 2026-10-11)
+
+- **First family:** spreading blocker. **Spread:** once per accepted player move, lowest `row,col` eligible orthogonal neighbour, cap 6 blockers total. Delivery objective deferred.
+- **Match model: overlay, not locked.** The owner first chose "locked, shield-like". A locked gem needs gravity and refill to treat the cell as fixed, which changes the shared match path. The owner then chose the overlay: the gem stays normal, and a match that clears the blocker's cell removes the blocker. This is weaker than a lock, and the lock is a possible later bundle.
+- **Booster clears** remove a blocker they hit but do not spread. The plan only names player moves for spread.
+- **Stages:** blockers are placed on witness-cleared cells, up to 3, and never share a level with shields, so each v6 definition adds exactly one objective. Stage: level >= 3 with level % 4 === 2, or the daily hash stage.
+- **Replay and client:** M2 threads blockers through the v6 objective path, so hints and replay simulation use them. M3 still owns replay tamper tests. M4 owns rendering, feedback, and assistive names.
 
 ## Known blockers for this plan
 

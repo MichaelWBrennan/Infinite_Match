@@ -1,13 +1,15 @@
-/** Rules v6 (M1): spreading blocker bookkeeping. Pure functions only: no board,
- * no RNG, no generator wiring. A blocker sits on one ordinary gem cell. After each
- * player move it may grow into ONE orthogonal neighbour, the lowest (row, col) among
- * all eligible neighbours of every blocker. Spread never enters a special anchor, a
- * shield cell, or an existing blocker. The number of blockers is capped. A match that
- * clears a blocker's cell removes the blocker. Matching and generator integration are
- * M2; nothing here changes v2-v5 behaviour. Design is provisional until the owner
- * confirms it (see docs/BOARD_VARIETY_V6_PLAN.md). */
+/** Rules v6: spreading blocker overlay. A blocker is terrain on an ordinary gem cell, like a
+ * shield, but it never changes the gem grid. The witnessed no-booster path is therefore the
+ * same path as v5. A match that clears a blocker's cell removes it. After each ACCEPTED player
+ * move, one blocker spreads into the lowest (row, col) eligible orthogonal neighbour: never a
+ * special anchor, a shield cell, or an existing blocker. Total blockers are capped at
+ * BLOCKER_CAP. Booster clears remove blockers but do not spread. Only the v6 path calls these. */
+import { hashSeed } from './match-core.js';
+import { simulateSpecialMove, certifySpecialBoard } from './special-rules.js';
+import { simulateShieldMove, simulateShieldClear } from './shield-rules.js';
 
 export const BLOCKER_CAP = 6;
+export const BLOCKER_STAGE_COUNT = 3;
 
 const keyOf = (row, col) => `${row},${col}`;
 
@@ -82,4 +84,90 @@ export function clearBlockers(blockers, clearedKeys) {
   }
   cleared.sort(compareKeys);
   return { blockers: copy, cleared: cleared.map(([r, c]) => keyOf(r, c)) };
+}
+
+/** Place up to BLOCKER_STAGE_COUNT blockers only on cells the no-booster witness clears.
+ * Same deterministic witness-based placement as shields, but on non-special cells. */
+export function witnessedBlockers(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('blocker_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.keys()].filter((key) => {
+    const [row, col] = key.split(',').map(Number);
+    return !specials[row][col];
+  }).sort();
+  const blockers = blankBlockers(n);
+  if (!candidates.length) return blockers;
+  const offset = hashSeed(`${seed}|blocker-cells`) % candidates.length;
+  for (let i = 0; i < Math.min(BLOCKER_STAGE_COUNT, candidates.length); i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    blockers[row][col] = 1;
+  }
+  return blockers;
+}
+
+/** Apply removal (by cleared cells) and optional spread to a shield-aware result. */
+function withBlockerHits(result, initial, spreadAfterMove) {
+  if (!result) return null;
+  let blockers = initial.map((row) => row.slice());
+  let brokenBlockers = 0;
+  const events = result.events.map((event) => {
+    const blockerHits = [];
+    for (const key of event.cleared) {
+      const [row, col] = key.split(',').map(Number);
+      if (!blockers[row][col]) continue;
+      blockers[row][col] = 0;
+      brokenBlockers++;
+      blockerHits.push({ row, col });
+    }
+    return { ...event, blockerHits };
+  });
+  let spread = null;
+  if (spreadAfterMove) {
+    const next = spreadBlockers(blockers, result.specials, result.shields);
+    if (!next) return null;
+    blockers = next.blockers;
+    spread = next.spread;
+  }
+  return { ...result, events, blockers, brokenBlockers, blockerSpread: spread };
+}
+
+/** One accepted player move: shield transition, then blocker clears, then one spread. */
+export function simulateBlockerMove(definition, state, cells, visualTrace = false) {
+  const blockers = state.blockers ?? definition.blockers;
+  const shielded = simulateShieldMove(definition, { ...state, shields: state.shields ?? definition.shields }, cells, visualTrace);
+  if (!shielded || !validBlockers(blockers, shielded.board.length)) return null;
+  return withBlockerHits(shielded, blockers, true);
+}
+
+/** Booster clears remove blockers they hit but never spread. */
+export function simulateBlockerClear(definition, state, keys, points, visualTrace = false) {
+  const blockers = state.blockers ?? definition.blockers;
+  const shielded = simulateShieldClear(definition, { ...state, shields: state.shields ?? definition.shields }, keys, points, visualTrace);
+  if (!shielded || !validBlockers(blockers, shielded.board.length)) return null;
+  return withBlockerHits(shielded, blockers, false);
+}
+
+/** Replay the same no-booster path used to place blockers, through the exact v6 transition. */
+export function certifyBlockerBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials } = definition;
+  const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
+  const base = certifySpecialBoard(board, refillState, gemTypes, gemWeights, budget, specials, true);
+  let state = { board, refillState, specials, shields: definition.shields, blockers: definition.blockers };
+  let score = 0; let brokenBlockers = 0; let brokenShields = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  for (const cells of base.witness) {
+    state = simulateBlockerMove(definition, state, cells);
+    if (!state) throw new Error('blocker_witness_invalid');
+    score += state.score; brokenBlockers += state.brokenBlockers; brokenShields += state.brokenShields;
+    for (const color of gemTypes) collected[color] += state.collected[color];
+  }
+  return { score, witness: base.witness, collected, brokenBlockers, brokenShields, blockers: state.blockers,
+    shields: state.shields };
 }
