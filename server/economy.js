@@ -1,14 +1,14 @@
 // Player economy: energy, coins, stars, XP, and the attempts that energy pays for.
 // Rules come from the shared pure modules in src/services/meta and src/services/levels,
 // the same code the existing server uses. Storage is one JSON document per player.
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import {
   ATTEMPT_ENERGY_COST,
   ATTEMPT_MAX_AGE_MS,
   nextRegenInMs,
   regenerateEnergy,
 } from '../src/services/meta/energy.js';
-import { ENERGY_PRICE_COINS } from '../src/services/meta/lootbox.js';
+import { ENERGY_PRICE_COINS, LOOTBOXES, pickLootReward } from '../src/services/meta/lootbox.js';
 import { starsForTarget, winRewards } from '../src/services/meta/rewards.js';
 import { generatedLevel, clientRulesVersion } from '../src/services/levels/level-service.js';
 import { LEVEL_MODES } from '../src/services/levels/generator.js';
@@ -21,6 +21,18 @@ const MAX_SCORE = 1000000;
 const MAX_OUTCOME_LENGTH = 40;
 const MAX_MOVES = 1000;
 
+// Same schedule as the existing server (AccountEconomyService.initializeDailyRewards).
+const DAILY_REWARDS = Object.freeze([
+  { day: 1, coins: 100, xp: 50 },
+  { day: 2, coins: 150, xp: 75 },
+  { day: 3, stars: 5, xp: 100 },
+  { day: 4, coins: 200, xp: 125 },
+  { day: 5, stars: 10, xp: 150 },
+  { day: 6, coins: 300, xp: 175 },
+  { day: 7, stars: 20, xp: 200, bonus: 'mega_reward' },
+]);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function defaultEconomy(nowMs) {
   return {
     currencies: {
@@ -29,6 +41,8 @@ export function defaultEconomy(nowMs) {
       energy: { amount: 100, maxAmount: 100, earned: 0, spent: 0, regenRate: 1, lastRegen: nowMs },
     },
     progress: { xp: 0 },
+    dailyRewards: { streak: 0, lastClaimed: null },
+    inventory: { powerups: {} },
     attempts: {},
   };
 }
@@ -36,7 +50,16 @@ export function defaultEconomy(nowMs) {
 function loadEconomy(db, playerId) {
   const row = db.prepare('SELECT state FROM economy WHERE player_id = ?').get(playerId);
   if (!row) throw new ApiError(404, 'economy_not_found');
-  return JSON.parse(row.state);
+  const economy = JSON.parse(row.state);
+  // Documents written before a field existed get its default on first load.
+  if (!economy.dailyRewards) economy.dailyRewards = { streak: 0, lastClaimed: null };
+  if (!economy.inventory) economy.inventory = { powerups: {} };
+  return economy;
+}
+
+function startOfLocalDay(ms) {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
 function saveEconomy(db, playerId, economy) {
@@ -68,7 +91,23 @@ function view(economy, nowMs) {
       },
     },
     progress: { xp: economy.progress.xp },
+    dailyRewards: dailyStatus(economy, nowMs),
+    inventory: { powerups: { ...economy.inventory.powerups } },
     serverTime: new Date(nowMs).toISOString(),
+  };
+}
+
+function dailyStatus(economy, nowMs) {
+  const { streak, lastClaimed } = economy.dailyRewards;
+  const last = lastClaimed ? new Date(lastClaimed).getTime() : null;
+  const canClaim = last === null || startOfLocalDay(nowMs) > startOfLocalDay(last);
+  // A missed day (more than one calendar day since the last claim) starts the streak over.
+  const effectiveStreak = last !== null && startOfLocalDay(nowMs) - startOfLocalDay(last) > DAY_MS ? 0 : streak;
+  return {
+    streak: effectiveStreak,
+    canClaim,
+    nextReward: Math.min(effectiveStreak + 1, DAILY_REWARDS.length),
+    rewards: DAILY_REWARDS.map((r) => ({ ...r })),
   };
 }
 
@@ -222,6 +261,59 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
   });
   if (outcome.rejected) throw new ApiError(400, outcome.rejected);
   return outcome;
+}
+
+function grantCurrency(currencies, currencyId, amount) {
+  const currency = currencies[currencyId];
+  currency.amount += amount;
+  currency.earned += amount;
+  clampCurrency(currency);
+}
+
+// One claim per local calendar day. The streak continues from yesterday and resets after a missed day.
+export function claimDailyReward(db, playerId, nowMs = Date.now()) {
+  return transaction(db, () => {
+    const economy = loadEconomy(db, playerId);
+    const status = dailyStatus(economy, nowMs);
+    if (!status.canClaim) throw new ApiError(400, 'Daily reward already claimed today');
+    const streak = status.streak + 1;
+    const reward = DAILY_REWARDS[Math.min(streak - 1, DAILY_REWARDS.length - 1)];
+    economy.dailyRewards = { streak, lastClaimed: new Date(nowMs).toISOString() };
+    if (reward.coins) grantCurrency(economy.currencies, 'coins', reward.coins);
+    if (reward.stars) grantCurrency(economy.currencies, 'stars', reward.stars);
+    if (reward.xp) economy.progress.xp += reward.xp;
+    saveEconomy(db, playerId, economy);
+    return { success: true, streak, reward: { ...reward }, nextReward: Math.min(streak + 1, DAILY_REWARDS.length) };
+  });
+}
+
+// Boxes cost coins. The reward is rolled here with a cryptographic RNG; the client never picks it.
+export function openLootbox(db, playerId, type) {
+  if (typeof type !== 'string' || !Object.prototype.hasOwnProperty.call(LOOTBOXES, type)) {
+    throw new ApiError(400, 'invalid_lootbox');
+  }
+  const box = LOOTBOXES[type];
+  return transaction(db, () => {
+    const economy = loadEconomy(db, playerId);
+    const coins = economy.currencies.coins;
+    if (coins.amount < box.costCoins) throw new ApiError(400, 'insufficient_coins');
+    coins.amount -= box.costCoins;
+    coins.spent += box.costCoins;
+    const reward = pickLootReward(box.rewards, (max) => randomInt(max));
+    if (reward.type === 'currency') {
+      grantCurrency(economy.currencies, reward.currencyId, reward.amount);
+    } else {
+      const powerups = economy.inventory.powerups;
+      powerups[reward.itemId] = (powerups[reward.itemId] || 0) + reward.amount;
+    }
+    saveEconomy(db, playerId, economy);
+    return {
+      type,
+      reward: { ...reward },
+      balances: { coins: coins.amount, stars: economy.currencies.stars.amount },
+      inventory: { powerups: { ...economy.inventory.powerups } },
+    };
+  });
 }
 
 // Closing an attempt is idempotent. Unknown or already-closed attempts are accepted and ignored,

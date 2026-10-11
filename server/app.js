@@ -1,7 +1,7 @@
 // HTTP app for the free self-hosted server. Plain node:http, no framework, no extra dependencies.
 import { createServer } from 'node:http';
 import { authenticate, login, register } from './auth.js';
-import { closeAttempt, completeLevel, getEconomyView, refillEnergy, spendEnergy } from './economy.js';
+import { claimDailyReward, closeAttempt, completeLevel, getEconomyView, openLootbox, refillEnergy, spendEnergy } from './economy.js';
 import { openDatabase } from './db.js';
 import { ApiError } from './errors.js';
 
@@ -18,6 +18,8 @@ const ROUTES = {
   'POST /api/account-economy/energy/spend': { handler: ({ body, db, player, now }) => ({ success: true, result: spendEnergy(db, player.id, body, now) }), auth: true },
   'POST /api/account-economy/energy/refill': { handler: ({ db, player, now }) => ({ success: true, result: refillEnergy(db, player.id, now) }), auth: true },
   'POST /api/account-economy/attempt/close': { handler: ({ body, db, player, now }) => ({ success: true, ...closeAttempt(db, player.id, body, now) }), auth: true },
+  'POST /api/account-economy/daily-reward/claim': { handler: ({ db, player, now }) => ({ success: true, result: claimDailyReward(db, player.id, now) }), auth: true },
+  'POST /api/account-economy/lootbox/open': { handler: ({ body, db, player }) => ({ success: true, result: openLootbox(db, player.id, body?.type) }), auth: true },
   'POST /api/account-economy/level/complete': { handler: ({ body, db, player, now }) => ({ success: true, result: completeLevel(db, player.id, body, now) }), auth: true },
 };
 

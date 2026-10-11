@@ -12,7 +12,7 @@ Status: **partial.** Accounts, energy, generated levels, and verified level wins
 ## Run it
 
 ```bash
-npm run test:server                    # 24 tests, in-memory database
+npm run test:server                    # 29 tests, in-memory database
 node server/index.js                   # serves http://127.0.0.1:8787
 ```
 
@@ -43,15 +43,17 @@ The machine has to stay on and online. If it sleeps, the game's account features
 | `POST /api/account-economy/energy/spend` | Spends 1 energy, returns an `attemptId`. With a `mode` (`classic`, `daily`, `timed`, `endless`), the server generates the board and pins it to the attempt. Send `rulesVersion: 5`, as the current client does. |
 | `POST /api/account-economy/energy/refill` | Refills missing energy for 10 coins per point |
 | `POST /api/account-economy/attempt/close` | Idempotent |
+| `POST /api/account-economy/daily-reward/claim` | One claim per local calendar day. Same 7-day schedule as the existing server. The streak resets after a missed day. |
+| `POST /api/account-economy/lootbox/open` | `{type}` = `common`, `rare`, or `epic`. Coins are charged, and the reward is rolled with a cryptographic RNG on the server. Inventory rewards go to the power-up inventory, which `data` returns. |
 | `POST /api/account-economy/level/complete` | Pays a win only when the server replays the moves on the board it pinned at spend time and reaches the same score and objectives. Reward = `winRewards(stars)` (coins, XP, stars). A retry returns the original result without paying again. Forged scores are rejected and the attempt is closed. Legacy attempts with no pinned board cannot win (`replay_required`). |
 
 Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It never returns HTML with a success status, which the browser client would otherwise treat as success.
 
 ## Not implemented yet
 
-- Power-up receipts, inventory replay, and `timed`/`endless` completion. Those attempts can be spent but not yet completed.
+- Using power-ups in a level (`powerup/use`, receipts, inventory replay). Power-ups can be earned from lootboxes but not yet spent in a verified level. `timed`/`endless` completion is also missing.
 - Level generation uses the local context (no live weather). The existing server uses live weather when it's available. This changes only the forecast metadata, not the board rules.
-- Daily rewards, inventory, lootboxes, the endless run endpoint.
+- The endless run endpoint.
 - Kingdom, battle pass, live ops, social (friends, guilds, leaderboards), retention study, level-results targets.
 - Payments. Stripe needs a processor, and processing fees apply. This is not free.
 
