@@ -48,6 +48,9 @@ The machine has to stay on and online. If it sleeps, the game's account features
 | `POST /api/account-economy/powerup/use` | `{powerupId, attemptId, useId}`. Spends one power-up from the inventory and returns a receipt bound to the open attempt. A repeated `useId` returns the same receipt without spending again. Quantity is 1 only. Put the receipt in the level moves as `{receiptId, type, target}`. |
 | `POST /api/account-economy/endless/complete` | `{attemptId, score}`. Pays `endlessRewards(score)` with the existing caps (300 coins, 500 XP max). **Unverified:** the score is trusted, as in the existing server. The caps limit the damage. |
 | `GET /api/kingdom` | Rooms (level, next upgrade cost and stars), coins, coin bonus, and the decor catalog with owned and placed items. |
+| `GET /api/battlepass/config` | The season config from `config/battlepass/config.json` (or `BATTLEPASS_CONFIG`). Public. |
+| `GET /api/battlepass/progress` | Season XP, current tier, claimed tiers, and whether premium is unlocked. Premium is always locked here (no purchases). |
+| `POST /api/battlepass/claim` | `{level, track}` where track is `free` or `premium`. Grants the tier reward once, when the player has its XP. Premium returns 403 `premium_required`. Season XP: +50 per verified win, +10 per daily reward claim (from the config's `xpEvents`). |
 | `POST /api/kingdom/renovate` | `{roomId}`. Upgrades a room one level. Cost = baseCost x level squared. Level 2+ needs lifetime stars. Level 3 and 5 grant a bomb and a rainbow. |
 | `POST /api/kingdom/decor/buy` | `{decorId}`. Buys one decoration into stock (max 5 owned per kind). |
 | `POST /api/kingdom/decor/place` | `{roomId, decorId}`. Shows an owned, unplaced decoration in a room. The room must be empty and at the level the item needs. |
@@ -62,7 +65,8 @@ Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It n
 
 - `timed` level completion. Timed attempts can be spent but not yet completed.
 - Level generation uses the local context (no live weather). The existing server uses live weather when it's available. This changes only the forecast metadata, not the board rules.
-- Battle pass, live ops, social (friends, guilds, leaderboards), retention study, level-results targets.
+- Live ops, social (friends, guilds, leaderboards), retention study, level-results targets.
+- Premium battle pass track (needs a purchase). The config grants a `rocket` item, which is not a replayable power-up, so it cannot be used in verified levels yet.
 - Payments. Stripe needs a processor, and processing fees apply. This is not free.
 
 ## Connect the game to your server

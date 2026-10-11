@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { authenticate, login, register } from './auth.js';
 import { claimDailyReward, closeAttempt, completeLevel, getEconomyView, openLootbox, refillEnergy, settleEndless, spendEnergy, usePowerUp } from './economy.js';
 import { buyDecor, chooseDecor, getKingdom, placeDecor, removeDecor, renovateRoom } from './kingdom.js';
+import { claimTier, getBattlePassConfig, getProgress } from './battlepass.js';
 import { openDatabase } from './db.js';
 import { ApiError } from './errors.js';
 
@@ -23,6 +24,9 @@ const ROUTES = {
   'POST /api/account-economy/lootbox/open': { handler: ({ body, db, player }) => ({ success: true, result: openLootbox(db, player.id, body?.type) }), auth: true },
   'POST /api/account-economy/powerup/use': { handler: ({ body, db, player, now }) => ({ success: true, result: usePowerUp(db, player.id, body, now) }), auth: true },
   'POST /api/account-economy/endless/complete': { handler: ({ body, db, player, now }) => ({ success: true, result: settleEndless(db, player.id, body, now) }), auth: true },
+  'GET /api/battlepass/config': { handler: () => getBattlePassConfig(), auth: false },
+  'GET /api/battlepass/progress': { handler: ({ db, player, now }) => getProgress(db, player.id, now), auth: true },
+  'POST /api/battlepass/claim': { handler: ({ body, db, player, now }) => ({ success: true, result: claimTier(db, player.id, body, now) }), auth: true },
   'GET /api/kingdom': { handler: ({ db, player }) => getKingdom(db, player.id), auth: true },
   'POST /api/kingdom/renovate': { handler: ({ body, db, player }) => ({ success: true, result: renovateRoom(db, player.id, body?.roomId) }), auth: true },
   'POST /api/kingdom/decor/buy': { handler: ({ body, db, player }) => ({ success: true, result: buyDecor(db, player.id, body?.decorId) }), auth: true },

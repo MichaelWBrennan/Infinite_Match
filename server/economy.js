@@ -13,6 +13,7 @@ import { endlessRewards, starsForTarget, winRewards } from '../src/services/meta
 import { REPLAY_POWERUPS } from '../src/services/levels/inventory-replay.js';
 import { ensureKingdom, kingdomCoinMultiplier } from '../src/services/meta/kingdom.js';
 import { ensureDecor } from '../src/services/meta/kingdom-decor.js';
+import { grantSeasonXp } from './season.js';
 import { generatedLevel, clientRulesVersion } from '../src/services/levels/level-service.js';
 import { LEVEL_MODES } from '../src/services/levels/generator.js';
 import { replayLevelAttempt } from '../src/services/levels/attempt-replay.js';
@@ -266,6 +267,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     clampCurrency(currencies.coins);
     clampCurrency(currencies.stars);
     attempt.reward = reward;
+    grantSeasonXp(economy, 'level_complete', nowMs);
     saveEconomy(db, playerId, economy);
     return {
       duplicate: false,
@@ -279,7 +281,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
   return outcome;
 }
 
-function grantCurrency(currencies, currencyId, amount) {
+export function grantCurrency(currencies, currencyId, amount) {
   const currency = currencies[currencyId];
   currency.amount += amount;
   currency.earned += amount;
@@ -298,6 +300,7 @@ export function claimDailyReward(db, playerId, nowMs = Date.now()) {
     if (reward.coins) grantCurrency(economy.currencies, 'coins', reward.coins);
     if (reward.stars) grantCurrency(economy.currencies, 'stars', reward.stars);
     if (reward.xp) economy.progress.xp += reward.xp;
+    grantSeasonXp(economy, 'daily_login', nowMs);
     saveEconomy(db, playerId, economy);
     return { success: true, streak, reward: { ...reward }, nextReward: Math.min(streak + 1, DAILY_REWARDS.length) };
   });
