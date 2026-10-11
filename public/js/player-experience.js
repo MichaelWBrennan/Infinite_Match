@@ -108,6 +108,7 @@
             <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection."></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="finish-feedback" aria-label="Finish match animation" hidden>Finish <small>ANIMATION</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
+                <p class="match-endless-terms" hidden></p>
                 <div class="match-powerups" aria-label="Inventory boosters"></div>
                 <div class="match-player-account"><span data-stat="energy"></span><span data-stat="stars"></span><button type="button" data-action="account">Account</button><button type="button" data-action="shop">Shop</button><button type="button" data-action="kingdom">Kingdom</button><button type="button" data-action="season">Season</button></div>
                 <p class="match-instructions">Tap gems or swipe · 4+ earns free specials · swipe specials together · Explore has the guide</p>
@@ -232,8 +233,14 @@
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
             find('[data-action="hint"]').disabled = !game.canInteractWithBoard();
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
-            find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending || (!!game.matchFeedback?.isActive() && !game.isGameRunning);
-            find('[data-action="bank"]').disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending;
+            find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending || !!game.endlessCheckpointPending || (!!game.matchFeedback?.isActive() && !game.isGameRunning);
+            find('[data-action="bank"]').disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending || !!game.endlessCheckpointPending;
+            for (const name of ['account', 'shop', 'kingdom', 'season']) find(`[data-action="${name}"]`).disabled = !!game.endlessCheckpointPending;
+            const terms = find('.match-endless-terms');
+            terms.hidden = game.mode !== 'endless' || !game.isGameRunning;
+            if (!terms.hidden) terms.textContent = game.getAuthToken()
+                ? `Bank within 3 hours for rewards (max 300 coins / 500 XP per run). Auto-checkpoints ${game.settings?.endlessAutoContinue === true ? 'on' : 'off'}; each new run costs 1 energy.`
+                : 'Guest Endless has no clock, energy cost or account payout. Bank Run ends this run.';
             for (const [type, slot] of powerups) {
                 const button = find(`[data-powerup="${type}"]`);
                 button.disabled = !game.canInteractWithBoard() || slot.btn.getData('count') <= 0;
@@ -455,6 +462,14 @@
                 });
                 label.append(checkbox, document.createTextNode(title)); content.append(label);
             }
+            const endlessLabel = document.createElement('label'); const endlessChoice = document.createElement('input');
+            endlessChoice.type = 'checkbox'; endlessChoice.dataset.endlessAutoContinue = 'true';
+            endlessChoice.checked = game.settings.endlessAutoContinue === true;
+            endlessChoice.addEventListener('change', () => {
+                game.settings.endlessAutoContinue = endlessChoice.checked; game.saveUserData(); refresh();
+            });
+            endlessLabel.append(endlessChoice, document.createTextNode('Auto-bank signed-in Endless at a completed stage near 100,000 points or 3 hours, then start another run using 1 energy (no automatic refill). Only after the bank is confirmed. Optional, off by default.'));
+            content.append(endlessLabel);
             overlayText('Text board uses the same puzzle and rewards. Click two adjacent cells to swap; a special is selected rather than fired. Enter or Activate special fires it. Arrows, Home/End and Control Home/End navigate; Tab leaves. Narrow text boards scroll instead of shrinking targets. Keyboard focus reveals named cells even with this preference off.');
             overlayText('Sound is generated locally, with no downloads or microphone permission. System reduced motion is respected; sound and vibration are separate, optional preferences. Hints are always free.');
             refresh();

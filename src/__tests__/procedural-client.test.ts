@@ -6,6 +6,7 @@ import { certifyLevel, simulateLevelMove, simulateObjectiveClear, generateLevel 
 import { generatedLevel } from '../services/levels/level-service.js';
 import { inventoryReplayEffect, REPLAY_POWERUPS } from '../services/levels/inventory-replay.js';
 import { initialObjectiveProgress } from '../services/levels/objective-rules.js';
+import { ENDLESS_REWARDS } from '../services/meta/rewards.js';
 
 const location = { timeZone: 'America/New_York', country: 'US', region: 'PA' };
 const now = Date.parse('2026-10-31T12:00:00Z');
@@ -276,6 +277,133 @@ describe('real Phaser core uses the certified definition', () => {
     game.endGame = () => { ended = true; };
     game.advanceEndlessStage();
     expect(ended).toBe(true);
+  });
+
+  test('Endless checkpoints need explicit consent, a paid session, and a completed stage', () => {
+    expect(ENDLESS_REWARDS.maxXp * ENDLESS_REWARDS.pointsPerXp).toBe(100000); // browser schedule must track the server cap
+    const { game } = makeBrowserGame();
+    const def = definition(1, 'endless');
+    game.applyGeneratedDefinition(def);
+    game.isGameRunning = true;
+    game.getAuthToken = () => 'signed-in'; game.attemptId = 'paid-attempt';
+    game.endlessAttemptStartedAt = Date.now();
+    game.score = def.targetScore; game.endlessTotalScore = 100000;
+    expect(game.shouldCheckpointEndless()).toBe(false); // opt-in is false by default
+    game.settings.endlessAutoContinue = true;
+    expect(game.shouldCheckpointEndless()).toBe(true);
+    let auto: any;
+    game.endGame = (defer: boolean, checkpoint: boolean) => { auto = [defer, checkpoint]; };
+    game.checkEndConditions();
+    expect(auto).toEqual([false, true]);
+    game.getAuthToken = () => null;
+    expect(game.shouldCheckpointEndless()).toBe(false); // guests never auto-bank or spend energy
+    game.getAuthToken = () => 'signed-in'; game.attemptId = null;
+    expect(game.shouldCheckpointEndless()).toBe(false);
+    game.attemptId = 'paid-attempt'; game.score = 0; game.endlessTotalScore = 0;
+    game.endlessAttemptStartedAt = Date.now() - 165 * 60000;
+    expect(game.shouldCheckpointEndless()).toBe(true); // near three-hour server expiry
+  });
+
+  test('Endless opt-in is local, saved, and can be turned off before a checkpoint', async () => {
+    const { game, saved } = makeBrowserGame();
+    game.settings.endlessAutoContinue = true;
+    await game.saveUserData();
+    expect(JSON.parse(saved.get('phaser3_game_data')!).settings.endlessAutoContinue).toBe(true);
+    game.settings.endlessAutoContinue = false;
+    await game.loadUserData();
+    expect(game.settings.endlessAutoContinue).toBe(true);
+    game.settings.endlessAutoContinue = false;
+    game.mode = 'endless'; game.attemptId = 'paid'; game.getAuthToken = () => 'signed-in';
+    game.score = 100000;
+    expect(game.shouldCheckpointEndless()).toBe(false);
+  });
+
+  test('an opted-in checkpoint starts another paid run only after a confirmed bank', async () => {
+    const { game, events } = makeBrowserGame();
+    game.applyGeneratedDefinition(definition(1, 'endless'));
+    game.score = 40000; game.endlessTotalScore = 65000;
+    game.attemptId = 'paid-attempt'; game.getAuthToken = () => 'signed-in';
+    game.settings.endlessAutoContinue = true; game.endlessAutoCheckpoint = true;
+    game.playerUI = { announce: () => {}, refresh: () => {} };
+    let syncs = 0; game.syncAccountFromServer = () => { syncs++; };
+    let resolveBank: any; const starts: any[] = []; const calls: any[] = [];
+    game.fetchJson = (url: string, options: any) => {
+      calls.push([url, options]);
+      if (url.endsWith('/energy/spend')) return Promise.resolve({ ok: true, data: { success: true,
+        result: { attemptId: 'second-attempt', level: 1, energy: 3, generatedLevel: definition(1, 'endless') } } });
+      return new Promise((done) => { resolveBank = done; });
+    };
+    game.startProceduralLevel = async (level: number, mode: string) => {
+      starts.push([level, mode]); return game.claimAttempt(level, mode, location);
+    };
+    game.showEndGameScreen = () => { throw new Error('Should continue in game'); };
+    const pending = game.finishEndless();
+    expect(starts).toHaveLength(0);
+    expect(JSON.parse(calls[0][1].body)).toEqual({ score: 105000, attemptId: 'paid-attempt' });
+    resolveBank({ ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 105000 } } });
+    await pending;
+    expect(starts).toEqual([[1, 'endless']]);
+    expect(calls.map(([url]) => url)).toEqual(['/api/account-economy/endless/complete', '/api/account-economy/energy/spend']);
+    expect(JSON.parse(calls[1][1].body)).toMatchObject({ level: 1, mode: 'endless' });
+    expect(game.attemptId).toBe('second-attempt'); // minted by the ordinary server endpoint, not the browser
+    expect(game.energy).toBe(3);
+    expect(syncs).toBe(1); // no pre-spend stale balance read can race the new energy charge
+    expect(events.some((event) => event.event === 'endless_checkpoint_continued')).toBe(true);
+  });
+
+  test('a denied second spend is not retried and an old bank cannot reopen a menu', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(definition(1, 'endless'));
+    game.score = 100000; game.attemptId = 'paid'; game.getAuthToken = () => 'signed-in';
+    game.settings.endlessAutoContinue = true; game.endlessAutoCheckpoint = true;
+    game.fetchJson = async () => ({ ok: true, data: { success: true, result: {
+      reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } });
+    let attempts = 0; let shown = false;
+    game.startProceduralLevel = async () => { attempts++; return false; };
+    game.showEndGameScreen = () => { shown = true; };
+    await game.finishEndless();
+    expect(attempts).toBe(1);
+    expect(shown).toBe(false); // the ordinary start error remains visible
+    const { game: departed } = makeBrowserGame();
+    departed.applyGeneratedDefinition(definition(1, 'endless'));
+    departed.score = 100000; departed.attemptId = 'paid'; departed.getAuthToken = () => 'signed-in';
+    departed.settings.endlessAutoContinue = true; departed.endlessAutoCheckpoint = true;
+    let resolveBank: any; let reopened = 0;
+    departed.fetchJson = () => new Promise((done) => { resolveBank = done; });
+    departed.startProceduralLevel = async () => { reopened++; return true; };
+    departed.showEndGameScreen = () => { reopened++; };
+    const pending = departed.finishEndless();
+    departed.currentScreen = 'menu';
+    resolveBank({ ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } });
+    await pending;
+    expect(reopened).toBe(0);
+  });
+
+  test('failed or uncertain bank, revoked consent and manual bank never start a second attempt', async () => {
+    for (const mode of ['expired', 'unknown', 'revoked', 'manual']) {
+      const { game } = makeBrowserGame();
+      game.applyGeneratedDefinition(definition(1, 'endless'));
+      game.score = 100000; game.attemptId = 'paid'; game.getAuthToken = () => 'signed-in';
+      game.settings.endlessAutoContinue = true; game.endlessAutoCheckpoint = mode !== 'manual';
+      let starts = 0; let subtitle = '';
+      game.startProceduralLevel = async () => { starts++; return true; };
+      game.showEndGameScreen = (_stars: number, options: any) => { subtitle = options.subtitle; };
+      if (mode === 'revoked') {
+        let resolveBank: any;
+        game.fetchJson = () => new Promise((done) => { resolveBank = done; });
+        const pending = game.finishEndless();
+        game.settings.endlessAutoContinue = false;
+        resolveBank({ ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } });
+        await pending;
+      } else {
+        game.fetchJson = async () => mode === 'expired' ? { ok: false, data: { error: 'attempt_expired' } }
+          : mode === 'unknown' ? (() => { throw new Error('offline'); })()
+            : { ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } };
+        await game.finishEndless();
+      }
+      expect(starts).toBe(0);
+      expect(subtitle).toContain(mode === 'expired' ? 'expired' : mode === 'unknown' ? 'could not be confirmed' : '+300 coins');
+    }
   });
 
   test('banking an endless run submits the cumulative score, not just its last stage', async () => {

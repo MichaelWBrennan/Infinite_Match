@@ -14,6 +14,15 @@ Levels are made and checked on demand.
 - **Endless:** one attempt, unlimited generated stages with finite goals. Reaching
   every declared stage goal automatically creates the next board. There is no clock or move limit;
   the **Bank Run** button finishes the run and submits its cumulative score once.
+  Signed-in attempts expire for rewards after 3 hours. An optional local Play
+  preference (off by default) banks at a completed stage when the run reaches
+  100,000 points (the current 500-XP cap) or about 2h45m, then starts a fresh
+  one-energy run in the same app **only after a confirmed bank**. It never buys
+  energy, auto-refills or retries an uncertain payout. If banking is refused,
+  the player gets a clear result instead of another charge. Guest stages still
+  advance without account spending or a clock. This is a bounded paid-run
+  checkpoint, not a guarantee of literal infinity, uninterrupted offline
+  account rewards, or a verified Endless score.
 - **Today's Local Level:** a new daily seed/ID at the player's next local midnight.
   It is a real generated board, not a date mapped into a fixed bank of 300 levels.
   Morning/afternoon/evening/night and forecast bands now produce separate daily

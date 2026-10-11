@@ -53,6 +53,11 @@ function dailyChallengeLevel(dateString) {
 const TARGETED_POWERUPS = ['diamond', 'target', 'star'];
 const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star'];
 
+// Checkpoints are a presentation convenience, not a new reward rule. The server still
+// enforces its three-hour attempt lifetime and the 300-coin / 500-XP payout caps.
+const ENDLESS_CHECKPOINT_SCORE = 100000; // 500 XP x 200 points; coins cap earlier.
+const ENDLESS_CHECKPOINT_AGE_MS = 165 * 60 * 1000; // allow 15 minutes before server expiry.
+
 class PhaserMatch3Game {
     constructor() {
         this.game = null;
@@ -91,7 +96,8 @@ class PhaserMatch3Game {
             largeText: false,
             reduceAnimations: false,
             haptics: false,
-            textBoard: false
+            textBoard: false,
+            endlessAutoContinue: false
         };
         this.timerInterval = null;
         this.tutorialShown = false;
@@ -937,7 +943,10 @@ class PhaserMatch3Game {
         if (this.isPaused && this.feedbackEndPending) return;
         this.feedbackEndPending = false;
         if (this.mode === 'endless' && this.generatedLevel) {
-            if (this.hasWonLevel()) this.advanceEndlessStage();
+            if (this.hasWonLevel()) {
+                if (this.shouldCheckpointEndless()) this.endGame(false, true);
+                else this.advanceEndlessStage();
+            }
             return;
         }
         if (this.hasWonLevel() || this.moves <= 0) {
@@ -1789,6 +1798,7 @@ class PhaserMatch3Game {
                 }
             }
             this.endlessTotalScore = 0;
+            this.endlessAttemptStartedAt = mode === 'endless' && this.attemptId ? Date.now() : 0;
             this.applyGeneratedDefinition(definition, serverTime);
             await this.startGame();
             return true;
@@ -1855,6 +1865,16 @@ class PhaserMatch3Game {
         const config = dailyChallengeLevel(new Date().toISOString().slice(0, 10));
         this.setMode('classic');
         return this.selectLevel(config.level);
+    }
+
+    // Only a signed-in player who explicitly opted in can authorize another energy
+    // spend. Check at a completed stage, before rewards cap or the claim window closes.
+    shouldCheckpointEndless(nowMs = Date.now()) {
+        if (this.mode !== 'endless' || this.settings?.endlessAutoContinue !== true
+            || !this.attemptId || !this.getAuthToken()) return false;
+        const score = this.score + (this.endlessTotalScore || 0);
+        const age = nowMs - (this.endlessAttemptStartedAt || this.runStartedAt || nowMs);
+        return score >= ENDLESS_CHECKPOINT_SCORE || age >= ENDLESS_CHECKPOINT_AGE_MS;
     }
 
     // One paid attempt, unlimited generated stages. Each new board is certified on
@@ -1966,35 +1986,74 @@ class PhaserMatch3Game {
     // An endless run has no target, so it is never a level win. The server pays for the score.
     async finishEndless() {
         const score = Math.max(0, Math.floor(this.score + (this.endlessTotalScore || 0)));
-        this.analytics.gamesPlayed++;
-        this.analytics.totalScore += score;
-        this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
-        this.playSound('bank');
-        const payment = this.submitEndlessRun(score);
-        this.rewardSubmission = payment;
-        const result = await payment;
-        this.saveUserData();
-        let subtitle = 'Sign in to be paid for endless runs.';
-        if (result) subtitle = `+${result.reward.coins} coins, +${result.reward.xp} XP (best ${result.endlessBest})`;
-        this.showEndGameScreen(0, { title: 'Run Over', subtitle });
+        const paidAttempt = !!this.attemptId && !!this.getAuthToken();
+        const auto = this.endlessAutoCheckpoint === true;
+        this.endlessAutoCheckpoint = false;
+        const overlay = this.activeOverlay;
+        const screen = this.currentScreen;
+        this.endlessCheckpointBank = auto;
+        this.endlessCheckpointPending = auto;
+        this.playerUI?.refresh();
+        try {
+            this.analytics.gamesPlayed++;
+            this.analytics.totalScore += score;
+            this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
+            this.playSound('bank');
+            this.playerUI?.announce('Banking this Endless run. No new energy has been spent yet.');
+            const payment = this.submitEndlessRun(score);
+            this.rewardSubmission = payment;
+            const result = await payment;
+            this.endlessCheckpointBank = false;
+            this.saveUserData();
+            // Never restart a board after the player navigated away during a pending bank.
+            if (this.activeOverlay !== overlay || this.currentScreen !== screen) return;
+            let subtitle = paidAttempt ? this.endlessBankError === 'attempt_expired'
+                ? 'This paid attempt expired. No run reward was granted. Start a new run when ready.'
+                : 'Banking could not be confirmed. Check your account before starting another run.'
+                : 'Guest runs are playable without an account, but do not grant account rewards.';
+            if (result) subtitle = `+${result.reward.coins} coins, +${result.reward.xp} XP (best ${result.endlessBest})`;
+            if (auto && result && this.settings?.endlessAutoContinue === true && this.getAuthToken() && this.mode === 'endless') {
+                // A confirmed bank is the only path to an automatic second spend. The normal
+                // start endpoint decides whether one energy is available; never auto-refill.
+                const started = await this.startProceduralLevel(1, 'endless');
+                if (started) {
+                    void this.syncAccountFromServer?.(); // After, never before, the new energy spend.
+                    this.trackEvent('endless_checkpoint_continued', { score });
+                    this.playerUI?.announce(`Banked ${result.reward.coins} coins and ${result.reward.xp} XP. New Endless run started using one energy.`);
+                    return;
+                }
+                // The normal start error already explains insufficient energy/network failure.
+                // Do not cover it with a second result modal or silently retry the spend.
+                void this.syncAccountFromServer?.();
+                return;
+            }
+            this.showEndGameScreen(0, { title: 'Run Over', subtitle });
+        } finally {
+            this.endlessCheckpointPending = false;
+            this.playerUI?.refresh();
+        }
     }
 
     async submitEndlessRun(score) {
         const attemptId = this.attemptId;
         this.attemptId = null;
+        this.endlessBankError = null;
         if (!attemptId || !this.getAuthToken()) return null;
         try {
             const { ok, data } = await this.fetchJson('/api/account-economy/endless/complete', {
                 method: 'POST',
                 body: JSON.stringify({ score: Math.min(1000000, score), attemptId }),
+                signal: AbortSignal.timeout(15000),
             });
             if (ok && data.success) {
-                if (typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
+                if (!this.endlessCheckpointBank && typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
                 this.updateUI();
                 return data.result;
             }
-            console.warn('Endless run not paid:', data.error);
+            this.endlessBankError = data?.error || 'unknown';
+            console.warn('Endless run not paid:', this.endlessBankError);
         } catch (error) {
+            this.endlessBankError = 'unknown';
             console.warn('Could not reach the server for the endless run.', error);
         }
         return null;
@@ -2879,7 +2938,7 @@ class PhaserMatch3Game {
     }
 
     // End game with all features
-    endGame(deferResultScreen = false) {
+    endGame(deferResultScreen = false, autoContinueEndless = false) {
         if (!this.isGameRunning) return;
         this.isGameRunning = false;
         this.feedbackEndPending = false;
@@ -2891,6 +2950,7 @@ class PhaserMatch3Game {
         }
         
         if (this.mode === 'endless') {
+            this.endlessAutoCheckpoint = autoContinueEndless;
             this.finishEndless();
             return;
         }

@@ -30,6 +30,28 @@ The initial foundation did not redesign match rules or the economy. The earned-s
 This is implemented and automatically tested; the human learning/enjoyment and physical-device gates below are **not yet achieved**.
 
 
+## Delivered Endless in-app checkpoint option (web)
+
+Generated Endless stages already advance automatically without a clock or
+level bank. A **new, off-by-default local preference** can bank a signed-in
+run after a completed stage at 100,000 points or roughly 2h45m, ahead of the
+server's three-hour attempt expiry. Only a confirmed bank starts the next
+server-issued stage-one attempt, charging its existing **one energy**. No
+energy is bought or refilled automatically. A denied, expired or uncertain
+bank never triggers a second charge; the in-game text explains the three-hour
+claim window and the current 300-coin/500-XP per-run caps. Guests continue
+without a paid attempt; manual Bank Run remains available. The next run can
+be refused if energy/network access is unavailable, and a long unfinished
+stage can still cross the three-hour payout deadline. This is not a literal
+promise of infinite saved state or unlimited rewards.
+
+**Business/player ROI is unmeasured.** Measure voluntary continued play,
+completion/banking success, drop-off, return, support/refund reports and net
+contribution per consenting cohort before changing monetization. Endless
+banking still accepts a bounded client-reported score and is unranked; server
+replay/idempotent payout recovery are required before consequential rewards.
+Do not convert the opt-in into a surprise energy spend or a pressure loop.
+
 ## Delivered kingdom scene increment — Royal Library (web)
 
 Explore → Kingdom now lets players switch between two original authored rooms:

@@ -13,7 +13,7 @@ Recommended order: **(1) validate first-play, fairness and device performance; (
 | Game | Observable strengths | What this means for us |
 | --- | --- | --- |
 | **Royal Match** | Castle renovation, boosters and combinations, many interactive blockers, bonus levels, chests, and parallel solo/team events; official examples include Balloon Rise, Hidden Temple, Weekly Contest, Team Battle and Sky Race. [1](https://www.dreamgames.com/games/royal-match) · [3](https://play.google.com/store/apps/details?id=com.dreamgames.royalmatch) | Infinite Match has earned specials and six numeric renovation rooms, but not a similarly varied board or explorable visual castle (v5 now adds one fixed shield family). Do not copy its event names or art. |
-| **Candy Crush Saga** | Thousands of levels, jelly and chocolate blockers, varied level objectives, boosters, daily rewards, rotating events, offline play. [1](https://play.google.com/store/apps/details?id=com.king.candycrushsaga) · [4](https://apps.apple.com/us/app/candy-crush-saga/id553834731) | Our score/color-collection objectives are a good foundation; v5 adds a fixed clear-shields objective, but no delivery/other terrain objective yet. Guest offline fallback is narrower than unconditional offline support for accounts. |
+| **Candy Crush Saga** | Thousands of levels, jelly and chocolate blockers, varied level objectives, boosters, daily rewards, rotating events, offline play. [1](https://play.google.com/store/apps/details?id=com.king.candycrushsaga) · [4](https://apps.apple.com/us/app/candy-crush-saga/id553834731) | Our score/color-collection objectives are a good foundation; v5 adds a fixed clear-shields objective, but no delivery/other terrain objective yet. Guest offline fallback is narrower than unconditional offline support for accounts; opt-in Endless checkpoints still require a server for account rewards. |
 | **Gardenscapes / Homescapes** | Room/garden restoration, characters and chapter story, choice-based decoration, boosters, expeditions and competitions. [3](https://play.google.com/store/apps/details?id=com.playrix.gardenscapes) · [1](https://play.google.com/store/apps/details?id=com.playrix.homescapes) | Our renovation/decor is functional but mostly textual/numeric, with no shipped scene art or chapter narrative. Their meta loop is a reason to complete the *next* puzzle. |
 | **Royal Kingdom** | Distinct kingdom areas and family/antagonist story; publisher describes Kingdom/Dark Kingdom levels and a Golem that reacts to matches. [1](https://www.dreamgames.com/games/royal-kingdom) | Our every-tenth-stage “boss” is only a harder profile. An actual boss needs explicit deterministic state, legible counterplay and server-verifiable wins, not a label. |
 | **Toon Blast** | Tap-to-blast cubes (a different core mechanic), objectives and obstacles, episode progression, star rewards, teams and shared lives, cross-device sync. [1](https://play.google.com/store/apps/details?id=net.peakgames.toonblast) | Borrow the principle of low-friction onboarding and cooperation, not the tap-to-blast mechanic wholesale. Our guilds cannot gift energy/lives today. |
@@ -57,6 +57,24 @@ Legend: **Working** = code/test support on the root web client or mounted server
 
 7. Team cooperation (limited, abuse-resistant energy gifts or shared milestones) **after** durable shared social storage and result verification. Real-time PvP is a separate product bet, not a checkbox: authoritative rooms, clocks, reconnect, matched skill bands and non-pay-to-win rules.
 8. Broader objective/obstacle families, episodic world, cosmetic collection and platform distribution **only** if P0/P1 improve player outcomes. Premium pass/subscription, rewarded ads and richer monetization are optional experiments with clear opt-in/consent, transparent odds/prices and no forced interstitials. Avoid monetizing accessibility, hints or deceptive near-win frustration.
+
+## Endless play and sustainable return
+
+Endless already generates and certifies stages on demand with no clock or authored
+content bank. The web client now offers an off-by-default, explicit signed-in
+checkpoint preference at a completed stage near the existing score reward cap or
+three-hour paid-attempt deadline. It banks first, then requests the normal
+one-energy next run; failure/unknown payout never authorizes a fresh spend.
+Guests and manual banking are unchanged. This is about uninterrupted in-app
+play and transparent limits, **not** measured retention or the highest ROI.
+
+To evaluate ROI without damaging trust, preregister net contribution per
+consenting cohort alongside unassisted first-play success, D1/D7 return,
+voluntary next-stage starts, fair-loss ratings, confirmed bank failures,
+refunds/support contacts and real-device performance. Do not infer LTV, CAC or
+"forever" engagement from generated-stage count alone. Server-replayed,
+idempotently recoverable Endless payouts and honest offline account
+reconciliation remain open before increasing stakes.
 
 ## Comprehensive request: what code cannot honestly complete at once
 

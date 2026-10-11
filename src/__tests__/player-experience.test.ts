@@ -1,6 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { parseHTML } from 'linkedom';
 
 function helpers() {
   const sandbox: any = {};
@@ -73,6 +74,34 @@ describe('mobile-first player experience helpers', () => {
       signatures.add(JSON.stringify(paths));
     }
     expect(signatures.size).toBe(4);
+  });
+
+  test('Endless auto-checkpoints require a saved, explicit preference and explain energy/reward limits', () => {
+    const { document, window } = parseHTML('<html><body><div id="host"></div></body></html>');
+    const sandbox: any = { document };
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
+    let saves = 0;
+    const game: any = { mode: 'endless', isGameRunning: true, settings: { sfx: false, endlessAutoContinue: false },
+      score: 0, targetScore: 500, isPaused: false, levelStarting: false, powerUpPending: false,
+      getAuthToken: () => 'signed-in', getSoundStatus: () => ({ enabled: false, supported: false, state: 'off', volume: 0.5 }),
+      canInteractWithBoard: () => false, animationsReduced: () => false, saveUserData: () => { saves++; } };
+    const ui = sandbox.InfinitePlayerExperience.mount(game, document.getElementById('host'));
+    const dialog: any = ui.shell.querySelector('dialog');
+    dialog.showModal = () => { dialog.open = true; }; dialog.close = () => { dialog.open = false; };
+    game.openOverlay = (title: string) => ui.openOverlay(title);
+    game.closeOverlay = () => ui.closeOverlay();
+    ui.refresh();
+    expect(ui.shell.querySelector('.match-endless-terms').textContent).toContain('Auto-checkpoints off');
+    ui.showPreferences(false);
+    const checkbox: any = dialog.querySelector('[data-endless-auto-continue]');
+    expect(checkbox).toBeTruthy(); expect(checkbox.checked).toBe(false);
+    expect(checkbox.parentElement.textContent).toContain('1 energy');
+    checkbox.checked = true; checkbox.dispatchEvent(new window.Event('change'));
+    expect(game.settings.endlessAutoContinue).toBe(true); expect(saves).toBe(1);
+    expect(ui.shell.querySelector('.match-endless-terms').textContent).toContain('Auto-checkpoints on');
+    game.mode = 'classic'; ui.refresh();
+    expect(ui.shell.querySelector('.match-endless-terms').hidden).toBe(true);
   });
 
   test('player UI precedes the game class and keeps canvas-only shell compatibility', () => {

@@ -2360,6 +2360,7 @@ body {
 .match-board-surface:focus-visible { outline: 3px solid #c3fce5; outline-offset: -3px; }
 .match-player-footer { padding: 0 6px; display: grid; gap: 6px; }
 .match-play-tools { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.match-endless-terms { margin: 0; text-align: center; color: #f5dca1; font-size: 12px; line-height: 1.3; }
 .match-player-shell button { min-height: 44px; min-width: 44px; padding: 9px 12px; color: #f8fbff; background: #25465b; border: 1px solid #9ac2df55; border-radius: 12px; font: 650 13px/1.2 system-ui, sans-serif; cursor: pointer; box-shadow: 0 2px 0 #07152555; touch-action: manipulation; }
 .match-player-shell button:hover { background: #315c70; }
 .match-player-shell button:active { transform: translateY(1px); }
