@@ -14,6 +14,8 @@ import { REPLAY_POWERUPS } from '../src/services/levels/inventory-replay.js';
 import { ensureKingdom, kingdomCoinMultiplier } from '../src/services/meta/kingdom.js';
 import { ensureDecor } from '../src/services/meta/kingdom-decor.js';
 import { grantSeasonXp } from './season.js';
+import { recordWeeklyWin } from '../src/services/live-ops/weekly-event.js';
+import { currentLiveOps } from './live-ops-config.js';
 import { generatedLevel, clientRulesVersion } from '../src/services/levels/level-service.js';
 import { LEVEL_MODES } from '../src/services/levels/generator.js';
 import { replayLevelAttempt } from '../src/services/levels/attempt-replay.js';
@@ -267,6 +269,8 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     clampCurrency(currencies.coins);
     clampCurrency(currencies.stars);
     attempt.reward = reward;
+    // A verified win counts toward this week's event, once, in the same save.
+    recordWeeklyWin(economy, currentLiveOps(), nowMs);
     grantSeasonXp(economy, 'level_complete', nowMs);
     saveEconomy(db, playerId, economy);
     return {

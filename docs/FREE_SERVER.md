@@ -48,6 +48,11 @@ The machine has to stay on and online. If it sleeps, the game's account features
 | `POST /api/account-economy/powerup/use` | `{powerupId, attemptId, useId}`. Spends one power-up from the inventory and returns a receipt bound to the open attempt. A repeated `useId` returns the same receipt without spending again. Quantity is 1 only. Put the receipt in the level moves as `{receiptId, type, target}`. |
 | `POST /api/account-economy/endless/complete` | `{attemptId, score}`. Pays `endlessRewards(score)` with the existing caps (300 coins, 500 XP max). **Unverified:** the score is trusted, as in the existing server. The caps limit the damage. |
 | `GET /api/kingdom` | Rooms (level, next upgrade cost and stars), coins, coin bonus, and the decor catalog with owned and placed items. |
+| `GET /api/live-ops/offers` | Coin packs with their current price (active deals applied) and today's events. Public. Prices come from the server catalog. Purchases are not available on the free server. |
+| `GET /api/live-ops/today` | Today's deals and events. Every deal shows `owned: false`, since there are no purchases here. |
+| `GET /api/live-ops/weekly/preview` | The current or next weekly event with no player data. Public. `disabled` is true when `WEEKLY_EVENT_DISABLED=1`. |
+| `GET /api/live-ops/weekly` | The same event with the player's wins and which milestones they can claim. |
+| `POST /api/live-ops/weekly/claim` | `{eventId, wins}`. Pays a milestone once, when the player has the wins. Wins come from verified level wins only. |
 | `GET /api/battlepass/config` | The season config from `config/battlepass/config.json` (or `BATTLEPASS_CONFIG`). Public. |
 | `GET /api/battlepass/progress` | Season XP, current tier, claimed tiers, and whether premium is unlocked. Premium is always locked here (no purchases). |
 | `POST /api/battlepass/claim` | `{level, track}` where track is `free` or `premium`. Grants the tier reward once, when the player has its XP. Premium returns 403 `premium_required`. Season XP: +50 per verified win, +10 per daily reward claim (from the config's `xpEvents`). |
@@ -65,9 +70,12 @@ Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It n
 
 - `timed` level completion. Timed attempts can be spent but not yet completed.
 - Level generation uses the local context (no live weather). The existing server uses live weather when it's available. This changes only the forecast metadata, not the board rules.
-- Live ops, social (friends, guilds, leaderboards), retention study, level-results targets.
+- Live ops competitions, tournaments, and community challenges. They need shared player data, which the social store provides.
+- Social (friends, guilds, leaderboards), retention study, level-results targets.
 - Premium battle pass track (needs a purchase). The config grants a `rocket` item, which is not a replayable power-up, so it cannot be used in verified levels yet.
 - Payments. Stripe needs a processor, and processing fees apply. This is not free.
+
+Config files: `config/liveops.json` (`LIVE_OPS_CONFIG` overrides) and `config/battlepass/config.json` (`BATTLEPASS_CONFIG` overrides). They are read on each request, so edits apply without a restart.
 
 ## Connect the game to your server
 

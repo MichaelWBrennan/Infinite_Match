@@ -4,6 +4,7 @@ import { authenticate, login, register } from './auth.js';
 import { claimDailyReward, closeAttempt, completeLevel, getEconomyView, openLootbox, refillEnergy, settleEndless, spendEnergy, usePowerUp } from './economy.js';
 import { buyDecor, chooseDecor, getKingdom, placeDecor, removeDecor, renovateRoom } from './kingdom.js';
 import { claimTier, getBattlePassConfig, getProgress } from './battlepass.js';
+import { claimWeekly, getOffers, getToday, getWeekly, getWeeklyPreview } from './liveops.js';
 import { openDatabase } from './db.js';
 import { ApiError } from './errors.js';
 
@@ -24,6 +25,11 @@ const ROUTES = {
   'POST /api/account-economy/lootbox/open': { handler: ({ body, db, player }) => ({ success: true, result: openLootbox(db, player.id, body?.type) }), auth: true },
   'POST /api/account-economy/powerup/use': { handler: ({ body, db, player, now }) => ({ success: true, result: usePowerUp(db, player.id, body, now) }), auth: true },
   'POST /api/account-economy/endless/complete': { handler: ({ body, db, player, now }) => ({ success: true, result: settleEndless(db, player.id, body, now) }), auth: true },
+  'GET /api/live-ops/offers': { handler: ({ now }) => getOffers(now), auth: false },
+  'GET /api/live-ops/today': { handler: ({ now }) => getToday(now), auth: true },
+  'GET /api/live-ops/weekly/preview': { handler: ({ now }) => getWeeklyPreview(now), auth: false },
+  'GET /api/live-ops/weekly': { handler: ({ db, player, now }) => getWeekly(db, player.id, now), auth: true },
+  'POST /api/live-ops/weekly/claim': { handler: ({ body, db, player, now }) => ({ success: true, result: claimWeekly(db, player.id, body, now) }), auth: true },
   'GET /api/battlepass/config': { handler: () => getBattlePassConfig(), auth: false },
   'GET /api/battlepass/progress': { handler: ({ db, player, now }) => getProgress(db, player.id, now), auth: true },
   'POST /api/battlepass/claim': { handler: ({ body, db, player, now }) => ({ success: true, result: claimTier(db, player.id, body, now) }), auth: true },
