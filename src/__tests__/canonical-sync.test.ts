@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { buildGoldenVectors, serializeGoldenVectors, GOLDEN_FORMAT } from '../services/levels/golden-vectors.js';
 import { renderLevelClient } from '../../scripts/build-level-client.js';
@@ -90,5 +90,39 @@ describe('canonical client sync', () => {
       expect(bundleMove.board).toEqual(expected.firstMove.board);
       expect(bundleMove.refillState).toBe(expected.firstMove.refillState);
     }
+  });
+
+  test('production routing serves the canonical page and every local asset it references', () => {
+    const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
+    const rewrites: Array<{ source: string; destination: string }> = vercel.rewrites;
+    const rootRewrite = rewrites.find((rule) => rule.source === '/');
+    expect(rootRewrite?.destination).toBe('/index.html');
+
+    // Emulate the Vercel order: an existing repository file wins, otherwise the first matching rewrite.
+    const resolveRoute = (path: string) => {
+      const file = path.replace(/^\//, '') || 'index.html';
+      if (existsSync(file)) return file;
+      for (const rule of rewrites) {
+        const pattern = new RegExp(`^${rule.source.replace(/\(\.\*\)/g, '(.*)')}$`);
+        const match = path.match(pattern);
+        if (!match) continue;
+        const target = rule.destination.replace(/\$(\d+)/g, (_, index) => match[Number(index)] ?? '').replace(/^\//, '');
+        return existsSync(target) ? target : null;
+      }
+      return null;
+    };
+
+    const page = readFileSync('index.html', 'utf8');
+    const refs = new Set<string>();
+    for (const match of page.matchAll(/(?:src|href)="([^"]+)"/g)) {
+      const ref = match[1];
+      if (/^(https?:|\/\/|#|data:|mailto:)/.test(ref)) continue;
+      refs.add(`/${ref.split(/[?#]/)[0].replace(/^\//, '')}`);
+    }
+    expect(refs.size).toBeGreaterThan(5);
+    const unresolved = [...refs].filter((ref) => resolveRoute(ref) === null);
+    expect(unresolved).toEqual([]);
+    // The bundle the browser needs must come from the canonical public folder.
+    expect(resolveRoute('/js/procedural-levels.js')).toBe('public/js/procedural-levels.js');
   });
 });
