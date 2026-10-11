@@ -8,13 +8,11 @@ import { body, validationResult } from 'express-validator';
 import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import { accountEconomy as accountEconomyService, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
-import { ITEM_CATALOG, LEVEL_LIMITS } from '../services/economy/item-catalog.js';
+import { LEVEL_LIMITS } from '../services/economy/item-catalog.js';
 import { levelTarget, winRewards } from '../services/meta/rewards.js';
 import { levelMultiplier, readLevelOverrides } from '../services/meta/level-overrides.js';
-import { applyVip, VIP_ENTITLEMENT } from '../services/meta/vip.js';
-import { kingdomCoinMultiplier } from '../services/meta/kingdom.js';
-import { addSeasonXp } from '../services/meta/battlepass.js';
-import { grantSeasonXp, loadSeasonSafely } from '../services/meta/battlepass-season.js';
+import { VIP_ENTITLEMENT } from '../services/meta/vip.js';
+import { loadSeasonSafely } from '../services/meta/battlepass-season.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { socialStore } from '../services/social/social-store.js';
 import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
@@ -40,17 +38,25 @@ const handleRouteError = (res, error, operation, requestId) => {
 // Validation middleware
 // Records a won level for the social boards: the player's best score, and their score and progress
 // in any running tournament or challenge. A failure is logged and does not undo the reward.
-async function recordCompetitionWin(playerId, level, score) {
+async function recordCompetitionWin(playerId, attemptId, level, score, competitionIds) {
   try {
-    const active = activeCompetitions(loadCompetitions(), Date.now());
-    await socialStore.recordWin(playerId, {
-      level,
-      score,
-      tournamentIds: active.tournaments.map((t) => t.id),
-      challengeIds: active.challenges.map((c) => c.id),
-    });
+    await socialStore.recordWin(playerId, { level, score, attemptId,
+      tournamentIds: competitionIds.tournamentIds, challengeIds: competitionIds.challengeIds });
   } catch (error) {
     logger.error('Could not record the win for boards', { error: error.message, playerId });
+  }
+}
+
+// Pin competition membership when the economy claim is paid. A later receipt retry must
+// not count a win in a new event just because the active window changed.
+function competitionIdsAtWin() {
+  try {
+    const active = activeCompetitions(loadCompetitions(), Date.now());
+    return { tournamentIds: active.tournaments.map((t) => t.id),
+      challengeIds: active.challenges.map((c) => c.id) };
+  } catch (error) {
+    logger.error('Could not load active competition for win', { error: error.message });
+    return { tournamentIds: [], challengeIds: [] };
   }
 }
 
@@ -76,7 +82,8 @@ router.post('/initialize', security.sessionValidation, async (req, res) => {
     const { playerId } = req.user;
     const { platform = 'local' } = req.body;
 
-    const playerEconomy = await accountEconomyService.initializePlayerEconomy(playerId, platform);
+    await accountEconomyService.initializePlayerEconomy(playerId, platform);
+    const playerEconomy = await accountEconomyService.getPlayerEconomyView(playerId);
 
     security.logSecurityEvent('economy_initialized', {
       playerId,
@@ -227,8 +234,7 @@ router.post('/daily-reward/claim', security.sessionValidation, async (req, res) 
   try {
     const { playerId } = req.user;
 
-    const result = await accountEconomyService.claimDailyReward(playerId);
-    await grantSeasonXp(playerId, 'daily_login');
+    const result = await accountEconomyService.claimDailyReward(playerId, await loadSeasonSafely());
 
     security.logSecurityEvent('daily_reward_claimed', {
       playerId,
@@ -314,33 +320,10 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
     const { playerId } = req.user;
     const { itemId } = req.body;
 
-    // The price comes from the server catalog. A client-supplied amount is ignored.
-    const item = Object.prototype.hasOwnProperty.call(ITEM_CATALOG, itemId) ? ITEM_CATALOG[itemId] : null;
-    if (!item) {
-      return res.status(400).json({
-        success: false,
-        error: 'Unknown item',
-        requestId: req.requestId,
-      });
-    }
-
-    const { currencyId, price, category } = item;
-
-    const currencyResult = await accountEconomyService.updateCurrency(
-      playerId,
-      currencyId,
-      price,
-      'spend',
-      'purchase'
-    );
-
-    const inventoryResult = await accountEconomyService.updateInventory(
-      playerId,
-      category,
-      itemId,
-      1,
-      'add'
-    );
+    // The price and item limits come from the server catalog, committed together.
+    const result = await accountEconomyService.purchaseCatalogItem(playerId, itemId);
+    const currencyId = result.currency.currencyId;
+    const price = result.currency.oldAmount - result.currency.newAmount;
 
     security.logSecurityEvent('item_purchased', {
       playerId,
@@ -352,15 +335,12 @@ router.post('/purchase', security.sessionValidation, async (req, res) => {
 
     res.json({
       success: true,
-      result: {
-        currency: currencyResult,
-        inventory: inventoryResult,
-      },
+      result,
       requestId: req.requestId,
     });
   } catch (error) {
-    if (error.message.includes('Insufficient')) {
-      return res.status(400).json({ success: false, error: error.message, requestId: req.requestId });
+    if (error instanceof EconomyRuleError) {
+      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
     }
     handleRouteError(res, error, 'purchase item', req.requestId);
   }
@@ -446,88 +426,31 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
     if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
       return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
     }
-    let completed;
-    try {
-      completed = await accountEconomyService.consumeAttempt(playerId, attemptId, level, undefined, {
+    // External policy reads run only for a fresh claim. Receipt-only retries can recover
+    // even if the entitlement store is temporarily unavailable.
+    const { result, rankedScore, competitionIds } = await accountEconomyService.settleLevelAttempt(
+      playerId, attemptId, level, {
         mode: 'level', score, objectiveProgress: req.body.objectiveProgress, moves: req.body.moves,
         hintsUsed: req.body.hintsUsed,
         legacyTarget: levelTarget(level, levelMultiplier(level, readLevelOverrides())), // old in-flight attempts only
-      });
-    } catch (error) {
-      if (error instanceof EconomyRuleError) {
-        return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
-      }
-      throw error;
-    }
+      }, async () => ({
+        isVip: await PurchaseLedgerDb.hasPurchase(playerId, VIP_ENTITLEMENT),
+        season: await loadSeasonSafely(),
+        competitionIds: competitionIdsAtWin(),
+      }));
 
-    const stars = completed.stars;
-
-    // Kingdom rooms add a coin bonus, then VIP multiplies coins. The player must hold the vip
-    // entitlement on the server. Both are read here; neither is taken from the client.
-    const economyNow = await accountEconomyService.getPlayerEconomy(playerId);
-    const base = winRewards(stars);
-    const roomBoosted = { ...base, coins: Math.floor(base.coins * kingdomCoinMultiplier(economyNow.kingdom)) };
-    const isVip = await PurchaseLedgerDb.hasPurchase(playerId, VIP_ENTITLEMENT);
-    const reward = applyVip(roomBoosted, isVip);
-    const progressionResult = await accountEconomyService.updateProgression(playerId, reward.xp, true);
-
-    const rewards = [
-      { type: 'currency', currencyId: 'coins', amount: reward.coins },
-      { type: 'currency', currencyId: 'stars', amount: reward.stars },
-    ];
-    await accountEconomyService.updateCurrency(playerId, 'coins', reward.coins, 'add', 'level_complete');
-    await accountEconomyService.updateCurrency(playerId, 'stars', reward.stars, 'add', 'level_complete');
-
-    // Statistics show what the client reported. They are not used for any reward.
-    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
-    playerEconomy.statistics.gamesPlayed++;
-    playerEconomy.statistics.levelsCompleted++;
-    playerEconomy.statistics.totalScore += score;
-    playerEconomy.statistics.averageScore = Math.floor(playerEconomy.statistics.totalScore / playerEconomy.statistics.gamesPlayed);
-    playerEconomy.statistics.bestScore = Math.max(playerEconomy.statistics.bestScore, score);
-    playerEconomy.statistics.lastPlayed = new Date().toISOString();
-
-    const season = await loadSeasonSafely();
-    if (season) addSeasonXp(playerEconomy, season, 'level_complete');
-
-    await accountEconomyService.updatePlayerEconomyCache(playerId, playerEconomy);
-    // Only a pinned, deterministic replay may influence boards, tournaments or shared challenges.
-    // Legacy clients and unsupported modes still receive their existing account rewards.
-    if (completed.ranked) await recordCompetitionWin(playerId, level, completed.score);
-
-    security.logSecurityEvent('level_completed', {
-      playerId,
-      level,
-      score,
-      stars,
-      xpGained: reward.xp,
+    if (rankedScore !== null) await recordCompetitionWin(playerId, attemptId, level, rankedScore, competitionIds);
+    if (!result.duplicate) security.logSecurityEvent('level_completed', {
+      playerId, level, score, stars: result.stars, xpGained: winRewards(result.stars).xp,
       ip: req.ip,
     });
-
-    res.json({
-      success: true,
-      result: {
-        progression: progressionResult,
-        rewards,
-        stars,
-        verified: completed.verified,
-        ranked: completed.ranked,
-        vip: isVip,
-        balances: {
-          coins: playerEconomy.currencies.coins.amount,
-          stars: playerEconomy.currencies.stars.amount,
-        },
-        statistics: {
-          gamesPlayed: playerEconomy.statistics.gamesPlayed,
-          levelsCompleted: playerEconomy.statistics.levelsCompleted,
-          totalScore: playerEconomy.statistics.totalScore,
-          averageScore: playerEconomy.statistics.averageScore,
-          bestScore: playerEconomy.statistics.bestScore,
-        },
-      },
-      requestId: req.requestId,
-    });
+    res.json({ success: true, result, requestId: req.requestId });
   } catch (error) {
+    if (error instanceof EconomyRuleError) {
+      return res.status(error.code === 'economy_conflict' ? 503 : 400).json({
+        success: false, error: error.code, requestId: req.requestId,
+      });
+    }
     handleRouteError(res, error, 'complete level', req.requestId);
   }
 });

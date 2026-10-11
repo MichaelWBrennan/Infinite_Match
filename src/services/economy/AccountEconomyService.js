@@ -13,12 +13,14 @@ import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { aiCacheManager } from '../ai-cache-manager.js';
 import crypto from 'crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { pickWheelReward, LEVEL_LIMITS } from './item-catalog.js';
+import { pickWheelReward, ITEM_CATALOG, LEVEL_LIMITS } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
-import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS } from '../meta/kingdom.js';
+import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
-import { endlessRewards } from '../meta/rewards.js';
+import { endlessRewards, winRewards } from '../meta/rewards.js';
+import { addSeasonXp } from '../meta/battlepass.js';
+import { applyVip } from '../meta/vip.js';
 import { loadLiveOps } from '../live-ops/live-ops.js';
 import { recordWeeklyWin } from '../live-ops/weekly-event.js';
 import { observationMeta, observeAttempt } from '../levels/attempt-observations.js';
@@ -538,73 +540,44 @@ class AccountEconomyService {
     return this.withPlayerLock(playerId, () => this._updateProgressionUnlocked(playerId, xpGained, levelCompleted));
   }
 
+  /** Apply XP and every level-up grant to a draft, without writing it. */
+  applyXp(playerEconomy, xpGained, nowMs = Date.now()) {
+    if (!Number.isSafeInteger(xpGained) || xpGained < 0) throw new EconomyRuleError('invalid_xp');
+    const progression = playerEconomy.progression;
+    progression.xp += xpGained;
+    progression.totalXp += xpGained;
+    let leveledUp = false;
+    if (!Number.isFinite(progression.xpToNext) || progression.xpToNext < 1) {
+      throw new EconomyRuleError('invalid_progression');
+    }
+    while (progression.xp >= progression.xpToNext) {
+      progression.xp -= progression.xpToNext;
+      progression.level++;
+      progression.xpToNext = Math.floor(progression.xpToNext * XP_GROWTH_RATE);
+      progression.lastLevelUp = new Date(nowMs).toISOString();
+      leveledUp = true;
+      for (const reward of this.getLevelUpRewards(progression.level)) this.applyReward(playerEconomy, reward);
+    }
+    return { success: true, level: progression.level, xp: progression.xp,
+      xpToNext: progression.xpToNext, leveledUp,
+      rewards: leveledUp ? this.getLevelUpRewards(progression.level) : [] };
+  }
+
   async _updateProgressionUnlocked(playerId, xpGained, levelCompleted = false) {
     try {
-      const playerEconomy = await this.getPlayerEconomy(playerId);
-      const progression = playerEconomy.progression;
-      
-      progression.xp += xpGained;
-      progression.totalXp += xpGained;
-      
-      // Check for level up
-      let leveledUp = false;
-      while (progression.xp >= progression.xpToNext) {
-        progression.xp -= progression.xpToNext;
-        progression.level++;
-        progression.xpToNext = Math.floor(progression.xpToNext * XP_GROWTH_RATE); // Exponential growth
-        progression.lastLevelUp = new Date().toISOString();
-        leveledUp = true;
-        
-        // Give level up rewards
-        await this.giveLevelUpRewards(playerId, progression.level);
-      }
-      
-      if (levelCompleted) {
-        progression.milestones.push({
-          level: progression.level,
-          xp: progression.totalXp,
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      playerEconomy.lastUpdated = new Date().toISOString();
-      
-      // Update cache
-      await this.updatePlayerEconomyCache(playerId, playerEconomy);
-
-      logger.info('Progression updated', { 
-        playerId, 
-        level: progression.level, 
-        xp: progression.xp, 
-        leveledUp 
+      const playerEconomy = structuredClone(await this.getPlayerEconomy(playerId));
+      const nowMs = Date.now();
+      const result = this.applyXp(playerEconomy, xpGained, nowMs);
+      if (levelCompleted) playerEconomy.progression.milestones.push({
+        level: result.level, xp: playerEconomy.progression.totalXp, timestamp: new Date(nowMs).toISOString(),
       });
-
-      return {
-        success: true,
-        level: progression.level,
-        xp: progression.xp,
-        xpToNext: progression.xpToNext,
-        leveledUp,
-        rewards: leveledUp ? await this.getLevelUpRewards(progression.level) : []
-      };
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      logger.info('Progression updated', { playerId, level: result.level, xp: result.xp, leveledUp: result.leveledUp });
+      return result;
     } catch (error) {
       logger.error('Failed to update progression', { error: error.message, playerId });
       throw new ServiceError(`Failed to update progression: ${error.message}`, 'AccountEconomyService');
-    }
-  }
-
-  /**
-   * Give level up rewards
-   */
-  async giveLevelUpRewards(playerId, level) {
-    const rewards = this.getLevelUpRewards(level);
-    
-    for (const reward of rewards) {
-      if (reward.type === 'currency') {
-        await this.updateCurrency(playerId, reward.currencyId, reward.amount, 'add', 'level_up');
-      } else if (reward.type === 'inventory') {
-        await this.updateInventory(playerId, reward.category, reward.itemId, reward.amount, 'add');
-      }
     }
   }
 
@@ -906,20 +879,7 @@ class AccountEconomyService {
         // Do not mutate the cached economy: a failed save must leave the attempt claimable.
         const economy = structuredClone(original);
         const reward = endlessRewards(score);
-        const progression = economy.progression;
-        if (reward.xp > 0) {
-          progression.xp += reward.xp;
-          progression.totalXp += reward.xp;
-          while (progression.xp >= progression.xpToNext) {
-            progression.xp -= progression.xpToNext;
-            progression.level += 1;
-            progression.xpToNext = Math.floor(progression.xpToNext * XP_GROWTH_RATE);
-            progression.lastLevelUp = new Date(nowMs).toISOString();
-            for (const levelReward of this.getLevelUpRewards(progression.level)) {
-              this.applyReward(economy, levelReward);
-            }
-          }
-        }
+        if (reward.xp > 0) this.applyXp(economy, reward.xp, nowMs);
         if (reward.coins > 0) this.applyReward(economy, {
           type: 'currency', currencyId: 'coins', amount: reward.coins,
         });
@@ -955,42 +915,138 @@ class AccountEconomyService {
     });
   }
 
+  /** Validate the paid definition and optional deterministic replay without saving anything. */
+  validateAttemptCompletion(economy, attemptId, level, nowMs, completion) {
+    const pending = economy.pendingAttempt;
+    if (!pending || typeof attemptId !== 'string' || pending.id !== attemptId) {
+      throw new EconomyRuleError('attempt_not_found');
+    }
+    if (pending.level !== level) throw new EconomyRuleError('attempt_level_mismatch');
+    if (nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS) throw new EconomyRuleError('attempt_expired');
+    const definition = pending.generatedLevel;
+    if (definition && completion && ((completion.mode === 'endless') !== (definition.mode === 'endless'))) {
+      throw new EconomyRuleError('attempt_mode_mismatch');
+    }
+    let stars;
+    let replay = null;
+    if (completion && completion.mode === 'level') {
+      // Pinned-goal validation and consumption happen together under the player lock.
+      // Date/weather/tuning changes and client-authored goals cannot alter the attempt.
+      if (definition?.generatorVersion >= 4) {
+        const reason = objectiveCompletionError(definition, completion.score, completion.objectiveProgress);
+        if (reason) throw new EconomyRuleError(reason);
+        stars = objectiveStars(definition, completion.score, completion.objectiveProgress);
+        if (completion.moves !== undefined) {
+          replay = replayLevelAttempt(definition, completion.moves, completion.score, completion.objectiveProgress,
+            pending.powerupReceipts || []);
+          if (replay.error) throw new EconomyRuleError(replay.error);
+        }
+      } else {
+        stars = starsForTarget(completion.score, definition?.targetScore ?? pending.legacyTarget ?? completion.legacyTarget);
+        if (!stars) throw new EconomyRuleError('score_below_target');
+      }
+    }
+    return { pending, definition, stars, replay };
+  }
+
+  /** Pays a classic/daily win in one guarded document write, including its replay receipt.
+   * Side effects outside the economy (boards and observation logs) remain best-effort.
+   */
+  async settleLevelAttempt(playerId, attemptId, level, completion, policies = {}, nowMs = Date.now()) {
+    // No raw moves/counters are retained in the receipt: only a digest of the submitted claim.
+    // A different score or transcript cannot turn a previously unverified result into ranked play.
+    const fingerprint = crypto.createHash('sha256').update(JSON.stringify({ level, score: completion.score,
+      objectiveProgress: completion.objectiveProgress ?? null, moves: completion.moves ?? null,
+      hintsUsed: completion.hintsUsed ?? null })).digest('hex');
+    return this.withPlayerLock(playerId, async () => {
+      for (let tryNumber = 0; tryNumber < 3; tryNumber++) {
+        const original = await this.getPlayerEconomy(playerId);
+        const existing = original.levelReceipts?.find((item) => item.attemptId === attemptId);
+        if (existing) {
+          if (existing.fingerprint !== fingerprint) throw new EconomyRuleError('attempt_result_mismatch');
+          return { result: { ...existing.result, duplicate: true }, rankedScore: existing.rankedScore ?? null,
+            competitionIds: existing.competitionIds ?? { tournamentIds: [], challengeIds: [] } };
+        }
+        const economy = structuredClone(original);
+        const { pending, definition, stars, replay } = this.validateAttemptCompletion(
+          economy, attemptId, level, nowMs, completion);
+        const { isVip = false, season = null, competitionIds = { tournamentIds: [], challengeIds: [] } } =
+          typeof policies === 'function' ? await policies() : policies;
+        const weekly = replay?.verified === true ? recordWeeklyWin(economy, loadLiveOps(), nowMs) : null;
+        const base = winRewards(stars);
+        const roomBoosted = { ...base, coins: Math.floor(base.coins * kingdomCoinMultiplier(economy.kingdom)) };
+        const reward = applyVip(roomBoosted, isVip);
+        const progression = this.applyXp(economy, reward.xp, nowMs);
+        economy.progression.milestones.push({ level: progression.level, xp: economy.progression.totalXp,
+          timestamp: new Date(nowMs).toISOString() });
+        this.applyReward(economy, { type: 'currency', currencyId: 'coins', amount: reward.coins });
+        this.applyReward(economy, { type: 'currency', currencyId: 'stars', amount: reward.stars });
+        const stats = economy.statistics;
+        stats.gamesPlayed++;
+        stats.levelsCompleted++;
+        stats.totalScore += completion.score;
+        stats.averageScore = Math.floor(stats.totalScore / stats.gamesPlayed);
+        stats.bestScore = Math.max(stats.bestScore, completion.score);
+        stats.lastPlayed = new Date(nowMs).toISOString();
+        if (season) addSeasonXp(economy, season, 'level_complete', nowMs);
+        economy.pendingAttempt = null;
+        economy.lastUpdated = new Date(nowMs).toISOString();
+        const ranked = replay?.verified === true && !pending.untrackedPowerup && !(pending.powerupReceipts?.length);
+        const result = { progression,
+          rewards: [{ type: 'currency', currencyId: 'coins', amount: reward.coins },
+            { type: 'currency', currencyId: 'stars', amount: reward.stars }],
+          stars, verified: replay?.verified === true, ranked, vip: isVip,
+          balances: { coins: economy.currencies.coins.amount, stars: economy.currencies.stars.amount },
+          statistics: { gamesPlayed: stats.gamesPlayed, levelsCompleted: stats.levelsCompleted,
+            totalScore: stats.totalScore, averageScore: stats.averageScore, bestScore: stats.bestScore } };
+        economy.levelReceipts = [...(economy.levelReceipts || []).slice(-31),
+          { attemptId, fingerprint, result, rankedScore: ranked ? replay.score : null,
+            competitionIds: ranked ? competitionIds : { tournamentIds: [], challengeIds: [] },
+            settledAt: economy.lastUpdated }];
+        const saved = await this.updatePlayerEconomyCache(playerId, economy, attemptId);
+        if (!saved) {
+          await this.discardUnsaved(playerId);
+          const fresh = await this.getPlayerEconomy(playerId);
+          const receipt = fresh.levelReceipts?.find((item) => item.attemptId === attemptId);
+          if (receipt) {
+            if (receipt.fingerprint !== fingerprint) throw new EconomyRuleError('attempt_result_mismatch');
+            return { result: { ...receipt.result, duplicate: true }, rankedScore: receipt.rankedScore ?? null,
+              competitionIds: receipt.competitionIds ?? { tournamentIds: [], challengeIds: [] } };
+          }
+          if (fresh.pendingAttempt?.id === attemptId) {
+            if (tryNumber < 2) continue;
+            throw new EconomyRuleError('economy_conflict');
+          }
+          throw new EconomyRuleError('attempt_not_found');
+        }
+        // Saving the payout is authoritative. A diagnostic write must never turn it into
+        // a 500 response; clients can always recover from a lost response via the receipt.
+        if (pending.observation) {
+          try {
+            await observeAttempt(pending.observation, replay?.verified ? 'verified_win' : 'unverified_win', {
+              inventoryUses: pending.powerupReceipts?.length || 0, hintsUsed: completion.hintsUsed,
+              movesUsed: replay?.verified ? completion.moves?.length : null, moveBudget: definition?.moves,
+            }, nowMs);
+          } catch (error) {
+            logger.warn('Could not record level observation', { playerId, error: error.message });
+          }
+        }
+        if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
+        return { result, rankedScore: ranked ? replay.score : null, competitionIds };
+      }
+      throw new EconomyRuleError('economy_conflict');
+    });
+  }
+
   /**
-   * Consumes a spent attempt so its level can be rewarded once. Runs under the player lock and is
-   * saved before any reward is granted, so a repeated or forged completion finds no attempt.
+   * Legacy low-level consume helper retained for existing internal callers/tests. New HTTP
+   * classic/daily payouts use settleLevelAttempt instead, so attempt and rewards save together.
    */
   async consumeAttempt(playerId, attemptId, level, nowMs = Date.now(), completion = null) {
     return this.withPlayerLock(playerId, async () => {
       const playerEconomy = await this.getPlayerEconomy(playerId);
-      const pending = playerEconomy.pendingAttempt;
-      if (!pending || typeof attemptId !== 'string' || pending.id !== attemptId) {
-        throw new EconomyRuleError('attempt_not_found');
-      }
-      if (pending.level !== level) throw new EconomyRuleError('attempt_level_mismatch');
-      if (nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS) throw new EconomyRuleError('attempt_expired');
-      const definition = pending.generatedLevel;
-      if (definition && completion && ((completion.mode === 'endless') !== (definition.mode === 'endless'))) {
-        throw new EconomyRuleError('attempt_mode_mismatch');
-      }
-      let stars;
-      let replay = null;
-      if (completion && completion.mode === 'level') {
-        // Pinned-goal validation and consumption happen together under the player lock.
-        // Date/weather/tuning changes and client-authored goals cannot alter the attempt.
-        if (definition?.generatorVersion >= 4) {
-          const reason = objectiveCompletionError(definition, completion.score, completion.objectiveProgress);
-          if (reason) throw new EconomyRuleError(reason);
-          stars = objectiveStars(definition, completion.score, completion.objectiveProgress);
-          if (completion.moves !== undefined) {
-            replay = replayLevelAttempt(definition, completion.moves, completion.score, completion.objectiveProgress,
-              pending.powerupReceipts || []);
-            if (replay.error) throw new EconomyRuleError(replay.error);
-          }
-        } else {
-          stars = starsForTarget(completion.score, definition?.targetScore ?? pending.legacyTarget ?? completion.legacyTarget);
-          if (!stars) throw new EconomyRuleError('score_below_target');
-        }
-      }
+      const { pending, definition, stars, replay } = this.validateAttemptCompletion(
+        playerEconomy, attemptId, level, nowMs, completion);
       // Count only a verified replay, in the same locked save that consumes its attempt.
       // A retried completion cannot enter here twice; unverified legacy/timed/endless
       // payouts never advance the free weekly event.
@@ -1043,6 +1099,7 @@ class AccountEconomyService {
     const view = structuredClone(playerEconomy);
     delete view.pendingAttempt;
     delete view.endlessReceipts;
+    delete view.levelReceipts;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
@@ -1072,106 +1129,88 @@ class AccountEconomyService {
    */
   async spinLuckyWheel(playerId, randomInt = (max) => crypto.randomInt(max)) {
     return this.withPlayerLock(playerId, async () => {
-      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const economy = structuredClone(await this.getPlayerEconomy(playerId));
       const now = new Date();
-      const lastSpin = playerEconomy.wheel?.lastSpin ? new Date(playerEconomy.wheel.lastSpin) : null;
-      if (lastSpin && this.isSameDay(now, lastSpin)) {
-        throw new Error('Lucky wheel already spun today');
-      }
-
+      const lastSpin = economy.wheel?.lastSpin ? new Date(economy.wheel.lastSpin) : null;
+      if (lastSpin && this.isSameDay(now, lastSpin)) throw new Error('Lucky wheel already spun today');
       const reward = pickWheelReward(randomInt);
-
-      // Record the spin before granting, so a failed grant still counts as a spin.
-      playerEconomy.wheel = { ...(playerEconomy.wheel || {}), lastSpin: now.toISOString() };
-      await this.updatePlayerEconomyCache(playerId, playerEconomy);
-
-      if (reward.type === 'currency') {
-        await this.updateCurrency(playerId, reward.currencyId, reward.amount, 'add', 'lucky_wheel');
-      } else {
-        await this.updateInventory(playerId, reward.category, reward.itemId, reward.amount, 'add');
-      }
+      this.applyReward(economy, reward);
+      economy.wheel = { ...(economy.wheel || {}), lastSpin: now.toISOString() };
+      economy.lastUpdated = now.toISOString();
+      await this.updatePlayerEconomyCache(playerId, economy);
       return { reward, spunAt: now.toISOString() };
     });
   }
 
-  async claimDailyReward(playerId) {
-    return this.withPlayerLock(playerId, () => this._claimDailyRewardUnlocked(playerId));
+  async claimDailyReward(playerId, season = null) {
+    return this.withPlayerLock(playerId, () => this._claimDailyRewardUnlocked(playerId, season));
   }
 
-  async _claimDailyRewardUnlocked(playerId) {
+  async _claimDailyRewardUnlocked(playerId, season) {
     try {
-      const playerEconomy = await this.getPlayerEconomy(playerId);
-      const dailyRewards = playerEconomy.dailyRewards;
-      
+      const economy = structuredClone(await this.getPlayerEconomy(playerId));
+      const dailyRewards = economy.dailyRewards;
       const now = new Date();
       const lastClaimed = dailyRewards.lastClaimed ? new Date(dailyRewards.lastClaimed) : null;
-      
-      // Check if can claim
-      if (lastClaimed && this.isSameDay(now, lastClaimed)) {
-        throw new Error('Daily reward already claimed today');
-      }
-      
-      // Reset streak if more than 1 day has passed
-      if (lastClaimed && this.getDaysDifference(now, lastClaimed) > 1) {
-        dailyRewards.streak = 0;
-      }
-      
-      // Increment streak
+      if (lastClaimed && this.isSameDay(now, lastClaimed)) throw new Error('Daily reward already claimed today');
+      if (lastClaimed && this.getDaysDifference(now, lastClaimed) > 1) dailyRewards.streak = 0;
       dailyRewards.streak++;
       dailyRewards.lastClaimed = now.toISOString();
-      
-      // Get reward
       const rewardIndex = Math.min(dailyRewards.streak - 1, dailyRewards.rewards.length - 1);
       const reward = dailyRewards.rewards[rewardIndex];
-      
-      // Give rewards
-      if (reward.coins) {
-        await this.updateCurrency(playerId, 'coins', reward.coins, 'add', 'daily_reward');
-      }
-      if (reward.stars) {
-        await this.updateCurrency(playerId, 'stars', reward.stars, 'add', 'daily_reward');
-      }
-      if (reward.xp) {
-        await this.updateProgression(playerId, reward.xp);
-      }
-      
-      // Set next reward
+      if (reward.coins) this.applyReward(economy, { type: 'currency', currencyId: 'coins', amount: reward.coins });
+      if (reward.stars) this.applyReward(economy, { type: 'currency', currencyId: 'stars', amount: reward.stars });
+      if (reward.xp) this.applyXp(economy, reward.xp, now.getTime());
+      if (season) addSeasonXp(economy, season, 'daily_login', now.getTime());
       dailyRewards.nextReward = Math.min(dailyRewards.streak + 1, dailyRewards.rewards.length);
       dailyRewards.canClaim = false;
-      
-      playerEconomy.lastUpdated = new Date().toISOString();
-      
-      // Update cache
-      await this.updatePlayerEconomyCache(playerId, playerEconomy);
-
-      logger.info('Daily reward claimed', { 
-        playerId, 
-        streak: dailyRewards.streak, 
-        reward 
-      });
-
-      return {
-        success: true,
-        streak: dailyRewards.streak,
-        reward,
-        nextReward: dailyRewards.nextReward
-      };
+      economy.lastUpdated = now.toISOString();
+      await this.updatePlayerEconomyCache(playerId, economy);
+      logger.info('Daily reward claimed', { playerId, streak: dailyRewards.streak, reward });
+      return { success: true, streak: dailyRewards.streak, reward, nextReward: dailyRewards.nextReward };
     } catch (error) {
       logger.error('Failed to claim daily reward', { error: error.message, playerId });
       throw new ServiceError(`Failed to claim daily reward: ${error.message}`, 'AccountEconomyService');
     }
   }
 
+  /** One coin debit and inventory grant; a save failure leaves both unchanged. */
+  async purchaseCatalogItem(playerId, itemId) {
+    const item = Object.hasOwn(ITEM_CATALOG, itemId) ? ITEM_CATALOG[itemId] : null;
+    if (!item) throw new EconomyRuleError('unknown_item');
+    return this.withPlayerLock(playerId, async () => {
+      const economy = structuredClone(await this.getPlayerEconomy(playerId));
+      const currency = economy.currencies[item.currencyId];
+      const owned = economy.inventory[item.category]?.[itemId];
+      if (!currency || !owned) throw new EconomyRuleError('unknown_item');
+      if (currency.amount < item.price) throw new EconomyRuleError('insufficient_coins');
+      if (owned.count >= owned.maxCount) throw new EconomyRuleError('item_full');
+      const oldAmount = currency.amount;
+      const oldCount = owned.count;
+      currency.amount -= item.price;
+      currency.spent += item.price;
+      owned.count++;
+      economy.lastUpdated = new Date().toISOString();
+      await this.updatePlayerEconomyCache(playerId, economy);
+      return {
+        currency: { success: true, currencyId: item.currencyId, oldAmount,
+          newAmount: currency.amount, operation: 'spend', source: 'purchase' },
+        inventory: { success: true, category: item.category, itemId, oldCount,
+          newCount: owned.count, operation: 'add' },
+      };
+    });
+  }
+
   /**
    * Update player economy cache
    */
-  async updatePlayerEconomyCache(playerId, playerEconomy, expectedEndlessAttemptId = null) {
+  async updatePlayerEconomyCache(playerId, playerEconomy, expectedAttemptId = null) {
     const cacheKey = `player_economy:${playerId}`;
 
     if (isDurableEconomy()) {
       try {
-        if (expectedEndlessAttemptId !== null) {
-          const saved = await PlayerEconomyDb.saveEndlessIfPending(playerId, expectedEndlessAttemptId, playerEconomy);
+        if (expectedAttemptId !== null) {
+          const saved = await PlayerEconomyDb.saveIfPending(playerId, expectedAttemptId, playerEconomy);
           if (!saved) return false;
         } else {
           const saved = await PlayerEconomyDb.save(playerId, playerEconomy);

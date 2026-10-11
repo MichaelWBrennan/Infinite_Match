@@ -169,11 +169,18 @@ describe('a won level', () => {
     const inflated = await claim({ ...body, score: score + 1 });
     expect(inflated.status).toBe(400); expect(inflated.body.error).toBe('replay_result_mismatch');
     expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toBeNull();
+    const failedSocial = jest.spyOn(socialStore, 'recordWin').mockRejectedValueOnce(new Error('social unavailable'));
     const win = await claim(body);
+    failedSocial.mockRestore();
     expect(win.status).toBe(200); expect(win.body.result.verified).toBe(true);
-    expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toMatchObject({ rank: 1, score });
+    expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toBeNull();
+    // Even if the operator changes the active window before a retry, recover the
+    // competition membership pinned by the original verified payout.
+    fs.writeFileSync(process.env.LIVE_OPS_CONFIG!, JSON.stringify({ events: [], deals: [], tournaments: [], challenges: [] }));
     const repeated = await claim(body);
-    expect(repeated.status).toBe(400); expect(repeated.body.error).toBe('attempt_not_found');
+    expect(repeated.status).toBe(200);
+    expect(repeated.body.result).toEqual({ ...win.body.result, duplicate: true });
+    expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toMatchObject({ rank: 1, score });
   });
 
 });

@@ -146,8 +146,8 @@ describe('server-authoritative generated attempts', () => {
     const attempt = await spend(7);
     const body = { level: 7, score: attempt.generatedLevel.targetScore, attemptId: attempt.attemptId };
     const responses = await Promise.all([1, 2].map(() => request(app).post('/api/account-economy/level/complete').set(auth()).send(body)));
-    expect(responses.map((r) => r.status).sort()).toEqual([200, 400]);
-    expect(responses.find((r) => r.status === 400)!.body.error).toBe('attempt_not_found');
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 200]);
+    expect(responses.filter((r) => r.body.result.duplicate)).toHaveLength(1);
   });
 
   test('the daily attempt definition is frozen across midnight and a holiday change', async () => {
@@ -209,7 +209,7 @@ describe('v4 pinned paid objectives', () => {
       objectives: [{ type: 'score', target: 1 }] });
     expect(win.status).toBe(200); expect(win.body.result.stars).toBe(1);
     const replay = await complete(attempt, { objectiveProgress: progressFor(attempt) });
-    expect(replay.status).toBe(400); expect(replay.body.error).toBe('attempt_not_found');
+    expect(replay.status).toBe(400); expect(replay.body.error).toBe('attempt_result_mismatch');
   });
 
   test('missing counters cannot bypass a pinned collection goal by reporting a huge score or new goals', async () => {
@@ -260,8 +260,8 @@ describe('v4 pinned paid objectives', () => {
   test('simultaneous v4 completions still award only once', async () => {
     const attempt = await start();
     const responses = await Promise.all([complete(attempt, { objectiveProgress: progressFor(attempt) }), complete(attempt, { objectiveProgress: progressFor(attempt) })]);
-    expect(responses.map((result) => result.status).sort()).toEqual([200, 400]);
-    expect(responses.find((result) => result.status === 400)!.body.error).toBe('attempt_not_found');
+    expect(responses.map((result) => result.status).sort()).toEqual([200, 200]);
+    expect(responses.filter((r) => r.body.result.duplicate)).toHaveLength(1);
   });
 
   test('v4 score-only onboarding works without counters, and banking a partial endless stage stays legal', async () => {
@@ -313,6 +313,6 @@ describe('v5 pinned shield attempts', () => {
     expect(valid.status).toBe(200);
     const replay = await request(app).post('/api/account-economy/level/complete').set(auth())
       .send({ ...claim, objectiveProgress: { ...claim.objectiveProgress, shieldsCleared: shieldGoal.target } });
-    expect(replay.status).toBe(400); expect(replay.body.error).toBe('attempt_not_found');
+    expect(replay.status).toBe(200); expect(replay.body.result).toEqual({ ...valid.body.result, duplicate: true });
   });
 });

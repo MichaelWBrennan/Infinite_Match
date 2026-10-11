@@ -466,6 +466,30 @@ describe('real Phaser core uses the certified definition', () => {
     }
   });
 
+  test('a lost level payout response retries the identical claim, but an explicit denial does not', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(definition(1));
+    game.attemptId = 'paid-level'; game.attemptLevel = 1; game.score = 900;
+    game.getAuthToken = () => 'signed-in';
+    const bodies: any[] = [];
+    game.fetchJson = async (_url: string, options: any) => {
+      bodies.push(JSON.parse(options.body));
+      if (bodies.length === 1) throw new Error('response lost');
+      return { ok: true, data: { success: true, result: { duplicate: true, balances: { stars: 2 } } } };
+    };
+    const paid = await game.submitLevelWin(1);
+    expect(paid.duplicate).toBe(true);
+    expect(game.stars).toBe(2);
+    expect(bodies).toEqual([bodies[0], bodies[0]]);
+    expect(game.attemptId).toBeNull();
+
+    game.attemptId = 'denied-level';
+    let calls = 0;
+    game.fetchJson = async () => { calls++; return { ok: false, status: 400, data: { error: 'score_below_target' } }; };
+    expect(await game.submitLevelWin(1)).toBeNull();
+    expect(calls).toBe(1);
+  });
+
   test('Next Level waits for the reward to finish before replacing its attempt', async () => {
     const { game } = makeBrowserGame();
     let release!: () => void;

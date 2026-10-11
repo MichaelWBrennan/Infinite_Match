@@ -1674,28 +1674,34 @@ class PhaserMatch3Game {
         const attemptId = this.attemptId;
         this.attemptId = null;
         if (!attemptId || stars <= 0 || !this.getAuthToken()) return;
-        try {
-            const { ok, data } = await this.fetchJson('/api/account-economy/level/complete', {
-                method: 'POST',
-                body: JSON.stringify({
-                    level: this.attemptLevel,
-                    score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
-                    ...(this.usesLevelObjectives() ? { objectiveProgress: this.objectiveProgress } : {}),
-                    ...(this.replayEligible && this.attemptMoves?.length ? { moves: this.attemptMoves } : {}),
-                    ...(this.hintsUsed > 0 ? { hintsUsed: this.hintsUsed } : {}),
-                    attemptId,
-                }),
-            });
-            if (ok && data.success) {
-                // The server works out the stars. Show its count, not the client's.
-                this.stars = data.result.balances.stars;
-                this.updateUI();
-            } else {
-                console.warn('Level reward not granted:', data.error);
+        const body = JSON.stringify({
+            level: this.attemptLevel,
+            score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
+            ...(this.usesLevelObjectives() ? { objectiveProgress: this.objectiveProgress } : {}),
+            ...(this.replayEligible && this.attemptMoves?.length ? { moves: this.attemptMoves } : {}),
+            ...(this.hintsUsed > 0 ? { hintsUsed: this.hintsUsed } : {}),
+            attemptId,
+        });
+        // A lost response may follow a committed payout. Retry the same claim only on
+        // timeout/network/5xx; a receipt makes the retry read-only, never a new energy spend.
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const { ok, status, data } = await this.fetchJson('/api/account-economy/level/complete', {
+                    method: 'POST', body, signal: AbortSignal.timeout(15000),
+                });
+                if (ok && data.success) {
+                    this.stars = data.result.balances.stars;
+                    this.updateUI();
+                    return data.result;
+                }
+                if (attempt === 0 && status >= 500) continue;
+                console.warn('Level reward not confirmed:', data?.error);
+                break;
+            } catch (error) {
+                console.warn('Could not reach the server for the level reward.', error);
             }
-        } catch (error) {
-            console.warn('Could not reach the server for the level reward.', error);
         }
+        return null;
     }
 
     // A reported loss or quit closes the paid attempt without a reward. Hint/move counts

@@ -382,9 +382,16 @@ can omit progress. V5 paid wins send the strict shape `{collected: {...}, shield
 Missing collection progress returns `objective_progress_required`; malformed
 progress returns `invalid_objective_progress`; unmet score returns
 `score_below_target`; unmet colors return `objectives_incomplete`. Invalid or
-incomplete claims do not consume the pending attempt. Concurrent successful
-claims still consume/reward only once. These checks occur before consumption,
-inside the existing player lock, without changing inventory/economy economics.
+incomplete claims do not consume the pending attempt. Concurrent identical
+claims pay once and return the original receipt on retry; a different score,
+progress or transcript for that attempt is rejected. Validation and the capped
+XP/level-up, coin/star, statistics, weekly-win and season grants now share one
+revision-guarded economy write under the player lock. The last 32 receipts are
+retained; older attempts are rejected, never repaid. The browser retries an
+uncertain payout once using the identical request body. The separate social
+score file can lag an economy commit; a pinned, replay-verified receipt can
+reapply its tournament/challenge contribution idempotently on retry, but there
+is no background delivery or multi-server social store yet.
 
 ### Competitive replay boundary
 

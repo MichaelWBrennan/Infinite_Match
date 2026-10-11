@@ -10,7 +10,7 @@ import { aiCacheManager } from '../services/ai-cache-manager.js';
 const realLoad = PlayerEconomyDb.load;
 const realSave = PlayerEconomyDb.save;
 const realInsert = PlayerEconomyDb.insertIfAbsent;
-const realEndlessSave = PlayerEconomyDb.saveEndlessIfPending;
+const realPendingSave = PlayerEconomyDb.saveIfPending;
 let docs: Map<string, any>;
 let saveCalls: number;
 let failNextSave: boolean;
@@ -42,7 +42,7 @@ beforeEach(() => {
     docs.set(playerId, structuredClone({ ...economy, writeRevision: (current.writeRevision ?? 0) + 1 }));
     return true;
   };
-  PlayerEconomyDb.saveEndlessIfPending = async (playerId: string, attemptId: string, economy: any) => {
+  PlayerEconomyDb.saveIfPending = async (playerId: string, attemptId: string, economy: any) => {
     if (docs.get(playerId)?.pendingAttempt?.id !== attemptId) return false;
     return PlayerEconomyDb.save(playerId, economy);
   };
@@ -53,7 +53,7 @@ afterEach(() => {
   PlayerEconomyDb.load = realLoad;
   PlayerEconomyDb.save = realSave;
   PlayerEconomyDb.insertIfAbsent = realInsert;
-  PlayerEconomyDb.saveEndlessIfPending = realEndlessSave;
+  PlayerEconomyDb.saveIfPending = realPendingSave;
 });
 
 // Roll 60 on a 100-weight common box lands on energy_20, not coins. A coin reward would hide a leaked spend.
@@ -231,6 +231,26 @@ describe('durable economy: stale workers cannot overwrite a banked receipt', () 
       resume();
       PlayerEconomyDb.save = fakeSave;
     }
+  });
+
+  test('a stale worker cannot overwrite a complete level win, and the receipt recovers it', async () => {
+    const writer = new AccountEconomyService();
+    const other = new AccountEconomyService();
+    const id = uniq('level_race');
+    await writer.initializePlayerEconomy(id);
+    const { attemptId } = await writer.spendAttemptEnergy(id, 2, Date.now(), null, 900);
+    const stale = structuredClone(await other.getPlayerEconomy(id));
+    const claim = { mode: 'level', score: 1000, legacyTarget: 900 };
+    const first = await writer.settleLevelAttempt(id, attemptId, 2, claim);
+    other.accountEconomyData.set(id, stale);
+    const current = await other.getPlayerEconomy(id);
+    current.currencies.coins.amount -= 25;
+    await expect(other.updatePlayerEconomyCache(id, current)).rejects.toMatchObject({ code: 'economy_conflict' });
+    const second = await other.settleLevelAttempt(id, attemptId, 2, claim);
+    expect(second.result).toEqual({ ...first.result, duplicate: true });
+    expect(docs.get(id).statistics.levelsCompleted).toBe(1);
+    expect(docs.get(id).currencies.coins.amount).toBe(first.result.balances.coins);
+    expect(docs.get(id).levelReceipts).toHaveLength(1);
   });
 
   test('Endless re-evaluates its bank on a newer revision with the same pending attempt', async () => {

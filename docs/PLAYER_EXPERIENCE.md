@@ -67,13 +67,19 @@ claim additionally checks the pending ID and can re-evaluate on a fresh revision
 other conflicting operations are **not** silently retried (some are not safely
 idempotent). In-process currency, inventory, progression and daily calls share
 a re-entrant per-player lock with existing reward flows. The revision guard is
-not a distributed transaction: classic/daily wins, wheel, purchases and other
-multi-save flows can still leave partial effects, some routes mutate shared
-state outside the player lock, and reads may be briefly stale. The stand-in
+not a distributed transaction: paid classic/daily and Endless wins now settle
+in one write with bounded retry receipts; the daily claim (including season XP),
+wheel prize, level-up XP/rewards and catalog purchase also each save together.
+Other flows such as provider-ledger grants and refunds still span stores, some
+route-level mutations remain outside a player lock, and reads may be briefly stale. The stand-in
 store tests exercise stale workers and legacy revision migration; no live Mongo
 concurrency/integration test has been run. Keep single-writer deployment and
-low-stakes rewards until multi-save flows and production fault injection are
-addressed.
+low-stakes rewards until the remaining multi-store flows and production fault
+injection are addressed. A replay-verified social win retries idempotently with
+its original competition IDs if a social-file write failed, but no background
+outbox or distributed social store is available. A client-reported classic or
+daily result without a transcript can still earn bounded account rewards and
+inflate personal stats; these results remain unranked.
 Do not convert the opt-in into a surprise energy spend or a pressure loop.
 
 ## Delivered kingdom scene increment — Royal Library (web)

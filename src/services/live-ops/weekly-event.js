@@ -134,7 +134,7 @@ export function weeklyView(event, economy = null, nowMs = Date.now()) {
       claimed: claimed.includes(goal), canClaim: !!economy && nowMs >= event.startMs && wins >= goal && !claimed.includes(goal) })) };
 }
 
-/** Called inside consumeAttempt's lock and save, exactly once per verified paid attempt. */
+/** Called inside the paid completion's lock and save, exactly once per verified attempt. */
 export function recordWeeklyWin(economy, config, nowMs = Date.now()) {
   const event = activeWeeklyEvent(config, nowMs);
   if (!event) return null;

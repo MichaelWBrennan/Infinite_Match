@@ -144,7 +144,7 @@ describe('paid attempt lifecycle, read-only operator report and legacy target sa
     expect(won.status).toBe(200); expect(won.body.result.verified).toBe(true);
     expect(rows().at(-1)).toMatchObject({ outcome: 'verified_win', reportedHints: 3, inventoryUses: 0 });
     const replay = await request(app).post('/api/account-economy/level/complete').set(auth()).send(body);
-    expect(replay.status).toBe(400);
+    expect(replay.status).toBe(200); expect(replay.body.result.duplicate).toBe(true);
     expect(rows().filter((r) => r.outcome === 'verified_win')).toHaveLength(1);
   });
 

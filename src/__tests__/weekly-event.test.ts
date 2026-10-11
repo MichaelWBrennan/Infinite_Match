@@ -364,7 +364,7 @@ describe('weekly event route and locked claim', () => {
     const body = await verifiedWin();
     expect((await getWeekly()).body.event.wins).toBe(1);
     const replay = await request(app).post('/api/account-economy/level/complete').set(auth()).send(body);
-    expect(replay.status).toBe(400);
+    expect(replay.status).toBe(200); expect(replay.body.result.duplicate).toBe(true);
     expect((await getWeekly()).body.event.wins).toBe(1);
   });
 

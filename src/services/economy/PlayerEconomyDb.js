@@ -82,7 +82,7 @@ export const PlayerEconomyDb = {
       { $set: { economy: body }, $inc: { revision: 1 } });
     return result.matchedCount === 1;
   },
-  async saveEndlessIfPending(playerId, attemptId, economy) {
+  async saveIfPending(playerId, attemptId, economy) {
     const Model = await ensureModel();
     const revision = economy.writeRevision ?? 0;
     const body = { ...economy };

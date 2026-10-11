@@ -174,7 +174,7 @@ describe('paid booster receipts and completion', () => {
     expect(won.status).toBe(200); expect(won.body.result).toMatchObject({ verified: true, ranked: false });
     expect((await socialStore.friendBoard(player))[0].score).toBe(0);
     const again = await post('/level/complete', payload);
-    expect(again.status).toBe(400); expect(again.body.error).toBe('attempt_not_found');
+    expect(again.status).toBe(200); expect(again.body.result.duplicate).toBe(true);
     const lateBoost = await post('/powerup/use', { attemptId, powerupId: 'rainbow' });
     expect(lateBoost.status).toBe(400); expect(lateBoost.body.error).toBe('attempt_not_found');
   });
