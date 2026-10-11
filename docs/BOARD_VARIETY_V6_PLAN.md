@@ -1,6 +1,6 @@
 # Board variety, rules v6: plan and acceptance gates
 
-**Status (2026-10-11): planned, not implemented.** This is the first bundle from the parity request ("board variety, live ops, social, in that order"). It is the largest gap in the [competitive ranking](COMPETITIVE_STRATEGY.md): board obstacles score 1/5 and objectives 2/5, against 5 and 4–5 for the leaders.
+**Status (2026-10-11): M1 done, provisional.** `src/services/levels/blocker-rules.js` and `src/__tests__/blocker-rules.test.ts` implement the pure spread, cap and clear rules using the recommended defaults. The owner's answers to the open questions were not received, so these defaults are unconfirmed. The generator, golden fixtures, and paid definitions are unchanged. M2 and later are not started. This is the first bundle from the parity request ("board variety, live ops, social, in that order"). It is the largest gap in the [competitive ranking](COMPETITIVE_STRATEGY.md): board obstacles score 1/5 and objectives 2/5, against 5 and 4–5 for the leaders.
 
 ## Why this is a plan first
 
