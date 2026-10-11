@@ -29,10 +29,10 @@ two server instances against a real database, and check that concurrent guild jo
 | --- | --- | --- |
 | Energy gift amount | 1 | `ENERGY_GIFT_AMOUNT` (`social-store.js`) |
 | Gifts sent per sender per UTC day | 3 | `GIFT_DAILY_LIMIT` |
-| Gifts received per receiver per UTC day | 3 (owner to confirm) | `GIFT_DAILY_LIMIT` |
+| Gifts received per receiver per UTC day | 3 (owner confirmed 2026-10-11) | `GIFT_DAILY_LIMIT` |
 | Gift records kept | 14 days | `GIFT_RECORD_MS` |
-| Milestone goal (verified wins per guild per UTC week) | 50 (proposal) | `MILESTONE_GOAL` |
-| Milestone reward per contributing member | 25 coins (proposal) | `MILESTONE_REWARD_COINS` |
+| Milestone goal (verified wins per guild per UTC week) | 50 (owner confirmed 2026-10-11) | `MILESTONE_GOAL` |
+| Milestone reward per contributing member | 25 coins (owner confirmed 2026-10-11) | `MILESTONE_REWARD_COINS` |
 | Milestone records kept | 21 days | `MILESTONE_RECORD_MS` |
 | Queued offline wins per browser | 20, dropped after 3 hours | `public/js/win-queue.js` |
 | Guild members | 30 | `MAX_GUILD_MEMBERS` |
