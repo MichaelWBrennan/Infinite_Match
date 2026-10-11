@@ -24,7 +24,7 @@ Workflow after changing any rule: `npm run build && npm run vectors:build && npm
 | Path | What it is | Status |
 | --- | --- | --- |
 | `vercel.json` `/` and `/(.*)` → `index.html`, plus `/js`, `/css`, `/licenses` → `public/` | Production routing for the canonical Phaser client (approved 2026-10-11). Emulated in `canonical-sync.test.ts`; not yet verified on a live Vercel deploy. | **Done in branch; blocked for `main` on the API question below.** |
-| `/api/*` on Vercel | The Vercel deploy is static only. The catch-all returns `index.html` with HTTP 200 for `/api/*`, and `fetchJson` then reports `ok: true` with empty data. | **Open.** Account, energy, result and server-level calls need a real API host (for example a `/api/(.*)` rewrite to the Node server) before the static deploy is trusted. |
+| `/api/*` on the free static host | `public/js/offline-api.js` (loaded first) answers same-origin `/api/*` calls locally with HTTP 503 and `{ success: false, code: 'api_unavailable' }`. Nothing is sent to a server. Localhost and `?api=live` keep the real API for development. | **Free build, chosen 2026-10-11.** Accounts, coins, energy, purchases, social, live ops, kingdom decor and server-issued levels are unavailable on the public site. Guest puzzle play works from the bundle. |
 | `WebGL/` (`index.html`, `shared-game.js`, `platforms/`) | Unity WebGL shell plus a fallback that runs `SharedMatch3Game` (generic 8×8, 30 moves, no server rules) when the Unity build is missing | Not canonical. Its Unity binaries in this repo are placeholders, so the fallback is what loads. |
 | `Build/` (`index.html`, `match3-fallback.js`, `platform-*`) | A second copy of the Unity shell whose `index.html` also loads `shared-game.js`; `match3-fallback.js` is a different game | Not canonical; its `index.html` differs from `WebGL/index.html` by about 1,500 lines. |
 | `unity/`, `unity-refactored/` | Two Unity projects with their own C# generator and board logic; neither uses the shared rules | Not canonical. A port must pass the golden vectors before it can claim parity. |
@@ -39,7 +39,9 @@ Workflow after changing any rule: `npm run build && npm run vectors:build && npm
 
 ## Known limits
 
-- Static Vercel deploys have no API. Until `/api/*` is routed to the Node server, a signed-in or account-dependent feature can look successful with empty data. Guest play generates levels locally from the bundle, so it does not depend on the API.
+- The public site has no server. Progress, coins and energy are not saved across devices, and nothing is protected against cheating. Ranked results, prizes and purchases stay off until a backend is hosted.
+- Verified in headless Chromium against a Vercel-style emulation of `vercel.json` on a non-localhost hostname: the Phaser page loads, no `/api` request reaches the network, guest play runs, and `scripts/player-browser-smoke.mjs` passes all seven viewports with `BROWSER_EXTRA_ARGS` mapping the host. Not verified on a real Vercel deploy, on real phones, or with screen readers.
+- The guest Kingdom dialog has no visible close control (Escape closes it). This predates the shim and affects every native dialog that has no close button.
 
 - The golden vectors cover one opening move per level, not full games, and not the location-to-context mapping (`location-context.js`). Extend them before claiming full parity.
 - Passing the vectors proves rule agreement, not the look, layout, audio, or accessibility of a client.
