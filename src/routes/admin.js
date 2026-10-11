@@ -15,6 +15,7 @@ import UnityService from '../services/unity/UnifiedUnityService.js';
 import { readLevelResults, summarizeLevelResults } from '../services/level-tuning.js';
 import { readAttemptObservations, summarizeAttemptObservations } from '../services/levels/attempt-observations.js';
 import { retentionStudyStore } from '../services/study/retention-study.js';
+import { reportStalePaymentClaims } from '../services/payments/claim-report.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
@@ -206,6 +207,18 @@ router.get('/retention-study', async (req, res) => {
   } catch (error) {
     logger.error('Retention study report failed', { error: error.message });
     res.status(503).json({ success: false, error: 'retention_study_report_unavailable', requestId: req.requestId });
+  }
+});
+
+// Read-only payment claim triage. Aggregate only; never disclose account IDs, provider IDs,
+// receipts or balances, and never release a held claim based on an absent receipt.
+router.get('/payment-claims', async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    res.json({ success: true, ...(await reportStalePaymentClaims()), requestId: req.requestId });
+  } catch (error) {
+    logger.error('Payment claim report failed', { error: error.message });
+    res.status(503).json({ success: false, error: 'payment_claim_report_unavailable', requestId: req.requestId });
   }
 });
 

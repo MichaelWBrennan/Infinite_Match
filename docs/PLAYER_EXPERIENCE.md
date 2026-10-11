@@ -79,10 +79,13 @@ when a wallet hit its cap. Receipt capacity is fail-closed (4,096 each, no evict
 A held refund after debit-before-ledger-mark can complete on redelivery when a
 matching receipt exists. A held grant or refund **without** its receipt (especially
 historical unreceipted operations) still needs manual investigation; never blindly
-clear a claim. The payment ledger and economy still span stores without a
-distributed transaction. Some route-level mutations remain outside a player lock,
-and reads may be briefly stale. The stand-in
-store tests exercise stale workers and legacy revision migration; no live Mongo
+clear a claim. An admin-only, read-only [payment-claim triage report](PAYMENT_CLAIM_OPERATIONS.md)
+summarizes a bounded sample of claims older than 15 minutes without exposing identifiers
+or resetting them; missing receipts are never proof that a write did not commit. The
+payment ledger and economy still span stores without a distributed transaction.
+Some route-level mutations remain outside a player lock, and reads may be briefly
+stale. The stand-in store tests exercise stale workers and legacy revision migration;
+no live Mongo
 concurrency/integration test has been run. Keep single-writer deployment and
 low-stakes rewards until the remaining multi-store flows and production fault
 injection are addressed. A replay-verified social win retries idempotently with
