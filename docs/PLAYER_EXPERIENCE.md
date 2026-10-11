@@ -89,8 +89,12 @@ no live Mongo
 concurrency/integration test has been run. Keep single-writer deployment and
 low-stakes rewards until the remaining multi-store flows and production fault
 injection are addressed. A replay-verified social win retries idempotently with
-its original competition IDs if a social-file write failed, but no background
-outbox or distributed social store is available. A client-reported classic or
+its original competition IDs if a social-file write failed. Challenge/tournament
+coin payouts now carry permanent event-keyed economy receipts; challenge XP joins
+the coin grant in one guarded save when a valid season is active. An unreceipted
+held social reservation remains ambiguous and needs manual review, not a second
+grant. See [competition payout operations](SOCIAL_PAYOUT_OPERATIONS.md). No
+background outbox or distributed social store is available. A client-reported classic or
 daily result without a transcript can still earn bounded account rewards and
 inflate personal stats; these results remain unranked.
 Do not convert the opt-in into a surprise energy spend or a pressure loop.

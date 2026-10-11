@@ -6,7 +6,8 @@ import { activeCompetitions, loadCompetitions, prizeForRank } from '../services/
 import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
 import { socialStore } from '../services/social/social-store.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
-import { grantSeasonXp } from '../services/meta/battlepass-season.js';
+import { loadSeasonSafely } from '../services/meta/battlepass-season.js';
+import { isDurableEconomy } from '../services/economy/PlayerEconomyDb.js';
 import { PRODUCTS } from '../services/payments/product-catalog.js';
 import { priceFor } from '../services/live-ops/live-ops.js';
 import { visibleWeeklyEvent, weeklyView, claimWeeklyMilestone, WeeklyEventError, weeklyDisabled } from '../services/live-ops/weekly-event.js';
@@ -14,14 +15,11 @@ import { visibleWeeklyEvent, weeklyView, claimWeeklyMilestone, WeeklyEventError,
 const router = express.Router();
 const logger = new Logger('LiveOpsRoutes');
 
-// Adds coins to a player under the economy lock and saves. Returns the new coin balance.
-async function grantCoins(playerId, coins) {
-  return accountEconomyService.withPlayerLock(playerId, async () => {
-    const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
-    accountEconomyService.applyReward(playerEconomy, { type: 'currency', currencyId: 'coins', amount: coins });
-    await accountEconomyService.updatePlayerEconomyCache(playerId, playerEconomy);
-    return playerEconomy.currencies.coins.amount;
-  });
+// A social-file reservation alone cannot prove an economy credit. Never treat an
+// unreceipted held reservation as a successful payout in durable mode.
+async function confirmedCompetitionPayout(playerId, key, amount) {
+  if (!isDurableEconomy()) return true; // Legacy memory-mode tests; production requires Mongo.
+  return Boolean(await accountEconomyService.getCompetitionPayoutReceipt(playerId, key, amount));
 }
 
 // Public: the coin packs at their current price (with any active deal), and the live events.
@@ -184,18 +182,19 @@ router.post('/challenges/:id/claim', security.sessionValidation, async (req, res
 
     const key = `challenge:${challenge.id}`;
     if (!(await socialStore.reservePayout(key, playerId))) {
-      return res.status(409).json({ success: false, error: 'already_claimed', requestId: req.requestId });
+      const confirmed = await confirmedCompetitionPayout(playerId, key, challenge.reward.coins);
+      return res.status(confirmed ? 409 : 503).json({ success: false,
+        error: confirmed ? 'already_claimed' : 'payout_unconfirmed', requestId: req.requestId });
     }
     try {
-      const coins = await grantCoins(playerId, challenge.reward.coins);
-      // The challenge's season XP is granted after the coins. A failure here is logged, not refunded.
-      try {
-        await grantSeasonXp(playerId, 'challenge_complete');
-      } catch (error) {
-        logger.error('Season XP for a challenge was not granted', { error: error.message, playerId });
-      }
-      res.json({ success: true, result: { reward: challenge.reward, balances: { coins } }, requestId: req.requestId });
+      const season = await loadSeasonSafely();
+      const payout = await accountEconomyService.grantCompetitionRewardOnce(
+        playerId, key, challenge.reward.coins, season);
+      res.json({ success: true, result: { reward: challenge.reward,
+        balances: { coins: payout.balance }, duplicate: payout.duplicate }, requestId: req.requestId });
     } catch (error) {
+      // The economy write might have committed. Its receipt makes redelivery safe,
+      // but the absent receipt on a held claim is not proof of nonpayment.
       await socialStore.releasePayout(key, playerId);
       throw error;
     }
@@ -226,12 +225,14 @@ router.post('/tournaments/:id/settle', security.sessionValidation, requireMinRol
       if (!coins) continue;
       const { playerId } = ranking[i];
       if (!(await socialStore.reservePayout(key, playerId))) {
-        alreadyPaid.push(rank);
+        if (await confirmedCompetitionPayout(playerId, key, coins)) alreadyPaid.push(rank);
+        else failed.push(rank); // Held without proof: manual reconciliation, never report paid.
         continue;
       }
       try {
-        await grantCoins(playerId, coins);
-        paid.push({ rank, coins });
+        const payout = await accountEconomyService.grantCompetitionRewardOnce(playerId, key, coins);
+        if (payout.duplicate) alreadyPaid.push(rank);
+        else paid.push({ rank, coins });
       } catch (error) {
         await socialStore.releasePayout(key, playerId);
         failed.push(rank);

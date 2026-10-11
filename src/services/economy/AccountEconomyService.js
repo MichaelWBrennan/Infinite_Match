@@ -22,6 +22,7 @@ import { endlessRewards, winRewards } from '../meta/rewards.js';
 import { addSeasonXp } from '../meta/battlepass.js';
 import { applyVip } from '../meta/vip.js';
 import { loadLiveOps } from '../live-ops/live-ops.js';
+import { MAX_PRIZE_COINS } from '../live-ops/competitions.js';
 import { recordWeeklyWin } from '../live-ops/weekly-event.js';
 import { observationMeta, observeAttempt } from '../levels/attempt-observations.js';
 
@@ -36,6 +37,7 @@ export class EconomyRuleError extends Error {
 const logger = new Logger('AccountEconomyService');
 const XP_GROWTH_RATE = 1.2;
 const MAX_PAYMENT_RECEIPTS = 4096; // Never evict a payment receipt and permit a second grant/debit.
+const MAX_COMPETITION_RECEIPTS = 4096; // Never evict a paid prize and permit a second payout.
 const paymentKey = (transactionId) => {
   if (typeof transactionId !== 'string' || !transactionId) throw new EconomyRuleError('invalid_transaction_id');
   return crypto.createHash('sha256').update(transactionId).digest('hex');
@@ -789,6 +791,67 @@ class AccountEconomyService {
     return economy?.purchaseDebits?.[key] || null;
   }
 
+  /** Community/tournament prizes span a social file and the economy. The social
+   * reservation is not a transaction: this permanent receipt makes any later retry
+   * idempotent, including when a save committed but its acknowledgement was lost.
+   */
+  async grantCompetitionRewardOnce(playerId, key, amount, season = null) {
+    if (typeof key !== 'string' || !/^(challenge|tournament):[a-zA-Z0-9_-]{1,64}$/.test(key)
+      || !Number.isSafeInteger(amount) || amount <= 0 || amount > MAX_PRIZE_COINS) {
+      throw new EconomyRuleError('invalid_competition_reward');
+    }
+    const receiptKey = paymentKey(`competition:${key}`);
+    return this.withPlayerLock(playerId, async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const original = await this.getPlayerEconomy(playerId);
+        const prior = original.competitionPayouts?.[receiptKey];
+        if (prior) {
+          if (prior.key !== key || prior.amount !== amount ||
+              !Number.isSafeInteger(prior.credited) || prior.credited < 0 || prior.credited > amount) {
+            throw new EconomyRuleError('competition_receipt_mismatch');
+          }
+          return { duplicate: true, balance: original.currencies.coins.amount };
+        }
+        if (Object.keys(original.competitionPayouts || {}).length >= MAX_COMPETITION_RECEIPTS) {
+          throw new EconomyRuleError('competition_receipt_limit');
+        }
+        const economy = structuredClone(original);
+        const wallet = economy.currencies.coins;
+        const credited = Math.max(0, Math.min(amount, wallet.maxAmount - wallet.amount));
+        wallet.amount += credited;
+        wallet.earned += credited;
+        // The challenge XP and coin award commit together, instead of a separate grant.
+        const seasonXp = key.startsWith('challenge:') && season
+          ? addSeasonXp(economy, season, 'challenge_complete') : null;
+        economy.competitionPayouts = { ...(economy.competitionPayouts || {}),
+          [receiptKey]: { key, amount, credited, seasonXp } };
+        economy.lastUpdated = new Date().toISOString();
+        try {
+          await this.updatePlayerEconomyCache(playerId, economy);
+          return { duplicate: false, balance: economy.currencies.coins.amount, credited, seasonXp };
+        } catch (error) {
+          if (error.code !== 'economy_conflict' || attempt === 2) throw error;
+        }
+      }
+      throw new EconomyRuleError('economy_conflict');
+    });
+  }
+
+  /** Bypass caches for cross-store reconciliation. No absent receipt proves nonpayment. */
+  async getCompetitionPayoutReceipt(playerId, key, amount) {
+    if (typeof key !== 'string' || !/^(challenge|tournament):[a-zA-Z0-9_-]{1,64}$/.test(key)) {
+      throw new EconomyRuleError('invalid_competition_reward');
+    }
+    const receiptKey = paymentKey(`competition:${key}`);
+    const economy = isDurableEconomy() ? await PlayerEconomyDb.load(playerId) : await this.getPlayerEconomy(playerId);
+    const receipt = economy?.competitionPayouts?.[receiptKey] || null;
+    if (receipt && (receipt.key !== key || receipt.amount !== amount ||
+        !Number.isSafeInteger(receipt.credited) || receipt.credited < 0 || receipt.credited > amount)) {
+      throw new EconomyRuleError('competition_receipt_mismatch');
+    }
+    return receipt;
+  }
+
   /** Takes coins from a loaded economy object. Does not save. */
   spendCoins(playerEconomy, amount) {
     const coins = playerEconomy.currencies.coins;
@@ -1210,6 +1273,7 @@ class AccountEconomyService {
     delete view.levelReceipts;
     delete view.purchaseCredits;
     delete view.purchaseDebits;
+    delete view.competitionPayouts;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
