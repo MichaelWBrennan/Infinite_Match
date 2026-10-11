@@ -1,6 +1,6 @@
 # Social and sync v1: plan and acceptance gates
 
-**Status (2026-10-11): planned, nothing built.** This is bundle 3 of the parity request. It starts after the live-ops bundle and needs the owner decisions at the end before any code.
+**Status (2026-10-11): S1 built and tested against an in-memory stand-in; S2 to S5 not started.** This is bundle 3 of the parity request. It starts after the live-ops bundle and needs the owner decisions at the end before any code.
 
 ## What exists today (checked in the repository)
 
@@ -19,7 +19,7 @@ So bundle 3 starts with the store, not with gifts or PvP.
 
 ## Milestones and acceptance gates
 
-**S1: durable shared social store.** Move friends, requests, guilds, best scores, and competition entries into a transactional store behind the same opt-in and production guard as the economy (`SOCIAL_STORE=mongo`, required in production). Keep the JSON file for local and tests. Migrate existing data once, idempotently. *Gate:* the existing social tests pass on both stores; two server instances against one store see the same friend and guild state; a concurrent guild join at the 30-member limit admits exactly 30; a migration run twice changes nothing.
+**S1: durable shared social store (built, live MongoDB check open).** `src/services/social/social-backend.js` holds the whole social state in one MongoDB document with a revision. A write is a compare-and-set: it reloads, applies the change to a copy, and saves only if the revision is unchanged, retrying up to five times, then `social_store_busy`. `SocialStore` takes the backend; the JSON file path is unchanged. Production requires `SOCIAL_STORE=mongo` (`assertSocialStoreForEnvironment`, called at startup). `scripts/import-social-store.mjs` imports the JSON file once and is idempotent. *Gate status:* `src/__tests__/social-shared-store.test.ts` (6 tests) covers two stores sharing one document, 40 concurrent guild joins across two stores admitting exactly the free slots, the busy error, validation that saves nothing, idempotent import, and the production guard. **Open:** no real MongoDB is available here, so the compare-and-set has been checked only against a fake that follows MongoDB's rules. The import script has not been run against a database. Move friends, requests, guilds, best scores, and competition entries into a transactional store behind the same opt-in and production guard as the economy (`SOCIAL_STORE=mongo`, required in production). Keep the JSON file for local and tests. Migrate existing data once, idempotently. *Gate:* the existing social tests pass on both stores; two server instances against one store see the same friend and guild state; a concurrent guild join at the 30-member limit admits exactly 30; a migration run twice changes nothing.
 
 **S2: energy gifts between friends (limited).** A friend can send energy, never coins, stars, boosters, or paid items. Limits: friends only; a daily cap per sender and per receiver (value to be set by the owner); no self-gifts; each gift has an idempotency key so a retry is one gift. *Gate:* duplicate, cap, self-gift, non-friend, and concurrent-send tests; a gift never exceeds the receiver's energy maximum; the economy records each gift with a receipt.
 
@@ -35,7 +35,14 @@ So bundle 3 starts with the store, not with gifts or PvP.
 - **Competitor team tournaments and co-op events.** They need S1 and S3 first, and content design the owner has not chosen.
 - **Cross-device save as a new feature.** The economy already saves server-side when `ECONOMY_STORE=mongo` is set. S4 covers offline reconciliation only.
 
-## Owner decisions needed before S1
+## Owner decisions (2026-10-11, answered)
+
+- **Scope:** option B. S1 to S4 in one pass, then S5 (client and operator gate).
+- **Storage:** MongoDB behind `SOCIAL_STORE=mongo`, required in production, as the economy is.
+- **Gift cap:** 3 energy gifts per sender per day. The option text also said receivers are capped at 3 per day. Taken as written; the owner should confirm the receiver cap.
+- **PvP:** stays out of this pass.
+
+## Decisions still to make (originally listed)
 
 1. **Scope of this pass.** Option A: S1 and S2 now, then S3 after review. Option B: S1 to S4 in one pass. Option C: S1 only, then decide. (Recommended: A.)
 2. **Storage.** Use MongoDB for social state behind `SOCIAL_STORE=mongo`, required in production as the economy is. Confirm, or name another store.

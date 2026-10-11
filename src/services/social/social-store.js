@@ -13,7 +13,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { socialBackendFromEnv } from './social-backend.js';
 
+const SHARED_WRITE_ATTEMPTS = 5;
 export const MAX_FRIENDS = 50;
 export const MAX_GUILD_MEMBERS = 30;
 export const NAME_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9 _-]{1,14}[A-Za-z0-9])$/;
@@ -67,10 +69,24 @@ const labelOf = (d, playerId) => d.profiles[playerId]?.name || anonLabel(playerI
 const friendsOf = (d, playerId) => d.friends[playerId] || [];
 
 export class SocialStore {
-  constructor(file = null) {
+  /** file: JSON path for the file store. backend: a shared store (MongoSocialBackend), which replaces the file. */
+  constructor(file = null, backend = null) {
     this.file = file;
+    this.backend = backend;
     this.data = null;
     this.queue = Promise.resolve();
+  }
+
+  /** Shared store: read the current revision on every call, so another server's writes are seen. */
+  async loadShared() {
+    const { data, revision } = await this.backend.load();
+    const merged = { ...emptyData(), ...(data || {}) };
+    if (merged.version < 2) {
+      merged.bestScores = {};
+      merged.competitions = {};
+      merged.version = 2;
+    }
+    return { data: merged, revision };
   }
 
   path() {
@@ -107,6 +123,7 @@ export class SocialStore {
   /** Runs fn on a copy of the data, saves it, and only then replaces the data. Serialised. */
   write(fn) {
     const run = this.queue.then(async () => {
+      if (this.backend) return this.writeShared(fn);
       await this.load();
       const draft = structuredClone(this.data);
       const result = await fn(draft);
@@ -118,9 +135,21 @@ export class SocialStore {
     return run;
   }
 
+  /** Shared store write: reload, apply fn to a draft, save only if no other server wrote in between. */
+  async writeShared(fn) {
+    for (let attempt = 0; attempt < SHARED_WRITE_ATTEMPTS; attempt++) {
+      const { data, revision } = await this.loadShared();
+      const draft = structuredClone(data);
+      const result = await fn(draft);
+      if (await this.backend.save(draft, revision)) return result;
+    }
+    throw new SocialError('social_store_busy');
+  }
+
   /** Runs fn on the current data without changing it. Waits for pending writes first. */
   read(fn) {
     const run = this.queue.then(async () => {
+      if (this.backend) return fn((await this.loadShared()).data);
       await this.load();
       return fn(this.data);
     });
@@ -411,6 +440,6 @@ export class SocialStore {
   }
 }
 
-export const socialStore = new SocialStore();
+export const socialStore = new SocialStore(null, socialBackendFromEnv());
 
 export default socialStore;
