@@ -4,6 +4,16 @@ import typescriptParser from '@typescript-eslint/parser';
 
 export default [
   js.configs.recommended,
+  // Service worker: runs in its own global scope, not the page's.
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+      },
+    },
+  },
   {
     files: ['**/*.js', '**/*.ts', '**/*.mjs'],
     languageOptions: {

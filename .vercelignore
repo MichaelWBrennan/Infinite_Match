@@ -77,3 +77,6 @@ api/
 !webgl/**
 !platform-detection.js
 !match3-fallback.js
+# PWA service worker and its registration script are plain JavaScript; keep them deployable
+!public/sw.js
+!public/js/pwa-register.js

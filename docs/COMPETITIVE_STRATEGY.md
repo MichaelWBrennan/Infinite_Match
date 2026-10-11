@@ -11,9 +11,9 @@ On feature breadth, Infinite Match ranks **fourth of four** in this audit. Royal
 | 1 | Royal Match | **4.2** | Broadest combination of boosters, obstacles, castle meta and live events. |
 | 2 | Candy Crush Saga | **4.0** | Largest authored catalogue, deepest obstacle set, weekly cadence. |
 | 3 | Match Masters | **3.9** | The only real-time PvP in the set; thinner single-player board design. |
-| 4 | Infinite Match | **2.2** | Strong on supply and fairness controls; behind on board richness, live ops, social and platforms. |
+| 4 | Infinite Match | **2.3** | Strong on supply and fairness controls; behind on board richness, live ops, social and platforms. |
 
-The gap between the top three is within judgment error. The gap to Infinite Match is not. Even if every Infinite Match score below 5 were raised by one point, the average would be 3.1, still behind all three competitors.
+The gap between the top three is within judgment error. The gap to Infinite Match is not. Even if every Infinite Match score below 5 were raised by one point, the average would be 3.2, still behind all three competitors.
 
 ## Method and rubric
 
@@ -36,11 +36,11 @@ The gap between the top three is within judgment error. The gap to Infinite Matc
 | 7 | Live ops and event cadence | 2 | 5 | 5 | 4 |
 | 8 | Social and asynchronous competition | 2 | 4 | 3 | 4 |
 | 9 | Real-time PvP | 0 | 0 | 0 | 5 |
-| 10 | Platforms and distribution | 2 | 5 | 5 | 4 |
+| 10 | Platforms and distribution | 3 | 5 | 5 | 4 |
 | 11 | Offline play and cloud sync | 2 | 3 | 4 | n/a |
 | 12 | Accessibility and free-play controls | 4 | not assessed | not assessed | not assessed |
 | 13 | Audio and visual polish (subjective) | 2 | 4 | 4 | 4 |
-| | **Average, rows 1–4, 6–10, 13** | **2.2** | **4.2** | **4.0** | **3.9** |
+| | **Average, rows 1–4, 6–10, 13** | **2.3** | **4.2** | **4.0** | **3.9** |
 
 ## Evidence for each score
 
@@ -55,7 +55,7 @@ The gap between the top three is within judgment error. The gap to Infinite Matc
 | 7 | One weekly event (Hall Lanterns, ten UTC windows through 14 December 2026), a daily reward wheel and a battle-pass config. The generic event arrays are empty. Operational gate open. | Royal Match: new levels every two weeks, and King's Cup, Sky Race, Team Battle and Lightning Rush ([Google Play](https://play.google.com/store/apps/details?id=com.dreamgames.royalmatch&hl=en_IN)). Candy Crush: weekly level drops and rotating events ([riftwoodstudio.com](https://riftwoodstudio.com/blog/how-many-levels-in-candy-crush-saga-the-answer-will-surprise-you/)). Match Masters: a dynamic team-event schedule, Team vs Team and Friends Fiesta ([Google Play](https://play.google.com/store/apps/details?id=com.funtomic.matchmasters&hl=en_IN)). |
 | 8 | Friend codes, guilds, a best-score board and asynchronous score tournaments. No life or booster gifting. | Royal Match: Team Battle and team tournaments, per a 2023 event guide ([hubpages.com](https://discover.hubpages.com/games-hobbies/Royal-Match-Events-Guide)). Candy Crush: sending lives to friends, per third-party guides, not re-verified. Match Masters: friend challenges, team events and Friends Fiesta ([Google Play](https://play.google.com/store/apps/details?id=com.funtomic.matchmasters&hl=en_IN)). |
 | 9 | No real-time PvP. Competition is asynchronous only. | Match Masters: live turn-based PvP on a shared board, with knockout tournaments ([Google Play](https://play.google.com/store/apps/details?id=com.funtomic.matchmasters&hl=en_IN)). No real-time PvP was found for Royal Match or Candy Crush in the sources reviewed. |
-| 10 | Browser client is the tested target. No installable web app (no manifest or service worker). Android and iOS are configured in the repository but not shipped. | Royal Match: Amazon Appstore and Google Play verified; App Store downloads are reported by a tracker ([rec0ded88.com](https://rec0ded88.com/live-player-count/royal-match/)). Candy Crush: iOS, Android, Amazon, Facebook and Microsoft Store ([riftwoodstudio.com](https://riftwoodstudio.com/blog/how-many-levels-in-candy-crush-saga-the-answer-will-surprise-you/)). Match Masters: Google Play verified; iOS not checked in this pass. |
+| 10 | Browser client is the tested target. Installable web app and offline shell added on this branch (web manifest, 192/512/maskable icons, a conservative service worker). Not verified in a real browser or on devices. Android and iOS are configured in the repository but not shipped. | Royal Match: Amazon Appstore and Google Play verified; App Store downloads are reported by a tracker ([rec0ded88.com](https://rec0ded88.com/live-player-count/royal-match/)). Candy Crush: iOS, Android, Amazon, Facebook and Microsoft Store ([riftwoodstudio.com](https://riftwoodstudio.com/blog/how-many-levels-in-candy-crush-saga-the-answer-will-surprise-you/)). Match Masters: Google Play verified; iOS not checked in this pass. |
 | 11 | Guest fallback for temporary errors. Signed-in progress needs the server. Offline reconciliation not built. | Royal Match: offline play per a 2021 third-party listing, not re-verified. Candy Crush: cloud-saved, per the October 10 audit, not re-verified this pass. Match Masters: not assessed. |
 | 12 | Free hints, guest play, text board, reduced motion, high contrast, large text, keyboard controls and opt-in haptics. Scored 4, not 5, because screen-reader and physical-device validation is still open. | Not assessed for any competitor, so excluded from the ranking. |
 | 13 | Original vector art and 16 opt-in sound cues. No music. | Subjective. The three competitors are scored equally because no playtest or audio-visual review was done. |
@@ -98,7 +98,7 @@ The October 10 audit's claim that Royal Match had "version 37743 (July 31, 2026)
 | Platform | Evidence in repository | Verdict |
 | --- | --- | --- |
 | Desktop and mobile browser (root Phaser client) | Playable via `index.html` and `phaser3-game.js`. The October 11 refresh reports 1,056 Jest tests across 50 suites passing, after restoring the declared `linkedom` devDependency. Browser smoke covers seven viewports. | **Tested target, not verified in the refresh sandbox.** No Chromium was installed there, and the Playwright download host was outside the allowed network. The test count was not re-run for this merge. |
-| Installable web app (PWA) | No `manifest.json` link and no service worker in `index.html` or `public/`. | **Missing.** Needed for home-screen install and any offline shell. |
+| Installable web app (PWA) | `public/manifest.webmanifest`, icons in `public/icons/`, `public/sw.js` and `public/js/pwa-register.js`, linked from `index.html` and routed in `vercel.json`. Covered by `src/__tests__/pwa-shell.test.ts`. | **Added on this branch, not browser-verified.** Web manifest, PNG icons, and a service worker that caches only the static shell (`public/sw.js`). Install and offline behaviour still need a real Chromium and phone check. |
 | Android | `unity/Assets/Plugins/Android/AndroidManifest.xml` and `.github/workflows/android.yml` (Unity builder). | **Configured, not shipped.** No `.apk` or `.aab` is in the repository. The workflow needs a Unity licence and runner. |
 | iOS | `unity/Assets/Plugins/iOS/Info.plist` and `.github/workflows/ios.yml` (macOS runner). | **Configured, not shipped.** No Xcode project or TestFlight evidence. |
 | Portal WebGL builds (Poki and others) | `build-webgl-poki.sh` and `build-webgl-mobile.sh` cover Poki, Facebook, Snap, TikTok, Kongregate and CrazyGames. | **Scripts exist; no portal submission or live listing evidence.** |
@@ -118,7 +118,7 @@ Legend: **Working** = code/test support on the root web client or mounted server
 | Events, quests and pass | **Partial** — daily reward, wheel, battle-pass XP/claims, tournaments and community challenge code; `config/battlepass/config.json` has a season | The free Hall Lanterns weekly calendar now has ten checked-in UTC windows through December 14, 2026, with verified-win milestones and locked claims; deploying/verifying the candidate weeks, continued publishing before December 14, production storage/concurrency and real-device checks remain necessary. The older generic events/deals/tournaments/challenges arrays remain empty; the premium pass has no purchasable SKU. |
 | Social and competition | **Partial** — friend codes, guild membership, best-score board, score tournaments (`src/services/social/social-store.js`, `src/services/live-ops/competitions.js`) | No team life gifting, co-op event, or live PvP. Stores are single files. Only replayed **booster-free** v4/v5 classic/daily wins rank; receipt-backed booster results may be verified but remain unranked, as do timed/endless results. |
 | Economy / purchases | **Partial** — server-gated energy and rewards, coin packs, Stripe/Apple/Google verification paths, server-priced shop | Live payment/device billing not validated here; durable balances require Mongo opt-in and production config. Avoid designing pay-to-escape levels around untested billing. |
-| Offline and platforms | **Partial** — guest fallback supports certified offline play for temporary errors; account purchases/attempts require a server | Browser web client is the tested target; Unity artifacts and phone-store binaries are not proven equivalent. Signed-in cross-device/offline reconciliation is not built. |
+| Offline and platforms | **Partial** — guest fallback supports certified offline play for temporary errors; account purchases/attempts require a server; installable shell and offline fallback added (see the platform check; not browser-verified) | Browser web client is the tested target; Unity artifacts and phone-store binaries are not proven equivalent. Signed-in cross-device/offline reconciliation is not built. |
 | Polished visual/audio identity | **Partial** — readable original gem shapes/badges, motion feedback and 16 local opt-in cues | Original web scenes for all six rooms and skippable story beats are implemented; broader world/story, music, device profiling and human listening/visual quality testing remain open. |
 | Board replay integrity | **Partial** — pinned move and receipt-bound inventory replay verifies v4/v5 classic/daily score/goal counters; only booster-free paths rank | Old clients, timed and endless results still pay without replay. Booster-assisted replay is verified but unranked. Random instant-booster locations are client-reported and a public witness can be computed by a bot. Do not launch consequential prizes without completing the remaining trust gates. |
 
@@ -210,7 +210,7 @@ server prices and ranked booster separation intact throughout.
 No single change can satisfy this. The ordered path, based on the P0 and P1 items above, is:
 
 1. **Measure the player first.** Run the [first-play and fairness study](WEB_FIRST_PLAY_STUDY.md) with real phones (20+ first-time and 30+ observed-loss sessions). Competitor comparisons without this are guesses.
-2. **Make the web client installable.** Add a web app manifest and a conservative service worker that caches only the static shell, not game state or API responses. Verify with the existing browser smoke on a real Chromium. This is the smallest honest step toward "all platforms".
+2. **Make the web client installable (done on this branch; verification open).** A web app manifest and a conservative service worker that caches only the static shell, not game state or API responses, are in place. Still open: verify install and offline play in a real Chromium and on a phone, and make sure the `.vercelignore` rule for `**/*.js` does not drop other deployed scripts.
 3. **Ship one native build end to end.** Produce a signed Android build from the Unity project with a licensed runner, install it on a real phone, and log cold-start and frame-time numbers. Then do iOS through TestFlight. Until then, the native platforms should be described as configured, not shipped.
 4. **Add board variety behind a new rules version.** Prototype a second obstacle family or delivery objective (the audit's item 8), prove replay and no-booster witnesses, and test it on real players. Do not add PvP before server-authoritative scores hold up under abuse tests.
 5. **Run an event cadence for at least one full season.** Publish and verify each week on time, and track entry and claim rates. A stale or empty event is a failed launch.
@@ -223,7 +223,7 @@ No single change can satisfy this. The ordered path, based on the P0 and P1 item
 - **Not assessed.** Competitor accessibility, fairness and win integrity; Toon Blast and the Scapes games in the ranking; Royal Match and Candy Crush real-time PvP beyond the sources reviewed.
 - **Repository claims are as stated.** Test counts and platform checks come from the October 11 refresh or the repository's own docs. This merge did not re-run the test suite or the browser smoke.
 
-## Change log for this merge
+## Change log
 
 - Merged `COMPETITIVE_REFRESH_2026-10-11.md` into this file and removed the refresh file. The README link to this file still works.
 - Added the ranking matrix, scoring rubric and per-score evidence.
@@ -232,4 +232,4 @@ No single change can satisfy this. The ordered path, based on the P0 and P1 item
 - Dropped an unverifiable vendor claim about tournament formats.
 - Normalized citations to domain-labelled links, because the two source docs reused the same numbers for different URLs.
 - Unified the snapshot date to 2026-10-11.
-
+- **PWA step (branch `arena/79c59091-infinite-match`):** added `public/manifest.webmanifest`, original PNG icons (generated by `scripts/build-pwa-icons.py`), `public/sw.js` (shell-only cache, never `/api/*` or cross-origin), and `public/js/pwa-register.js`. Linked from `index.html`, routed in `vercel.json`, and re-included in `.vercelignore` because it ignores `**/*.js`. Platforms score moved 2 → 3; average 2.2 → 2.3.
