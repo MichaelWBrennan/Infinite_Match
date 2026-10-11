@@ -1,13 +1,13 @@
 # Live ops v1: plan and acceptance gates
 
-**Status (2026-10-11): L1 built, not wired.** The owner chose a personal score challenge, the same coin ceiling as the weekly event, and no deals in v1. L1 is the pure definition, validator and progress module in `src/services/live-ops/score-challenge.js`. Config and claims are unchanged (L2 and L3 are not started). This is the second bundle from the parity request ("board variety, live ops, social and sync, in that order"). Board variety is built and gated (see [BOARD_VARIETY_V6_PLAN.md](BOARD_VARIETY_V6_PLAN.md)). This plan changes no config, no rule, no economy path and no published event.
+**Status (2026-10-11): L1 and L2 built, not wired.** L1 is the pure definition, validator and progress module (`src/services/live-ops/score-challenge.js`). L2 is the economy functions (`src/services/live-ops/score-challenge-economy.js`): record a verified win inside the window, and claim an earned tier once. Neither is called from the completion path or a route yet, because the challenge is not in validated config until L3. Config and player-visible behaviour are unchanged.
 
 ## Owner decisions (2026-10-11)
 
 - **Event type:** personal score challenge (option A).
 - **Ceiling:** the Hall Lanterns weekly ceiling. Each tier at most 40 coins, all tiers at most 80. A test guards this against drift from `config/liveops.json`.
 - **Deals:** out of v1.
-- **Still open:** production store (`ECONOMY_STORE=mongo`). Confirm before L2.
+- **Production store:** the code refuses to start in production without `ECONOMY_STORE=mongo` (`assertEconomyStoreForEnvironment`, called in `src/server/index.ts` before services start, with a test). This holds only if the deployment sets `NODE_ENV=production`, which the repository cannot verify. Confirm the deployment's environment before L3 publishes anything.
 
 ## L1 rules (built)
 
@@ -66,9 +66,9 @@ Gap, from the [competitive ranking](COMPETITIVE_STRATEGY.md): live ops scores **
 - **Browser smoke is not green** on the baseline (see the board-variety plan). Event UI cannot be verified end to end until that is fixed.
 - **No player evidence.** Event rewards and difficulty are unvalidated until the first-play study and an event review have run.
 
-## Owner questions
+## Owner questions (answered in part)
 
 1. Which second event type? (A, B or C above; recommended A.)
 2. What is the per-event coin ceiling?
 3. Keep deals out of v1? (recommended yes)
-4. Is production running with `ECONOMY_STORE=mongo`?
+4. Confirm the deployment sets `NODE_ENV=production`, so the startup guard applies.
