@@ -1,6 +1,6 @@
 # Board variety, rules v6: plan and acceptance gates
 
-**Status (2026-10-11): M1 to M4 done, not shipped.** M1 is the pure rules module. M2 adds generator v6 behind the version gate, the `clear-blockers` objective, and `fixtures/golden/rules-v6.json`. `rules-v5.json` and the v2–v4 tests are unchanged. M3 makes replay carry blockers between moves, requires `blockersCleared` for v6, rejects a pinned v6 definition with an invalid blocker grid or objective, and lets v6 attempts reach observation telemetry. M4 adds the client: a gold-outlined overlay on blocked cells that leaves the gem playable, a named blocked cell for assistive tech, a feedback phrase for blocker clears, a spread announcement, a `Blockers` goal label, and a shell cache bump to `v2`. The browser smoke case is NOT added: a v6 level cannot be served to a client until M5, and the smoke test already fails at the kingdom step. `GENERATOR_VERSION` stays 5, and `clientRulesVersion` still rejects 6, so no player receives a v6 level. M5 is not started.
+**Status (2026-10-11): M1 to M5 built, OFF by default.** M1 is the pure rules module. M2 adds generator v6 behind the version gate, the `clear-blockers` objective, and `fixtures/golden/rules-v6.json`. `rules-v5.json` and the v2–v4 tests are unchanged. M3 makes replay carry blockers between moves, requires `blockersCleared` for v6, rejects a pinned v6 definition with an invalid blocker grid or objective, and lets v6 attempts reach observation telemetry. M4 adds the client overlay, assistive names, feedback phrases, the spread announcement, the `Blockers` goal label, and a shell cache bump to `v2`. M5 gates the rollout (see runbook below). The browser smoke case is still NOT added. The first-play study has not been conducted, so no default change is allowed.
 
 ## Why this is a plan first
 
@@ -66,6 +66,13 @@ The v5 shield uses a `clear-shields` objective. v6 adds `clear-blockers` as a se
 - **Stages:** blockers are placed on witness-cleared cells, up to 3, and never share a level with shields, so each v6 definition adds exactly one objective. Stage: level >= 3 with level % 4 === 2, or the daily hash stage.
 - **Replay and client:** M2 threads blockers through the v6 objective path. M3 adds replay carry-over, tamper rejection, and a regression test that fails if carry-over is removed. M4 owns rendering, feedback, and assistive names.
 - **Replay cut point:** the server rejects any move after the objectives complete, so a witness is cut at its first winning move, as the browser does.
+
+## Rollout runbook (M5)
+
+- **Default: off.** With `BLOCKER_LEVELS` unset, the server refuses rules version 6 with `unsupported_rules_version`. Every client keeps receiving v5 levels, exactly as before.
+- **Staging or playtest:** set `BLOCKER_LEVELS=on` on that deployment only. The server then serves v6 to a request that is classic and asks for `rulesVersion=6`. The client asks only when the page URL has `?blockers=1`, and only for classic. Daily, timed and endless are v5 in every case.
+- **Rollback:** unset `BLOCKER_LEVELS`. New v6 requests are refused. Attempts already pinned as v6 still replay and settle, because replay uses the pinned definition, not the flag.
+- **Default change gate:** the first-play study in [WEB_FIRST_PLAY_STUDY.md](WEB_FIRST_PLAY_STUDY.md) must be conducted, with its thresholds and owner recorded before the default changes. It is an operator kit and has not been run.
 
 ## Known blockers for this plan
 

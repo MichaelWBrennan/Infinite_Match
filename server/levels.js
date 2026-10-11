@@ -3,7 +3,7 @@
 // server also adds live weather to the context. The free server skips it, which changes the
 // forecast metadata only, not the board rules.
 import { localLevelContext, locationCatalog, LevelInputError } from '../src/services/levels/location-context.js';
-import { clientRulesVersion, generatedLevel } from '../src/services/levels/level-service.js';
+import { clientRulesVersion, generatedLevel, blockerLevelsEnabled } from '../src/services/levels/level-service.js';
 import { ApiError } from './errors.js';
 
 // Same refresh rule as liveLevelContext, without the weather part.
@@ -40,7 +40,7 @@ export function getDailyLevel(query, nowMs = Date.now()) {
   const level = asApiError(() => generatedLevel({
     mode: 'daily',
     location: locationFrom(query),
-    rulesVersion: clientRulesVersion(query.get('rulesVersion') ?? undefined),
+    rulesVersion: clientRulesVersion(query.get('rulesVersion') ?? undefined, 'daily'),
   }, nowMs));
   return { success: true, level, serverTime: new Date(nowMs).toISOString() };
 }
@@ -51,7 +51,7 @@ export function getLevel(levelParam, query, nowMs = Date.now()) {
     level: Number(levelParam),
     mode: query.get('mode') ?? 'classic',
     location: locationFrom(query),
-    rulesVersion: clientRulesVersion(query.get('rulesVersion') ?? undefined),
+    rulesVersion: clientRulesVersion(query.get('rulesVersion') ?? undefined, query.get('mode') ?? 'classic', blockerLevelsEnabled()),
   }, nowMs));
   return { success: true, level, serverTime: new Date(nowMs).toISOString() };
 }

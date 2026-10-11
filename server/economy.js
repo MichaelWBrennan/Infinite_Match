@@ -16,7 +16,7 @@ import { ensureDecor } from '../src/services/meta/kingdom-decor.js';
 import { grantSeasonXp } from './season.js';
 import { recordWeeklyWin } from '../src/services/live-ops/weekly-event.js';
 import { currentLiveOps } from './live-ops-config.js';
-import { generatedLevel, clientRulesVersion } from '../src/services/levels/level-service.js';
+import { generatedLevel, clientRulesVersion, blockerLevelsEnabled } from '../src/services/levels/level-service.js';
 import { LEVEL_MODES } from '../src/services/levels/generator.js';
 import { replayLevelAttempt } from '../src/services/levels/attempt-replay.js';
 import { transaction } from './db.js';
@@ -156,7 +156,7 @@ export function spendEnergy(db, playerId, body, nowMs = Date.now()) {
         level,
         mode,
         location: body.location ?? {},
-        rulesVersion: clientRulesVersion(body.rulesVersion),
+        rulesVersion: clientRulesVersion(body.rulesVersion, mode, blockerLevelsEnabled()),
       }, nowMs);
     } catch (error) {
       if (error?.code) throw new ApiError(400, error.code);

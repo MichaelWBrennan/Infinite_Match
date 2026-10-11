@@ -17,7 +17,7 @@ import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { socialStore } from '../services/social/social-store.js';
 import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
 
-import { liveGeneratedLevel, clientRulesVersion } from '../services/levels/level-service.js';
+import { liveGeneratedLevel, clientRulesVersion, blockerLevelsEnabled } from '../services/levels/level-service.js';
 import { LevelInputError } from '../services/levels/location-context.js';
 
 const router = express.Router();
@@ -507,7 +507,7 @@ router.post('/energy/spend', security.sessionValidation, async (req, res) => {
     }
     const definition = req.body?.mode === undefined ? null : await liveGeneratedLevel({
       level: req.body?.level, mode: req.body.mode, location: req.body.location ?? {},
-      rulesVersion: clientRulesVersion(req.body.rulesVersion),
+      rulesVersion: clientRulesVersion(req.body.rulesVersion, req.body.mode, blockerLevelsEnabled()),
     });
     const legacyTarget = definition ? null : levelTarget(req.body?.level,
       levelMultiplier(req.body?.level, readLevelOverrides()));

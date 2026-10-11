@@ -121,8 +121,8 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
   }
   // V6 blockers occupy a stage of their own (never with shields), so each definition adds one objective.
   // Their overlay never changes gems, so the witness and score are the v5 witness and score.
-  const blockerStage = version >= 6 && !shieldStage
-    && (mode === 'daily' ? hashSeed(`${seed}|blocker-day`) % 3 === 0 : level >= 3 && level % 4 === 2);
+  // Classic only (plan M5): daily, timed and endless never receive blockers.
+  const blockerStage = version >= 6 && !shieldStage && mode === 'classic' && level >= 3 && level % 4 === 2;
   const blockers = version >= 6 ? blockerStage
     ? witnessedBlockers(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
     : blankBlockers(size) : null;

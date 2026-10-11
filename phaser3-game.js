@@ -432,6 +432,13 @@ class PhaserMatch3Game {
         this.playerUI?.assistiveBoard?.sync();
     }
 
+    /** Rules v6 is a playtest opt-in: a classic request with ?blockers=1. The server still decides. */
+    requestedRulesVersion(mode) {
+        let playtest = false;
+        try { playtest = mode === 'classic' && new URLSearchParams(window.location.search).get('blockers') === '1'; } catch (error) { playtest = false; }
+        return playtest ? 6 : globalThis.InfiniteLevels.GENERATOR_VERSION;
+    }
+
     /** v6 blockers are an overlay: the gem underneath stays playable. Drawn only when present. */
     renderBlockers() {
         if (!this.blockers && !this.blockerLayer?.active) return;
@@ -1607,7 +1614,7 @@ class PhaserMatch3Game {
         try {
             const { ok, data, status } = await this.fetchJson('/api/account-economy/energy/spend', {
                 method: 'POST',
-                body: JSON.stringify({ level: Math.floor(level), ...(mode ? { mode, location, rulesVersion: globalThis.InfiniteLevels.GENERATOR_VERSION } : {}) }),
+                body: JSON.stringify({ level: Math.floor(level), ...(mode ? { mode, location, rulesVersion: this.requestedRulesVersion(mode) } : {}) }),
                 signal: AbortSignal.timeout(10000),
             });
             if (ok && data.success) {
@@ -1800,7 +1807,7 @@ class PhaserMatch3Game {
                 serverTime = this.claimedServerTime;
             } else {
                 this.attemptId = null;
-                const query = new URLSearchParams({ ...location, mode, rulesVersion: String(globalThis.InfiniteLevels.GENERATOR_VERSION) }).toString();
+                const query = new URLSearchParams({ ...location, mode, rulesVersion: String(this.requestedRulesVersion(mode)) }).toString();
                 try {
                     const path = mode === 'daily' ? 'daily' : String(number);
                     const result = await this.fetchJson(`/api/levels/${path}?${query}`, { signal: AbortSignal.timeout(10000) });
