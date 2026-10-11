@@ -90,7 +90,9 @@
     const hits = event.shieldHits || [];
     const broken = hits.filter((hit) => hit.remaining === 0).length;
     const shieldDetail = hits.length ? ` · ${hits.length} shield hit${hits.length === 1 ? '' : 's'}${broken ? `, ${broken} cleared` : ''}` : '';
-    return `${phase}${detail ? ` · ${detail}` : ''}${shieldDetail} · +${event.points} points`;
+    const blockerHits = event.blockerHits || [];
+    const blockerDetail = blockerHits.length ? ` · ${blockerHits.length} blocker${blockerHits.length === 1 ? '' : 's'} cleared` : '';
+    return `${phase}${detail ? ` · ${detail}` : ''}${shieldDetail}${blockerDetail} · +${event.points} points`;
   }
 
   function create(game, environment = root) {

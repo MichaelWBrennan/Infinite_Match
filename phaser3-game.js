@@ -412,6 +412,7 @@ class PhaserMatch3Game {
         this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
         this.specials = this.usesEarnedSpecials() ? (this.generatedLevel.specials || globalThis.InfiniteLevels.blankSpecials(n)).map((row) => row.slice()) : null;
         this.shields = this.generatedLevel?.generatorVersion >= 5 ? this.generatedLevel.shields.map((row) => row.slice()) : null;
+        this.blockers = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.blockers ? this.generatedLevel.blockers.map((row) => row.slice()) : null;
 
         if (this.generatedLevel) {
             this.board = this.generatedLevel.board.map((row) => row.slice());
@@ -427,7 +428,23 @@ class PhaserMatch3Game {
                 this.gemSprites[row][col] = this.createGemSprite(row, col, this.board[row][col]);
             }
         }
+        this.renderBlockers();
         this.playerUI?.assistiveBoard?.sync();
+    }
+
+    /** v6 blockers are an overlay: the gem underneath stays playable. Drawn only when present. */
+    renderBlockers() {
+        if (!this.blockers && !this.blockerLayer?.active) return;
+        if (!this.blockerLayer?.active) this.blockerLayer = this.scene.add.graphics().setDepth(3);
+        this.blockerLayer.clear();
+        if (!this.blockers) return;
+        this.blockers.forEach((row, r) => row.forEach((on, c) => {
+            if (!on) return;
+            const x = this.cellX(c) - this.gemSize / 2;
+            const y = this.cellY(r) - this.gemSize / 2;
+            this.blockerLayer.fillStyle(0x0b1020, 0.62).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+            this.blockerLayer.lineStyle(3, 0xffd166, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+        }));
     }
 
     usesEarnedSpecials() {
@@ -447,7 +464,7 @@ class PhaserMatch3Game {
     commitEarnedAction(cells) {
         if (!this.canInteractWithBoard()) return null;
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
+            { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -486,6 +503,12 @@ class PhaserMatch3Game {
             return sprite;
         }));
         if (result.objectiveProgress) this.objectiveProgress = result.objectiveProgress;
+        if (result.blockers) this.blockers = result.blockers;
+        this.renderBlockers();
+        if (result.blockerSpread) {
+            const [spreadRow, spreadCol] = result.blockerSpread.split(',').map(Number);
+            this.playerUI?.announce?.(`A blocker spread to row ${spreadRow + 1}, column ${spreadCol + 1}.`);
+        }
         this.addScore(result.score);
         this.matchFeedback?.play(result);
         this.showEarnedFeedback(result);
@@ -607,7 +630,7 @@ class PhaserMatch3Game {
 
     showHint() {
         if (!this.canInteractWithBoard() || !globalThis.InfiniteLevels) return null;
-        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score, this.shields, this.levelRng.state);
+        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score, this.shields, this.levelRng.state, this.blockers);
         moves.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.count - a.count);
         if (!moves.length) return null;
         this.hintsUsed = Math.min(99, (this.hintsUsed || 0) + 1); // Diagnostic only; hints stay free.
@@ -967,7 +990,7 @@ class PhaserMatch3Game {
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
-                    { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
+                    { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
                 : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points, false, this.matchFeedback?.canStage() === true);
             if (result) {
                 if (track) this.attemptMoves.push({ receiptId: receipt.receiptId, ...inventoryAction });

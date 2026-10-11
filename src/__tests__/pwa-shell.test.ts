@@ -198,7 +198,7 @@ function loadWorker(opts: {
   return { caches, networkCalls, install, activate, fetchEvent, listeners };
 }
 
-const SHELL_CACHE = 'infinite-match-shell-v1';
+const SHELL_CACHE = 'infinite-match-shell-v2';
 
 describe('service worker: precache', () => {
   test('installs every shell file that the deploy provides', async () => {

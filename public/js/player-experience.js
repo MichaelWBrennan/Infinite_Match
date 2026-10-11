@@ -197,10 +197,10 @@
             }
             state.items.forEach((goal, index) => {
                 const slot = goalLabels[index]; if (!slot) return;
-                const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : 'Score';
+                const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : goal.type === 'clear-blockers' ? 'Blockers' : 'Score';
                 slot.text.textContent = `${name} ${Math.min(goal.current, goal.target).toLocaleString()}/${goal.target.toLocaleString()}`;
                 slot.item.dataset.complete = String(goal.complete);
-                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : goal.type === 'clear-shields' ? `Clear ${goal.target} fixed shields, up to two hits each` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
+                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : goal.type === 'clear-shields' ? `Clear ${goal.target} fixed shields, up to two hits each` : goal.type === 'clear-blockers' ? `Clear ${goal.target} blockers, one match each` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
             });
             progress.max = 100; progress.value = state.fraction * 100;
             progress.setAttribute('aria-valuetext', root.InfiniteLevels.objectiveSummary(definition, game.score, game.objectiveProgress, true));

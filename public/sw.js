@@ -13,7 +13,7 @@
  * Bump SHELL_VERSION whenever a file in SHELL changes; old caches are removed
  * on activate.
  */
-const SHELL_VERSION = 'v1';
+const SHELL_VERSION = 'v2';
 const CACHE_PREFIX = 'infinite-match-shell-';
 const CACHE_NAME = CACHE_PREFIX + SHELL_VERSION;
 const NAVIGATION_PATHS = ['/', '/index.html'];
