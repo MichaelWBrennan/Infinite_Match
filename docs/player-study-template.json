@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "studyId": "study-web-v5-pilot",
+  "build": "REPLACE_WITH_BUILD_COMMIT_SHA",
+  "sessions": []
+}

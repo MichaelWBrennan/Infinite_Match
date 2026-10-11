@@ -13,6 +13,9 @@ import { Logger, getRecentLogs } from '../core/logger/index.js';
 import EconomyService from '../services/economy/UnifiedEconomyService.js';
 import UnityService from '../services/unity/UnifiedUnityService.js';
 import { readLevelResults, summarizeLevelResults } from '../services/level-tuning.js';
+import { readAttemptObservations, summarizeAttemptObservations } from '../services/levels/attempt-observations.js';
+import { retentionStudyStore } from '../services/study/retention-study.js';
+import { reportStalePaymentClaims } from '../services/payments/claim-report.js';
 
 const router = express.Router();
 const logger = new Logger('AdminRoutes');
@@ -179,6 +182,46 @@ router.get('/logs', (req, res) => {
   res.json({ success: true, logs, requestId: req.requestId });
 });
 
+// Anonymous generated-board observations are review-only. Never expose raw JSONL rows,
+// exact clocks, player IDs, board contents, geography or sub-threshold slices.
+router.get('/attempt-observations', async (req, res) => {
+  try {
+    const { rows, skipped } = await readAttemptObservations();
+    const fromDay = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const report = summarizeAttemptObservations(rows.filter((row) => row.day >= fromDay),
+      { bySeed: req.query.bySeed === 'true' });
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ success: true, fromDay, skippedLines: skipped, ...report, requestId: req.requestId });
+  } catch (error) {
+    logger.error('Attempt observation report failed', { error: error.message });
+    res.status(503).json({ success: false, error: 'observation_report_unavailable', requestId: req.requestId });
+  }
+});
+
+// Opt-in return cohorts are pseudonymous and entirely separate from ads consent or payouts.
+// Aggregate only; no day-level entries, player pseudonyms or sub-threshold rates leave this route.
+router.get('/retention-study', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ success: true, ...(await retentionStudyStore.report()), requestId: req.requestId });
+  } catch (error) {
+    logger.error('Retention study report failed', { error: error.message });
+    res.status(503).json({ success: false, error: 'retention_study_report_unavailable', requestId: req.requestId });
+  }
+});
+
+// Read-only payment claim triage. Aggregate only; never disclose account IDs, provider IDs,
+// receipts or balances, and never release a held claim based on an absent receipt.
+router.get('/payment-claims', async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  try {
+    res.json({ success: true, ...(await reportStalePaymentClaims()), requestId: req.requestId });
+  } catch (error) {
+    logger.error('Payment claim report failed', { error: error.message });
+    res.status(503).json({ success: false, error: 'payment_claim_report_unavailable', requestId: req.requestId });
+  }
+});
+
 // Clear cache
 // Per-level difficulty summary from player-reported results. Levels are flagged
 // too_hard or too_easy only after enough attempts.
@@ -189,6 +232,7 @@ router.get('/level-tuning', async (req, res) => {
       success: true,
       generatedAt: new Date().toISOString(),
       totalResults: records.length,
+      source: 'legacy_client_reported_only',
       skippedLines: skipped,
       levels: summarizeLevelResults(records),
     });

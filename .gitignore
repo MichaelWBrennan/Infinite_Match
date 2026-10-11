@@ -12,6 +12,9 @@ credentials.json
 # Unity Cloud API keys
 unity-credentials.json
 
+# Dependencies installed by npm (legacy tracked files remain tracked)
+node_modules/
+
 # Runtime data written by the server (level results, etc.)
 var/
 

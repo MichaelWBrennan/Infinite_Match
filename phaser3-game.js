@@ -53,6 +53,11 @@ function dailyChallengeLevel(dateString) {
 const TARGETED_POWERUPS = ['diamond', 'target', 'star'];
 const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star'];
 
+// Checkpoints are a presentation convenience, not a new reward rule. The server still
+// enforces its three-hour attempt lifetime and the 300-coin / 500-XP payout caps.
+const ENDLESS_CHECKPOINT_SCORE = 100000; // 500 XP x 200 points; coins cap earlier.
+const ENDLESS_CHECKPOINT_AGE_MS = 165 * 60 * 1000; // allow 15 minutes before server expiry.
+
 class PhaserMatch3Game {
     constructor() {
         this.game = null;
@@ -91,7 +96,8 @@ class PhaserMatch3Game {
             largeText: false,
             reduceAnimations: false,
             haptics: false,
-            textBoard: false
+            textBoard: false,
+            endlessAutoContinue: false
         };
         this.timerInterval = null;
         this.tutorialShown = false;
@@ -177,11 +183,31 @@ class PhaserMatch3Game {
 
     createGemTextures() {
         if (window.InfinitePlayerExperience && this.scene.textures?.createCanvas) {
+            const drawShieldFrame = (context, shield) => {
+                // The same original numbered frame is used both on instant-play gems
+                // and as fixed terrain above falling gems in staged presentation.
+                context.save();
+                context.strokeStyle = '#e8fbff'; context.lineWidth = shield === 2 ? 4 : 2;
+                context.strokeRect(2, 2, 60, 60);
+                context.fillStyle = '#12354b'; context.fillRect(41, 0, 23, 23);
+                context.fillStyle = '#ffffff'; context.font = 'bold 17px sans-serif';
+                context.textAlign = 'center'; context.textBaseline = 'middle';
+                context.fillText(String(shield), 52, 12); context.restore();
+            };
+            for (const shield of [1, 2]) {
+                const overlay = this.scene.textures.createCanvas(`shield_overlay_${shield}`, 64, 64);
+                drawShieldFrame(overlay.getContext(), shield);
+                overlay.refresh();
+            }
             for (const type of Object.keys(window.InfinitePlayerExperience.visuals)) {
                 for (const special of [null, ...window.InfinitePlayerExperience.specialTypes]) {
-                    const texture = this.scene.textures.createCanvas(this.gemTexture(type, special), 64, 64);
-                    window.InfinitePlayerExperience.drawGem(texture.getContext(), type, special);
-                    texture.refresh();
+                    for (const shield of [0, 1, 2]) {
+                        const texture = this.scene.textures.createCanvas(this.gemTexture(type, special, shield), 64, 64);
+                        const context = texture.getContext();
+                        window.InfinitePlayerExperience.drawGem(context, type, special);
+                        if (shield) drawShieldFrame(context, shield);
+                        texture.refresh();
+                    }
                 }
             }
             return;
@@ -385,6 +411,7 @@ class PhaserMatch3Game {
         this.board = Array.from({ length: n }, () => new Array(n).fill(null));
         this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
         this.specials = this.usesEarnedSpecials() ? (this.generatedLevel.specials || globalThis.InfiniteLevels.blankSpecials(n)).map((row) => row.slice()) : null;
+        this.shields = this.generatedLevel?.generatorVersion >= 5 ? this.generatedLevel.shields.map((row) => row.slice()) : null;
 
         if (this.generatedLevel) {
             this.board = this.generatedLevel.board.map((row) => row.slice());
@@ -407,8 +434,9 @@ class PhaserMatch3Game {
         return this.generatedLevel?.generatorVersion >= 3 && !!globalThis.InfiniteLevels?.simulateSpecialMove;
     }
 
-    gemTexture(type, special = null) {
-        return special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
+    gemTexture(type, special = null, shield = 0) {
+        const base = special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
+        return shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
     }
 
     activateEarnedSpecial(row, col) {
@@ -419,7 +447,7 @@ class PhaserMatch3Game {
     commitEarnedAction(cells) {
         if (!this.canInteractWithBoard()) return null;
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
+            { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -427,6 +455,7 @@ class PhaserMatch3Game {
             return null;
         }
         this.moves--;
+        if (this.replayEligible) this.attemptMoves.push(cells.slice());
         this.renderEarnedTransition(result);
         this.checkEndConditions();
         return result;
@@ -443,14 +472,14 @@ class PhaserMatch3Game {
         }));
         const free = previous.flat().filter((sprite) => !kept.has(sprite));
         const drops = new Array(this.boardSize).fill(0);
-        this.board = result.board; this.specials = result.specials; this.levelRng.state = result.refillState;
+        this.board = result.board; this.specials = result.specials; if (result.shields) this.shields = result.shields; this.levelRng.state = result.refillState;
         this.gemSprites = result.board.map((row, r) => row.map((type, c) => {
             const origin = result.origins[r][c];
             const [oldRow, oldCol] = origin ? origin.split(',').map(Number) : [];
             const sprite = origin ? previous[oldRow][oldCol] : free.shift();
             this.scene.tweens.killTweensOf(sprite);
             if (!origin) sprite.setPosition(this.cellX(c), this.cellY(-1 - drops[c]++));
-            sprite.setTexture(this.gemTexture(type, this.specials[r][c]));
+            sprite.setTexture(this.gemTexture(type, this.specials[r][c], this.shields?.[r]?.[c]));
             sprite.setData('type', type); sprite.setData('special', this.specials[r][c]);
             sprite.setVisible(true); sprite.setAlpha(1); sprite.setScale(this.gemScale); sprite.clearTint();
             this.placeSprite(sprite, r, c, animateFallback);
@@ -467,7 +496,11 @@ class PhaserMatch3Game {
         const combo = result.events.find((event) => event.combo)?.combo;
         const names = window.InfinitePlayerExperience?.specialNames || {};
         const description = combo ? ` · ${combo.split('+').map((kind) => names[kind] || (kind === 'beam' ? 'Beam' : kind)).join(' + ')} combo` : activated.length ? ` · ${activated.length} special${activated.length === 1 ? '' : 's'} activated` : '';
-        this.playerUI?.announce(`${result.score} points${result.cascades > 1 ? ` · ${result.cascades} waves` : ''}${description}${earned.length ? ` · Earned ${[...new Set(earned.map((item) => names[item.type] || item.type))].join(', ')}` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : ''}${result.reshuffled ? ' Free board repair.' : ''}${this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress)}` : ''}`);
+        const shieldHits = result.events.flatMap((event) => event.shieldHits || []);
+        const layers = shieldHits.filter((hit) => hit.remaining > 0).length;
+        const cleared = shieldHits.length - layers;
+        const shieldDescription = `${layers ? ` · ${layers} shield layer${layers === 1 ? '' : 's'} removed` : ''}${cleared ? ` · ${cleared} shield${cleared === 1 ? '' : 's'} cleared` : ''}`;
+        this.playerUI?.announce(`${result.score} points${result.cascades > 1 ? ` · ${result.cascades} waves` : ''}${description}${shieldDescription}${earned.length ? ` · Earned ${[...new Set(earned.map((item) => names[item.type] || item.type))].join(', ')}` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : ''}${result.reshuffled ? ' Free board repair.' : ''}${this.usesLevelObjectives() ? ` ${globalThis.InfiniteLevels.objectiveSummary(this.generatedLevel, this.score, this.objectiveProgress)}` : ''}`);
         this.updateUI();
     }
 
@@ -574,9 +607,10 @@ class PhaserMatch3Game {
 
     showHint() {
         if (!this.canInteractWithBoard() || !globalThis.InfiniteLevels) return null;
-        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score);
+        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score, this.shields, this.levelRng.state);
         moves.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.count - a.count);
         if (!moves.length) return null;
+        this.hintsUsed = Math.min(99, (this.hintsUsed || 0) + 1); // Diagnostic only; hints stay free.
         const cells = moves[0].cells;
         this.disarmPowerUp();
         this.playerUI?.refresh();
@@ -590,7 +624,7 @@ class PhaserMatch3Game {
     }
 
     createGemSprite(row, col, type) {
-        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), this.gemTexture(type, this.specials?.[row]?.[col]));
+        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), this.gemTexture(type, this.specials?.[row]?.[col], this.shields?.[row]?.[col]));
         gem.setScale(this.gemScale);
         // Full cell hit area; shape/symbol is visual, not a smaller touch target.
         if (this.playerUI && window.Phaser?.Geom) gem.setInteractive(new Phaser.Geom.Rectangle(-3, -3, 70, 70), Phaser.Geom.Rectangle.Contains);
@@ -909,7 +943,10 @@ class PhaserMatch3Game {
         if (this.isPaused && this.feedbackEndPending) return;
         this.feedbackEndPending = false;
         if (this.mode === 'endless' && this.generatedLevel) {
-            if (this.hasWonLevel()) this.advanceEndlessStage();
+            if (this.hasWonLevel()) {
+                if (this.shouldCheckpointEndless()) this.endGame(false, true);
+                else this.advanceEndlessStage();
+            }
             return;
         }
         if (this.hasWonLevel() || this.moves <= 0) {
@@ -921,13 +958,21 @@ class PhaserMatch3Game {
     }
 
     // Clears the given cells (power-up effects), then resolves any cascades.
-    clearAndCascade(keys, points, soundCue = 'inventory') {
+    clearAndCascade(keys, points, soundCue = 'inventory', inventoryAction = null) {
+        // A signed-in effect is replayable only when its server receipt is bound to this
+        // attempt. Legacy and guest spends remain playable but cannot claim replay.
+        const receipt = this.powerReceipt;
+        const track = this.replayEligible && receipt?.receiptId && inventoryAction?.type === receipt.type;
+        if (!track) this.replayEligible = false;
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
-                    { board: this.board, specials: this.specials, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
+                    { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
                 : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points, false, this.matchFeedback?.canStage() === true);
-            if (result) { this.renderEarnedTransition(result, soundCue); this.checkEndConditions(); }
+            if (result) {
+                if (track) this.attemptMoves.push({ receiptId: receipt.receiptId, ...inventoryAction });
+                this.renderEarnedTransition(result, soundCue); this.checkEndConditions();
+            } else this.replayEligible = false;
             return;
         }
         this.setSelectedGem(null);
@@ -966,12 +1011,12 @@ class PhaserMatch3Game {
                 if (this.isInBounds(r, c)) keys.add(`${r},${c}`);
             }
         }
-        this.clearAndCascade(keys, 100, 'burst');
+        this.clearAndCascade(keys, 100, 'burst', { type: 'bomb', target: [r0, c0] });
     }
 
     activateRainbow() {
         // Clears the whole board.
-        this.clearAndCascade(this.allCellKeys(), 500, 'prism');
+        this.clearAndCascade(this.allCellKeys(), 500, 'prism', { type: 'rainbow' });
     }
 
     activateLightning() {
@@ -979,7 +1024,7 @@ class PhaserMatch3Game {
         const col = Math.floor(Math.random() * this.boardSize);
         const keys = new Set();
         for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
-        this.clearAndCascade(keys, 300, 'beam');
+        this.clearAndCascade(keys, 300, 'beam', { type: 'lightning', target: [0, col] });
     }
 
     createUI() {
@@ -1282,18 +1327,35 @@ class PhaserMatch3Game {
             return;
         }
 
+        // A stable per-tap key makes a lost response safe to retry: the server
+        // returns the original receipt instead of taking a second charge.
+        const boundAttemptId = this.attemptId && this.replayEligible ? this.attemptId : null;
+        const useId = boundAttemptId ? globalThis.crypto?.randomUUID?.()
+            || `use-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}` : null;
+        const epoch = this.boardEpoch;
+        const spend = () => this.consumePowerUpOnServer(type, token, useId, boundAttemptId);
         this.powerUpPending = true;
         this.playerUI?.refresh();
-        this.consumePowerUpOnServer(type, token)
-            .then((ok) => {
-                if (ok) {
+        spend().catch((error) => {
+            if (!useId) throw error;
+            return spend(); // One bounded retry only, with the SAME attempt and use id.
+        })
+            .then((confirmation) => {
+                if (epoch !== this.boardEpoch || (boundAttemptId && boundAttemptId !== this.attemptId)) {
+                    return this.syncPowerUpInventory(); // Never apply a stale confirmation to a new board.
+                }
+                if (confirmation === true || confirmation?.ok) {
                     this.setPowerCount(type, this.powerSlot(type).btn.getData('count') - 1);
-                    effect();
+                    this.powerReceipt = confirmation?.receiptId ? { type, receiptId: confirmation.receiptId } : null;
+                    try { effect(); } finally { this.powerReceipt = null; }
                 } else {
                     return this.syncPowerUpInventory();
                 }
             })
             .catch((error) => {
+                // A lost response may have spent a charge and minted a receipt we did not see.
+                // Preserve ordinary rewards without claiming a possibly incomplete replay.
+                this.replayEligible = false;
                 console.warn('Power-up not spent on server:', error);
                 return this.syncPowerUpInventory();
             })
@@ -1303,16 +1365,28 @@ class PhaserMatch3Game {
             });
     }
 
-    async consumePowerUpOnServer(type, token) {
+    async consumePowerUpOnServer(type, token, useId = null, requestedAttemptId = this.attemptId) {
         const response = await fetch('/api/account-economy/powerup/use', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ powerupId: type, quantity: 1 })
+            body: JSON.stringify({ powerupId: type, quantity: 1,
+                ...(requestedAttemptId && this.replayEligible ? { attemptId: requestedAttemptId,
+                    ...(useId ? { useId } : {}) } : {}) })
         });
-        return response.ok;
+        if (!response.ok) {
+            // A 5xx/timeout may occur after the charge was saved; recover by retrying
+            // the same use id. An explicit 4xx rule refusal is not a charge.
+            if (response.status >= 500 || [408, 429].includes(response.status)) throw new Error('powerup_response_uncertain');
+            return { ok: false };
+        }
+        const payload = await response.json();
+        if (payload.success !== true || (requestedAttemptId && this.replayEligible && !payload.result?.receiptId)) {
+            throw new Error('powerup_receipt_missing');
+        }
+        return { ok: true, receiptId: payload.result?.receiptId };
     }
 
     // Loads power-up counts from the player's server inventory. Guests keep local counts.
@@ -1392,13 +1466,16 @@ class PhaserMatch3Game {
         this.spendPowerUp(type, () => {
             const keys = this.powerUpKeys(type, r, c);
             const points = { diamond: 400, target: 200, star: 250 }[type];
-            this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam');
+            this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam', { type, target: [r, c] });
             this.showPowerUpAnimation(type);
         });
     }
 
     showPowerUpAnimation(powerType) {
-        if (this.playerUI) { this.playerUI.announce(`${powerType} power-up used.`); return; }
+        if (this.playerUI) {
+            this.playerUI.announce(`${powerType} power-up used.${this.powerReceipt?.receiptId ? ' Booster-assisted wins earn rewards but do not rank in competitions.' : ''}`);
+            return;
+        }
         if (this.animationsReduced()) return;
         const animations = {
             bomb: '💥',
@@ -1516,6 +1593,7 @@ class PhaserMatch3Game {
                 this.attemptId = data.result.attemptId;
                 this.attemptLevel = data.result.level;
                 this.claimedDefinition = data.result.generatedLevel || null;
+                this.claimedLegacyTarget = Number.isSafeInteger(data.result.legacyTarget) ? data.result.legacyTarget : null;
                 this.claimedServerTime = data.serverTime || null;
                 if (mode && !this.claimedDefinition) {
                     this.showAttemptError('Update the game server to enable generated levels.');
@@ -1560,7 +1638,7 @@ class PhaserMatch3Game {
 
     // Shows the energy the server holds now (it regenerates while the player is away).
     async syncAccountFromServer() {
-        if (!this.getAuthToken()) return;
+        if (!this.getAuthToken()) { this.retentionVisitStamp = null; return; }
         try {
             const { ok, data } = await this.fetchJson('/api/account-economy/data');
             if (ok && data.success) {
@@ -1569,9 +1647,25 @@ class PhaserMatch3Game {
                 this.stars = data.data.currencies.stars.amount;
                 this.updateEnergyDisplay();
                 this.updateUI();
+                // One authenticated web open per UTC day, and only the study service can decide
+                // if this player explicitly opted in. No visit record exists before consent.
+                void this.recordRetentionVisit();
             }
         } catch (error) {
             // Keep the last known value. The server still checks every attempt.
+        }
+    }
+
+    async recordRetentionVisit() {
+        const token = this.getAuthToken();
+        if (!token) return;
+        const stamp = `${token}:${new Date().toISOString().slice(0, 10)}`;
+        if (this.retentionVisitStamp === stamp) return;
+        this.retentionVisitStamp = stamp;
+        try {
+            await this.fetchJson('/api/retention-study/visit', { method: 'POST', body: '{}' });
+        } catch (_) {
+            // Measurement is best-effort. No retry loop, rewards or gameplay dependency.
         }
     }
 
@@ -1580,25 +1674,51 @@ class PhaserMatch3Game {
         const attemptId = this.attemptId;
         this.attemptId = null;
         if (!attemptId || stars <= 0 || !this.getAuthToken()) return;
-        try {
-            const { ok, data } = await this.fetchJson('/api/account-economy/level/complete', {
-                method: 'POST',
-                body: JSON.stringify({
-                    level: this.attemptLevel,
-                    score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
-                    ...(this.usesLevelObjectives() ? { objectiveProgress: this.objectiveProgress } : {}),
-                    attemptId,
-                }),
-            });
-            if (ok && data.success) {
-                // The server works out the stars. Show its count, not the client's.
-                this.stars = data.result.balances.stars;
-                this.updateUI();
-            } else {
-                console.warn('Level reward not granted:', data.error);
+        const body = JSON.stringify({
+            level: this.attemptLevel,
+            score: Math.min(1000000, Math.max(0, Math.floor(this.score))),
+            ...(this.usesLevelObjectives() ? { objectiveProgress: this.objectiveProgress } : {}),
+            ...(this.replayEligible && this.attemptMoves?.length ? { moves: this.attemptMoves } : {}),
+            ...(this.hintsUsed > 0 ? { hintsUsed: this.hintsUsed } : {}),
+            attemptId,
+        });
+        // A lost response may follow a committed payout. Retry the same claim only on
+        // timeout/network/5xx; a receipt makes the retry read-only, never a new energy spend.
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const { ok, status, data } = await this.fetchJson('/api/account-economy/level/complete', {
+                    method: 'POST', body, signal: AbortSignal.timeout(15000),
+                });
+                if (ok && data.success) {
+                    this.stars = data.result.balances.stars;
+                    this.updateUI();
+                    return data.result;
+                }
+                if (attempt === 0 && status >= 500) continue;
+                console.warn('Level reward not confirmed:', data?.error);
+                break;
+            } catch (error) {
+                console.warn('Could not reach the server for the level reward.', error);
             }
+        }
+        return null;
+    }
+
+    // A reported loss or quit closes the paid attempt without a reward. Hint/move counts
+    // are untrusted diagnostics; only server replay can verify a win.
+    async reportAttemptOutcome(outcome) {
+        const attemptId = this.attemptId;
+        this.attemptId = null;
+        if (!attemptId || !this.getAuthToken()) return;
+        try {
+            await this.fetchJson('/api/account-economy/attempt/close', {
+                method: 'POST', body: JSON.stringify({ attemptId, outcome,
+                    movesUsed: this.generatedLevel && Number.isFinite(this.generatedLevel.moves)
+                        ? Math.min(1000, Math.max(0, this.generatedLevel.moves - this.moves)) : undefined,
+                    hintsUsed: this.hintsUsed || 0 }),
+            });
         } catch (error) {
-            console.warn('Could not reach the server for the level reward.', error);
+            // A later attempt replaces the outstanding server attempt if this request was lost.
         }
     }
 
@@ -1684,6 +1804,7 @@ class PhaserMatch3Game {
                 }
             }
             this.endlessTotalScore = 0;
+            this.endlessAttemptStartedAt = mode === 'endless' && this.attemptId ? Date.now() : 0;
             this.applyGeneratedDefinition(definition, serverTime);
             await this.startGame();
             return true;
@@ -1713,6 +1834,9 @@ class PhaserMatch3Game {
         this.closeOverlay();
         this.inputLockedUntil = 0;
         this.generatedLevel = definition;
+        this.attemptMoves = [];
+        this.hintsUsed = 0;
+        this.replayEligible = definition.generatorVersion >= 4 && ['classic', 'daily'].includes(definition.mode);
         window.InfiniteLevelLocation?.rememberContext(definition.context, this.getLevelLocation(), serverTime);
         this.level = definition.level;
         this.mode = definition.mode;
@@ -1735,8 +1859,10 @@ class PhaserMatch3Game {
         this.scene.cameras?.main?.setBackgroundColor(definition.theme.background);
         if (!this.playerUI) this.themeText?.setColor?.(definition.theme.accent);
         this.playerUI?.shell.style.setProperty('--match-level-background', definition.theme.background);
-        this.playerUI?.announce?.(this.usesLevelObjectives() ? definition.objectives.some((goal) => goal.type === 'collect')
-            ? 'Clear the shown colors. Meet every goal.' : 'Reach the displayed score goal.' : '');
+        this.playerUI?.announce?.(this.usesLevelObjectives() ? definition.objectives.some((goal) => goal.type === 'clear-shields')
+            ? 'Clear each numbered shield with the shown number of gem clears, including specials. Meet every goal.'
+            : definition.objectives.some((goal) => goal.type === 'collect')
+                ? 'Clear the shown colors. Meet every goal.' : 'Reach the displayed score goal.' : '');
         this.updateUI();
     }
 
@@ -1745,6 +1871,16 @@ class PhaserMatch3Game {
         const config = dailyChallengeLevel(new Date().toISOString().slice(0, 10));
         this.setMode('classic');
         return this.selectLevel(config.level);
+    }
+
+    // Only a signed-in player who explicitly opted in can authorize another energy
+    // spend. Check at a completed stage, before rewards cap or the claim window closes.
+    shouldCheckpointEndless(nowMs = Date.now()) {
+        if (this.mode !== 'endless' || this.settings?.endlessAutoContinue !== true
+            || !this.attemptId || !this.getAuthToken()) return false;
+        const score = this.score + (this.endlessTotalScore || 0);
+        const age = nowMs - (this.endlessAttemptStartedAt || this.runStartedAt || nowMs);
+        return score >= ENDLESS_CHECKPOINT_SCORE || age >= ENDLESS_CHECKPOINT_AGE_MS;
     }
 
     // One paid attempt, unlimited generated stages. Each new board is certified on
@@ -1814,6 +1950,7 @@ class PhaserMatch3Game {
         await this.syncPowerUpInventory();
         
         this.isGameRunning = true;
+        this.hintsUsed = 0;
         this.runStartedAt = Date.now();
         this.startTimer();
         this.updateUI();
@@ -1855,36 +1992,80 @@ class PhaserMatch3Game {
     // An endless run has no target, so it is never a level win. The server pays for the score.
     async finishEndless() {
         const score = Math.max(0, Math.floor(this.score + (this.endlessTotalScore || 0)));
-        this.analytics.gamesPlayed++;
-        this.analytics.totalScore += score;
-        this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
-        this.playSound('bank');
-        const payment = this.submitEndlessRun(score);
-        this.rewardSubmission = payment;
-        const result = await payment;
-        this.saveUserData();
-        let subtitle = 'Sign in to be paid for endless runs.';
-        if (result) subtitle = `+${result.reward.coins} coins, +${result.reward.xp} XP (best ${result.endlessBest})`;
-        this.showEndGameScreen(0, { title: 'Run Over', subtitle });
+        const paidAttempt = !!this.attemptId && !!this.getAuthToken();
+        const auto = this.endlessAutoCheckpoint === true;
+        this.endlessAutoCheckpoint = false;
+        const overlay = this.activeOverlay;
+        const screen = this.currentScreen;
+        this.endlessCheckpointBank = auto;
+        this.endlessCheckpointPending = auto;
+        this.playerUI?.refresh();
+        try {
+            this.analytics.gamesPlayed++;
+            this.analytics.totalScore += score;
+            this.trackEvent('endless_ended', { score, duration: this.runSeconds() });
+            this.playSound('bank');
+            this.playerUI?.announce('Banking this Endless run. No new energy has been spent yet.');
+            const payment = this.submitEndlessRun(score);
+            this.rewardSubmission = payment;
+            const result = await payment;
+            this.endlessCheckpointBank = false;
+            this.saveUserData();
+            // Never restart a board after the player navigated away during a pending bank.
+            if (this.activeOverlay !== overlay || this.currentScreen !== screen) return;
+            let subtitle = paidAttempt ? this.endlessBankError === 'attempt_expired'
+                ? 'This paid attempt expired. No run reward was granted. Start a new run when ready.'
+                : 'Banking could not be confirmed. Check your account before starting another run.'
+                : 'Guest runs are playable without an account, but do not grant account rewards.';
+            if (result) subtitle = `+${result.reward.coins} coins, +${result.reward.xp} XP (best ${result.endlessBest})`;
+            if (auto && result && this.settings?.endlessAutoContinue === true && this.getAuthToken() && this.mode === 'endless') {
+                // A confirmed bank is the only path to an automatic second spend. The normal
+                // start endpoint decides whether one energy is available; never auto-refill.
+                const started = await this.startProceduralLevel(1, 'endless');
+                if (started) {
+                    void this.syncAccountFromServer?.(); // After, never before, the new energy spend.
+                    this.trackEvent('endless_checkpoint_continued', { score });
+                    this.playerUI?.announce(`Banked ${result.reward.coins} coins and ${result.reward.xp} XP. New Endless run started using one energy.`);
+                    return;
+                }
+                // The normal start error already explains insufficient energy/network failure.
+                // Do not cover it with a second result modal or silently retry the spend.
+                void this.syncAccountFromServer?.();
+                return;
+            }
+            this.showEndGameScreen(0, { title: 'Run Over', subtitle });
+        } finally {
+            this.endlessCheckpointPending = false;
+            this.playerUI?.refresh();
+        }
     }
 
     async submitEndlessRun(score) {
         const attemptId = this.attemptId;
         this.attemptId = null;
+        this.endlessBankError = null;
         if (!attemptId || !this.getAuthToken()) return null;
-        try {
-            const { ok, data } = await this.fetchJson('/api/account-economy/endless/complete', {
-                method: 'POST',
-                body: JSON.stringify({ score: Math.min(1000000, score), attemptId }),
-            });
-            if (ok && data.success) {
-                if (typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
-                this.updateUI();
-                return data.result;
+        // A response can be lost after the server commits. Retry exactly the same claim once;
+        // the receipt makes that read-only. Never retry an explicit rule/auth rejection.
+        const body = JSON.stringify({ score: Math.min(1000000, score), attemptId });
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const { ok, status, data } = await this.fetchJson('/api/account-economy/endless/complete', {
+                    method: 'POST', body, signal: AbortSignal.timeout(15000),
+                });
+                if (ok && data.success) {
+                    if (!this.endlessCheckpointBank && typeof this.syncAccountFromServer === 'function') this.syncAccountFromServer();
+                    this.updateUI();
+                    return data.result;
+                }
+                if (attempt === 0 && status >= 500) continue;
+                this.endlessBankError = status >= 500 ? 'unknown' : (data?.error || 'unknown');
+                console.warn('Endless run not paid:', this.endlessBankError);
+                break;
+            } catch (error) {
+                this.endlessBankError = 'unknown';
+                console.warn('Could not reach the server for the endless run.', error);
             }
-            console.warn('Endless run not paid:', data.error);
-        } catch (error) {
-            console.warn('Could not reach the server for the endless run.', error);
         }
         return null;
     }
@@ -2137,6 +2318,71 @@ class PhaserMatch3Game {
         if (window.ui && typeof window.ui.showCommunity === 'function') window.ui.showCommunity('battlepass');
     }
 
+    showWeeklyEvent() {
+        this.openMenu();
+        this.trackEvent('weekly_event_opened');
+        if (window.ui && typeof window.ui.showCommunity === 'function') window.ui.showCommunity('events');
+    }
+
+    // Separate from ads consent: this voluntary study only measures UTC app-open days.
+    async showRetentionResearch() {
+        if (!this.isPaused && this.isGameRunning) this.pauseGame();
+        const overlay = this.openOverlay('Optional return study');
+        const close = () => { this.closeOverlay(); this.resumeAfterOverlay(); };
+        this.overlayButton(400, 500, 240, 55, 0x555555, 'Close', close);
+        if (!this.getAuthToken()) {
+            this.overlayText(400, 230, 'Sign in if you want to join. Guest play is never measured by this study.', { width: 620 });
+            return;
+        }
+        this.overlayText(400, 140, 'Optional: help us learn whether players choose to return. This does not affect levels, hints, rewards or ads.', { width: 650 });
+        this.overlayText(400, 210, 'With your permission, the server keeps a secret-keyed code and the UTC days you open the signed-in web game for up to 35 days. No location, board, purchases, IP or account ID is kept in this study file. You can delete your study days here.', { width: 650 });
+        this.setOverlayStatus('Checking your study choice…');
+        try {
+            const { ok, data } = await this.fetchJson('/api/retention-study/me');
+            if (this.activeOverlay !== overlay) return;
+            if (!ok || !data.success) {
+                this.setOverlayStatus('The optional study is unavailable right now. Play is unchanged.');
+                return;
+            }
+            this.setOverlayStatus(data.consented ? 'You joined this optional study.' : 'You have not joined this study. Nothing is recorded.');
+            if (data.consented) {
+                this.overlayButton(400, 385, 320, 55, 0x9b59b6, 'Stop and delete my study days', () => this.confirmRetentionWithdrawal());
+            } else {
+                this.overlayButton(400, 385, 320, 55, 0x4ecdc4, 'I agree to join', async () => {
+                    if (this.researchPending || this.activeOverlay !== overlay) return;
+                    this.researchPending = true;
+                    try {
+                        const answer = await this.fetchJson('/api/retention-study/opt-in', { method: 'POST', body: '{}' });
+                        if (this.activeOverlay !== overlay) return;
+                        if (!answer.ok || !answer.data.success) this.setOverlayStatus('Study unavailable; no choice changed.');
+                        else await this.showRetentionResearch();
+                    } catch (_) { if (this.activeOverlay === overlay) this.setOverlayStatus('Could not save your choice. Try again.'); }
+                    finally { this.researchPending = false; }
+                });
+            }
+        } catch (_) {
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not load the study choice. Play is unchanged.');
+        }
+    }
+
+    confirmRetentionWithdrawal() {
+        const overlay = this.openOverlay('Delete study days?');
+        this.overlayText(400, 240, 'This permanently deletes your recorded return days. It does not remove your account, progress, ads consent, or rewards.', { width: 650 });
+        this.overlayButton(400, 365, 320, 55, 0xe67e22, 'Delete my study days', async () => {
+            if (this.researchPending || this.activeOverlay !== overlay) return;
+            this.researchPending = true;
+            try {
+                const { ok, data } = await this.fetchJson('/api/retention-study/me', { method: 'DELETE' });
+                if (this.activeOverlay !== overlay) return;
+                if (!ok || !data.success) this.setOverlayStatus('Could not delete study days. Try again.');
+                else await this.showRetentionResearch();
+            } catch (_) { if (this.activeOverlay === overlay) this.setOverlayStatus('Could not delete study days. Try again.'); }
+            finally { this.researchPending = false; }
+        });
+        this.overlayButton(400, 430, 280, 50, 0x555555, 'Keep my study days', () => this.showRetentionResearch());
+        this.overlayButton(400, 505, 240, 50, 0x555555, 'Close', () => { this.closeOverlay(); this.resumeAfterOverlay(); });
+    }
+
     showLootBox() {
         this.pauseGame();
         this.currentScreen = 'lootbox';
@@ -2259,7 +2505,7 @@ class PhaserMatch3Game {
     // Plain-language messages for the error codes the server returns.
     ruleMessage(code) {
         const messages = {
-            insufficient_coins: 'Not enough coins. Buy a coin pack in the shop.',
+            insufficient_coins: 'Not enough coins yet. Win levels to earn more.',
             unknown_lootbox: 'That loot box is not available.',
             unknown_product: 'That pack is not available.',
             checkout_not_configured: 'Purchases are not available right now.',
@@ -2416,13 +2662,18 @@ class PhaserMatch3Game {
         this.pauseGame();
         this.currentScreen = 'kingdom';
         this.trackEvent('kingdom_opened');
+        this.kingdomRoomId = 'throne';
+        this.kingdomSceneData = null;
+        this.kingdomFocusChoice = null;
+        this.kingdomFocusRoom = false;
         this.createKingdomUI();
     }
 
     createKingdomUI() {
         this.openOverlay('Kingdom');
-        this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
         this.kingdomRowObjects = [];
+        if (this.playerUI?.renderKingdomScene) { this.renderKingdom(); return; }
+        this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
         this.overlayButton(250, 500, 100, 50, 0x9b59b6, 'Decor', () => this.openDecor());
         this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeKingdom());
         this.renderKingdom();
@@ -2455,11 +2706,11 @@ class PhaserMatch3Game {
             this.decorSelected = selected;
 
             decor.catalog.forEach((item, index) => {
-                const y = 150 + index * 42;
+                const y = 145 + index * 31;
                 const owned = decor.owned[item.id] || 0;
-                this.overlayText(60, y, `${item.name} · ${item.priceCoins} coins · room lvl ${item.requiresRoomLevel}+ · owned ${owned}/${decor.maxOwned}`, { origin: 0, size: 15 });
-                this.overlayButton(600, y, 90, 28, 0xffd700, 'Buy', () => this.decorAction('/api/kingdom/decor/buy', { decorId: item.id }, `Bought ${item.name}.`));
-                this.overlayButton(710, y, 90, 28, selected === item.id ? 0x4ecdc4 : 0x9b59b6, selected === item.id ? 'Selected' : 'Select', () => {
+                this.overlayText(60, y, `${item.name} · ${item.priceCoins} coins · room lvl ${item.requiresRoomLevel}+ · owned ${owned}/${decor.maxOwned}`, { origin: 0, size: 13 });
+                this.overlayButton(600, y, 90, 26, 0xffd700, 'Buy', () => this.decorAction('/api/kingdom/decor/buy', { decorId: item.id }, `Bought ${item.name}.`));
+                this.overlayButton(710, y, 90, 26, selected === item.id ? 0x4ecdc4 : 0x9b59b6, selected === item.id ? 'Selected' : 'Select', () => {
                     this.decorSelected = item.id;
                     this.openDecor();
                 });
@@ -2505,16 +2756,78 @@ class PhaserMatch3Game {
         }
     }
 
+    selectKingdomRoom(roomId) {
+        if (!['throne', 'library', 'garden', 'armory', 'gatehouse', 'chapel'].includes(roomId) || roomId === this.kingdomRoomId) return;
+        this.kingdomRoomId = roomId;
+        this.kingdomFocusChoice = null;
+        this.kingdomFocusRoom = true;
+        if (this.kingdomSceneData && this.playerUI?.renderKingdomScene) {
+            this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, true));
+            this.kingdomFocusRoom = false;
+        } else this.renderKingdom();
+    }
+
+    kingdomSceneCallbacks(focusChoice = null, focusRoom = false) {
+        const roomId = this.kingdomRoomId || 'throne';
+        return {
+            close: () => this.closeKingdom(), signIn: () => this.openSignIn(),
+            renovate: () => ((this.kingdomRoomId || 'throne') === roomId ? this.renovateRoom(roomId) : undefined),
+            choose: (decorId) => ((this.kingdomRoomId || 'throne') === roomId ? this.chooseKingdomDecor(decorId, roomId) : undefined),
+            selectRoom: (id) => this.selectKingdomRoom(id),
+            more: () => this.openDecor(), roomId, focusChoice, focusRoom,
+        };
+    }
+
+    async chooseKingdomDecor(decorId, roomId = this.kingdomRoomId || 'throne') {
+        if (this.kingdomPending || !this.getAuthToken() || !['throne', 'library', 'garden', 'armory', 'gatehouse', 'chapel'].includes(roomId)) return;
+        const overlay = this.activeOverlay;
+        this.kingdomPending = true;
+        this.setOverlayStatus('Preparing your chosen look...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom/decor/choose', {
+                method: 'POST', body: JSON.stringify({ roomId, decorId }),
+            });
+            if (this.activeOverlay !== overlay) return;
+            if (!ok || !data.success) return this.setOverlayStatus(this.ruleMessage(data.error));
+            if (this.kingdomRoomId === roomId || (!this.kingdomRoomId && roomId === 'throne')) this.kingdomFocusChoice = decorId;
+            await this.renderKingdom();
+            if (this.activeOverlay === overlay) {
+                this.setOverlayStatus(data.result.unchanged ? 'That look is already on display.'
+                    : `Your chosen look brightens the ${roomId === 'throne' ? 'hall' : roomId}.${data.result.costCoins ? ` ${data.result.costCoins} coins spent.` : ' Used an owned decoration.'}`);
+                this.trackEvent('kingdom_look_chosen', { decorId, bought: data.result.buy });
+            }
+        } catch (error) {
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not reach the server. Check your room before retrying.');
+        } finally {
+            this.kingdomPending = false;
+        }
+    }
+
     async renderKingdom() {
         const overlay = this.activeOverlay;
+        const requestId = this.kingdomRenderId = (this.kingdomRenderId || 0) + 1;
         destroyOverlayObjects(this.kingdomRowObjects);
         this.kingdomRowObjects = [];
-        if (!this.getAuthToken()) return this.setOverlayStatus('Sign in to renovate your kingdom.');
+        if (!this.getAuthToken()) {
+            if (this.playerUI?.renderKingdomScene) {
+                this.kingdomSceneData = { guest: true };
+                this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, this.kingdomFocusRoom));
+                this.kingdomFocusRoom = false;
+            }
+            return this.setOverlayStatus('Sign in to save room upgrades. Guest puzzles are always playable.');
+        }
         try {
             const { ok, data } = await this.fetchJson('/api/kingdom');
-            if (this.activeOverlay !== overlay) return;
+            if (this.activeOverlay !== overlay || this.kingdomRenderId !== requestId) return;
             if (!ok || !data.success) return this.setOverlayStatus('Could not load your kingdom.');
             if (!this.activeOverlay || this.activeOverlay !== overlay) return;
+            if (this.playerUI?.renderKingdomScene) {
+                this.kingdomSceneData = data;
+                this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice, this.kingdomFocusRoom));
+                this.kingdomFocusChoice = null;
+                this.kingdomFocusRoom = false;
+                return;
+            }
             const bonus = Math.round((data.coinBonus || 0) * 100);
             this.kingdomCoinsText.setText(`Coins: ${data.coins}${bonus > 0 ? `   Room bonus +${bonus}% coins` : ''}`);
             data.kingdom.rooms.forEach((room, index) => {
@@ -2539,7 +2852,7 @@ class PhaserMatch3Game {
                 }
             });
         } catch (error) {
-            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not load your kingdom.');
+            if (this.activeOverlay === overlay && this.kingdomRenderId === requestId) this.setOverlayStatus('Could not load your kingdom.');
         }
     }
 
@@ -2636,7 +2949,7 @@ class PhaserMatch3Game {
     }
 
     // End game with all features
-    endGame(deferResultScreen = false) {
+    endGame(deferResultScreen = false, autoContinueEndless = false) {
         if (!this.isGameRunning) return;
         this.isGameRunning = false;
         this.feedbackEndPending = false;
@@ -2648,6 +2961,7 @@ class PhaserMatch3Game {
         }
         
         if (this.mode === 'endless') {
+            this.endlessAutoCheckpoint = autoContinueEndless;
             this.finishEndless();
             return;
         }
@@ -2658,7 +2972,8 @@ class PhaserMatch3Game {
         this.playSound(stars > 0 ? 'win' : 'loss');
         
         this.reportLevelResult(stars);
-        this.rewardSubmission = this.submitLevelWin(stars);
+        this.rewardSubmission = stars > 0 || !this.getAuthToken() || !this.attemptId
+            ? this.submitLevelWin(stars) : this.reportAttemptOutcome('lost');
         if (stars > 0 && this.mode !== 'daily') this.campaignLevel = Math.max(this.campaignLevel || 1, this.level + 1);
 
         // Update analytics
@@ -2711,7 +3026,8 @@ class PhaserMatch3Game {
         this.score = 0;
         const config = levelConfig(this.level, this.mode);
         this.moves = config.moves;
-        this.targetScore = config.targetScore;
+        this.targetScore = !this.generatedLevel && this.getAuthToken() && Number.isSafeInteger(this.claimedLegacyTarget)
+            ? this.claimedLegacyTarget : config.targetScore;
         this.timeLimit = config.timeLimit;
         this.time = config.timeLimit;
         this.setSelectedGem(null);

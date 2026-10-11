@@ -1,0 +1,123 @@
+# Infinite Match: competitive feature audit and product strategy
+
+**Snapshot: 2026-10-10.** This is a decision document, not a claim that Infinite Match is already the category leader. Scope is *swap-based match-3 and adjacent puzzle competitors*, across gameplay, progression, social, live ops, monetization, access and operations. Store listings and developer pages describe advertised features, not independent proof of retention, fairness or current availability in every region. Features/events change frequently; recheck before committing to a launch promise. No competitor assets, character names or proprietary level layouts should be reused.
+
+## Executive decision
+
+Do **not** try to reproduce every event icon or monetize difficulty before the board earns trust. The differentiated proposition should be: **an endlessly replayable, readable, fair-feeling match-3 adventure whose local daily puzzle reflects the player's chosen region and season, playable first without an account**. The procedural system is already a genuine advantage in *content availability*, but a certified winning path is not equivalent to a satisfying puzzle. The biggest near-term gap is *puzzle variety and evidenced player enjoyment*, followed by a compelling visible kingdom and repeatable live-ops execution. Competition with the incumbents is a quality/operations problem, not a count-the-features problem.
+
+Recommended order: **(1) validate first-play, fairness and device performance; (2) validate the new versioned shield obstacle with real players and refine it; (3) make renovation visibly rewarding; (4) operate one reliable weekly event loop; (5) scale social/competitive play only after server-authoritative results.** Keep the existing free hints, guest play and accessibility controls free.
+
+## Competitor feature map
+
+| Game | Observable strengths | What this means for us |
+| --- | --- | --- |
+| **Royal Match** | Castle renovation, boosters and combinations, many interactive blockers, bonus levels, chests, and parallel solo/team events; official examples include Balloon Rise, Hidden Temple, Weekly Contest, Team Battle and Sky Race. [1](https://www.dreamgames.com/games/royal-match) · [3](https://play.google.com/store/apps/details?id=com.dreamgames.royalmatch) | Infinite Match has earned specials and six numeric renovation rooms, but not a similarly varied board or explorable visual castle (v5 now adds one fixed shield family). Do not copy its event names or art. |
+| **Candy Crush Saga** | Thousands of levels, jelly and chocolate blockers, varied level objectives, boosters, daily rewards, rotating events, offline play. [1](https://play.google.com/store/apps/details?id=com.king.candycrushsaga) · [4](https://apps.apple.com/us/app/candy-crush-saga/id553834731) | Our score/color-collection objectives are a good foundation; v5 adds a fixed clear-shields objective, but no delivery/other terrain objective yet. Guest offline fallback is narrower than unconditional offline support for accounts; opt-in Endless checkpoints still require a server for account rewards. |
+| **Gardenscapes / Homescapes** | Room/garden restoration, characters and chapter story, choice-based decoration, boosters, expeditions and competitions. [3](https://play.google.com/store/apps/details?id=com.playrix.gardenscapes) · [1](https://play.google.com/store/apps/details?id=com.playrix.homescapes) | Our renovation/decor is functional but mostly textual/numeric, with no shipped scene art or chapter narrative. Their meta loop is a reason to complete the *next* puzzle. |
+| **Royal Kingdom** | Distinct kingdom areas and family/antagonist story; publisher describes Kingdom/Dark Kingdom levels and a Golem that reacts to matches. [1](https://www.dreamgames.com/games/royal-kingdom) | Our every-tenth-stage “boss” is only a harder profile. An actual boss needs explicit deterministic state, legible counterplay and server-verifiable wins, not a label. |
+| **Toon Blast** | Tap-to-blast cubes (a different core mechanic), objectives and obstacles, episode progression, star rewards, teams and shared lives, cross-device sync. [1](https://play.google.com/store/apps/details?id=net.peakgames.toonblast) | Borrow the principle of low-friction onboarding and cooperation, not the tap-to-blast mechanic wholesale. Our guilds cannot gift energy/lives today. |
+| **Match Masters** | Real-time turn-based PvP on a shared board, charged boosters, tournaments, trophies and sticker albums. [1](https://play.google.com/store/apps/details?id=com.funtomic.matchmasters) · [4](https://naavik.co/deep-dives/match-masters-deconstruction/) | Our friends/guilds and score-based tournaments are **not** live PvP. Building live PvP would require authoritative turns, timing, reconnects, matchmaking and anti-cheat. Defer until fair score reporting works. |
+| **Project Makeover** | Match puzzles tied to character makeovers, clothing/room choices, drama, player avatar and friend visits. [2](https://play.google.com/store/apps/details?id=com.bgg.jump) | Player expression is more memorable than another currency. Consider a small original visual room/decor story before adding a separate avatar economy. |
+
+These are representative major competitors, **not** an exhaustive catalog of every limited-time feature in every region. Merge titles such as Gossip Harbor compete for the same time and narrative attention but are *not* swap match-3; do not treat their merge mechanics as a missing feature here.
+
+## Infinite Match status, by player-visible capability
+
+Legend: **Working** = code/test support on the root web client or mounted server, not a verified production deployment; **Partial** = basic system exists but the comparable experience is absent or unverified; **Missing** = not present on the playable product. Source of truth is [README implementation status](../README.md), [player-experience evidence](PLAYER_EXPERIENCE.md) and the linked implementation files, not the aspirational README feature list or unmounted `Local*` modules.
+
+| Capability | Status and evidence | Critical caveat |
+| --- | --- | --- |
+| Swaps, cascades, refills, reshuffle, earned specials, combinations, boosters | **Working** — `src/services/levels/{match-core,special-rules}.js`, `phaser3-game.js`, gameplay tests | V5 adds fixed two-hit shield terrain and a goal, but not blockers that prevent swapping, delivery objectives or true bosses. v2/v3/v4 behavior remains frozen for existing paid attempts. |
+| Goals, level supply, daily variants | **Working** — `generator.js`, `objective-rules.js`, `level-service.js`; certified no-booster witnesses, score/one-color/two-color/mixed goals | V5 now includes fixed shield stages; infinite generated levels are not infinite *designed variety*. Human fairness, timed completability and balance are not certified by a witness. |
+| Mode choice and accessible input | **Working**, with limits — classic, timed, daily, endless; hints, shapes/letters, keyboard, semantic text board, motion/text/contrast preferences, opt-in sound; browser smoke in `docs/PLAYER_EXPERIENCE.md` | No real-device/screen-reader certification. Timed/endless/community screens have lighter browser coverage than the core board. |
+| Progression and story | **Partial** — six upgradable rooms, six purchasable décor types and star/coin gates. Six web-only illustrated scenes now show each existing room repaired and three level-one looks per room (`public/js/kingdom-scene.js`). | All six rooms have a first visual scene, but there is no explorable kingdom or chapter system. Phone/screen-reader and first-session comprehension have not been validated. |
+| Events, quests and pass | **Partial** — daily reward, wheel, battle-pass XP/claims, tournaments and community challenge code; `config/battlepass/config.json` has a season | The free Hall Lanterns weekly calendar now has ten checked-in UTC windows through December 14, 2026, with verified-win milestones and locked claims; deploying/verifying the candidate weeks, continued publishing before December 14, production storage/concurrency and real-device checks remain necessary. The older generic events/deals/tournaments/challenges arrays remain empty; the premium pass has no purchasable SKU. |
+| Social and competition | **Partial** — friend codes, guild membership, best-score board, score tournaments (`src/services/social/social-store.js`, `src/services/live-ops/competitions.js`) | No team life gifting, co-op event, or live PvP. Stores are single files. Only replayed **booster-free** v4/v5 classic/daily wins rank; receipt-backed booster results may be verified but remain unranked, as do timed/endless results. |
+| Economy / purchases | **Partial** — server-gated energy and rewards, coin packs, Stripe/Apple/Google verification paths, server-priced shop | Live payment/device billing not validated here; durable balances require Mongo opt-in and production config. Avoid designing pay-to-escape levels around untested billing. |
+| Offline and platforms | **Partial** — guest fallback supports certified offline play for temporary errors; account purchases/attempts require a server | Browser web client is the tested target; Unity artifacts and phone-store binaries are not proven equivalent. Signed-in cross-device/offline reconciliation is not built. |
+| Polished visual/audio identity | **Partial** — readable original gem shapes/badges, motion feedback and 16 local opt-in cues | Original web scenes for all six rooms and skippable story beats are implemented; broader world/story, music, device profiling and human listening/visual quality testing remain open. |
+| Board replay integrity | **Partial** — pinned move and receipt-bound inventory replay verifies v4/v5 classic/daily score/goal counters; only booster-free paths rank | Old clients, timed and endless results still pay without replay. Booster-assisted replay is verified but unranked. Random instant-booster locations are client-reported and a public witness can be computed by a bot. Do not launch consequential prizes without completing the remaining trust gates. |
+
+## Ranked roadmap (build in this order; gates before launch)
+
+### P0 — prove the fun and close trust gaps
+
+1. **First-play and fairness study (protocol/evaluator ready; real pilot not conducted).** An [offline web study kit](WEB_FIRST_PLAY_STUDY.md) now validates 20+ first-time phone observations for unassisted move/goal learning and 30+ observed-loss sessions for fairness/enjoyment, with missing-answer accounting and small-stratum suppression. It collects no account IDs, raw seeds, IPs, location, or free text, and does not prove human participation. Have a facilitator recruit consenting people, check board diversity and loss reasons separately, and run physical Android/iPhone, assistive-tech and performance gates. Reject “leadership” claims until a real cohort enjoys and understands the game; synthetic unit tests are not player evidence.
+2. **First obstacle family, versioned and original.** The first slice is now implemented as a readable **two-hit fixed shield overlay** over existing gems: each actual clear on that cell removes one layer, while the gem scores/collects and refills normally; specials and inventory clears hit it, gravity does not move it and free repairs do not hit it. It has a visible clear-shields goal, numbered border, onboarding announcement, free goal-aware hints and named-cell semantics. Read-only terrain-aware staged feedback now holds numbered shields fixed through gem falls, with an immediate reduced-motion/text-board fallback and one shield-hit announcement; next test recognition/balance on physical phones. Shared transitions, generated witness, Phaser rendering, inventory clears and deterministic tests are versioned as v5; old v2/v3/v4 paid definitions remain supported. **Open gate:** physical-device layout/performance, actual screen readers, broad seed corpus and observed human comprehension/fairness. This is an implemented first slice, **not** a complete obstacle system or a release certification.
+3. **Result integrity before prizes.** V4/v5 classic/daily transcript replay under the attempt lock now checks pinned moves, RNG/refill, specials, score and goals; all six playable boosters receive attempt-bound inventory receipts and server-derived effects. Booster-backed paths can verify account results, but do **not** rank alongside booster-free paths. Legacy, timed and endless wins still pay existing account rewards but cannot enter boards; old unverifiable social scores/progress are discarded while payout receipts survive. **Remaining gate:** secure timed deadlines and multi-stage endless, prevent unverified account rewards/statistics from being exploitable, add false-rejection telemetry and durable multi-server storage. Reported random booster locations and a public winning witness do not prove honest human play. Do not launch consequential prizes until these gaps and real-player tests are addressed.
+
+### P1 — give each win a reason and run one dependable event
+
+4. **Visible kingdom slice (web implementation, not a release gate pass).** All six existing rooms now render distinct unlit-to-restored authored scenes with three first looks each and a skippable short story. Native room buttons switch views without a network request after the initial read; each locked, server-priced one-tap choice buys or reuses available stock for its own room. Repairs, star/coin gates and guest puzzle access stay server-owned. Route, pure-scene, DOM and Phaser regression tests cover room pricing, six-room presentation and stale room-switch responses. **Open gate:** test first-session room discovery/comprehension, before/after recognition, physical phone/screen-reader behavior and whether players choose to continue; all six scenes are still only first looks, not an explorable chapter world. Measure completion, not just upgrade API calls.
+5. **One operational event loop (first web implementation; operational gate open).** Hall Lanterns now has ten contiguous checked-in UTC windows (October 5–December 14, 2026) in `config/liveops.json`, with the original six windows and rewards unchanged: only replay-verified classic/daily wins count, including assisted ordinary wins that stay unranked. Server-locked progress and free coin milestones have preview, validation, expiry, a kill switch, an idempotent claim, local-time messaging and an [operator runbook](WEEKLY_EVENT_OPERATIONS.md). Concurrency, expiry and reconnect have deterministic/route tests. A bounded expired-week archive, optional previous-vs-candidate publishing check and optional 14-day schedule-horizon preview now support safe continued publishing; the 35-day archive floor is operator-enforced and no seeded week has been rotated yet. **Open gate:** compare the four new candidate weeks against the actual deployed snapshot, deploy and verify them, publish the next validated week before December 14, observe deployment/restarts and retention behavior, test on physical phones, and add distributed locks/transactions before multi-server or consequential prizes. The remaining empty event schemas are not live operations.
+6. **Tuning and observability (instrumentation slice delivered; adjustment gate open).** A [web observation slice](DIFFICULTY_OBSERVATIONS.md) now distinguishes server-issued v4/v5 classic/daily starts and replay-verified wins from unverified wins and explicitly client-reported losses, quits, hints and progress; account-bound booster receipts are counted without logging identifiers, boards or location. The restricted report suppresses groups under 20 starts, exposes unsettled outcomes and can show keyed seed groups. The old legacy tuning timer is now review-only; legacy targets are pinned at paid spend, and manual one-level changes require an opt-in, preview match and review ID. **No generated adjustment was applied**: an [optional, deletable, off-by-default web D1/D7 study](WEB_RETURN_STUDY.md) now supplies a limited UTC app-open return signal, but no real cohort data, crash-free-session baseline, randomized experiment, or first-play/fairness evidence has been gathered. A separate [offline consented web stability evaluator](WEB_SESSION_STABILITY.md) now checks a submitted ≥1,000-session/99.5% proposed gate with missing-outcome accounting; it has no real observations or automatic crash telemetry. Do one controlled versioned adjustment only after first-play, fairness, consent-based D1/D7 return, completion and crash-free-session guardrails are preregistered and actually measured. The 20-start threshold is privacy suppression, not causal evidence, statistical power or human accessibility validation. Never quietly change an active paid level definition.
+
+### P2 — only after the foundations hold
+
+7. Team cooperation (limited, abuse-resistant energy gifts or shared milestones) **after** durable shared social storage and result verification. Real-time PvP is a separate product bet, not a checkbox: authoritative rooms, clocks, reconnect, matched skill bands and non-pay-to-win rules.
+8. Broader objective/obstacle families, episodic world, cosmetic collection and platform distribution **only** if P0/P1 improve player outcomes. Premium pass/subscription, rewarded ads and richer monetization are optional experiments with clear opt-in/consent, transparent odds/prices and no forced interstitials. Avoid monetizing accessibility, hints or deceptive near-win frustration.
+
+## Endless play and sustainable return
+
+Endless already generates and certifies stages on demand with no clock or authored
+content bank. The web client now offers an off-by-default, explicit signed-in
+checkpoint preference at a completed stage near the existing score reward cap or
+three-hour paid-attempt deadline. It banks first, then requests the normal
+one-energy next run; failure/unknown payout never authorizes a fresh spend.
+Guests and manual banking are unchanged. This is about uninterrupted in-app
+play and transparent limits, **not** measured retention or the highest ROI.
+
+To evaluate ROI without damaging trust, preregister net contribution per
+consenting cohort alongside unassisted first-play success, D1/D7 return,
+voluntary next-stage starts, fair-loss ratings, confirmed bank failures,
+refunds/support contacts and real-device performance. Do not infer LTV, CAC or
+"forever" engagement from generated-stage count alone. Server-replayed,
+idempotently recoverable Endless payouts and honest offline account
+reconciliation remain open before increasing stakes.
+
+## Comprehensive request: what code cannot honestly complete at once
+
+The October 10 expansion made all six existing rooms visible without changing economy.
+It did **not** ship new puzzle rules, live PvP, native builds, production-grade shared
+social storage, signed-in offline synchronization or real-world certification.
+Those are separate, stateful systems: shipping superficial stubs in one batch would
+mislead players or weaken ranked/economy integrity. A single coordinated release
+candidate could combine them only after these explicit gates:
+
+- **Board variety:** prototype a second deterministic obstacle/objective family behind
+  a new version, prove server/browser replay and no-booster witnesses, then observe
+  fairness on real phones before broadening the paid level generator.
+- **Team events/PvP:** migrate social state to a transactional shared store before
+  team contributions, gifts or consequential rewards. PvP additionally needs an
+  authoritative clock/turn log, reconnect and abuse tests. Do not label the existing
+  score tournament "live PvP".
+- **Calendar and platforms:** publish and rotate each future weekly window using
+  the deployed schedule comparison and real operations; native builds, billing,
+  signed-in offline queue/reconciliation and multi-device save tests require separate
+  infrastructure and store/device validation.
+- **Experience evidence:** recruit consenting first-time players and observed-loss
+  sessions; test real phones, VoiceOver/TalkBack and low-end frame times. Automated
+  tests and generated fixtures cannot certify enjoyment, fairness or accessibility.
+
+These are release dependencies, not optional polish. Keep guest play, free hints,
+server prices and ranked booster separation intact throughout.
+
+## Operating scorecard
+
+| Dimension | Baseline needed before targets | Guardrail / decision rule |
+| --- | --- | --- |
+| Puzzle joy | Observed first-play comprehension, enjoyment and loss fairness, segmented by input/access needs | Use [player-experience proposed gates](PLAYER_EXPERIENCE.md#measurable-release-gates); if fairness falls, stop adding monetization/friction. |
+| Core performance | Cold-start p75, interaction p95, frame-time p95 on mid-range real phones | Measure real readiness, crashes and background/resume; synthetic desktop browser runs are regression checks, not device evidence. |
+| Level quality | Win/retry/quit by seed, difficulty, objective and cohort; track no-booster feasible path | Hardness distributions and human solvability matter; one solver witness is a floor, not a player success metric. |
+| Retention | Consent-based D1/D7 return cohorts, median session length, second-level starts | Compare controlled experiments to baseline; do not assert industry benchmark numbers as a promise. |
+| Trust & economy | Verified vs unverified wins, failed/duplicate spends, refund and support rates | No consequential leaderboard reward from unverified client score; zero double grants in fault tests. |
+| Live ops | Event discoverability, entry/claim success, on-time operator publishing | A stale season or empty event schedule is a failed event launch even if endpoints return 200. |
+
+## Explicit non-goals and unresolved decisions
+
+- Do not chase *all* Royal Match events, licensed art, identical blocker behavior or the same economy. Differentiate rather than clone.
+- Decide whether the product is **web-first** or native-store-first before promising cross-device billing, push, offline sync or performance parity. The present QA evidence is strongest for the root web game.
+- Decide whether competition is skill-focused. If so, server-verified scores and non-pay-to-win competition rules take precedence over more leaderboard UI.
+- Decide whether castle storytelling is a core pillar; if yes, budget sustained original art/writing/UX production, not just API work.
+- This audit is based on public descriptions and repository inspection, **not hands-on competitor playtests**, store device QA or market-share analysis. Repeat quarterly and annotate actual competitor versions/regions when running a hands-on study.

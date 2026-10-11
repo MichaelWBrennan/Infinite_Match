@@ -5,9 +5,9 @@
  *
  *  - entitlement (e.g. remove_ads): recorded in the purchase ledger, which entitlement checks read.
  *  - consumable (e.g. coin packs): the ledger row is claimed by one request, the coins are
- *    credited, then the row is marked fulfilled. A claim is never retried after a credit may
- *    have happened, so a retry cannot pay out twice. A crash between credit and mark leaves
- *    the row claimed but unfulfilled; support must check it by hand.
+ *    credited with an economy receipt, then the row is marked fulfilled. A held ledger claim
+ *    can be completed from a confirmed receipt after a crash; no receipt means never guess
+ *    whether a grant happened. Old unreceipted claims still need manual review.
  *
  * The amount is the price in effect at `atMs`, never a value from the caller. A transaction
  * belongs to one player: another player presenting it is refused.
@@ -35,8 +35,8 @@ export class GrantRetryableError extends Error {
   }
 }
 
-const defaultCredit = (playerId, grants) =>
-  accountEconomy.updateCurrency(playerId, grants.currency, grants.amount, 'add', 'purchase');
+const defaultCredit = (playerId, grants, transactionId) =>
+  accountEconomy.creditPurchaseOnce(playerId, transactionId, grants);
 
 /** Appends the file audit line. The grant is already stored, so a failure here is only logged. */
 async function audit(doc) {
@@ -86,7 +86,9 @@ export async function grantPurchase({
   const { inserted } = await PurchaseLedgerDb.recordPurchase(doc);
   const row = inserted ? doc : await PurchaseLedgerDb.findPurchaseByTransaction(transactionId);
   if (!row) throw new GrantRetryableError('transaction_unavailable');
-  if (row.playerId !== playerId) return { granted: false, reason: 'transaction_claimed' };
+  if (row.playerId !== playerId || row.productId !== productId || row.platform !== platform) {
+    return { granted: false, reason: 'transaction_claimed' };
+  }
   // Refunded or voided: never granted, even if the provider delivers the purchase again.
   if (row.reversedAt) return { granted: false, reason: 'reversed' };
 
@@ -101,23 +103,44 @@ export async function grantPurchase({
   if (!claimed) {
     // Another request holds the claim, or finished while we checked.
     const latest = await PurchaseLedgerDb.findPurchaseByTransaction(transactionId);
+    if (latest?.reversedAt) return { granted: false, reason: 'reversed' };
     if (latest && latest.fulfilled !== false) return { granted: true, duplicate: true };
+    // Never steal a held claim. Only the original economy's permanent receipt can
+    // prove that its write committed before the worker lost the ledger acknowledgment.
+    if (credit === defaultCredit && durable && latest?.claimedAt && !latest.reversedAt) {
+      const receipt = await accountEconomy.getPurchaseCreditReceipt(playerId, transactionId);
+      if (receipt) {
+        if (receipt.currency !== product.grants.currency || receipt.amount !== product.grants.amount) {
+          throw new GrantRetryableError('purchase_receipt_mismatch');
+        }
+        const marked = await PurchaseLedgerDb.markFulfilled(transactionId);
+        if (marked === false) throw new GrantRetryableError('reversed');
+        return { granted: true, duplicate: true };
+      }
+    }
     throw new GrantRetryableError('fulfillment_in_progress');
   }
 
   try {
-    await credit(playerId, product.grants);
+    await credit(playerId, product.grants, transactionId);
   } catch (error) {
-    // Nothing was credited (the economy refused or could not save), so release the claim for a retry.
-    await PurchaseLedgerDb.releaseFulfillment(transactionId).catch((releaseError) =>
-      logger.error('Could not release fulfilment claim', { transactionId, error: releaseError.message }),
-    );
+    // A write can still commit after an uncertain acknowledgement. Keep the claim held so
+    // a concurrent refund cannot classify it as never credited before the receipt appears.
+    // Only test-injected/custom credit implementations retain the old release behavior.
+    if (credit !== defaultCredit) {
+      await PurchaseLedgerDb.releaseFulfillment(transactionId).catch((releaseError) =>
+        logger.error('Could not release fulfilment claim', { transactionId, error: releaseError.message }),
+      );
+    }
     throw error;
   }
   try {
-    await PurchaseLedgerDb.markFulfilled(transactionId);
+    const marked = await PurchaseLedgerDb.markFulfilled(transactionId);
+    if (marked === false) throw new GrantRetryableError('reversed');
   } catch (error) {
-    logger.error('Credited but not marked fulfilled; check by hand', { transactionId, error: error.message });
+    logger.error('Credited but not marked fulfilled; retry can reconcile its receipt', {
+      transactionId, error: error.message,
+    });
     throw error;
   }
 

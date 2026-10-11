@@ -254,6 +254,16 @@ describe('consumable grants', () => {
     expect(credits).toHaveLength(1);
   });
 
+  test('an existing transaction cannot be reused for a different product or provider', async () => {
+    const args = { playerId: 'p1', productId: 'coins_small', transactionId: 'pi_bound', platform: 'stripe', credit, durable: true };
+    await grantPurchase(args);
+    expect(await grantPurchase({ ...args, productId: 'coins_large' }))
+      .toEqual({ granted: false, reason: 'transaction_claimed' });
+    expect(await grantPurchase({ ...args, platform: 'ios' }))
+      .toEqual({ granted: false, reason: 'transaction_claimed' });
+    expect(credits).toHaveLength(1);
+  });
+
   test('entitlements are fulfilled on record and never call the economy', async () => {
     const res = await grantPurchase({ playerId: 'p1', productId: 'remove_ads', transactionId: 'pi_6', platform: 'stripe', credit, durable: true });
     expect(res).toEqual({ granted: true, duplicate: false });

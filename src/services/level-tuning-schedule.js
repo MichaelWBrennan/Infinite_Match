@@ -1,7 +1,7 @@
 /**
- * Optional scheduled tuning. Off unless LEVEL_TUNING_INTERVAL_HOURS is set to 1 or more. Each run
- * applies the tuning plan, the same step an admin can take by hand. Each level moves only on new
- * results (see planTuning), so repeated runs do not keep pushing a level that is already moved.
+ * Optional scheduled review. Off unless LEVEL_TUNING_INTERVAL_HOURS is set to 1 or more.
+ * Never auto-apply a proposal from client-reported legacy data: an operator must review
+ * a single level and explicitly approve its change.
  */
 
 import { runTuning } from './level-tuning.js';
@@ -32,10 +32,8 @@ export function startTuningSchedule({
   if (!intervalMs) return null;
   const tick = async () => {
     try {
-      const result = await runTuning({ store, file, apply: true });
-      if (result.applied) {
-        logger?.info('Scheduled tuning applied', { changes: result.proposals });
-      }
+      const result = await runTuning({ store, file, apply: false });
+      if (result.proposals.length) logger?.info('Tuning review suggested; no target changed', { changes: result.proposals });
     } catch (error) {
       logger?.error('Scheduled tuning failed', { error: error.message });
     }

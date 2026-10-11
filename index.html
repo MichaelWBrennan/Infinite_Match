@@ -56,6 +56,8 @@
     .community-tab.active{background:#4ecdc4;color:#111}
     .community-body{padding:12px;color:#fff;overflow:auto;max-height:70vh}
     .community-body h3{margin:12px 0 4px}
+    .community-body h4{margin:8px 0 4px;color:#ffe69d}
+    .community-body progress{display:block;width:min(100%,32rem);height:18px;margin:10px 0;accent-color:#4ecdc4}
     .community-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ffffff22;flex-wrap:wrap}
     .community-note{opacity:.85;margin:4px 0}
     .community-btn{padding:6px 10px;border:0;border-radius:6px;background:#ffd700;color:#111;cursor:pointer}
@@ -180,7 +182,7 @@
                     <div class="mode-card-bg">
                         <div class="mode-icon-large">♾️</div>
                         <h3 class="mode-title">Endless</h3>
-                        <p class="mode-description">Unlimited generated stages, no clock. Reach each goal to advance automatically; bank your score whenever you like.</p>
+                        <p class="mode-description">Unlimited generated stages, no clock. Reach each goal to advance. Signed-in rewards must be banked within 3 hours; optional auto-checkpoints use 1 energy per new run.</p>
                         <button class="mode-play-btn" onclick="chooseMode('endless')">
                             <span class="play-text">START</span>
                         </button>
@@ -861,6 +863,7 @@
     <script src="js/procedural-levels.js"></script>
     <script src="js/level-location.js"></script>
     <script src="js/sound-effects.js"></script>
+    <script src="js/kingdom-scene.js"></script>
     <script src="js/player-experience.js"></script>
     <script src="js/assistive-board.js"></script>
     <script src="js/match-feedback.js"></script>

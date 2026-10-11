@@ -18,10 +18,14 @@ function fixture(kinds: string[] = [], four = true, version = 4) {
   if (four) {
     board[3]![0] = 'blue'; board[3]![1] = board[3]![2] = board[3]![4] = board[2]![3] = 'red';
   }
-  return { ...base, generatorVersion: version, boardSize: 7, board, specials, gemTypes: palette, gemWeights: {}, refillState: 12345,
+  return { ...base, generatorVersion: version, boardSize: 7, board, specials,
+    ...(version >= 5 ? { shields: Array.from({ length: 7 }, () => Array(7).fill(0)) } : {}),
+    gemTypes: palette, gemWeights: {}, refillState: 12345,
     mode: 'classic', moves: 30, targetScore: 1000000, objectives: [{ type: 'score', target: 1000000 }] };
 }
-function state(definition: any) { return { board: definition.board, specials: definition.specials, refillState: definition.refillState, objectiveProgress: definition.generatorVersion >= 4 ? initialObjectiveProgress(definition) : null }; }
+function state(definition: any) { return { board: definition.board, specials: definition.specials,
+  ...(definition.generatorVersion >= 5 ? { shields: definition.shields } : {}),
+  refillState: definition.refillState, objectiveProgress: definition.generatorVersion >= 4 ? initialObjectiveProgress(definition) : null }; }
 function observe(definition = fixture(), cells = [2, 3, 3, 3]) { return simulateLevelMove(definition, state(definition), cells, true) as any; }
 function freeze(value: any): any { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; }
 
@@ -196,13 +200,116 @@ describe('shared read-only visual observations', () => {
     expect(observed.board).toEqual(original);
   });
   test.each([2, 4, 7, 18])('generated level %s witnesses are unchanged with observation opt-in', (level) => {
-    const definition = generateLevel(level, context); const proof = certifyLevel(definition);
+    const definition = generateLevel(level, context, 'classic', 4); const proof = certifyLevel(definition);
     let input: any = { ...state(definition), objectiveProgress: undefined };
     for (const cells of proof.witness) {
       const observed = simulateLevelMove(definition, input, cells, true) as any;
       const { presentation, ...rest } = observed;
       expect(rest).toEqual(simulateLevelMove(definition, input, cells)); expect(presentation.frames.length).toBeLessThanOrEqual(3);
       input = rest;
+    }
+  });
+});
+
+describe('v5 shield presentation is fixed terrain, not a falling gem', () => {
+  function shieldFixture() {
+    const definition = fixture([], true, 5);
+    definition.shields[3][1] = 2; // A clear, not the protected special anchor.
+    return definition;
+  }
+
+  test('preload creates transparent numbered terrain textures separately from composite instant-play gems', () => {
+    const h = harness(shieldFixture()); const textures: string[] = []; const marks: string[] = [];
+    h.sandbox.InfinitePlayerExperience = { ...h.sandbox.InfinitePlayerExperience, drawGem() {} };
+    h.game.scene.textures = { createCanvas: (key: string) => {
+      textures.push(key);
+      const context: any = { save() {}, restore() {}, strokeRect() { marks.push(key); }, fillRect() {}, fillText() {} };
+      return { getContext: () => context, refresh() {} };
+    } };
+    h.game.createGemTextures();
+    expect(textures).toContain('shield_overlay_1'); expect(textures).toContain('shield_overlay_2');
+    expect(marks).toContain('shield_overlay_1'); expect(marks).toContain('shield_overlay_2');
+    expect(textures).toContain('gem_red_shield2');
+  });
+
+  test('bounded v5 snapshots mirror exact shield damage without changing the shared result', () => {
+    const definition = freeze(shieldFixture()); const input = freeze(state(definition));
+    const plain: any = simulateLevelMove(definition, input, [2, 3, 3, 3]);
+    const observed: any = simulateLevelMove(definition, input, [2, 3, 3, 3], true);
+    const { presentation, ...rest } = observed;
+    expect(rest).toEqual(plain);
+    expect(presentation.initial.shields[3][1]).toBe(2);
+    expect(presentation.frames[0].before.shields[3][1]).toBe(2);
+    expect(presentation.frames[0].after.shields[3][1]).toBe(1);
+    expect(presentation.frames).toHaveLength(Math.min(observed.cascades, PRESENTATION_FRAME_LIMIT));
+    expect(observed.events[0].shieldHits).toEqual([{ row: 3, col: 1, remaining: 1 }]);
+    const h = harness();
+    expect(h.feedback.planFor(observed)).not.toBeNull();
+    expect(json(h.sandbox.InfiniteLevels.simulateLevelMove(definition, input, [2, 3, 3, 3], true))).toEqual(observed);
+    const bad = json(observed); bad.presentation.frames[0].after.shields[3][1] = 0;
+    expect(h.feedback.planFor(bad)).toBeNull();
+  });
+
+  test('real Phaser swap and inventory clear keep numbered overlays fixed across fall, with one accessible summary', () => {
+    const h = harness(shieldFixture()); const { game, time } = h; const spoken: string[] = [];
+    game.playerUI.announce = (message: string) => spoken.push(message);
+    const before = model(game); const result: any = game.trySwap(2, 3, 3, 3);
+    expect(result.presentation.frames[0].after.shields[3][1]).toBe(1);
+    expect(game.shields[3][1]).toBe(1); expect(game.moves).toBe(before.moves - 1);
+    expect(spoken.at(-1)).toContain('1 shield layer removed');
+    expect(game.matchFeedback.isActive()).toBe(true);
+    expect(game.matchFeedback.status().images).toBeLessThanOrEqual(128); // 64 gems + 64 fixed overlays at most.
+    const visible = () => h.images.filter((image: any) => image.visible && image.key.startsWith('shield_overlay_'));
+    expect(visible()).toHaveLength(1); expect(visible()[0].key).toBe('shield_overlay_2');
+    const fixed = [game.cellX(1), game.cellY(3)];
+    expect([visible()[0].x, visible()[0].y]).toEqual(fixed);
+    time.tick(90 + 65 + 65); expect(game.matchFeedback.status().phase).toBe('fall');
+    expect(visible()).toHaveLength(1); expect(visible()[0].key).toBe('shield_overlay_1');
+    expect([visible()[0].x, visible()[0].y]).toEqual(fixed);
+    time.tick(1000); expect(coreVisible(game)).toBe(true);
+    expect(game.gemSprites[3][1].key).toContain('shield1');
+    game.clearAndCascade(new Set(['3,1']), 50);
+    expect(game.shields[3][1]).toBe(0); expect(game.moves).toBe(before.moves - 1);
+    expect(spoken.at(-1)).toContain('1 shield cleared');
+    expect(game.matchFeedback.isActive()).toBe(true);
+    time.tick(1000); expect(visible()).toHaveLength(0); expect(coreVisible(game)).toBe(true);
+    game.destroy(); expect(h.images.every((image: any) => image.destroyed || image.interactive)).toBe(true);
+  });
+
+  test('pause, reduced-motion changes and stale callbacks restore the committed shield board', () => {
+    for (const reason of ['pause', 'reduced-motion']) {
+      const h = harness(shieldFixture()); h.game.trySwap(2, 3, 3, 3);
+      const committed = json({ ...model(h.game), shields: h.game.shields });
+      const stale = [...h.time.tasks.values()].map((task) => task.fn);
+      if (reason === 'pause') h.game.pauseGame();
+      else { h.motion.matches = true; h.motion.emit('change'); }
+      stale.forEach((fn) => fn()); h.time.tick(1200);
+      expect(json({ ...model(h.game), shields: h.game.shields })).toEqual(committed);
+      expect(coreVisible(h.game)).toBe(true); expect(h.game.gemSprites[3][1].key).toContain('shield1');
+      expect(h.game.matchFeedback.isActive()).toBe(false); expect(h.time.tasks.size).toBe(0);
+      expect(h.layers[0].visible).toBe(false);
+    }
+  });
+
+  test('score-only v5 boards with no shields stage without allocating terrain sprites', () => {
+    const h = harness(fixture([], true, 5));
+    expect(h.game.trySwap(2, 3, 3, 3).presentation).toBeDefined();
+    expect(h.game.matchFeedback.isActive()).toBe(true);
+    expect(h.images.filter((image: any) => image.key.startsWith('shield_overlay_'))).toHaveLength(0);
+    h.time.tick(1200); expect(coreVisible(h.game)).toBe(true);
+  });
+
+  test('reduced motion and named-cell views skip shield animation but preserve damage and spoken outcome', () => {
+    for (const preference of ['reduced-motion', 'named-board']) {
+      const h = harness(shieldFixture()); const spoken: string[] = [];
+      h.game.playerUI.announce = (text: string) => spoken.push(text);
+      if (preference === 'reduced-motion') h.game.settings.reduceAnimations = true;
+      else h.flags.add('match-text-board-active');
+      const result: any = h.game.trySwap(2, 3, 3, 3);
+      expect(result.presentation).toBeUndefined(); expect(h.game.shields[3][1]).toBe(1);
+      expect(h.layers).toHaveLength(0); expect(h.game.matchFeedback.isActive()).toBe(false);
+      expect(spoken.at(-1)).toContain('1 shield layer removed');
+      expect(coreVisible(h.game)).toBe(true);
     }
   });
 });

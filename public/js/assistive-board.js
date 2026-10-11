@@ -22,12 +22,13 @@
     const style = styles && Object.hasOwn(styles, type) ? styles[type] : null;
     if (!style) return null;
     const special = game.specials?.[row]?.[col] || null;
+    const shield = game.shields?.[row]?.[col] || 0;
     const selected = game.selectedGem?.getData('row') === row && game.selectedGem?.getData('col') === col;
     const hint = game.hintCells;
     const hinted = hint?.[0] === row && hint?.[1] === col ? (hint.length === 2 ? 'Hint activation' : 'Hint start')
       : hint?.[2] === row && hint?.[3] === col ? 'Hint partner' : '';
-    return { row, col, type, special, selected, hinted, symbol: style.symbol,
-      label: `Row ${row + 1}, column ${col + 1}: ${type} ${style.shape}${special ? `, ${specialNames[special] || special}` : ' gem'}${selected ? ', selected' : ''}${hinted ? `, ${hinted.toLowerCase()}` : ''}` };
+    return { row, col, type, special, shield, selected, hinted, symbol: style.symbol,
+      label: `Row ${row + 1}, column ${col + 1}: ${type} ${style.shape}${special ? `, ${specialNames[special] || special}` : ' gem'}${shield ? `, fixed shield ${shield} ${shield === 1 ? 'hit' : 'hits'} left` : ''}${selected ? ', selected' : ''}${hinted ? `, ${hinted.toLowerCase()}` : ''}` };
   }
 
   /** The existing guarded methods remain the only action/spend path. */
@@ -135,7 +136,7 @@
         if (slot.type !== info.type) {
           slot.type = info.type; slot.symbol.textContent = info.symbol; slot.symbol.style.color = root.InfinitePlayerExperience.visuals[info.type].color;
         }
-        const badge = `${specialSymbols[info.special] || root.InfinitePlayerExperience.visuals[info.type].shape}${info.selected ? ' · S' : info.hinted ? ' · H' : ''}`;
+        const badge = `${specialSymbols[info.special] || root.InfinitePlayerExperience.visuals[info.type].shape}${info.shield ? ` · Shield ${info.shield}` : ''}${info.selected ? ' · S' : info.hinted ? ' · H' : ''}`;
         if (slot.badge.textContent !== badge) slot.badge.textContent = badge;
       }
       const active = describeCell(game, coordinate[0], coordinate[1]);

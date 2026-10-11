@@ -9,6 +9,7 @@ import {
   decorView,
   ensureDecor,
   planBuyDecor,
+  planChooseDecor,
   planPlaceDecor,
   planRemoveDecor,
 } from '../services/meta/kingdom-decor.js';
@@ -112,6 +113,32 @@ router.post('/decor/place', security.sessionValidation, async (req, res) => {
       decor.placed[plan.roomId] = plan.decorId;
       await accountEconomy.updatePlayerEconomyCache(playerId, economy);
       return plan;
+    });
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    sendDecorError(res, error, req.requestId);
+  }
+});
+
+// One-tap room choice: reuse an unplaced owned item or buy and place it in a
+// single locked update. Choosing the displayed item again is a free no-op.
+router.post('/decor/choose', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { roomId, decorId } = req.body || {};
+    const result = await accountEconomy.withPlayerLock(playerId, async () => {
+      const economy = await accountEconomy.getPlayerEconomy(playerId);
+      const kingdom = ensureKingdom(economy);
+      const decor = ensureDecor(kingdom);
+      const plan = planChooseDecor(kingdom, decor, roomId, decorId, economy.currencies.coins.amount);
+      if (plan.unchanged) return { ...plan, coins: economy.currencies.coins.amount };
+      if (plan.buy) {
+        accountEconomy.spendCoins(economy, plan.costCoins);
+        decor.owned[decorId] = (decor.owned[decorId] || 0) + 1;
+      }
+      decor.placed[roomId] = decorId;
+      await accountEconomy.updatePlayerEconomyCache(playerId, economy);
+      return { ...plan, coins: economy.currencies.coins.amount };
     });
     res.json({ success: true, result, requestId: req.requestId });
   } catch (error) {

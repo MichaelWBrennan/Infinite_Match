@@ -164,7 +164,7 @@ describe('endless and decoration routes', () => {
     expect(bad.status).toBe(400);
   });
 
-  test('an endless run spends one attempt, pays its reward once, and rejects a reused attempt', async () => {
+  test('an endless run spends one attempt and returns the same reward on a lost-response retry', async () => {
     const spend = await request(app)
       .post('/api/account-economy/energy/spend')
       .set('Authorization', `Bearer ${token}`)
@@ -186,8 +186,18 @@ describe('endless and decoration routes', () => {
       .post('/api/account-economy/endless/complete')
       .set('Authorization', `Bearer ${token}`)
       .send({ score: 8000, attemptId });
-    expect(again.status).toBe(400);
-    expect(again.body.success).toBe(false);
+    expect(again.status).toBe(200);
+    expect(again.body.result).toEqual({ ...done.body.result, duplicate: true });
+    const changed = await request(app)
+      .post('/api/account-economy/endless/complete')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ score: 8001, attemptId });
+    expect(changed.status).toBe(400);
+    expect(changed.body.error).toBe('attempt_score_mismatch');
+    const view = await request(app).get('/api/account-economy/data').set('Authorization', `Bearer ${token}`);
+    expect(view.body.data.statistics.endlessRuns).toBe(1);
+    expect(view.body.data.currencies.coins.amount).toBe(done.body.result.balances.coins);
+    expect(view.body.data.endlessReceipts).toBeUndefined();
   });
 
   test('decorations need a session, and buying one takes its price from coins', async () => {

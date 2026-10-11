@@ -178,11 +178,28 @@ let tuningChain = Promise.resolve();
  * Reads the results and plans a tuning step. With `apply`, saves the new levels. Runs are
  * serialized, so two requests cannot both apply the same batch.
  */
-export function runTuning({ store, file, apply = false, now = Date.now() }) {
+export function runTuning({ store, file, apply = false, now = Date.now(), approvedLevel = null,
+  expectedUpdatedAt = undefined, expectedFrom = undefined }) {
   const run = tuningChain.then(async () => {
+    if (apply && (!Number.isSafeInteger(approvedLevel) || approvedLevel < 1
+      || typeof expectedFrom !== 'number' || expectedUpdatedAt === undefined)) {
+      throw Object.assign(new Error('tuning_approval_required'), { code: 'tuning_approval_required' });
+    }
     const { records } = await store.read();
     const current = readLevelOverrides(file);
-    const plan = planTuning(records, current, now);
+    if (apply && current.updatedAt !== expectedUpdatedAt) {
+      throw Object.assign(new Error('tuning_plan_stale'), { code: 'tuning_plan_stale' });
+    }
+    const planned = planTuning(records, current, now);
+    if (apply && !planned.proposals.some((p) => p.level === approvedLevel && p.from === expectedFrom)) {
+      throw Object.assign(new Error('tuning_plan_stale'), { code: 'tuning_plan_stale' });
+    }
+    const plan = apply ? {
+      ...planned,
+      proposals: planned.proposals.filter((p) => p.level === approvedLevel),
+      levels: applyProposals(current.levels, planned.proposals.filter((p) => p.level === approvedLevel)),
+      tuned: { ...current.tuned, [approvedLevel]: now },
+    } : planned;
     const applied = apply && plan.proposals.length > 0;
     if (applied) writeLevelOverrides(plan.levels, file, new Date(now), plan.tuned);
     return { ...plan, applied };

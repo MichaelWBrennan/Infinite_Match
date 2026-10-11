@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "studyId": "study-web-stability-beta",
+  "build": "REPLACE_WITH_BUILD_COMMIT_SHA",
+  "sessions": []
+}

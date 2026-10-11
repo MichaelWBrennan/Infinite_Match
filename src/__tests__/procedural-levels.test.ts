@@ -62,7 +62,7 @@ describe('passive procedural generation', () => {
     for (let number = 1; number <= 40; number++) {
       const definition = generateLevel(number, halloween);
       const proof = certifyLevel(definition);
-      let state: any = { board: definition.board, specials: definition.specials, refillState: definition.refillState };
+      let state: any = { board: definition.board, specials: definition.specials, refillState: definition.refillState, shields: definition.shields };
       let score = 0;
       for (const cells of proof.witness) {
         const move = simulateLevelMove(definition, state, cells)!;
@@ -243,7 +243,7 @@ describe('public procedural level API', () => {
     assertValid(modern.body.level);
   });
 
-  test.each(['1', '5', 'invalid', '', ['2', '3']])('unsupported preview rules %j are refused', async (rulesVersion) => {
+  test.each(['1', '6', 'invalid', '', ['2', '3']])('unsupported preview rules %j are refused', async (rulesVersion) => {
     const res = await request(app).get('/api/levels/1').query({ ...north, rulesVersion });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('unsupported_rules_version');

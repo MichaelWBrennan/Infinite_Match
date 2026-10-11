@@ -4,6 +4,9 @@ import vm from 'node:vm';
 import { setImmediate } from 'node:timers';
 import { certifyLevel, simulateLevelMove, simulateObjectiveClear, generateLevel } from '../services/levels/generator.js';
 import { generatedLevel } from '../services/levels/level-service.js';
+import { inventoryReplayEffect, REPLAY_POWERUPS } from '../services/levels/inventory-replay.js';
+import { initialObjectiveProgress } from '../services/levels/objective-rules.js';
+import { ENDLESS_REWARDS } from '../services/meta/rewards.js';
 
 const location = { timeZone: 'America/New_York', country: 'US', region: 'PA' };
 const now = Date.parse('2026-10-31T12:00:00Z');
@@ -73,7 +76,7 @@ function assertSprites(game: any) {
   for (let r = 0; r < game.boardSize; r++) {
     for (let c = 0; c < game.boardSize; c++) {
       const s = game.gemSprites[r][c];
-      expect(s.key).toBe(game.gemTexture(game.board[r][c], game.specials?.[r]?.[c]));
+      expect(s.key).toBe(game.gemTexture(game.board[r][c], game.specials?.[r]?.[c], game.shields?.[r]?.[c]));
       expect(s.getData('special')).toBe(game.specials?.[r]?.[c] || null);
       expect(s.getData('type')).toBe(game.board[r][c]);
       expect(s.getData('row')).toBe(r);
@@ -173,7 +176,7 @@ describe('real Phaser core uses the certified definition', () => {
     };
     expect(await game.selectLevel(100001)).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 4 } });
+    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 5 } });
     expect(game.targetScore).toBe(def.targetScore);
     expect(game.attemptId).toBe('attempt');
     expect(game.attemptLevel).toBe(100001);
@@ -276,6 +279,156 @@ describe('real Phaser core uses the certified definition', () => {
     expect(ended).toBe(true);
   });
 
+  test('Endless checkpoints need explicit consent, a paid session, and a completed stage', () => {
+    expect(ENDLESS_REWARDS.maxXp * ENDLESS_REWARDS.pointsPerXp).toBe(100000); // browser schedule must track the server cap
+    const { game } = makeBrowserGame();
+    const def = definition(1, 'endless');
+    game.applyGeneratedDefinition(def);
+    game.isGameRunning = true;
+    game.getAuthToken = () => 'signed-in'; game.attemptId = 'paid-attempt';
+    game.endlessAttemptStartedAt = Date.now();
+    game.score = def.targetScore; game.endlessTotalScore = 100000;
+    expect(game.shouldCheckpointEndless()).toBe(false); // opt-in is false by default
+    game.settings.endlessAutoContinue = true;
+    expect(game.shouldCheckpointEndless()).toBe(true);
+    let auto: any;
+    game.endGame = (defer: boolean, checkpoint: boolean) => { auto = [defer, checkpoint]; };
+    game.checkEndConditions();
+    expect(auto).toEqual([false, true]);
+    game.getAuthToken = () => null;
+    expect(game.shouldCheckpointEndless()).toBe(false); // guests never auto-bank or spend energy
+    game.getAuthToken = () => 'signed-in'; game.attemptId = null;
+    expect(game.shouldCheckpointEndless()).toBe(false);
+    game.attemptId = 'paid-attempt'; game.score = 0; game.endlessTotalScore = 0;
+    game.endlessAttemptStartedAt = Date.now() - 165 * 60000;
+    expect(game.shouldCheckpointEndless()).toBe(true); // near three-hour server expiry
+  });
+
+  test('Endless opt-in is local, saved, and can be turned off before a checkpoint', async () => {
+    const { game, saved } = makeBrowserGame();
+    game.settings.endlessAutoContinue = true;
+    await game.saveUserData();
+    expect(JSON.parse(saved.get('phaser3_game_data')!).settings.endlessAutoContinue).toBe(true);
+    game.settings.endlessAutoContinue = false;
+    await game.loadUserData();
+    expect(game.settings.endlessAutoContinue).toBe(true);
+    game.settings.endlessAutoContinue = false;
+    game.mode = 'endless'; game.attemptId = 'paid'; game.getAuthToken = () => 'signed-in';
+    game.score = 100000;
+    expect(game.shouldCheckpointEndless()).toBe(false);
+  });
+
+  test('an opted-in checkpoint starts another paid run only after a confirmed bank', async () => {
+    const { game, events } = makeBrowserGame();
+    game.applyGeneratedDefinition(definition(1, 'endless'));
+    game.score = 40000; game.endlessTotalScore = 65000;
+    game.attemptId = 'paid-attempt'; game.getAuthToken = () => 'signed-in';
+    game.settings.endlessAutoContinue = true; game.endlessAutoCheckpoint = true;
+    game.playerUI = { announce: () => {}, refresh: () => {} };
+    let syncs = 0; game.syncAccountFromServer = () => { syncs++; };
+    let resolveBank: any; const starts: any[] = []; const calls: any[] = [];
+    game.fetchJson = (url: string, options: any) => {
+      calls.push([url, options]);
+      if (url.endsWith('/energy/spend')) return Promise.resolve({ ok: true, data: { success: true,
+        result: { attemptId: 'second-attempt', level: 1, energy: 3, generatedLevel: definition(1, 'endless') } } });
+      return new Promise((done) => { resolveBank = done; });
+    };
+    game.startProceduralLevel = async (level: number, mode: string) => {
+      starts.push([level, mode]); return game.claimAttempt(level, mode, location);
+    };
+    game.showEndGameScreen = () => { throw new Error('Should continue in game'); };
+    const pending = game.finishEndless();
+    expect(starts).toHaveLength(0);
+    expect(JSON.parse(calls[0][1].body)).toEqual({ score: 105000, attemptId: 'paid-attempt' });
+    resolveBank({ ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 105000 } } });
+    await pending;
+    expect(starts).toEqual([[1, 'endless']]);
+    expect(calls.map(([url]) => url)).toEqual(['/api/account-economy/endless/complete', '/api/account-economy/energy/spend']);
+    expect(JSON.parse(calls[1][1].body)).toMatchObject({ level: 1, mode: 'endless' });
+    expect(game.attemptId).toBe('second-attempt'); // minted by the ordinary server endpoint, not the browser
+    expect(game.energy).toBe(3);
+    expect(syncs).toBe(1); // no pre-spend stale balance read can race the new energy charge
+    expect(events.some((event) => event.event === 'endless_checkpoint_continued')).toBe(true);
+  });
+
+  test('a denied second spend is not retried and an old bank cannot reopen a menu', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(definition(1, 'endless'));
+    game.score = 100000; game.attemptId = 'paid'; game.getAuthToken = () => 'signed-in';
+    game.settings.endlessAutoContinue = true; game.endlessAutoCheckpoint = true;
+    game.fetchJson = async () => ({ ok: true, data: { success: true, result: {
+      reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } });
+    let attempts = 0; let shown = false;
+    game.startProceduralLevel = async () => { attempts++; return false; };
+    game.showEndGameScreen = () => { shown = true; };
+    await game.finishEndless();
+    expect(attempts).toBe(1);
+    expect(shown).toBe(false); // the ordinary start error remains visible
+    const { game: departed } = makeBrowserGame();
+    departed.applyGeneratedDefinition(definition(1, 'endless'));
+    departed.score = 100000; departed.attemptId = 'paid'; departed.getAuthToken = () => 'signed-in';
+    departed.settings.endlessAutoContinue = true; departed.endlessAutoCheckpoint = true;
+    let resolveBank: any; let reopened = 0;
+    departed.fetchJson = () => new Promise((done) => { resolveBank = done; });
+    departed.startProceduralLevel = async () => { reopened++; return true; };
+    departed.showEndGameScreen = () => { reopened++; };
+    const pending = departed.finishEndless();
+    departed.currentScreen = 'menu';
+    resolveBank({ ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } });
+    await pending;
+    expect(reopened).toBe(0);
+  });
+
+  test('failed or uncertain bank, revoked consent and manual bank never start a second attempt', async () => {
+    for (const mode of ['expired', 'unknown', 'revoked', 'manual']) {
+      const { game } = makeBrowserGame();
+      game.applyGeneratedDefinition(definition(1, 'endless'));
+      game.score = 100000; game.attemptId = 'paid'; game.getAuthToken = () => 'signed-in';
+      game.settings.endlessAutoContinue = true; game.endlessAutoCheckpoint = mode !== 'manual';
+      let starts = 0; let subtitle = '';
+      game.startProceduralLevel = async () => { starts++; return true; };
+      game.showEndGameScreen = (_stars: number, options: any) => { subtitle = options.subtitle; };
+      if (mode === 'revoked') {
+        let resolveBank: any;
+        game.fetchJson = () => new Promise((done) => { resolveBank = done; });
+        const pending = game.finishEndless();
+        game.settings.endlessAutoContinue = false;
+        resolveBank({ ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } });
+        await pending;
+      } else {
+        game.fetchJson = async () => mode === 'expired' ? { ok: false, data: { error: 'attempt_expired' } }
+          : mode === 'unknown' ? (() => { throw new Error('offline'); })()
+            : { ok: true, data: { success: true, result: { reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } };
+        await game.finishEndless();
+      }
+      expect(starts).toBe(0);
+      expect(subtitle).toContain(mode === 'expired' ? 'expired' : mode === 'unknown' ? 'could not be confirmed' : '+300 coins');
+    }
+  });
+
+  test('an uncertain Endless response is recovered with the exact same claim, but an explicit denial is not retried', async () => {
+    const { game } = makeBrowserGame();
+    game.attemptId = 'paid-claim'; game.getAuthToken = () => 'signed-in';
+    game.applyGeneratedDefinition(definition(1, 'endless'));
+    const bodies: any[] = [];
+    game.fetchJson = async (_url: string, options: any) => {
+      bodies.push(JSON.parse(options.body));
+      if (bodies.length === 1) throw new Error('response lost');
+      return { ok: true, data: { success: true, result: { duplicate: true, reward: { coins: 300, xp: 500 }, endlessBest: 100000 } } };
+    };
+    const paid = await game.submitEndlessRun(100000);
+    expect(paid.duplicate).toBe(true);
+    expect(bodies).toEqual([{ score: 100000, attemptId: 'paid-claim' }, { score: 100000, attemptId: 'paid-claim' }]);
+    expect(game.attemptId).toBeNull();
+
+    game.attemptId = 'denied-claim';
+    let denials = 0;
+    game.fetchJson = async () => { denials++; return { ok: false, status: 400, data: { error: 'attempt_expired' } }; };
+    expect(await game.submitEndlessRun(100000)).toBeNull();
+    expect(denials).toBe(1);
+    expect(game.endlessBankError).toBe('attempt_expired');
+  });
+
   test('banking an endless run submits the cumulative score, not just its last stage', async () => {
     const { game } = makeBrowserGame();
     game.applyGeneratedDefinition(definition(1, 'endless'));
@@ -313,6 +466,30 @@ describe('real Phaser core uses the certified definition', () => {
     }
   });
 
+  test('a lost level payout response retries the identical claim, but an explicit denial does not', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(definition(1));
+    game.attemptId = 'paid-level'; game.attemptLevel = 1; game.score = 900;
+    game.getAuthToken = () => 'signed-in';
+    const bodies: any[] = [];
+    game.fetchJson = async (_url: string, options: any) => {
+      bodies.push(JSON.parse(options.body));
+      if (bodies.length === 1) throw new Error('response lost');
+      return { ok: true, data: { success: true, result: { duplicate: true, balances: { stars: 2 } } } };
+    };
+    const paid = await game.submitLevelWin(1);
+    expect(paid.duplicate).toBe(true);
+    expect(game.stars).toBe(2);
+    expect(bodies).toEqual([bodies[0], bodies[0]]);
+    expect(game.attemptId).toBeNull();
+
+    game.attemptId = 'denied-level';
+    let calls = 0;
+    game.fetchJson = async () => { calls++; return { ok: false, status: 400, data: { error: 'score_below_target' } }; };
+    expect(await game.submitLevelWin(1)).toBeNull();
+    expect(calls).toBe(1);
+  });
+
   test('Next Level waits for the reward to finish before replacing its attempt', async () => {
     const { game } = makeBrowserGame();
     let release!: () => void;
@@ -330,7 +507,7 @@ describe('real Phaser core uses the certified definition', () => {
     const { game } = makeBrowserGame();
     game.fetchJson = async () => { throw new Error('offline'); };
     expect(await game.selectLevel(100001)).toBe(true);
-    expect(game.generatedLevel.generatorVersion).toBe(4);
+    expect(game.generatedLevel.generatorVersion).toBe(5);
     expect(game.generatedLevel.context.offline).toBe(true);
     expect(game.attemptId).toBeNull();
     assertSprites(game);
@@ -633,6 +810,139 @@ describe('native player input keeps shared rules and economy untouched', () => {
     expect(writes).toEqual([]);
   });
 
+  test('a guest sees the room without a network request and a signed-in choice refreshes its payoff', async () => {
+    const { game } = playable();
+    const views: any[] = []; const messages: string[] = []; const calls: any[] = [];
+    game.playerUI.renderKingdomScene = (data: any, callbacks: any) => { views.push({ data, callbacks }); };
+    game.setOverlayStatus = (message: string) => messages.push(message);
+    game.activeOverlay = {};
+    game.fetchJson = async (url: string, options: any) => {
+      calls.push([url, options]);
+      return url.endsWith('/choose')
+        ? { ok: true, data: { success: true, result: { buy: true, costCoins: 140 } } }
+        : { ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 660, decor: { catalog: [] } } };
+    };
+    await game.renderKingdom();
+    expect(views[0].data.guest).toBe(true);
+    expect(calls).toHaveLength(0);
+    game.getAuthToken = () => 'test';
+    await game.chooseKingdomDecor('mosaic');
+    expect(calls.map(([url]) => url)).toEqual(['/api/kingdom/decor/choose', '/api/kingdom']);
+    expect(JSON.parse(calls[0][1].body)).toEqual({ roomId: 'throne', decorId: 'mosaic' });
+    expect(views[1].callbacks.focusChoice).toBe('mosaic');
+    expect(messages.at(-1)).toContain('140 coins spent');
+    expect(game.kingdomPending).toBe(false);
+  });
+
+  test('room tabs reuse a snapshot and bind each repair and choice to its displayed room', async () => {
+    const { game } = playable();
+    const views: any[] = []; const calls: any[] = [];
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (data: any, callbacks: any) => views.push({ data, callbacks });
+    game.setOverlayStatus = () => {};
+    game.fetchJson = async (url: string, options: any) => {
+      calls.push([url, options]);
+      if (url.endsWith('/choose')) return { ok: true, data: { success: true, result: { buy: true, costCoins: 140 } } };
+      if (url.endsWith('/renovate')) return { ok: true, data: { success: true, result: { level: 1 } } };
+      return { ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 660, decor: { catalog: [] } } };
+    };
+    await game.renderKingdom();
+    const hall = views.at(-1).callbacks;
+    hall.selectRoom('library');
+    expect(views.at(-1).callbacks.roomId).toBe('library');
+    expect(views.at(-1).callbacks.focusRoom).toBe(true);
+    expect(calls.map(([url]) => url)).toEqual(['/api/kingdom']); // no request on tab change
+    await hall.choose('mosaic'); // stale button cannot write the hall while library is shown
+    expect(calls).toHaveLength(1);
+    await views.at(-1).callbacks.choose('mosaic');
+    expect(JSON.parse(calls[1][1].body)).toEqual({ roomId: 'library', decorId: 'mosaic' });
+    expect(views.at(-1).callbacks.focusChoice).toBe('mosaic');
+    await views.at(-1).callbacks.renovate();
+    expect(JSON.parse(calls[3][1].body)).toEqual({ roomId: 'library' });
+    views.at(-1).callbacks.selectRoom('throne');
+    expect(views.at(-1).callbacks.roomId).toBe('throne');
+    expect(calls.map(([url]) => url)).toEqual([
+      '/api/kingdom', '/api/kingdom/decor/choose', '/api/kingdom', '/api/kingdom/renovate', '/api/kingdom',
+    ]);
+  });
+
+  test('another authored room can be selected and purchased without spending on the hall', async () => {
+    const { game } = playable();
+    const views: any[] = []; const calls: any[] = [];
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (_data: any, callbacks: any) => views.push(callbacks);
+    game.setOverlayStatus = () => {};
+    game.fetchJson = async (url: string, options: any) => {
+      calls.push([url, options]);
+      return url.endsWith('/choose') ? { ok: true, data: { success: true, result: { buy: true, costCoins: 140 } } }
+        : { ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 860 } };
+    };
+    await game.renderKingdom();
+    const hall = views.at(-1);
+    hall.selectRoom('garden');
+    await hall.choose('mosaic'); // stale hall action must not spend
+    await views.at(-1).choose('mosaic');
+    expect(JSON.parse(calls[1][1].body)).toEqual({ roomId: 'garden', decorId: 'mosaic' });
+    expect(views.at(-1).roomId).toBe('garden');
+    expect(views.at(-1).focusChoice).toBe('mosaic');
+  });
+
+  test('an older kingdom load cannot replace a newly selected room', async () => {
+    const { game } = playable();
+    const views: any[] = []; const pending: any[] = [];
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (_data: any, callbacks: any) => views.push(callbacks);
+    game.setOverlayStatus = () => {};
+    game.fetchJson = () => new Promise((done) => { pending.push(done); });
+    const first = game.renderKingdom();
+    game.selectKingdomRoom('library'); // no snapshot yet; starts a newer read
+    pending[1]({ ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 1 } });
+    await Promise.resolve();
+    pending[0]({ ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 2 } });
+    await first;
+    expect(views).toHaveLength(1);
+    expect(views[0].roomId).toBe('library');
+  });
+
+  test('a choice in flight keeps its original room even if the player switches tabs', async () => {
+    const { game } = playable();
+    const views: any[] = []; const calls: any[] = []; let finish: any;
+    game.getAuthToken = () => 'test'; game.activeOverlay = {};
+    game.playerUI.renderKingdomScene = (_data: any, callbacks: any) => views.push(callbacks);
+    game.setOverlayStatus = () => {};
+    game.fetchJson = (url: string, options: any) => {
+      calls.push([url, options]);
+      if (url.endsWith('/choose')) return new Promise((done) => { finish = done; });
+      return Promise.resolve({ ok: true, data: { success: true, kingdom: { rooms: [] }, coins: 600 } });
+    };
+    await game.renderKingdom();
+    views.at(-1).selectRoom('library');
+    const choice = views.at(-1).choose('tapestry');
+    views.at(-1).selectRoom('throne');
+    finish({ ok: true, data: { success: true, result: { buy: true, costCoins: 200 } } });
+    await choice;
+    expect(JSON.parse(calls[1][1].body)).toEqual({ roomId: 'library', decorId: 'tapestry' });
+    expect(views.at(-1).roomId).toBe('throne');
+    expect(views.at(-1).focusChoice).toBeNull();
+    expect(game.kingdomPending).toBe(false);
+  });
+
+  test('closing a room while its one-tap choice is in flight cannot write into another screen', async () => {
+    const { game } = playable();
+    let finish: any; let writes = 0;
+    game.getAuthToken = () => 'test';
+    game.playerUI.renderKingdomScene = () => { writes++; };
+    game.activeOverlay = {};
+    game.setOverlayStatus = () => { writes++; };
+    game.fetchJson = () => new Promise((done) => { finish = done; });
+    const pending = game.chooseKingdomDecor('sconces');
+    game.activeOverlay = {};
+    finish({ ok: true, data: { success: true, result: { buy: true, costCoins: 180 } } });
+    await pending;
+    expect(writes).toBe(1); // Initial status only; never re-render the next overlay.
+    expect(game.kingdomPending).toBe(false);
+  });
+
   test('finishing an old decoration action cannot reopen a closed modal', async () => {
     const { game } = playable();
     let resolve: any;
@@ -757,6 +1067,7 @@ describe('objective-aware Phaser v4', () => {
     expect(game.showHint()).toEqual([3, 3]);
     expect(JSON.stringify({ board: game.board, specials: game.specials, score: game.score, moves: game.moves,
       rng: game.levelRng.state, progress: game.objectiveProgress })).toBe(before);
+    expect(game.hintsUsed).toBe(1); // Assistance is recorded, but the hint costs no move or charge.
   });
 
   test('paid v4 completion sends counters, not client-authored goals, targets or stars', async () => {
@@ -768,6 +1079,91 @@ describe('objective-aware Phaser v4', () => {
     };
     await game.submitLevelWin(1); expect(game.stars).toBe(1);
     expect(sent).toEqual({ level: 1, score: 30, attemptId: 'v4_paid', objectiveProgress: game.objectiveProgress });
+    expect(game.attemptId).toBeNull();
+  });
+
+  test('legacy restart displays the target pinned by the paid spend, not a later client override', async () => {
+    const { game, sandbox } = makeBrowserGame();
+    game.getAuthToken = () => 'token'; game.generatedLevel = null; game.level = 1;
+    game.scene.children = { list: [] }; game.setSelectedGem = () => {};
+    game.reshuffleBoard = () => {}; game.startGame = async () => {};
+    sandbox.fetch = async () => ({ ok: true, json: async () => ({ success: true,
+      result: { attemptId: 'legacy', level: 1, energy: 99, legacyTarget: 1350 } }) });
+    expect(await game.claimAttempt(1)).toBe(true);
+    await game.restartGame(true);
+    expect(game.targetScore).toBe(1350);
+  });
+
+  test('signed-in app open checks voluntary return study at most once per UTC day without auto-enrolling', async () => {
+    const { game } = makeBrowserGame();
+    let signedIn = true; game.getAuthToken = () => signedIn ? 'session-token' : null;
+    game.updateUI = () => {};
+    const calls: string[] = [];
+    game.fetchJson = async (url: string) => {
+      calls.push(url);
+      if (url.endsWith('/data')) return { ok: true, data: { success: true, data: {
+        currencies: { energy: { amount: 99, maxAmount: 100 }, stars: { amount: 1 } } } } };
+      return { ok: true, data: { success: true, consented: false, counted: false } };
+    };
+    await game.syncAccountFromServer();
+    await game.syncAccountFromServer();
+    expect(calls.filter((url) => url.endsWith('/visit'))).toHaveLength(1);
+    expect(calls.every((url) => !url.endsWith('/opt-in'))).toBe(true);
+    signedIn = false; await game.syncAccountFromServer();
+    expect(game.retentionVisitStamp).toBeNull();
+  });
+
+  test('guest research entry never makes a network call or collects visit data', async () => {
+    const { game } = makeBrowserGame(); game.getAuthToken = () => null;
+    game.openOverlay = () => { game.activeOverlay = {}; return game.activeOverlay; };
+    game.overlayButton = () => {};
+    game.overlayText = () => {};
+    game.fetchJson = () => { throw new Error('guest must not call study'); };
+    await expect(game.showRetentionResearch()).resolves.toBeUndefined();
+  });
+
+  test('research controls require an explicit choice and confirmation before deletion', async () => {
+    const { game } = makeBrowserGame(); game.getAuthToken = () => 'session-token';
+    game.isPaused = true;
+    const buttons: any[] = []; const calls: string[] = [];
+    let consented = false;
+    game.openOverlay = () => { game.activeOverlay = {}; buttons.length = 0; return game.activeOverlay; };
+    game.overlayButton = (_x: number, _y: number, _w: number, _h: number, _color: number, label: string, onClick: Function) => {
+      buttons.push({ label, onClick });
+    };
+    game.overlayText = () => {};
+    game.setOverlayStatus = () => {};
+    game.fetchJson = async (url: string, options: any = {}) => {
+      calls.push(`${options.method || 'GET'} ${url}`);
+      if (url.endsWith('/opt-in')) consented = true;
+      if (options.method === 'DELETE') consented = false;
+      return { ok: true, data: { success: true, consented } };
+    };
+    await game.showRetentionResearch();
+    expect(calls).toEqual(['GET /api/retention-study/me']);
+    expect(buttons.some((button) => button.label === 'I agree to join')).toBe(true);
+    await buttons.find((button) => button.label === 'I agree to join').onClick();
+    expect(calls).toEqual(['GET /api/retention-study/me', 'POST /api/retention-study/opt-in', 'GET /api/retention-study/me']);
+    buttons.find((button) => button.label === 'Stop and delete my study days').onClick();
+    expect(calls).toHaveLength(3);
+    await buttons.find((button) => button.label === 'Delete my study days').onClick();
+    expect(calls).toContain('DELETE /api/retention-study/me');
+    expect(buttons.some((button) => button.label === 'I agree to join')).toBe(true);
+  });
+
+  test('an actual web loss reports a bounded diagnostic close once, never a completion payout', async () => {
+    const { game, sandbox } = makeBrowserGame(); const def = objectiveFixture();
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.runStartedAt = Date.now();
+    game.attemptId = 'paid_loss'; game.getAuthToken = () => 'token'; game.moves = def.moves - 5;
+    game.hintsUsed = 2; delete game.endGame; game.showEndGameScreen = () => {};
+    const requests: any[] = [];
+    sandbox.fetch = async (url: string, options: any) => {
+      requests.push({ url, body: JSON.parse(options.body) });
+      return { ok: true, json: async () => ({ success: true, result: { closed: true } }) };
+    };
+    game.endGame(); await game.rewardSubmission;
+    expect(requests).toEqual([{ url: '/api/account-economy/attempt/close',
+      body: { attemptId: 'paid_loss', outcome: 'lost', movesUsed: 5, hintsUsed: 2 } }]);
     expect(game.attemptId).toBeNull();
   });
 
@@ -834,6 +1230,150 @@ describe('optional sound is presentation only', () => {
     expect(game.settings.soundVolume).toBe(0.25); expect(model(game)).toBe(before); expect(game.isPaused).toBe(true);
     expect(JSON.parse(saved.get('phaser3_game_data')!).settings).toMatchObject({ sfx: true, soundChoiceVersion: 1, soundVolume: 0.25 });
     expect(cues).toContain('test');
+  });
+
+  test('only ordinary winning moves are submitted for competitive replay; inventory effects opt out', async () => {
+    const { game } = soundGame();
+    const def = generatedLevel({ level: 4, location, rulesVersion: 5 }, now);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    game.checkEndConditions = () => {};
+    const cells = certifyLevel(def).witness[0]!;
+    if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+    expect(JSON.parse(JSON.stringify(game.attemptMoves))).toEqual([cells]);
+    const bodies: any[] = [];
+    game.getAuthToken = () => 'token'; game.attemptId = 'pinned'; game.attemptLevel = 4;
+    game.fetchJson = async (_url: string, options: any) => {
+      bodies.push(JSON.parse(options.body)); return { ok: false, data: { error: 'test' } };
+    };
+    await game.submitLevelWin(1);
+    expect(bodies[0].moves).toEqual([cells]);
+    game.attemptId = 'second'; game.activateBomb();
+    expect(game.replayEligible).toBe(false);
+    await game.submitLevelWin(1);
+    expect(bodies[1].moves).toBeUndefined();
+  });
+
+  test('all six server-confirmed inventory effects record receipt-bound actions matching shared v5 terrain transitions', async () => {
+    for (const type of REPLAY_POWERUPS) {
+      const { game } = soundGame();
+      const def = generatedLevel({ level: 4, location, rulesVersion: 5 }, now);
+      game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'paid-attempt';
+      game.getAuthToken = () => 'token'; game.checkEndConditions = () => {};
+      game.showPowerUpAnimation = () => {};
+      game.consumePowerUpOnServer = async () => ({ ok: true, receiptId: `receipt-${type}` });
+      const slot = { btn: sprite().setData('count', 3), text: sprite() };
+      if (type === 'bomb' || type === 'rainbow' || type === 'lightning') {
+        game[`${type}Btn`] = slot.btn; game[`${type}Text`] = slot.text;
+        game.usePowerUp(type);
+      } else {
+        game.powerButtons = { [type]: slot };
+        game.toggleArmedPowerUp(type);
+        game.fireTargetedPowerUp(game.gemSprites[0][0]);
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+      const [action] = JSON.parse(JSON.stringify(game.attemptMoves));
+      expect(action).toMatchObject({ type, receiptId: `receipt-${type}` });
+      expect(game.replayEligible).toBe(true);
+      expect(slot.btn.getData('count')).toBe(2);
+      const state: any = { board: def.board, specials: def.specials, shields: def.shields,
+        refillState: def.refillState, objectiveProgress: initialObjectiveProgress(def) };
+      const effect = inventoryReplayEffect(def, state, action)!;
+      const result = simulateObjectiveClear(def, state, effect.keys, effect.points)!;
+      expect(game.score).toBe(result.score);
+      expect(JSON.parse(JSON.stringify(game.board))).toEqual(result.board);
+      expect(JSON.parse(JSON.stringify(game.shields))).toEqual(result.shields);
+      expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(result.objectiveProgress);
+      expect(game.levelRng.state).toBe(result.refillState);
+      expect(game.moves).toBe(def.moves);
+    }
+  });
+
+  test('a lost receipt response retries the same use id and applies the effect once', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
+    game.isGameRunning = true; game.attemptId = 'pinned'; game.getAuthToken = () => 'token';
+    game.checkEndConditions = () => {}; game.showPowerUpAnimation = () => {};
+    game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    const calls: any[] = [];
+    game.consumePowerUpOnServer = async (type: string, token: string, useId: string, attemptId: string) => {
+      calls.push({ type, token, useId, attemptId });
+      if (calls.length === 1) throw new Error('response lost after spend');
+      return { ok: true, receiptId: 'recovered-receipt' };
+    };
+    game.usePowerUp('bomb');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual(calls[1]);
+    expect(calls[0]).toMatchObject({ type: 'bomb', token: 'token', attemptId: 'pinned', useId: expect.any(String) });
+    expect(calls[0].useId.length).toBeGreaterThanOrEqual(8);
+    expect(game.bombBtn.getData('count')).toBe(0);
+    expect(game.attemptMoves).toHaveLength(1);
+    expect(game.attemptMoves[0].receiptId).toBe('recovered-receipt');
+    expect(game.replayEligible).toBe(true);
+  });
+
+  test('a late receipt cannot apply an old booster to a replacement board', async () => {
+    const { game } = makeBrowserGame();
+    const def = generatedLevel({ level: 4, location, rulesVersion: 5 }, now);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'old';
+    game.getAuthToken = () => 'token'; game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    let confirm = (value: any) => { void value; };
+    game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
+    game.usePowerUp('bomb');
+    const next = generatedLevel({ level: 5, location, rulesVersion: 5 }, now);
+    game.applyGeneratedDefinition(next); game.attemptId = 'new'; game.isGameRunning = true;
+    confirm({ ok: true, receiptId: 'old-receipt' });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(JSON.parse(JSON.stringify(game.board))).toEqual(next.board);
+    expect(game.score).toBe(0); expect(game.attemptMoves).toHaveLength(0);
+    expect(game.bombBtn.getData('count')).toBe(1);
+    expect(game.powerUpPending).toBe(false);
+  });
+
+  test('an uncertain booster response keeps rewards possible but disables ranked replay', async () => {
+    const { game } = makeBrowserGame();
+    game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
+    game.isGameRunning = true; game.attemptId = 'pinned'; game.getAuthToken = () => 'token';
+    game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    const calls: string[] = [];
+    game.consumePowerUpOnServer = async (_type: string, _token: string, useId: string) => {
+      calls.push(useId); throw new Error('lost response');
+    };
+    game.usePowerUp('bomb');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(calls).toHaveLength(2); expect(calls[0]).toBe(calls[1]);
+    expect(game.replayEligible).toBe(false);
+    expect(game.bombBtn.getData('count')).toBe(1);
+    expect(game.attemptMoves).toHaveLength(0);
+  });
+
+  test('the player is told that a confirmed booster win is not competitive', () => {
+    const { game } = makeBrowserGame();
+    const messages: string[] = [];
+    game.playerUI = { announce: (message: string) => messages.push(message) };
+    game.powerReceipt = { receiptId: 'bound', type: 'bomb' };
+    game.showPowerUpAnimation('bomb');
+    expect(messages[0]).toContain('do not rank in competitions');
+  });
+
+  test('the signed-in spend sends the pinned attempt and receives only a server-minted receipt', async () => {
+    const { game, sandbox } = makeBrowserGame();
+    game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
+    game.attemptId = 'paid-attempt';
+    let payload: any;
+    sandbox.fetch = async (_url: string, options: any) => {
+      payload = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ success: true, result: { receiptId: 'receipt' } }) };
+    };
+    expect(await game.consumePowerUpOnServer('bomb', 'token')).toEqual({ ok: true, receiptId: 'receipt' });
+    expect(payload).toEqual({ powerupId: 'bomb', quantity: 1, attemptId: 'paid-attempt' });
+    await game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt');
+    expect(payload).toEqual({ powerupId: 'bomb', quantity: 1, attemptId: 'paid-attempt', useId: 'stable-use-001' });
+    sandbox.fetch = async () => ({ ok: false, status: 503 });
+    await expect(game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt'))
+      .rejects.toThrow('powerup_response_uncertain');
+    sandbox.fetch = async () => ({ ok: false, status: 400 });
+    expect(await game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt')).toEqual({ ok: false });
   });
 
   test('unsupported audio cannot gate valid swaps or request a reward or inventory spend', () => {
@@ -970,4 +1510,40 @@ describe('named semantic controls preserve the real Phaser rules', () => {
     game.setSelectedGem(game.gemSprites[0][0]); game.setSelectedGem(null); game.showHint();
     expect(refreshes).toBeGreaterThanOrEqual(3); game.destroy(); expect(destroys).toBe(1); expect(game.playerUI).toBeNull();
   });
+});
+
+
+describe('v5 shield boards through the real Phaser methods', () => {
+  test.each([4, 8, 12])('level %d keeps fixed shield hits, counters and textures in parity with the shared witness', (level) => {
+    const { game, sandbox } = makeBrowserGame();
+    const def = generatedLevel({ level, location, rulesVersion: 5 }, now);
+    expect(def.objectives.some((goal: any) => goal.type === 'clear-shields')).toBe(true);
+    game.applyGeneratedDefinition(def); game.isGameRunning = true;
+    assertSprites(game);
+    const initial = JSON.stringify(game.shields);
+    const hint = game.showHint();
+    expect(hint).toBeTruthy(); expect(JSON.stringify(game.shields)).toBe(initial);
+    expect(game.objectiveProgress.shieldsCleared).toBe(0);
+    const proof = certifyLevel(def);
+    for (const cells of proof.witness) {
+      if (!game.isGameRunning) break;
+      const state = { board: game.board, specials: game.specials, shields: game.shields,
+        refillState: game.levelRng.state, objectiveProgress: game.objectiveProgress };
+      const expected = simulateLevelMove(def, state, cells)!;
+      if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+      expect(JSON.parse(JSON.stringify(game.board))).toEqual(expected.board);
+      expect(JSON.parse(JSON.stringify(game.shields))).toEqual(expected.shields);
+      expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(expected.objectiveProgress);
+      expect(game.levelRng.state).toBe(expected.refillState);
+      assertSprites(game);
+    }
+    expect(game.hasWonLevel()).toBe(true); expect(game.endCalls).toBe(1);
+    expect(game.objectiveProgress.shieldsCleared).toBe(def.quality.verifiedShields);
+    const named = sandbox.InfiniteAssistiveBoard.describeCell(game, 0, 0);
+    expect(named).toBeTruthy();
+    game.applyGeneratedDefinition(def);
+    expect(JSON.stringify(game.shields)).toBe(initial);
+    expect(game.objectiveProgress.shieldsCleared).toBe(0);
+    assertSprites(game);
+  }, 20000);
 });

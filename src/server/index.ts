@@ -41,6 +41,7 @@ import analyticsRoutes from '../routes/analytics.js';
 import adsRoutes from '../routes/ads.js';
 import adminRoutes from '../routes/admin.js';
 import consentRoutes from '../routes/consent.js';
+import retentionStudyRoutes from '../routes/retention-study.js';
 import pushRoutes from '../routes/push.js';
 import experimentsRoutes from '../routes/experiments.js';
 import levelResultsRoutes from '../routes/level-results.js';
@@ -367,6 +368,7 @@ class GameServer {
     this.app.use('/api/admin', adminRoutes);
     // Player routes that check their own session and only act on the caller's own data.
     this.app.use('/api/consent', consentRoutes);
+    this.app.use('/api/retention-study', retentionStudyRoutes);
     this.app.use('/api/push', pushRoutes);
     this.app.use('/api/experiments', experimentsRoutes);
     this.app.use('/api/level-results', levelResultsRoutes);

@@ -108,6 +108,7 @@
             <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection."></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="finish-feedback" aria-label="Finish match animation" hidden>Finish <small>ANIMATION</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
+                <p class="match-endless-terms" hidden></p>
                 <div class="match-powerups" aria-label="Inventory boosters"></div>
                 <div class="match-player-account"><span data-stat="energy"></span><span data-stat="stars"></span><button type="button" data-action="account">Account</button><button type="button" data-action="shop">Shop</button><button type="button" data-action="kingdom">Kingdom</button><button type="button" data-action="season">Season</button></div>
                 <p class="match-instructions">Tap gems or swipe · 4+ earns free specials · swipe specials together · Explore has the guide</p>
@@ -181,7 +182,7 @@
             const state = root.InfiniteLevels.objectiveStatus(definition, game.score, game.objectiveProgress);
             const key = `${definition.id}|${JSON.stringify(definition.objectives)}`;
             area.classList.add('match-objectives');
-            area.setAttribute('aria-label', 'Complete every goal. Cleared gems, including special effects and cascades, count.');
+            area.setAttribute('aria-label', 'Complete every goal. Cleared gems, including special effects and cascades, count. Numbered shields take hits when gems on their fixed cells clear.');
             if (key !== goalKey) {
                 goalKey = key; area.replaceChildren(); goalLabels = [];
                 for (const goal of state.items) {
@@ -196,10 +197,10 @@
             }
             state.items.forEach((goal, index) => {
                 const slot = goalLabels[index]; if (!slot) return;
-                const name = goal.type === 'collect' ? goal.gemType : 'Score';
+                const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : 'Score';
                 slot.text.textContent = `${name} ${Math.min(goal.current, goal.target).toLocaleString()}/${goal.target.toLocaleString()}`;
                 slot.item.dataset.complete = String(goal.complete);
-                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
+                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : goal.type === 'clear-shields' ? `Clear ${goal.target} fixed shields, up to two hits each` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
             });
             progress.max = 100; progress.value = state.fraction * 100;
             progress.setAttribute('aria-valuetext', root.InfiniteLevels.objectiveSummary(definition, game.score, game.objectiveProgress, true));
@@ -232,8 +233,14 @@
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
             find('[data-action="hint"]').disabled = !game.canInteractWithBoard();
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
-            find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending || (!!game.matchFeedback?.isActive() && !game.isGameRunning);
-            find('[data-action="bank"]').disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending;
+            find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending || !!game.endlessCheckpointPending || (!!game.matchFeedback?.isActive() && !game.isGameRunning);
+            find('[data-action="bank"]').disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending || !!game.endlessCheckpointPending;
+            for (const name of ['account', 'shop', 'kingdom', 'season']) find(`[data-action="${name}"]`).disabled = !!game.endlessCheckpointPending;
+            const terms = find('.match-endless-terms');
+            terms.hidden = game.mode !== 'endless' || !game.isGameRunning;
+            if (!terms.hidden) terms.textContent = game.getAuthToken()
+                ? `Bank within 3 hours for rewards (max 300 coins / 500 XP per run). Auto-checkpoints ${game.settings?.endlessAutoContinue === true ? 'on' : 'off'}; each new run costs 1 energy.`
+                : 'Guest Endless has no clock, energy cost or account payout. Bank Run ends this run.';
             for (const [type, slot] of powerups) {
                 const button = find(`[data-powerup="${type}"]`);
                 button.disabled = !game.canInteractWithBoard() || slot.btn.getData('count') <= 0;
@@ -271,6 +278,7 @@
         function openOverlay(title) {
             if (!dialog.open) focusedBeforeDialog = document.activeElement;
             content.replaceChildren(); status.textContent = ''; find('h2').textContent = title;
+            dialog.classList.toggle('kingdom-room-dialog', title === 'Kingdom');
             if (!dialog.open) dialog.showModal();
             assistiveBoard?.sync();
             return { destroy: closeOverlay };
@@ -286,6 +294,89 @@
         function overlayButton(label, onClick) {
             const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
             button.addEventListener('click', onClick); content.append(button); return proxy(button);
+        }
+        let kingdomStorySkipped = false;
+        function renderKingdomScene(data, callbacks = {}) {
+            const scene = root.InfiniteKingdomScene;
+            if (!scene) return false;
+            const view = scene.roomView(data, callbacks.roomId);
+            content.replaceChildren();
+            const heading = find('h2');
+            heading.textContent = view.title;
+            const back = document.createElement('button');
+            back.type = 'button'; back.className = 'match-guide-close'; back.textContent = 'Back to game';
+            back.addEventListener('click', () => callbacks.close?.()); content.append(back);
+            const rooms = document.createElement('nav'); rooms.className = 'kingdom-room-nav';
+            rooms.setAttribute('aria-label', 'Kingdom rooms');
+            for (const id of scene.ROOM_IDS) {
+                const name = scene.ROOM_NAMES[id];
+                const button = document.createElement('button'); button.type = 'button';
+                button.dataset.roomId = id; button.textContent = name;
+                button.setAttribute('aria-pressed', String(view.id === id));
+                button.addEventListener('click', () => callbacks.selectRoom?.(id));
+                rooms.append(button);
+            }
+            content.append(rooms);
+            const summary = document.createElement('p'); summary.className = 'kingdom-room-summary';
+            summary.textContent = view.guest ? 'A glimpse of your future kingdom · Play without signing in.'
+                : `${view.name} · Level ${view.level}/5 · ${view.coins} coins · +${view.coinBonus}% room bonus`;
+            content.append(summary);
+            const figure = document.createElement('figure'); figure.className = 'kingdom-room-art';
+            figure.setAttribute('role', 'img');
+            figure.setAttribute('aria-label', view.level === 0 ? `The unlit ${view.name} awaits its first repair.`
+                : `The restored ${view.name}${view.selected ? ` with ${view.choices.find((choice) => choice.id === view.selected)?.name || view.selected}` : ' with an empty display'}.`);
+            figure.innerHTML = scene.artwork(view.level, view.selected, view.id); content.append(figure);
+            if (!kingdomStorySkipped) {
+                const story = document.createElement('div'); story.className = 'kingdom-room-story';
+                const words = document.createElement('p'); words.textContent = view.narrative;
+                const skip = document.createElement('button'); skip.type = 'button'; skip.textContent = 'Skip story';
+                skip.addEventListener('click', () => { kingdomStorySkipped = true; story.remove(); content.querySelector('.kingdom-room-choices h3')?.focus(); });
+                story.append(words, skip); content.append(story);
+            }
+            const renovation = document.createElement('div'); renovation.className = 'kingdom-room-renovate';
+            if (view.guest) {
+                const signIn = document.createElement('button'); signIn.type = 'button'; signIn.textContent = `Sign in to save your ${view.noun}`;
+                signIn.addEventListener('click', () => callbacks.signIn?.()); renovation.append(signIn);
+            } else if (view.next) {
+                const upgrade = document.createElement('button'); upgrade.type = 'button'; upgrade.disabled = !view.canRenovate;
+                upgrade.textContent = `Repair ${view.noun} · ${view.next.costCoins} coins${view.next.starsRequired ? ` · ${view.next.starsRequired} lifetime stars` : ''}`;
+                upgrade.addEventListener('click', () => callbacks.renovate?.(view.id)); renovation.append(upgrade);
+                if (!view.canRenovate) {
+                    const reason = document.createElement('span');
+                    reason.textContent = view.renovationReason === 'stars_required' ? 'Earn stars by winning levels.' : 'Earn more coins to repair.';
+                    renovation.append(reason);
+                }
+            } else {
+                renovation.textContent = `The ${view.noun} is fully restored.`;
+            }
+            content.append(renovation);
+            const choices = document.createElement('section'); choices.className = 'kingdom-room-choices';
+            const title = document.createElement('h3'); title.textContent = 'Choose the first look'; title.tabIndex = -1;
+            choices.append(title);
+            const note = document.createElement('p'); note.textContent = 'One display at a time. Owned décor can be used again without paying twice.';
+            choices.append(note);
+            const cards = document.createElement('div'); cards.className = 'kingdom-room-cards';
+            for (const choice of view.choices) {
+                const button = document.createElement('button'); button.type = 'button';
+                button.className = 'kingdom-room-choice'; button.dataset.decorId = choice.id;
+                button.disabled = !choice.eligible; // Keep the selected look keyboard-focusable; the server treats reselection as a free no-op.
+                button.setAttribute('aria-pressed', String(choice.selected));
+                const preview = document.createElement('span'); preview.className = 'kingdom-room-choice-art';
+                preview.setAttribute('aria-hidden', 'true'); preview.innerHTML = scene.artwork(Math.max(1, view.level), choice.id, view.id);
+                const name = document.createElement('strong'); name.textContent = choice.name;
+                const detail = document.createElement('span'); detail.textContent = choice.caption;
+                const price = document.createElement('span'); price.className = 'kingdom-room-price';
+                price.textContent = choice.selected ? 'On display' : choice.lockedBy || (choice.costCoins ? `${choice.costCoins} coins · Choose` : 'Owned · Choose');
+                button.append(preview, name, detail, price);
+                button.addEventListener('click', () => callbacks.choose?.(choice.id, view.id));
+                cards.append(button);
+            }
+            choices.append(cards); content.append(choices);
+            const more = document.createElement('button'); more.type = 'button'; more.textContent = 'Explore all rooms and décor';
+            more.addEventListener('click', () => callbacks.more?.()); content.append(more);
+            if (callbacks.focusRoom) rooms.querySelector(`[data-room-id="${view.id}"]`)?.focus({ preventScroll: true });
+            if (callbacks.focusChoice) cards.querySelector(`[data-decor-id="${callbacks.focusChoice}"]`)?.focus({ preventScroll: true });
+            return true;
         }
         function explore() {
             const wasRunning = game.isGameRunning && !game.isPaused;
@@ -306,6 +397,8 @@
             overlayButton('Account / sign in', () => game.openSignIn());
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
+            overlayButton('Weekly event', () => game.showWeeklyEvent());
+            overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
         }
         function goalGuide(wasRunning) {
@@ -369,6 +462,14 @@
                 });
                 label.append(checkbox, document.createTextNode(title)); content.append(label);
             }
+            const endlessLabel = document.createElement('label'); const endlessChoice = document.createElement('input');
+            endlessChoice.type = 'checkbox'; endlessChoice.dataset.endlessAutoContinue = 'true';
+            endlessChoice.checked = game.settings.endlessAutoContinue === true;
+            endlessChoice.addEventListener('change', () => {
+                game.settings.endlessAutoContinue = endlessChoice.checked; game.saveUserData(); refresh();
+            });
+            endlessLabel.append(endlessChoice, document.createTextNode('Auto-bank signed-in Endless at a completed stage near 100,000 points or 3 hours, then start another run using 1 energy (no automatic refill). Only after the bank is confirmed. Optional, off by default.'));
+            content.append(endlessLabel);
             overlayText('Text board uses the same puzzle and rewards. Click two adjacent cells to swap; a special is selected rather than fired. Enter or Activate special fires it. Arrows, Home/End and Control Home/End navigate; Tab leaves. Narrow text boards scroll instead of shrinking targets. Keyboard focus reveals named cells even with this preference off.');
             overlayText('Sound is generated locally, with no downloads or microphone permission. System reduced motion is respected; sound and vibration are separate, optional preferences. Hints are always free.');
             refresh();
@@ -377,7 +478,7 @@
         const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomScene,
             showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 

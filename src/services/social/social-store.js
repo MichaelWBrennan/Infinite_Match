@@ -31,7 +31,7 @@ export function socialStoreFile() {
 }
 
 const emptyData = () => ({
-  version: 1,
+  version: 2, // v2 scores only come from pinned replay; v1 client claims cannot remain ranked.
   profiles: {}, // playerId -> { name, code, createdAt }
   friends: {}, // playerId -> [playerId] (always symmetric)
   requests: {}, // toPlayerId -> [fromPlayerId]
@@ -39,6 +39,7 @@ const emptyData = () => ({
   guilds: {}, // guildId -> { id, name, ownerId, members: [playerId], createdAt }
   bestScores: {}, // playerId -> { score, level, at }
   competitions: {}, // 't:<id>' or 'c:<id>' -> tournament scores or challenge progress
+  rankReceipts: {}, // playerId -> recent paid attempt IDs applied to challenge progress
   payouts: {}, // '<kind>:<id>' -> [playerId] that have been paid
 });
 
@@ -81,6 +82,14 @@ export class SocialStore {
     try {
       const raw = await fs.readFile(this.path(), 'utf-8');
       this.data = { ...emptyData(), ...JSON.parse(raw) };
+      if (this.data.version < 2) {
+        // Do not migrate unverifiable scores or shared progress into verified boards.
+        // Preserve profiles, social links and payout receipts: resetting receipts would
+        // allow already-paid tournament/challenge prizes to be claimed twice.
+        this.data.bestScores = {};
+        this.data.competitions = {};
+        this.data.version = 2;
+      }
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
       this.data = emptyData();
@@ -312,8 +321,15 @@ export class SocialStore {
    * Records a won level. Updates the player's best score, and their score and progress in each
    * active tournament and challenge. The caller decides which competitions are active.
    */
-  recordWin(playerId, { level, score, tournamentIds = [], challengeIds = [] }) {
+  recordWin(playerId, { level, score, tournamentIds = [], challengeIds = [], attemptId = null }) {
     return this.write((d) => {
+      // A response or social-write acknowledgment may be lost after the economy pays.
+      // Replaying the same verified receipt must not increment challenge progress twice.
+      const seen = (d.rankReceipts ??= {});
+      const recent = (seen[playerId] ??= []);
+      if (attemptId && recent.includes(attemptId)) {
+        return { bestScore: d.bestScores[playerId]?.score ?? 0, duplicate: true };
+      }
       const best = d.bestScores[playerId];
       if (!best || score > best.score) d.bestScores[playerId] = { score, level, at: new Date().toISOString() };
       for (const id of tournamentIds) {
@@ -327,7 +343,8 @@ export class SocialStore {
         c.progress += 1;
         c.contributors[playerId] = (c.contributors[playerId] || 0) + 1;
       }
-      return { bestScore: d.bestScores[playerId].score };
+      if (attemptId) seen[playerId] = [...recent.slice(-63), attemptId];
+      return { bestScore: d.bestScores[playerId].score, ...(attemptId ? { duplicate: false } : {}) };
     });
   }
 

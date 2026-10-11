@@ -6,13 +6,14 @@
 import { environmentRules, blendHex } from './environment.js';
 import { hashSeed, nextRandom, legalSwaps, dealPlayableBoard, certifyBoard, simulateMove } from './match-core.js';
 import { blankSpecials, specialActions, certifySpecialBoard, simulateSpecialMove } from './special-rules.js';
+import { witnessedShields, shieldCount } from './shield-rules.js';
 import { composeObjectives, objectiveStatus, objectiveActions, simulateObjectiveMove, certifyObjectiveLevel } from './objective-rules.js';
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from './match-core.js';
 export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from './special-rules.js';
 export { composeObjectives, levelObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, simulateObjectiveClear } from './objective-rules.js';
 
 
-export const GENERATOR_VERSION = 4;
+export const GENERATOR_VERSION = 5;
 export const GEM_TYPES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 export const LEVEL_MODES = ['classic', 'timed', 'daily', 'endless'];
 
@@ -74,7 +75,7 @@ export function generationKey(levelNumber, context, mode = 'classic', version = 
 export function generateLevel(levelNumber, context, mode = 'classic', version = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(levelNumber) || levelNumber < 1) throw new RangeError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new RangeError('invalid_mode');
-  if (![2, 3, 4].includes(version)) throw new RangeError('unsupported_generator_version');
+  if (![2, 3, 4, 5].includes(version)) throw new RangeError('unsupported_generator_version');
   const level = mode === 'daily' ? 1 : levelNumber;
   const theme = levelTheme(context);
   const environment = environmentRules(context);
@@ -104,14 +105,26 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
   const fraction = isBoss ? 0.86 : 0.62 + cycle * 0.04;
   const targetScore = Math.max(100, Math.floor(Math.min(2400, proof.score * fraction) / 50) * 50);
   if (proof.witness.length !== moveBudget || proof.score < targetScore) throw new Error('level_quality_failed');
-  const goals = version >= 4 ? composeObjectives({ level, mode, seed, palette, favorite: theme.favorite, proof, targetScore, fraction })
+  let goals = version >= 4 ? composeObjectives({ level, mode, seed, palette, favorite: theme.favorite, proof, targetScore, fraction })
     : { objectives: [{ type: 'score', target: targetScore }] };
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, objectives: goals.objectives }, proof.score,
-    { collected: proof.collected }).complete) throw new Error('objective_quality_failed');
+  // Frozen v2-v4 definitions are untouched. V5 shields occupy fixed cells cleared twice
+  // on the witnessed path; score/collection mechanics and the refill stream are unchanged.
+  const shieldStage = version >= 5 && (mode === 'daily' ? hashSeed(`${seed}|shield-day`) % 3 === 0 : level >= 4 && level % 4 === 0);
+  const shields = version >= 5 ? shieldStage
+    ? witnessedShields(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankSpecials(size).map((row) => row.map(() => 0)) : null;
+  const shieldsTotal = shields ? shieldCount(shields) : 0;
+  if (shieldStage && shieldsTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-shields', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-shields', target: shieldsTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, objectives: goals.objectives }, proof.score,
+    { collected: proof.collected, ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
     ...(version >= 3 ? { specials: blankSpecials(size) } : {}),
+    ...(version >= 5 ? { shields } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -138,14 +151,15 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
       verifiedMoves: moveBudget,
       verifiedScore: proof.score,
       ...(version >= 4 ? { verifiedCollected: proof.collected, verifiedObjectives: true } : {}),
+      ...(version >= 5 ? { verifiedShields: shieldsTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score);
+export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 

@@ -37,7 +37,7 @@ describe('fully passive objective composition and certification', () => {
   });
 
   test('v4 composes score, one-color, two-color and mixed goals without authored level files', () => {
-    const definitions = Array.from({ length: 40 }, (_, index) => generateLevel(index + 1, old.context));
+    const definitions = Array.from({ length: 40 }, (_, index) => generateLevel(index + 1, old.context, 'classic', 4));
     expect(new Set(definitions.map((definition) => definition.objectiveProfile))).toEqual(new Set(['score', 'collect', 'collect-pair', 'score-and-collect']));
     expect(definitions[0].objectiveProfile).toBe('score');
     expect(definitions[1].objectiveProfile).toBe('collect'); expect(definitions[2].objectiveProfile).toBe('collect');
@@ -51,7 +51,7 @@ describe('fully passive objective composition and certification', () => {
         expect(goal.target).toBeLessThanOrEqual(70);
         expect(goal.target).toBeLessThanOrEqual(definition.quality.verifiedCollected[goal.gemType]);
       }
-      expect(generateLevel(definition.level, old.context)).toEqual(definition);
+      expect(generateLevel(definition.level, old.context, 'classic', 4)).toEqual(definition);
     }
   });
 
@@ -59,7 +59,7 @@ describe('fully passive objective composition and certification', () => {
     const profiles = new Set(); const ids = new Set();
     for (let day = 1; day <= 28; day++) {
       const context = { ...old.context, localDate: `2026-02-${String(day).padStart(2, '0')}`, month: 2, season: 'winter', holidays: [] };
-      const one = generateLevel(1, context, 'daily'); const progressed = generateLevel(100001, context, 'daily');
+      const one = generateLevel(1, context, 'daily', 4); const progressed = generateLevel(100001, context, 'daily', 4);
       expect(one).toEqual(progressed); ids.add(one.id); profiles.add(one.objectiveProfile);
       expect(objectiveStatus(one, one.quality.verifiedScore, { collected: one.quality.verifiedCollected }).complete).toBe(true);
     }
@@ -71,8 +71,8 @@ describe('fully passive objective composition and certification', () => {
     vm.runInContext(readFileSync('public/js/procedural-levels.js', 'utf8'), sandbox);
     for (const period of ['morning', 'night']) for (const condition of ['rain', 'snow', 'storm']) {
       const context = { ...old.context, timeOfDay: { period }, weather: { available: true, condition, temperatureBand: 'cold', windBand: 'windy' } };
-      const definition = generateLevel(7, context, mode);
-      expect(JSON.parse(JSON.stringify(sandbox.InfiniteLevels.generateLevel(7, context, mode)))).toEqual(definition);
+      const definition = generateLevel(7, context, mode, 4);
+      expect(JSON.parse(JSON.stringify(sandbox.InfiniteLevels.generateLevel(7, context, mode, 4)))).toEqual(definition);
       const proof = certifyLevel(definition); let state: any = stateOf(definition); let score = 0;
       for (const cells of proof.witness) {
         const expected = simulateLevelMove(definition, state, cells)!;

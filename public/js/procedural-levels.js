@@ -1944,7 +1944,8 @@ function certifyBoard(board, refillState, palette, weights, moveBudget) {
 const SPECIAL_TYPES = Object.freeze(['row', 'column', 'burst', 'prism']);
 const PRESENTATION_FRAME_LIMIT = 3; // Optional visual observations; never a rules or RNG input.
 /**
- * @typedef {{ board: string[][], specials: (string|null)[][] }} PresentationGrid
+ * @typedef {{ board: string[][], specials: (string|null)[][], shields?: number[][] }} PresentationGrid
+ * Shield snapshots are attached by the v5 wrapper only; v3/v4 traces stay unchanged.
  * @typedef {{ initial: PresentationGrid, cells: number[]|null, frames: Array<{before: PresentationGrid, after: PresentationGrid}> }} PresentationTrace
  */
 function blankSpecials(size) {
@@ -2265,6 +2266,105 @@ function certifySpecialBoard(board, refillState, palette, weights, moveBudget, s
   return { score, witness, ...(recordColors ? { collected } : {}) };
 }
 
+/** Rules v5: fixed, two-layer shield tiles. Shields are terrain, not gems: they never fall,
+ * swap, refill or block gem matches. Each actual clear on their cell removes one layer.
+ * Only the second hit destroys a two-layer shield; protected special anchors and free
+ * reshuffles do not hit them. These wrappers never alter the v2-v4 transition path. */
+
+function validShields(shields, size) {
+  return Array.isArray(shields) && shields.length === size && shields.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) => Number.isInteger(value) && value >= 0 && value <= 2));
+}
+
+function shieldCount(shields) {
+  return shields.flat().filter(Boolean).length;
+}
+
+/** Place only on cells the existing no-inventory witness actually clears enough times.
+ * This is an existence proof, not a promise of human-solvable difficulty. */
+function witnessedShields(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('shield_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  // Prefer true two-hit obstacles; on short witnesses fall back to one-hit shields.
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 2).map(([key]) => key).sort();
+  const fallback = candidates.length ? candidates : [...clears.keys()].sort();
+  const shields = blankSpecials(n).map((row) => row.map(() => 0));
+  if (!fallback.length) return shields;
+  const offset = hashSeed(`${seed}|shield-cells`) % fallback.length;
+  for (let i = 0; i < Math.min(3, fallback.length); i++) {
+    const [row, col] = fallback[(offset + i) % fallback.length].split(',').map(Number);
+    shields[row][col] = candidates.length ? 2 : 1;
+  }
+  return shields;
+}
+
+function validShieldState(definition, state) {
+  const n = state?.board?.length;
+  return validShields(definition.shields, n) && validShields(state.shields, n)
+    && state.shields.every((row, r) => row.every((hits, c) => hits <= definition.shields[r][c]));
+}
+
+function withShieldHits(result, initial) {
+  if (!result) return null;
+  const shields = initial.map((row) => row.slice());
+  // The trace is optional and read-only. Only the first three existing visual
+  // frames receive terrain snapshots; all waves still resolve in the model.
+  const trace = result.presentation;
+  if (trace) trace.initial.shields = initial.map((row) => row.slice());
+  let brokenShields = 0;
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.shields = shields.map((row) => row.slice());
+    const shieldHits = [];
+    for (const key of event.cleared) {
+      const [row, col] = key.split(',').map(Number);
+      if (!shields[row][col]) continue;
+      shields[row][col]--;
+      if (!shields[row][col]) brokenShields++;
+      shieldHits.push({ row, col, remaining: shields[row][col] });
+    }
+    if (visual) visual.after.shields = shields.map((row) => row.slice());
+    return { ...event, shieldHits };
+  });
+  return { ...result, events, shields, brokenShields };
+}
+
+function simulateShieldMove(definition, state, cells, visualTrace = false) {
+  if (!validShieldState(definition, state)) return null;
+  return withShieldHits(simulateSpecialMove(state.board, state.refillState, definition.gemTypes,
+    definition.gemWeights, cells, state.specials, true, visualTrace), state.shields);
+}
+
+function simulateShieldClear(definition, state, keys, points, visualTrace = false) {
+  if (!validShieldState(definition, state)) return null;
+  return withShieldHits(simulateSpecialClear(state.board, state.refillState, definition.gemTypes,
+    definition.gemWeights, keys, state.specials, points, true, visualTrace), state.shields);
+}
+
+/** Replay the same no-booster path used to place shields, through the exact v5 transition. */
+function certifyShieldBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, shields } = definition;
+  const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
+  const base = certifySpecialBoard(board, refillState, gemTypes, gemWeights, budget, specials, true);
+  let state = { board, refillState, specials, shields };
+  let score = 0; let brokenShields = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  for (const cells of base.witness) {
+    state = simulateShieldMove(definition, state, cells);
+    if (!state) throw new Error('shield_witness_invalid');
+    score += state.score; brokenShields += state.brokenShields;
+    for (const color of gemTypes) collected[color] += state.collected[color];
+  }
+  return { score, witness: base.witness, collected, brokenShields, shields: state.shields };
+}
+
 /**
  * Rules the server applies to a win. V4 additionally validates the pinned objectives and
  * bounded reported collection progress before applying these score-rating thresholds.
@@ -2368,8 +2468,10 @@ function validObjectives(definition) {
   const identities = new Set();
   for (const goal of objectives) {
     if (!goal || !Number.isSafeInteger(goal.target) || goal.target <= 0 || goal.target > MAX_COLLECTED_GEMS) return false;
-    if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
-    const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : 'score';
+    if (goal.type === 'clear-shields') {
+      if (definition.generatorVersion < 5 || !validShields(definition.shields, definition.boardSize) || goal.target !== shieldCount(definition.shields)) return false;
+    } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
+    const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : goal.type;
     if (identities.has(identity)) return false;
     identities.add(identity);
   }
@@ -2377,25 +2479,33 @@ function validObjectives(definition) {
 }
 
 function initialObjectiveProgress(definition) {
-  return { collected: Object.fromEntries(definition.gemTypes.map((color) => [color, 0])) };
+  return { collected: Object.fromEntries(definition.gemTypes.map((color) => [color, 0])),
+    ...(definition.generatorVersion >= 5 ? { shieldsCleared: 0 } : {}) };
 }
 
 /** Strict completion/input boundary: no coercion, unknown colors, fractions, negatives or unbounded counts. */
 function validObjectiveProgress(definition, progress) {
   const record = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
-  return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === 1 && record(progress.collected)
+  return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === (definition.generatorVersion >= 5 ? 2 : 1)
+    && (definition.generatorVersion < 5 || (validShields(definition.shields, definition.boardSize)
+      && Object.hasOwn(progress, 'shieldsCleared') && Number.isSafeInteger(progress.shieldsCleared) && progress.shieldsCleared >= 0
+      && progress.shieldsCleared <= shieldCount(definition.shields))) && record(progress.collected)
     && Object.keys(progress.collected).length <= definition.gemTypes.length
     && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
       && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
 }
 
-function addObjectiveProgress(definition, previous, collected) {
+function addObjectiveProgress(definition, previous, collected, brokenShields = 0) {
   if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
   const next = initialObjectiveProgress(definition);
   for (const color of definition.gemTypes) {
     const increment = ownCount(collected, color);
     if (!Number.isSafeInteger(increment) || increment < 0) throw new RangeError('invalid_collection_delta');
     next.collected[color] = Math.min(MAX_COLLECTED_GEMS, ownCount(previous.collected, color) + increment);
+  }
+  if (definition.generatorVersion >= 5) {
+    if (!Number.isSafeInteger(brokenShields) || brokenShields < 0 || previous.shieldsCleared + brokenShields > shieldCount(definition.shields)) throw new RangeError('invalid_shield_delta');
+    next.shieldsCleared = previous.shieldsCleared + brokenShields;
   }
   return next;
 }
@@ -2407,7 +2517,8 @@ function objectiveStatus(definition, score, progress) {
   const safeScore = scoreValid ? score : 0;
   const validProgress = progress !== undefined && validObjectiveProgress(definition, progress);
   const items = levelObjectives(definition).map((goal) => {
-    const current = goal.type === 'score' ? safeScore : validProgress ? ownCount(progress.collected, goal.gemType) : 0;
+    const current = goal.type === 'score' ? safeScore : !validProgress ? 0
+      : goal.type === 'clear-shields' ? progress.shieldsCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -2422,7 +2533,7 @@ function objectiveStars(definition, score, progress) {
 function objectiveCompletionError(definition, score, progress) {
   if (!Number.isSafeInteger(score) || score < 0) return 'invalid_score';
   if (!validObjectives(definition)) return 'invalid_level_objectives';
-  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect');
+  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields');
   if (collects && progress === undefined) return 'objective_progress_required';
   if (progress !== undefined && !validObjectiveProgress(definition, progress)) return 'invalid_objective_progress';
   const status = objectiveStatus(definition, score, progress);
@@ -2432,24 +2543,29 @@ function objectiveCompletionError(definition, score, progress) {
 
 function objectiveDescription(definition) {
   return (levelObjectives(definition) || []).map((goal) => goal.type === 'collect'
-    ? `Collect ${goal.target} ${goal.gemType}` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+    ? `Collect ${goal.target} ${goal.gemType}` : goal.type === 'clear-shields'
+      ? `Clear ${goal.target} shields (numbered hits)` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
 }
 
 function objectiveSummary(definition, score, progress, showRemaining = false) {
   return objectiveStatus(definition, score, progress).items.map((goal) => {
-    const name = goal.type === 'collect' ? goal.gemType : 'Score';
+    const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : 'Score';
     const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
     return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
   }).join(' · ');
 }
 
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
-function objectiveActions(definition, board, specials, progress, score = 0) {
+function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
   for (const action of actions) {
+    const shieldResult = goals.some((goal) => goal.type === 'clear-shields') && shields
+      ? simulateShieldMove(definition, { board, specials, refillState, shields }, action.cells) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
-      goal.type === 'score' ? action.points : action.collected[goal.gemType] || 0) / goal.target, 0);
+      goal.type === 'score' ? action.points : goal.type === 'clear-shields'
+        ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
+        : action.collected[goal.gemType] || 0) / goal.target, 0);
   }
   return actions;
 }
@@ -2457,22 +2573,27 @@ function objectiveActions(definition, board, specials, progress, score = 0) {
 function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
-  const result = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
+  const result = definition.generatorVersion >= 5
+    ? simulateShieldMove(definition, state, cells, visualTrace)
+    : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
+  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields) } : null;
 }
 
 function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
-  const result = simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected) } : null;
+  const result = definition.generatorVersion >= 5
+    ? simulateShieldClear(definition, state, keys, points, visualTrace)
+    : simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
+  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields) } : null;
 }
 
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
 function certifyObjectiveLevel(definition) {
   const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
-  const proof = certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
-  const objectiveProgress = { collected: proof.collected };
+  const proof = definition.generatorVersion >= 5 ? certifyShieldBoard(definition)
+    : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
+  const objectiveProgress = { collected: proof.collected, ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}) };
   return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }
 
@@ -2483,7 +2604,7 @@ function certifyObjectiveLevel(definition) {
  */
 
 
-const GENERATOR_VERSION = 4;
+const GENERATOR_VERSION = 5;
 const GEM_TYPES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 const LEVEL_MODES = ['classic', 'timed', 'daily', 'endless'];
 
@@ -2545,7 +2666,7 @@ function generationKey(levelNumber, context, mode = 'classic', version = GENERAT
 function generateLevel(levelNumber, context, mode = 'classic', version = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(levelNumber) || levelNumber < 1) throw new RangeError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new RangeError('invalid_mode');
-  if (![2, 3, 4].includes(version)) throw new RangeError('unsupported_generator_version');
+  if (![2, 3, 4, 5].includes(version)) throw new RangeError('unsupported_generator_version');
   const level = mode === 'daily' ? 1 : levelNumber;
   const theme = levelTheme(context);
   const environment = environmentRules(context);
@@ -2575,14 +2696,26 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
   const fraction = isBoss ? 0.86 : 0.62 + cycle * 0.04;
   const targetScore = Math.max(100, Math.floor(Math.min(2400, proof.score * fraction) / 50) * 50);
   if (proof.witness.length !== moveBudget || proof.score < targetScore) throw new Error('level_quality_failed');
-  const goals = version >= 4 ? composeObjectives({ level, mode, seed, palette, favorite: theme.favorite, proof, targetScore, fraction })
+  let goals = version >= 4 ? composeObjectives({ level, mode, seed, palette, favorite: theme.favorite, proof, targetScore, fraction })
     : { objectives: [{ type: 'score', target: targetScore }] };
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, objectives: goals.objectives }, proof.score,
-    { collected: proof.collected }).complete) throw new Error('objective_quality_failed');
+  // Frozen v2-v4 definitions are untouched. V5 shields occupy fixed cells cleared twice
+  // on the witnessed path; score/collection mechanics and the refill stream are unchanged.
+  const shieldStage = version >= 5 && (mode === 'daily' ? hashSeed(`${seed}|shield-day`) % 3 === 0 : level >= 4 && level % 4 === 0);
+  const shields = version >= 5 ? shieldStage
+    ? witnessedShields(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankSpecials(size).map((row) => row.map(() => 0)) : null;
+  const shieldsTotal = shields ? shieldCount(shields) : 0;
+  if (shieldStage && shieldsTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-shields', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-shields', target: shieldsTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, objectives: goals.objectives }, proof.score,
+    { collected: proof.collected, ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
     ...(version >= 3 ? { specials: blankSpecials(size) } : {}),
+    ...(version >= 5 ? { shields } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -2609,14 +2742,15 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
       verifiedMoves: moveBudget,
       verifiedScore: proof.score,
       ...(version >= 4 ? { verifiedCollected: proof.collected, verifiedObjectives: true } : {}),
+      ...(version >= 5 ? { verifiedShields: shieldsTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score);
+function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
@@ -2638,5 +2772,5 @@ function certifyLevel(definition) {
     : certifyBoard(board, refillState, gemTypes, gemWeights, budget);
 }
 
-root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, PRESENTATION_FRAME_LIMIT, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
+root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, PRESENTATION_FRAME_LIMIT, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, validShields, shieldCount, witnessedShields, simulateShieldMove, simulateShieldClear, certifyShieldBoard, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
 })(globalThis);

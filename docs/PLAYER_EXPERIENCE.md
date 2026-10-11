@@ -24,11 +24,130 @@ The initial foundation did not redesign match rules or the economy. The earned-s
 - **Six combination families:** Beam + Beam cross; Beam + Burst three rows and columns; Burst + Burst 5×5; Prism + Row/Column Beam or Burst converts ordinary gems of the partner color and fires them, including the partner; Prism + Prism whole board. Effects clip at board edges, chain old specials once per wave, and resolve/refill deterministically.
 - **Clear identities:** retain each gem's color, shape and letter, with a separate high-contrast **vector-drawn** horizontal-arrow, vertical-arrow, burst-cross or prism-star badge. No Unicode glyph/remote font is required for badge rendering. Keyboard announcements name specials. Explore → Special gem guide displays the actual icons and rules; it pauses/resumes without surprise. Staged feedback now shows actual clears and protected earning anchors (see below); haptic feedback remains independently opt-in.
 - **One rules implementation:** `special-rules.js` drives certification, free hints, browser moves and inventory-clearing chains. Origins track surviving pieces for sprite reuse; tests check unique sprites, texture/data/positions, special state, RNG and scores. Inventory boosters remain separate, retain server-confirmed spending/base awards and do not consume an ordinary move.
-- **Safe upgrade:** that increment introduced `rulesVersion: 3` (the current objective client advertises 4); untagged procedural API clients receive frozen v2 definitions. Explicit v2 stays available; unsupported versions are rejected before energy spend. Existing paid definitions keep their target/rules, and old endless runs retain v2 at new stage boundaries. The original one-pending-attempt replacement policy is unchanged.
+- **Safe upgrade:** that increment introduced `rulesVersion: 3` (subsequent objective clients advertised 4; the current shield client advertises 5); untagged procedural API clients receive frozen v2 definitions. Explicit v2 stays available; unsupported versions are rejected before energy spend. Existing paid definitions keep their target/rules, and old endless runs retain v2 at new stage boundaries. The original one-pending-attempt replacement policy is unchanged.
 - **Still 100% passive:** all production boards are generated and certified on demand, with no authored levels, paid boosters required, AI calls, art downloads or new services. Synthetic boards in automated tests are effect/input fixtures only, not a production level bank.
 
 This is implemented and automatically tested; the human learning/enjoyment and physical-device gates below are **not yet achieved**.
 
+
+## Delivered Endless in-app checkpoint option (web)
+
+Generated Endless stages already advance automatically without a clock or
+level bank. A **new, off-by-default local preference** can bank a signed-in
+run after a completed stage at 100,000 points or roughly 2h45m, ahead of the
+server's three-hour attempt expiry. Only a confirmed bank starts the next
+server-issued stage-one attempt, charging its existing **one energy**. No
+energy is bought or refilled automatically. A denied, expired or uncertain
+bank never triggers a second charge; the in-game text explains the three-hour
+claim window and the current 300-coin/500-XP per-run caps. Guests continue
+without a paid attempt; manual Bank Run remains available. The next run can
+be refused if energy/network access is unavailable, and a long unfinished
+stage can still cross the three-hour payout deadline. This is not a literal
+promise of infinite saved state or unlimited rewards.
+
+**Business/player ROI is unmeasured.** Measure voluntary continued play,
+completion/banking success, drop-off, return, support/refund reports and net
+contribution per consenting cohort before changing monetization. Endless
+banking still accepts a bounded client-reported score and is unranked; server
+replay is required before consequential rewards. Endless settlement now uses a
+single economy-document write under the in-process player lock for the attempt,
+XP (including level-up coin/star/inventory rewards), coins, stats and a bounded
+receipt. A lost response is retried once with the **same** attempt ID and score;
+a duplicate returns the original payout, while a changed score is rejected and
+no additional energy is spent until a bank is confirmed. The last 32 receipts
+are kept; older retries are rejected, never repaid. A second uncertain response
+still stops auto-continuation. Endless XP now uses the same 1.2 threshold
+progression as ordinary rewards; a parity test covers the level, leftover XP,
+coins, stars and inventory.
+
+In Mongo mode, every economy save now compares the document revision and only
+initialization may insert a missing document. A stale worker fails and drops
+its cached copy rather than erasing a newer receipt or balance. An Endless
+claim additionally checks the pending ID and can re-evaluate on a fresh revision;
+other conflicting operations are **not** silently retried (some are not safely
+idempotent). In-process currency, inventory, progression and daily calls share
+a re-entrant per-player lock with existing reward flows. The revision guard is
+not a distributed transaction: paid classic/daily and Endless wins now settle
+in one write with bounded retry receipts; the daily claim (including season XP),
+wheel prize, level-up XP/rewards and catalog purchase also each save together.
+Provider-ledger coin grants and refunds now record permanent SHA-256-keyed credit/debit
+receipts alongside their balance changes in single revision-guarded economy saves.
+Uncertain credit writes retain the ledger claim; retries or refunds can confirm a
+committed credit from its durable receipt before proceeding. A refund retries an
+uncertain debit from its receipt, and takes back only the amount actually credited
+when a wallet hit its cap. Receipt capacity is fail-closed (4,096 each, no eviction).
+A held refund after debit-before-ledger-mark can complete on redelivery when a
+matching receipt exists. A held grant or refund **without** its receipt (especially
+historical unreceipted operations) still needs manual investigation; never blindly
+clear a claim. An admin-only, read-only [payment-claim triage report](PAYMENT_CLAIM_OPERATIONS.md)
+summarizes a bounded sample of claims older than 15 minutes without exposing identifiers
+or resetting them; missing receipts are never proof that a write did not commit. The
+payment ledger and economy still span stores without a distributed transaction.
+Some route-level mutations remain outside a player lock, and reads may be briefly
+stale. The stand-in store tests exercise stale workers and legacy revision migration;
+no live Mongo
+concurrency/integration test has been run. Keep single-writer deployment and
+low-stakes rewards until the remaining multi-store flows and production fault
+injection are addressed. A replay-verified social win retries idempotently with
+its original competition IDs if a social-file write failed. Challenge/tournament
+coin payouts now carry permanent event-keyed economy receipts; challenge XP joins
+the coin grant in one guarded save when a valid season is active. An unreceipted
+held social reservation remains ambiguous and needs manual review, not a second
+grant. See [competition payout operations](SOCIAL_PAYOUT_OPERATIONS.md). No
+background outbox or distributed social store is available. A client-reported classic or
+daily result without a transcript can still earn bounded account rewards and
+inflate personal stats; these results remain unranked.
+Do not convert the opt-in into a surprise energy spend or a pressure loop.
+
+## Delivered kingdom scene increment — Royal Library (web)
+
+Explore → Kingdom now lets players switch between two original authored rooms:
+**Throne Hall** (Hall of Echoes) and **Royal Library** (Library of Lanterns).
+The library has its own book-lined SVG setting, unlit/repaired states, short skippable
+story and three room-specific first-look previews. Each room reads its own server
+level, star/coin gate, décor, inventory availability and prices. Guest previews
+remain read-only, and the broader six-room décor screen remains available.
+The room buttons are labeled native controls; focus returns to the chosen room
+button after a load, or the chosen décor after a purchase. Tab changes reuse the
+last server snapshot; repair/choice responses refresh it. Requests and old button
+callbacks are room-bound so rapid switching cannot buy or repair the other room.
+This is not a new economy or puzzle rules version. Four rooms remain numeric;
+real-device visuals, keyboard/screen-reader behavior and human discovery/interest
+are still unvalidated.
+
+## Delivered kingdom scene expansion — all six rooms (web)
+
+The four remaining server-owned rooms now have their own original illustrated
+before/after scenes and optional short story beats: the Royal Garden, Armory,
+Gatehouse and Chapel. Alongside the Hall and Library, all six native room buttons
+share the same server-priced repair/stock rules and read-only guest previews.
+Tab changes reuse the latest kingdom snapshot; old room callbacks cannot spend
+in the currently selected room. A responsive two- or three-column room selector
+remains scrollable in the existing native dialog. This completes a visible first
+look for every existing room, **not** an explorable world or chapter campaign.
+Physical-device, screen-reader and first-session comprehension testing remain open.
+
+## Delivered first obstacle slice — fixed shields (rules v5)
+
+The shared engine now has numbered fixed shield terrain. A clear over a shield
+removes one layer without blocking normal gem scoring, color collection, gravity
+or refills. Some numbered/daily levels require clearing every shield, optionally
+alongside score. Generation places shields only where a no-booster witness clears
+them twice; hints, server-pinned progress checks and the browser use the shared
+v5 rules. The board has original numbered shield textures, and native goals and
+named cells expose remaining hits. Old v2/v3/v4 definitions stay frozen.
+V5 shield boards now use bounded read/fade/fall staging with fixed numbered terrain
+frames: each hit changes the number in place, never on a falling gem. The same
+read-only three-wave trace is used for inventory clears and ordinary actions;
+read-only stage labels and one live announcement identify shield damage. Reduced
+motion, text-board preference, background/pause or failed presentation falls back
+to the already-committed board. No scoring, replay, reward or paid-definition rule
+changed. Automated rule/Phaser parity and paid-validation tests pass;
+physical devices, assistive-tech users and human fairness testing remain open.
+The Chromium smoke script includes a shield-board touch/texture/goal check, but
+has **not been rerun for this increment** in this sandbox (no Chrome/Chromium executable installed).
+The older verification snapshot below predates the shield increment.
+See [the rules and limits](PROCEDURAL_LEVELS.md#fixed-shield-tiles--shared-rules-v5).
 
 ## Delivered objective increment — passive collection goals (rules v4)
 
@@ -36,7 +155,7 @@ This is implemented and automatically tested; the human learning/enjoyment and p
 - **Clear progress:** gem icons preserve color, shape and letter; named current/target counters and a multi-goal meter stay above/beside the puzzle. Remaining-goal summaries explain wins/losses. Explore → Level goal guide gives counting rules, extra-star thresholds and active local-variant details. Short-screen context/status text is bounded so feedback does not take over the board; landscape status text no longer overlays puzzle cells.
 - **Consistent collection:** count actual clears from matches, cascades, earned specials and optional inventory effects. Do not count protected creation anchors, newly spawned gems, conversion without clearing, free repairs or inventory score awards. Counters persist across actions and reset on replay/new attempts or completed endless stages.
 - **Fair declared conditions:** every visible goal is required. Collection-only completion earns at least one star without a hidden score condition; score can earn extra stars using the pinned rating baseline. Mixed/pair goals cannot be bypassed with a huge score. Goal-aware free hints favor useful immediate progress without changing model/RNG/counters or spending a move/charge.
-- **Funded compatibility:** updated clients advertise v4; explicit v2/v3 and untagged HTTP v2 retain their exact definitions/score goals. Server completion checks only the pinned goals and bounded reported counters under the player lock, before consumption. Invalid/incomplete claims retain the attempt; simultaneous valid claims award once. Client-authored goals/stars are ignored; one-pending-attempt replacement, energy/inventory costs, reward table and partial-stage endless banking remain unchanged.
+- **Funded compatibility:** that increment advertised v4; the current client advertises v5; explicit v2/v3 and untagged HTTP v2 retain their exact definitions/score goals. Server completion checks only the pinned goals and bounded reported counters under the player lock, before consumption. Invalid/incomplete claims retain the attempt; simultaneous valid claims award once. Client-authored goals/stars are ignored; one-pending-attempt replacement, energy/inventory costs, reward table and partial-stage endless banking remain unchanged.
 - **Limits remain honest:** reported counters are not server replay anti-cheat. Automated solvability is not evidence that players understand/enjoy these goals or finish timed levels. Human and physical-device gates remain open.
 
 ## Delivered presentation increment — original optional sound
@@ -71,8 +190,8 @@ This is presentation work, not a new generator/rules version or another level de
 
 ## Known gaps — do not overstate this release
 
-- Earned specials and combinations are implemented; inventory boosters are a separate optional system. Score/collection objectives are implemented; obstacles are not. Original optional audio is implemented, but physical-device/autoplay/output-policy and human listening-quality validation remain open. Staged v3/v4 feedback is implemented with a three-wave cap; frozen v2 retains basic presentation. Human balance/learning/pacing and physical-device performance studies remain work.
-- A certified winning witness proves one feasible no-booster path, **not** fun, intuitive difficulty, good hint quality or a human win within a timed limit. Submitted scores/collection counters are not server-replay verified.
+- Earned specials and combinations are implemented; inventory boosters are a separate optional system. Score/collection objectives and one fixed shield family are implemented; other obstacles are not. Original optional audio is implemented, but physical-device/autoplay/output-policy and human listening-quality validation remain open. Staged v3/v4 feedback is implemented with a three-wave cap; frozen v2 retains basic presentation. Human balance/learning/pacing and physical-device performance studies remain work.
+- A certified winning witness proves one feasible no-booster path, **not** fun, intuitive difficulty, good hint quality or a human win within a timed limit. Only booster-free v4/v5 classic/daily submissions with valid ordered transcripts enter competitive boards. Receipt-bound inventory effects can now be server-replayed and paid as `verified` but stay `ranked: false` to avoid pay-to-win boards; timed, endless and old-client wins remain unverified but payable.
 - A semantic named-cell grid, roving native controls and text-board view are implemented. They are **not** a complete screen-reader usability or accessibility conformance result. Real assistive-technology testing of navigation, activation, speech order, verbosity and touch exploration remains necessary.
 - Gem-cell pitch can be below 44px on small/short screens (about 36px for the tested 320px 8×8 large-text layout; about 38px in the earlier standard-text 8×8 check). The ordinary-button minimum must not be presented as a guarantee for every visual gem. The named text view keeps ≥52px targets by scrolling; this does not enlarge the default canvas grid or prove usable touch exploration. Large text and browser zoom need further real-device/reflow validation.
 - Automated browser runs use Chromium viewport/touch emulation. They are not real iPhone/Safari/Android-device tests, performance benchmarks, human playtests, full payment/account E2E, or a production-stack certification. Real external forecasts remain unavailable in this sandbox; generation uses the documented provider-off fallback here.
@@ -86,13 +205,15 @@ These are implementation priorities and **proposed acceptance gates**, not measu
 | --- | --- | --- |
 | **P0 — validate this foundation** | Physical phone/tablet testing, Safari/Firefox coverage, fast-tap/multitouch interruptions, timed pause/background/reconnect behavior, named-grid assistive-technology/text/zoom/focus audits, error recovery, learning/pacing/performance validation of the delivered staged feedback and opt-in sound/mute controls | No blocking input/layout/lost-state defects in the device matrix; deterministic parity with motion on/off; no automatic sound or vibration surprise; meet the performance and usability gates below. |
 | **P1 — strategic depth implemented; validate learning** | Earned specials and combinations now use shared v3 rules, accessible controls, icons/guide and feedback | Automated certification, upgrade/economy and client parity checks pass. Still require at least 80% of representative test players to predict the basic effects after a short introduction; that human gate has not been measured. |
-| **P1 — collection objectives implemented; validate learning** | Shared v4 score/collection composition, gradual onboarding, goal-aware hints, icon/counter HUD, guide and remaining-goal summaries | Automatic all-goal certification and pinned paid compatibility pass without authored levels. Still require at least 90% of new players to explain the current goal after 20 seconds; this human gate is unmeasured. Obstacles remain future work. |
+| **P1 — collection objectives implemented; validate learning** | Shared v4 score/collection composition, gradual onboarding, goal-aware hints, icon/counter HUD, guide and remaining-goal summaries | Automatic all-goal certification and pinned paid compatibility pass without authored levels. Still require at least 90% of new players to explain the current goal after 20 seconds; this human gate is unmeasured. Other obstacles and human validation remain future work. |
 | **P2 — prove quality at scale** | Seed-cohort playtests, automatic difficulty/variety diagnostics, reliable save/reconnect, score replay validation, consent-respecting quality telemetry | Report player-experience metrics with sample sizes and device breakdowns; no stale/duplicate rewards; rankings are replay-verified before claiming competitive fairness. Runtime safeguards remain useful without telemetry consent. |
 | **P3 — polish progression** | Cohesive original art/audio, calm progression and optional social features, localization and real assistive-technology validation of the delivered named grid | Compare against the prior build with representative players; release only if readability, perceived fairness and enjoyment improve without slower first play or disruptive popups. Do not copy another game's branding/assets. |
 
 ### Measurable release gates
 
-Record the device/browser, build, seed/context, network profile and sample size for every result. Store performance traces/playtest notes separately from player identities; avoid exact location, touch-coordinate tracking or advertising identifiers.
+The [offline web first-play/fairness study kit](WEB_FIRST_PLAY_STUDY.md) is ready for an operator to conduct the learning and loss-fairness pilot, but **no real-player result has been collected**. A green local report evaluates submitted records only; it is not proof of observed people or a release decision. The separate [optional signed-in D1/D7 web return study](WEB_RETURN_STUDY.md) is off by default and also has no real cohort evidence yet. An [offline consented session-stability evaluator](WEB_SESSION_STABILITY.md) is also ready but has no real beta sessions and cannot detect crashes by itself. Device, access and crash-free gates remain open.
+
+Record device/browser, build, coarse network profile and sample size for every result. Track seed/context coverage separately using a secret-keyed group or operator-assigned non-reversible label; do not put raw seeds or precise location into study records. Store performance traces/playtest notes separately from player identities; avoid touch-coordinate tracking or advertising identifiers.
 
 | Area | Proposed gate | How to validate |
 | --- | --- | --- |

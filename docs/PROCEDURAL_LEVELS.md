@@ -14,6 +14,16 @@ Levels are made and checked on demand.
 - **Endless:** one attempt, unlimited generated stages with finite goals. Reaching
   every declared stage goal automatically creates the next board. There is no clock or move limit;
   the **Bank Run** button finishes the run and submits its cumulative score once.
+  Signed-in attempts expire for rewards after 3 hours. An optional local Play
+  preference (off by default) banks at a completed stage when the run reaches
+  100,000 points (the current 500-XP cap) or about 2h45m, then starts a fresh
+  one-energy run in the same app **only after a confirmed bank**. It never buys
+  energy or auto-refills. An uncertain payout is retried once with the same
+  attempt ID and score; a duplicate receipt returns the original reward. If
+  banking is refused, the player gets a clear result instead of another charge. Guest stages still
+  advance without account spending or a clock. This is a bounded paid-run
+  checkpoint, not a guarantee of literal infinity, uninterrupted offline
+  account rewards, or a verified Endless score.
 - **Today's Local Level:** a new daily seed/ID at the player's next local midnight.
   It is a real generated board, not a date mapped into a fixed bank of 300 levels.
   Morning/afternoon/evening/night and forecast bands now produce separate daily
@@ -43,8 +53,8 @@ The score-rating baseline is 100–2,400 points and classic/daily budgets are 20
 
 This is an existence proof of a winning path, not a promise that every choice
 wins, that every puzzle is equally enjoyable, or that every human can meet a
-60-second timed deadline. The current mechanics are score/collection-based match-3; obstacles and portals
-are not introduced by this work.
+60-second timed deadline. The current mechanics are score/collection/shield-based match-3; other blockers,
+delivery goals, portals and boss combat are not implemented.
 
 ## Earned specials — shared rules v3
 
@@ -81,13 +91,47 @@ spend an ordinary move. No energy cost/reward or inventory price is changed.
 The model is a color board plus a parallel `specials` grid (null/row/column/burst/prism).
 `levelActions`, `simulateLevelMove` and `certifyLevel` dispatch by the frozen
 definition's generator version; callers must preserve both grids, refill state
-and v4 `objectiveProgress` between actions. Two-coordinate witness actions are taps, four-coordinate
+and v4/v5 `objectiveProgress` (plus v5 `shields`) between actions. Two-coordinate witness actions are taps, four-coordinate
 actions are swaps. Use these wrappers for new play instead of the legacy plain
 `simulateMove`/`certifyBoard` functions. Hints estimate immediate effects, not the
 optimal winning sequence. The rendered icons retain the base shape/letter and
 use font-independent vector badges. Explore provides the icon/rule guide;
 Space selects for keyboard combinations and Enter activates.
 
+
+## Fixed shield tiles — shared rules v5
+
+Every fourth numbered level from level 4 and some seeded daily variants introduce up
+to three shields on fixed board cells. A number on each blue-white border shows one
+or two hits remaining. A gem clears normally on that cell (including with earned
+specials or confirmed inventory boosters), removes one layer and refills; the shield
+**stays on the cell**, not the gem. Later cascades may hit it again. Protected
+special anchors, refills, no-move repairs and invalid swaps never hit a shield.
+A shield is gone at zero; only this removal counts toward `shieldsCleared`. No
+additional move, charge, score or random draw is introduced by the terrain.
+
+V5 `clear-shields` objectives target **all shields on the original board**, with
+an optional score goal. Every placement is selected from cells actually cleared
+sufficient times by the deterministic no-inventory witness; the witness is
+replayed through v5 transitions to verify the goals. The other stages continue
+to use the v4 goal families under v5's seed. This proves feasibility, not human
+balance. Hints prefer remaining shield hits; names and HUD say how many hits
+remain and how many shields are gone. Optional v5 presentation snapshots capture
+the first three shield waves without altering the deterministic resolver. A fixed
+numbered terrain overlay stays in its cell while gems fall; each hit updates its
+remaining number in place. Reduced-motion/text-board modes use immediate results.
+This is not a screen-reader/device or human-comprehension sign-off.
+
+Older v2/v3/v4 definition IDs, generator output, paid attempts and score/goal
+behavior remain frozen. V5 clients carry `shields` in the transition state and
+send `{collected: {...}, shieldsCleared: integer}` for a paid win. The server
+requires a bounded count between zero and the original number of shields, and
+checks every pinned goal. Current v4/v5 classic/daily clients also submit pinned
+moves for deterministic server replay (including attempt-bound inventory receipts)
+before a result is `verified`. Old clients, timed and endless paths can still
+receive existing account rewards without replay, but not competitive progress;
+this does not prove human play or safe consequential prizes. See the competitive
+replay boundary below.
 
 ## Varied objectives — shared rules v4
 
@@ -280,8 +324,8 @@ weather conditions, dates and endpoint URLs are ignored.
 | --- | --- |
 | `GET /api/levels/context` | Local date/season/holidays, clock period, forecast bands/source and next variant boundary |
 | `GET /api/levels/regions?country=US` | Country catalog and optional state's/province's supported codes |
-| `GET /api/levels/daily?rulesVersion=4` | Current local daily time/weather variant |
-| `GET /api/levels/12345?mode=classic&rulesVersion=4` | A generated numbered level (`classic`, `timed`, `endless`) |
+| `GET /api/levels/daily?rulesVersion=5` | Current local daily time/weather variant |
+| `GET /api/levels/12345?mode=classic&rulesVersion=5` | A generated numbered level (`classic`, `timed`, `endless`) |
 
 All are public previews, marked `Cache-Control: private, no-store`. Invalid
 numbers, time zones, countries and regional codes return 400. Definitions are
@@ -289,12 +333,12 @@ cached in a bounded server cache keyed by normalized calendar, clock/weather
 bands, area and level. Fetch timestamps/small temperature changes do not alter
 puzzle identity. Version 2 introduced time/weather seed rules; version 3 adds
 earned specials and special-aware certification; version 4 adds shared collection
-objectives/progress. The cache includes the rules version.
+objectives/progress; version 5 adds fixed shield tiles and clear-shields goals. The cache includes the rules version.
 
 **Compatibility handshake:** omit `rulesVersion` to receive v2 (for deployed
-plain-gem procedural clients); send numeric/string `2`, `3` or `4` explicitly to choose
+plain-gem procedural clients); send numeric/string `2`, `3`, `4` or `5` explicitly to choose
 a supported version. Unsupported values return 400 `unsupported_rules_version`.
-The new browser always advertises 4. Full frozen v2/v3 definitions and witnesses
+The new browser always advertises 5. Full frozen v2/v3/v4 definitions and witnesses
 remain unchanged, rather than recertifying an old paid goal under different rules.
 
 Signed-in play obtains its definition **atomically with the energy spend**:
@@ -303,7 +347,7 @@ Signed-in play obtains its definition **atomically with the energy spend**:
 {
   "level": 1,
   "mode": "daily",
-  "rulesVersion": 4,
+  "rulesVersion": 5,
   "location": {
     "timeZone": "America/New_York",
     "country": "US",
@@ -316,7 +360,7 @@ Send this to `POST /api/account-economy/energy/spend`. The response includes
 `attemptId`, numeric `level`, energy, and `generatedLevel`. Daily starts at 1;
 endless must start at 1 and keeps that attempt while progressing through stages,
 using the original attempt's rule version. Unsupported versions are refused before
-energy spending. Internal generation/tooling defaults to v4; untagged HTTP
+energy spending. Internal generation/tooling defaults to v5; untagged HTTP
 procedural clients deliberately default to v2.
 
 Normal/daily wins still use `POST /api/account-economy/level/complete`; endless
@@ -333,19 +377,84 @@ For v4 collection/mixed wins, send `objectiveProgress` alongside `level`, `score
 and `attemptId`. The strict shape is `{collected: {...}}`: palette keys only,
 nonnegative safe integers ≤1,000,000 per color; omitted palette entries count as
 zero. Goals/targets/stars in the request are never trusted. V4 score-only goals
-can omit progress. V2/v3 remain score-only and require no new counters.
+can omit progress. V5 paid wins send the strict shape `{collected: {...}, shieldsCleared: 0..originalShieldCount}`; even score-only v5 play keeps this state locally. V2/v3 remain score-only and require no new counters.
 
 Missing collection progress returns `objective_progress_required`; malformed
 progress returns `invalid_objective_progress`; unmet score returns
 `score_below_target`; unmet colors return `objectives_incomplete`. Invalid or
-incomplete claims do not consume the pending attempt. Concurrent successful
-claims still consume/reward only once. These checks occur before consumption,
-inside the existing player lock, without changing inventory/economy economics.
+incomplete claims do not consume the pending attempt. Concurrent identical
+claims pay once and return the original receipt on retry; a different score,
+progress or transcript for that attempt is rejected. Validation and the capped
+XP/level-up, coin/star, statistics, weekly-win and season grants now share one
+revision-guarded economy write under the player lock. The last 32 receipts are
+retained; older attempts are rejected, never repaid. The browser retries an
+uncertain payout once using the identical request body. The separate social
+score file can lag an economy commit; a pinned, replay-verified receipt can
+reapply its tournament/challenge contribution idempotently on retry, but there
+is no background delivery or multi-server social store yet.
 
-The server still does not replay client moves for anti-cheat: fabricated score
-**or collection counters** can earn the bounded payout once per paid attempt, as
-documented in README. Strict bounds/pinned goals do not prove honest play.
-The solver certifies **level feasibility**, not the truth of submitted progress.
+### Competitive replay boundary
+
+For a v4/v5 **classic or daily** win, the web client sends `moves` with `level`,
+`score`, `objectiveProgress` and `attemptId`. `moves` is an ordered array of
+zero-based two-integer taps (`[row,col]`), four-integer swaps
+(`[row,col,row,col]`) and optional inventory actions such as
+`{receiptId, type: 'target', target: [row,col]}`. Rainbow has no target;
+lightning uses `[0,column]`. The server re-simulates from the **paid, pinned
+definition** under the same per-player lock as attempt consumption. An ordinary
+move spends one budget slot; inventory actions spend no move, but must each
+match a unique server-minted receipt on this attempt. A transcript has at most
+`definition.moves + issuedReceipts` actions (at most 20 receipts). It must end
+at the first goal-completing action with exact score and collection/shield
+counters. Invalid transcripts return `invalid_move_history`,
+`unused_powerup_receipt` or `replay_result_mismatch` without consuming the
+pending attempt. Duplicate completions cannot pay or contribute again.
+
+For the six playable inventory effects (bomb, rainbow, lightning, diamond,
+target, star), the signed-in client sends `attemptId` to `/powerup/use`. Under
+the player lock, one charge is deducted and an opaque `receiptId` is saved on
+the pending attempt in the same update. The client records the receipt and
+selected cell/column, not a client-authored list of affected cells or score.
+Server replay computes the effect's cells, points, cascades, refill, earned
+specials and shields from the current board. Forged/reused/cross-attempt
+receipts and impossible targets cannot enter a verified replay. A legacy spend
+without `attemptId` is marked **untracked** on the pending attempt and cannot
+enter competitive boards, even if the client later submits a pure-move path.
+For current classic/daily clients, the spend also carries a per-tap `useId` (8–64
+ASCII letters/digits/`_`/`-`) bound to that paid attempt. Repeating the same
+`attemptId + useId + powerupId` returns the **same receipt and original counts**
+without another charge, even if the inventory is now empty or requests race.
+Reusing the key for another power-up is refused; a new attempt cannot recover
+the old receipt. The client retries a network/response failure **once with the
+same key** and applies the effect only after confirmation. A late response is
+never applied to a replacement board. Legacy calls without `useId` keep their
+existing per-call spending behavior. If both attempts fail, the client omits the
+transcript and can still claim an unverified ordinary reward; no automatic
+refund is promised for a charge whose receipt could not be recovered. A random
+instant booster target is reported by the client and geometry-checked, **not**
+proven randomly chosen.
+
+The response separates `verified` (the reported path was replayed) from
+`ranked` (eligible for competition). A receipt-backed booster win can be
+`verified: true, ranked: false`: purchased help is deliberately **not** admitted
+to friend/guild best scores, tournaments or shared challenges. A booster-free
+replay with no untracked spends returns `verified: true, ranked: true` and may
+contribute to those boards. Older clients, v2/v3 definitions, timed levels,
+endless runs and wins without a transcript still receive existing one-time
+payouts but return `verified: false, ranked: false`. Timed play relies on a
+client clock; endless banking and account personal statistics still use
+bounded *client-reported* scores. Missing transcripts can therefore still
+fabricate bounded account rewards once per paid attempt. No clock, human input,
+random-booster placement or bot resistance is proven by a reachable transcript:
+the level definition and winning witness are public. Before consequential
+prize launches, address these remaining economy gaps, time enforcement and
+multi-server durable storage.
+
+On upgrade, the social store's schema v2 discards *previously unverified* best
+scores, tournament scores and shared challenge progress. Profiles, friends,
+guilds and **payout receipts** are retained, so already-claimed prizes cannot be
+claimed twice. Do not merge old rank data back into the verified board. The
+solver still certifies level feasibility rather than human enjoyment.
 
 ## Source and build
 
@@ -368,8 +477,14 @@ source, then runs TypeScript. Do not edit that generated browser asset manually.
 Legacy clients that omit `mode` on energy/spend retain the old reward rules and
 legacy tuning endpoints. The new generator does not pool date/region variants
 into legacy per-number difficulty reports; it calibrates every board independently.
-Existing Unity sources/binaries are not rebuilt or wired to this API here; the
-playable root web client is the integration covered by these tests.
+Generated v4/v5 classic/daily paid starts and replay-verified wins now have a
+separate, aggregate-only [difficulty observation guide](DIFFICULTY_OBSERVATIONS.md).
+The legacy self-reported tuning pool is still separate; its schedule can propose
+reviews but no longer applies changes automatically. Older legacy targets are
+pinned when energy is spent so changing the override file cannot alter that
+in-flight attempt. Neither generated board difficulty nor paid objectives are
+auto-tuned. Existing Unity sources/binaries are not rebuilt or wired to this API
+here; the playable root web client is the integration covered by these tests.
 
 ## Open-source calendar attribution
 

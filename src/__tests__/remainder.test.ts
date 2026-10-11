@@ -106,13 +106,15 @@ describe('applying tuning writes the overrides file once per batch', () => {
       const store = new MemoryLevelResultsStore();
       for (let i = 0; i < 25; i++) await store.append(loss(21, 0));
       const now = Date.now() + 1000;
-      const applied = await runTuning({ store, file, apply: true, now });
+      await expect(runTuning({ store, file, apply: true, now })).rejects.toMatchObject({ code: 'tuning_approval_required' });
+      const applied = await runTuning({ store, file, apply: true, now,
+        approvedLevel: 21, expectedFrom: 1, expectedUpdatedAt: null });
       expect(applied.applied).toBe(true);
       expect(readLevelOverrides(file).levels[21]).toBe(0.95);
       expect(readLevelOverrides(file).tuned[21]).toBe(now);
 
-      const second = await runTuning({ store, file, apply: true, now: now + 1000 });
-      expect(second.applied).toBe(false);
+      await expect(runTuning({ store, file, apply: true, now: now + 1000,
+        approvedLevel: 21, expectedFrom: 1, expectedUpdatedAt: null })).rejects.toMatchObject({ code: 'tuning_plan_stale' });
       expect(readLevelOverrides(file).levels[21]).toBe(0.95);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

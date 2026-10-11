@@ -11,6 +11,8 @@ import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { applyVip, VIP_BENEFITS, VIP_ENTITLEMENT } from '../services/meta/vip.js';
 import { winRewards } from '../services/meta/rewards.js';
 import { socialStore } from '../services/social/social-store.js';
+import { certifyLevel, simulateLevelMove } from '../services/levels/generator.js';
+import { initialObjectiveProgress, objectiveStatus } from '../services/levels/objective-rules.js';
 
 const DAY = 86_400_000;
 
@@ -104,12 +106,12 @@ describe('a won level', () => {
     balanceAfterVipWin = res.body.result.balances.coins;
   });
 
-  test('a win adds season XP and shows on the tournament board', async () => {
+  test('a legacy win adds season XP but cannot enter a tournament without replay', async () => {
     const progress = await request(app).get('/api/battlepass/progress').set('Authorization', `Bearer ${token}`);
     expect(progress.status).toBe(200);
     expect(progress.body.progress.xp).toBe(50);
     const board = await socialStore.tournamentBoard('cup_win', playerId);
-    expect(board.you).toMatchObject({ rank: 1, score: 900 });
+    expect(board.you).toBeNull();
   });
 
   test('a player without VIP gets the normal coins', async () => {
@@ -129,4 +131,56 @@ describe('a won level', () => {
     const progress = await request(app).get('/api/battlepass/progress').set('Authorization', `Bearer ${token}`);
     expect(progress.body.progress.xp).toBe(100);
   });
+  test('only an exact pinned replay enters a tournament, and a rejected claim leaves the attempt available', async () => {
+    // An inventory-assisted/older v5 client can still finish for ordinary rewards,
+    // but a reported score and counters alone never qualify for a prize board.
+    const assisted = await request(app).post('/api/account-economy/energy/spend')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ level: 4, mode: 'classic', rulesVersion: 5, location: { timeZone: 'America/New_York', country: 'US', region: 'PA' } });
+    expect(assisted.status).toBe(200);
+    const claimAssisted = await request(app).post('/api/account-economy/level/complete')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ level: 4, attemptId: assisted.body.result.attemptId,
+        score: assisted.body.result.generatedLevel.quality.verifiedScore,
+        objectiveProgress: { collected: assisted.body.result.generatedLevel.quality.verifiedCollected,
+          shieldsCleared: assisted.body.result.generatedLevel.quality.verifiedShields } });
+    expect(claimAssisted.status).toBe(200); expect(claimAssisted.body.result.verified).toBe(false);
+    expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toBeNull();
+    const spent = await request(app).post('/api/account-economy/energy/spend')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ level: 4, mode: 'classic', rulesVersion: 5, location: { timeZone: 'America/New_York', country: 'US', region: 'PA' } });
+    expect(spent.status).toBe(200);
+    const { generatedLevel: def, attemptId } = spent.body.result;
+    let state: any = { board: def.board, specials: def.specials, shields: def.shields,
+      refillState: def.refillState, objectiveProgress: initialObjectiveProgress(def) };
+    const moves: number[][] = [];
+    let score = 0;
+    for (const cells of certifyLevel(def).witness) {
+      const result = simulateLevelMove(def, state, cells)!;
+      score += result.score; moves.push(cells);
+      state = { board: result.board, specials: result.specials, shields: result.shields,
+        refillState: result.refillState, objectiveProgress: result.objectiveProgress };
+      if (objectiveStatus(def, score, state.objectiveProgress).complete) break;
+    }
+    expect(objectiveStatus(def, score, state.objectiveProgress).complete).toBe(true);
+    const body = { level: 4, attemptId, score, objectiveProgress: state.objectiveProgress, moves };
+    const claim = (payload: any) => request(app).post('/api/account-economy/level/complete')
+      .set('Authorization', `Bearer ${token}`).send(payload);
+    const inflated = await claim({ ...body, score: score + 1 });
+    expect(inflated.status).toBe(400); expect(inflated.body.error).toBe('replay_result_mismatch');
+    expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toBeNull();
+    const failedSocial = jest.spyOn(socialStore, 'recordWin').mockRejectedValueOnce(new Error('social unavailable'));
+    const win = await claim(body);
+    failedSocial.mockRestore();
+    expect(win.status).toBe(200); expect(win.body.result.verified).toBe(true);
+    expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toBeNull();
+    // Even if the operator changes the active window before a retry, recover the
+    // competition membership pinned by the original verified payout.
+    fs.writeFileSync(process.env.LIVE_OPS_CONFIG!, JSON.stringify({ events: [], deals: [], tournaments: [], challenges: [] }));
+    const repeated = await claim(body);
+    expect(repeated.status).toBe(200);
+    expect(repeated.body.result).toEqual({ ...win.body.result, duplicate: true });
+    expect((await socialStore.tournamentBoard('cup_win', playerId)).you).toMatchObject({ rank: 1, score });
+  });
+
 });

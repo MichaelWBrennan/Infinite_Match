@@ -191,6 +191,22 @@ describe('guilds', () => {
 });
 
 describe('scores and payouts', () => {
+  test('old client-claimed scores and challenge progress are not migrated into replay-only boards; payouts stay reserved', async () => {
+    const legacyFile = path.join(dir, `old-${Date.now()}.json`);
+    fs.writeFileSync(legacyFile, JSON.stringify({ version: 1, bestScores: { alice: { score: 1000000, level: 1 } },
+      competitions: { 't:old': { scores: { alice: 1000000 } }, 'c:old': { progress: 2, contributors: { alice: 2 } } },
+      payouts: { 't:old': ['alice'], 'c:old': ['alice'] } }));
+    const s = new SocialStore(legacyFile);
+    expect((await s.tournamentBoard('old', 'alice')).you).toBeNull();
+    expect(await s.challengeStanding('old', 'alice')).toMatchObject({ progress: 0, contributed: 0 });
+    expect((await s.friendBoard('alice'))[0].score).toBe(0);
+    expect(await s.hasPayout('t:old', 'alice')).toBe(true);
+    expect(await s.hasPayout('c:old', 'alice')).toBe(true);
+    await s.recordWin('alice', { level: 1, score: 500, tournamentIds: ['old'] });
+    const reloaded = new SocialStore(legacyFile);
+    expect((await reloaded.tournamentBoard('old', 'alice')).you).toMatchObject({ score: 500 });
+    expect(await reloaded.hasPayout('t:old', 'alice')).toBe(true);
+  });
   test('the best score only goes up', async () => {
     const s = freshStore();
     await s.recordWin('alice', { level: 1, score: 900 });

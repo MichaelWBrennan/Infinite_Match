@@ -30,7 +30,7 @@ const results = [];
 async function snapshot(page) {
   return page.evaluate(() => {
     const g = window.game;
-    return { board: g.board, specials: g.specials, objectiveProgress: g.objectiveProgress, score: g.score, moves: g.moves, rng: g.levelRng.state,
+    return { board: g.board, specials: g.specials, shields: g.shields, objectiveProgress: g.objectiveProgress, score: g.score, moves: g.moves, rng: g.levelRng.state,
       charges: Array.from(g.playerUI.powerups, ([type, slot]) => [type, slot.btn.getData('count')]) };
   });
 }
@@ -108,7 +108,7 @@ async function performAction(page, cells, method, mobile) {
   const expected = await page.evaluate((cells) => {
     const g = window.game;
     return window.InfiniteLevels.simulateLevelMove(g.generatedLevel,
-      { board: g.board, specials: g.specials, refillState: g.levelRng.state, objectiveProgress: g.objectiveProgress }, cells);
+      { board: g.board, specials: g.specials, shields: g.shields, refillState: g.levelRng.state, objectiveProgress: g.objectiveProgress }, cells);
   }, cells);
   assert.ok(expected, 'action is accepted by shared versioned rules');
   const first = await cellPoint(page, cells[0], cells[1]);
@@ -167,6 +167,7 @@ async function performAction(page, cells, method, mobile) {
   const after = await snapshot(page);
   assert.deepEqual(after.board, expected.board, `${method}: shared-rule board parity`);
   assert.deepEqual(after.specials, expected.specials ?? null, `${method}: persistent special parity`);
+  assert.deepEqual(after.shields, expected.shields ?? null, `${method}: fixed shield parity`);
   assert.deepEqual(after.objectiveProgress, expected.objectiveProgress, `${method}: collection progress parity`);
   assert.equal(after.rng, expected.refillState, `${method}: deterministic refill parity`);
   assert.equal(after.score - before.score, expected.score, `${method}: score parity`);
@@ -180,7 +181,7 @@ async function performAction(page, cells, method, mobile) {
   const viewsMatch = await page.evaluate(() => {
     const g = window.game;
     return new Set(g.gemSprites.flat()).size === g.boardSize ** 2 && g.gemSprites.every((row, r) => row.every((gem, c) =>
-      gem.texture.key === g.gemTexture(g.board[r][c], g.specials?.[r]?.[c]) && gem.getData('type') === g.board[r][c]
+      gem.texture.key === g.gemTexture(g.board[r][c], g.specials?.[r]?.[c], g.shields?.[r]?.[c]) && gem.getData('type') === g.board[r][c]
       && gem.getData('special') === (g.specials?.[r]?.[c] ?? null) && gem.getData('row') === r && gem.getData('col') === c));
   });
   assert.equal(viewsMatch, true, `${method}: no duplicated, stale or misplaced sprite`);
@@ -409,7 +410,7 @@ async function exerciseFeedback(page, device) {
     return page.evaluate(() => {
       const g = window.game; g.levelRng.state = 9;
       const expected = window.InfiniteLevels.simulateLevelMove(g.generatedLevel,
-        { board: g.board, specials: g.specials, refillState: g.levelRng.state, objectiveProgress: g.objectiveProgress }, [3, 3, 3, 4]);
+        { board: g.board, specials: g.specials, shields: g.shields, refillState: g.levelRng.state, objectiveProgress: g.objectiveProgress }, [3, 3, 3, 4]);
       const result = g.trySwap(3, 3, 3, 4);
       return { active: g.matchFeedback.isActive(), cascades: result.cascades, matches: JSON.stringify(result.board) === JSON.stringify(expected.board),
         disabled: [...document.querySelectorAll('.match-powerups button')].every((button) => button.disabled), busy: g.playerUI.surface.getAttribute('aria-busy'),
@@ -553,8 +554,45 @@ async function exerciseLargestBoard(page, device) {
   return Math.round(fit.boardExtent / 8);
 }
 
+async function exerciseShields(page, device) {
+  if (device.name !== 'phone') return;
+  const pathToFirstBreak = await page.evaluate(() => {
+    const g = window.game;
+    const definition = window.InfiniteLevels.generateLevel(4, window.__qaDefinition.context);
+    g.applyGeneratedDefinition(definition); g.isGameRunning = true; g.updateUI();
+    const proof = window.InfiniteLevels.certifyLevel(definition);
+    let state = { board: definition.board, specials: definition.specials, shields: definition.shields,
+      refillState: definition.refillState, objectiveProgress: window.InfiniteLevels.initialObjectiveProgress(definition) };
+    const path = [];
+    for (const cells of proof.witness) {
+      const result = window.InfiniteLevels.simulateLevelMove(definition, state, cells);
+      path.push(cells); state = result;
+      if (result.brokenShields) break;
+    }
+    return path;
+  });
+  assert.ok(pathToFirstBreak.length, 'certified v5 path breaks a shield');
+  await page.waitForTimeout(80); await checkFit(page);
+  const before = await page.evaluate(() => {
+    const g = window.game; const { row, col } = g.shields.flatMap((line, r) => line.map((hits, c) => hits ? { row: r, col: c } : null)).find(Boolean);
+    const image = g.scene.textures.get(g.gemTexture(g.board[row][col], g.specials[row][col], g.shields[row][col])).getSourceImage();
+    return { row, col, shield: g.shields[row][col], texture: g.gemSprites[row][col].texture.key,
+      border: [...image.getContext('2d').getImageData(2, 2, 1, 1).data],
+      goal: g.playerUI.shell.querySelector('[data-objective="clear-shields"]')?.getAttribute('aria-label'),
+      named: window.InfiniteAssistiveBoard.describeCell(g, row, col).label };
+  });
+  assert.match(before.texture, /_shield2$/);
+  assert.match(before.goal, /Clear .* fixed shields/);
+  assert.match(before.named, /fixed shield 2 hits left/);
+  assert.ok(before.border[3] > 0, 'shield border exists in the actual rendered texture');
+  await page.screenshot({ path: path.join(output, 'phone-shield-board.png') });
+  for (const cells of pathToFirstBreak) await performAction(page, cells, 'tap', device.mobile);
+  assert.ok((await page.evaluate(() => window.game.objectiveProgress.shieldsCleared)) > 0);
+  await reset(page);
+}
+
 async function exerciseEarnedSpecials(page, device) {
-  assert.equal(await page.evaluate(() => window.__qaDefinition.generatorVersion), 4, 'new frontend negotiates v4');
+  assert.equal(await page.evaluate(() => window.__qaDefinition.generatorVersion), 5, 'new frontend negotiates v5');
   const badgesVisible = await page.evaluate(() => window.InfinitePlayerExperience.specialTypes.every((kind) => {
     const canvas = window.game.scene.textures.get(`gem_red_${kind}`).getSourceImage();
     const pixels = canvas.getContext('2d').getImageData(42, 42, 15, 15).data;
@@ -821,6 +859,7 @@ for (const device of cases) {
     await exerciseMove(page, 'keyboard', device.mobile);
     await exerciseEarnedSpecials(page, device);
     await exerciseObjectives(page, device);
+    await exerciseShields(page, device);
     await exerciseSound(page, device);
     await exerciseAssistive(page, device);
     await reset(page);

@@ -467,13 +467,44 @@ class InfiniteMatchGame {
     }
 
     async loadCommunityEvents(show) {
-        if (!this.getAuthToken()) return show([this.communityNote('Sign in to see events and tournaments.')]);
+        const signedIn = !!this.getAuthToken();
+        const weekly = await this.communityRequest(signedIn ? '/api/live-ops/weekly' : '/api/live-ops/weekly/preview');
+        const nodes = [this.communityEl('h3', 'This week’s free event')];
+        if (!weekly.ok) {
+            nodes.push(this.communityNote('Weekly event unavailable. Check your connection and try again.'));
+        } else if (weekly.data.disabled) {
+            nodes.push(this.communityNote('The weekly event is paused. Puzzles remain playable.'));
+        } else if (!weekly.data.event) {
+            nodes.push(this.communityNote('No weekly event is scheduled. Check back soon.'));
+        } else {
+            const event = weekly.data.event;
+            nodes.push(this.communityEl('h4', event.name));
+            nodes.push(this.communityNote(event.description));
+            nodes.push(this.communityNote(event.status === 'upcoming'
+                ? `Starts ${new Date(event.startsAt).toLocaleString()} (your time).`
+                : `Ends ${new Date(event.endsAt).toLocaleString()} (your time). Claim before it ends; no late grants.`));
+            nodes.push(this.communityNote('Weekly windows run Monday 00:00 UTC to the next Monday 00:00 UTC. Only server replay-verified classic/daily wins count; assisted wins remain unranked.'));
+            if (!signedIn) nodes.push(this.communityNote('Sign in to save progress and claim free milestones. Guest puzzles remain playable.'));
+            else if (event.status === 'active') {
+                const meter = this.communityEl('progress');
+                meter.max = Math.max(1, ...event.milestones.map((m) => m.wins));
+                meter.value = Math.min(event.wins, meter.max);
+                meter.setAttribute('aria-label', `${event.wins} verified wins toward ${meter.max}`);
+                nodes.push(meter, this.communityNote(`${event.wins} replay-verified wins this week.`));
+            }
+            for (const milestone of event.milestones) {
+                const label = `${milestone.wins} ${milestone.wins === 1 ? 'win' : 'wins'} · ${milestone.coins} coins${milestone.claimed ? ' · claimed' : ''}`;
+                nodes.push(this.communityRow(label, milestone.canClaim ? 'Claim free coins' : null, milestone.canClaim
+                    ? () => this.claimWeekly(event.id, milestone.wins) : null));
+            }
+        }
+        if (!signedIn) return show(nodes);
         const [comp, today] = await Promise.all([
             this.communityRequest('/api/live-ops/competitions'),
             this.communityRequest('/api/live-ops/today'),
         ]);
-        if (!comp.ok) return show([this.communityNote(`Events unavailable: ${this.communityError(comp.data)}.`)]);
-        const nodes = [this.communityEl('h3', 'Tournaments')];
+        if (!comp.ok) { nodes.push(this.communityNote(`Other events unavailable: ${this.communityError(comp.data)}.`)); return show(nodes); }
+        nodes.push(this.communityEl('h3', 'Tournaments'));
         const tournaments = comp.data.tournaments || [];
         if (tournaments.length === 0) nodes.push(this.communityNote('No tournament is running.'));
         for (const t of tournaments) {
@@ -506,6 +537,26 @@ class InfiniteMatchGame {
         if (events.length > 0) nodes.push(this.communityEl('h3', 'Live events'));
         for (const e of events) nodes.push(this.communityNote(`${e.name} — ${e.description || ''}`));
         show(nodes);
+    }
+
+    async claimWeekly(eventId, wins) {
+        if (this.weeklyClaimPending) return;
+        this.weeklyClaimPending = true;
+        try {
+            const { ok, data } = await this.communityRequest('/api/live-ops/weekly/claim', {
+                method: 'POST', body: JSON.stringify({ eventId, wins }),
+            });
+            this.communityFlash = ok ? data.result.duplicate ? 'Already claimed. No second reward.'
+                : `+${data.result.coins} free coins. Balance: ${data.result.balance}.`
+                : data.error === 'weekly_wallet_full' ? 'Coin wallet full. Spend some coins and claim before the week ends.'
+                    : data.error === 'weekly_event_closed' ? 'The week has ended or the event is paused; no new claim was granted.'
+                        : `Not claimed: ${this.communityError(data)}.`;
+        } catch (error) {
+            this.communityFlash = 'Could not confirm the claim. Reopen Events to check it before retrying.';
+        } finally {
+            this.weeklyClaimPending = false;
+            if (this.communityTab === 'events') this.showCommunityTab('events');
+        }
     }
 
     // ----- Offers: coin packs and deals at the server's current prices, and live events. -----

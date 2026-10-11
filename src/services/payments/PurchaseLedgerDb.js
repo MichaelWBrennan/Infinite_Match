@@ -28,6 +28,11 @@ const purchaseSchema = new mongoose.Schema(
   { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } },
 );
 
+// Let the read-only triage report walk the oldest claims without scanning every
+// unrelated payment. Index builds should be planned/observed on an existing DB.
+purchaseSchema.index({ claimedAt: 1, _id: 1 });
+purchaseSchema.index({ reversalClaimedAt: 1, _id: 1 });
+
 const refundSchema = new mongoose.Schema(
   {
     transactionId: { type: String, index: true },
@@ -64,6 +69,16 @@ async function ensureConnection() {
   logger.info('Connected to MongoDB for ledger');
 }
 
+/** Merge two bounded, disjoint index walks by claim age; never mutate caller rows. */
+export function mergeStaleClaims(fulfillments, reversals, limit) {
+  return [...fulfillments, ...reversals]
+    .sort((a, b) => {
+      const aTime = new Date(a.reversalClaimedAt || a.claimedAt).getTime();
+      const bTime = new Date(b.reversalClaimedAt || b.claimedAt).getTime();
+      return aTime - bTime || String(a._id).localeCompare(String(b._id));
+    }).slice(0, limit + 1);
+}
+
 export const PurchaseLedgerDb = {
   /**
    * Stores one purchase, keyed on transactionId. Resolves { inserted } and throws on
@@ -97,7 +112,10 @@ export const PurchaseLedgerDb = {
   },
   async markFulfilled(transactionId) {
     await ensureConnection();
-    await PurchaseModel.updateOne({ transactionId }, { $set: { fulfilled: true } });
+    const result = await PurchaseModel.updateOne(
+      { transactionId, reversedAt: { $exists: false } }, { $set: { fulfilled: true } },
+    );
+    return result.matchedCount === 1;
   },
   /**
    * Reverses a consumable that was never credited. Atomic with the grant's claim: whichever of
@@ -127,15 +145,40 @@ export const PurchaseLedgerDb = {
   },
   async markReversed(transactionId, { shortfall = 0, reason = 'unspecified' } = {}) {
     await ensureConnection();
-    await PurchaseModel.updateOne(
-      { transactionId },
+    const result = await PurchaseModel.updateOne(
+      { transactionId, reversedAt: { $exists: false } },
       { $set: { reversedAt: new Date(), reversedShortfall: shortfall, reversalReason: reason } },
     );
+    return result.matchedCount === 1;
   },
   async findPurchaseByTransaction(transactionId) {
     await ensureConnection();
     return PurchaseModel.findOne({ transactionId }).lean();
   },
+  /** Bounded, read-only sample for operator triage. Never time out or clear a claim.
+   * The extra row lets the caller know its report is incomplete; each result set is capped.
+   */
+  async listStaleClaims(before, limit = 100) {
+    if (!(before instanceof Date) || !Number.isFinite(before.getTime()) ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error('invalid_claim_report_query');
+    }
+    await ensureConnection();
+    const fields = 'playerId transactionId productId fulfilled claimedAt reversalClaimedAt';
+    const [fulfillments, reversals] = await Promise.all([
+      PurchaseModel.find({
+        reversedAt: { $exists: false }, fulfilled: false,
+        claimedAt: { $lte: before }, reversalClaimedAt: { $exists: false },
+      }).select(fields).sort({ claimedAt: 1, _id: 1 }).limit(limit + 1).lean(),
+      PurchaseModel.find({
+        reversedAt: { $exists: false }, reversalClaimedAt: { $lte: before },
+      }).select(fields).sort({ reversalClaimedAt: 1, _id: 1 }).limit(limit + 1).lean(),
+    ]);
+    // Branches are disjoint. The oldest (limit+1) from each contain the oldest
+    // (limit+1) overall; no unbounded skip or application-side scan.
+    return mergeStaleClaims(fulfillments, reversals, limit);
+  },
+
   async recordRefund(doc) {
     try {
       await ensureConnection();

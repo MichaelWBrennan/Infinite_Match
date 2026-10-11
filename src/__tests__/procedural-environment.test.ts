@@ -238,7 +238,7 @@ describe('time/weather genuinely affect certified daily variants and endless boa
           expect(matchingCells(definition.board).size).toBe(0);
           expect(legalSwaps(definition.board).length).toBeGreaterThan(0);
           const proof = certifyLevel(definition);
-          let state: any = { board: definition.board, specials: definition.specials, refillState: definition.refillState, score: 0 };
+          let state: any = { board: definition.board, specials: definition.specials, shields: definition.shields, refillState: definition.refillState, score: 0 };
           let total = 0;
           for (const cells of proof.witness) {
             state = simulateLevelMove(definition, state, cells)!;
@@ -282,7 +282,7 @@ describe('time/weather genuinely affect certified daily variants and endless boa
     const attempt = await service.spendAttemptEnergy(player, 1, at, old);
     const target = old.targetScore;
     old.targetScore = 1;
-    const win = await service.consumeAttempt(player, attempt.attemptId, 1, later, { mode: 'level', score: target, legacyTarget: 1000000, objectiveProgress: { collected: old.quality.verifiedCollected } });
+    const win = await service.consumeAttempt(player, attempt.attemptId, 1, later, { mode: 'level', score: target, legacyTarget: 1000000, objectiveProgress: { collected: old.quality.verifiedCollected, shieldsCleared: old.quality.verifiedShields } });
     expect(win.stars).toBe(1);
   });
 

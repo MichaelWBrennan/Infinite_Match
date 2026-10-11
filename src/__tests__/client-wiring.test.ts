@@ -70,6 +70,15 @@ describe('one menu controller, one game', () => {
     expect(script).toMatch(/window\.ui = new InfiniteMatchGame\(\)/);
   });
 
+  test('the voluntary return study is reachable from Explore but never auto-enrolls on page load', () => {
+    const ui = read('public/js/player-experience.js');
+    expect(ui).toMatch(/overlayButton\('Help improve the game \(optional\)', \(\) => game\.showRetentionResearch\(\)\)/);
+    expect(phaser).toMatch(/this\.fetchJson\('\/api\/retention-study\/visit'/);
+    expect(phaser).toMatch(/this\.fetchJson\('\/api\/retention-study\/opt-in'/);
+    expect(phaser.slice(phaser.indexOf('    create() {'), phaser.indexOf('    showTitleOverlay() {')))
+      .not.toContain('showRetentionResearch()');
+  });
+
   test('index.html never constructs the menu controller', () => {
     expect(indexHtml).not.toMatch(/new InfiniteMatchGame\(/);
     expect(indexHtml).not.toMatch(/InfiniteMatchGame\(\)/);
