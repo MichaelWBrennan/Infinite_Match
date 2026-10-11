@@ -36,6 +36,8 @@ const ERROR_STATUS = {
   no_milestone_contribution: 409,
   milestone_not_found: 404,
   milestone_wallet_full: 409,
+  // Shared store contention: retryable, so the client should try again rather than treat it as a refusal.
+  social_store_busy: 503,
 };
 
 const handleError = (res, error, requestId) => {
