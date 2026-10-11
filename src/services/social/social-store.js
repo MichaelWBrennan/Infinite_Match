@@ -16,6 +16,12 @@ import crypto from 'crypto';
 import { socialBackendFromEnv } from './social-backend.js';
 
 const SHARED_WRITE_ATTEMPTS = 5;
+/** Energy gifts (S2): one friend gives one energy to another. Limits are per UTC day. */
+export const ENERGY_GIFT_AMOUNT = 1;
+export const GIFT_DAILY_LIMIT = 3;
+const GIFT_RECORD_MS = 14 * 24 * 60 * 60 * 1000;
+const GIFT_ID = /^[A-Za-z0-9_-]{8,64}$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
 export const MAX_FRIENDS = 50;
 export const MAX_GUILD_MEMBERS = 30;
 export const NAME_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9 _-]{1,14}[A-Za-z0-9])$/;
@@ -43,6 +49,9 @@ const emptyData = () => ({
   competitions: {}, // 't:<id>' or 'c:<id>' -> tournament scores or challenge progress
   rankReceipts: {}, // playerId -> recent paid attempt IDs applied to challenge progress
   payouts: {}, // '<kind>:<id>' -> [playerId] that have been paid
+  energyGifts: {}, // giftId -> { id, from, to, day, amount, status, credited, createdAt }
+  giftsSent: {}, // 'YYYY-MM-DD:playerId' -> gifts sent that day
+  giftsReceived: {}, // 'YYYY-MM-DD:playerId' -> gifts received that day
 });
 
 const randomCode = () => {
@@ -67,6 +76,20 @@ function ensureProfile(d, playerId) {
 const labelOf = (d, playerId) => d.profiles[playerId]?.name || anonLabel(playerId);
 
 const friendsOf = (d, playerId) => d.friends[playerId] || [];
+
+const utcDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+const previousDay = (day) => utcDay(Date.parse(day) - DAY_MS);
+
+/** Keeps today's and yesterday's counters, and gift records for 14 days. */
+function pruneGifts(d, day, nowMs) {
+  const keep = new Set([day, previousDay(day)]);
+  for (const counter of [d.giftsSent, d.giftsReceived]) {
+    for (const key of Object.keys(counter)) if (!keep.has(key.split(':')[0])) delete counter[key];
+  }
+  for (const [id, gift] of Object.entries(d.energyGifts)) {
+    if (nowMs - Date.parse(gift.createdAt) > GIFT_RECORD_MS) delete d.energyGifts[id];
+  }
+}
 
 export class SocialStore {
   /** file: JSON path for the file store. backend: a shared store (MongoSocialBackend), which replaces the file. */
@@ -239,6 +262,47 @@ export class SocialStore {
   }
 
   /** Friends and incoming requests. Ids are included only for the player's own list. */
+  /**
+   * Records an energy gift before it is credited. Checks: friends only, not to yourself, the sender's
+   * and the receiver's daily limits. A repeated giftId from the same pair returns the same gift and
+   * counts nothing new, so a retry after a lost response is safe.
+   */
+  reserveEnergyGift(senderId, receiverId, giftId, nowMs = Date.now()) {
+    return this.write((d) => {
+      if (typeof giftId !== 'string' || !GIFT_ID.test(giftId)) throw new SocialError('invalid_gift');
+      const existing = d.energyGifts[giftId];
+      if (existing) {
+        if (existing.from !== senderId || existing.to !== receiverId) throw new SocialError('gift_id_reused');
+        return { gift: { ...existing }, reserved: false };
+      }
+      if (senderId === receiverId) throw new SocialError('self_gift');
+      if (!friendsOf(d, senderId).includes(receiverId)) throw new SocialError('not_friends');
+      const day = utcDay(nowMs);
+      const sentKey = `${day}:${senderId}`;
+      const receivedKey = `${day}:${receiverId}`;
+      if ((d.giftsSent[sentKey] || 0) >= GIFT_DAILY_LIMIT) throw new SocialError('gift_sender_limit');
+      if ((d.giftsReceived[receivedKey] || 0) >= GIFT_DAILY_LIMIT) throw new SocialError('gift_receiver_limit');
+      d.giftsSent[sentKey] = (d.giftsSent[sentKey] || 0) + 1;
+      d.giftsReceived[receivedKey] = (d.giftsReceived[receivedKey] || 0) + 1;
+      const gift = { id: giftId, from: senderId, to: receiverId, day, amount: ENERGY_GIFT_AMOUNT,
+        status: 'reserved', credited: null, createdAt: new Date(nowMs).toISOString() };
+      d.energyGifts[giftId] = gift;
+      pruneGifts(d, day, nowMs);
+      return { gift: { ...gift }, reserved: true };
+    });
+  }
+
+  /** Marks a gift as credited with the amount actually added (0 when the receiver was full). */
+  markEnergyGiftCredited(giftId, credited) {
+    return this.write((d) => {
+      const gift = d.energyGifts[giftId];
+      if (!gift) throw new SocialError('gift_not_found');
+      gift.status = 'credited';
+      gift.credited = credited;
+      return { id: giftId, credited };
+    });
+  }
+
   friends(playerId) {
     return this.read((d) => ({
       friends: friendsOf(d, playerId).map((id) => ({

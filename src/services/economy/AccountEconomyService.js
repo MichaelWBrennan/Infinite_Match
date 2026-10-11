@@ -1281,10 +1281,31 @@ class AccountEconomyService {
     delete view.purchaseCredits;
     delete view.purchaseDebits;
     delete view.competitionPayouts;
+    delete view.energyGifts;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
     return view;
+  }
+
+  /**
+   * Credits one energy gift to the receiver, once per giftId. Energy never goes above the maximum,
+   * so `credited` can be less than `amount` (or 0) for a full receiver. Saved in one write.
+   */
+  async creditEnergyGift(playerId, giftId, amount, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const prior = playerEconomy.energyGifts?.[giftId];
+      if (prior) return { duplicate: true, credited: prior.credited, energy: playerEconomy.currencies.energy.amount };
+      const energy = regenerateEnergy(playerEconomy.currencies.energy, nowMs);
+      const credited = Math.max(0, Math.min(amount, energy.maxAmount - energy.amount));
+      energy.amount += credited;
+      energy.earned += credited;
+      playerEconomy.energyGifts = { ...(playerEconomy.energyGifts || {}), [giftId]: { credited, at: new Date(nowMs).toISOString() } };
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { duplicate: false, credited, energy: energy.amount };
+    });
   }
 
   /** Refills energy to its maximum. Charges only for the energy that is missing. */
