@@ -122,6 +122,8 @@ Legend: **Working** = code/test support on the root web client or mounted server
 | Polished visual/audio identity | **Partial** — readable original gem shapes/badges, motion feedback and 16 local opt-in cues | Original web scenes for all six rooms and skippable story beats are implemented; broader world/story, music, device profiling and human listening/visual quality testing remain open. |
 | Board replay integrity | **Partial** — pinned move and receipt-bound inventory replay verifies v4/v5 classic/daily score/goal counters; only booster-free paths rank | Old clients, timed and endless results still pay without replay. Booster-assisted replay is verified but unranked. Random instant-booster locations are client-reported and a public witness can be computed by a bot. Do not launch consequential prizes without completing the remaining trust gates. |
 
+Parity bundles: the board-variety rules plan (v6, spreading blocker) is in [BOARD_VARIETY_V6_PLAN.md](BOARD_VARIETY_V6_PLAN.md). It is planned, not implemented. Live ops and social are not started.
+
 ## Ranked roadmap (build in this order; gates before launch)
 
 ### P0 — prove the fun and close trust gaps
