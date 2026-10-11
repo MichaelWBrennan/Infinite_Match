@@ -12,7 +12,7 @@ Status: **partial.** Accounts, energy, generated levels, and verified level wins
 ## Run it
 
 ```bash
-npm run test:server                    # 35 tests, in-memory database
+npm run test:server                    # 104 tests, in-memory database
 node server/index.js                   # serves http://127.0.0.1:8787
 ```
 
@@ -83,19 +83,34 @@ The machine has to stay on and online. If it sleeps, the game's account features
 | `POST /api/kingdom/decor/remove` | `{roomId}`. Clears a room. The item goes back to stock. |
 | Coin bonus (not an endpoint) | Room coin bonus is 1% per room level, capped at 15%. It applies to coin payouts from wins and endless runs. |
 | `POST /api/account-economy/level/complete` | Pays a win only when the server replays the moves on the board it pinned at spend time and reaches the same score and objectives. Reward = `winRewards(stars)` (coins, XP, stars). A retry returns the original result without paying again. Forged scores are rejected and the attempt is closed. Legacy attempts with no pinned board cannot win (`replay_required`). |
+| `GET /api/level-results/targets` | The per-level target multipliers from `config/level-overrides.json`. Public. |
+| `POST /api/level-results` | `{level, outcome, score, targetScore, movesLeft, durationSeconds, isBoss}`. Stores one finished level for tuning review. No player ID is stored. The report is client-reported, so it is used for review only. |
+| `GET /api/level-results/tuning` | Operator only. The change the tuning job would make now. Nothing is saved. |
+| `POST /api/level-results/tuning/apply` | Operator only, and off unless `LEVEL_TUNING_MANUAL_ENABLED=1`. Applies one previewed level change with a review id. |
+| `GET /api/retention-study/me` | The caller's own consent state. Always available. |
+| `DELETE /api/retention-study/me` | Withdraws from the study and removes the caller's record. Always available. |
+| `POST /api/retention-study/opt-in` | Joins the study. Needs `RETENTION_STUDY_ENABLED=1` and `RETENTION_STUDY_KEY` (32+ characters), or 503 `retention_study_unavailable`. |
+| `POST /api/retention-study/visit` | Counts today's visit once per UTC day for an enrolled player. Same enablement rule. The file stores HMAC pseudonyms, not usernames. |
+| `GET /api/minigames` | The three daily mini-games (memory, treasure, rhythm) and whether each has been played today. |
+| `POST /api/minigames/:game/complete` | `{score}`. Pays the game once per UTC day. Coins are capped per game (memory 200, treasure 180, rhythm 128). **Unverified:** there is no replay for mini-games, so the score is trusted, as in the existing server. The cap limits the damage. |
+| `POST /api/stripe/checkout-session` | `{productId}` for a coin pack (`coins_small`, `coins_medium`, `coins_large`). Returns a Stripe Checkout URL at the live-ops price, the same price the offers show. Needs `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CHECKOUT_SUCCESS_URL`, and `STRIPE_CHECKOUT_CANCEL_URL`. Otherwise 503 `checkout_not_configured`. Entitlements return 400 `product_not_available`. |
+| `POST /api/stripe/webhook` | Stripe's webhook. Checks the signature over the raw body, then grants the coins once per Checkout session, and only when Stripe charged the quoted price. Replays are ignored. Point Stripe at `https://<your-host>/api/stripe/webhook`. |
+| `POST /api/account-economy/currency/update` and `inventory/update` | Always 403 `client_grant_disabled`. Balances and items change only through verified actions. The legacy client defines these calls, but nothing in `script.js` calls them. |
+| `POST /api/auth/platform-sync` | Always 503 `platform_sync_unavailable`. A platform identity cannot be verified here, so no link is stored. |
 
 Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It never returns HTML with a success status, which the browser client would otherwise treat as success.
 
 ## Not implemented yet
 
-- `timed` level completion. Timed attempts can be spent but not yet completed.
+- **Timed boards are verified by replay, but the clock is not.** The replay checks the move list against the 999-move budget. The 60-second limit is not checked, because the replay has no clock. Classic boards have the same limit.
+- **Entitlements** (remove ads, unlock all themes) cannot be bought. They need an entitlement ledger that the clients can read, and that is not built yet.
+- **Refunds** do not take coins back automatically. Handle a refund by hand, and remove the coins in the database if needed.
+- **Stripe has not been tested against live Stripe.** This environment cannot reach `api.stripe.com`. The webhook signature check and the grant were tested offline with the SDK's test signatures. Start with Stripe test keys, and confirm one test purchase before you take real money.
+- **Payments have a cost.** Stripe takes a processing fee on each charge. This is the one part of the server that is not free.
 - Level boards use the local context only. The existing server also adds live weather to the context. This changes the forecast metadata, not the board rules.
-- Retention study and level-results targets (`/api/retention-study`, `/api/level-results`).
-- Minigames (`/api/minigames`), `account-economy/inventory/update` and `currency/update`, and `auth/platform-sync`. Only the legacy `script.js` calls these. Platform sign-in needs platform tokens that this server does not have.
-- Scores and progress for social are verified only through `level/complete`. Endless scores are not ranked.
+- Scores and progress for social are verified only through `level/complete`. Endless and mini-game scores are not ranked.
 - Competition payouts do not check a live payment receipt. They are guarded by the social store reservation and an economy receipt.
-- Premium battle pass track (needs a purchase). The config grants a `rocket` item, which is not a replayable power-up, so it cannot be used in verified levels yet.
-- Payments. Stripe needs a processor, and processing fees apply. This is not free.
+- The premium battle pass track needs a purchase, and its config grants a `rocket` item. That is not a replayable power-up, so it cannot be used in verified levels yet.
 
 Social data is one JSON file: `server/data/social.json` (`SOCIAL_STORE_FILE` overrides). Back it up with the database.
 
@@ -113,10 +128,10 @@ The browser then sends every same-origin `/api/*` call to your server. Anything 
 
 - Passwords use scrypt with a per-user salt. Session tokens are random, and only their SHA-256 hash is stored.
 - Sign-in and registration are limited to 20 requests per client address per 15 minutes.
-- Request bodies are capped at 16 KB.
+- Request bodies are capped at 64 KB. The Stripe webhook is verified over the raw bytes it receives.
 - The economy state is read and written inside a single synchronous SQLite transaction, so concurrent requests cannot corrupt one player's balance.
 - Energy and coin rules come from the shared pure modules in `src/services/meta/`, the same code the existing server uses.
 
 ## Tests
 
-`npm run test:server` runs `server/test/free-server.mjs` with Node's built-in test runner. Jest (`npm test`) does not run it. `server/test/bot.mjs` is a greedy test player that wins generated levels, so the tests exercise real verified wins.
+`npm run test:server` runs the server test files with Node's built-in test runner: `free-server`, `rewards`, `powerups-endless`, `kingdom`, `battlepass`, `liveops`, `social`, `levels`, `parity` (level results, retention, mini-games, timed boards, refusals), and `payments` (Stripe, with a fake checkout client and offline signatures). Jest (`npm test`) does not run it. `server/test/bot.mjs` is a greedy test player that wins generated levels, so the tests exercise real verified wins.

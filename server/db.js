@@ -23,6 +23,13 @@ export function openDatabase(file = process.env.DATA_FILE || DEFAULT_DATA_FILE) 
       player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS purchases (
+      session_id TEXT PRIMARY KEY,
+      player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      product_id TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      granted_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS economy (
       player_id TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
       state TEXT NOT NULL

@@ -6,6 +6,10 @@ import { buyDecor, chooseDecor, getKingdom, placeDecor, removeDecor, renovateRoo
 import { claimTier, getBattlePassConfig, getProgress } from './battlepass.js';
 import { claimWeekly, getOffers, getToday, getWeekly, getWeeklyPreview } from './liveops.js';
 import { social } from './social.js';
+import { getStudyStatus, optInStudy, recordVisit, withdrawStudy } from './retention.js';
+import { getTargets, submitResult, tuningApply, tuningReport } from './level-results.js';
+import { completeMinigame, listMinigames } from './minigames.js';
+import { createCheckout, handleWebhook } from './payments.js';
 import { getDailyLevel, getLevel, getLevelContext, getRegions } from './levels.js';
 import { claimChallenge, getCompetitions, recordLevelWin, settleTournament } from './competitions.js';
 import { openDatabase } from './db.js';
@@ -52,6 +56,28 @@ const ROUTES = {
   'GET /api/live-ops/competitions': { handler: ({ player, now }) => getCompetitions(player.username, now), auth: true },
   'POST /api/live-ops/challenges/:id/claim': { handler: ({ db, params, player, now }) => claimChallenge(db, player, params.id, now), auth: true },
   'POST /api/live-ops/tournaments/:id/settle': { handler: ({ db, params, player, now }) => settleTournament(db, player, params.id, now), auth: true },
+  // Level results and tuning. Results are client-reported and used for review only.
+  'GET /api/level-results/targets': { handler: () => getTargets(), auth: false },
+  'POST /api/level-results': { handler: ({ body }) => submitResult(body), auth: true },
+  'GET /api/level-results/tuning': { handler: ({ player }) => tuningReport(player), auth: true },
+  'POST /api/level-results/tuning/apply': { handler: ({ body, player }) => tuningApply(player, body), auth: true },
+  // Retention study: opt-in, pseudonymous. Enrolling and visits need RETENTION_STUDY_ENABLED=1.
+  'GET /api/retention-study/me': { handler: ({ player }) => getStudyStatus(player), auth: true },
+  'DELETE /api/retention-study/me': { handler: ({ player }) => withdrawStudy(player), auth: true },
+  'POST /api/retention-study/opt-in': { handler: ({ body, player }) => optInStudy(player, body), auth: true },
+  'POST /api/retention-study/visit': { handler: ({ body, player }) => recordVisit(player, body), auth: true },
+  // Daily mini-games: one paid play per game per UTC day, coins capped per game.
+  'GET /api/minigames': { handler: ({ db, player, now }) => listMinigames(db, player, now), auth: true },
+  'POST /api/minigames/:game/complete': { handler: ({ body, db, params, player, now }) => completeMinigame(db, player, params.game, body, now), auth: true },
+  // Stripe. Checkout returns a link; coins are granted only from the signed webhook.
+  'POST /api/stripe/checkout-session': { handler: ({ body, player, now }) => createCheckout(player, body, now), auth: true },
+  'POST /api/stripe/webhook': { handler: ({ body, db, req }) => handleWebhook(db, body, req.headers['stripe-signature']), auth: false, raw: true },
+  // Refused on purpose: the free server never lets a client set its own balances or items.
+  // The legacy client defines these calls but never makes them (script.js has no call sites).
+  'POST /api/account-economy/currency/update': { handler: () => { throw new ApiError(403, 'client_grant_disabled', 'Balances change only through server-verified actions.'); }, auth: true },
+  'POST /api/account-economy/inventory/update': { handler: () => { throw new ApiError(403, 'client_grant_disabled', 'Items change only through server-verified actions.'); }, auth: true },
+  // Refused on purpose: platform identity cannot be verified here, so a client-claimed link is not stored.
+  'POST /api/auth/platform-sync': { handler: () => { throw new ApiError(503, 'platform_sync_unavailable', 'Platform account linking is not available on the free server.'); }, auth: true },
   'GET /api/levels/context': { handler: ({ query, now }) => getLevelContext(query, now), auth: false },
   'GET /api/levels/regions': { handler: ({ query, now }) => getRegions(query, now), auth: false },
   'GET /api/levels/daily': { handler: ({ query, now }) => getDailyLevel(query, now), auth: false },
@@ -94,6 +120,18 @@ function send(res, status, body, headers) {
 
 function errorBody(code, message = code) {
   return { success: false, ok: false, error: code, code, message };
+}
+
+// The raw bytes of a body, for signed webhooks. Parsing first would change the bytes the signature covers.
+async function readRaw(req) {
+  let size = 0;
+  const chunks = [];
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > MAX_BODY_BYTES) throw new ApiError(413, 'body_too_large');
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
 }
 
 async function readJson(req) {
@@ -187,7 +225,9 @@ export function createApp({
       if (route.limited && !allowLogin(req.socket.remoteAddress || 'unknown')) {
         throw new ApiError(429, 'too_many_attempts');
       }
-      const body = ['POST', 'PUT', 'DELETE'].includes(req.method) ? await readJson(req) : {};
+      let body = {};
+      if (route.raw) body = await readRaw(req);
+      else if (['POST', 'PUT', 'DELETE'].includes(req.method)) body = await readJson(req);
       const player = route.auth ? authenticate(db, req.headers.authorization) : null;
       const result = await route.handler({ body, db, player, req, now: now(), params, query: url.searchParams });
       return send(res, 200, result, headers);

@@ -208,6 +208,13 @@ export function refillEnergy(db, playerId, nowMs = Date.now()) {
 
 // Completing a level pays only when the server can replay the moves and reach the same result.
 // The replay runs against the board the server pinned at spend time, not a board the client sent.
+// A timed board plays under the same rules as classic: its move budget (999) is still enforced by
+// the replay, and the 60-second clock is not checked, because the replay has no clock. Only the
+// mode label is changed for the replay, so timed wins are verified instead of rejected.
+function replayDefinition(definition) {
+  return definition && definition.mode === 'timed' ? { ...definition, mode: 'classic' } : definition;
+}
+
 export function completeLevel(db, playerId, body, nowMs = Date.now()) {
   const level = parseLevel(body?.level);
   const score = body?.score;
@@ -238,7 +245,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     if (!Array.isArray(moves) || moves.length < 1 || moves.length > MAX_MOVES) {
       throw new ApiError(400, 'replay_required');
     }
-    const replay = replayLevelAttempt(attempt.definition, moves, score, body?.objectiveProgress, attempt.receipts || []);
+    const replay = replayLevelAttempt(replayDefinition(attempt.definition), moves, score, body?.objectiveProgress, attempt.receipts || []);
     if (replay.error) {
       // Record the rejection and return it. Throwing here would roll the write back.
       attempt.status = 'rejected';
