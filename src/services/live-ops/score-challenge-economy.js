@@ -67,3 +67,44 @@ export function claimScoreChallenge(economy, config, challengeId, threshold, now
   if (!challenge) throw new ScoreChallengeError('challenge_not_found');
   return claimChallengeTier(economy, challenge, threshold, nowMs, scoreChallengeDisabled());
 }
+
+const iso = (ms) => new Date(ms).toISOString();
+
+/** What the client shows: the open challenge, else the next upcoming one, else nothing.
+ * Progress and claimability are only filled in for a signed-in player (economy given). */
+export function scoreChallengeView(config, economy, nowMs = Date.now(), disabled = scoreChallengeDisabled()) {
+  const list = config?.scoreChallenges || [];
+  const challenge = list.find((c) => challengeOpen(c, nowMs))
+    || [...list].filter((c) => c.startMs > nowMs).sort((a, b) => a.startMs - b.startMs)[0] || null;
+  const serverNow = iso(nowMs);
+  if (!challenge) return { challenge: null, disabled, serverNow };
+  const status = challengeOpen(challenge, nowMs) ? 'active' : 'upcoming';
+  const signedIn = economy !== null && economy !== undefined;
+  const record = signedIn && Object.hasOwn(economy.scoreChallenges || {}, challenge.id) ? economy.scoreChallenges[challenge.id] : null;
+  const total = signedIn ? (Number.isSafeInteger(record?.total) && record.total >= 0 ? record.total : 0) : null;
+  const claimed = Array.isArray(record?.claimed) ? record.claimed : [];
+  return {
+    challenge: {
+      id: challenge.id,
+      name: challenge.name,
+      status,
+      startsAt: iso(challenge.startMs),
+      endsAt: iso(challenge.endMs),
+      target: challenge.target,
+      total,
+      tiers: challenge.tiers.map((tier) => {
+        const earned = total !== null && total >= tier.threshold;
+        const isClaimed = claimed.includes(tier.threshold);
+        return {
+          threshold: tier.threshold,
+          coins: tier.coins,
+          earned,
+          claimed: isClaimed,
+          canClaim: status === 'active' && !disabled && earned && !isClaimed,
+        };
+      }),
+    },
+    disabled,
+    serverNow,
+  };
+}

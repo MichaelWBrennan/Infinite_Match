@@ -398,8 +398,24 @@
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
             overlayButton('Weekly event', () => game.showWeeklyEvent());
+            const challengeLine = document.createElement('p'); challengeLine.className = 'match-score-challenge';
+            challengeLine.textContent = 'Personal score challenge: checking…'; content.append(challengeLine);
+            overlayButton('Personal score challenge and points', () => game.showWeeklyEvent());
+            loadScoreChallengeLine(challengeLine);
             overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
+        }
+        // Fills the Explore card with the same wording as the Community events tab. Stale replies are dropped.
+        function loadScoreChallengeLine(line) {
+            const card = root.ScoreChallengeCard;
+            if (!card) { line.textContent = 'Personal score challenge: unavailable right now.'; return; }
+            const token = typeof game.getAuthToken === 'function' ? game.getAuthToken() : null;
+            card.fetchView(token).then(({ ok, data }) => {
+                if (!line.isConnected) return;
+                line.textContent = ok
+                    ? card.cardLines(data, card.clockNow(card.clockOffset(data.serverNow))).join(' ')
+                    : 'Personal score challenge: unavailable right now.';
+            }).catch(() => { if (line.isConnected) line.textContent = 'Personal score challenge: unavailable right now.'; });
         }
         function goalGuide(wasRunning) {
             game.openOverlay('Your level goals');

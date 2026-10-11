@@ -260,4 +260,22 @@ describe('live ops', () => {
     assert.equal(open.status, 200);
     assert.equal(open.json.result.coins, 25);
   });
+
+  it('shows the public schedule without progress, and a player their own progress and claimable tiers', async () => {
+    const preview = await call('GET', '/api/live-ops/score-challenge/preview');
+    assert.equal(preview.status, 200);
+    assert.equal(preview.json.challenge.id, CHALLENGE_ID);
+    assert.equal(preview.json.challenge.status, 'active');
+    assert.equal(preview.json.challenge.total, null);
+    assert.ok(preview.json.challenge.tiers.every((t) => t.canClaim === false));
+    assert.equal(preview.json.serverNow, '2026-10-10T12:00:00.000Z');
+
+    assert.equal((await call('GET', '/api/live-ops/score-challenge')).status, 401);
+    const { token, id } = await newPlayer();
+    seed(id, (economy) => { economy.scoreChallenges = { [CHALLENGE_ID]: { total: 500, claimed: [] } }; });
+    const view = await call('GET', '/api/live-ops/score-challenge', { token });
+    assert.equal(view.status, 200);
+    assert.equal(view.json.challenge.total, 500);
+    assert.deepEqual(view.json.challenge.tiers.map((t) => [t.threshold, t.earned, t.canClaim]), [[1, true, true], [1000, false, false]]);
+  });
 });

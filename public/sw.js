@@ -13,7 +13,7 @@
  * Bump SHELL_VERSION whenever a file in SHELL changes; old caches are removed
  * on activate.
  */
-const SHELL_VERSION = 'v2';
+const SHELL_VERSION = 'v3';
 const CACHE_PREFIX = 'infinite-match-shell-';
 const CACHE_NAME = CACHE_PREFIX + SHELL_VERSION;
 const NAVIGATION_PATHS = ['/', '/index.html'];
@@ -33,6 +33,7 @@ const SHELL = [
   '/js/player-experience.js',
   '/js/assistive-board.js',
   '/js/match-feedback.js',
+  '/js/score-challenge-card.js',
   '/js/pwa-register.js',
   '/phaser3-game.js',
   '/platform-detection.js',

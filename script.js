@@ -468,7 +468,10 @@ class InfiniteMatchGame {
 
     async loadCommunityEvents(show) {
         const signedIn = !!this.getAuthToken();
-        const weekly = await this.communityRequest(signedIn ? '/api/live-ops/weekly' : '/api/live-ops/weekly/preview');
+        const [weekly, challenge] = await Promise.all([
+            this.communityRequest(signedIn ? '/api/live-ops/weekly' : '/api/live-ops/weekly/preview'),
+            this.scoreChallengeRequest(signedIn),
+        ]);
         const nodes = [this.communityEl('h3', 'This week’s free event')];
         if (!weekly.ok) {
             nodes.push(this.communityNote('Weekly event unavailable. Check your connection and try again.'));
@@ -498,6 +501,8 @@ class InfiniteMatchGame {
                     ? () => this.claimWeekly(event.id, milestone.wins) : null));
             }
         }
+        nodes.push(this.communityEl('h3', 'Personal score challenge'));
+        this.appendScoreChallenge(nodes, challenge, signedIn);
         if (!signedIn) return show(nodes);
         const [comp, today] = await Promise.all([
             this.communityRequest('/api/live-ops/competitions'),
@@ -537,6 +542,56 @@ class InfiniteMatchGame {
         if (events.length > 0) nodes.push(this.communityEl('h3', 'Live events'));
         for (const e of events) nodes.push(this.communityNote(`${e.name} — ${e.description || ''}`));
         show(nodes);
+    }
+
+    scoreChallengeRequest(signedIn) {
+        return this.communityRequest(signedIn ? '/api/live-ops/score-challenge' : '/api/live-ops/score-challenge/preview')
+            .catch(() => ({ ok: false, data: {} }));
+    }
+
+    appendScoreChallenge(nodes, challenge, signedIn) {
+        // The card module is loaded before this script. Without it, the tab says so instead of failing.
+        if (!challenge.ok || typeof ScoreChallengeCard === 'undefined') {
+            nodes.push(this.communityNote('Personal score challenge unavailable. Check your connection and try again.'));
+            return;
+        }
+        const view = challenge.data;
+        const now = ScoreChallengeCard.clockNow(ScoreChallengeCard.clockOffset(view.serverNow));
+        for (const line of ScoreChallengeCard.cardLines(view, now)) nodes.push(this.communityNote(line));
+        const c = view.challenge;
+        if (!c || !signedIn) return;
+        if (c.status === 'active') {
+            const meter = this.communityEl('progress');
+            meter.max = Math.max(1, c.target);
+            meter.value = Math.min(c.total, meter.max);
+            meter.setAttribute('aria-label', `${c.total} of ${c.target} points toward the target`);
+            nodes.push(meter);
+        }
+        for (const tier of c.tiers) {
+            nodes.push(this.communityRow(ScoreChallengeCard.tierText(tier, c.total), tier.canClaim ? 'Claim free coins' : null,
+                tier.canClaim ? () => this.claimScoreChallenge(c.id, tier.threshold) : null));
+        }
+    }
+
+    async claimScoreChallenge(challengeId, threshold) {
+        if (this.scoreClaimPending) return;
+        this.scoreClaimPending = true;
+        try {
+            const { ok, data } = await this.communityRequest('/api/live-ops/score-challenge/claim', {
+                method: 'POST', body: JSON.stringify({ challengeId, threshold }),
+            });
+            this.communityFlash = ok ? data.result.duplicate ? 'Already claimed. No second reward.'
+                : `+${data.result.coins} free coins. Balance: ${data.result.balance}.`
+                : data.error === 'challenge_progress_required' ? 'Not enough points for that tier yet.'
+                    : data.error === 'challenge_wallet_full' ? 'Coin wallet full. Spend some coins and claim before the challenge ends.'
+                        : data.error === 'challenge_closed' ? 'The challenge has ended or is paused; no new claim was granted.'
+                            : `Not claimed: ${this.communityError(data)}.`;
+        } catch (error) {
+            this.communityFlash = 'Could not confirm the claim. Reopen Events to check it before retrying.';
+        } finally {
+            this.scoreClaimPending = false;
+            if (this.communityTab === 'events') this.showCommunityTab('events');
+        }
     }
 
     async claimWeekly(eventId, wins) {

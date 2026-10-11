@@ -1,7 +1,7 @@
 // Live ops L3: every top-level array is either validated or rejected at load. The checked-in file must still load.
 import { readFileSync } from 'fs';
 import { validateLiveOps } from '../services/live-ops/live-ops.js';
-import { activeScoreChallenge, claimScoreChallenge, findScoreChallenge, recordVerifiedChallengeWin } from '../services/live-ops/score-challenge-economy.js';
+import { activeScoreChallenge, claimScoreChallenge, findScoreChallenge, recordVerifiedChallengeWin, scoreChallengeView } from '../services/live-ops/score-challenge-economy.js';
 
 const challenge = {
   id: 'personal_run_test', name: 'Personal run', start: '2026-10-10T00:00:00Z', end: '2026-10-17T00:00:00Z',
@@ -77,5 +77,42 @@ describe('score challenge settlement and claim helpers (L3)', () => {
     expect(findScoreChallenge(config, 'personal_run_test')?.id).toBe('personal_run_test');
     expect(activeScoreChallenge(config, at)?.id).toBe('personal_run_test');
     expect(activeScoreChallenge(config, Date.parse('2026-10-17T00:00:00Z'))).toBeNull();
+  });
+});
+
+describe('score challenge view for the client (L4)', () => {
+  const config = validateLiveOps({ scoreChallenges: [challenge] }).config!;
+
+  test('a guest gets the schedule and no progress or claim flags', () => {
+    const view = scoreChallengeView(config, null, at);
+    expect(view.challenge).toMatchObject({ id: 'personal_run_test', status: 'active', total: null, startsAt: '2026-10-10T00:00:00.000Z', endsAt: '2026-10-17T00:00:00.000Z' });
+    expect(view.challenge!.tiers.every((t) => !t.canClaim && !t.earned)).toBe(true);
+    expect(view.serverNow).toBe('2026-10-11T12:00:00.000Z');
+  });
+
+  test('a signed-in player sees progress, earned and claimable tiers, and claimed tiers', () => {
+    const economy: any = { currencies: { coins: { amount: 0, earned: 0, maxAmount: 999999 } } };
+    recordVerifiedChallengeWin(economy, config, 1200, at);
+    claimScoreChallenge(economy, config, 'personal_run_test', 1, at);
+    const view = scoreChallengeView(config, economy, at);
+    expect(view.challenge!.total).toBe(1200);
+    expect(view.challenge!.tiers).toEqual([
+      { threshold: 1, coins: 15, earned: true, claimed: true, canClaim: false },
+      { threshold: 1000, coins: 25, earned: true, claimed: false, canClaim: true },
+    ]);
+  });
+
+  test('a paused challenge shows no claimable tiers', () => {
+    const economy: any = { currencies: { coins: { amount: 0, earned: 0, maxAmount: 999999 } } };
+    recordVerifiedChallengeWin(economy, config, 1200, at);
+    const view = scoreChallengeView(config, economy, at, true);
+    expect(view.disabled).toBe(true);
+    expect(view.challenge!.tiers.some((t) => t.canClaim)).toBe(false);
+  });
+
+  test('an upcoming challenge is shown until it starts, and nothing after it ends', () => {
+    const next = validateLiveOps({ scoreChallenges: [{ ...challenge, id: 'next_run_test', start: '2026-10-20T00:00:00Z', end: '2026-10-27T00:00:00Z' }] }).config!;
+    expect(scoreChallengeView(next, null, at).challenge).toMatchObject({ id: 'next_run_test', status: 'upcoming' });
+    expect(scoreChallengeView(config, null, Date.parse('2026-10-17T00:00:00Z')).challenge).toBeNull();
   });
 });

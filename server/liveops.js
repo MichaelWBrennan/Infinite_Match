@@ -2,7 +2,7 @@
 // Rules come from src/services/live-ops/*.js and src/services/payments/product-catalog.js.
 // Purchases are not available here, so every deal reports owned: false.
 import { liveOpsToday, priceFor } from '../src/services/live-ops/live-ops.js';
-import { claimScoreChallenge, ScoreChallengeError } from '../src/services/live-ops/score-challenge-economy.js';
+import { claimScoreChallenge, scoreChallengeView, ScoreChallengeError } from '../src/services/live-ops/score-challenge-economy.js';
 import {
   claimWeeklyMilestone,
   visibleWeeklyEvent,
@@ -58,6 +58,14 @@ export function getWeekly(db, playerId, nowMs = Date.now()) {
   const economy = loadEconomy(db, playerId);
   const event = weeklyView(visibleWeeklyEvent(config, nowMs), economy, nowMs);
   return { success: true, event, disabled: weeklyDisabled(), serverNow: new Date(nowMs).toISOString() };
+}
+
+export function getScoreChallengePreview(nowMs = Date.now()) {
+  return { success: true, ...scoreChallengeView(currentLiveOps(), null, nowMs) };
+}
+
+export function getScoreChallenge(db, playerId, nowMs = Date.now()) {
+  return { success: true, ...scoreChallengeView(currentLiveOps(), loadEconomy(db, playerId), nowMs) };
 }
 
 export function claimScoreChallengeTier(db, playerId, body, nowMs = Date.now()) {

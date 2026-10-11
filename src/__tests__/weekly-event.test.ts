@@ -226,6 +226,7 @@ describe('web event tab', () => {
     const sandbox: any = { document, window: { addEventListener() {} }, console: { log() {}, warn() {}, error() {} },
       PerformanceObserver: class { observe() {} } };
     vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync('public/js/score-challenge-card.js', 'utf8'), sandbox);
     vm.runInContext(fs.readFileSync('script.js', 'utf8'), sandbox);
     const ui: any = vm.runInContext('Object.create(InfiniteMatchGame.prototype)', sandbox);
     ui.communityTab = 'events';
@@ -245,7 +246,7 @@ describe('web event tab', () => {
         wins: 0, milestones: [{ wins: 1, coins: 10, canClaim: false }] } } };
     };
     await ui.loadCommunityEvents(show);
-    expect(calls).toEqual(['/api/live-ops/weekly/preview']);
+    expect(calls).toEqual(['/api/live-ops/weekly/preview', '/api/live-ops/score-challenge/preview']);
     expect(body.textContent).toContain('Guest puzzles remain playable');
     expect(body.querySelector('img')).toBeNull();
     expect(body.querySelector('button')).toBeNull();
@@ -270,6 +271,56 @@ describe('web event tab', () => {
     buttons[0].dispatchEvent(new window.Event('click'));
     expect(actions).toEqual([['lanterns_week1', 1]]);
     expect(body.textContent).toContain('Claim before it ends');
+  });
+
+  test('a signed-in player sees the personal challenge tiers; a claim sends only the challenge id and tier', async () => {
+    const { ui, body, show, window } = browser(true);
+    const posts: any[] = [];
+    const challengeView = { success: true, serverNow: '2026-10-11T12:00:00.000Z', disabled: false, challenge: {
+      id: 'personal_run_route', name: 'Personal run', status: 'active', startsAt: '2026-10-05T00:00:00Z',
+      endsAt: '2026-10-12T00:00:00Z', target: 1000, total: 400, tiers: [
+        { threshold: 100, coins: 15, earned: true, claimed: true, canClaim: false },
+        { threshold: 400, coins: 25, earned: true, claimed: false, canClaim: true },
+        { threshold: 900, coins: 40, earned: false, claimed: false, canClaim: false },
+      ] } };
+    ui.communityRequest = async (url: string, options: any = {}) => {
+      if (url === '/api/live-ops/score-challenge') return { ok: true, data: challengeView };
+      if (url === '/api/live-ops/score-challenge/claim') {
+        posts.push(JSON.parse(options.body));
+        return { ok: true, data: { success: true, result: { coins: 25, balance: 1025, duplicate: false } } };
+      }
+      if (url === '/api/live-ops/weekly') return { ok: true, data: { event: null } };
+      return { ok: true, data: { tournaments: [], challenges: [], deals: [] } };
+    };
+    ui.showCommunityTab = () => {};
+    await ui.loadCommunityEvents(show);
+    expect(body.textContent).toContain('Personal score challenge: Personal run.');
+    expect(body.textContent).toContain('400 of 1000 points.');
+    expect(body.textContent).toContain('100 points: 15 coins, claimed.');
+    expect(body.textContent).toContain('400 points: 25 coins, ready to claim.');
+    expect(body.textContent).toContain('900 points: 40 coins, 500 more points to unlock.');
+    const meters = [...body.querySelectorAll('progress')] as any[];
+    expect(meters.some((m) => m.getAttribute('aria-label') === '400 of 1000 points toward the target')).toBe(true);
+    const claimButtons = [...body.querySelectorAll('button')].filter((b: any) => b.textContent === 'Claim free coins');
+    expect(claimButtons).toHaveLength(1);
+    claimButtons[0].dispatchEvent(new window.Event('click'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(posts).toEqual([{ challengeId: 'personal_run_route', threshold: 400 }]);
+    expect(ui.communityFlash).toBe('+25 free coins. Balance: 1025.');
+  });
+
+  test('a claim refused as too early shows a plain reason, and nothing is sent for guests', async () => {
+    const { ui } = browser(true);
+    ui.showCommunityTab = () => {};
+    ui.communityRequest = async () => ({ ok: false, data: { success: false, error: 'challenge_progress_required' } });
+    await ui.claimScoreChallenge('personal_run_route', 900);
+    expect(ui.communityFlash).toBe('Not enough points for that tier yet.');
+    const guest = browser(false);
+    const calls: string[] = [];
+    guest.ui.communityRequest = async (url: string) => { calls.push(url); return { ok: true, data: { challenge: null } }; };
+    await guest.ui.loadCommunityEvents(guest.show);
+    expect(calls).not.toContain('/api/live-ops/score-challenge');
+    expect(guest.body.textContent).toContain('No personal score challenge is scheduled.');
   });
 
   test('the claim shows a confirmed grant or safe lost-response message', async () => {
@@ -449,6 +500,16 @@ describe('personal score challenge route (Express)', () => {
       .send({ challengeId: 'personal_run_route', threshold: 1 });
     expect(again.status).toBe(200);
     expect(again.body.result.duplicate).toBe(true);
+  });
+
+  test('the schedule is public; progress needs a session and reflects the claimed tier', async () => {
+    const preview = await request(app).get('/api/live-ops/score-challenge/preview');
+    expect(preview.status).toBe(200);
+    expect(preview.body.challenge).toMatchObject({ id: 'personal_run_route', total: null });
+    expect((await request(app).get('/api/live-ops/score-challenge')).status).toBe(401);
+    const progress = await request(app).get('/api/live-ops/score-challenge').set(auth());
+    expect(progress.status).toBe(200);
+    expect(progress.body.challenge.tiers[0]).toMatchObject({ threshold: 1, claimed: true, canClaim: false });
   });
 
   test('guests cannot claim, and unknown challenges and tiers are rejected', async () => {
