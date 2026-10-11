@@ -20,3 +20,6 @@ var/
 
 # Runtime reports written by the server and tests (not source)
 monitoring/reports/*.jsonl
+
+# Free self-hosted server: SQLite database file
+server/data/

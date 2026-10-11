@@ -16,6 +16,8 @@ fs.mkdirSync(output, { recursive: true });
 const args = ['--disable-dev-shm-usage'];
 if (process.env.BROWSER_NO_SANDBOX === '1') args.push('--no-sandbox');
 if (process.env.BROWSER_SINGLE_PROCESS === '1') args.push('--single-process', '--no-zygote');
+// Optional extra Chromium flags, space-separated (for example a host mapping to test a production hostname).
+if (process.env.BROWSER_EXTRA_ARGS) args.push(...process.env.BROWSER_EXTRA_ARGS.trim().split(/\s+(?=--)/).filter(Boolean));
 const cases = [
   { name: 'phone', width: 390, height: 844, mobile: true, motion: 'reduce' },
   { name: 'narrow-phone', width: 320, height: 568, mobile: true, motion: 'reduce' },
@@ -414,7 +416,7 @@ async function exerciseFeedback(page, device) {
       const result = g.trySwap(3, 3, 3, 4);
       return { active: g.matchFeedback.isActive(), cascades: result.cascades, matches: JSON.stringify(result.board) === JSON.stringify(expected.board),
         disabled: [...document.querySelectorAll('.match-powerups button')].every((button) => button.disabled), busy: g.playerUI.surface.getAttribute('aria-busy'),
-        committed: { board: g.board, specials: g.specials, objectiveProgress: g.objectiveProgress, score: g.score, moves: g.moves, rng: g.levelRng.state,
+        committed: { board: g.board, specials: g.specials, shields: g.shields, objectiveProgress: g.objectiveProgress, score: g.score, moves: g.moves, rng: g.levelRng.state,
           charges: Array.from(g.playerUI.powerups, ([type, slot]) => [type, slot.btn.getData('count')]) },
         controls: Object.fromEntries(['finish-feedback', 'pause', 'menu'].map((name) => {
           const box = document.querySelector(`[data-action="${name}"]`).getBoundingClientRect();
@@ -929,9 +931,18 @@ for (const device of cases) {
     assert.equal(await page.locator('[data-action="hint"]').isDisabled(), false);
     await page.locator('[data-action="menu"]').click();
     await page.getByRole('button', { name: 'Kingdom', exact: true }).click();
-    await page.getByRole('button', { name: 'Decor', exact: true }).click();
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    if (await page.evaluate(() => window.InfiniteMatchApi?.mode === 'offline')) {
+      // Free static build: no account server. Guests see the sign-in message and no decor controls.
+      await page.getByText('Sign in to save room upgrades', { exact: false }).first().waitFor({ timeout: 10000 });
+      assert.equal(await page.getByRole('button', { name: 'Decor', exact: true }).count(), 0, 'offline kingdom has no decor controls');
+      // The guest kingdom dialog has no visible close control; Escape is the native dialog close.
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('.match-player-dialog').evaluate((dialog) => dialog.open), false, 'Escape closes the offline kingdom dialog');
+    } else {
+      await page.getByRole('button', { name: 'Decor', exact: true }).click();
+      await page.getByRole('button', { name: 'Back', exact: true }).click();
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+    }
     await page.locator('[data-action="menu"]').click();
     await page.getByRole('button', { name: 'Game modes and local level settings', exact: true }).click();
     assert.equal(await page.locator('.match-player-dialog').evaluate((dialog) => dialog.open), false);

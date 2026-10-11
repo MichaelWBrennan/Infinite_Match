@@ -11,10 +11,10 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
-import { Logger } from '../../core/logger/index.js';
 import { liveOpsConfigPath } from './live-ops.js';
 
-const logger = new Logger('Competitions');
+// Plain error logging, so this module also loads on the free server (plain Node, no TypeScript logger).
+const logger = { error: (message, meta) => console.error(JSON.stringify({ level: 'error', source: 'Competitions', message, ...meta })) }; // eslint-disable-line no-console
 
 export const MAX_PRIZE_COINS = 100000;
 export const MAX_CHALLENGE_GOAL = 1000000;

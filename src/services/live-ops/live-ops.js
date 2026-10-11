@@ -9,11 +9,11 @@
 
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
-import { Logger } from '../../core/logger/index.js';
 import { productFor } from '../payments/product-catalog.js';
 import { validateWeeklyCalendar } from './weekly-event.js';
 
-const logger = new Logger('LiveOps');
+// Plain error logging, so this module also loads on the free server (plain Node, no TypeScript logger).
+const logger = { error: (message, meta) => console.error(JSON.stringify({ level: 'error', source: 'LiveOps', message, ...meta })) }; // eslint-disable-line no-console
 
 export const MIN_DEAL_PRICE_CENTS = 99;
 const EMPTY = Object.freeze({ events: Object.freeze([]), deals: Object.freeze([]), weeklyEvents: Object.freeze([]), weeklyEventArchive: Object.freeze([]) });

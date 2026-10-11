@@ -4,8 +4,11 @@
   "outputDirectory": ".",
   "installCommand": "echo 'No dependencies to install for static Unity WebGL build'",
   "rewrites": [
-    { "source": "/", "destination": "/WebGL/index.html" },
-    { "source": "/(.*)", "destination": "/WebGL/index.html" }
+    { "source": "/js/(.*)", "destination": "/public/js/$1" },
+    { "source": "/css/(.*)", "destination": "/public/css/$1" },
+    { "source": "/licenses/(.*)", "destination": "/public/licenses/$1" },
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     { "source": "/Build/index.html", "headers": [

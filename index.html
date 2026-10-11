@@ -7,6 +7,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Infinite Match - Puzzle Game</title>
+    <!-- Address of the free self-hosted server (see docs/FREE_SERVER.md). Empty = offline static build.
+         Example: https://api.your-domain.example. Must be https (or http://localhost for development). -->
+    <meta name="infinite-match-api-base" content="">
     <link rel="stylesheet" href="styles.css">
     <link href="/css/fonts.css" rel="stylesheet">
     <style>
@@ -849,6 +852,7 @@
       third-party CDNs. If that file is missing, fall back to jsDelivr before
       any Phaser-dependent script runs.
     -->
+    <script src="js/offline-api.js"></script>
     <script src="js/phaser.min.js"></script>
     <script>
       // If the local copy is missing (e.g. an incomplete checkout), fall back
