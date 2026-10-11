@@ -53,6 +53,22 @@ The machine has to stay on and online. If it sleeps, the game's account features
 | `GET /api/live-ops/weekly/preview` | The current or next weekly event with no player data. Public. `disabled` is true when `WEEKLY_EVENT_DISABLED=1`. |
 | `GET /api/live-ops/weekly` | The same event with the player's wins and which milestones they can claim. |
 | `POST /api/live-ops/weekly/claim` | `{eventId, wins}`. Pays a milestone once, when the player has the wins. Wins come from verified level wins only. |
+| `GET /api/social/me` | The caller's profile, including the friend code. Creates the profile on first use. |
+| `PUT /api/social/name` | `{name}`. Sets the display name (3 to 16 characters, letters, digits, space, `_`, `-`). Names are unique. |
+| `GET /api/social/friends` | Friends and pending requests. |
+| `GET /api/social/friends/leaderboard` | Friends ranked by best verified score. Shows labels, not player ids. |
+| `POST /api/social/friends/request` | `{code}`. Sends a request by friend code. |
+| `POST /api/social/friends/:playerId/accept` | Accepts a request from that player (username). |
+| `POST /api/social/friends/:playerId/decline` | Declines a request. |
+| `DELETE /api/social/friends/:playerId` | Removes a friend. |
+| `GET /api/social/guilds?limit=` | Guild list (default 20). |
+| `GET /api/social/guilds/mine` | The caller's guild, or null. |
+| `POST /api/social/guilds` | `{name}`. Creates a guild and makes the caller its owner. |
+| `POST /api/social/guilds/:guildId/join` | Joins a guild (max 30 members). |
+| `POST /api/social/guilds/leave` | Leaves the caller's guild. |
+| `GET /api/live-ops/competitions` | Active tournaments (top 10 and the caller's place) and community challenges (progress, and whether the caller can claim). |
+| `POST /api/live-ops/challenges/:id/claim` | Pays a community challenge once, when the shared goal is reached and the caller contributed at least one verified win. |
+| `POST /api/live-ops/tournaments/:id/settle` | Operator only (`OPERATOR_USERNAMES`, comma list). Pays finished tournament prizes once per place. |
 | `GET /api/battlepass/config` | The season config from `config/battlepass/config.json` (or `BATTLEPASS_CONFIG`). Public. |
 | `GET /api/battlepass/progress` | Season XP, current tier, claimed tiers, and whether premium is unlocked. Premium is always locked here (no purchases). |
 | `POST /api/battlepass/claim` | `{level, track}` where track is `free` or `premium`. Grants the tier reward once, when the player has its XP. Premium returns 403 `premium_required`. Season XP: +50 per verified win, +10 per daily reward claim (from the config's `xpEvents`). |
@@ -70,10 +86,13 @@ Any other `/api/*` path returns HTTP 503 with `{"code":"api_unavailable"}`. It n
 
 - `timed` level completion. Timed attempts can be spent but not yet completed.
 - Level generation uses the local context (no live weather). The existing server uses live weather when it's available. This changes only the forecast metadata, not the board rules.
-- Live ops competitions, tournaments, and community challenges. They need shared player data, which the social store provides.
-- Social (friends, guilds, leaderboards), retention study, level-results targets.
+- Retention study and level-results targets.
+- Scores and progress for social are verified only through `level/complete`. Endless scores are not ranked.
+- Competitions: the free server does not check for a live payment receipt. Payouts are guarded by the social store reservation and an economy receipt.
 - Premium battle pass track (needs a purchase). The config grants a `rocket` item, which is not a replayable power-up, so it cannot be used in verified levels yet.
 - Payments. Stripe needs a processor, and processing fees apply. This is not free.
+
+Social data is one JSON file: `server/data/social.json` (`SOCIAL_STORE_FILE` overrides). Back it up with the database.
 
 Config files: `config/liveops.json` (`LIVE_OPS_CONFIG` overrides) and `config/battlepass/config.json` (`BATTLEPASS_CONFIG` overrides). They are read on each request, so edits apply without a restart.
 

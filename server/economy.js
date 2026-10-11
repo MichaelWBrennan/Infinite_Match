@@ -225,6 +225,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     if (attempt.status === 'won') {
       return {
         duplicate: true, level, stars: attempt.stars, reward: attempt.reward,
+        attemptId, score: attempt.verifiedScore ?? null,
         balances: { stars: economy.currencies.stars.amount, coins: economy.currencies.coins.amount },
       };
     }
@@ -250,6 +251,7 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
     const stars = starsForTarget(score, attempt.definition.targetScore);
     attempt.status = 'won';
     attempt.stars = stars;
+    attempt.verifiedScore = score;
     attempt.closedAt = nowMs;
     delete attempt.definition;
 
@@ -278,6 +280,8 @@ export function completeLevel(db, playerId, body, nowMs = Date.now()) {
       level,
       stars,
       reward,
+      attemptId,
+      score,
       balances: { stars: currencies.stars.amount, coins: currencies.coins.amount },
     };
   });

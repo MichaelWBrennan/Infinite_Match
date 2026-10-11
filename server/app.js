@@ -5,6 +5,8 @@ import { claimDailyReward, closeAttempt, completeLevel, getEconomyView, openLoot
 import { buyDecor, chooseDecor, getKingdom, placeDecor, removeDecor, renovateRoom } from './kingdom.js';
 import { claimTier, getBattlePassConfig, getProgress } from './battlepass.js';
 import { claimWeekly, getOffers, getToday, getWeekly, getWeeklyPreview } from './liveops.js';
+import { social } from './social.js';
+import { claimChallenge, getCompetitions, recordLevelWin, settleTournament } from './competitions.js';
 import { openDatabase } from './db.js';
 import { ApiError } from './errors.js';
 
@@ -33,13 +35,36 @@ const ROUTES = {
   'GET /api/battlepass/config': { handler: () => getBattlePassConfig(), auth: false },
   'GET /api/battlepass/progress': { handler: ({ db, player, now }) => getProgress(db, player.id, now), auth: true },
   'POST /api/battlepass/claim': { handler: ({ body, db, player, now }) => ({ success: true, result: claimTier(db, player.id, body, now) }), auth: true },
+  'GET /api/social/me': { handler: ({ player }) => social.me(player.username), auth: true },
+  'PUT /api/social/name': { handler: ({ body, player }) => social.setName(player.username, body?.name), auth: true },
+  'GET /api/social/friends': { handler: ({ player }) => social.friends(player.username), auth: true },
+  'GET /api/social/friends/leaderboard': { handler: ({ player }) => social.friendLeaderboard(player.username), auth: true },
+  'POST /api/social/friends/request': { handler: ({ body, player }) => social.requestFriend(player.username, body?.code), auth: true },
+  'POST /api/social/friends/:playerId/accept': { handler: ({ params, player }) => social.acceptFriend(player.username, params.playerId), auth: true },
+  'POST /api/social/friends/:playerId/decline': { handler: ({ params, player }) => social.declineFriend(player.username, params.playerId), auth: true },
+  'DELETE /api/social/friends/:playerId': { handler: ({ params, player }) => social.removeFriend(player.username, params.playerId), auth: true },
+  'GET /api/social/guilds': { handler: ({ query }) => social.listGuilds(query.get('limit')), auth: true },
+  'GET /api/social/guilds/mine': { handler: ({ player }) => social.myGuild(player.username), auth: true },
+  'POST /api/social/guilds': { handler: ({ body, player }) => social.createGuild(player.username, body?.name), auth: true },
+  'POST /api/social/guilds/:guildId/join': { handler: ({ params, player }) => social.joinGuild(player.username, params.guildId), auth: true },
+  'POST /api/social/guilds/leave': { handler: ({ player }) => social.leaveGuild(player.username), auth: true },
+  'GET /api/live-ops/competitions': { handler: ({ player, now }) => getCompetitions(player.username, now), auth: true },
+  'POST /api/live-ops/challenges/:id/claim': { handler: ({ db, params, player, now }) => claimChallenge(db, player, params.id, now), auth: true },
+  'POST /api/live-ops/tournaments/:id/settle': { handler: ({ db, params, player, now }) => settleTournament(db, player, params.id, now), auth: true },
   'GET /api/kingdom': { handler: ({ db, player }) => getKingdom(db, player.id), auth: true },
   'POST /api/kingdom/renovate': { handler: ({ body, db, player }) => ({ success: true, result: renovateRoom(db, player.id, body?.roomId) }), auth: true },
   'POST /api/kingdom/decor/buy': { handler: ({ body, db, player }) => ({ success: true, result: buyDecor(db, player.id, body?.decorId) }), auth: true },
   'POST /api/kingdom/decor/place': { handler: ({ body, db, player }) => ({ success: true, result: placeDecor(db, player.id, body?.roomId, body?.decorId) }), auth: true },
   'POST /api/kingdom/decor/choose': { handler: ({ body, db, player }) => ({ success: true, result: chooseDecor(db, player.id, body?.roomId, body?.decorId) }), auth: true },
   'POST /api/kingdom/decor/remove': { handler: ({ body, db, player }) => ({ success: true, result: removeDecor(db, player.id, body?.roomId) }), auth: true },
-  'POST /api/account-economy/level/complete': { handler: ({ body, db, player, now }) => ({ success: true, result: completeLevel(db, player.id, body, now) }), auth: true },
+  'POST /api/account-economy/level/complete': { handler: async ({ body, db, player, now }) => {
+    // The social write happens after the economy commit. Its attempt key makes a retry count once.
+    const { attemptId, score, ...result } = completeLevel(db, player.id, body, now);
+    if (result.reward && typeof score === 'number') {
+      await recordLevelWin(player.username, { level: result.level, score, attemptId }, now);
+    }
+    return { success: true, result };
+  }, auth: true },
 };
 
 function jsonHeaders(origin, allowedOrigins) {
@@ -97,6 +122,31 @@ function createLimiter(now = () => Date.now(), limit = AUTH_LIMIT_PER_WINDOW) {
   };
 }
 
+// Routes whose keys contain `:name` segments (for example `/api/social/friends/:playerId/accept`).
+// Exact keys are tried first, so a fixed path always wins over a pattern.
+const PARAM_ROUTES = Object.entries(ROUTES)
+  .filter(([key]) => key.includes('/:'))
+  .map(([key, route]) => {
+    const [method, pattern] = key.split(' ');
+    const source = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/:(\w+)/g, '(?<$1>[^/]+)');
+    return { method, regex: new RegExp(`^${source}$`), route };
+  });
+
+function matchRoute(method, pathname) {
+  const exact = ROUTES[`${method} ${pathname}`];
+  if (exact) return { route: exact, params: {} };
+  for (const candidate of PARAM_ROUTES) {
+    if (candidate.method !== method) continue;
+    const match = candidate.regex.exec(pathname);
+    if (match) {
+      const params = {};
+      for (const [name, value] of Object.entries(match.groups)) params[name] = decodeURIComponent(value);
+      return { route: candidate.route, params };
+    }
+  }
+  return null;
+}
+
 export function createApp({
   db = openDatabase(),
   allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
@@ -121,20 +171,20 @@ export function createApp({
       return send(res, 404, errorBody('not_found'), headers);
     }
 
-    const key = `${req.method} ${url.pathname}`;
-    const route = ROUTES[key];
-    if (!route) {
+    const matched = matchRoute(req.method, url.pathname);
+    if (!matched) {
       return send(res, 503, errorBody('api_unavailable',
         'This feature is not available on the free server yet. Guest play still works.'), headers);
     }
 
+    const { route, params } = matched;
     try {
       if (route.limited && !allowLogin(req.socket.remoteAddress || 'unknown')) {
         throw new ApiError(429, 'too_many_attempts');
       }
-      const body = req.method === 'POST' ? await readJson(req) : {};
+      const body = ['POST', 'PUT', 'DELETE'].includes(req.method) ? await readJson(req) : {};
       const player = route.auth ? authenticate(db, req.headers.authorization) : null;
-      const result = await route.handler({ body, db, player, req, now: now() });
+      const result = await route.handler({ body, db, player, req, now: now(), params, query: url.searchParams });
       return send(res, 200, result, headers);
     } catch (error) {
       if (error instanceof ApiError) return send(res, error.status, errorBody(error.code, error.message), headers);
