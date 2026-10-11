@@ -9,6 +9,8 @@ import { aiCacheManager } from '../services/ai-cache-manager.js';
 
 const realLoad = PlayerEconomyDb.load;
 const realSave = PlayerEconomyDb.save;
+const realInsert = PlayerEconomyDb.insertIfAbsent;
+const realEndlessSave = PlayerEconomyDb.saveEndlessIfPending;
 let docs: Map<string, any>;
 let saveCalls: number;
 let failNextSave: boolean;
@@ -24,13 +26,25 @@ beforeEach(() => {
     const doc = docs.get(playerId);
     return doc ? JSON.parse(JSON.stringify(doc)) : null;
   };
+  PlayerEconomyDb.insertIfAbsent = async (playerId: string, economy: any) => {
+    if (docs.has(playerId)) return false;
+    docs.set(playerId, structuredClone({ ...economy, writeRevision: 0 }));
+    return true;
+  };
   PlayerEconomyDb.save = async (playerId: string, economy: any) => {
     saveCalls++;
     if (failNextSave) {
       failNextSave = false;
       throw new Error('store unavailable');
     }
-    docs.set(playerId, JSON.parse(JSON.stringify(economy)));
+    const current = docs.get(playerId);
+    if (!current || (current.writeRevision ?? 0) !== (economy.writeRevision ?? 0)) return false;
+    docs.set(playerId, structuredClone({ ...economy, writeRevision: (current.writeRevision ?? 0) + 1 }));
+    return true;
+  };
+  PlayerEconomyDb.saveEndlessIfPending = async (playerId: string, attemptId: string, economy: any) => {
+    if (docs.get(playerId)?.pendingAttempt?.id !== attemptId) return false;
+    return PlayerEconomyDb.save(playerId, economy);
   };
 });
 
@@ -38,6 +52,8 @@ afterEach(() => {
   delete process.env.ECONOMY_STORE;
   PlayerEconomyDb.load = realLoad;
   PlayerEconomyDb.save = realSave;
+  PlayerEconomyDb.insertIfAbsent = realInsert;
+  PlayerEconomyDb.saveEndlessIfPending = realEndlessSave;
 });
 
 // Roll 60 on a 100-weight common box lands on energy_20, not coins. A coin reward would hide a leaked spend.
@@ -125,6 +141,113 @@ describe('durable economy: survives a restart', () => {
     const restarted = new AccountEconomyService();
     const economy = await restarted.initializePlayerEconomy(playerId, 'test');
     expect(coinsOf(economy)).toBe(expected);
+  });
+});
+
+describe('durable economy: racing initialization', () => {
+  test('a losing initializer reloads the winning profile instead of caching fresh defaults', async () => {
+    const first = new AccountEconomyService();
+    const id = uniq('init_race');
+    await first.initializePlayerEconomy(id);
+    await first.updateCurrency(id, 'coins', 40, 'add', 'test');
+    await aiCacheManager.delete(`player_economy:${id}`, 'content');
+    const real = PlayerEconomyDb.load;
+    let reads = 0;
+    PlayerEconomyDb.load = async (playerId: string) => {
+      if (reads++ === 0) return null; // concurrent initializer had not inserted yet
+      return real(playerId);
+    };
+    try {
+      const second = new AccountEconomyService();
+      const result = await second.initializePlayerEconomy(id);
+      expect(result.currencies.coins.amount).toBe(1040);
+      expect(result.writeRevision).toBe(1);
+      expect(docs.get(id).currencies.coins.amount).toBe(1040);
+    } finally {
+      PlayerEconomyDb.load = real;
+    }
+  });
+});
+
+describe('durable economy: stale workers cannot overwrite a banked receipt', () => {
+  test('an unrelated stale save is rejected, then reload preserves the latest reward', async () => {
+    const writer = new AccountEconomyService();
+    const staleWorker = new AccountEconomyService();
+    const id = uniq('revision');
+    await writer.initializePlayerEconomy(id);
+    const { attemptId } = await writer.spendAttemptEnergy(id, 1);
+    const snapshot = structuredClone(await staleWorker.getPlayerEconomy(id));
+    const paid = await writer.settleEndlessAttempt(id, attemptId, 8000);
+
+    staleWorker.accountEconomyData.set(id, snapshot);
+    const stale = await staleWorker.getPlayerEconomy(id);
+    stale.currencies.coins.amount += 500;
+    await expect(staleWorker.updatePlayerEconomyCache(id, stale)).rejects.toMatchObject({ code: 'economy_conflict' });
+    const fresh = await staleWorker.getPlayerEconomy(id);
+    expect(fresh.currencies.coins.amount).toBe(paid.balances.coins);
+    expect(fresh.endlessReceipts).toHaveLength(1);
+    expect((await staleWorker.settleEndlessAttempt(id, attemptId, 8000)).duplicate).toBe(true);
+    expect(docs.get(id).statistics.endlessRuns).toBe(1);
+  });
+
+  test('a legacy economy without a revision is upgraded on its next guarded write', async () => {
+    const svc = new AccountEconomyService();
+    const id = uniq('legacy_revision');
+    await svc.initializePlayerEconomy(id);
+    delete docs.get(id).writeRevision;
+    svc.accountEconomyData.delete(id);
+    await aiCacheManager.delete(`player_economy:${id}`, 'content');
+    const updated = await svc.updateCurrency(id, 'coins', 20, 'add', 'test');
+    expect(updated.newAmount).toBe(1020);
+    expect(docs.get(id).writeRevision).toBe(1);
+  });
+
+  test('concurrent currency updates on one worker serialize before either snapshot is saved', async () => {
+    const svc = new AccountEconomyService();
+    const id = uniq('local_race');
+    await svc.initializePlayerEconomy(id);
+    const fakeSave = PlayerEconomyDb.save;
+    let resume: () => void = () => {};
+    let entered: () => void = () => {};
+    const atSave = new Promise<void>((resolve) => { entered = resolve; });
+    const gate = new Promise<void>((resolve) => { resume = resolve; });
+    let calls = 0;
+    PlayerEconomyDb.save = async (playerId: string, economy: any) => {
+      calls++;
+      if (calls === 1) { entered(); await gate; }
+      return fakeSave(playerId, economy);
+    };
+    try {
+      const first = svc.updateCurrency(id, 'coins', 10, 'add', 'test');
+      await atSave;
+      const second = svc.updateCurrency(id, 'coins', 20, 'add', 'test');
+      expect(calls).toBe(1);
+      resume();
+      await Promise.all([first, second]);
+      expect(calls).toBe(2);
+      expect(docs.get(id).currencies.coins.amount).toBe(1030);
+      expect(docs.get(id).writeRevision).toBe(2);
+    } finally {
+      resume();
+      PlayerEconomyDb.save = fakeSave;
+    }
+  });
+
+  test('Endless re-evaluates its bank on a newer revision with the same pending attempt', async () => {
+    const writer = new AccountEconomyService();
+    const other = new AccountEconomyService();
+    const id = uniq('bank_race');
+    await writer.initializePlayerEconomy(id);
+    const { attemptId } = await writer.spendAttemptEnergy(id, 1);
+    const stale = structuredClone(await writer.getPlayerEconomy(id));
+    await other.getPlayerEconomy(id);
+    // Another worker records a small legitimate grant without replacing the paid attempt.
+    await other.updateCurrency(id, 'coins', 20, 'add', 'test');
+    writer.accountEconomyData.set(id, stale);
+    const result = await writer.settleEndlessAttempt(id, attemptId, 8000);
+    expect(result.balances.coins).toBe(1120);
+    expect(docs.get(id).endlessReceipts).toHaveLength(1);
+    expect(docs.get(id).statistics.endlessRuns).toBe(1);
   });
 });
 

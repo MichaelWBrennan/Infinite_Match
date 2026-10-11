@@ -549,7 +549,9 @@ router.post('/endless/complete', security.sessionValidation, async (req, res) =>
     res.json({ success: true, result, requestId: req.requestId });
   } catch (error) {
     if (error instanceof EconomyRuleError) {
-      return res.status(400).json({ success: false, error: error.code, requestId: req.requestId });
+      return res.status(error.code === 'economy_conflict' ? 503 : 400).json({
+        success: false, error: error.code, requestId: req.requestId,
+      });
     }
     handleRouteError(res, error, 'complete endless run', req.requestId);
   }

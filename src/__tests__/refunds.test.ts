@@ -218,17 +218,20 @@ describe('provider wiring', () => {
   const previousStore = process.env.ECONOMY_STORE;
   const realLoad = PlayerEconomyDb.load;
   const realSave = PlayerEconomyDb.save;
+  const realInsert = PlayerEconomyDb.insertIfAbsent;
   beforeEach(() => {
     ledger = fakeLedger();
     // Production runs with the durable store; the provider paths refuse to debit without it.
     // The economy document store is stubbed (in memory), as in durable-economy.test.ts.
     process.env.ECONOMY_STORE = 'mongo';
     PlayerEconomyDb.load = async () => null;
-    PlayerEconomyDb.save = async () => {};
+    PlayerEconomyDb.save = async () => true;
+    PlayerEconomyDb.insertIfAbsent = async () => true;
   });
   afterEach(() => {
     PlayerEconomyDb.load = realLoad;
     PlayerEconomyDb.save = realSave;
+    PlayerEconomyDb.insertIfAbsent = realInsert;
     ledger.restore();
     if (previousStore === undefined) delete process.env.ECONOMY_STORE;
     else process.env.ECONOMY_STORE = previousStore;

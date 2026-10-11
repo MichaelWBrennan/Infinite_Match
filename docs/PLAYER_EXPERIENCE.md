@@ -56,12 +56,24 @@ receipt. A lost response is retried once with the **same** attempt ID and score;
 a duplicate returns the original payout, while a changed score is rejected and
 no additional energy is spent until a bank is confirmed. The last 32 receipts
 are kept; older retries are rejected, never repaid. A second uncertain response
-still stops auto-continuation. In Mongo mode, the Endless write conditionally
-claims the pending ID, but other economy operations still use unconditional
-whole-document updates and per-process caches: this is **not** a general
-cross-process serializable economy or a guarantee against unrelated concurrent
-writes overwriting a receipt. Durable-mode concurrency/integration testing and
-versioned writes across all mutation paths remain prerequisites for that claim.
+still stops auto-continuation. Endless XP now uses the same 1.2 threshold
+progression as ordinary rewards; a parity test covers the level, leftover XP,
+coins, stars and inventory.
+
+In Mongo mode, every economy save now compares the document revision and only
+initialization may insert a missing document. A stale worker fails and drops
+its cached copy rather than erasing a newer receipt or balance. An Endless
+claim additionally checks the pending ID and can re-evaluate on a fresh revision;
+other conflicting operations are **not** silently retried (some are not safely
+idempotent). In-process currency, inventory, progression and daily calls share
+a re-entrant per-player lock with existing reward flows. The revision guard is
+not a distributed transaction: classic/daily wins, wheel, purchases and other
+multi-save flows can still leave partial effects, some routes mutate shared
+state outside the player lock, and reads may be briefly stale. The stand-in
+store tests exercise stale workers and legacy revision migration; no live Mongo
+concurrency/integration test has been run. Keep single-writer deployment and
+low-stakes rewards until multi-save flows and production fault injection are
+addressed.
 Do not convert the opt-in into a surprise energy spend or a pressure loop.
 
 ## Delivered kingdom scene increment — Royal Library (web)

@@ -23,11 +23,29 @@ describe('receipt-backed Endless settlement', () => {
     write.mockRestore();
     expect(first.reward).toEqual({ coins: 300, xp: 500 });
     const account = await service.getPlayerEconomy(id);
-    expect(account.progression).toMatchObject({ level: 4, xp: 25, totalXp: 500 });
+    expect(account.progression).toMatchObject({ level: 4, xp: 136, xpToNext: 172, totalXp: 500 });
     expect(account.currencies.coins.amount).toBe(1750); // 300 bank + 100/150/200 level-ups
     expect(account.statistics).toMatchObject({ endlessRuns: 1, endlessBest: 100000 });
     expect(account.endlessReceipts).toHaveLength(1);
     await expect(service.settleEndlessAttempt(id, attemptId, 100001)).rejects.toMatchObject({ code: 'attempt_score_mismatch' });
+  });
+
+  test('Endless XP thresholds and level-up payouts match the existing progression rules', async () => {
+    const { service, id, attemptId } = await newAccount();
+    const reference = new AccountEconomyService();
+    const otherId = `xp_reference_${Math.random().toString(36).slice(2)}`;
+    await reference.initializePlayerEconomy(otherId);
+    await reference.updateProgression(otherId, 500);
+    const other = await reference.getPlayerEconomy(otherId);
+    await service.settleEndlessAttempt(id, attemptId, 100000, now + 1000);
+    const banked = await service.getPlayerEconomy(id);
+    expect(banked.progression).toMatchObject({
+      level: other.progression.level, xp: other.progression.xp,
+      xpToNext: other.progression.xpToNext, totalXp: other.progression.totalXp,
+    });
+    expect(banked.currencies.coins.amount - 300).toBe(other.currencies.coins.amount);
+    expect(banked.currencies.stars.amount).toBe(other.currencies.stars.amount);
+    expect(banked.inventory.powerups).toEqual(other.inventory.powerups);
   });
 
   test('a milestone level-up grants its stars and inventory in the same save', async () => {

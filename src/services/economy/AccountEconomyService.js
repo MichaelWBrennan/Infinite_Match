@@ -12,6 +12,7 @@ import { Logger } from '../../core/logger/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { aiCacheManager } from '../ai-cache-manager.js';
 import crypto from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { pickWheelReward, LEVEL_LIMITS } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS } from '../meta/kingdom.js';
@@ -31,6 +32,7 @@ export class EconomyRuleError extends Error {
 }
 
 const logger = new Logger('AccountEconomyService');
+const XP_GROWTH_RATE = 1.2;
 
 class AccountEconomyService {
   constructor() {
@@ -53,6 +55,7 @@ class AccountEconomyService {
     
     // Account economy data structure
     this.accountEconomyData = new Map();
+    this._playerLockContext = new AsyncLocalStorage();
   }
 
   /**
@@ -83,7 +86,7 @@ class AccountEconomyService {
       }
 
       // Create new player economy profile
-      const playerEconomy = {
+      let playerEconomy = {
         playerId,
         platform,
         currencies: this.initializeCurrencies(),
@@ -103,7 +106,17 @@ class AccountEconomyService {
       };
 
       // Store durably first when configured, so a new economy is never lost on restart.
-      if (isDurableEconomy()) await PlayerEconomyDb.save(playerId, playerEconomy);
+      if (isDurableEconomy()) {
+        const inserted = await PlayerEconomyDb.insertIfAbsent(playerId, playerEconomy);
+        if (!inserted) {
+          const winner = await PlayerEconomyDb.load(playerId);
+          if (!winner) throw new Error('economy_initialization_conflict');
+          // Never put the losing freshly minted profile into any cache.
+          playerEconomy = winner;
+        } else {
+          playerEconomy.writeRevision = 0;
+        }
+      }
 
       // Cache the data
       await this.cacheManager.set(cacheKey, playerEconomy, 'content', 300);
@@ -392,6 +405,10 @@ class AccountEconomyService {
    * Update player currency
    */
   async updateCurrency(playerId, currencyId, amount, operation = 'add', source = 'unknown') {
+    return this.withPlayerLock(playerId, () => this._updateCurrencyUnlocked(playerId, currencyId, amount, operation, source));
+  }
+
+  async _updateCurrencyUnlocked(playerId, currencyId, amount, operation = 'add', source = 'unknown') {
     // Amounts must be whole numbers. A negative 'spend' would otherwise add currency.
     // Zero is allowed: level-up rewards can legitimately be 0 (e.g. stars below level 5).
     if (!Number.isSafeInteger(amount) || amount < 0) {
@@ -452,6 +469,10 @@ class AccountEconomyService {
    * Update player inventory
    */
   async updateInventory(playerId, category, itemId, quantity, operation = 'add') {
+    return this.withPlayerLock(playerId, () => this._updateInventoryUnlocked(playerId, category, itemId, quantity, operation));
+  }
+
+  async _updateInventoryUnlocked(playerId, category, itemId, quantity, operation = 'add') {
     if (!Number.isSafeInteger(quantity) || quantity < 0) {
       throw new Error('Quantity must be a whole number within range');
     }
@@ -514,6 +535,10 @@ class AccountEconomyService {
    * Update player progression
    */
   async updateProgression(playerId, xpGained, levelCompleted = false) {
+    return this.withPlayerLock(playerId, () => this._updateProgressionUnlocked(playerId, xpGained, levelCompleted));
+  }
+
+  async _updateProgressionUnlocked(playerId, xpGained, levelCompleted = false) {
     try {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       const progression = playerEconomy.progression;
@@ -526,7 +551,7 @@ class AccountEconomyService {
       while (progression.xp >= progression.xpToNext) {
         progression.xp -= progression.xpToNext;
         progression.level++;
-        progression.xpToNext = Math.floor(progression.xpToNext * 1.2); // Exponential growth
+        progression.xpToNext = Math.floor(progression.xpToNext * XP_GROWTH_RATE); // Exponential growth
         progression.lastLevelUp = new Date().toISOString();
         leveledUp = true;
         
@@ -613,9 +638,12 @@ class AccountEconomyService {
    * once-per-day check before either has written its result.
    */
   withPlayerLock(playerId, fn) {
+    // Reward flows such as progression and daily grants call other economy methods while
+    // holding the lock. Only the same async call chain may re-enter; independent requests wait.
+    if (this._playerLockContext.getStore() === playerId) return Promise.resolve().then(fn);
     if (!this._playerLocks) this._playerLocks = new Map();
     const previous = this._playerLocks.get(playerId) || Promise.resolve();
-    const run = previous.catch(() => {}).then(async () => {
+    const run = previous.catch(() => {}).then(() => this._playerLockContext.run(playerId, async () => {
       try {
         return await fn();
       } catch (error) {
@@ -624,7 +652,7 @@ class AccountEconomyService {
         await this.discardUnsaved(playerId);
         throw error;
       }
-    });
+    }));
     const tail = run.catch(() => {});
     this._playerLocks.set(playerId, tail);
     tail.then(() => {
@@ -854,69 +882,76 @@ class AccountEconomyService {
   /** Settle an Endless attempt, its capped payout and a bounded retry receipt in one write.
    * The receipt is checked BEFORE pendingAttempt, so a later paid run is not affected by a retry.
    * Local locks serialize requests in this process; Mongo's pending-id predicate prevents two
-   * workers from claiming the same pending attempt. Other legacy whole-document writes are not
-   * protected against concurrent workers; a fully cross-process serializable economy requires
-   * versioned writes across ALL economy mutations.
+   * workers from claiming the same pending attempt. All economy writes now guard a shared
+   * revision; conflicts are re-evaluated here but unrelated multi-save workflows are still
+   * not atomic across replicas.
    */
   async settleEndlessAttempt(playerId, attemptId, score, nowMs = Date.now()) {
     return this.withPlayerLock(playerId, async () => {
-      const original = await this.getPlayerEconomy(playerId);
-      const existing = original.endlessReceipts?.find((receipt) => receipt.attemptId === attemptId);
-      if (existing) {
-        if (existing.score !== score) throw new EconomyRuleError('attempt_score_mismatch');
-        return { ...existing.result, duplicate: true };
-      }
-      const pending = original.pendingAttempt;
-      if (!pending || pending.id !== attemptId) throw new EconomyRuleError('attempt_not_found');
-      if (pending.level !== 1) throw new EconomyRuleError('attempt_level_mismatch');
-      if (nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS) throw new EconomyRuleError('attempt_expired');
-      if (pending.generatedLevel && pending.generatedLevel.mode !== 'endless') {
-        throw new EconomyRuleError('attempt_mode_mismatch');
-      }
+      for (let tryNumber = 0; tryNumber < 3; tryNumber++) {
+        const original = await this.getPlayerEconomy(playerId);
+        const existing = original.endlessReceipts?.find((receipt) => receipt.attemptId === attemptId);
+        if (existing) {
+          if (existing.score !== score) throw new EconomyRuleError('attempt_score_mismatch');
+          return { ...existing.result, duplicate: true };
+        }
+        const pending = original.pendingAttempt;
+        if (!pending || pending.id !== attemptId) throw new EconomyRuleError('attempt_not_found');
+        if (pending.level !== 1) throw new EconomyRuleError('attempt_level_mismatch');
+        if (nowMs - pending.issuedAt > ATTEMPT_MAX_AGE_MS) throw new EconomyRuleError('attempt_expired');
+        if (pending.generatedLevel && pending.generatedLevel.mode !== 'endless') {
+          throw new EconomyRuleError('attempt_mode_mismatch');
+        }
 
-      // Do not mutate the cached economy: a failed save must leave the attempt claimable.
-      const economy = structuredClone(original);
-      const reward = endlessRewards(score);
-      const progression = economy.progression;
-      if (reward.xp > 0) {
-        progression.xp += reward.xp;
-        progression.totalXp += reward.xp;
-        while (progression.xp >= progression.xpToNext) {
-          progression.xp -= progression.xpToNext;
-          progression.level += 1;
-          progression.xpToNext = Math.floor(progression.xpToNext * 1.5);
-          progression.lastLevelUp = new Date(nowMs).toISOString();
-          for (const levelReward of this.getLevelUpRewards(progression.level)) {
-            this.applyReward(economy, levelReward);
+        // Do not mutate the cached economy: a failed save must leave the attempt claimable.
+        const economy = structuredClone(original);
+        const reward = endlessRewards(score);
+        const progression = economy.progression;
+        if (reward.xp > 0) {
+          progression.xp += reward.xp;
+          progression.totalXp += reward.xp;
+          while (progression.xp >= progression.xpToNext) {
+            progression.xp -= progression.xpToNext;
+            progression.level += 1;
+            progression.xpToNext = Math.floor(progression.xpToNext * XP_GROWTH_RATE);
+            progression.lastLevelUp = new Date(nowMs).toISOString();
+            for (const levelReward of this.getLevelUpRewards(progression.level)) {
+              this.applyReward(economy, levelReward);
+            }
           }
         }
-      }
-      if (reward.coins > 0) this.applyReward(economy, {
-        type: 'currency', currencyId: 'coins', amount: reward.coins,
-      });
-      economy.statistics.endlessRuns = (economy.statistics.endlessRuns || 0) + 1;
-      economy.statistics.endlessBest = Math.max(economy.statistics.endlessBest || 0, score);
-      economy.pendingAttempt = null;
-      economy.lastUpdated = new Date(nowMs).toISOString();
-      const result = { reward, endlessBest: economy.statistics.endlessBest,
-        balances: { coins: economy.currencies.coins.amount } };
-      // Retain the last 32 claims, including zero-score banks. Eviction means a very late
-      // duplicate is rejected, never paid again. The pending attempt has already been consumed.
-      economy.endlessReceipts = [...(economy.endlessReceipts || []).slice(-31),
-        { attemptId, score, result, settledAt: economy.lastUpdated }];
-      const saved = await this.updatePlayerEconomyCache(playerId, economy, attemptId);
-      if (!saved) {
-        // A competing worker won the conditional write. Reload the durable receipt.
-        await this.discardUnsaved(playerId);
-        const fresh = await this.getPlayerEconomy(playerId);
-        const receipt = fresh.endlessReceipts?.find((item) => item.attemptId === attemptId);
-        if (receipt) {
-          if (receipt.score !== score) throw new EconomyRuleError('attempt_score_mismatch');
-          return { ...receipt.result, duplicate: true };
+        if (reward.coins > 0) this.applyReward(economy, {
+          type: 'currency', currencyId: 'coins', amount: reward.coins,
+        });
+        economy.statistics.endlessRuns = (economy.statistics.endlessRuns || 0) + 1;
+        economy.statistics.endlessBest = Math.max(economy.statistics.endlessBest || 0, score);
+        economy.pendingAttempt = null;
+        economy.lastUpdated = new Date(nowMs).toISOString();
+        const result = { reward, endlessBest: economy.statistics.endlessBest,
+          balances: { coins: economy.currencies.coins.amount } };
+        // Retain the last 32 claims, including zero-score banks. Eviction means a very late
+        // duplicate is rejected, never paid again. The pending attempt has already been consumed.
+        economy.endlessReceipts = [...(economy.endlessReceipts || []).slice(-31),
+          { attemptId, score, result, settledAt: economy.lastUpdated }];
+        const saved = await this.updatePlayerEconomyCache(playerId, economy, attemptId);
+        if (!saved) {
+          // A competing worker won the conditional write. Reload the durable receipt.
+          await this.discardUnsaved(playerId);
+          const fresh = await this.getPlayerEconomy(playerId);
+          const receipt = fresh.endlessReceipts?.find((item) => item.attemptId === attemptId);
+          if (receipt) {
+            if (receipt.score !== score) throw new EconomyRuleError('attempt_score_mismatch');
+            return { ...receipt.result, duplicate: true };
+          }
+          if (fresh.pendingAttempt?.id === attemptId) {
+            if (tryNumber < 2) continue; // unrelated write won: re-evaluate reward on fresh balances
+            throw new EconomyRuleError('economy_conflict');
+          }
+          throw new EconomyRuleError('attempt_not_found');
         }
-        throw new EconomyRuleError('attempt_not_found');
+        return result;
       }
-      return result;
+      throw new EconomyRuleError('economy_conflict');
     });
   }
 
@@ -1008,6 +1043,7 @@ class AccountEconomyService {
     const view = structuredClone(playerEconomy);
     delete view.pendingAttempt;
     delete view.endlessReceipts;
+    delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
     return view;
@@ -1059,6 +1095,10 @@ class AccountEconomyService {
   }
 
   async claimDailyReward(playerId) {
+    return this.withPlayerLock(playerId, () => this._claimDailyRewardUnlocked(playerId));
+  }
+
+  async _claimDailyRewardUnlocked(playerId) {
     try {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       const dailyRewards = playerEconomy.dailyRewards;
@@ -1134,8 +1174,10 @@ class AccountEconomyService {
           const saved = await PlayerEconomyDb.saveEndlessIfPending(playerId, expectedEndlessAttemptId, playerEconomy);
           if (!saved) return false;
         } else {
-          await PlayerEconomyDb.save(playerId, playerEconomy);
+          const saved = await PlayerEconomyDb.save(playerId, playerEconomy);
+          if (!saved) throw new EconomyRuleError('economy_conflict');
         }
+        playerEconomy.writeRevision = (playerEconomy.writeRevision ?? 0) + 1;
       } catch (error) {
         // The unsaved change is still on the cached object, so drop the AI-cache copy as well.
         await this.discardUnsaved(playerId);
@@ -1160,6 +1202,10 @@ class AccountEconomyService {
    * Sync economy with Unity
    */
   async syncWithUnity(playerId, unityData) {
+    return this.withPlayerLock(playerId, () => this._syncWithUnityUnlocked(playerId, unityData));
+  }
+
+  async _syncWithUnityUnlocked(playerId, unityData) {
     try {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       
