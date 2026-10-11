@@ -90,6 +90,12 @@ describe('deployment wiring', () => {
     expect(ignore).toContain('!public/js/pwa-register.js');
     expect(ignore.indexOf('!public/sw.js')).toBeGreaterThan(ignore.indexOf('**/*.js'));
   });
+
+  test('.vercelignore keeps every runtime script index.html loads (the **/*.js rule would drop them)', () => {
+    const ignore = read('.vercelignore').split('\n');
+    expect(ignore).toEqual(expect.arrayContaining(['!script.js', '!phaser3-game.js', '!public/js/*.js']));
+    expect(ignore.indexOf('!public/js/*.js')).toBeGreaterThan(ignore.indexOf('**/*.js'));
+  });
 });
 
 // ---------------------------------------------------------------------------

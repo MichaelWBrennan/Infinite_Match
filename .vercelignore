@@ -80,3 +80,8 @@ api/
 # PWA service worker and its registration script are plain JavaScript; keep them deployable
 !public/sw.js
 !public/js/pwa-register.js
+
+# index.html loads these at runtime; the **/*.js rule above would otherwise drop the whole game
+!script.js
+!phaser3-game.js
+!public/js/*.js
