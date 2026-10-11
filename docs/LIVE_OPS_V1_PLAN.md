@@ -1,6 +1,20 @@
 # Live ops v1: plan and acceptance gates
 
-**Status (2026-10-11): planned, not implemented.** This is the second bundle from the parity request ("board variety, live ops, social and sync, in that order"). Board variety is built and gated (see [BOARD_VARIETY_V6_PLAN.md](BOARD_VARIETY_V6_PLAN.md)). This plan changes no config, no rule, no economy path and no published event.
+**Status (2026-10-11): L1 built, not wired.** The owner chose a personal score challenge, the same coin ceiling as the weekly event, and no deals in v1. L1 is the pure definition, validator and progress module in `src/services/live-ops/score-challenge.js`. Config and claims are unchanged (L2 and L3 are not started). This is the second bundle from the parity request ("board variety, live ops, social and sync, in that order"). Board variety is built and gated (see [BOARD_VARIETY_V6_PLAN.md](BOARD_VARIETY_V6_PLAN.md)). This plan changes no config, no rule, no economy path and no published event.
+
+## Owner decisions (2026-10-11)
+
+- **Event type:** personal score challenge (option A).
+- **Ceiling:** the Hall Lanterns weekly ceiling. Each tier at most 40 coins, all tiers at most 80. A test guards this against drift from `config/liveops.json`.
+- **Deals:** out of v1.
+- **Still open:** production store (`ECONOMY_STORE=mongo`). Confirm before L2.
+
+## L1 rules (built)
+
+- A challenge has an ID, name, a UTC window of at most seven days, a personal target of 1,000 to 100,000 verified classic points, and one to three coin tiers with strictly increasing thresholds.
+- Unknown fields are rejected, so no hidden reward field can ride along.
+- A result counts only inside the window: start inclusive, end exclusive. Only verified classic wins are counted.
+- A claimed tier is not offered again.
 
 ## What exists today (checked in the repository)
 
