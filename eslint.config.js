@@ -69,24 +69,6 @@ export default [
         crypto: 'readonly',
         // Optional editor-provided secret store (guarded with typeof checks).
         cursor: 'readonly',
-
-        // src/services/Local*.js are browser-global scripts, not ES modules:
-        // each file declares a class and ends with `window.<Class> = <Class>`,
-        // so sibling files reference these names as globals at runtime.
-        LocalEconomyManager: 'readonly',
-        LocalEventsManager: 'readonly',
-        LocalGameAPI: 'readonly',
-        LocalGameIntegration: 'readonly',
-        LocalGameManager: 'readonly',
-        LocalIAPSystem: 'readonly',
-        LocalInventoryManager: 'readonly',
-        LocalLevelManager: 'readonly',
-        LocalNotificationManager: 'readonly',
-        LocalRealTimeEvents: 'readonly',
-        LocalSettingsManager: 'readonly',
-        LocalSocialManager: 'readonly',
-        LocalTutorialEngine: 'readonly',
-        LocalWeatherSystem: 'readonly',
       },
     },
     plugins: {
