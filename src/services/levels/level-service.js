@@ -8,7 +8,7 @@ const MAX_CACHED_LEVELS = 128;
 function validate(level, mode, rulesVersion = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(level) || level < 1) throw new LevelInputError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new LevelInputError('invalid_mode');
-  if (![2, 3, 4, 5].includes(rulesVersion)) throw new LevelInputError('unsupported_rules_version');
+  if (![2, 3, 4, 5, 6].includes(rulesVersion)) throw new LevelInputError('unsupported_rules_version');
 }
 
 export function levelForContext(level, mode, context, rulesVersion = GENERATOR_VERSION) {
@@ -51,11 +51,17 @@ export async function liveGeneratedLevel({ level = 1, mode = 'classic', location
 
 
 /** Untagged deployed v2 clients must never be charged for an unsupported newer-rules target. */
-export function clientRulesVersion(value) {
+/** Rules v6 is server-gated: the BLOCKER_LEVELS flag must be 'on', and the request must be classic. */
+export function blockerLevelsEnabled(env = process.env) {
+  return env?.BLOCKER_LEVELS === 'on';
+}
+
+export function clientRulesVersion(value, mode = undefined, blockers = false) {
   if (value === undefined) return 2;
   if (value === 2 || value === '2') return 2;
   if (value === 3 || value === '3') return 3;
   if (value === 4 || value === '4') return 4;
   if (value === 5 || value === '5') return 5;
+  if ((value === 6 || value === '6') && blockers === true && mode === 'classic') return 6;
   throw new LevelInputError('unsupported_rules_version');
 }

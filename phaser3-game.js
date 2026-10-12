@@ -272,7 +272,12 @@ class PhaserMatch3Game {
 
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
-        
+        if (!this.onlineFlushBound) {
+            this.onlineFlushBound = true;
+            window.addEventListener('online', () => { this.flushPendingWins().catch(() => {}); });
+        }
+        this.flushPendingWins().catch(() => {});
+
         this.createGameBoard();
         this.createUI();
         this.createPowerUps();
@@ -412,6 +417,7 @@ class PhaserMatch3Game {
         this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
         this.specials = this.usesEarnedSpecials() ? (this.generatedLevel.specials || globalThis.InfiniteLevels.blankSpecials(n)).map((row) => row.slice()) : null;
         this.shields = this.generatedLevel?.generatorVersion >= 5 ? this.generatedLevel.shields.map((row) => row.slice()) : null;
+        this.blockers = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.blockers ? this.generatedLevel.blockers.map((row) => row.slice()) : null;
 
         if (this.generatedLevel) {
             this.board = this.generatedLevel.board.map((row) => row.slice());
@@ -427,7 +433,30 @@ class PhaserMatch3Game {
                 this.gemSprites[row][col] = this.createGemSprite(row, col, this.board[row][col]);
             }
         }
+        this.renderBlockers();
         this.playerUI?.assistiveBoard?.sync();
+    }
+
+    /** Rules v6 is a playtest opt-in: a classic request with ?blockers=1. The server still decides. */
+    requestedRulesVersion(mode) {
+        let playtest = false;
+        try { playtest = mode === 'classic' && new URLSearchParams(window.location.search).get('blockers') === '1'; } catch (error) { playtest = false; }
+        return playtest ? 6 : globalThis.InfiniteLevels.GENERATOR_VERSION;
+    }
+
+    /** v6 blockers are an overlay: the gem underneath stays playable. Drawn only when present. */
+    renderBlockers() {
+        if (!this.blockers && !this.blockerLayer?.active) return;
+        if (!this.blockerLayer?.active) this.blockerLayer = this.scene.add.graphics().setDepth(3);
+        this.blockerLayer.clear();
+        if (!this.blockers) return;
+        this.blockers.forEach((row, r) => row.forEach((on, c) => {
+            if (!on) return;
+            const x = this.cellX(c) - this.gemSize / 2;
+            const y = this.cellY(r) - this.gemSize / 2;
+            this.blockerLayer.fillStyle(0x0b1020, 0.62).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+            this.blockerLayer.lineStyle(3, 0xffd166, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+        }));
     }
 
     usesEarnedSpecials() {
@@ -447,7 +476,7 @@ class PhaserMatch3Game {
     commitEarnedAction(cells) {
         if (!this.canInteractWithBoard()) return null;
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
+            { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -486,6 +515,12 @@ class PhaserMatch3Game {
             return sprite;
         }));
         if (result.objectiveProgress) this.objectiveProgress = result.objectiveProgress;
+        if (result.blockers) this.blockers = result.blockers;
+        this.renderBlockers();
+        if (result.blockerSpread) {
+            const [spreadRow, spreadCol] = result.blockerSpread.split(',').map(Number);
+            this.playerUI?.announce?.(`A blocker spread to row ${spreadRow + 1}, column ${spreadCol + 1}.`);
+        }
         this.addScore(result.score);
         this.matchFeedback?.play(result);
         this.showEarnedFeedback(result);
@@ -607,7 +642,7 @@ class PhaserMatch3Game {
 
     showHint() {
         if (!this.canInteractWithBoard() || !globalThis.InfiniteLevels) return null;
-        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score, this.shields, this.levelRng.state);
+        const moves = globalThis.InfiniteLevels.levelActions(this.generatedLevel, this.board, this.specials, this.objectiveProgress, this.score, this.shields, this.levelRng.state, this.blockers);
         moves.sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.count - a.count);
         if (!moves.length) return null;
         this.hintsUsed = Math.min(99, (this.hintsUsed || 0) + 1); // Diagnostic only; hints stay free.
@@ -967,7 +1002,7 @@ class PhaserMatch3Game {
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
-                    { board: this.board, specials: this.specials, shields: this.shields, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
+                    { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, keys, points, this.matchFeedback?.canStage() === true)
                 : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points, false, this.matchFeedback?.canStage() === true);
             if (result) {
                 if (track) this.attemptMoves.push({ receiptId: receipt.receiptId, ...inventoryAction });
@@ -1582,9 +1617,10 @@ class PhaserMatch3Game {
         if (this.attemptPending) return false;
         this.attemptPending = true;
         try {
+            await this.flushPendingWins();
             const { ok, data, status } = await this.fetchJson('/api/account-economy/energy/spend', {
                 method: 'POST',
-                body: JSON.stringify({ level: Math.floor(level), ...(mode ? { mode, location, rulesVersion: globalThis.InfiniteLevels.GENERATOR_VERSION } : {}) }),
+                body: JSON.stringify({ level: Math.floor(level), ...(mode ? { mode, location, rulesVersion: this.requestedRulesVersion(mode) } : {}) }),
                 signal: AbortSignal.timeout(10000),
             });
             if (ok && data.success) {
@@ -1684,6 +1720,9 @@ class PhaserMatch3Game {
         });
         // A lost response may follow a committed payout. Retry the same claim only on
         // timeout/network/5xx; a receipt makes the retry read-only, never a new energy spend.
+        // Not confirmed (no network, or the server failed): keep the win and send it again on
+        // reconnect. The server pays an attempt once and answers repeats with its receipt (S4).
+        let keep = false;
         for (let attempt = 0; attempt < 2; attempt++) {
             try {
                 const { ok, status, data } = await this.fetchJson('/api/account-economy/level/complete', {
@@ -1694,14 +1733,51 @@ class PhaserMatch3Game {
                     this.updateUI();
                     return data.result;
                 }
-                if (attempt === 0 && status >= 500) continue;
+                if (status >= 500) {
+                    keep = true;
+                    if (attempt === 0) continue;
+                }
                 console.warn('Level reward not confirmed:', data?.error);
                 break;
             } catch (error) {
+                keep = true;
                 console.warn('Could not reach the server for the level reward.', error);
             }
         }
+        if (keep) this.queueWin(attemptId, body);
         return null;
+    }
+
+    // Offline reconciliation (S4). Queued wins are per account (the token's playerId) and are
+    // sent again by flushPendingWins: on start, when the browser comes back online, and before a
+    // new attempt is spent, because a new spend replaces the server's pending attempt.
+    queueWin(attemptId, body) {
+        const playerId = window.WinQueue ? window.WinQueue.playerIdFromToken(this.getAuthToken()) : '';
+        if (!playerId) return;
+        window.WinQueue.create(localStorage).add(playerId, attemptId, body, Date.now());
+    }
+
+    async flushPendingWins() {
+        const token = this.getAuthToken();
+        if (!token || !window.WinQueue || this.flushingWins) return [];
+        const playerId = window.WinQueue.playerIdFromToken(token);
+        const queue = window.WinQueue.create(localStorage);
+        if (!playerId || !queue.pendingFor(playerId, Date.now()).length) return [];
+        this.flushingWins = true;
+        try {
+            const outcomes = await window.WinQueue.flush(queue, playerId, (body) => this.fetchJson(
+                '/api/account-economy/level/complete', { method: 'POST', body, signal: AbortSignal.timeout(15000) }), Date.now());
+            for (const outcome of outcomes) {
+                if (outcome.outcome === 'settled' && outcome.result?.balances) {
+                    this.stars = outcome.result.balances.stars;
+                    this.updateUI();
+                }
+                if (outcome.outcome === 'refused') console.warn('A saved level result was not counted:', this.ruleMessage(outcome.reason));
+            }
+            return outcomes;
+        } finally {
+            this.flushingWins = false;
+        }
     }
 
     // A reported loss or quit closes the paid attempt without a reward. Hint/move counts
@@ -1777,7 +1853,7 @@ class PhaserMatch3Game {
                 serverTime = this.claimedServerTime;
             } else {
                 this.attemptId = null;
-                const query = new URLSearchParams({ ...location, mode, rulesVersion: String(globalThis.InfiniteLevels.GENERATOR_VERSION) }).toString();
+                const query = new URLSearchParams({ ...location, mode, rulesVersion: String(this.requestedRulesVersion(mode)) }).toString();
                 try {
                     const path = mode === 'daily' ? 'daily' : String(number);
                     const result = await this.fetchJson(`/api/levels/${path}?${query}`, { signal: AbortSignal.timeout(10000) });
@@ -2514,6 +2590,8 @@ class PhaserMatch3Game {
             room_max_level: 'This room is already at its highest level.',
             unknown_room: 'That room does not exist.',
             energy_empty: 'Out of energy.',
+            attempt_expired: 'That level attempt expired before its result was sent. No reward was granted.',
+            attempt_not_found: 'A newer level attempt replaced that result, so no reward was granted for it.',
             energy_full: 'Energy is already full.',
             decor_limit: 'You already own the most of this decoration.',
             decor_not_owned: 'Buy this decoration first.',

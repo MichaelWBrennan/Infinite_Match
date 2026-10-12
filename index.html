@@ -6,6 +6,10 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2b2d4a">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <title>Infinite Match - Puzzle Game</title>
     <!-- Address of the free self-hosted server (see docs/FREE_SERVER.md). Empty = offline static build.
          Example: https://api.your-domain.example. Must be https (or http://localhost for development). -->
@@ -853,6 +857,7 @@
       any Phaser-dependent script runs.
     -->
     <script src="js/offline-api.js"></script>
+    <script src="js/pwa-register.js"></script>
     <script src="js/phaser.min.js"></script>
     <script>
       // If the local copy is missing (e.g. an incomplete checkout), fall back
@@ -871,6 +876,8 @@
     <script src="js/player-experience.js"></script>
     <script src="js/assistive-board.js"></script>
     <script src="js/match-feedback.js"></script>
+    <script src="js/score-challenge-card.js"></script>
+    <script src="js/win-queue.js"></script>
     <script src="phaser3-game.js"></script>
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>

@@ -13,7 +13,19 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { socialBackendFromEnv } from './social-backend.js';
 
+const SHARED_WRITE_ATTEMPTS = 5;
+/** Energy gifts (S2): one friend gives one energy to another. Limits are per UTC day. */
+export const ENERGY_GIFT_AMOUNT = 1;
+export const GIFT_DAILY_LIMIT = 3;
+const GIFT_RECORD_MS = 14 * 24 * 60 * 60 * 1000;
+const GIFT_ID = /^[A-Za-z0-9_-]{8,64}$/;
+/** Guild milestone (S3): verified classic/daily wins by a guild's members in one UTC week (Monday start). */
+export const MILESTONE_GOAL = 50;
+export const MILESTONE_REWARD_COINS = 25;
+const MILESTONE_RECORD_MS = 21 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 export const MAX_FRIENDS = 50;
 export const MAX_GUILD_MEMBERS = 30;
 export const NAME_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9 _-]{1,14}[A-Za-z0-9])$/;
@@ -41,6 +53,10 @@ const emptyData = () => ({
   competitions: {}, // 't:<id>' or 'c:<id>' -> tournament scores or challenge progress
   rankReceipts: {}, // playerId -> recent paid attempt IDs applied to challenge progress
   payouts: {}, // '<kind>:<id>' -> [playerId] that have been paid
+  energyGifts: {}, // giftId -> { id, from, to, day, amount, status, credited, createdAt }
+  giftsSent: {}, // 'YYYY-MM-DD:playerId' -> gifts sent that day
+  giftsReceived: {}, // 'YYYY-MM-DD:playerId' -> gifts received that day
+  milestones: {}, // 'guildId:YYYY-MM-DD(week start)' -> { guildId, week, count, contributors, wins, claimed }
 });
 
 const randomCode = () => {
@@ -66,11 +82,53 @@ const labelOf = (d, playerId) => d.profiles[playerId]?.name || anonLabel(playerI
 
 const friendsOf = (d, playerId) => d.friends[playerId] || [];
 
+const utcDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+/** Monday 00:00 UTC of the week containing `ms`, as YYYY-MM-DD. */
+const weekStartOf = (ms) => {
+  const d = new Date(ms);
+  return utcDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7)));
+};
+const previousDay = (day) => utcDay(Date.parse(day) - DAY_MS);
+
+/** Keeps today's and yesterday's counters, and gift records for 14 days. */
+function pruneGifts(d, day, nowMs) {
+  const keep = new Set([day, previousDay(day)]);
+  for (const counter of [d.giftsSent, d.giftsReceived]) {
+    for (const key of Object.keys(counter)) if (!keep.has(key.split(':')[0])) delete counter[key];
+  }
+  for (const [id, gift] of Object.entries(d.energyGifts)) {
+    if (nowMs - Date.parse(gift.createdAt) > GIFT_RECORD_MS) delete d.energyGifts[id];
+  }
+}
+
+/** Keeps milestone records for three weeks; older weeks cannot be claimed any more. */
+function pruneMilestones(d, nowMs) {
+  for (const [key, record] of Object.entries(d.milestones)) {
+    if (nowMs - Date.parse(record.week) > MILESTONE_RECORD_MS) delete d.milestones[key];
+  }
+}
+
+const milestoneKey = (guildId, week) => `${guildId}:${week}`;
+
 export class SocialStore {
-  constructor(file = null) {
+  /** file: JSON path for the file store. backend: a shared store (MongoSocialBackend), which replaces the file. */
+  constructor(file = null, backend = null) {
     this.file = file;
+    this.backend = backend;
     this.data = null;
     this.queue = Promise.resolve();
+  }
+
+  /** Shared store: read the current revision on every call, so another server's writes are seen. */
+  async loadShared() {
+    const { data, revision } = await this.backend.load();
+    const merged = { ...emptyData(), ...(data || {}) };
+    if (merged.version < 2) {
+      merged.bestScores = {};
+      merged.competitions = {};
+      merged.version = 2;
+    }
+    return { data: merged, revision };
   }
 
   path() {
@@ -107,6 +165,7 @@ export class SocialStore {
   /** Runs fn on a copy of the data, saves it, and only then replaces the data. Serialised. */
   write(fn) {
     const run = this.queue.then(async () => {
+      if (this.backend) return this.writeShared(fn);
       await this.load();
       const draft = structuredClone(this.data);
       const result = await fn(draft);
@@ -118,9 +177,21 @@ export class SocialStore {
     return run;
   }
 
+  /** Shared store write: reload, apply fn to a draft, save only if no other server wrote in between. */
+  async writeShared(fn) {
+    for (let attempt = 0; attempt < SHARED_WRITE_ATTEMPTS; attempt++) {
+      const { data, revision } = await this.loadShared();
+      const draft = structuredClone(data);
+      const result = await fn(draft);
+      if (await this.backend.save(draft, revision)) return result;
+    }
+    throw new SocialError('social_store_busy');
+  }
+
   /** Runs fn on the current data without changing it. Waits for pending writes first. */
   read(fn) {
     const run = this.queue.then(async () => {
+      if (this.backend) return fn((await this.loadShared()).data);
       await this.load();
       return fn(this.data);
     });
@@ -210,6 +281,124 @@ export class SocialStore {
   }
 
   /** Friends and incoming requests. Ids are included only for the player's own list. */
+  /**
+   * Records an energy gift before it is credited. Checks: friends only, not to yourself, the sender's
+   * and the receiver's daily limits. A repeated giftId from the same pair returns the same gift and
+   * counts nothing new, so a retry after a lost response is safe.
+   */
+  reserveEnergyGift(senderId, receiverId, giftId, nowMs = Date.now()) {
+    return this.write((d) => {
+      if (typeof giftId !== 'string' || !GIFT_ID.test(giftId)) throw new SocialError('invalid_gift');
+      const existing = d.energyGifts[giftId];
+      if (existing) {
+        if (existing.from !== senderId || existing.to !== receiverId) throw new SocialError('gift_id_reused');
+        return { gift: { ...existing }, reserved: false };
+      }
+      if (senderId === receiverId) throw new SocialError('self_gift');
+      if (!friendsOf(d, senderId).includes(receiverId)) throw new SocialError('not_friends');
+      const day = utcDay(nowMs);
+      const sentKey = `${day}:${senderId}`;
+      const receivedKey = `${day}:${receiverId}`;
+      if ((d.giftsSent[sentKey] || 0) >= GIFT_DAILY_LIMIT) throw new SocialError('gift_sender_limit');
+      if ((d.giftsReceived[receivedKey] || 0) >= GIFT_DAILY_LIMIT) throw new SocialError('gift_receiver_limit');
+      d.giftsSent[sentKey] = (d.giftsSent[sentKey] || 0) + 1;
+      d.giftsReceived[receivedKey] = (d.giftsReceived[receivedKey] || 0) + 1;
+      const gift = { id: giftId, from: senderId, to: receiverId, day, amount: ENERGY_GIFT_AMOUNT,
+        status: 'reserved', credited: null, createdAt: new Date(nowMs).toISOString() };
+      d.energyGifts[giftId] = gift;
+      pruneGifts(d, day, nowMs);
+      return { gift: { ...gift }, reserved: true };
+    });
+  }
+
+  /** Marks a gift as credited with the amount actually added (0 when the receiver was full). */
+  markEnergyGiftCredited(giftId, credited) {
+    return this.write((d) => {
+      const gift = d.energyGifts[giftId];
+      if (!gift) throw new SocialError('gift_not_found');
+      gift.status = 'credited';
+      gift.credited = credited;
+      return { id: giftId, credited };
+    });
+  }
+
+  /**
+   * Counts one verified classic/daily win toward the player's guild milestone for this UTC week.
+   * Only a server-verified win counts (`verified === true`), once per attempt: a retried completion
+   * with the same attempt id does not count again. A player outside a guild counts for nothing.
+   */
+  async recordMilestoneWin(playerId, attemptId, verified, nowMs = Date.now()) {
+    if (verified !== true) return { counted: false, reason: 'unverified' };
+    const inGuild = await this.read((d) => !!d.guildOf[playerId]);
+    if (!inGuild) return { counted: false, reason: 'not_in_guild' };
+    return this.write((d) => {
+      if (verified !== true) return { counted: false, reason: 'unverified' };
+      if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
+        throw new SocialError('invalid_attempt');
+      }
+      const guildId = d.guildOf[playerId];
+      if (!guildId || !d.guilds[guildId]) return { counted: false, reason: 'not_in_guild' };
+      const week = weekStartOf(nowMs);
+      const key = milestoneKey(guildId, week);
+      const record = d.milestones[key] || (d.milestones[key] = { guildId, week, count: 0, contributors: {}, wins: {}, claimed: {} });
+      const winKey = `${playerId}:${attemptId}`;
+      if (record.wins[winKey]) return { counted: false, duplicate: true, count: record.count, goal: MILESTONE_GOAL };
+      record.wins[winKey] = true;
+      record.count += 1;
+      record.contributors[playerId] = (record.contributors[playerId] || 0) + 1;
+      pruneMilestones(d, nowMs);
+      return { counted: true, count: record.count, goal: MILESTONE_GOAL };
+    });
+  }
+
+  /** The player's view of this week's guild milestone. Read-only; guests and guildless players get no progress. */
+  milestoneView(playerId, nowMs = Date.now()) {
+    return this.read((d) => {
+      const week = weekStartOf(nowMs);
+      const guildId = d.guildOf[playerId];
+      const guild = guildId && d.guilds[guildId];
+      const base = { week, goal: MILESTONE_GOAL, rewardCoins: MILESTONE_REWARD_COINS, inGuild: !!guild };
+      if (!guild) return { ...base, guildName: null, count: 0, reached: false, contributed: 0, claimed: false, canClaim: false };
+      const record = d.milestones[milestoneKey(guildId, week)];
+      const count = record?.count || 0;
+      const contributed = record?.contributors?.[playerId] || 0;
+      const claimed = !!record?.claimed?.[playerId];
+      const reached = count >= MILESTONE_GOAL;
+      return { ...base, guildName: guild.name, count, reached, contributed, claimed,
+        canClaim: reached && contributed > 0 && !claimed };
+    });
+  }
+
+  /**
+   * Checks that the player may claim this week's milestone reward. Read-only, so the caller can
+   * grant the coins (idempotent per milestone in the economy) and then call markMilestoneClaimed.
+   * Must be in the guild now; a member who left gets nothing new. Claims are limited to this UTC week.
+   */
+  milestoneClaim(playerId, nowMs = Date.now()) {
+    return this.read((d) => {
+      const guildId = d.guildOf[playerId];
+      if (!guildId || !d.guilds[guildId]) throw new SocialError('not_in_guild');
+      const week = weekStartOf(nowMs);
+      const key = milestoneKey(guildId, week);
+      const record = d.milestones[key];
+      if (record?.claimed?.[playerId]) return { key, week, coins: MILESTONE_REWARD_COINS, claimed: true };
+      if ((record?.count || 0) < MILESTONE_GOAL) throw new SocialError('milestone_not_reached');
+      if (!record.contributors[playerId]) throw new SocialError('no_milestone_contribution');
+      return { key, week, coins: MILESTONE_REWARD_COINS, claimed: false };
+    });
+  }
+
+  /** Records that the player's reward for this milestone was granted. Idempotent. */
+  markMilestoneClaimed(key, playerId, nowMs = Date.now()) {
+    return this.write((d) => {
+      const record = d.milestones[key];
+      if (!record) throw new SocialError('milestone_not_found');
+      record.claimed[playerId] = new Date(nowMs).toISOString();
+      pruneMilestones(d, nowMs);
+      return { key, claimed: true };
+    });
+  }
+
   friends(playerId) {
     return this.read((d) => ({
       friends: friendsOf(d, playerId).map((id) => ({
@@ -411,6 +600,6 @@ export class SocialStore {
   }
 }
 
-export const socialStore = new SocialStore();
+export const socialStore = new SocialStore(null, socialBackendFromEnv());
 
 export default socialStore;

@@ -7,6 +7,7 @@ import { environmentRules, blendHex } from './environment.js';
 import { hashSeed, nextRandom, legalSwaps, dealPlayableBoard, certifyBoard, simulateMove } from './match-core.js';
 import { blankSpecials, specialActions, certifySpecialBoard, simulateSpecialMove } from './special-rules.js';
 import { witnessedShields, shieldCount } from './shield-rules.js';
+import { witnessedBlockers, blockerCount, blankBlockers } from './blocker-rules.js';
 import { composeObjectives, objectiveStatus, objectiveActions, simulateObjectiveMove, certifyObjectiveLevel } from './objective-rules.js';
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from './match-core.js';
 export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from './special-rules.js';
@@ -75,7 +76,7 @@ export function generationKey(levelNumber, context, mode = 'classic', version = 
 export function generateLevel(levelNumber, context, mode = 'classic', version = GENERATOR_VERSION) {
   if (!Number.isSafeInteger(levelNumber) || levelNumber < 1) throw new RangeError('invalid_level');
   if (!LEVEL_MODES.includes(mode)) throw new RangeError('invalid_mode');
-  if (![2, 3, 4, 5].includes(version)) throw new RangeError('unsupported_generator_version');
+  if (![2, 3, 4, 5, 6].includes(version)) throw new RangeError('unsupported_generator_version');
   const level = mode === 'daily' ? 1 : levelNumber;
   const theme = levelTheme(context);
   const environment = environmentRules(context);
@@ -118,13 +119,26 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-shields', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-shields', target: shieldsTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, objectives: goals.objectives }, proof.score,
-    { collected: proof.collected, ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}) }).complete) throw new Error('objective_quality_failed');
+  // V6 blockers occupy a stage of their own (never with shields), so each definition adds one objective.
+  // Their overlay never changes gems, so the witness and score are the v5 witness and score.
+  // Classic only (plan M5): daily, timed and endless never receive blockers.
+  const blockerStage = version >= 6 && !shieldStage && mode === 'classic' && level >= 3 && level % 4 === 2;
+  const blockers = version >= 6 ? blockerStage
+    ? witnessedBlockers(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankBlockers(size) : null;
+  const blockersTotal = blockers ? blockerCount(blockers) : 0;
+  if (blockerStage && blockersTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-blockers', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-blockers', target: blockersTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, objectives: goals.objectives }, proof.score,
+    { collected: proof.collected, ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}), ...(version >= 6 ? { blockersCleared: blockersTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
     ...(version >= 3 ? { specials: blankSpecials(size) } : {}),
     ...(version >= 5 ? { shields } : {}),
+    ...(version >= 6 ? { blockers } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -152,14 +166,15 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
       verifiedScore: proof.score,
       ...(version >= 4 ? { verifiedCollected: proof.collected, verifiedObjectives: true } : {}),
       ...(version >= 5 ? { verifiedShields: shieldsTotal } : {}),
+      ...(version >= 6 ? { verifiedBlockers: blockersTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState);
+export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 

@@ -24,6 +24,7 @@ import { applyVip } from '../meta/vip.js';
 import { loadLiveOps } from '../live-ops/live-ops.js';
 import { MAX_PRIZE_COINS } from '../live-ops/competitions.js';
 import { recordWeeklyWin } from '../live-ops/weekly-event.js';
+import { recordVerifiedChallengeWin } from '../live-ops/score-challenge-economy.js';
 import { observationMeta, observeAttempt } from '../levels/attempt-observations.js';
 
 /** A rule the player cannot meet (not enough coins, room maxed). `code` is safe to show. */
@@ -1144,6 +1145,8 @@ class AccountEconomyService {
         const { isVip = false, season = null, competitionIds = { tournamentIds: [], challengeIds: [] } } =
           typeof policies === 'function' ? await policies() : policies;
         const weekly = replay?.verified === true ? recordWeeklyWin(economy, loadLiveOps(), nowMs) : null;
+        const scoreChallenge = replay?.verified === true
+          ? recordVerifiedChallengeWin(economy, loadLiveOps(), replay.score, nowMs) : null;
         const base = winRewards(stars);
         const roomBoosted = { ...base, coins: Math.floor(base.coins * kingdomCoinMultiplier(economy.kingdom)) };
         const reward = applyVip(roomBoosted, isVip);
@@ -1203,6 +1206,7 @@ class AccountEconomyService {
           }
         }
         if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
+        if (scoreChallenge) logger.info('Score challenge win recorded', { playerId, ...scoreChallenge });
         return { result, rankedScore: ranked ? replay.score : null, competitionIds };
       }
       throw new EconomyRuleError('economy_conflict');
@@ -1223,6 +1227,8 @@ class AccountEconomyService {
       // payouts never advance the free weekly event.
       const weekly = completion?.mode === 'level' && replay?.verified === true
         ? recordWeeklyWin(playerEconomy, loadLiveOps(), nowMs) : null;
+      const scoreChallenge = completion?.mode === 'level' && replay?.verified === true
+        ? recordVerifiedChallengeWin(playerEconomy, loadLiveOps(), replay.score, nowMs) : null;
       playerEconomy.pendingAttempt = null;
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
@@ -1232,6 +1238,7 @@ class AccountEconomyService {
           movesUsed: replay?.verified ? completion.moves?.length : null, moveBudget: definition?.moves,
         }, nowMs);
       if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
+      if (scoreChallenge) logger.info('Score challenge win recorded', { playerId, ...scoreChallenge });
       return { level, ...(weekly ? { weekly } : {}), ...(stars === undefined ? {} : { stars }),
         ...(completion?.mode === 'level' ? { verified: replay?.verified === true,
           ranked: replay?.verified === true && !pending.untrackedPowerup && !(pending.powerupReceipts?.length) } : {}),
@@ -1274,10 +1281,52 @@ class AccountEconomyService {
     delete view.purchaseCredits;
     delete view.purchaseDebits;
     delete view.competitionPayouts;
+    delete view.energyGifts;
+    delete view.milestoneGrants;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
     return view;
+  }
+
+  /**
+   * Credits one energy gift to the receiver, once per giftId. Energy never goes above the maximum,
+   * so `credited` can be less than `amount` (or 0) for a full receiver. Saved in one write.
+   */
+  async creditEnergyGift(playerId, giftId, amount, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const prior = playerEconomy.energyGifts?.[giftId];
+      if (prior) return { duplicate: true, credited: prior.credited, energy: playerEconomy.currencies.energy.amount };
+      const energy = regenerateEnergy(playerEconomy.currencies.energy, nowMs);
+      const credited = Math.max(0, Math.min(amount, energy.maxAmount - energy.amount));
+      energy.amount += credited;
+      energy.earned += credited;
+      playerEconomy.energyGifts = { ...(playerEconomy.energyGifts || {}), [giftId]: { credited, at: new Date(nowMs).toISOString() } };
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { duplicate: false, credited, energy: energy.amount };
+    });
+  }
+
+  /**
+   * Grants one guild-milestone reward of coins, once per milestone key for this player (S3).
+   * Like the weekly event, it refuses rather than clip when the coin wallet would overflow, so
+   * the player can claim later. Nothing is granted on a retry.
+   */
+  async creditMilestoneReward(playerId, milestoneKey, amount, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      if (playerEconomy.milestoneGrants?.[milestoneKey]) return { duplicate: true, coins: 0 };
+      const wallet = playerEconomy.currencies.coins;
+      if (wallet.amount + amount > wallet.maxAmount) throw new EconomyRuleError('milestone_wallet_full');
+      this.applyReward(playerEconomy, { type: 'currency', currencyId: 'coins', amount });
+      playerEconomy.milestoneGrants = { ...(playerEconomy.milestoneGrants || {}),
+        [milestoneKey]: { coins: amount, at: new Date(nowMs).toISOString() } };
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { duplicate: false, coins: amount };
+    });
   }
 
   /** Refills energy to its maximum. Charges only for the energy that is missing. */

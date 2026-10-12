@@ -28,6 +28,12 @@ export const LEVEL_CASES = [
   { name: 'daily-southern-hemisphere', level: 1, mode: 'daily', location: AU_EAST, nowMs: NOW },
 ];
 
+/** Rules v6 adds blocker-stage levels (level % 4 === 2 from level 3, plus the boss at 10). */
+export const BLOCKER_LEVEL_CASES = [
+  { name: 'classic-6-blocker-stage', level: 6, mode: 'classic', location: US_EAST, nowMs: NOW },
+  { name: 'classic-10-boss-blocker-stage', level: 10, mode: 'classic', location: US_EAST, nowMs: NOW },
+];
+
 /** Strings that exercise hashing edge cases: ASCII, a dash-separated key, and an astral character. */
 export const HASH_CASES = ['', 'classic|1', 'v5|daily|1|2026-10-31|America/New_York', 'emoji 😀 key'];
 
@@ -77,6 +83,7 @@ function summarizeLevel(definition) {
     objectives: definition.objectives,
     objectiveProfile: definition.objectiveProfile ?? null,
     shields: definition.shields ?? null,
+    ...(definition.generatorVersion >= 6 ? { blockers: definition.blockers } : {}),
     legalOpeningMoves: swaps.length,
     firstLegalSwap: first,
     firstMove: move ? {
@@ -85,18 +92,20 @@ function summarizeLevel(definition) {
       board: move.board ?? null,
       collected: move.collected ?? null,
       brokenShields: move.brokenShields ?? null,
+      ...(definition.generatorVersion >= 6 ? { brokenBlockers: move.brokenBlockers ?? null, blockerSpread: move.blockerSpread ?? null } : {}),
       objectiveProgress: move.objectiveProgress ?? null,
     } : null,
     quality: definition.quality,
   };
 }
 
-/** Build the full vector document. Deterministic for the same code. */
-export function buildGoldenVectors() {
+/** Build the full vector document for one rules version. Deterministic for the same code.
+ * Rules v5 (the default) and v6 are separate committed fixtures; v5 output must not change. */
+export function buildGoldenVectors(rulesVersion = GENERATOR_VERSION, cases = LEVEL_CASES) {
   return {
     format: GOLDEN_FORMAT,
     version: GOLDEN_VERSION,
-    rulesVersion: GENERATOR_VERSION,
+    rulesVersion,
     notes: [
       'Integers are exact; numerator = fraction * 2^32 for RNG outputs.',
       'Weights and objective numbers are IEEE-754 doubles; port with double arithmetic in the same operation order.',
@@ -104,10 +113,10 @@ export function buildGoldenVectors() {
     ],
     hash: HASH_CASES.map((text) => ({ text, seed: hashSeed(text) })),
     rng: rngVectors(),
-    levels: LEVEL_CASES.map((input) => {
+    levels: cases.map((input) => {
       const { name, level, mode, location, nowMs } = input;
-      const definition = generatedLevel({ level, mode, location, rulesVersion: GENERATOR_VERSION }, nowMs);
-      return { name, input: { level, mode, location, nowMs, rulesVersion: GENERATOR_VERSION }, expected: summarizeLevel(definition) };
+      const definition = generatedLevel({ level, mode, location, rulesVersion }, nowMs);
+      return { name, input: { level, mode, location, nowMs, rulesVersion }, expected: summarizeLevel(definition) };
     }),
   };
 }

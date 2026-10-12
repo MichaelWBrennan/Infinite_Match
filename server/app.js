@@ -4,7 +4,7 @@ import { authenticate, login, register } from './auth.js';
 import { claimDailyReward, closeAttempt, completeLevel, getEconomyView, openLootbox, refillEnergy, settleEndless, spendEnergy, usePowerUp } from './economy.js';
 import { buyDecor, chooseDecor, getKingdom, placeDecor, removeDecor, renovateRoom } from './kingdom.js';
 import { claimTier, getBattlePassConfig, getProgress } from './battlepass.js';
-import { claimWeekly, getOffers, getToday, getWeekly, getWeeklyPreview } from './liveops.js';
+import { claimScoreChallengeTier, claimWeekly, getOffers, getScoreChallenge, getScoreChallengePreview, getToday, getWeekly, getWeeklyPreview } from './liveops.js';
 import { social } from './social.js';
 import { getStudyStatus, optInStudy, recordVisit, withdrawStudy } from './retention.js';
 import { getTargets, submitResult, tuningApply, tuningReport } from './level-results.js';
@@ -37,6 +37,9 @@ const ROUTES = {
   'GET /api/live-ops/weekly/preview': { handler: ({ now }) => getWeeklyPreview(now), auth: false },
   'GET /api/live-ops/weekly': { handler: ({ db, player, now }) => getWeekly(db, player.id, now), auth: true },
   'POST /api/live-ops/weekly/claim': { handler: ({ body, db, player, now }) => ({ success: true, result: claimWeekly(db, player.id, body, now) }), auth: true },
+  'GET /api/live-ops/score-challenge/preview': { handler: ({ now }) => getScoreChallengePreview(now), auth: false },
+  'GET /api/live-ops/score-challenge': { handler: ({ db, player, now }) => getScoreChallenge(db, player.id, now), auth: true },
+  'POST /api/live-ops/score-challenge/claim': { handler: ({ body, db, player, now }) => ({ success: true, result: claimScoreChallengeTier(db, player.id, body, now) }), auth: true },
   'GET /api/battlepass/config': { handler: () => getBattlePassConfig(), auth: false },
   'GET /api/battlepass/progress': { handler: ({ db, player, now }) => getProgress(db, player.id, now), auth: true },
   'POST /api/battlepass/claim': { handler: ({ body, db, player, now }) => ({ success: true, result: claimTier(db, player.id, body, now) }), auth: true },

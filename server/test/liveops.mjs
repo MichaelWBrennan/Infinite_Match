@@ -9,6 +9,15 @@ import { openDatabase } from '../db.js';
 import { playGreedy } from './bot.mjs';
 
 const EVENT_ID = 'week-2026-10-05';
+const CHALLENGE_ID = 'personal_run_20261010';
+const CHALLENGE = {
+  id: CHALLENGE_ID,
+  name: 'Personal run',
+  start: '2026-10-10T00:00:00Z',
+  end: '2026-10-17T00:00:00Z',
+  target: 1000,
+  tiers: [{ threshold: 1, coins: 15 }, { threshold: 1000, coins: 25 }],
+};
 const WEEK = {
   id: EVENT_ID,
   name: 'Royal Sprint',
@@ -23,12 +32,12 @@ describe('live ops', () => {
   let base;
   let clock;
   let dir;
-  const saved = { config: process.env.LIVE_OPS_CONFIG, disabled: process.env.WEEKLY_EVENT_DISABLED };
+  const saved = { config: process.env.LIVE_OPS_CONFIG, disabled: process.env.WEEKLY_EVENT_DISABLED, challengeOff: process.env.SCORE_CHALLENGE_DISABLED };
 
   before(async () => {
     dir = mkdtempSync(join(tmpdir(), 'liveops-'));
     const path = join(dir, 'liveops.json');
-    writeFileSync(path, JSON.stringify({ events: [], deals: [], weeklyEvents: [WEEK], weeklyEventArchive: [] }));
+    writeFileSync(path, JSON.stringify({ events: [], deals: [], scoreChallenges: [CHALLENGE], weeklyEvents: [WEEK], weeklyEventArchive: [] }));
     process.env.LIVE_OPS_CONFIG = path;
     delete process.env.WEEKLY_EVENT_DISABLED;
     clock = { now: Date.parse('2026-10-10T12:00:00Z') };
@@ -40,7 +49,7 @@ describe('live ops', () => {
   after(async () => {
     await new Promise((resolve) => app.server.close(resolve));
     app.db.close();
-    for (const [key, env] of [['LIVE_OPS_CONFIG', saved.config], ['WEEKLY_EVENT_DISABLED', saved.disabled]]) {
+    for (const [key, env] of [['LIVE_OPS_CONFIG', saved.config], ['WEEKLY_EVENT_DISABLED', saved.disabled], ['SCORE_CHALLENGE_DISABLED', saved.challengeOff]]) {
       if (env === undefined) delete process.env[key];
       else process.env[key] = env;
     }
@@ -173,5 +182,100 @@ describe('live ops', () => {
     } finally {
       delete process.env.WEEKLY_EVENT_DISABLED;
     }
+  });
+
+  const challengeTotal = (playerId) => {
+    const row = app.db.prepare('SELECT state FROM economy WHERE player_id = ?').get(playerId);
+    return JSON.parse(row.state).scoreChallenges?.[CHALLENGE_ID]?.total ?? 0;
+  };
+
+  it('blocks score challenge claims with no progress, and an unknown challenge', async () => {
+    const { token } = await newPlayer();
+    const early = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 1 } });
+    assert.equal(early.status, 409);
+    assert.equal(early.json.error, 'challenge_progress_required');
+    const unknown = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: 'nope_nope', threshold: 1 } });
+    assert.equal(unknown.status, 404);
+    assert.equal(unknown.json.error, 'challenge_not_found');
+    assert.equal((await call('POST', '/api/live-ops/score-challenge/claim', { body: { challengeId: CHALLENGE_ID, threshold: 1 } })).status, 401);
+  });
+
+  it('counts a verified win toward the challenge, and grants each earned tier once', async () => {
+    const { token, id } = await newPlayer();
+    const attempt = await call('POST', '/api/account-economy/energy/spend', { token, body: { level: 2, mode: 'classic', rulesVersion: 5 } });
+    const played = playGreedy(attempt.json.result.generatedLevel);
+    const win = await call('POST', '/api/account-economy/level/complete', {
+      token,
+      body: { level: 2, attemptId: attempt.json.result.attemptId, score: played.score, moves: played.moves, objectiveProgress: played.objectiveProgress },
+    });
+    assert.equal(win.status, 200, JSON.stringify(win.json));
+    const total = challengeTotal(id);
+    assert.equal(total, played.score);
+    assert.ok(total > 0);
+
+    const before = await coins(token);
+    const first = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 1 } });
+    assert.equal(first.status, 200, JSON.stringify(first.json));
+    assert.equal(first.json.result.coins, 15);
+    assert.equal(first.json.result.duplicate, false);
+    assert.equal(await coins(token), before + 15);
+    const again = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 1 } });
+    assert.equal(again.json.result.duplicate, true);
+    assert.equal(await coins(token), before + 15);
+
+    // The second tier is claimable only once the total reaches it.
+    const top = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 1000 } });
+    if (total >= 1000) {
+      assert.equal(top.status, 200);
+      assert.equal(top.json.result.coins, 25);
+    } else {
+      assert.equal(top.status, 409);
+      assert.equal(top.json.error, 'challenge_progress_required');
+    }
+    const badTier = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 7 } });
+    assert.equal(badTier.status, 404);
+    assert.equal(badTier.json.error, 'challenge_tier_not_found');
+  });
+
+  it('closes claims when the window ends, and SCORE_CHALLENGE_DISABLED stops them', async () => {
+    const { token, id } = await newPlayer();
+    seed(id, (economy) => { economy.scoreChallenges = { [CHALLENGE_ID]: { total: 5000, claimed: [] } }; });
+    process.env.SCORE_CHALLENGE_DISABLED = '1';
+    try {
+      const off = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 1 } });
+      assert.equal(off.status, 409);
+      assert.equal(off.json.error, 'challenge_closed');
+    } finally {
+      delete process.env.SCORE_CHALLENGE_DISABLED;
+    }
+    clock.now = Date.parse('2026-10-17T12:00:00Z');
+    try {
+      const late = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 1000 } });
+      assert.equal(late.status, 409);
+      assert.equal(late.json.error, 'challenge_closed');
+    } finally {
+      clock.now = Date.parse('2026-10-10T12:00:00Z');
+    }
+    const open = await call('POST', '/api/live-ops/score-challenge/claim', { token, body: { challengeId: CHALLENGE_ID, threshold: 1000 } });
+    assert.equal(open.status, 200);
+    assert.equal(open.json.result.coins, 25);
+  });
+
+  it('shows the public schedule without progress, and a player their own progress and claimable tiers', async () => {
+    const preview = await call('GET', '/api/live-ops/score-challenge/preview');
+    assert.equal(preview.status, 200);
+    assert.equal(preview.json.challenge.id, CHALLENGE_ID);
+    assert.equal(preview.json.challenge.status, 'active');
+    assert.equal(preview.json.challenge.total, null);
+    assert.ok(preview.json.challenge.tiers.every((t) => t.canClaim === false));
+    assert.equal(preview.json.serverNow, '2026-10-10T12:00:00.000Z');
+
+    assert.equal((await call('GET', '/api/live-ops/score-challenge')).status, 401);
+    const { token, id } = await newPlayer();
+    seed(id, (economy) => { economy.scoreChallenges = { [CHALLENGE_ID]: { total: 500, claimed: [] } }; });
+    const view = await call('GET', '/api/live-ops/score-challenge', { token });
+    assert.equal(view.status, 200);
+    assert.equal(view.json.challenge.total, 500);
+    assert.deepEqual(view.json.challenge.tiers.map((t) => [t.threshold, t.earned, t.canClaim]), [[1, true, true], [1000, false, false]]);
   });
 });

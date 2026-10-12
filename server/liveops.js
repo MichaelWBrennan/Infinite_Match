@@ -2,6 +2,7 @@
 // Rules come from src/services/live-ops/*.js and src/services/payments/product-catalog.js.
 // Purchases are not available here, so every deal reports owned: false.
 import { liveOpsToday, priceFor } from '../src/services/live-ops/live-ops.js';
+import { claimScoreChallenge, scoreChallengeView, ScoreChallengeError } from '../src/services/live-ops/score-challenge-economy.js';
 import {
   claimWeeklyMilestone,
   visibleWeeklyEvent,
@@ -57,6 +58,32 @@ export function getWeekly(db, playerId, nowMs = Date.now()) {
   const economy = loadEconomy(db, playerId);
   const event = weeklyView(visibleWeeklyEvent(config, nowMs), economy, nowMs);
   return { success: true, event, disabled: weeklyDisabled(), serverNow: new Date(nowMs).toISOString() };
+}
+
+export function getScoreChallengePreview(nowMs = Date.now()) {
+  return { success: true, ...scoreChallengeView(currentLiveOps(), null, nowMs) };
+}
+
+export function getScoreChallenge(db, playerId, nowMs = Date.now()) {
+  return { success: true, ...scoreChallengeView(currentLiveOps(), loadEconomy(db, playerId), nowMs) };
+}
+
+export function claimScoreChallengeTier(db, playerId, body, nowMs = Date.now()) {
+  const config = currentLiveOps();
+  return transaction(db, () => {
+    const economy = loadEconomy(db, playerId);
+    let claim;
+    try {
+      claim = claimScoreChallenge(economy, config, body?.challengeId, body?.threshold, nowMs);
+    } catch (error) {
+      if (error instanceof ScoreChallengeError) {
+        throw new ApiError(/not_found$/.test(error.code) ? 404 : 409, error.code);
+      }
+      throw error;
+    }
+    if (!claim.duplicate) saveEconomy(db, playerId, economy);
+    return claim;
+  });
 }
 
 export function claimWeekly(db, playerId, body, nowMs = Date.now()) {

@@ -197,10 +197,10 @@
             }
             state.items.forEach((goal, index) => {
                 const slot = goalLabels[index]; if (!slot) return;
-                const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : 'Score';
+                const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : goal.type === 'clear-blockers' ? 'Blockers' : 'Score';
                 slot.text.textContent = `${name} ${Math.min(goal.current, goal.target).toLocaleString()}/${goal.target.toLocaleString()}`;
                 slot.item.dataset.complete = String(goal.complete);
-                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : goal.type === 'clear-shields' ? `Clear ${goal.target} fixed shields, up to two hits each` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
+                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : goal.type === 'clear-shields' ? `Clear ${goal.target} fixed shields, up to two hits each` : goal.type === 'clear-blockers' ? `Clear ${goal.target} blockers, one match each` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
             });
             progress.max = 100; progress.value = state.fraction * 100;
             progress.setAttribute('aria-valuetext', root.InfiniteLevels.objectiveSummary(definition, game.score, game.objectiveProgress, true));
@@ -398,8 +398,24 @@
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
             overlayButton('Weekly event', () => game.showWeeklyEvent());
+            const challengeLine = document.createElement('p'); challengeLine.className = 'match-score-challenge';
+            challengeLine.textContent = 'Personal score challenge: checking…'; content.append(challengeLine);
+            overlayButton('Personal score challenge and points', () => game.showWeeklyEvent());
+            loadScoreChallengeLine(challengeLine);
             overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
+        }
+        // Fills the Explore card with the same wording as the Community events tab. Stale replies are dropped.
+        function loadScoreChallengeLine(line) {
+            const card = root.ScoreChallengeCard;
+            if (!card) { line.textContent = 'Personal score challenge: unavailable right now.'; return; }
+            const token = typeof game.getAuthToken === 'function' ? game.getAuthToken() : null;
+            card.fetchView(token).then(({ ok, data }) => {
+                if (!line.isConnected) return;
+                line.textContent = ok
+                    ? card.cardLines(data, card.clockNow(card.clockOffset(data.serverNow))).join(' ')
+                    : 'Personal score challenge: unavailable right now.';
+            }).catch(() => { if (line.isConnected) line.textContent = 'Personal score challenge: unavailable right now.'; });
         }
         function goalGuide(wasRunning) {
             game.openOverlay('Your level goals');

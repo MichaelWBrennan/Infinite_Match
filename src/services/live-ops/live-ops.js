@@ -11,12 +11,16 @@ import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { productFor } from '../payments/product-catalog.js';
 import { validateWeeklyCalendar } from './weekly-event.js';
+import { validateScoreChallenge } from './score-challenge.js';
 
 // Plain error logging, so this module also loads on the free server (plain Node, no TypeScript logger).
 const logger = { error: (message, meta) => console.error(JSON.stringify({ level: 'error', source: 'LiveOps', message, ...meta })) }; // eslint-disable-line no-console
 
 export const MIN_DEAL_PRICE_CENTS = 99;
-const EMPTY = Object.freeze({ events: Object.freeze([]), deals: Object.freeze([]), weeklyEvents: Object.freeze([]), weeklyEventArchive: Object.freeze([]) });
+// Every top-level key the file may use. An unknown key fails the load, so a typo cannot silently drop a section.
+// tournaments and challenges (community) are validated per entry by competitions.js; they are only type-checked here.
+const KNOWN_KEYS = Object.freeze(['events', 'deals', 'tournaments', 'challenges', 'scoreChallenges', 'weeklyEvents', 'weeklyEventArchive']);
+const EMPTY = Object.freeze({ events: Object.freeze([]), deals: Object.freeze([]), scoreChallenges: Object.freeze([]), weeklyEvents: Object.freeze([]), weeklyEventArchive: Object.freeze([]) });
 
 export function liveOpsConfigPath() {
   return process.env.LIVE_OPS_CONFIG || resolve('config', 'liveops.json');
@@ -36,8 +40,30 @@ export function validateLiveOps(raw) {
   }
   const events = [];
   const deals = [];
+  const scoreChallenges = [];
+  for (const key of Object.keys(raw)) {
+    if (!KNOWN_KEYS.includes(key)) errors.push(`unknown top-level key ${key}`);
+  }
+  for (const key of ['tournaments', 'challenges', 'events', 'deals', 'scoreChallenges']) {
+    if (raw[key] !== undefined && !Array.isArray(raw[key])) errors.push(`${key} must be a list`);
+  }
   const weekly = validateWeeklyCalendar(raw.weeklyEvents, raw.weeklyEventArchive);
   errors.push(...weekly.errors);
+
+  const seenChallenges = new Set();
+  (Array.isArray(raw.scoreChallenges) ? raw.scoreChallenges : []).forEach((c, i) => {
+    const { errors: challengeErrors, challenge } = validateScoreChallenge(c);
+    if (challengeErrors.length > 0 || !challenge) {
+      errors.push(...challengeErrors.map((e) => `scoreChallenges[${i}]: ${e}`));
+      return;
+    }
+    if (seenChallenges.has(challenge.id)) {
+      errors.push(`scoreChallenges[${i}]: duplicate id ${challenge.id}`);
+      return;
+    }
+    seenChallenges.add(challenge.id);
+    scoreChallenges.push(challenge);
+  });
 
   (Array.isArray(raw.events) ? raw.events : []).forEach((e, i) => {
     const startMs = parseTime(e?.start);
@@ -75,7 +101,7 @@ export function validateLiveOps(raw) {
   });
 
   if (errors.length > 0) return { errors, config: null };
-  return { errors, config: { events, deals, weeklyEvents: weekly.events, weeklyEventArchive: weekly.archive } };
+  return { errors, config: { events, deals, scoreChallenges, weeklyEvents: weekly.events, weeklyEventArchive: weekly.archive } };
 }
 
 let cached = null;

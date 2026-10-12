@@ -336,6 +336,18 @@ class InfiniteMatchGame {
     }
 
     communityError(data) {
+        const plain = {
+            not_friends: 'you can only send energy to friends',
+            self_gift: 'you cannot send energy to yourself',
+            gift_sender_limit: 'you have sent 3 gifts today',
+            gift_receiver_limit: 'this player has received 3 gifts today',
+            gift_id_reused: 'this gift was already used',
+            milestone_not_reached: 'the guild has not reached this week\'s goal yet',
+            no_milestone_contribution: 'win a classic or daily level first',
+            milestone_wallet_full: 'your coin wallet is full; try again after spending some coins',
+            not_in_guild: 'you are not in a guild',
+        };
+        if (data && plain[data.error]) return plain[data.error];
         return data && data.error ? String(data.error).replace(/_/g, ' ') : 'something went wrong';
     }
 
@@ -420,8 +432,15 @@ class InfiniteMatchGame {
         if (list.length === 0) nodes.push(this.communityNote('No friends yet. Share your code to add them.'));
         for (const f of list) {
             const id = encodeURIComponent(f.playerId);
-            nodes.push(this.communityRow(`${f.label} · best ${f.bestScore || 0}`, 'Remove', () =>
-                this.communityAction(`/api/social/friends/${id}`, 'DELETE', 'friends')));
+            const row = this.communityEl('div', '', 'community-row');
+            row.appendChild(this.communityEl('span', `${f.label} · best ${f.bestScore || 0}`));
+            const gift = this.communityButton('Send energy', () => this.sendEnergyGift(f.playerId));
+            gift.setAttribute('aria-label', `Send 1 energy to ${f.label}`);
+            row.appendChild(gift);
+            const remove = this.communityButton('Remove', () => this.communityAction(`/api/social/friends/${id}`, 'DELETE', 'friends'));
+            remove.setAttribute('aria-label', `Remove ${f.label} from friends`);
+            row.appendChild(remove);
+            nodes.push(row);
         }
 
         nodes.push(this.communityEl('h3', 'Best scores'));
@@ -431,6 +450,52 @@ class InfiniteMatchGame {
             nodes.push(this.communityNote(`${row.rank}. ${row.label}${row.isYou ? ' (you)' : ''} — ${row.score}`));
         }
         show(nodes);
+    }
+
+    // One energy gift. The id is kept until the server answers, so a retry after a dropped
+    // connection is the same gift and cannot send twice.
+    async sendEnergyGift(receiverId) {
+        this.giftIds = this.giftIds || {};
+        const giftId = this.giftIds[receiverId] || (globalThis.crypto && crypto.randomUUID
+            ? crypto.randomUUID() : `g${Date.now()}${Math.random().toString(36).slice(2, 12)}`);
+        this.giftIds[receiverId] = giftId;
+        let result;
+        try {
+            result = await this.communityRequest('/api/social/gifts/energy', { method: 'POST', body: JSON.stringify({ receiverId, giftId }) });
+        } catch (error) {
+            this.communityFlash = 'Could not reach the server. Tap Send energy again; it will not send twice.';
+            return this.showCommunityTab('friends');
+        }
+        delete this.giftIds[receiverId];
+        this.communityFlash = !result.ok ? `Not sent: ${this.communityError(result.data)}.`
+            : result.data.result.credited > 0 ? 'Energy sent.' : 'Gift recorded. Their energy is already full.';
+        this.showCommunityTab('friends');
+    }
+
+    // Guild milestone (S3): shared weekly goal, shown to guild members.
+    milestoneNodes(m) {
+        const nodes = [this.communityEl('h3', 'Guild milestone this week')];
+        const bar = document.createElement('progress');
+        bar.max = m.goal;
+        bar.value = Math.min(m.count, m.goal);
+        bar.setAttribute('aria-label', `Guild milestone progress: ${m.count} of ${m.goal} verified wins`);
+        nodes.push(this.communityEl('p', `${m.count} of ${m.goal} verified wins this week.`, 'community-note'));
+        nodes.push(bar);
+        if (m.claimed) nodes.push(this.communityNote(`You claimed this week's ${m.rewardCoins} coins.`));
+        else if (m.canClaim) {
+            const claim = this.communityButton(`Claim ${m.rewardCoins} coins`, () => this.claimGuildMilestone());
+            claim.setAttribute('aria-label', `Claim ${m.rewardCoins} coins from the guild milestone`);
+            nodes.push(claim);
+        } else if (m.reached) nodes.push(this.communityNote('The goal is reached. Win a classic or daily level to claim your share.'));
+        else nodes.push(this.communityNote(`Win classic or daily levels to add to the guild total. Each contributing member can claim ${m.rewardCoins} coins once the goal is reached.`));
+        return nodes;
+    }
+
+    async claimGuildMilestone() {
+        const result = await this.communityRequest('/api/social/milestone/claim', { method: 'POST' });
+        this.communityFlash = !result.ok ? `Not claimed: ${this.communityError(result.data)}.`
+            : result.data.result.duplicate ? 'Already claimed. No second reward.' : `Claimed ${result.data.result.coins} coins.`;
+        this.showCommunityTab('guild');
     }
 
     async loadCommunityGuild(show) {
@@ -445,6 +510,10 @@ class InfiniteMatchGame {
             ];
             for (const m of guild.members || []) {
                 nodes.push(this.communityNote(`${m.label}${m.isYou ? ' (you)' : ''} — best ${m.bestScore || 0}`));
+            }
+            const milestone = await this.communityRequest('/api/social/milestone');
+            if (milestone.ok && milestone.data.result && milestone.data.result.inGuild) {
+                nodes.push(...this.milestoneNodes(milestone.data.result));
             }
             nodes.push(this.communityButton('Leave guild', () => this.communityAction('/api/social/guilds/leave', 'POST', 'guild')));
             return show(nodes);
@@ -468,7 +537,10 @@ class InfiniteMatchGame {
 
     async loadCommunityEvents(show) {
         const signedIn = !!this.getAuthToken();
-        const weekly = await this.communityRequest(signedIn ? '/api/live-ops/weekly' : '/api/live-ops/weekly/preview');
+        const [weekly, challenge] = await Promise.all([
+            this.communityRequest(signedIn ? '/api/live-ops/weekly' : '/api/live-ops/weekly/preview'),
+            this.scoreChallengeRequest(signedIn),
+        ]);
         const nodes = [this.communityEl('h3', 'This week’s free event')];
         if (!weekly.ok) {
             nodes.push(this.communityNote('Weekly event unavailable. Check your connection and try again.'));
@@ -498,6 +570,8 @@ class InfiniteMatchGame {
                     ? () => this.claimWeekly(event.id, milestone.wins) : null));
             }
         }
+        nodes.push(this.communityEl('h3', 'Personal score challenge'));
+        this.appendScoreChallenge(nodes, challenge, signedIn);
         if (!signedIn) return show(nodes);
         const [comp, today] = await Promise.all([
             this.communityRequest('/api/live-ops/competitions'),
@@ -537,6 +611,56 @@ class InfiniteMatchGame {
         if (events.length > 0) nodes.push(this.communityEl('h3', 'Live events'));
         for (const e of events) nodes.push(this.communityNote(`${e.name} — ${e.description || ''}`));
         show(nodes);
+    }
+
+    scoreChallengeRequest(signedIn) {
+        return this.communityRequest(signedIn ? '/api/live-ops/score-challenge' : '/api/live-ops/score-challenge/preview')
+            .catch(() => ({ ok: false, data: {} }));
+    }
+
+    appendScoreChallenge(nodes, challenge, signedIn) {
+        // The card module is loaded before this script. Without it, the tab says so instead of failing.
+        if (!challenge.ok || typeof ScoreChallengeCard === 'undefined') {
+            nodes.push(this.communityNote('Personal score challenge unavailable. Check your connection and try again.'));
+            return;
+        }
+        const view = challenge.data;
+        const now = ScoreChallengeCard.clockNow(ScoreChallengeCard.clockOffset(view.serverNow));
+        for (const line of ScoreChallengeCard.cardLines(view, now)) nodes.push(this.communityNote(line));
+        const c = view.challenge;
+        if (!c || !signedIn) return;
+        if (c.status === 'active') {
+            const meter = this.communityEl('progress');
+            meter.max = Math.max(1, c.target);
+            meter.value = Math.min(c.total, meter.max);
+            meter.setAttribute('aria-label', `${c.total} of ${c.target} points toward the target`);
+            nodes.push(meter);
+        }
+        for (const tier of c.tiers) {
+            nodes.push(this.communityRow(ScoreChallengeCard.tierText(tier, c.total), tier.canClaim ? 'Claim free coins' : null,
+                tier.canClaim ? () => this.claimScoreChallenge(c.id, tier.threshold) : null));
+        }
+    }
+
+    async claimScoreChallenge(challengeId, threshold) {
+        if (this.scoreClaimPending) return;
+        this.scoreClaimPending = true;
+        try {
+            const { ok, data } = await this.communityRequest('/api/live-ops/score-challenge/claim', {
+                method: 'POST', body: JSON.stringify({ challengeId, threshold }),
+            });
+            this.communityFlash = ok ? data.result.duplicate ? 'Already claimed. No second reward.'
+                : `+${data.result.coins} free coins. Balance: ${data.result.balance}.`
+                : data.error === 'challenge_progress_required' ? 'Not enough points for that tier yet.'
+                    : data.error === 'challenge_wallet_full' ? 'Coin wallet full. Spend some coins and claim before the challenge ends.'
+                        : data.error === 'challenge_closed' ? 'The challenge has ended or is paused; no new claim was granted.'
+                            : `Not claimed: ${this.communityError(data)}.`;
+        } catch (error) {
+            this.communityFlash = 'Could not confirm the claim. Reopen Events to check it before retrying.';
+        } finally {
+            this.scoreClaimPending = false;
+            if (this.communityTab === 'events') this.showCommunityTab('events');
+        }
     }
 
     async claimWeekly(eventId, wins) {

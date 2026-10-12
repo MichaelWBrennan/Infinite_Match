@@ -17,7 +17,7 @@ import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { socialStore } from '../services/social/social-store.js';
 import { activeCompetitions, loadCompetitions } from '../services/live-ops/competitions.js';
 
-import { liveGeneratedLevel, clientRulesVersion } from '../services/levels/level-service.js';
+import { liveGeneratedLevel, clientRulesVersion, blockerLevelsEnabled } from '../services/levels/level-service.js';
 import { LevelInputError } from '../services/levels/location-context.js';
 
 const router = express.Router();
@@ -44,6 +44,16 @@ async function recordCompetitionWin(playerId, attemptId, level, score, competiti
       tournamentIds: competitionIds.tournamentIds, challengeIds: competitionIds.challengeIds });
   } catch (error) {
     logger.error('Could not record the win for boards', { error: error.message, playerId });
+  }
+}
+
+// Guild milestone (S3): a verified win counts once per attempt. Retries call this again and the
+// store ignores the repeat, so a lost response cannot double-count. Best-effort, like boards.
+async function recordMilestoneContribution(playerId, attemptId, verified) {
+  try {
+    await socialStore.recordMilestoneWin(playerId, attemptId, verified);
+  } catch (error) {
+    logger.error('Could not record the guild milestone win', { error: error.message, playerId });
   }
 }
 
@@ -440,6 +450,7 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
       }));
 
     if (rankedScore !== null) await recordCompetitionWin(playerId, attemptId, level, rankedScore, competitionIds);
+    if (result.verified === true) await recordMilestoneContribution(playerId, attemptId, true);
     if (!result.duplicate) security.logSecurityEvent('level_completed', {
       playerId, level, score, stars: result.stars, xpGained: winRewards(result.stars).xp,
       ip: req.ip,
@@ -507,7 +518,7 @@ router.post('/energy/spend', security.sessionValidation, async (req, res) => {
     }
     const definition = req.body?.mode === undefined ? null : await liveGeneratedLevel({
       level: req.body?.level, mode: req.body.mode, location: req.body.location ?? {},
-      rulesVersion: clientRulesVersion(req.body.rulesVersion),
+      rulesVersion: clientRulesVersion(req.body.rulesVersion, req.body.mode, blockerLevelsEnabled()),
     });
     const legacyTarget = definition ? null : levelTarget(req.body?.level,
       levelMultiplier(req.body?.level, readLevelOverrides()));

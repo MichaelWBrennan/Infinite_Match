@@ -10,7 +10,7 @@ const logger = new Logger('AttemptObservations');
 export const MIN_OBSERVATION_SAMPLE = 20;
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const OUTCOMES = new Set(['started', 'verified_win', 'unverified_win', 'reported_loss', 'reported_quit', 'replaced', 'expired']);
-const PROFILE = new Set(['score', 'collect', 'score-and-collect', 'collect-pair', 'clear-shields']);
+const PROFILE = new Set(['score', 'collect', 'score-and-collect', 'collect-pair', 'clear-shields', 'clear-blockers']);
 const DIFFICULTY = new Set(['gentle', 'steady', 'challenging', 'boss']);
 const SEED_KEY = /^[0-9a-f]{16}$/;
 const int = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max;
@@ -18,7 +18,7 @@ export const observationFile = () => process.env.ATTEMPT_OBSERVATIONS_FILE || re
 
 /** The key is operator-managed. Without it, seed grouping is deliberately omitted. */
 export function observationMeta(definition, priorStarts = 0, key = process.env.OBSERVATION_SEED_KEY) {
-  if (!definition || !['classic', 'daily'].includes(definition.mode) || !int(definition.generatorVersion, 4, 5)) return null;
+  if (!definition || !['classic', 'daily'].includes(definition.mode) || !int(definition.generatorVersion, 4, 6)) return null;
   const seedGroup = int(definition.seed, 0, 0xffffffff) && typeof key === 'string' && key.length >= 32
     ? createHmac('sha256', key).update(`${definition.generatorVersion}:${definition.seed}`).digest('hex').slice(0, 16)
     : null;
@@ -55,7 +55,7 @@ export async function observeAttempt(meta, outcome, signals = {}, nowMs = Date.n
 
 function validRow(row) {
   return row && typeof row.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.day)
-    && int(row.level, 1, 100000) && int(row.version, 4, 5)
+    && int(row.level, 1, 100000) && int(row.version, 4, 6)
     && ['classic', 'daily'].includes(row.mode) && PROFILE.has(row.profile)
     && DIFFICULTY.has(row.difficulty) && ['first_observed', 'early_observed', 'established_observed'].includes(row.cohort)
     && (row.seedGroup === null || SEED_KEY.test(row.seedGroup)) && OUTCOMES.has(row.outcome)
