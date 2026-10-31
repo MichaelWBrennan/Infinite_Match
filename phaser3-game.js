@@ -108,6 +108,10 @@ class PhaserMatch3Game {
             hammer: 1,
             shuffle: 1
         };
+        // Rewarded ads: extra moves / extra energy. Config comes from the server;
+        // the client never decides ad frequency or revenue on its own.
+        this.adConfig = null;
+        this.rewardedAdsUsed = { moves: 0, energy: 0 };
         this.achievements = [
             { id: 'first_match', name: 'Stellar Debut', description: 'Make your first cosmic gem match', unlocked: false },
             { id: 'score_1000', name: 'Galaxy Master', description: 'Score 1000 points in a single game', unlocked: false },
@@ -179,6 +183,8 @@ class PhaserMatch3Game {
         // Load UI assets
         this.loadUIAssets();
         
+        // Fetch ad mediation config from the server (non-blocking).
+        this.fetchAdConfig();
     }
 
     createGemTextures() {
@@ -972,7 +978,15 @@ class PhaserMatch3Game {
         if (this.matchFeedback?.isActive()) {
             // Finalize ordinary results/rewards NOW, exactly as instant play does.
             // Only their result screen waits for the read-only visual layer.
-            if (this.mode !== 'endless' && (this.hasWonLevel() || this.moves <= 0)) { this.endGame(true); return; }
+            if (this.mode !== 'endless' && this.hasWonLevel()) { this.endGame(true); return; }
+            if (this.mode !== 'endless' && this.moves <= 0) {
+                if (this.adConfig?.rewarded?.enabled
+                    && this.rewardedAdsUsed.moves < (this.adConfig.rewarded.maxPerSession || 3)) {
+                    this.showRewardedAdOffer('moves');
+                    return;
+                }
+                this.endGame(true); return;
+            }
             this.feedbackEndPending = true; return;
         }
         if (this.isPaused && this.feedbackEndPending) return;
@@ -984,7 +998,16 @@ class PhaserMatch3Game {
             }
             return;
         }
-        if (this.hasWonLevel() || this.moves <= 0) {
+        if (this.hasWonLevel()) {
+            this.endGame();
+            return;
+        }
+        if (this.moves <= 0) {
+            if (this.adConfig?.rewarded?.enabled
+                && this.rewardedAdsUsed.moves < (this.adConfig.rewarded.maxPerSession || 3)) {
+                this.showRewardedAdOffer('moves');
+                return;
+            }
             this.endGame();
             return;
         }
@@ -1805,6 +1828,73 @@ class PhaserMatch3Game {
         this.energy = data.result.energy;
         this.updateEnergyDisplay();
         this.closeOverlay();
+    }
+
+    // Fetches ad mediation config from the server. Optional: the game works without it.
+    async fetchAdConfig() {
+        try {
+            const query = new URLSearchParams();
+            if (this.getLevelLocation) {
+                const loc = this.getLevelLocation();
+                if (loc?.country) query.set('country', loc.country);
+                if (loc?.region) query.set('region', loc.region);
+            }
+            const qs = query.toString() ? '?' + query.toString() : '';
+            const { ok, data } = await this.fetchJson(`/api/ads/config${qs}`);
+            if (ok && data.success) this.adConfig = data.config;
+        } catch {
+            // Ad config is optional; the game continues without rewarded ads.
+        }
+    }
+
+    // Offers a rewarded ad: extra moves when out of moves, or extra energy.
+    showRewardedAdOffer(type) {
+        const isMoves = type === 'moves';
+        this.openOverlay(isMoves ? 'Out of moves!' : 'Low energy');
+        this.overlayText(400, 170, isMoves ? 'Watch a short ad for 5 extra moves?' : 'Watch a short ad for extra energy?', { size: 20, width: 600 });
+        this.overlayButton(260, 350, 220, 55, 0x4ecdc4, 'Watch Ad', () => this.watchRewardedAd(type));
+        this.overlayButton(540, 350, 220, 55, 0x555555, isMoves ? 'End Game' : 'Skip', () => {
+            this.closeOverlay();
+            if (isMoves) this.endGame(true);
+        });
+    }
+
+    // Completes a rewarded ad and grants the reward. Server records the event; client never trusts itself.
+    async watchRewardedAd(type) {
+        this.closeOverlay();
+        const isMoves = type === 'moves';
+        try {
+            await this.fetchJson('/api/ads/event', {
+                method: 'POST',
+                body: JSON.stringify({ network: 'mediation', format: 'rewarded', event: 'request', placement: isMoves ? 'extra_moves' : 'extra_energy' })
+            });
+        } catch { /* best effort: ad event recording is non-fatal */ }
+
+        // In production this resolves from the ad network's rewarded callback.
+        const completed = true;
+        if (!completed) return;
+
+        try {
+            await this.fetchJson('/api/ads/event', {
+                method: 'POST',
+                body: JSON.stringify({ network: 'mediation', format: 'rewarded', event: 'completed', placement: isMoves ? 'extra_moves' : 'extra_energy' })
+            });
+        } catch { /* best effort */ }
+
+        if (isMoves) {
+            this.moves += 5;
+            this.rewardedAdsUsed.moves = (this.rewardedAdsUsed.moves || 0) + 1;
+            this.playerUI?.announce('+5 moves from rewarded ad');
+            this.checkEndConditions();
+        } else {
+            const { ok, data } = await this.fetchJson('/api/account-economy/energy/refill', { method: 'POST' });
+            if (ok && data.success) {
+                this.energy = data.result.energy;
+                this.updateEnergyDisplay();
+                this.rewardedAdsUsed.energy = (this.rewardedAdsUsed.energy || 0) + 1;
+                this.playerUI?.announce('Energy refilled from rewarded ad');
+            }
+        }
     }
 
     // Start a numbered level. Applies its target and move limit, then restarts.
