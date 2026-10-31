@@ -1,6 +1,7 @@
 import { simulateLevelMove } from './generator.js';
 import { initialObjectiveProgress, objectiveStatus, simulateObjectiveClear, validObjectives } from './objective-rules.js';
 import { validBlockers } from './blocker-rules.js';
+import { validLockedGems } from './locked-gem-rules.js';
 import { inventoryReplayEffect } from './inventory-replay.js';
 
 /** A replay is evidence of a reachable result, not proof of human play or elapsed time.
@@ -11,8 +12,10 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
   if (!definition || definition.generatorVersion < 4 || !['classic', 'daily'].includes(definition.mode)) {
     return { error: 'replay_unsupported' };
   }
-  // A pinned v6 definition must carry a valid blocker grid whose placed count is the objective target.
-  if (definition.generatorVersion >= 6 && (!validBlockers(definition.blockers, definition.boardSize) || !validObjectives(definition))) {
+  // A pinned v6 definition must carry a valid blocker grid or locked gem grid whose
+  // placed count is the objective target.
+  if (definition.generatorVersion >= 6 && (!validBlockers(definition.blockers, definition.boardSize)
+    || !validLockedGems(definition.lockedGems, definition.boardSize) || !validObjectives(definition))) {
     return { error: 'invalid_level_objectives' };
   }
   if (!Number.isSafeInteger(definition.moves) || definition.moves < 1 || definition.moves > 1000
@@ -27,7 +30,7 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
   let state = {
     board: definition.board, specials: definition.specials, shields: definition.shields,
     refillState: definition.refillState, objectiveProgress: initialObjectiveProgress(definition),
-    ...(definition.generatorVersion >= 6 ? { blockers: definition.blockers } : {}),
+    ...(definition.generatorVersion >= 6 ? { blockers: definition.blockers, locked: definition.lockedGems } : {}),
   };
   let score = 0;
   for (let i = 0; i < moves.length; i++) {
@@ -60,8 +63,8 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
     state = {
       board: result.board, specials: result.specials, shields: result.shields,
       refillState: result.refillState, objectiveProgress: result.objectiveProgress,
-      // v6 blockers move with the board. Without this the next move would restart from the initial grid.
-      ...(definition.generatorVersion >= 6 ? { blockers: result.blockers } : {}),
+      // v6 terrain moves with the board. Without this the next move would restart from the initial grid.
+      ...(definition.generatorVersion >= 6 ? { blockers: result.blockers, locked: result.locked } : {}),
     };
     // The browser ends the level immediately when the first winning action resolves.
     if (objectiveStatus(definition, score, state.objectiveProgress).complete && i !== moves.length - 1) {
@@ -78,7 +81,8 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
   if (!reportedProgress || typeof reportedProgress !== 'object'
     || definition.gemTypes.some((color) => (reportedProgress.collected?.[color] || 0) !== expected.collected[color])
     || (definition.generatorVersion >= 5 && reportedProgress.shieldsCleared !== expected.shieldsCleared)
-    || (definition.generatorVersion >= 6 && reportedProgress.blockersCleared !== expected.blockersCleared)) {
+    || (definition.generatorVersion >= 6 && reportedProgress.blockersCleared !== expected.blockersCleared)
+    || (definition.generatorVersion >= 6 && reportedProgress.lockedCleared !== expected.lockedCleared)) {
     return { error: 'replay_result_mismatch' };
   }
   return { verified: true, score };

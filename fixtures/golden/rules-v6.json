@@ -535,13 +535,12 @@
               "red": 0,
               "blue": 3
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 23,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 30,
           "verifiedScore": 16000,
@@ -553,7 +552,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -860,13 +860,12 @@
               "blue": 0,
               "green": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 14,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 27,
           "verifiedScore": 5560,
@@ -878,7 +877,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 3,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -1321,13 +1321,12 @@
               "blue": 0,
               "purple": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 18,
+          "legalOpeningMoves": 112,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 28,
           "verifiedScore": 4070,
@@ -1341,7 +1340,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 3,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -1718,7 +1718,7 @@
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 12,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 21,
           "verifiedScore": 1280,
@@ -1732,7 +1732,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 3
+          "verifiedBlockers": 3,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -2163,13 +2164,12 @@
               "red": 3,
               "green": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 37,
+          "legalOpeningMoves": 112,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
           "verifiedScore": 38280,
@@ -2181,7 +2181,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -2493,13 +2494,12 @@
               "red": 0,
               "blue": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 6,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 27,
           "verifiedScore": 1410,
@@ -2513,7 +2513,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -2816,13 +2817,12 @@
               "green": 0,
               "blue": 3
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 11,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 26,
           "verifiedScore": 11260,
@@ -2834,7 +2834,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -3205,13 +3206,12 @@
               "red": 0,
               "green": 3
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 7,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
           "verifiedScore": 2020,
@@ -3224,7 +3224,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 3,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -3587,13 +3588,12 @@
               "green": 0,
               "blue": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 18,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
           "verifiedScore": 12230,
@@ -3606,7 +3606,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -3912,13 +3913,12 @@
               "green": 0,
               "yellow": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 9,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 30,
           "verifiedScore": 1520,
@@ -3932,7 +3932,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -4309,7 +4310,7 @@
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 19,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 30,
           "verifiedScore": 1670,
@@ -4323,7 +4324,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 3
+          "verifiedBlockers": 3,
+          "verifiedLockedGems": 0
         }
       }
     },
@@ -4700,7 +4702,7 @@
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 12,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 21,
           "verifiedScore": 1280,
@@ -4714,7 +4716,8 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 3
+          "verifiedBlockers": 3,
+          "verifiedLockedGems": 0
         }
       }
     }

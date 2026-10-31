@@ -8,6 +8,7 @@ import { hashSeed, nextRandom, legalSwaps, dealPlayableBoard, certifyBoard, simu
 import { blankSpecials, specialActions, certifySpecialBoard, simulateSpecialMove } from './special-rules.js';
 import { witnessedShields, shieldCount } from './shield-rules.js';
 import { witnessedBlockers, blockerCount, blankBlockers } from './blocker-rules.js';
+import { witnessedLockedGems, lockedGemCount, blankLockedGems, legalSwapsExcludingLocks } from './locked-gem-rules.js';
 import { composeObjectives, objectiveStatus, objectiveActions, simulateObjectiveMove, certifyObjectiveLevel } from './objective-rules.js';
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from './match-core.js';
 export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from './special-rules.js';
@@ -121,7 +122,7 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
   }
   // V6 blockers occupy a stage of their own (never with shields), so each definition adds one objective.
   // Their overlay never changes gems, so the witness and score are the v5 witness and score.
-  // Classic only (plan M5): daily, timed and endless never receive blockers.
+  // Classic only (plan M5): daily, timed and endless never receive blockers or locked gems.
   const blockerStage = version >= 6 && !shieldStage && mode === 'classic' && level >= 3 && level % 4 === 2;
   const blockers = version >= 6 ? blockerStage
     ? witnessedBlockers(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
@@ -131,14 +132,29 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-blockers', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-blockers', target: blockersTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, objectives: goals.objectives }, proof.score,
-    { collected: proof.collected, ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}), ...(version >= 6 ? { blockersCleared: blockersTotal } : {}) }).complete) throw new Error('objective_quality_failed');
+  // V6 locked gems occupy their own stage (never with shields or blockers). The gem underneath stays
+  // playable but the cell cannot be swapped until a match clears the lock.
+  const lockedGemStage = version >= 6 && !shieldStage && !blockerStage && mode === 'classic' && level >= 3 && level % 4 === 0;
+  const lockedGems = version >= 6 ? lockedGemStage
+    ? witnessedLockedGems(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankLockedGems(size) : null;
+  const lockedTotal = lockedGems ? lockedGemCount(lockedGems) : 0;
+  if (lockedGemStage && lockedTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-locked-gems', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-locked-gems', target: lockedTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, objectives: goals.objectives }, proof.score,
+    { collected: proof.collected,
+      ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}),
+      ...(version >= 6 && blockersTotal > 0 ? { blockersCleared: blockersTotal } : {}),
+      ...(version >= 6 && lockedTotal > 0 ? { lockedCleared: lockedTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
     ...(version >= 3 ? { specials: blankSpecials(size) } : {}),
     ...(version >= 5 ? { shields } : {}),
     ...(version >= 6 ? { blockers } : {}),
+    ...(version >= 6 ? { lockedGems } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -160,21 +176,22 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     context: { ...context },
     quality: {
       initialMatches: 0,
-      legalOpeningMoves: legalSwaps(board).length,
+      legalOpeningMoves: lockedGems ? legalSwapsExcludingLocks(board, lockedGems).length : legalSwaps(board).length,
       verifiedWithoutBoosters: true,
       verifiedMoves: moveBudget,
       verifiedScore: proof.score,
       ...(version >= 4 ? { verifiedCollected: proof.collected, verifiedObjectives: true } : {}),
       ...(version >= 5 ? { verifiedShields: shieldsTotal } : {}),
       ...(version >= 6 ? { verifiedBlockers: blockersTotal } : {}),
+      ...(version >= 6 ? { verifiedLockedGems: lockedTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers);
+export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
