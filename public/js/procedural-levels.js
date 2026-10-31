@@ -2805,6 +2805,10 @@ function validObjectives(definition) {
       if (definition.generatorVersion < 6 || !validChocolate(definition.chocolate, definition.boardSize) || goal.target !== chocolateCount(definition.chocolate)) return false;
     } else if (goal.type === 'clear-liquorice') {
       if (definition.generatorVersion < 6 || !validLiquorice(definition.liquorice, definition.boardSize) || goal.target !== liquoriceCount(definition.liquorice)) return false;
+    } else if (goal.type === 'clear-marmalade') {
+      if (definition.generatorVersion < 6 || !validMarmalade(definition.marmalade, definition.boardSize) || goal.target !== marmaladeCount(definition.marmalade)) return false;
+    } else if (goal.type === 'clear-frosting') {
+      if (definition.generatorVersion < 6 || !validFrosting(definition.frosting, definition.boardSize) || goal.target !== frostingCount(definition.frosting)) return false;
     } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
     const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : goal.type;
     if (identities.has(identity)) return false;
@@ -2823,6 +2827,8 @@ function initialObjectiveProgress(definition) {
     if (jellyCount(definition.jelly) > 0) extra.jellyCleared = 0;
     if (chocolateCount(definition.chocolate) > 0) extra.chocolateCleared = 0;
     if (liquoriceCount(definition.liquorice) > 0) extra.liquoriceCleared = 0;
+    if (marmaladeCount(definition.marmalade) > 0) extra.marmaladeCleared = 0;
+    if (frostingCount(definition.frosting) > 0) extra.frostingCleared = 0;
   }
   return { ...base, ...extra };
 }
@@ -2836,7 +2842,9 @@ function validObjectiveProgress(definition, progress) {
   const hasJelly = definition?.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
   const hasChocolate = definition?.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
   const hasLiquorice = definition?.generatorVersion >= 6 && liquoriceCount(definition.liquorice) > 0;
-  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0);
+  const hasMarmalade = definition?.generatorVersion >= 6 && marmaladeCount(definition.marmalade) > 0;
+  const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
+  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0) + (hasMarmalade ? 1 : 0) + (hasFrosting ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
     && (!hasShields || (validShields(definition.shields, definition.boardSize)
       && Object.hasOwn(progress, 'shieldsCleared') && Number.isSafeInteger(progress.shieldsCleared) && progress.shieldsCleared >= 0
@@ -2855,13 +2863,19 @@ function validObjectiveProgress(definition, progress) {
       && progress.chocolateCleared <= MAX_COLLECTED_GEMS))
     && (!hasLiquorice || (validLiquorice(definition.liquorice, definition.boardSize)
       && Object.hasOwn(progress, 'liquoriceCleared') && Number.isSafeInteger(progress.liquoriceCleared) && progress.liquoriceCleared >= 0
-      && progress.liquoriceCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
+      && progress.liquoriceCleared <= MAX_COLLECTED_GEMS))
+    && (!hasMarmalade || (validMarmalade(definition.marmalade, definition.boardSize)
+      && Object.hasOwn(progress, 'marmaladeCleared') && Number.isSafeInteger(progress.marmaladeCleared) && progress.marmaladeCleared >= 0
+      && progress.marmaladeCleared <= MAX_COLLECTED_GEMS))
+    && (!hasFrosting || (validFrosting(definition.frosting, definition.boardSize)
+      && Object.hasOwn(progress, 'frostingCleared') && Number.isSafeInteger(progress.frostingCleared) && progress.frostingCleared >= 0
+      && progress.frostingCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
     && Object.keys(progress.collected).length <= definition.gemTypes.length
     && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
       && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
 }
 
-function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0, brokenChocolate = 0, brokenLiquorice = 0) {
+function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0, brokenChocolate = 0, brokenLiquorice = 0, brokenMarmalade = 0, brokenFrosting = 0) {
   if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
   const next = initialObjectiveProgress(definition);
   for (const color of definition.gemTypes) {
@@ -2899,6 +2913,16 @@ function addObjectiveProgress(definition, previous, collected, brokenShields = 0
       if (!Number.isSafeInteger(brokenLiquorice) || brokenLiquorice < 0 || previous.liquoriceCleared + brokenLiquorice > MAX_COLLECTED_GEMS) throw new RangeError('invalid_liquorice_delta');
       next.liquoriceCleared = previous.liquoriceCleared + brokenLiquorice;
     }
+    const hasMarmalade = definition.marmalade && marmaladeCount(definition.marmalade) > 0;
+    if (definition.generatorVersion >= 6 && hasMarmalade) {
+      if (!Number.isSafeInteger(brokenMarmalade) || brokenMarmalade < 0 || previous.marmaladeCleared + brokenMarmalade > MAX_COLLECTED_GEMS) throw new RangeError('invalid_marmalade_delta');
+      next.marmaladeCleared = previous.marmaladeCleared + brokenMarmalade;
+    }
+    const hasFrosting = definition.frosting && frostingCount(definition.frosting) > 0;
+    if (definition.generatorVersion >= 6 && hasFrosting) {
+      if (!Number.isSafeInteger(brokenFrosting) || brokenFrosting < 0 || previous.frostingCleared + brokenFrosting > MAX_COLLECTED_GEMS) throw new RangeError('invalid_frosting_delta');
+      next.frostingCleared = previous.frostingCleared + brokenFrosting;
+    }
   }
   return next;
 }
@@ -2916,7 +2940,9 @@ function objectiveStatus(definition, score, progress) {
           : goal.type === 'clear-locked-gems' ? progress.lockedCleared
             : goal.type === 'clear-jelly' ? progress.jellyCleared
               : goal.type === 'clear-chocolate' ? progress.chocolateCleared
-                : goal.type === 'clear-liquorice' ? progress.liquoriceCleared : ownCount(progress.collected, goal.gemType);
+                : goal.type === 'clear-liquorice' ? progress.liquoriceCleared
+                  : goal.type === 'clear-marmalade' ? progress.marmaladeCleared
+                    : goal.type === 'clear-frosting' ? progress.frostingCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -2931,7 +2957,7 @@ function objectiveStars(definition, score, progress) {
 function objectiveCompletionError(definition, score, progress) {
   if (!Number.isSafeInteger(score) || score < 0) return 'invalid_score';
   if (!validObjectives(definition)) return 'invalid_level_objectives';
-  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers' || goal.type === 'clear-jelly' || goal.type === 'clear-chocolate' || goal.type === 'clear-liquorice');
+  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers' || goal.type === 'clear-jelly' || goal.type === 'clear-chocolate' || goal.type === 'clear-liquorice' || goal.type === 'clear-marmalade' || goal.type === 'clear-frosting');
   if (collects && progress === undefined) return 'objective_progress_required';
   if (progress !== undefined && !validObjectiveProgress(definition, progress)) return 'invalid_objective_progress';
   const status = objectiveStatus(definition, score, progress);
@@ -2947,20 +2973,22 @@ function objectiveDescription(definition) {
           ? `Free ${goal.target} locked gems` : goal.type === 'clear-jelly'
             ? `Clear ${goal.target} jelly layers` : goal.type === 'clear-chocolate'
               ? `Clear ${goal.target} chocolate` : goal.type === 'clear-liquorice'
-                ? `Clear ${goal.target} liquorice locks` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+                ? `Clear ${goal.target} liquorice locks` : goal.type === 'clear-marmalade'
+                  ? `Clear ${goal.target} marmalade` : goal.type === 'clear-frosting'
+                    ? `Clear ${goal.target} frosting layers` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
 }
 
 function objectiveSummary(definition, score, progress, showRemaining = false) {
   return objectiveStatus(definition, score, progress).items.map((goal) => {
     const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields'
-      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : goal.type === 'clear-chocolate' ? 'Chocolate' : goal.type === 'clear-liquorice' ? 'Liquorice' : 'Score';
+      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : goal.type === 'clear-chocolate' ? 'Chocolate' : goal.type === 'clear-liquorice' ? 'Liquorice' : goal.type === 'clear-marmalade' ? 'Marmalade' : goal.type === 'clear-frosting' ? 'Frosting' : 'Score';
     const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
     return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
   }).join(' · ');
 }
 
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
-function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null, chocolate = null, liquorice = null) {
+function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null, chocolate = null, liquorice = null, marmalade = null, frosting = null) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
   for (const action of actions) {
@@ -2976,6 +3004,10 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
       ? applyChocolateClear({ events: [{ cleared: action.cells }] }, chocolate) : null;
     const liquoriceResult = goals.some((goal) => goal.type === 'clear-liquorice') && liquorice
       ? applyLiquoriceClear({ events: [{ cleared: action.cells }], board: { length: liquorice.length } }, liquorice) : null;
+    const marmaladeResult = goals.some((goal) => goal.type === 'clear-marmalade') && marmalade
+      ? applyMarmaladeClear({ events: [{ cleared: action.cells }] }, marmalade) : null;
+    const frostingResult = goals.some((goal) => goal.type === 'clear-frosting') && frosting
+      ? applyFrostingClear({ events: [{ cleared: action.cells }] }, frosting) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
       goal.type === 'score' ? action.points : goal.type === 'clear-shields'
         ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
@@ -2984,7 +3016,9 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
             : goal.type === 'clear-jelly' ? (jellyResult?.cleared || 0)
               : goal.type === 'clear-chocolate' ? (chocolateResult?.cleared || 0)
                 : goal.type === 'clear-liquorice' ? (liquoriceResult?.liquoriceCleared || 0)
-                  : action.collected[goal.gemType] || 0) / goal.target, 0);
+                  : goal.type === 'clear-marmalade' ? (marmaladeResult?.cleared || 0)
+                    : goal.type === 'clear-frosting' ? (frostingResult?.cleared || 0)
+                      : action.collected[goal.gemType] || 0) / goal.target, 0);
   }
   return actions;
 }
@@ -2996,12 +3030,16 @@ function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
   const hasChocolate = state.chocolate && chocolateCount(state.chocolate) > 0;
   const hasLiquorice = state.liquorice && liquoriceCount(state.liquorice) > 0;
+  const hasMarmalade = state.marmalade && marmaladeCount(state.marmalade) > 0;
+  const hasFrosting = state.frosting && frostingCount(state.frosting) > 0;
   const result = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemMove(definition, state, cells, visualTrace)
       : hasJelly ? applyJellyClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.jelly)
         : hasChocolate ? applyChocolateClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.chocolate)
           : hasLiquorice ? applyLiquoriceClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.liquorice)
-            : simulateBlockerMove(definition, state, cells, visualTrace))
+            : hasMarmalade ? applyMarmaladeClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.marmalade)
+              : hasFrosting ? applyFrostingClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.frosting)
+                : simulateBlockerMove(definition, state, cells, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldMove(definition, state, cells, visualTrace)
       : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
@@ -3009,7 +3047,9 @@ function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const brokenJelly = hasJelly ? result.jellyCleared || 0 : 0;
   const brokenChocolate = hasChocolate ? result.chocolateCleared || 0 : 0;
   const brokenLiquorice = hasLiquorice ? result.liquoriceCleared || 0 : 0;
-  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice) };
+  const brokenMarmalade = hasMarmalade ? result.marmaladeCleared || 0 : 0;
+  const brokenFrosting = hasFrosting ? result.frostingCleared || 0 : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice, brokenMarmalade, brokenFrosting) };
 }
 
 function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
@@ -3019,6 +3059,8 @@ function simulateObjectiveClear(definition, state, keys, points, visualTrace = f
   const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
   const hasChocolate = state.chocolate && chocolateCount(state.chocolate) > 0;
   const hasLiquorice = state.liquorice && liquoriceCount(state.liquorice) > 0;
+  const hasMarmalade = state.marmalade && marmaladeCount(state.marmalade) > 0;
+  const hasFrosting = state.frosting && frostingCount(state.frosting) > 0;
   const baseResult = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemClear(definition, state, keys, points, visualTrace)
       : simulateBlockerClear(definition, state, keys, points, visualTrace))
@@ -3026,11 +3068,13 @@ function simulateObjectiveClear(definition, state, keys, points, visualTrace = f
       ? simulateShieldClear(definition, state, keys, points, visualTrace)
       : simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
   if (!baseResult) return null;
-  const result = hasJelly ? applyJellyClear(baseResult, state.jelly) : hasChocolate ? applyChocolateClear(baseResult, state.chocolate) : hasLiquorice ? applyLiquoriceClear(baseResult, state.liquorice) : baseResult;
+  const result = hasJelly ? applyJellyClear(baseResult, state.jelly) : hasChocolate ? applyChocolateClear(baseResult, state.chocolate) : hasLiquorice ? applyLiquoriceClear(baseResult, state.liquorice) : hasMarmalade ? applyMarmaladeClear(baseResult, state.marmalade) : hasFrosting ? applyFrostingClear(baseResult, state.frosting) : baseResult;
   const brokenJelly = hasJelly ? (result.jellyCleared || 0) : 0;
   const brokenChocolate = hasChocolate ? (result.chocolateCleared || 0) : 0;
   const brokenLiquorice = hasLiquorice ? (result.liquoriceCleared || 0) : 0;
-  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice) };
+  const brokenMarmalade = hasMarmalade ? (result.marmaladeCleared || 0) : 0;
+  const brokenFrosting = hasFrosting ? (result.frostingCleared || 0) : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice, brokenMarmalade, brokenFrosting) };
 }
 
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
@@ -3040,17 +3084,21 @@ function certifyObjectiveLevel(definition) {
   const isJelly = definition.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
   const isChocolate = definition.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
   const isLiquorice = definition.generatorVersion >= 6 && liquoriceCount(definition.liquorice) > 0;
+  const isMarmalade = definition.generatorVersion >= 6 && marmaladeCount(definition.marmalade) > 0;
+  const isFrosting = definition.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
   const proof = definition.generatorVersion >= 6
-    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : isChocolate ? certifyChocolateBoard(definition) : isLiquorice ? certifyLiquoriceBoard(definition) : certifyBlockerBoard(definition))
+    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : isChocolate ? certifyChocolateBoard(definition) : isLiquorice ? certifyLiquoriceBoard(definition) : isMarmalade ? certifyMarmaladeBoard(definition) : isFrosting ? certifyFrostingBoard(definition) : certifyBlockerBoard(definition))
     : definition.generatorVersion >= 5 ? certifyShieldBoard(definition)
       : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
   const objectiveProgress = { collected: proof.collected,
     ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}),
-    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly && !isChocolate && !isLiquorice ? { blockersCleared: proof.brokenBlockers } : {}),
+    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly && !isChocolate && !isLiquorice && !isMarmalade && !isFrosting ? { blockersCleared: proof.brokenBlockers } : {}),
     ...(definition.generatorVersion >= 6 && isLocked ? { lockedCleared: proof.brokenLocks } : {}),
     ...(definition.generatorVersion >= 6 && isJelly ? { jellyCleared: proof.jellyCleared } : {}),
     ...(definition.generatorVersion >= 6 && isChocolate ? { chocolateCleared: proof.chocolateCleared } : {}),
-    ...(definition.generatorVersion >= 6 && isLiquorice ? { liquoriceCleared: proof.liquoriceCleared } : {}) };
+    ...(definition.generatorVersion >= 6 && isLiquorice ? { liquoriceCleared: proof.liquoriceCleared } : {}),
+    ...(definition.generatorVersion >= 6 && isMarmalade ? { marmaladeCleared: proof.marmaladeCleared } : {}),
+    ...(definition.generatorVersion >= 6 && isFrosting ? { frostingCleared: proof.frostingCleared } : {}) };
   return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }
 
@@ -3169,20 +3217,9 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
   // V6 obstacles occupy distinct stages (never with shields), each adding one objective.
   // Their overlays never change gems, so the witness and score are the v5 witness and score.
   // Classic only (plan M5): daily, timed and endless never receive v6 obstacles.
-  // Stages cycle every 6 levels: %6===0 locked gems, %6===1 jelly, %6===2 blockers,
-  // %6===3 chocolate, %6===4 liquorice, %6===5 no obstacle.
-  const blockerStage = version >= 6 && !shieldStage && mode === 'classic' && level >= 3 && level % 6 === 2;
-  const blockers = version >= 6 ? blockerStage
-    ? witnessedBlockers(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
-    : blankBlockers(size) : null;
-  const blockersTotal = blockers ? blockerCount(blockers) : 0;
-  if (blockerStage && blockersTotal) {
-    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
-    goals = { profile: 'clear-blockers', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-blockers', target: blockersTotal }] };
-  }
-  // V6 locked gems occupy their own stage (never with shields or blockers). The gem underneath stays
-  // playable but the cell cannot be swapped until a match clears the lock.
-  const lockedGemStage = version >= 6 && !shieldStage && !blockerStage && mode === 'classic' && level >= 3 && level % 6 === 0;
+  // Stages cycle every 8 levels: %8===0 locked gems, %8===1 jelly, %8===2 blockers,
+  // %8===3 chocolate, %8===4 liquorice, %8===5 marmalade, %8===6 frosting, %8===7 no obstacle.
+  const lockedGemStage = version >= 6 && !shieldStage && mode === 'classic' && level >= 3 && level % 8 === 0;
   const lockedGems = version >= 6 ? lockedGemStage
     ? witnessedLockedGems(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
     : blankLockedGems(size) : null;
@@ -3194,7 +3231,7 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
   // V6 jelly occupies its own stage (never with shields, blockers, or locked gems). Jelly
   // sits on top of gems and is consumed one layer at a time by clears over its cell.
   // Classic only: daily, timed and endless never receive jelly.
-  const jellyStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && mode === 'classic' && level >= 3 && level % 6 === 1;
+  const jellyStage = version >= 6 && !shieldStage && !lockedGemStage && mode === 'classic' && level >= 3 && level % 8 === 1;
   const jelly = version >= 6 ? jellyStage
     ? witnessedJelly(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
     : blankJelly(size) : null;
@@ -3203,10 +3240,22 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-jelly', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-jelly', target: jellyTotal }] };
   }
+  // V6 blockers occupy a stage of their own (never with shields). Their overlay never
+  // changes gems, so the witness and score are the v5 witness and score.
+  // Classic only (plan M5): daily, timed and endless never receive blockers.
+  const blockerStage = version >= 6 && !shieldStage && !lockedGemStage && !jellyStage && mode === 'classic' && level >= 3 && level % 8 === 2;
+  const blockers = version >= 6 ? blockerStage
+    ? witnessedBlockers(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankBlockers(size) : null;
+  const blockersTotal = blockers ? blockerCount(blockers) : 0;
+  if (blockerStage && blockersTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-blockers', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-blockers', target: blockersTotal }] };
+  }
   // V6 chocolate occupies its own stage (never with shields, blockers, locked gems, or jelly).
   // Chocolate spreads one cell per accepted move to a lowest eligible neighbour, cap 8.
   // Classic only: daily, timed and endless never receive chocolate.
-  const chocolateStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && !jellyStage && mode === 'classic' && level >= 3 && level % 6 === 3;
+  const chocolateStage = version >= 6 && !shieldStage && !lockedGemStage && !jellyStage && !blockerStage && mode === 'classic' && level >= 3 && level % 8 === 3;
   const chocolate = version >= 6 ? chocolateStage
     ? witnessedChocolate(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
     : blankChocolate(size) : null;
@@ -3218,7 +3267,7 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
   // V6 liquorice occupies its own stage (never with other v6 obstacles). Liquorice locks
   // block swaps involving their cell until an adjacent match clears them, cap 6.
   // Classic only: daily, timed and endless never receive liquorice.
-  const liquoriceStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && !jellyStage && !chocolateStage && mode === 'classic' && level >= 3 && level % 6 === 4;
+  const liquoriceStage = version >= 6 && !shieldStage && !lockedGemStage && !jellyStage && !blockerStage && !chocolateStage && mode === 'classic' && level >= 3 && level % 8 === 4;
   const liquorice = version >= 6 ? liquoriceStage
     ? witnessedLiquorice(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
     : blankLiquorice(size) : null;
@@ -3227,14 +3276,40 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-liquorice', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-liquorice', target: liquoriceTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, liquorice, objectives: goals.objectives }, proof.score,
+  // V6 marmalade occupies its own stage (never with other v6 obstacles). Marmalade is a
+  // single-layer sticky substance cleared by matches over its cell, cap 5.
+  // Classic only: daily, timed and endless never receive marmalade.
+  const marmaladeStage = version >= 6 && !shieldStage && !lockedGemStage && !jellyStage && !blockerStage && !chocolateStage && !liquoriceStage && mode === 'classic' && level >= 3 && level % 8 === 5;
+  const marmalade = version >= 6 ? marmaladeStage
+    ? witnessedMarmalade(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankMarmalade(size) : null;
+  const marmaladeTotal = marmalade ? marmaladeCount(marmalade) : 0;
+  if (marmaladeStage && marmaladeTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-marmalade', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-marmalade', target: marmaladeTotal }] };
+  }
+  // V6 frosting occupies its own stage (never with other v6 obstacles). Frosting is a
+  // layered obstacle (1-3 layers per cell) consumed one layer per clear, cap 6.
+  // Classic only: daily, timed and endless never receive frosting.
+  const frostingStage = version >= 6 && !shieldStage && !lockedGemStage && !jellyStage && !blockerStage && !chocolateStage && !liquoriceStage && !marmaladeStage && mode === 'classic' && level >= 3 && level % 8 === 6;
+  const frosting = version >= 6 ? frostingStage
+    ? witnessedFrosting(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankFrosting(size) : null;
+  const frostingTotal = frosting ? frostingCount(frosting) : 0;
+  if (frostingStage && frostingTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-frosting', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-frosting', target: frostingTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, objectives: goals.objectives }, proof.score,
     { collected: proof.collected,
       ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}),
       ...(version >= 6 && blockersTotal > 0 ? { blockersCleared: blockersTotal } : {}),
       ...(version >= 6 && lockedTotal > 0 ? { lockedCleared: lockedTotal } : {}),
       ...(version >= 6 && jellyTotal > 0 ? { jellyCleared: jellyTotal } : {}),
       ...(version >= 6 && chocolateTotal > 0 ? { chocolateCleared: chocolateTotal } : {}),
-      ...(version >= 6 && liquoriceTotal > 0 ? { liquoriceCleared: liquoriceTotal } : {}) }).complete) throw new Error('objective_quality_failed');
+      ...(version >= 6 && liquoriceTotal > 0 ? { liquoriceCleared: liquoriceTotal } : {}),
+      ...(version >= 6 && marmaladeTotal > 0 ? { marmaladeCleared: marmaladeTotal } : {}),
+      ...(version >= 6 && frostingTotal > 0 ? { frostingCleared: frostingTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
@@ -3245,6 +3320,8 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     ...(version >= 6 ? { jelly } : {}),
     ...(version >= 6 ? { chocolate } : {}),
     ...(version >= 6 ? { liquorice } : {}),
+    ...(version >= 6 ? { marmalade } : {}),
+    ...(version >= 6 ? { frosting } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -3277,14 +3354,16 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
       ...(version >= 6 ? { verifiedJelly: jellyTotal } : {}),
       ...(version >= 6 ? { verifiedChocolate: chocolateTotal } : {}),
       ...(version >= 6 ? { verifiedLiquorice: liquoriceTotal } : {}),
+      ...(version >= 6 ? { verifiedMarmalade: marmaladeTotal } : {}),
+      ...(version >= 6 ? { verifiedFrosting: frostingTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate, liquorice = definition.liquorice) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate, liquorice);
+function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate, liquorice = definition.liquorice, marmalade = definition.marmalade, frosting = definition.frosting) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 

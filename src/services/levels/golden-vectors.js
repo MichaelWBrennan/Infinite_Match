@@ -28,9 +28,9 @@ export const LEVEL_CASES = [
   { name: 'daily-southern-hemisphere', level: 1, mode: 'daily', location: AU_EAST, nowMs: NOW },
 ];
 
-/** Rules v6 adds blocker-stage levels (level % 6 === 2 from level 14, plus the boss at 50). */
+/** Rules v6 adds blocker-stage levels (level % 8 === 2 from level 10, plus the boss at 50). */
 export const BLOCKER_LEVEL_CASES = [
-  { name: 'classic-14-blocker-stage', level: 14, mode: 'classic', location: US_EAST, nowMs: NOW },
+  { name: 'classic-10-blocker-stage', level: 10, mode: 'classic', location: US_EAST, nowMs: NOW },
   { name: 'classic-50-boss-blocker-stage', level: 50, mode: 'classic', location: US_EAST, nowMs: NOW },
 ];
 
@@ -84,6 +84,12 @@ function summarizeLevel(definition) {
     objectiveProfile: definition.objectiveProfile ?? null,
     shields: definition.shields ?? null,
     ...(definition.generatorVersion >= 6 ? { blockers: definition.blockers } : {}),
+    ...(definition.generatorVersion >= 6 ? { lockedGems: definition.lockedGems } : {}),
+    ...(definition.generatorVersion >= 6 ? { jelly: definition.jelly } : {}),
+    ...(definition.generatorVersion >= 6 ? { chocolate: definition.chocolate } : {}),
+    ...(definition.generatorVersion >= 6 ? { liquorice: definition.liquorice } : {}),
+    ...(definition.generatorVersion >= 6 ? { marmalade: definition.marmalade } : {}),
+    ...(definition.generatorVersion >= 6 ? { frosting: definition.frosting } : {}),
     legalOpeningMoves: swaps.length,
     firstLegalSwap: first,
     firstMove: move ? {

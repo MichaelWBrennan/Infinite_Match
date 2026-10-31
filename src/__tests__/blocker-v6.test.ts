@@ -15,8 +15,8 @@ describe('rules v6 generation gate', () => {
   test('200 blocker-stage levels certify from the witness with every goal met', () => {
     let certified = 0;
     for (let i = 0; i < 200; i++) {
-      // Blocker stage: level >= 3 and level % 6 === 2 (and not shield stage). Vary the forecast band through nowMs.
-      const level = 14 + i * 12;
+      // Blocker stage: level >= 3 and level % 8 === 2 (and not shield stage). Vary the forecast band through nowMs.
+      const level = 10 + i * 8;
       const definition = v6(level, NOW + i * 3600_000);
       expect(blockerCount(definition.blockers)).toBeGreaterThan(0);
       const proof = certifyLevel(definition) as any;
@@ -38,7 +38,7 @@ describe('rules v6 generation gate', () => {
   });
 
   test('blockers never sit on special anchors or shield cells', () => {
-    for (let level = 14; level <= 200; level += 12) {
+    for (let level = 10; level <= 200; level += 8) {
       const d = v6(level);
       expect(validBlockers(d.blockers, d.boardSize)).toBe(true);
       for (const key of blockerKeys(d.blockers)) {
@@ -56,7 +56,7 @@ describe('rules v6 generation gate', () => {
 
 describe('rules v6 transition', () => {
   test('an accepted move spreads at most one blocker and stays under the cap', () => {
-    const d = v6(14);
+    const d = v6(10);
     let state: any = { board: d.board, specials: d.specials, refillState: d.refillState, shields: d.shields, blockers: d.blockers, objectiveProgress: initialObjectiveProgress(d) };
     const first = legalSwaps(d.board)[0].cells;
     const before = blockerCount(state.blockers);
@@ -68,7 +68,7 @@ describe('rules v6 transition', () => {
   });
 
   test('a booster clear removes the blocker it hits and never spreads', () => {
-    const d = v6(14);
+    const d = v6(10);
     const [key] = blockerKeys(d.blockers);
     const state: any = { board: d.board, specials: d.specials, refillState: d.refillState, shields: d.shields, blockers: d.blockers, objectiveProgress: initialObjectiveProgress(d) };
     const out = simulateBlockerClear(d, state, [key], 0) as any;
@@ -79,7 +79,7 @@ describe('rules v6 transition', () => {
   });
 
   test('hints carry a blocker priority and remain legal actions', () => {
-    const d = v6(14);
+    const d = v6(10);
     const progress = initialObjectiveProgress(d);
     const actions = levelActions(d, d.board, d.specials, progress, 0, d.shields, d.refillState, d.blockers) as any[];
     expect(actions.length).toBeGreaterThan(0);
@@ -89,7 +89,7 @@ describe('rules v6 transition', () => {
 
 describe('rules v6 objectives and progress', () => {
   test('clear-blockers is accepted only for v6 with the exact placed count', () => {
-    const d = v6(14);
+    const d = v6(10);
     expect(validObjectives(d)).toBe(true);
     const bad = { ...d, objectives: [{ type: 'clear-blockers', target: blockerCount(d.blockers) + 1 }] };
     expect(validObjectives(bad)).toBe(false);
@@ -98,7 +98,7 @@ describe('rules v6 objectives and progress', () => {
   });
 
   test('v6 progress needs blockersCleared; v5 shape is still exact', () => {
-    const d = v6(14);
+    const d = v6(10);
     const good = initialObjectiveProgress(d);
     expect(Object.keys(good).sort()).toEqual(['blockersCleared', 'collected', 'shieldsCleared']);
     expect(validObjectiveProgress(d, good)).toBe(true);
@@ -109,7 +109,7 @@ describe('rules v6 objectives and progress', () => {
   });
 
   test('objective status reads blockersCleared', () => {
-    const d = v6(14);
+    const d = v6(10);
     const target = d.objectives.find((goal: any) => goal.type === 'clear-blockers').target;
     const status = objectiveStatus(d, 0, { ...initialObjectiveProgress(d), blockersCleared: target });
     expect(status.items.find((goal: any) => goal.type === 'clear-blockers').complete).toBe(true);
@@ -126,8 +126,8 @@ describe('golden fixtures', () => {
     const doc = JSON.parse(readFileSync('fixtures/golden/rules-v6.json', 'utf8'));
     expect(doc.rulesVersion).toBe(6);
     const names = doc.levels.map((level: any) => level.name);
-    expect(names).toEqual(expect.arrayContaining(['classic-14-blocker-stage', 'classic-50-boss-blocker-stage']));
-    const blockerCase = doc.levels.find((level: any) => level.name === 'classic-14-blocker-stage');
+    expect(names).toEqual(expect.arrayContaining(['classic-10-blocker-stage', 'classic-50-boss-blocker-stage']));
+    const blockerCase = doc.levels.find((level: any) => level.name === 'classic-10-blocker-stage');
     expect(blockerCase.expected.blockers.flat().some(Boolean)).toBe(true);
   });
 });
