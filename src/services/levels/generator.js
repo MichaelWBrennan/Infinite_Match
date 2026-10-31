@@ -10,6 +10,7 @@ import { witnessedShields, shieldCount } from './shield-rules.js';
 import { witnessedBlockers, blockerCount, blankBlockers } from './blocker-rules.js';
 import { witnessedLockedGems, lockedGemCount, blankLockedGems, legalSwapsExcludingLocks } from './locked-gem-rules.js';
 import { witnessedJelly, jellyCount, blankJelly } from './jelly-rules.js';
+import { witnessedChocolate, chocolateCount, blankChocolate } from './chocolate-rules.js';
 import { composeObjectives, objectiveStatus, objectiveActions, simulateObjectiveMove, certifyObjectiveLevel } from './objective-rules.js';
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from './match-core.js';
 export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from './special-rules.js';
@@ -156,12 +157,25 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-jelly', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-jelly', target: jellyTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, objectives: goals.objectives }, proof.score,
+  // V6 chocolate occupies its own stage (never with shields, blockers, locked gems, or jelly).
+  // Chocolate spreads one cell per accepted move to a lowest eligible neighbour, cap 8.
+  // Classic only: daily, timed and endless never receive chocolate.
+  const chocolateStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && !jellyStage && mode === 'classic' && level >= 3 && level % 4 === 3;
+  const chocolate = version >= 6 ? chocolateStage
+    ? witnessedChocolate(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankChocolate(size) : null;
+  const chocolateTotal = chocolate ? chocolateCount(chocolate) : 0;
+  if (chocolateStage && chocolateTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-chocolate', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-chocolate', target: chocolateTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, objectives: goals.objectives }, proof.score,
     { collected: proof.collected,
       ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}),
       ...(version >= 6 && blockersTotal > 0 ? { blockersCleared: blockersTotal } : {}),
       ...(version >= 6 && lockedTotal > 0 ? { lockedCleared: lockedTotal } : {}),
-      ...(version >= 6 && jellyTotal > 0 ? { jellyCleared: jellyTotal } : {}) }).complete) throw new Error('objective_quality_failed');
+      ...(version >= 6 && jellyTotal > 0 ? { jellyCleared: jellyTotal } : {}),
+      ...(version >= 6 && chocolateTotal > 0 ? { chocolateCleared: chocolateTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
@@ -170,6 +184,7 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     ...(version >= 6 ? { blockers } : {}),
     ...(version >= 6 ? { lockedGems } : {}),
     ...(version >= 6 ? { jelly } : {}),
+    ...(version >= 6 ? { chocolate } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -200,14 +215,15 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
       ...(version >= 6 ? { verifiedBlockers: blockersTotal } : {}),
       ...(version >= 6 ? { verifiedLockedGems: lockedTotal } : {}),
       ...(version >= 6 ? { verifiedJelly: jellyTotal } : {}),
+      ...(version >= 6 ? { verifiedChocolate: chocolateTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly);
+export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 

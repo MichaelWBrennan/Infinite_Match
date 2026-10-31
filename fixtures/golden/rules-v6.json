@@ -554,7 +554,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -880,7 +881,8 @@
           "verifiedShields": 3,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -1344,7 +1346,8 @@
           "verifiedShields": 3,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -1737,7 +1740,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 3,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -2192,7 +2196,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 3
+          "verifiedJelly": 3,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -2525,7 +2530,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -2847,7 +2853,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -3238,7 +3245,8 @@
           "verifiedShields": 3,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -3372,12 +3380,11 @@
         "moves": 29,
         "objectives": [
           {
-            "type": "collect",
-            "gemType": "purple",
-            "target": 25
+            "type": "clear-chocolate",
+            "target": 8
           }
         ],
-        "objectiveProfile": "collect",
+        "objectiveProfile": "clear-chocolate",
         "shields": [
           [
             0,
@@ -3601,7 +3608,8 @@
               "green": 0,
               "blue": 0
             },
-            "shieldsCleared": 0
+            "shieldsCleared": 0,
+            "chocolateCleared": 0
           }
         },
         "quality": {
@@ -3621,7 +3629,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 8
         }
       }
     },
@@ -3948,7 +3957,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 0,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -4341,7 +4351,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 3,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     },
@@ -4734,7 +4745,8 @@
           "verifiedShields": 0,
           "verifiedBlockers": 3,
           "verifiedLockedGems": 0,
-          "verifiedJelly": 0
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0
         }
       }
     }

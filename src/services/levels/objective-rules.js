@@ -6,6 +6,7 @@ import { validShields, shieldCount, simulateShieldMove, simulateShieldClear, cer
 import { validBlockers, blockerCount, simulateBlockerMove, simulateBlockerClear, certifyBlockerBoard } from './blocker-rules.js';
 import { validLockedGems, lockedGemCount, simulateLockedGemMove, simulateLockedGemClear, certifyLockedGemBoard, legalSwapsExcludingLocks } from './locked-gem-rules.js';
 import { validJelly, jellyCount, blankJelly, applyJellyClear } from './jelly-rules.js';
+import { validChocolate, chocolateCount, blankChocolate, applyChocolateClear } from './chocolate-rules.js';
 
 export const MAX_COLLECTED_GEMS = 1000000;
 const ownCount = (counts, color) => Object.hasOwn(counts, color) ? counts[color] : 0;
@@ -51,6 +52,8 @@ export function validObjectives(definition) {
       if (definition.generatorVersion < 6 || !validLockedGems(definition.lockedGems, definition.boardSize) || goal.target !== lockedGemCount(definition.lockedGems)) return false;
     } else if (goal.type === 'clear-jelly') {
       if (definition.generatorVersion < 6 || !validJelly(definition.jelly, definition.boardSize) || goal.target !== jellyCount(definition.jelly)) return false;
+    } else if (goal.type === 'clear-chocolate') {
+      if (definition.generatorVersion < 6 || !validChocolate(definition.chocolate, definition.boardSize) || goal.target !== chocolateCount(definition.chocolate)) return false;
     } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
     const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : goal.type;
     if (identities.has(identity)) return false;
@@ -67,6 +70,7 @@ export function initialObjectiveProgress(definition) {
     if (blockerCount(definition.blockers) > 0) extra.blockersCleared = 0;
     if (lockedGemCount(definition.lockedGems) > 0) extra.lockedCleared = 0;
     if (jellyCount(definition.jelly) > 0) extra.jellyCleared = 0;
+    if (chocolateCount(definition.chocolate) > 0) extra.chocolateCleared = 0;
   }
   return { ...base, ...extra };
 }
@@ -78,7 +82,8 @@ export function validObjectiveProgress(definition, progress) {
   const hasBlockers = definition?.generatorVersion >= 6 && blockerCount(definition.blockers) > 0;
   const hasLocked = definition?.generatorVersion >= 6 && lockedGemCount(definition.lockedGems) > 0;
   const hasJelly = definition?.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
-  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0);
+  const hasChocolate = definition?.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
+  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
     && (!hasShields || (validShields(definition.shields, definition.boardSize)
       && Object.hasOwn(progress, 'shieldsCleared') && Number.isSafeInteger(progress.shieldsCleared) && progress.shieldsCleared >= 0
@@ -91,13 +96,16 @@ export function validObjectiveProgress(definition, progress) {
       && progress.lockedCleared <= MAX_COLLECTED_GEMS))
     && (!hasJelly || (validJelly(definition.jelly, definition.boardSize)
       && Object.hasOwn(progress, 'jellyCleared') && Number.isSafeInteger(progress.jellyCleared) && progress.jellyCleared >= 0
-      && progress.jellyCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
+      && progress.jellyCleared <= MAX_COLLECTED_GEMS))
+    && (!hasChocolate || (validChocolate(definition.chocolate, definition.boardSize)
+      && Object.hasOwn(progress, 'chocolateCleared') && Number.isSafeInteger(progress.chocolateCleared) && progress.chocolateCleared >= 0
+      && progress.chocolateCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
     && Object.keys(progress.collected).length <= definition.gemTypes.length
     && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
       && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
 }
 
-export function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0) {
+export function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0, brokenChocolate = 0) {
   if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
   const next = initialObjectiveProgress(definition);
   for (const color of definition.gemTypes) {
@@ -125,6 +133,11 @@ export function addObjectiveProgress(definition, previous, collected, brokenShie
       if (!Number.isSafeInteger(brokenJelly) || brokenJelly < 0 || previous.jellyCleared + brokenJelly > MAX_COLLECTED_GEMS) throw new RangeError('invalid_jelly_delta');
       next.jellyCleared = previous.jellyCleared + brokenJelly;
     }
+    const hasChocolate = definition.chocolate && chocolateCount(definition.chocolate) > 0;
+    if (definition.generatorVersion >= 6 && hasChocolate) {
+      if (!Number.isSafeInteger(brokenChocolate) || brokenChocolate < 0 || previous.chocolateCleared + brokenChocolate > MAX_COLLECTED_GEMS) throw new RangeError('invalid_chocolate_delta');
+      next.chocolateCleared = previous.chocolateCleared + brokenChocolate;
+    }
   }
   return next;
 }
@@ -140,7 +153,8 @@ export function objectiveStatus(definition, score, progress) {
       : goal.type === 'clear-shields' ? progress.shieldsCleared
         : goal.type === 'clear-blockers' ? progress.blockersCleared
         : goal.type === 'clear-locked-gems' ? progress.lockedCleared
-        : goal.type === 'clear-jelly' ? progress.jellyCleared : ownCount(progress.collected, goal.gemType);
+        : goal.type === 'clear-jelly' ? progress.jellyCleared
+        : goal.type === 'clear-chocolate' ? progress.chocolateCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -155,7 +169,7 @@ export function objectiveStars(definition, score, progress) {
 export function objectiveCompletionError(definition, score, progress) {
   if (!Number.isSafeInteger(score) || score < 0) return 'invalid_score';
   if (!validObjectives(definition)) return 'invalid_level_objectives';
-  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers' || goal.type === 'clear-jelly');
+  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers' || goal.type === 'clear-jelly' || goal.type === 'clear-chocolate');
   if (collects && progress === undefined) return 'objective_progress_required';
   if (progress !== undefined && !validObjectiveProgress(definition, progress)) return 'invalid_objective_progress';
   const status = objectiveStatus(definition, score, progress);
@@ -169,20 +183,21 @@ export function objectiveDescription(definition) {
       ? `Clear ${goal.target} shields (numbered hits)` : goal.type === 'clear-blockers'
         ? `Clear ${goal.target} blockers` : goal.type === 'clear-locked-gems'
           ? `Free ${goal.target} locked gems` : goal.type === 'clear-jelly'
-            ? `Clear ${goal.target} jelly layers` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+            ? `Clear ${goal.target} jelly layers` : goal.type === 'clear-chocolate'
+              ? `Clear ${goal.target} chocolate` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
 }
 
 export function objectiveSummary(definition, score, progress, showRemaining = false) {
   return objectiveStatus(definition, score, progress).items.map((goal) => {
     const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields'
-      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : 'Score';
+      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : goal.type === 'clear-chocolate' ? 'Chocolate' : 'Score';
     const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
     return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
   }).join(' · ');
 }
 
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
-export function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null) {
+export function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null, chocolate = null) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
   for (const action of actions) {
@@ -194,13 +209,16 @@ export function objectiveActions(definition, board, specials, progress, score = 
       ? simulateLockedGemMove(definition, { board, specials, refillState, shields, locked: lockedGems }, action.cells) : null;
     const jellyResult = goals.some((goal) => goal.type === 'clear-jelly') && jelly
       ? applyJellyClear({ events: [{ cleared: action.cells }] }, jelly) : null;
+    const chocolateResult = goals.some((goal) => goal.type === 'clear-chocolate') && chocolate
+      ? applyChocolateClear({ events: [{ cleared: action.cells }] }, chocolate) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
       goal.type === 'score' ? action.points : goal.type === 'clear-shields'
         ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
         : goal.type === 'clear-blockers' ? (blockerResult?.brokenBlockers || 0)
           : goal.type === 'clear-locked-gems' ? (lockedResult?.brokenLocks || 0)
             : goal.type === 'clear-jelly' ? (jellyResult?.cleared || 0)
-              : action.collected[goal.gemType] || 0) / goal.target, 0);
+              : goal.type === 'clear-chocolate' ? (chocolateResult?.cleared || 0)
+                : action.collected[goal.gemType] || 0) / goal.target, 0);
   }
   return actions;
 }
@@ -210,16 +228,19 @@ export function simulateObjectiveMove(definition, state, cells, visualTrace = fa
   if (!validObjectiveProgress(definition, previous)) return null;
   const hasLocked = state.locked && lockedGemCount(state.locked) > 0;
   const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
+  const hasChocolate = state.chocolate && chocolateCount(state.chocolate) > 0;
   const result = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemMove(definition, state, cells, visualTrace)
       : hasJelly ? applyJellyClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.jelly)
+      : hasChocolate ? applyChocolateClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.chocolate)
       : simulateBlockerMove(definition, state, cells, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldMove(definition, state, cells, visualTrace)
       : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
   if (!result) return null;
   const brokenJelly = hasJelly ? result.jellyCleared || 0 : 0;
-  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly) };
+  const brokenChocolate = hasChocolate ? result.chocolateCleared || 0 : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate) };
 }
 
 export function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
@@ -227,6 +248,7 @@ export function simulateObjectiveClear(definition, state, keys, points, visualTr
   if (!validObjectiveProgress(definition, previous)) return null;
   const hasLocked = state.locked && lockedGemCount(state.locked) > 0;
   const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
+  const hasChocolate = state.chocolate && chocolateCount(state.chocolate) > 0;
   const baseResult = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemClear(definition, state, keys, points, visualTrace)
       : simulateBlockerClear(definition, state, keys, points, visualTrace))
@@ -234,9 +256,10 @@ export function simulateObjectiveClear(definition, state, keys, points, visualTr
       ? simulateShieldClear(definition, state, keys, points, visualTrace)
       : simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
   if (!baseResult) return null;
-  const result = hasJelly ? applyJellyClear(baseResult, state.jelly) : baseResult;
+  const result = hasJelly ? applyJellyClear(baseResult, state.jelly) : hasChocolate ? applyChocolateClear(baseResult, state.chocolate) : baseResult;
   const brokenJelly = hasJelly ? (result.jellyCleared || 0) : 0;
-  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly) };
+  const brokenChocolate = hasChocolate ? (result.chocolateCleared || 0) : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate) };
 }
 
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
@@ -244,14 +267,16 @@ export function certifyObjectiveLevel(definition) {
   const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
   const isLocked = definition.generatorVersion >= 6 && lockedGemCount(definition.lockedGems) > 0;
   const isJelly = definition.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
+  const isChocolate = definition.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
   const proof = definition.generatorVersion >= 6
-    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : certifyBlockerBoard(definition))
+    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : isChocolate ? certifyChocolateBoard(definition) : certifyBlockerBoard(definition))
     : definition.generatorVersion >= 5 ? certifyShieldBoard(definition)
       : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
   const objectiveProgress = { collected: proof.collected,
     ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}),
-    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly ? { blockersCleared: proof.brokenBlockers } : {}),
+    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly && !isChocolate ? { blockersCleared: proof.brokenBlockers } : {}),
     ...(definition.generatorVersion >= 6 && isLocked ? { lockedCleared: proof.brokenLocks } : {}),
-    ...(definition.generatorVersion >= 6 && isJelly ? { jellyCleared: proof.jellyCleared } : {}) };
+    ...(definition.generatorVersion >= 6 && isJelly ? { jellyCleared: proof.jellyCleared } : {}),
+    ...(definition.generatorVersion >= 6 && isChocolate ? { chocolateCleared: proof.chocolateCleared } : {}) };
   return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }

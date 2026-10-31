@@ -3,6 +3,7 @@ import { initialObjectiveProgress, objectiveStatus, simulateObjectiveClear, vali
 import { validBlockers } from './blocker-rules.js';
 import { validLockedGems } from './locked-gem-rules.js';
 import { validJelly, jellyCount, blankJelly } from './jelly-rules.js';
+import { validChocolate } from './chocolate-rules.js';
 import { inventoryReplayEffect } from './inventory-replay.js';
 import { recordRejection } from './replay-telemetry.js';
 
@@ -23,7 +24,8 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
   // placed count is the objective target.
   if (definition.generatorVersion >= 6 && (!validBlockers(definition.blockers, definition.boardSize)
     || !validLockedGems(definition.lockedGems, definition.boardSize)
-    || !validJelly(definition.jelly, definition.boardSize) || !validObjectives(definition))) {
+    || !validJelly(definition.jelly, definition.boardSize)
+    || !validChocolate(definition.chocolate, definition.boardSize) || !validObjectives(definition))) {
     return reject('invalid_level_objectives');
   }
   if (!Number.isSafeInteger(definition.moves) || definition.moves < 1 || definition.moves > 1000
@@ -38,7 +40,7 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
   let state = {
     board: definition.board, specials: definition.specials, shields: definition.shields,
     refillState: definition.refillState, objectiveProgress: initialObjectiveProgress(definition),
-    ...(definition.generatorVersion >= 6 ? { blockers: definition.blockers, locked: definition.lockedGems, jelly: definition.jelly } : {}),
+    ...(definition.generatorVersion >= 6 ? { blockers: definition.blockers, locked: definition.lockedGems, jelly: definition.jelly, chocolate: definition.chocolate } : {}),
   };
   let score = 0;
   for (let i = 0; i < moves.length; i++) {
@@ -72,7 +74,7 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
       board: result.board, specials: result.specials, shields: result.shields,
       refillState: result.refillState, objectiveProgress: result.objectiveProgress,
       // v6 terrain moves with the board. Without this the next move would restart from the initial grid.
-      ...(definition.generatorVersion >= 6 ? { blockers: result.blockers, locked: result.locked, jelly: result.jelly } : {}),
+      ...(definition.generatorVersion >= 6 ? { blockers: result.blockers, locked: result.locked, jelly: result.jelly, chocolate: result.chocolate } : {}),
     };
     // The browser ends the level immediately when the first winning action resolves.
     if (objectiveStatus(definition, score, state.objectiveProgress).complete && i !== moves.length - 1) {
@@ -91,7 +93,8 @@ export function replayLevelAttempt(definition, moves, reportedScore, reportedPro
     || (definition.generatorVersion >= 5 && reportedProgress.shieldsCleared !== expected.shieldsCleared)
     || (definition.generatorVersion >= 6 && reportedProgress.blockersCleared !== expected.blockersCleared)
     || (definition.generatorVersion >= 6 && reportedProgress.lockedCleared !== expected.lockedCleared)
-    || (definition.generatorVersion >= 6 && reportedProgress.jellyCleared !== expected.jellyCleared)) {
+    || (definition.generatorVersion >= 6 && reportedProgress.jellyCleared !== expected.jellyCleared)
+    || (definition.generatorVersion >= 6 && reportedProgress.chocolateCleared !== expected.chocolateCleared)) {
     return reject('replay_result_mismatch');
   }
   return { verified: true, score };
