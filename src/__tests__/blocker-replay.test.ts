@@ -34,7 +34,7 @@ function winningAttempt(definition: any) {
 
 describe('replay of a v6 blocker win', () => {
   test('a certified v6 win replays and verifies (blockers carried across moves)', () => {
-    const d = make(6, 6);
+    const d = make(14, 6);
     expect(blockerCount(d.blockers)).toBeGreaterThan(0);
     const a = winningAttempt(d);
     expect(a.moves.length).toBeGreaterThan(1);
@@ -43,14 +43,14 @@ describe('replay of a v6 blocker win', () => {
   });
 
   test('tampered blockersCleared is rejected', () => {
-    const d = make(6, 6);
+    const d = make(14, 6);
     const a = winningAttempt(d);
     const bad = { ...a.progress, blockersCleared: a.progress.blockersCleared + 1 };
     expect(replayLevelAttempt(d, a.moves, a.score, bad, [])).toEqual({ error: 'replay_result_mismatch' });
   });
 
   test('a missing blockersCleared is rejected for v6', () => {
-    const d = make(6, 6);
+    const d = make(14, 6);
     const a = winningAttempt(d);
     const rest: any = { ...a.progress };
     delete rest.blockersCleared;
@@ -58,7 +58,7 @@ describe('replay of a v6 blocker win', () => {
   });
 
   test('a tampered blocker count in the pinned definition is rejected', () => {
-    const d = make(6, 6);
+    const d = make(14, 6);
     const a = winningAttempt(d);
     const extra = d.blockers.map((row: number[]) => row.slice());
     const free = extra.flatMap((row: number[], r: number) => row.map((v, c) => (v ? null : [r, c])).filter(Boolean))[0] as number[];
@@ -67,13 +67,13 @@ describe('replay of a v6 blocker win', () => {
   });
 
   test('a wrong reported score is rejected', () => {
-    const d = make(6, 6);
+    const d = make(14, 6);
     const a = winningAttempt(d);
     expect(replayLevelAttempt(d, a.moves, a.score + 1, a.progress, [])).toEqual({ error: 'replay_result_mismatch' });
   });
 
   test('a v6 definition whose blockers are missing is rejected, not replayed as v5', () => {
-    const d = make(6, 6);
+    const d = make(14, 6);
     const a = winningAttempt(d);
     const noBlockers: any = { ...d };
     delete noBlockers.blockers;
@@ -106,7 +106,7 @@ describe('paid definitions keep their own rules', () => {
 
 describe('observation telemetry accepts v6 blocker levels', () => {
   test('v6 classic levels are observed with the clear-blockers profile', () => {
-    const d = make(6, 6);
+    const d = make(14, 6);
     const meta = observationMeta(d, 0, KEY) as any;
     expect(meta).not.toBeNull();
     expect(meta.version).toBe(6);

@@ -28,10 +28,10 @@ export const LEVEL_CASES = [
   { name: 'daily-southern-hemisphere', level: 1, mode: 'daily', location: AU_EAST, nowMs: NOW },
 ];
 
-/** Rules v6 adds blocker-stage levels (level % 4 === 2 from level 3, plus the boss at 10). */
+/** Rules v6 adds blocker-stage levels (level % 6 === 2 from level 14, plus the boss at 50). */
 export const BLOCKER_LEVEL_CASES = [
-  { name: 'classic-6-blocker-stage', level: 6, mode: 'classic', location: US_EAST, nowMs: NOW },
-  { name: 'classic-10-boss-blocker-stage', level: 10, mode: 'classic', location: US_EAST, nowMs: NOW },
+  { name: 'classic-14-blocker-stage', level: 14, mode: 'classic', location: US_EAST, nowMs: NOW },
+  { name: 'classic-50-boss-blocker-stage', level: 50, mode: 'classic', location: US_EAST, nowMs: NOW },
 ];
 
 /** Strings that exercise hashing edge cases: ASCII, a dash-separated key, and an astral character. */

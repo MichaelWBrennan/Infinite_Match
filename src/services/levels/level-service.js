@@ -39,8 +39,9 @@ function authoredLevelShape(def, context) {
   const lockedGems = def.lockedGems ?? blankLockedGemsArray(size);
   const jelly = def.jelly ?? blankJellyArray(size);
   const chocolate = def.chocolate ?? blankChocolateArray(size);
+  const liquorice = def.liquorice ?? blankLiquoriceArray(size);
   // Authored levels use v6 rules so they can demonstrate all obstacle families
-  // (shields, blockers, locked gems, jelly, chocolate) without being gated behind BLOCKER_LEVELS.
+  // (shields, blockers, locked gems, jelly, chocolate, liquorice) without being gated behind BLOCKER_LEVELS.
   return {
     id: `authored-v6-${def.mode}-${def.level}-${context.localDate}`,
     generatorVersion: 6,
@@ -49,6 +50,7 @@ function authoredLevelShape(def, context) {
     lockedGems,
     jelly,
     chocolate,
+    liquorice,
     environmentKey: 'authored',
     level: def.level,
     mode: def.mode,
@@ -113,6 +115,10 @@ function blankJellyArray(size) {
 }
 
 function blankChocolateArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+function blankLiquoriceArray(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));
 }
 
