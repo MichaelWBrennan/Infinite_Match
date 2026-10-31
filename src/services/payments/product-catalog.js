@@ -50,6 +50,20 @@ export const PRODUCTS = Object.freeze({
     grants: Object.freeze({ currency: 'coins', amount: 8000 }),
     skus: sku('coins_large'),
   }),
+  vip: Object.freeze({
+    kind: 'entitlement',
+    priceCents: 499,
+    currency: 'usd',
+    label: 'VIP Month',
+    skus: sku('vip'),
+  }),
+  season_pass_premium: Object.freeze({
+    kind: 'entitlement',
+    priceCents: 999,
+    currency: 'usd',
+    label: 'Season Pass Premium',
+    skus: sku('season_pass_premium'),
+  }),
 });
 
 export function productFor(productId) {

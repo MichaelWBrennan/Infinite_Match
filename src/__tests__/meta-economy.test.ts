@@ -298,7 +298,7 @@ describe('checkout and quote timing', () => {
     const bad = await request(app)
       .post('/api/stripe/checkout-session')
       .set('Authorization', `Bearer ${token}`)
-      .send({ productId: 'season_pass_premium' });
+      .send({ productId: 'nonexistent_product' });
     expect(bad.status).toBe(400);
     const notConfigured = await request(app)
       .post('/api/stripe/checkout-session')

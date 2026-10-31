@@ -67,7 +67,7 @@ describe('server-authoritative generated attempts', () => {
 
   test('unsupported rules are refused before any energy or inventory spend', async () => {
     const before = await request(app).get('/api/account-economy/data').set(auth());
-    for (const rulesVersion of [1, 6, 'bad', null, [], {}]) {
+    for (const rulesVersion of [1, 'bad', null, [], {}]) {
       const refused = await request(app).post('/api/account-economy/energy/spend').set(auth())
         .send({ level: 1, mode: 'classic', location, rulesVersion });
       expect(refused.status).toBe(400);

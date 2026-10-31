@@ -36,13 +36,13 @@ const codeOf = (fn: () => unknown): string | null => {
 };
 
 const baseRaw = () => JSON.parse(JSON.stringify(shipped));
-const economy = (xp = 0, season = 2) => ({ battlePass: { active: true, season, xp, claimed: { free: [], premium: [] } } });
+const economy = (xp = 0, season = 3) => ({ battlePass: { active: true, season, xp, claimed: { free: [], premium: [] } } });
 
 describe('battle pass config', () => {
   test('the shipped season is valid', () => {
     const { errors, season } = validateSeason(shipped);
     expect(errors).toEqual([]);
-    expect(season.tiers.length).toBe(5);
+    expect(season.tiers.length).toBe(10);
   });
 
   test('gems are not a reward', () => {
@@ -94,7 +94,7 @@ describe('battle pass rules', () => {
   test('a new season starts from zero', () => {
     const e: any = economy(400, 1);
     const bp = battlePassFor(e, season);
-    expect(bp.season).toBe(2);
+    expect(bp.season).toBe(3);
     expect(bp.xp).toBe(0);
   });
 
@@ -227,6 +227,6 @@ describe('battle pass routes', () => {
   test('the config route still serves the season', async () => {
     const res = await request(app).get('/api/battlepass/config');
     expect(res.status).toBe(200);
-    expect(res.body.pass.season).toBe(2);
+    expect(res.body.pass.season).toBe(3);
   });
 });
