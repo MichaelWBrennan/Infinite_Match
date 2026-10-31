@@ -881,6 +881,68 @@ class GameServer {
         }
       });
 
+      // ---- Tournament Socket.IO handlers ----
+
+      socket.on('tournament_create', async (data: { name?: string; maxPlayers?: number; entryFee?: number; prizePool?: number; settings?: Record<string, unknown> }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const tm = getTournamentManager();
+          if (!tm) throw new Error('tournament manager unavailable');
+          const result = tm.createTournament(playerId, {
+            name: data?.name,
+            maxPlayers: data?.maxPlayers,
+            entryFee: data?.entryFee,
+            prizePool: data?.prizePool,
+            settings: data?.settings || {}
+          });
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('tournament_join', async (data: { tournamentId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const tm = getTournamentManager();
+          if (!tm) throw new Error('tournament manager unavailable');
+          const result = tm.joinTournament(playerId, data.tournamentId);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('tournament_start', async (data: { tournamentId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const tm = getTournamentManager();
+          if (!tm) throw new Error('tournament manager unavailable');
+          const result = tm.startTournament(data.tournamentId, playerId);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('tournament_match_result', async (data: { tournamentId: string; matchId: string; winnerId: string; scores?: Record<string, number> }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const tm = getTournamentManager();
+          if (!tm) throw new Error('tournament manager unavailable');
+          const result = tm.recordMatchResult(
+            data.tournamentId,
+            data.matchId,
+            data.winnerId,
+            data.scores || {},
+            playerId
+          );
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
       // Handle disconnection
       socket.on('disconnect', () => {
         this.logger.info('Client disconnected:', socket.id);

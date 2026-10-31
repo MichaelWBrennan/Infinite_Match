@@ -4,6 +4,7 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { RoomManager } from '../services/multiplayer/room-manager.js';
 import { GameSessionManager } from '../services/multiplayer/game-session-manager.js';
 import { AntiCheatSystem } from '../services/multiplayer/anti-cheat-system.js';
+import { TournamentManager } from '../services/multiplayer/tournament-manager.js';
 import security from '../core/security/index.js';
 
 const router = express.Router();
@@ -17,6 +18,7 @@ router.use(security.sessionValidation);
 let roomManager = null;
 let sessionManager = null;
 let antiCheatSystem = null;
+let tournamentManager = null;
 
 /**
  * Get the initialized room manager (for Socket.IO handlers)
@@ -40,6 +42,13 @@ function getAntiCheatSystem() {
 }
 
 /**
+ * Get the initialized tournament manager (for Socket.IO handlers)
+ */
+function getTournamentManager() {
+  return tournamentManager;
+}
+
+/**
  * Initialize multiplayer services
  */
 function initializeMultiplayerServices(io) {
@@ -47,6 +56,12 @@ function initializeMultiplayerServices(io) {
     roomManager = new RoomManager(io);
     sessionManager = new GameSessionManager(io);
     antiCheatSystem = new AntiCheatSystem();
+    tournamentManager = new TournamentManager(
+      io,
+      roomManager,
+      sessionManager,
+      antiCheatSystem
+    );
     logger.info('Multiplayer services initialized');
   }
 }
@@ -541,6 +556,180 @@ router.post('/anti-cheat/unban', async (req, res) => {
 });
 
 /**
+ * TOURNAMENT ROUTES
+ */
+
+// Create a new tournament
+router.post('/tournaments', async (req, res) => {
+  try {
+    const playerId = req.user.id;
+    const { name, maxPlayers, entryFee, prizePool, settings = {} } = req.body;
+
+    const result = tournamentManager.createTournament(playerId, {
+      name,
+      maxPlayers,
+      entryFee,
+      prizePool,
+      settings
+    });
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    logger.error('Failed to create tournament:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Join a tournament
+router.post('/tournaments/:tournamentId/join', async (req, res) => {
+  try {
+    const { tournamentId } = req.params;
+    const playerId = req.user.id;
+
+    const result = tournamentManager.joinTournament(playerId, tournamentId);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    logger.error('Failed to join tournament:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Start a tournament
+router.post('/tournaments/:tournamentId/start', async (req, res) => {
+  try {
+    const { tournamentId } = req.params;
+    const playerId = req.user.id;
+
+    const result = tournamentManager.startTournament(tournamentId, playerId);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    logger.error('Failed to start tournament:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get tournament details
+router.get('/tournaments/:tournamentId', async (req, res) => {
+  try {
+    const { tournamentId } = req.params;
+    const tournament = tournamentManager.getTournament(tournamentId);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: tournament
+    });
+  } catch (error) {
+    logger.error('Failed to get tournament details:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get tournament standings
+router.get('/tournaments/:tournamentId/standings', async (req, res) => {
+  try {
+    const { tournamentId } = req.params;
+    const standings = tournamentManager.getTournamentStandings(tournamentId);
+
+    res.json({
+      success: true,
+      data: standings
+    });
+  } catch (error) {
+    logger.error('Failed to get tournament standings:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// List available tournaments (registration phase)
+router.get('/tournaments', async (req, res) => {
+  try {
+    const tournaments = tournamentManager.getAvailableTournaments();
+
+    res.json({
+      success: true,
+      data: tournaments
+    });
+  } catch (error) {
+    logger.error('Failed to list tournaments:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Record a match result
+router.post(
+  '/tournaments/:tournamentId/matches/:matchId/result',
+  async (req, res) => {
+    try {
+      const { tournamentId, matchId } = req.params;
+      const playerId = req.user.id;
+      const { winnerId, scores = {} } = req.body;
+
+      if (!winnerId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Winner ID is required'
+        });
+      }
+
+      const result = tournamentManager.recordMatchResult(
+        tournamentId,
+        matchId,
+        winnerId,
+        scores,
+        playerId
+      );
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      logger.error('Failed to record match result:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
  * STATISTICS ROUTES
  */
 
@@ -629,4 +818,11 @@ router.get('/health', (req, res) => {
 });
 
 // Export the router, initialization function, and service accessors
-export { router, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem };
+export {
+  router,
+  initializeMultiplayerServices,
+  getRoomManager,
+  getSessionManager,
+  getAntiCheatSystem,
+  getTournamentManager
+};
