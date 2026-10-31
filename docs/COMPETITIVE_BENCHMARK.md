@@ -62,17 +62,17 @@ Competitors:
 **Verdict:** Infinite Match covers the essentials but lacks depth (no area-of-effect tiers, no limited-use level tools, no charging/pre-level loadout strategy). Score 3 vs. 5.
 
 ### 3.3 Board obstacles and terrain — the biggest board gap
-Infinite Match: **four** obstacle families — v5 fixed two-hit shield overlay (numbered 1–2 layers, stays fixed while gems swap/fall/refill; cleared by actual clears over it, specials and inventory), v6 spreading blockers (spreads one cell per accepted move to lowest eligible neighbour, cap 6), v6 locked gems (cell cannot be swapped until a match clears the lock), and v6 jelly (1–2 layers on top of gems, consumed one layer per clear over the cell). Clear-shields, clear-blockers, clear-locked-gems, and clear-jelly objectives exist. Still no chocolate/liquorice/marmalade/frosting/candy bombs/crates/birds/potion bottles/cabinets/magic hats/safes/mailboxes/pigs — terrain that blocks swaps, delivery objectives, or true bosses are absent.
+Infinite Match: **five** obstacle families — v5 fixed two-hit shield overlay (numbered 1–2 layers, stays fixed while gems swap/fall/refill; cleared by actual clears over it, specials and inventory), v6 spreading blockers (spreads one cell per accepted move to lowest eligible neighbour, cap 6), v6 locked gems (cell cannot be swapped until a match clears the lock), v6 jelly (1–2 layers on top of gems, consumed one layer per clear over the cell), and v6 chocolate (single-layer, spreads from each chocolate cell to one adjacent eligible cell per accepted move, cap 8, cleared by matches/specials/inventory). Clear-shields, clear-blockers, clear-locked-gems, clear-jelly, and clear-chocolate objectives exist. Still no liquorice/marmalade/frosting/candy bombs/crates/birds/potion bottles/cabinets/magic hats/safes/mailboxes/pigs — terrain that blocks swaps, delivery objectives, or true bosses are absent.
 
 Competitors:
 - **Royal Match:** birds, crates, potion bottles, cabinets, diamonds, magic hats, coin safes, mailboxes, pigs — many interactive blockers plus bonus levels.
 - **Candy Crush:** chocolate, liquorice locks, jelly, marmalade, frosting layers, candy bombs — one of the deepest obstacle sets, built over a decade.
 - **Match Masters:** obstacles not documented in reviewed sources; scored conservatively at 2.
 
-**Verdict:** Infinite Match moves from 1 to 2/5. The four-family obstacle system (shields, blockers, locked gems, jelly) is server-verifiable and replay-safe, with deterministic placement on witnessed-clear cells. But a single overlay family plus three v6 add-ons still doesn't match the depth of 6–10 interactive blocker types that leaders have accumulated over years. The repo's own board-variety plan (v6) is now implemented behind the `BLOCKER_LEVELS` flag, awaiting first-play study before default-on rollout.
+**Verdict:** Infinite Match moves from 1 to 2/5. The five-family obstacle system (shields, blockers, locked gems, jelly, chocolate) is server-verifiable and replay-safe, with deterministic placement on witnessed-clear cells. Chocolate adds spreading pressure (one cell per accepted move, cap 8), complementing the fixed overlays. Still doesn't match the depth of 6–10 interactive blocker types that leaders have accumulated over years. The repo's board-variety plan (v6) is implemented behind the `BLOCKER_LEVELS` flag, awaiting first-play study before default-on rollout.
 
 ### 3.4 Objectives and level-design variety — functional but repetitive
-Infinite Match: score, single-colour collection, two-colour collection, mixed goals, clear-shields, clear-blockers, clear-locked-gems, clear-jelly — all **procedurally generated**, each with a certified no-booster winning path, bounded move budget, no starting matches, and every tenth stage a harder "boss profile" (really just a higher target). No hand-authored levels, no delivery objectives, no timed objectives beyond the 60s clock, no boss mechanics with state or counterplay.
+Infinite Match: score, single-colour collection, two-colour collection, mixed goals, clear-shields, clear-blockers, clear-locked-gems, clear-jelly, clear-chocolate — all **procedurally generated**, each with a certified no-booster winning path, bounded move budget, no starting matches, and every tenth stage a harder "boss profile" (really just a higher target). No hand-authored levels, no delivery objectives, no timed objectives beyond the 60s clock, no boss mechanics with state or counterplay.
 
 Competitors:
 - **Candy Crush:** clearing jelly, dropping ingredients, target score, orders — thousands of authored levels with intentional pacing and "teach then test" design.
@@ -195,7 +195,7 @@ Open gaps: timed and endless results remain client-reported and unranked; no sec
 
 | Gap | Severity | What it would take |
 |-----|----------|-------------------|
-| Obstacle variety (4 families vs. 6–10+) | High | v6 families (shields, blockers, locked gems, jelly) implemented behind BLOCKER_LEVELS flag; awaiting first-play study before default-on; more families (chocolate, liquorice, crates) are a later bundle |
+| Obstacle variety (5 families vs. 6–10+) | High | v6 families (shields, blockers, locked gems, jelly, chocolate) implemented behind BLOCKER_LEVELS flag; awaiting first-play study before default-on; more families (liquorice, marmalade, crates) are a later bundle |
 | Authored level design | High | Hand-crafted levels with teach/test pacing; generated supply is not enough |
 | Live-ops cadence | High | Rotating weekly events beyond Hall Lanterns; team events; filled events/deals/tournaments arrays |
 | Native builds & store presence | High | Ship signed Android build via Unity Cloud, iOS via TestFlight, store listings |
@@ -212,7 +212,7 @@ Open gaps: timed and endless results remain client-reported and unranked; no sec
 
 **P0 — prove fun and close trust gaps (before monetizing difficulty):**
 1. Run the first-play/fairness study with real phones (20+ first-time, 30+ observed-loss sessions). Synthetic tests are not player evidence.
-2. Ship the v6 obstacle families (shields, blockers, locked gems, jelly) to real players behind the BLOCKER_LEVELS flag; refine based on observed comprehension and fairness before default-on rollout.
+2. Ship the v6 obstacle families (shields, blockers, locked gems, jelly, chocolate) to real players behind the BLOCKER_LEVELS flag; refine based on observed comprehension and fairness before default-on rollout.
 3. Make renovation visibly rewarding (completion, not just upgrade API calls).
 4. Result integrity before consequential prizes: finish replay verification, false-rejection telemetry, durable multi-server storage.
 
