@@ -4,6 +4,7 @@ import security from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import { socialStore, SocialError } from '../services/social/social-store.js';
 import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
+import { notifyPlayer } from '../services/push/push-service.js';
 
 const router = express.Router();
 const logger = new Logger('SocialRoutes');
@@ -130,6 +131,13 @@ router.post('/gifts/energy', async (req, res) => {
     const { gift, reserved } = await socialStore.reserveEnergyGift(req.user.playerId, receiverId, req.body?.giftId, nowMs);
     const credit = await accountEconomyService.creditEnergyGift(receiverId, gift.id, gift.amount, nowMs);
     if (gift.status !== 'credited') await socialStore.markEnergyGiftCredited(gift.id, credit.credited);
+    // Notify the receiver they have a new energy gift (fire and forget; push is best-effort).
+    void notifyPlayer({
+      userId: receiverId,
+      title: 'Energy gift received',
+      body: 'A friend sent you an energy gift!',
+      data: { type: 'energy_gift', from: req.user.playerId, giftId: gift.id },
+    });
     res.json({ success: true, result: { giftId: gift.id, credited: credit.credited, duplicate: !reserved || credit.duplicate },
       requestId: req.requestId });
   } catch (error) {
