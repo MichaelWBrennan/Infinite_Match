@@ -51,7 +51,7 @@ describe('product catalog SKUs', () => {
     expect(productIdForSku('ios', 'remove_ads')).toBe('remove_ads');
     expect(productIdForSku('android', 'unlock_all_themes')).toBe('unlock_all_themes');
     expect(productIdForSku('ios', 'season_pass_premium')).toBe('season_pass_premium');
-    expect(productIdForSku('web', 'remove_ads')).toBeNull();
+    expect(productIdForSku('web', 'remove_ads')).toBe('remove_ads');
     expect(productIdForSku('ios', undefined as any)).toBeNull();
     expect(productFor('remove_ads')?.priceCents).toBe(499);
   });

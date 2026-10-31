@@ -6,10 +6,14 @@
  *   'entitlement' - a one-time unlock recorded in the purchase ledger.
  *   'consumable'  - adds `grants.amount` of `grants.currency` to the player's account, once per purchase.
  *
- * `skus` are the store product IDs created in App Store Connect and Google Play
- * Console. They default to the catalog ID; change them here if the store IDs differ.
+ * `skus` are the store product IDs. Web purchases go through Stripe Checkout and use
+ * the catalog product ID directly; ios/android SKUs are created in App Store Connect
+ * and Google Play Console. They default to the catalog ID; change them here if the
+ * store IDs differ.
+ *
+ * Product is web-first: `web` is a first-class platform alongside ios/android.
  */
-const sku = (id) => Object.freeze({ ios: id, android: id });
+const sku = (id) => Object.freeze({ web: id, ios: id, android: id });
 
 export const PRODUCTS = Object.freeze({
   remove_ads: Object.freeze({
@@ -73,7 +77,7 @@ export function productFor(productId) {
 
 /** Maps a store product ID (per platform) back to a catalog product ID, or null. */
 export function productIdForSku(platform, sku) {
-  if (platform !== 'ios' && platform !== 'android') return null;
+  if (platform !== 'web' && platform !== 'ios' && platform !== 'android') return null;
   if (typeof sku !== 'string' || sku === '') return null;
   for (const [productId, product] of Object.entries(PRODUCTS)) {
     if (product.skus[platform] === sku) return productId;

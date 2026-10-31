@@ -131,15 +131,15 @@ Competitors:
 
 **Verdict:** 0/5, and the repo correctly treats live PvP as "a separate product bet, not a checkbox," requiring authoritative turns, matchmaking, reconnect and anti-cheat before consideration.
 
-### 3.10 Platforms and distribution — web-first, native unproven
-Infinite Match: browser Phaser client is the tested target; installable PWA (manifest, 192/512/maskable icons, shell-only service worker) added but not browser/device-verified; install prompt did not fire in headless mode. Android (`AndroidManifest.xml`, GitHub Actions Unity builder) and iOS (`Info.plist`, macOS workflow) configured but **no APK/AAB, no Xcode project, no TestFlight, no live store listing**. Portal build scripts exist (Poki, Facebook, Snap, TikTok, Kongregate, CrazyGames) with no submission evidence.
+### 3.10 Platforms and distribution — web-first (decided)
+Infinite Match: browser Phaser client is the tested target; installable PWA (manifest, 192/512/maskable icons, shell-only service worker) added but not browser/device-verified; install prompt did not fire in headless mode. Android (`AndroidManifest.xml`, GitHub Actions Unity builder) and iOS (`Info.plist`, macOS workflow) configured but **no APK/AAB, no Xcode project, no TestFlight, no live store listing**. Portal build scripts exist (Poki, Facebook, Snap, TikTok, Kongregate, CrazyGames) with no submission evidence. **Platform decision: web-first.** Stripe Checkout is the purchase path; native store billing, push, and cross-device offline sync are not promised until a native build ships to a store.
 
 Competitors:
 - **Candy Crush:** iOS, Android, Amazon, Facebook, Microsoft Store.
 - **Royal Match:** Google Play and Amazon Appstore verified; App Store downloads reported by trackers.
 - **Match Masters:** Google Play verified.
 
-**Verdict:** 3/5. Web is real; native and store presence are "configured, not shipped." The repo faces an explicit decision: web-first vs. native-store-first before promising cross-device billing, push, or offline sync.
+**Verdict:** 3/5. Web is real and is the committed platform; native and store presence remain "configured, not shipped." Cross-device billing, push, and offline sync are not promised.
 
 ### 3.11 Offline play and cloud sync — partial
 Infinite Match: guest fallback supports certified offline play for temporary errors; signed-in level wins queue and re-send (one grant per attempt); no signed-in offline queue/reconciliation built; durable balances require `ECONOMY_STORE=mongo` (untested against live Mongo).
