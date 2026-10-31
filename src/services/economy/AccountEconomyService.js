@@ -1293,6 +1293,7 @@ class AccountEconomyService {
     delete view.purchaseDebits;
     delete view.competitionPayouts;
     delete view.energyGifts;
+    delete view.boosterGifts;
     delete view.milestoneGrants;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
@@ -1317,6 +1318,27 @@ class AccountEconomyService {
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
       return { duplicate: false, credited, energy: energy.amount };
+    });
+  }
+
+  /**
+   * Credits one booster gift to the receiver, once per giftId. The booster count never goes
+   * above maxCount (99), so `credited` can be less than `amount` (or 0) for a full inventory.
+   * Saved in one write.
+   */
+  async creditBoosterGift(playerId, giftId, boosterId, amount = 1, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const prior = playerEconomy.boosterGifts?.[giftId];
+      if (prior) return { duplicate: true, credited: prior.credited, booster: playerEconomy.inventory.boosters[boosterId]?.count ?? 0 };
+      const inventory = playerEconomy.inventory.boosters[boosterId];
+      if (!inventory) throw new EconomyRuleError('unknown_booster');
+      const credited = Math.max(0, Math.min(amount, inventory.maxCount - inventory.count));
+      inventory.count += credited;
+      playerEconomy.boosterGifts = { ...(playerEconomy.boosterGifts || {}), [giftId]: { credited, boosterId, at: new Date(nowMs).toISOString() } };
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { duplicate: false, credited, booster: inventory.count };
     });
   }
 

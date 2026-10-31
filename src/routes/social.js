@@ -32,6 +32,8 @@ const ERROR_STATUS = {
   gift_sender_limit: 409,
   gift_receiver_limit: 409,
   gift_not_found: 404,
+  invalid_gift_type: 400,
+  invalid_booster: 400,
   invalid_attempt: 400,
   milestone_not_reached: 409,
   no_milestone_contribution: 409,
@@ -140,6 +142,34 @@ router.post('/gifts/energy', async (req, res) => {
     });
     res.json({ success: true, result: { giftId: gift.id, credited: credit.credited, duplicate: !reserved || credit.duplicate },
       requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+// Booster gift (S2): a friend gives one booster. Recorded in the shared social store first, then
+// credited to the receiver once (the economy keeps a receipt per gift id). A retry with the same
+// giftId is safe at both steps.
+router.post('/gifts/booster', async (req, res) => {
+  const receiverId = idParam(req.body?.receiverId);
+  const boosterId = typeof req.body?.boosterId === 'string' ? req.body.boosterId : null;
+  if (!receiverId) return res.status(400).json({ success: false, error: 'invalid_player', requestId: req.requestId });
+  if (!boosterId) return res.status(400).json({ success: false, error: 'invalid_booster', requestId: req.requestId });
+  try {
+    const nowMs = Date.now();
+    const { gift, reserved } = await socialStore.reserveEnergyGift(
+      req.user.playerId, receiverId, req.body?.giftId, nowMs, 'booster', boosterId);
+    const credit = await accountEconomyService.creditBoosterGift(receiverId, gift.id, gift.boosterId, gift.amount, nowMs);
+    if (gift.status !== 'credited') await socialStore.markEnergyGiftCredited(gift.id, credit.credited);
+    // Notify the receiver they have a new booster gift (fire and forget; push is best-effort).
+    void notifyPlayer({
+      userId: receiverId,
+      title: 'Booster gift received',
+      body: 'A friend sent you a booster!',
+      data: { type: 'booster_gift', from: req.user.playerId, giftId: gift.id, boosterId },
+    });
+    res.json({ success: true, result: { giftId: gift.id, boosterId: gift.boosterId, credited: credit.credited,
+      duplicate: !reserved || credit.duplicate }, requestId: req.requestId });
   } catch (error) {
     handleError(res, error, req.requestId);
   }

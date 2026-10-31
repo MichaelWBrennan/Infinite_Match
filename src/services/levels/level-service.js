@@ -132,14 +132,6 @@ function blankFrostingArray(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));
 }
 
-function blankMarmaladeArray(size) {
-  return Array.from({ length: size }, () => new Array(size).fill(0));
-}
-
-function blankFrostingArray(size) {
-  return Array.from({ length: size }, () => new Array(size).fill(0));
-}
-
 /** Synchronous, no-network generation for tooling, tests and calendar-only callers. */
 export function generatedLevel({ level = 1, mode = 'classic', location = {}, rulesVersion = GENERATOR_VERSION } = {}, nowMs = Date.now()) {
   validate(level, mode, rulesVersion);
