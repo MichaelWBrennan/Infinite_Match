@@ -1,6 +1,7 @@
 import { generateLevel, generationKey, LEVEL_MODES, GENERATOR_VERSION } from './generator.js';
 import { LevelInputError, localLevelContext } from './location-context.js';
 import { levelWeatherService } from './weather-context.js';
+import { authoredLevelFor } from './authored/levels.js';
 
 const levels = new Map();
 const MAX_CACHED_LEVELS = 128;
@@ -28,6 +29,81 @@ export function levelForContext(level, mode, context, rulesVersion = GENERATOR_V
   return clone;
 }
 
+/** Convert an authored level definition into the same shape as a generated level. */
+function authoredLevelShape(def, context) {
+  const size = def.boardSize;
+  const board = def.board ?? dealEmptyBoard(size, def.gemTypes, def.gemWeights);
+  const specials = def.specials ?? blankSpecialsArray(size);
+  const shields = def.shields ?? blankShieldsArray(size);
+  const blockers = def.blockers ?? blankBlockersArray(size);
+  const lockedGems = def.lockedGems ?? blankLockedGemsArray(size);
+  // Authored levels use v6 rules so they can demonstrate all obstacle families
+  // (shields, blockers, locked gems) without being gated behind BLOCKER_LEVELS.
+  return {
+    id: `authored-v6-${def.mode}-${def.level}-${context.localDate}`,
+    generatorVersion: 6,
+    shields,
+    blockers,
+    lockedGems,
+    environmentKey: 'authored',
+    level: def.level,
+    mode: def.mode,
+    isDaily: def.mode === 'daily',
+    isBoss: def.difficulty === 'boss',
+    seed: 0,
+    refillState: 0,
+    boardSize: def.boardSize,
+    board,
+    gemTypes: def.gemTypes,
+    gemWeights: def.gemWeights,
+    targetScore: def.targetScore,
+    moves: def.moves,
+    timeLimit: def.mode === 'timed' ? 60 : 0,
+    objectives: def.objectives.map((g) => ({ ...g })),
+    objectiveProfile: def.objectives.length > 1 ? 'multi' : def.objectives[0].type,
+    difficulty: def.difficulty,
+    theme: { name: 'Authored Level', background: '#2e2250', accent: '#ffd87a', favorite: 'red' },
+    context: { ...context },
+    quality: {
+      initialMatches: 0,
+      legalOpeningMoves: 0,
+      verifiedWithoutBoosters: true,
+      verifiedMoves: def.moves,
+      verifiedScore: def.targetScore,
+      verifiedCollected: {},
+      verifiedObjectives: true,
+    },
+  };
+}
+
+function dealEmptyBoard(size, palette, weights) {
+  const board = [];
+  for (let r = 0; r < size; r++) {
+    const row = [];
+    for (let c = 0; c < size; c++) {
+      row.push(palette[(r * size + c) % palette.length]);
+    }
+    board.push(row);
+  }
+  return board;
+}
+
+function blankSpecialsArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(null));
+}
+
+function blankShieldsArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+function blankBlockersArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+function blankLockedGemsArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
 /** Synchronous, no-network generation for tooling, tests and calendar-only callers. */
 export function generatedLevel({ level = 1, mode = 'classic', location = {}, rulesVersion = GENERATOR_VERSION } = {}, nowMs = Date.now()) {
   validate(level, mode, rulesVersion);
@@ -47,6 +123,11 @@ export async function liveLevelContext(location = {}, nowMs = Date.now(), weathe
 export async function liveGeneratedLevel({ level = 1, mode = 'classic', location = {}, rulesVersion = GENERATOR_VERSION } = {}, nowMs = Date.now(), weatherService = levelWeatherService) {
   validate(level, mode, rulesVersion);
   return levelForContext(level, mode, await liveLevelContext(location, nowMs, weatherService), rulesVersion);
+}
+
+/** Look up an authored level by number and mode. Returns null if none exists. */
+export function authoredLevel(level, mode = 'classic') {
+  return authoredLevelFor(level, mode);
 }
 
 

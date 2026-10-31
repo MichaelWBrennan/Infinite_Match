@@ -15,7 +15,7 @@ import crypto from 'crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { pickWheelReward, ITEM_CATALOG, LEVEL_LIMITS } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
-import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier } from '../meta/kingdom.js';
+import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier, markRoomCompleted, KINGDOM_MAX_LEVEL } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
 import { endlessRewards, winRewards } from '../meta/rewards.js';
@@ -889,14 +889,25 @@ class AccountEconomyService {
         this.applyReward(playerEconomy, { type: 'inventory', ...milestone });
       }
 
+      let roomJustCompleted = null;
+      let allCompleted = false;
+      if (plan.targetLevel >= KINGDOM_MAX_LEVEL) {
+        const { kingdom: updatedKingdom, justCompleted, allCompleted: ac } = markRoomCompleted(kingdom, roomId);
+        kingdom = updatedKingdom;
+        roomJustCompleted = justCompleted ? roomId : null;
+        allCompleted = ac;
+      }
+
       playerEconomy.lastUpdated = new Date().toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
-      logger.info('Kingdom room renovated', { playerId, roomId, level: plan.targetLevel });
+      logger.info('Kingdom room renovated', { playerId, roomId, level: plan.targetLevel, roomJustCompleted, allCompleted });
       return {
         roomId,
         level: plan.targetLevel,
         costCoins: plan.costCoins,
         milestone,
+        roomJustCompleted,
+        allCompleted,
         coins: playerEconomy.currencies.coins.amount,
       };
     });
