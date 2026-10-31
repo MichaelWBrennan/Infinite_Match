@@ -9,7 +9,7 @@
 
 ## 1. Executive summary
 
-On the repo's own competitive audit (`docs/COMPETITIVE_STRATEGY.md`, snapshot 2026-10-11), Infinite Match ranks **4th of 4** on feature breadth against Royal Match (4.2), Candy Crush Saga (4.0) and Match Masters (3.9), averaging **2.3** across the ten ranked dimensions.
+On the repo's own competitive audit (`docs/COMPETITIVE_STRATEGY.md`, snapshot 2026-10-11), Infinite Match ranks **4th of 4** on feature breadth against Royal Match (4.2), Candy Crush Saga (4.0) and Match Masters (3.9), averaging **2.4** across the ten ranked dimensions.
 
 The honest bottom line: **Infinite Match's core swap match-3 is complete and tested (swaps, cascades, refill, reshuffle, earned specials, six inventory boosters), but everything that surrounds the board — obstacle variety, authored level design, live-ops cadence, social depth, native platforms, and audiovisual polish — is partial or missing.** Its genuine, defensible advantages are **supply without a level cap** (unlimited generated levels with solver witnesses), **free hints**, **guest-first play**, **server-verified result integrity**, and an **accessibility layer** (text board, reduced motion, high contrast, large text, keyboard) that competitors have not been assessed on.
 
@@ -23,7 +23,7 @@ This document bencharks Infinite Match against the genre leaders dimension by di
 |---|-----------|:---:|:---:|:---:|:---:|
 | 1 | Core swap match-3 (swaps, cascades, refill) | **5** | 5 | 5 | 5 |
 | 2 | Boosters and special items | **3** | 5 | 5 | 5 |
-| 3 | Board obstacles and terrain | **1** | 5 | 5 | 2 |
+| 3 | Board obstacles and terrain | **2** | 5 | 5 | 2 |
 | 4 | Objectives and design variety | **2** | 4 | 5 | 3 |
 | 5 | Level supply and volume | **4** | 4 | 5 | n/a |
 | 6 | Meta-progression and story | **3** | 5 | 3 | 3 |
@@ -31,7 +31,7 @@ This document bencharks Infinite Match against the genre leaders dimension by di
 | 8 | Social and asynchronous competition | **2** | 4 | 3 | 4 |
 | 9 | Real-time PvP | **0** | 0 | 0 | 5 |
 | 10 | Platforms and distribution | **3** | 5 | 5 | 4 |
-| | **Average (rows 1–4, 6–10, 13)** | **2.3** | **4.2** | **4.0** | **3.9** |
+| | **Average (rows 1–4, 6–10, 13)** | **2.4** | **4.2** | **4.0** | **3.9** |
 
 *Row 12 (accessibility) scores Infinite Match at 4 but is excluded from the average because competitors were not assessed. Row 13 (audiovisual polish) is subjective and scored 2 for Infinite Match vs. 4 for each competitor.*
 
@@ -62,17 +62,17 @@ Competitors:
 **Verdict:** Infinite Match covers the essentials but lacks depth (no area-of-effect tiers, no limited-use level tools, no charging/pre-level loadout strategy). Score 3 vs. 5.
 
 ### 3.3 Board obstacles and terrain — the biggest board gap
-Infinite Match: **one** obstacle family — v5 fixed two-hit shield overlay (numbered 1–2 layers, stays fixed while gems swap/fall/refill; cleared by actual clears over it, specials and inventory). Clear-shields objective exists. No jelly, chocolate, liquorice, marmalade, frosting, candy bombs, crates, birds, potion bottles, cabinets, magic hats, safes, mailboxes, or pigs. No terrain that blocks swaps, no delivery objectives, no true bosses.
+Infinite Match: **four** obstacle families — v5 fixed two-hit shield overlay (numbered 1–2 layers, stays fixed while gems swap/fall/refill; cleared by actual clears over it, specials and inventory), v6 spreading blockers (spreads one cell per accepted move to lowest eligible neighbour, cap 6), v6 locked gems (cell cannot be swapped until a match clears the lock), and v6 jelly (1–2 layers on top of gems, consumed one layer per clear over the cell). Clear-shields, clear-blockers, clear-locked-gems, and clear-jelly objectives exist. Still no chocolate/liquorice/marmalade/frosting/candy bombs/crates/birds/potion bottles/cabinets/magic hats/safes/mailboxes/pigs — terrain that blocks swaps, delivery objectives, or true bosses are absent.
 
 Competitors:
 - **Royal Match:** birds, crates, potion bottles, cabinets, diamonds, magic hats, coin safes, mailboxes, pigs — many interactive blockers plus bonus levels.
 - **Candy Crush:** chocolate, liquorice locks, jelly, marmalade, frosting layers, candy bombs — one of the deepest obstacle sets, built over a decade.
 - **Match Masters:** obstacles not documented in reviewed sources; scored conservatively at 2.
 
-**Verdict:** Infinite Match is at 1/5. The v5 shield is a credible first slice (numbered, readable, server-verifiable), but a single fixed overlay does not create board texture. The repo's own roadmap (v6 board-variety plan, spreading blocker) is planned, not implemented.
+**Verdict:** Infinite Match moves from 1 to 2/5. The four-family obstacle system (shields, blockers, locked gems, jelly) is server-verifiable and replay-safe, with deterministic placement on witnessed-clear cells. But a single overlay family plus three v6 add-ons still doesn't match the depth of 6–10 interactive blocker types that leaders have accumulated over years. The repo's own board-variety plan (v6) is now implemented behind the `BLOCKER_LEVELS` flag, awaiting first-play study before default-on rollout.
 
 ### 3.4 Objectives and level-design variety — functional but repetitive
-Infinite Match: score, single-colour collection, two-colour collection, mixed goals, clear-shields — all **procedurally generated**, each with a certified no-booster winning path, bounded move budget, no starting matches, and every tenth stage a harder "boss profile" (really just a higher target). No hand-authored levels, no delivery objectives, no timed objectives beyond the 60s clock, no boss mechanics with state or counterplay.
+Infinite Match: score, single-colour collection, two-colour collection, mixed goals, clear-shields, clear-blockers, clear-locked-gems, clear-jelly — all **procedurally generated**, each with a certified no-booster winning path, bounded move budget, no starting matches, and every tenth stage a harder "boss profile" (really just a higher target). No hand-authored levels, no delivery objectives, no timed objectives beyond the 60s clock, no boss mechanics with state or counterplay.
 
 Competitors:
 - **Candy Crush:** clearing jelly, dropping ingredients, target score, orders — thousands of authored levels with intentional pacing and "teach then test" design.
@@ -195,7 +195,7 @@ Open gaps: timed and endless results remain client-reported and unranked; no sec
 
 | Gap | Severity | What it would take |
 |-----|----------|-------------------|
-| Obstacle variety (1 family vs. 6–10+) | High | Implement v6 board-variety plan (spreading blocker + more families), prove replay/witnesses, test on real phones |
+| Obstacle variety (4 families vs. 6–10+) | High | v6 families (shields, blockers, locked gems, jelly) implemented behind BLOCKER_LEVELS flag; awaiting first-play study before default-on; more families (chocolate, liquorice, crates) are a later bundle |
 | Authored level design | High | Hand-crafted levels with teach/test pacing; generated supply is not enough |
 | Live-ops cadence | High | Rotating weekly events beyond Hall Lanterns; team events; filled events/deals/tournaments arrays |
 | Native builds & store presence | High | Ship signed Android build via Unity Cloud, iOS via TestFlight, store listings |
@@ -212,7 +212,7 @@ Open gaps: timed and endless results remain client-reported and unranked; no sec
 
 **P0 — prove fun and close trust gaps (before monetizing difficulty):**
 1. Run the first-play/fairness study with real phones (20+ first-time, 30+ observed-loss sessions). Synthetic tests are not player evidence.
-2. Ship the v5 shield obstacle to real players; refine based on observed comprehension and fairness.
+2. Ship the v6 obstacle families (shields, blockers, locked gems, jelly) to real players behind the BLOCKER_LEVELS flag; refine based on observed comprehension and fairness before default-on rollout.
 3. Make renovation visibly rewarding (completion, not just upgrade API calls).
 4. Result integrity before consequential prizes: finish replay verification, false-rejection telemetry, durable multi-server storage.
 
