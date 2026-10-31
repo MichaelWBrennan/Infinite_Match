@@ -40,8 +40,10 @@ function authoredLevelShape(def, context) {
   const jelly = def.jelly ?? blankJellyArray(size);
   const chocolate = def.chocolate ?? blankChocolateArray(size);
   const liquorice = def.liquorice ?? blankLiquoriceArray(size);
+  const marmalade = def.marmalade ?? blankMarmaladeArray(size);
+  const frosting = def.frosting ?? blankFrostingArray(size);
   // Authored levels use v6 rules so they can demonstrate all obstacle families
-  // (shields, blockers, locked gems, jelly, chocolate, liquorice) without being gated behind BLOCKER_LEVELS.
+  // (shields, blockers, locked gems, jelly, chocolate, liquorice, marmalade, frosting) without being gated behind BLOCKER_LEVELS.
   return {
     id: `authored-v6-${def.mode}-${def.level}-${context.localDate}`,
     generatorVersion: 6,
@@ -51,6 +53,8 @@ function authoredLevelShape(def, context) {
     jelly,
     chocolate,
     liquorice,
+    marmalade,
+    frosting,
     environmentKey: 'authored',
     level: def.level,
     mode: def.mode,
@@ -119,6 +123,12 @@ function blankChocolateArray(size) {
 }
 
 function blankLiquoriceArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+function blankMarmaladeArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+function blankFrostingArray(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));
 }
 
