@@ -51,13 +51,10 @@ class TournamentManager {
         options.maxPlayers || this.maxPlayers,
         this.maxPlayers
       );
-      if (maxPlayers < this.minPlayers) {
-        throw new ServiceError(
-          `Tournament requires at least ${this.minPlayers} players`
-        );
+      if (maxPlayers < 2) {
+        throw new ServiceError('Tournament requires at least 2 players');
       }
       // Single-elimination brackets work best with power-of-2 player counts.
-      // We accept any count >= minPlayers and pad byes as needed.
 
       const tournament = {
         id: tournamentId,
@@ -174,14 +171,36 @@ class TournamentManager {
       const brackets = this.generateBracket(players, tournament.settings);
       tournament.brackets = brackets;
 
+      // Register all bracket matches in the match index with tournamentId
+      for (const bracket of brackets) {
+        for (const match of bracket.matches) {
+          match.tournamentId = tournament.id;
+          this.matches.set(match.id, match);
+        }
+      }
+
       // Create match sessions for round 1
       const round1 = brackets[0];
       for (const match of round1.matches) {
         if (match.player2Id) {
           // Real match - create a PvP session
           this.createMatchSession(tournament, match);
+        } else if (match.winnerId && match.winnerAdvancesTo) {
+          // Bye - auto-advance the winner to the next round match
+          const nextMatch = this.matches.get(match.winnerAdvancesTo.nextRoundMatchId);
+          if (nextMatch) {
+            const slot = match.winnerAdvancesTo.slot;
+            nextMatch[slot] = match.winnerId;
+            if (
+              nextMatch.player1Id &&
+              nextMatch.player2Id &&
+              nextMatch.status === 'pending'
+            ) {
+              nextMatch.status = 'active';
+              this.createMatchSession(tournament, nextMatch);
+            }
+          }
         }
-        // Byes (player2Id === null) auto-advance the player
       }
 
       this.logger.info(
@@ -275,7 +294,7 @@ class TournamentManager {
         const isPlayer1 = m % 2 === 0;
         match.winnerAdvancesTo = {
           nextRoundMatchId: nextRound.matches[targetMatchIndex].id,
-          slot: isPlayer1 ? 'player1' : 'player2'
+          slot: isPlayer1 ? 'player1Id' : 'player2Id'
         };
       }
     }
@@ -303,6 +322,7 @@ class TournamentManager {
     );
 
     match.sessionId = result.sessionId;
+    match.tournamentId = tournament.id;
     match.status = 'active';
 
     this.matches.set(match.id, match);
@@ -571,6 +591,14 @@ class TournamentManager {
     return Array.from(this.tournaments.values())
       .filter((t) => t.status === 'registration')
       .map((t) => this.getPublicTournament(t));
+  }
+
+  /** Reset all tournament state (for testing) */
+  reset() {
+    this.tournaments.clear();
+    this.playerTournaments.clear();
+    this.matches.clear();
+    this.logger.info('Tournament manager reset');
   }
 
   /** Get tournament statistics */
