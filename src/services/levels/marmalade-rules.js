@@ -1,8 +1,8 @@
-/** Rules v6: marmalade terrain tiles. Marmalade is a single-layer sticky
- * substance placed on top of ordinary gem cells. A match that clears the gem
- * on a marmalade cell removes the marmalade. Marmalade never blocks swaps
- * and never spreads. Classic only: daily, timed and endless never receive
- * marmalade.
+/** Rules v6: marmalade terrain tiles. Marmalade is a sticky substance that covers
+ * ordinary gem cells and must be cleared by matches over its cell. Unlike jelly
+ * (which is consumed one layer per clear), marmalade is single-layer: one match
+ * over its cell removes it entirely. Marmalade never blocks swaps and never spreads.
+ * Classic only: daily, timed and endless never receive marmalade.
  */
 import { hashSeed } from './match-core.js';
 import { simulateSpecialMove, blankSpecials } from './special-rules.js';
@@ -11,8 +11,7 @@ export const MARMALADE_CAP = 5;
 
 export function validMarmalade(marmalade, size) {
   return Array.isArray(marmalade) && marmalade.length === size && marmalade.every((row) =>
-    Array.isArray(row) && row.length === size && row.every((value) =>
-      value === 0 || value === 1));
+    Array.isArray(row) && row.length === size && row.every((value) => value === 0 || value === 1));
 }
 
 export function marmaladeCount(marmalade) {
@@ -25,7 +24,7 @@ export function blankMarmalade(size) {
 }
 
 /** Place marmalade only on cells the no-inventory witness actually clears, up to MARMALADE_CAP.
- * Same existence-proof pattern as witnessedShields.
+ * Same existence-proof pattern as witnessedShields. One layer per cell.
  */
 export function witnessedMarmalade(board, refillState, palette, weights, specials, witness, seed) {
   const n = board.length;
@@ -37,7 +36,7 @@ export function witnessedMarmalade(board, refillState, palette, weights, special
     for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
     state = next;
   }
-  const candidates = [...clears.keys()].sort();
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 1).map(([key]) => key).sort();
   const marmalade = blankMarmalade(n);
   if (!candidates.length) return marmalade;
   const offset = hashSeed(`${seed}|marmalade-cells`) % candidates.length;
@@ -49,7 +48,7 @@ export function witnessedMarmalade(board, refillState, palette, weights, special
   return marmalade;
 }
 
-/** Clear marmalade on cells covered by a clear event. Returns { marmalade, cleared: number removed }. */
+/** Clear marmalade cells covered by a clear event. Returns { marmalade, cleared: count }. */
 export function clearMarmalade(marmalade, clearedKeys) {
   const copy = marmalade.map((row) => row.slice());
   let lost = 0;
@@ -63,8 +62,8 @@ export function clearMarmalade(marmalade, clearedKeys) {
   return { marmalade: copy, cleared: lost };
 }
 
-/** Thread marmalade through a simulate-style result. Marmalade on cleared cells
- * is removed. Never mutates input. */
+/** Thread marmalade through a simulate-style result. Marmalade on cleared cells is removed.
+ * Never mutates input. */
 export function applyMarmaladeClear(result, initialMarmalade) {
   if (!result) return null;
   let grid = initialMarmalade.map((row) => row.slice());
@@ -87,9 +86,9 @@ export function applyMarmaladeClear(result, initialMarmalade) {
  * cell is cleared by the witness path. Returns { score, collected, marmaladeCleared, events }.
  */
 export function certifyMarmaladeBoard(definition) {
-  const { board, refillState, gemTypes, gemWeights, specials, witness, marmalade } = definition;
+  const { board, refillState, gemTypes, gemWeights, specials, witness } = definition;
   if (!Array.isArray(witness) || witness.length === 0) throw new Error('marmalade_certify_no_witness');
-  let state = { board, specials: specials || blankSpecials(board.length), refillState, marmalade };
+  let state = { board, specials: specials || blankSpecials(board.length), refillState };
   let score = 0;
   const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
   let marmaladeCleared = 0;

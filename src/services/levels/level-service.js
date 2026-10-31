@@ -125,6 +125,12 @@ function blankChocolateArray(size) {
 function blankLiquoriceArray(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));
 }
+function blankMarmaladeArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+function blankFrostingArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
 
 function blankMarmaladeArray(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));

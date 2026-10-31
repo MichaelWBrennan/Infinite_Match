@@ -92,7 +92,7 @@ export function applyFrostingClear(result, initialFrosting) {
 export function certifyFrostingBoard(definition) {
   const { board, refillState, gemTypes, gemWeights, specials, witness, frosting } = definition;
   if (!Array.isArray(witness) || witness.length === 0) throw new Error('frosting_certify_no_witness');
-  let state = { board, specials: specials || blankSpecials(board.length), refillState, frosting };
+  let state = { board, specials: specials || blankSpecials(board.length), refillState };
   let score = 0;
   const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
   let frostingCleared = 0;
