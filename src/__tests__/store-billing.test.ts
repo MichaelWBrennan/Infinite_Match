@@ -50,8 +50,8 @@ describe('product catalog SKUs', () => {
   test('store SKUs map back to catalog products per platform', () => {
     expect(productIdForSku('ios', 'remove_ads')).toBe('remove_ads');
     expect(productIdForSku('android', 'unlock_all_themes')).toBe('unlock_all_themes');
-    expect(productIdForSku('ios', 'season_pass_premium')).toBeNull();
-    expect(productIdForSku('web', 'remove_ads')).toBeNull();
+    expect(productIdForSku('ios', 'season_pass_premium')).toBe('season_pass_premium');
+    expect(productIdForSku('web', 'remove_ads')).toBe('remove_ads');
     expect(productIdForSku('ios', undefined as any)).toBeNull();
     expect(productFor('remove_ads')?.priceCents).toBe(499);
   });
@@ -144,7 +144,7 @@ describe('live ops config', () => {
     expect(priceFor('unlock_all_themes', inside, config!)).toEqual({ priceCents: 399, currency: 'usd', deal: true });
     expect(priceFor('unlock_all_themes', after, config!)).toEqual({ priceCents: 799, currency: 'usd', deal: false });
     expect(priceFor('unlock_all_themes', Date.parse(future(0)) - 1, config!)?.deal).toBe(false);
-    expect(priceFor('season_pass_premium', inside, config!)).toBeNull();
+    expect(priceFor('season_pass_premium', inside, config!)).toEqual({ priceCents: 999, currency: 'usd', deal: false });
   });
 
   test('liveOpsToday lists active deals and events, and upcoming events in order', () => {

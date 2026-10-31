@@ -1,94 +1,171 @@
 {
   "events": [],
-  "deals": [],
-  "tournaments": [],
-  "challenges": [],
+  "deals": [
+    {
+      "id": "deal_coins_medium",
+      "name": "Value Pack",
+      "productId": "coins_medium",
+      "priceCents": 399,
+      "catalogPriceCents": 499,
+      "start": "2026-11-01T00:00:00Z",
+      "end": "2026-11-15T23:59:59Z"
+    },
+    {
+      "id": "deal_coins_large",
+      "name": "Royal Hoard",
+      "productId": "coins_large",
+      "priceCents": 749,
+      "catalogPriceCents": 999,
+      "start": "2026-11-01T00:00:00Z",
+      "end": "2026-11-30T23:59:59Z"
+    },
+    {
+      "id": "deal_vip_monthly",
+      "name": "VIP Month",
+      "productId": "vip",
+      "priceCents": 399,
+      "catalogPriceCents": 499,
+      "start": "2026-11-01T00:00:00Z",
+      "end": "2026-11-30T23:59:59Z"
+    },
+    {
+      "id": "deal_season_pass",
+      "name": "Season Pass Premium",
+      "productId": "season_pass_premium",
+      "priceCents": 899,
+      "catalogPriceCents": 999,
+      "start": "2026-11-01T00:00:00Z",
+      "end": "2026-11-30T23:59:59Z"
+    }
+  ],
+  "tournaments": [
+    {
+      "id": "weekly_crown_rush_20261102",
+      "name": "Crown Rush",
+      "description": "Top scores on classic levels this week win coin prizes. Verified wins only; booster-assisted runs are verified but unranked.",
+      "startMs": 1762051200000,
+      "endMs": 1762655999000,
+      "prizes": [
+        { "rank": 1, "coins": 500 },
+        { "rank": 2, "coins": 300 },
+        { "rank": 3, "coins": 200 },
+        { "rank": 4, "coins": 150 },
+        { "rank": 5, "coins": 100 },
+        { "rank": 6, "coins": 75 },
+        { "rank": 7, "coins": 50 },
+        { "rank": 8, "coins": 40 },
+        { "rank": 9, "coins": 30 },
+        { "rank": 10, "coins": 20 }
+      ]
+    },
+    {
+      "id": "weekly_crown_rush_20261109",
+      "name": "Crown Rush",
+      "description": "Top scores on classic levels this week win coin prizes. Verified wins only; booster-assisted runs are verified but unranked.",
+      "startMs": 1762656000000,
+      "endMs": 1763260799000,
+      "prizes": [
+        { "rank": 1, "coins": 500 },
+        { "rank": 2, "coins": 300 },
+        { "rank": 3, "coins": 200 },
+        { "rank": 4, "coins": 150 },
+        { "rank": 5, "coins": 100 },
+        { "rank": 6, "coins": 75 },
+        { "rank": 7, "coins": 50 },
+        { "rank": 8, "coins": 40 },
+        { "rank": 9, "coins": 30 },
+        { "rank": 10, "coins": 20 }
+      ]
+    },
+    {
+      "id": "weekly_crown_rush_20261116",
+      "name": "Crown Rush",
+      "description": "Top scores on classic levels this week win coin prizes. Verified wins only; booster-assisted runs are verified but unranked.",
+      "startMs": 1763260800000,
+      "endMs": 1763865599000,
+      "prizes": [
+        { "rank": 1, "coins": 500 },
+        { "rank": 2, "coins": 300 },
+        { "rank": 3, "coins": 200 },
+        { "rank": 4, "coins": 150 },
+        { "rank": 5, "coins": 100 },
+        { "rank": 6, "coins": 75 },
+        { "rank": 7, "coins": 50 },
+        { "rank": 8, "coins": 40 },
+        { "rank": 9, "coins": 30 },
+        { "rank": 10, "coins": 20 }
+      ]
+    }
+  ],
+  "challenges": [
+    {
+      "id": "community_guardian_20261102",
+      "name": "Guardian Week",
+      "description": "Together, clear 50,000 blockers across all players. Every contributor who wins at least one level can claim the reward.",
+      "startMs": 1762051200000,
+      "endMs": 1762655999000,
+      "goal": 50000,
+      "reward": { "coins": 100 }
+    },
+    {
+      "id": "community_collector_20261109",
+      "name": "Collector Week",
+      "description": "Together, collect 100,000 gems across all players. Every contributor who wins at least one level can claim the reward.",
+      "startMs": 1762656000000,
+      "endMs": 1763260799000,
+      "goal": 100000,
+      "reward": { "coins": 100 }
+    },
+    {
+      "id": "community_guardian_20261116",
+      "name": "Shatter Week",
+      "description": "Together, clear 60,000 blockers across all players. Every contributor who wins at least one level can claim the reward.",
+      "startMs": 1763260800000,
+      "endMs": 1763865599000,
+      "goal": 60000,
+      "reward": { "coins": 100 }
+    }
+  ],
+  "scoreChallenges": [
+    {
+      "id": "score_challenge_novice_20261102",
+      "name": "Novice Threshold",
+      "start": "2026-11-02T00:00:00Z",
+      "end": "2026-11-09T00:00:00Z",
+      "target": 5000,
+      "tiers": [
+        { "threshold": 1000, "coins": 10 },
+        { "threshold": 3000, "coins": 25 },
+        { "threshold": 5000, "coins": 25 }
+      ]
+    },
+    {
+      "id": "score_challenge_adept_20261102",
+      "name": "Adept Threshold",
+      "start": "2026-11-02T00:00:00Z",
+      "end": "2026-11-09T00:00:00Z",
+      "target": 10000,
+      "tiers": [
+        { "threshold": 2000, "coins": 15 },
+        { "threshold": 6000, "coins": 30 },
+        { "threshold": 10000, "coins": 35 }
+      ]
+    },
+    {
+      "id": "score_challenge_master_20261102",
+      "name": "Master Threshold",
+      "start": "2026-11-02T00:00:00Z",
+      "end": "2026-11-09T00:00:00Z",
+      "target": 15000,
+      "tiers": [
+        { "threshold": 3000, "coins": 20 },
+        { "threshold": 9000, "coins": 30 },
+        { "threshold": 15000, "coins": 30 }
+      ]
+    }
+  ],
   "weeklyEventArchive": [],
   "weeklyEvents": [
-    {
-      "id": "hall_lanterns_20261005",
-      "name": "Hall Lanterns",
-      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
-      "start": "2026-10-05T00:00:00Z",
-      "end": "2026-10-12T00:00:00Z",
-      "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
-      ]
-    },
-    {
-      "id": "hall_lanterns_20261012",
-      "name": "Hall Lanterns",
-      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
-      "start": "2026-10-12T00:00:00Z",
-      "end": "2026-10-19T00:00:00Z",
-      "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
-      ]
-    },
-    {
-      "id": "hall_lanterns_20261019",
-      "name": "Hall Lanterns",
-      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
-      "start": "2026-10-19T00:00:00Z",
-      "end": "2026-10-26T00:00:00Z",
-      "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
-      ]
-    },
-    {
-      "id": "hall_lanterns_20261026",
-      "name": "Hall Lanterns",
-      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
-      "start": "2026-10-26T00:00:00Z",
-      "end": "2026-11-02T00:00:00Z",
-      "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
-      ]
-    },
     {
       "id": "hall_lanterns_20261102",
       "name": "Hall Lanterns",
@@ -96,62 +173,12 @@
       "start": "2026-11-02T00:00:00Z",
       "end": "2026-11-09T00:00:00Z",
       "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
+        { "wins": 1, "coins": 15 },
+        { "wins": 3, "coins": 25 },
+        { "wins": 5, "coins": 40 }
       ]
     },
-    {
-      "id": "hall_lanterns_20261109",
-      "name": "Hall Lanterns",
-      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
-      "start": "2026-11-09T00:00:00Z",
-      "end": "2026-11-16T00:00:00Z",
-      "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
-      ]
-    },
-    {
-      "id": "hall_lanterns_20261116",
-      "name": "Hall Lanterns",
-      "description": "Finish replay-verified classic or daily puzzles this week. Free rewards; inventory boosters are allowed, but assisted results never enter competitive boards.",
-      "start": "2026-11-16T00:00:00Z",
-      "end": "2026-11-23T00:00:00Z",
-      "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
-      ]
-    },
+
     {
       "id": "hall_lanterns_20261123",
       "name": "Hall Lanterns",
@@ -159,18 +186,34 @@
       "start": "2026-11-23T00:00:00Z",
       "end": "2026-11-30T00:00:00Z",
       "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
+        { "wins": 1, "coins": 15 },
+        { "wins": 3, "coins": 25 },
+        { "wins": 5, "coins": 40 }
+      ]
+    },
+    {
+      "id": "blocker_bash_20261109",
+      "name": "Blocker Bash",
+      "description": "Clear blockers on v6 classic levels. Every blocker smashed counts toward the week's total reward.",
+      "start": "2026-11-09T00:00:00Z",
+      "end": "2026-11-16T00:00:00Z",
+      "milestones": [
+        { "wins": 5, "coins": 20 },
+        { "wins": 15, "coins": 50 },
+        { "wins": 20, "coins": 100 }
+      ],
+      "rulesVersion": 6
+    },
+    {
+      "id": "daily_dazzle_20261116",
+      "name": "Daily Dazzle",
+      "description": "Complete the daily variant every day this week. Streak bonuses for consecutive days.",
+      "start": "2026-11-16T00:00:00Z",
+      "end": "2026-11-23T00:00:00Z",
+      "milestones": [
+        { "wins": 2, "coins": 20 },
+        { "wins": 4, "coins": 50 },
+        { "wins": 7, "coins": 100 }
       ]
     },
     {
@@ -180,18 +223,9 @@
       "start": "2026-11-30T00:00:00Z",
       "end": "2026-12-07T00:00:00Z",
       "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
+        { "wins": 1, "coins": 15 },
+        { "wins": 3, "coins": 25 },
+        { "wins": 5, "coins": 40 }
       ]
     },
     {
@@ -201,18 +235,9 @@
       "start": "2026-12-07T00:00:00Z",
       "end": "2026-12-14T00:00:00Z",
       "milestones": [
-        {
-          "wins": 1,
-          "coins": 15
-        },
-        {
-          "wins": 3,
-          "coins": 25
-        },
-        {
-          "wins": 5,
-          "coins": 40
-        }
+        { "wins": 1, "coins": 15 },
+        { "wins": 3, "coins": 25 },
+        { "wins": 5, "coins": 40 }
       ]
     }
   ]

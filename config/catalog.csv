@@ -6,3 +6,5 @@ lightning,Lightning,coins,300,Clears a column,item,lightning:1,powerups
 diamond,Diamond,coins,400,Clears all gems of the tapped colour,item,diamond:1,powerups
 target,Target Gem,coins,250,Clears the tapped gem and its neighbours,item,target:1,powerups
 star,Star,coins,350,Clears the tapped row and column,item,star:1,powerups
+vip,VIP Month,usd,499,1.5x coins on every win for 30 days,entitlement,vip:1,entitlements
+season_pass_premium,Season Pass Premium,usd,999,Premium battle pass track for the current season,entitlement,season_pass_premium:1,entitlements

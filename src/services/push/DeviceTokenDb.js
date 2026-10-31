@@ -29,6 +29,17 @@ export const DeviceTokenDb = {
       { upsert: true },
     );
   },
+
+  /** All device tokens registered for a user. Returns [{ token, platform, locale }]. */
+  async findByUserId(userId) {
+    await ensure();
+    const docs = await DeviceToken.find({ userId }).lean();
+    return docs.map((doc) => ({
+      token: doc.token,
+      platform: doc.platform,
+      locale: doc.locale,
+    }));
+  },
 };
 
 export default DeviceTokenDb;

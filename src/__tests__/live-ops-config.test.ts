@@ -14,7 +14,7 @@ describe('live ops config validation (L3)', () => {
     const raw = JSON.parse(readFileSync('config/liveops.json', 'utf8'));
     const { errors, config } = validateLiveOps(raw);
     expect(errors).toEqual([]);
-    expect(config?.scoreChallenges).toEqual([]);
+    expect(config?.scoreChallenges.length).toBeGreaterThan(0);
   });
 
   test('an unknown top-level key fails the load, so a typo cannot drop a section silently', () => {

@@ -37,7 +37,7 @@ describe('score challenge operator preview (L5)', () => {
   test('the checked-in calendar still passes, with zero score challenges', () => {
     const result = run(real);
     expect(result.status).toBe(0);
-    expect(result.out).toContain('Score challenges: 0');
+    expect(result.out).toContain('Score challenges: 3');
   });
 
   test('a challenge announced 20 days ahead passes and prints each planned boundary', () => {

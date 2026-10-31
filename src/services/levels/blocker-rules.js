@@ -11,7 +11,7 @@ import { simulateShieldMove, simulateShieldClear } from './shield-rules.js';
 export const BLOCKER_CAP = 6;
 export const BLOCKER_STAGE_COUNT = 3;
 
-const keyOf = (row, col) => `${row},${col}`;
+const blockerKeyOf = (row, col) => `${row},${col}`;
 
 export function blankBlockers(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));
@@ -28,7 +28,7 @@ export function blockerCount(blockers) {
 
 export function blockerKeys(blockers) {
   const keys = [];
-  blockers.forEach((row, r) => row.forEach((value, c) => { if (value) keys.push(keyOf(r, c)); }));
+  blockers.forEach((row, r) => row.forEach((value, c) => { if (value) keys.push(blockerKeyOf(r, c)); }));
   return keys;
 }
 
@@ -64,7 +64,7 @@ export function spreadBlockers(blockers, specials, shields, cap = BLOCKER_CAP) {
   }
   if (!best) return { blockers: copy, spread: null };
   copy[best[0]][best[1]] = 1;
-  return { blockers: copy, spread: keyOf(best[0], best[1]) };
+  return { blockers: copy, spread: blockerKeyOf(best[0], best[1]) };
 }
 
 /** Removes blockers on the cleared keys. Returns { blockers, cleared } with cleared sorted
@@ -83,7 +83,7 @@ export function clearBlockers(blockers, clearedKeys) {
     cleared.push([row, col]);
   }
   cleared.sort(compareKeys);
-  return { blockers: copy, cleared: cleared.map(([r, c]) => keyOf(r, c)) };
+  return { blockers: copy, cleared: cleared.map(([r, c]) => blockerKeyOf(r, c)) };
 }
 
 /** Place up to BLOCKER_STAGE_COUNT blockers only on cells the no-booster witness clears.

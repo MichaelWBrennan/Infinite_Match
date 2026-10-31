@@ -23,7 +23,8 @@ describe('canonical client sync', () => {
   });
 
   test('the committed golden fixture is current with the rules that generate it', () => {
-    expect(readFileSync(fixturePath, 'utf8')).toBe(serializeGoldenVectors());
+    // rules-v5.json is frozen history for shipped v5 definitions; generate v5 explicitly.
+    expect(readFileSync(fixturePath, 'utf8')).toBe(serializeGoldenVectors(buildGoldenVectors(5)));
   });
 
   test('the golden fixture has the declared format and covers every rule family', () => {

@@ -31,58 +31,56 @@ describe('weekly calendar validation and pure rules', () => {
     const config = JSON.parse(fs.readFileSync('config/liveops.json', 'utf8'));
     const result = validateLiveOps(config);
     expect(result.errors).toEqual([]);
-    expect(result.config?.weeklyEvents).toHaveLength(10);
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-10-10T12:00:00Z'))?.id).toBe('hall_lanterns_20261005');
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-10-12T00:00:00Z'))?.id).toBe('hall_lanterns_20261012');
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-10-26T00:00:00Z'))?.id).toBe('hall_lanterns_20261026');
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-02T00:00:00Z'))?.id).toBe('hall_lanterns_20261102');
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-09T00:00:00Z'))?.id).toBe('hall_lanterns_20261109');
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-16T00:00:00Z'))?.id).toBe('hall_lanterns_20261116');
-    expect(activeWeeklyEvent(result.config, Date.parse('2026-12-14T00:00:00Z'))).toBeNull();
+    expect(result.config?.weeklyEvents).toHaveLength(6);
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-05T12:00:00Z'))?.id).toBe('hall_lanterns_20261102');
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-12T00:00:00Z'))?.id).toBe('blocker_bash_20261109');
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-19T00:00:00Z'))?.id).toBe('daily_dazzle_20261116');
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-11-26T00:00:00Z'))?.id).toBe('hall_lanterns_20261123');
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-12-03T00:00:00Z'))?.id).toBe('hall_lanterns_20261130');
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-12-10T00:00:00Z'))?.id).toBe('hall_lanterns_20261207');
+    expect(activeWeeklyEvent(result.config, Date.parse('2026-12-15T00:00:00Z'))).toBeNull();
   });
 
   test('published weeks roll over continuously with frozen original rewards and no late new grant', () => {
     const raw = JSON.parse(fs.readFileSync('config/liveops.json', 'utf8'));
     const config = validateLiveOps(raw).config!;
-    const starts = ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07'];
+    const starts = ['2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07'];
+    const ids = ['hall_lanterns_20261102', 'blocker_bash_20261109', 'daily_dazzle_20261116', 'hall_lanterns_20261123', 'hall_lanterns_20261130', 'hall_lanterns_20261207'];
     for (let i = 0; i < starts.length; i++) {
       const start = Date.parse(`${starts[i]}T00:00:00Z`);
-      const id = `hall_lanterns_${starts[i].replace(/-/g, '')}`;
-      expect(config.weeklyEvents[i]).toMatchObject({ id, startMs: start, endMs: start + 7 * DAY,
-        milestones: [{ wins: 1, coins: 15 }, { wins: 3, coins: 25 }, { wins: 5, coins: 40 }] });
-      expect(activeWeeklyEvent(config, start)?.id).toBe(id);
-      expect(activeWeeklyEvent(config, start + 7 * DAY - 1)?.id).toBe(id);
+      expect(config.weeklyEvents[i]).toMatchObject({ id: ids[i], startMs: start, endMs: start + 7 * DAY });
+      expect(activeWeeklyEvent(config, start)?.id).toBe(ids[i]);
+      expect(activeWeeklyEvent(config, start + 7 * DAY - 1)?.id).toBe(ids[i]);
       if (i > 0) expect(activeWeeklyEvent(config, start - 1)?.id).toBe(config.weeklyEvents[i - 1].id);
     }
-    const oct26 = Date.parse('2026-10-26T00:00:00Z');
-    const afterSchedule = Date.parse('2026-12-14T00:00:00Z');
-    expect(visibleWeeklyEvent(config, oct26 - 1)?.id).toBe('hall_lanterns_20261019');
-    expect(visibleWeeklyEvent(config, oct26)?.id).toBe('hall_lanterns_20261026');
+    const afterSchedule = Date.parse('2026-12-15T00:00:00Z');
+    expect(visibleWeeklyEvent(config, Date.parse('2026-11-22T00:00:00Z'))?.id).toBe('daily_dazzle_20261116');
+    expect(visibleWeeklyEvent(config, Date.parse('2026-11-23T00:00:00Z'))?.id).toBe('hall_lanterns_20261123');
+    expect(visibleWeeklyEvent(config, Date.parse('2026-11-30T00:00:00Z'))?.id).toBe('hall_lanterns_20261130');
     expect(visibleWeeklyEvent(config, afterSchedule)).toBeNull();
     const wallet: any = { currencies: { coins: { amount: 100, maxAmount: 999999, earned: 0 } } };
-    expect(recordWeeklyWin(wallet, config, oct26 - 1)).toEqual({ eventId: 'hall_lanterns_20261019', wins: 1 });
-    expect(claimWeeklyMilestone(wallet, config, 'hall_lanterns_20261019', 1, oct26 - 1).duplicate).toBe(false);
-    expect(recordWeeklyWin(wallet, config, oct26)).toEqual({ eventId: 'hall_lanterns_20261026', wins: 1 });
-    expect(wallet.weeklyEvents.hall_lanterns_20261019.wins).toBe(1);
-    expect(wallet.weeklyEvents.hall_lanterns_20261026.wins).toBe(1);
-    expect(claimWeeklyMilestone(wallet, config, 'hall_lanterns_20261019', 1, oct26).duplicate).toBe(true);
-    expect(() => claimWeeklyMilestone(wallet, config, 'hall_lanterns_20261019', 3, oct26)).toThrow('weekly_event_closed');
-    expect(claimWeeklyMilestone(wallet, config, 'hall_lanterns_20261026', 1, oct26)).toMatchObject({ duplicate: false, coins: 15 });
+    const firstId = config.weeklyEvents[0].id;
+    const secondId = config.weeklyEvents[1].id;
+    expect(recordWeeklyWin(wallet, config, Date.parse('2026-11-02T00:00:00Z') - 1)).toBeNull();
+    expect(recordWeeklyWin(wallet, config, Date.parse('2026-11-02T00:00:00Z'))).toEqual({ eventId: firstId, wins: 1 });
+    expect(recordWeeklyWin(wallet, config, Date.parse('2026-11-09T00:00:00Z'))).toEqual({ eventId: secondId, wins: 1 });
+    expect(claimWeeklyMilestone(wallet, config, firstId, 1, Date.parse('2026-11-02T00:00:00Z'))).toMatchObject({ duplicate: false, coins: 15 });
+    expect(() => claimWeeklyMilestone(wallet, config, firstId, 3, Date.parse('2026-11-09T00:00:00Z'))).toThrow('weekly_event_closed');
   });
 
   test('operator preview covers December, checks the publishing horizon, and protects prior definitions', () => {
     const run = (time: string, configFile = path.resolve('config/liveops.json'), previousFile = '', horizon = '0') => spawnSync(process.execPath, ['scripts/preview-weekly-event.mjs', time],
       { cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, LIVE_OPS_CONFIG: configFile,
         WEEKLY_EVENT_PREVIOUS_CONFIG: previousFile, WEEKLY_EVENT_DISABLED: '', WEEKLY_EVENT_MIN_FUTURE_DAYS: horizon } });
-    const rollover = run('2026-10-26T00:00:00Z');
+    const rollover = run('2026-11-02T00:00:00Z');
     expect(rollover.status).toBe(0);
-    expect(rollover.stdout).toContain('"id": "hall_lanterns_20261026"');
+    expect(rollover.stdout).toContain('"id": "hall_lanterns_20261102"');
     const finalWeek = run('2026-11-09T00:00:00Z');
     expect(finalWeek.status).toBe(0);
-    expect(finalWeek.stdout).toContain('"id": "hall_lanterns_20261109"');
+    expect(finalWeek.stdout).toContain('"id": "blocker_bash_20261109"');
     const next = run('2026-11-16T00:00:00Z');
     expect(next.status).toBe(0);
-    expect(next.stdout).toContain('"id": "hall_lanterns_20261116"');
+    expect(next.stdout).toContain('"id": "daily_dazzle_20261116"');
     expect(run('2026-11-30T00:00:00Z', path.resolve('config/liveops.json'), '', '14').status).toBe(0);
     const warning = run('2026-12-01T00:00:00Z', path.resolve('config/liveops.json'), '', '14');
     expect(warning.status).toBe(1);

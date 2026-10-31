@@ -202,7 +202,7 @@ server prices and ranked booster separation intact throughout.
 ## Explicit non-goals and unresolved decisions
 
 - Do not chase *all* Royal Match events, licensed art, identical blocker behavior or the same economy. Differentiate rather than clone.
-- Decide whether the product is **web-first** or native-store-first before promising cross-device billing, push, offline sync or performance parity. The present QA evidence is strongest for the root web game.
+- **Platform decision: web-first.** The Phaser 3 web client is the tested target; Stripe Checkout is the purchase path (no native store billing promised). Native Unity artifacts exist under `unity/` but are configured, not shipped — no APK/AAB, no Xcode project, no TestFlight, no store listing. Cross-device billing, push, and offline sync are not promised until a native build ships to a store.
 - Decide whether competition is skill-focused. If so, server-verified scores and non-pay-to-win competition rules take precedence over more leaderboard UI.
 - Decide whether castle storytelling is a core pillar; if yes, budget sustained original art/writing/UX production, not just API work.
 - This audit is based on public descriptions and repository inspection, **not hands-on competitor playtests**, store device QA or market-share analysis. Repeat quarterly and annotate actual competitor versions/regions when running a hands-on study.

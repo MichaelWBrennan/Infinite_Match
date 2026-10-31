@@ -15,8 +15,8 @@ describe('product catalog', () => {
   test('only priced products are sold', () => {
     expect(productFor('remove_ads')).toMatchObject({ priceCents: 499, currency: 'usd' });
     expect(productFor('unlock_all_themes')).toMatchObject({ priceCents: 799, currency: 'usd' });
-    // The premium pass has no price in the repo, so it cannot be bought.
-    expect(productFor('season_pass_premium')).toBeNull();
+    // The premium pass is now priced and purchasable.
+    expect(productFor('season_pass_premium')).toMatchObject({ priceCents: 999, currency: 'usd' });
     expect(productFor('__proto__')).toBeNull();
     expect(productFor(undefined)).toBeNull();
     expect(Object.isFrozen(PRODUCTS)).toBe(true);
@@ -129,7 +129,7 @@ describe('payment intent route', () => {
     const res = await request(app)
       .post('/api/stripe/payment-intent')
       .set('Authorization', `Bearer ${register.body.token}`)
-      .send({ productId: 'season_pass_premium', amount: 0.01, currency: 'usd' });
+      .send({ productId: 'nonexistent_product', amount: 0.01, currency: 'usd' });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('unknown_product');
   });

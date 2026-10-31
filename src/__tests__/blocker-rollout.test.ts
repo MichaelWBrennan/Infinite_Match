@@ -54,7 +54,7 @@ describe('blockers are classic-only', () => {
   });
 
   test('a classic v6 level at a blocker stage still carries blockers', () => {
-    const d = generatedLevel({ level: 6, mode: 'classic', location: loc, rulesVersion: 6 } as any, NOW);
+    const d = generatedLevel({ level: 14, mode: 'classic', location: loc, rulesVersion: 6 } as any, NOW);
     expect(blockerCount(d.blockers)).toBeGreaterThan(0);
   });
 });

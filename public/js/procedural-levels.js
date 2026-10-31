@@ -2365,6 +2365,331 @@ function certifyShieldBoard(definition) {
   return { score, witness: base.witness, collected, brokenShields, shields: state.shields };
 }
 
+/** Rules v6: spreading blocker overlay. A blocker is terrain on an ordinary gem cell, like a
+ * shield, but it never changes the gem grid. The witnessed no-booster path is therefore the
+ * same path as v5. A match that clears a blocker's cell removes it. After each ACCEPTED player
+ * move, one blocker spreads into the lowest (row, col) eligible orthogonal neighbour: never a
+ * special anchor, a shield cell, or an existing blocker. Total blockers are capped at
+ * BLOCKER_CAP. Booster clears remove blockers but do not spread. Only the v6 path calls these. */
+
+const BLOCKER_CAP = 6;
+const BLOCKER_STAGE_COUNT = 3;
+
+const blockerKeyOf = (row, col) => `${row},${col}`;
+
+function blankBlockers(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+function validBlockers(blockers, size) {
+  return Array.isArray(blockers) && blockers.length === size && blockers.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) => value === 0 || value === 1));
+}
+
+function blockerCount(blockers) {
+  return blockers.flat().filter(Boolean).length;
+}
+
+function blockerKeys(blockers) {
+  const keys = [];
+  blockers.forEach((row, r) => row.forEach((value, c) => { if (value) keys.push(blockerKeyOf(r, c)); }));
+  return keys;
+}
+
+/** An ordinary gem cell that a blocker may grow into. */
+function spreadEligible(blockers, specials, shields, row, col) {
+  return !blockers[row][col] && !specials[row][col] && !shields[row][col];
+}
+
+function compareKeys(a, b) {
+  return a[0] - b[0] || a[1] - b[1];
+}
+
+/** Returns { blockers, spread } where spread is the 'r,c' key that gained a blocker, or null.
+ * Returns null for invalid input. Never mutates its arguments. */
+function spreadBlockers(blockers, specials, shields, cap = BLOCKER_CAP) {
+  const size = blockers?.length;
+  if (!validBlockers(blockers, size) || !Array.isArray(specials) || specials.length !== size
+    || !Array.isArray(shields) || shields.length !== size) return null;
+  const copy = blockers.map((row) => row.slice());
+  if (blockerCount(blockers) >= cap) return { blockers: copy, spread: null };
+  let best = null;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (!blockers[r][c]) continue;
+      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr < 0 || nc < 0 || nr >= size || nc >= size) continue;
+        if (!spreadEligible(blockers, specials, shields, nr, nc)) continue;
+        if (!best || compareKeys([nr, nc], best) < 0) best = [nr, nc];
+      }
+    }
+  }
+  if (!best) return { blockers: copy, spread: null };
+  copy[best[0]][best[1]] = 1;
+  return { blockers: copy, spread: blockerKeyOf(best[0], best[1]) };
+}
+
+/** Removes blockers on the cleared keys. Returns { blockers, cleared } with cleared sorted
+ * by (row, col). Keys that are not blockers are ignored. Returns null for invalid input. */
+function clearBlockers(blockers, clearedKeys) {
+  const size = blockers?.length;
+  if (!validBlockers(blockers, size) || !Array.isArray(clearedKeys)) return null;
+  const copy = blockers.map((row) => row.slice());
+  const cleared = [];
+  for (const key of new Set(clearedKeys)) {
+    if (typeof key !== 'string') return null;
+    const [row, col] = key.split(',').map(Number);
+    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= size || col >= size) continue;
+    if (!copy[row][col]) continue;
+    copy[row][col] = 0;
+    cleared.push([row, col]);
+  }
+  cleared.sort(compareKeys);
+  return { blockers: copy, cleared: cleared.map(([r, c]) => blockerKeyOf(r, c)) };
+}
+
+/** Place up to BLOCKER_STAGE_COUNT blockers only on cells the no-booster witness clears.
+ * Same deterministic witness-based placement as shields, but on non-special cells. */
+function witnessedBlockers(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('blocker_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.keys()].filter((key) => {
+    const [row, col] = key.split(',').map(Number);
+    return !specials[row][col];
+  }).sort();
+  const blockers = blankBlockers(n);
+  if (!candidates.length) return blockers;
+  const offset = hashSeed(`${seed}|blocker-cells`) % candidates.length;
+  for (let i = 0; i < Math.min(BLOCKER_STAGE_COUNT, candidates.length); i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    blockers[row][col] = 1;
+  }
+  return blockers;
+}
+
+/** Apply removal (by cleared cells) and optional spread to a shield-aware result. */
+function withBlockerHits(result, initial, spreadAfterMove) {
+  if (!result) return null;
+  let blockers = initial.map((row) => row.slice());
+  let brokenBlockers = 0;
+  const events = result.events.map((event) => {
+    const blockerHits = [];
+    for (const key of event.cleared) {
+      const [row, col] = key.split(',').map(Number);
+      if (!blockers[row][col]) continue;
+      blockers[row][col] = 0;
+      brokenBlockers++;
+      blockerHits.push({ row, col });
+    }
+    return { ...event, blockerHits };
+  });
+  let spread = null;
+  if (spreadAfterMove) {
+    const next = spreadBlockers(blockers, result.specials, result.shields);
+    if (!next) return null;
+    blockers = next.blockers;
+    spread = next.spread;
+  }
+  return { ...result, events, blockers, brokenBlockers, blockerSpread: spread };
+}
+
+/** One accepted player move: shield transition, then blocker clears, then one spread. */
+function simulateBlockerMove(definition, state, cells, visualTrace = false) {
+  const blockers = state.blockers ?? definition.blockers;
+  const shielded = simulateShieldMove(definition, { ...state, shields: state.shields ?? definition.shields }, cells, visualTrace);
+  if (!shielded || !validBlockers(blockers, shielded.board.length)) return null;
+  return withBlockerHits(shielded, blockers, true);
+}
+
+/** Booster clears remove blockers they hit but never spread. */
+function simulateBlockerClear(definition, state, keys, points, visualTrace = false) {
+  const blockers = state.blockers ?? definition.blockers;
+  const shielded = simulateShieldClear(definition, { ...state, shields: state.shields ?? definition.shields }, keys, points, visualTrace);
+  if (!shielded || !validBlockers(blockers, shielded.board.length)) return null;
+  return withBlockerHits(shielded, blockers, false);
+}
+
+/** Replay the same no-booster path used to place blockers, through the exact v6 transition. */
+function certifyBlockerBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials } = definition;
+  const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
+  const base = certifySpecialBoard(board, refillState, gemTypes, gemWeights, budget, specials, true);
+  let state = { board, refillState, specials, shields: definition.shields, blockers: definition.blockers };
+  let score = 0; let brokenBlockers = 0; let brokenShields = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  for (const cells of base.witness) {
+    state = simulateBlockerMove(definition, state, cells);
+    if (!state) throw new Error('blocker_witness_invalid');
+    score += state.score; brokenBlockers += state.brokenBlockers; brokenShields += state.brokenShields;
+    for (const color of gemTypes) collected[color] += state.collected[color];
+  }
+  return { score, witness: base.witness, collected, brokenBlockers, brokenShields, blockers: state.blockers,
+    shields: state.shields };
+}
+
+/** Rules: locked gem obstacle. A locked gem is terrain on an ordinary gem cell:
+ * the gem underneath stays playable but the cell cannot be swapped until a match
+ * clears the lock's cell. Locked gems never fall, swap, refill, or spread.
+ * Only the v7 path calls these. Locked gems never share a level with spreading
+ * blockers (each v7 definition adds exactly one obstacle objective). */
+
+const LOCKED_GEM_CAP = 8;
+const LOCKED_GEM_STAGE_COUNT = 3;
+
+const lockedKeyOf = (row, col) => `${row},${col}`;
+
+function blankLockedGems(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+function validLockedGems(locked, size) {
+  return Array.isArray(locked) && locked.length === size && locked.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) => value === 0 || value === 1));
+}
+
+function lockedGemCount(locked) {
+  return locked.flat().filter(Boolean).length;
+}
+
+function lockedGemKeys(locked) {
+  const keys = [];
+  locked.forEach((row, r) => row.forEach((value, c) => { if (value) keys.push(lockedKeyOf(r, c)); }));
+  return keys;
+}
+
+/** An ordinary gem cell that may hold a lock. Not a special anchor, not a shield cell. */
+function lockEligible(locked, specials, shields, row, col) {
+  return !locked[row][col] && !specials[row][col] && !shields[row][col];
+}
+
+/** Removes locks on the cleared keys. Returns { locked, cleared } with cleared sorted
+ * by (row, col). Keys that are not locks are ignored. Returns null for invalid input. */
+function clearLockedGems(locked, clearedKeys) {
+  const size = locked?.length;
+  if (!validLockedGems(locked, size) || !Array.isArray(clearedKeys)) return null;
+  const copy = locked.map((row) => row.slice());
+  const cleared = [];
+  for (const key of new Set(clearedKeys)) {
+    if (typeof key !== 'string') return null;
+    const [row, col] = key.split(',').map(Number);
+    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= size || col >= size) continue;
+    if (!copy[row][col]) continue;
+    copy[row][col] = 0;
+    cleared.push([row, col]);
+  }
+  cleared.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  return { locked: copy, cleared: cleared.map(([r, c]) => lockedKeyOf(r, c)) };
+}
+
+/** Place up to LOCKED_GEM_STAGE_COUNT locks only on cells the no-booster witness clears.
+ * Same deterministic witness-based placement as shields and blockers. */
+function witnessedLockedGems(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('locked_gem_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.keys()].filter((key) => {
+    const [row, col] = key.split(',').map(Number);
+    return !specials[row][col];
+  }).sort();
+  const locked = blankLockedGems(n);
+  if (!candidates.length) return locked;
+  const offset = hashSeed(`${seed}|locked-gem-cells`) % candidates.length;
+  for (let i = 0; i < Math.min(LOCKED_GEM_STAGE_COUNT, candidates.length); i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    locked[row][col] = 1;
+  }
+  return locked;
+}
+
+/** Apply removal (by cleared cells) to a shield-aware result. Locks never spread. */
+function withLockedGemHits(result, initial) {
+  if (!result) return null;
+  let locked = initial.map((row) => row.slice());
+  let brokenLocks = 0;
+  const events = result.events.map((event) => {
+    const lockHits = [];
+    for (const key of event.cleared) {
+      const [row, col] = key.split(',').map(Number);
+      if (!locked[row][col]) continue;
+      locked[row][col] = 0;
+      brokenLocks++;
+      lockHits.push({ row, col });
+    }
+    return { ...event, lockHits };
+  });
+  return { ...result, events, locked, brokenLocks };
+}
+
+/** One accepted player move: shield transition, then lock clears. No spread. */
+function simulateLockedGemMove(definition, state, cells, visualTrace = false) {
+  const locked = state.locked ?? definition.lockedGems;
+  const shielded = state.shields !== undefined
+    ? simulateSpecialMove(state.board, state.refillState, definition.gemTypes,
+      definition.gemWeights, cells, state.specials, true, visualTrace)
+    : null;
+  if (!shielded || !validLockedGems(locked, shielded.board.length)) return null;
+  return withLockedGemHits(shielded, locked);
+}
+
+/** Booster clears remove locks they hit but never spread. */
+function simulateLockedGemClear(definition, state, keys, points, visualTrace = false) {
+  const locked = state.locked ?? definition.lockedGems;
+  const shielded = state.shields !== undefined
+    ? simulateSpecialMove(state.board, state.refillState, definition.gemTypes,
+      definition.gemWeights, keys, state.specials, false, visualTrace)
+    : null;
+  if (!shielded || !validLockedGems(locked, shielded.board.length)) return null;
+  return withLockedGemHits(shielded, locked);
+}
+
+/** Replay the same no-booster path used to place locks, through the exact v7 transition. */
+function certifyLockedGemBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, lockedGems } = definition;
+  const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
+  const base = certifySpecialBoard(board, refillState, gemTypes, gemWeights, budget, specials, true);
+  let state = { board, refillState, specials, shields: definition.shields, locked: lockedGems };
+  let score = 0; let brokenLocks = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  for (const cells of base.witness) {
+    state = simulateLockedGemMove(definition, state, cells);
+    if (!state) throw new Error('locked_gem_witness_invalid');
+    score += state.score; brokenLocks += state.brokenLocks;
+    for (const color of gemTypes) collected[color] += state.collected[color];
+  }
+  return { score, witness: base.witness, collected, brokenLocks, locked: state.locked };
+}
+
+/** Exclude locked gem cells from legal swaps: a locked cell cannot be part of a swap. */
+function legalSwapsExcludingLocks(board, locked) {
+  const size = board.length;
+  const swaps = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (locked[r][c]) continue;
+      // Right neighbor
+      if (c + 1 < size && !locked[r][c + 1]) swaps.push([r, c, r, c + 1]);
+      // Down neighbor
+      if (r + 1 < size && !locked[r + 1][c]) swaps.push([r, c, r + 1, c]);
+    }
+  }
+  return swaps;
+}
+
 /**
  * Rules the server applies to a win. V4 additionally validates the pinned objectives and
  * bounded reported collection progress before applying these score-rating thresholds.
@@ -2472,6 +2797,14 @@ function validObjectives(definition) {
       if (definition.generatorVersion < 5 || !validShields(definition.shields, definition.boardSize) || goal.target !== shieldCount(definition.shields)) return false;
     } else if (goal.type === 'clear-blockers') {
       if (definition.generatorVersion < 6 || !validBlockers(definition.blockers, definition.boardSize) || goal.target !== blockerCount(definition.blockers)) return false;
+    } else if (goal.type === 'clear-locked-gems') {
+      if (definition.generatorVersion < 6 || !validLockedGems(definition.lockedGems, definition.boardSize) || goal.target !== lockedGemCount(definition.lockedGems)) return false;
+    } else if (goal.type === 'clear-jelly') {
+      if (definition.generatorVersion < 6 || !validJelly(definition.jelly, definition.boardSize) || goal.target !== jellyCount(definition.jelly)) return false;
+    } else if (goal.type === 'clear-chocolate') {
+      if (definition.generatorVersion < 6 || !validChocolate(definition.chocolate, definition.boardSize) || goal.target !== chocolateCount(definition.chocolate)) return false;
+    } else if (goal.type === 'clear-liquorice') {
+      if (definition.generatorVersion < 6 || !validLiquorice(definition.liquorice, definition.boardSize) || goal.target !== liquoriceCount(definition.liquorice)) return false;
     } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
     const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : goal.type;
     if (identities.has(identity)) return false;
@@ -2481,28 +2814,54 @@ function validObjectives(definition) {
 }
 
 function initialObjectiveProgress(definition) {
-  return { collected: Object.fromEntries(definition.gemTypes.map((color) => [color, 0])),
-    ...(definition.generatorVersion >= 5 ? { shieldsCleared: 0 } : {}),
-    ...(definition.generatorVersion >= 6 ? { blockersCleared: 0 } : {}) };
+  const base = { collected: Object.fromEntries(definition.gemTypes.map((color) => [color, 0])),
+    ...(definition.generatorVersion >= 5 ? { shieldsCleared: 0 } : {}) };
+  const extra = {};
+  if (definition.generatorVersion >= 6) {
+    if (blockerCount(definition.blockers) > 0) extra.blockersCleared = 0;
+    if (lockedGemCount(definition.lockedGems) > 0) extra.lockedCleared = 0;
+    if (jellyCount(definition.jelly) > 0) extra.jellyCleared = 0;
+    if (chocolateCount(definition.chocolate) > 0) extra.chocolateCleared = 0;
+    if (liquoriceCount(definition.liquorice) > 0) extra.liquoriceCleared = 0;
+  }
+  return { ...base, ...extra };
 }
 
 /** Strict completion/input boundary: no coercion, unknown colors, fractions, negatives or unbounded counts. */
 function validObjectiveProgress(definition, progress) {
   const record = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
-  const keys = definition?.generatorVersion >= 6 ? 3 : definition?.generatorVersion >= 5 ? 2 : 1;
+  const hasShields = definition?.generatorVersion >= 5;
+  const hasBlockers = definition?.generatorVersion >= 6 && blockerCount(definition.blockers) > 0;
+  const hasLocked = definition?.generatorVersion >= 6 && lockedGemCount(definition.lockedGems) > 0;
+  const hasJelly = definition?.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
+  const hasChocolate = definition?.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
+  const hasLiquorice = definition?.generatorVersion >= 6 && liquoriceCount(definition.liquorice) > 0;
+  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
-    && (definition.generatorVersion < 5 || (validShields(definition.shields, definition.boardSize)
+    && (!hasShields || (validShields(definition.shields, definition.boardSize)
       && Object.hasOwn(progress, 'shieldsCleared') && Number.isSafeInteger(progress.shieldsCleared) && progress.shieldsCleared >= 0
       && progress.shieldsCleared <= shieldCount(definition.shields)))
-    && (definition.generatorVersion < 6 || (validBlockers(definition.blockers, definition.boardSize)
+    && (!hasBlockers || (validBlockers(definition.blockers, definition.boardSize)
       && Object.hasOwn(progress, 'blockersCleared') && Number.isSafeInteger(progress.blockersCleared) && progress.blockersCleared >= 0
-      && progress.blockersCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
+      && progress.blockersCleared <= MAX_COLLECTED_GEMS))
+    && (!hasLocked || (validLockedGems(definition.lockedGems, definition.boardSize)
+      && Object.hasOwn(progress, 'lockedCleared') && Number.isSafeInteger(progress.lockedCleared) && progress.lockedCleared >= 0
+      && progress.lockedCleared <= MAX_COLLECTED_GEMS))
+    && (!hasJelly || (validJelly(definition.jelly, definition.boardSize)
+      && Object.hasOwn(progress, 'jellyCleared') && Number.isSafeInteger(progress.jellyCleared) && progress.jellyCleared >= 0
+      && progress.jellyCleared <= MAX_COLLECTED_GEMS))
+    && (!hasChocolate || (validChocolate(definition.chocolate, definition.boardSize)
+      && Object.hasOwn(progress, 'chocolateCleared') && Number.isSafeInteger(progress.chocolateCleared) && progress.chocolateCleared >= 0
+      && progress.chocolateCleared <= MAX_COLLECTED_GEMS))
+    && (!hasLiquorice || (validLiquorice(definition.liquorice, definition.boardSize)
+      && Object.hasOwn(progress, 'liquoriceCleared') && Number.isSafeInteger(progress.liquoriceCleared) && progress.liquoriceCleared >= 0
+      && progress.liquoriceCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
     && Object.keys(progress.collected).length <= definition.gemTypes.length
     && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
       && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
 }
 
-function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0) {
+function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0, brokenChocolate = 0, brokenLiquorice = 0) {
   if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
   const next = initialObjectiveProgress(definition);
   for (const color of definition.gemTypes) {
@@ -2514,9 +2873,32 @@ function addObjectiveProgress(definition, previous, collected, brokenShields = 0
     if (!Number.isSafeInteger(brokenShields) || brokenShields < 0 || previous.shieldsCleared + brokenShields > shieldCount(definition.shields)) throw new RangeError('invalid_shield_delta');
     next.shieldsCleared = previous.shieldsCleared + brokenShields;
   }
+  const hasBlockers = definition.blockers && blockerCount(definition.blockers) > 0;
+  const hasLocked = definition.lockedGems && lockedGemCount(definition.lockedGems) > 0;
   if (definition.generatorVersion >= 6) {
-    if (!Number.isSafeInteger(brokenBlockers) || brokenBlockers < 0 || previous.blockersCleared + brokenBlockers > MAX_COLLECTED_GEMS) throw new RangeError('invalid_blocker_delta');
-    next.blockersCleared = previous.blockersCleared + brokenBlockers;
+    if (hasBlockers) {
+      if (!Number.isSafeInteger(brokenBlockers) || brokenBlockers < 0 || previous.blockersCleared + brokenBlockers > MAX_COLLECTED_GEMS) throw new RangeError('invalid_blocker_delta');
+      next.blockersCleared = previous.blockersCleared + brokenBlockers;
+    }
+    if (hasLocked) {
+      if (!Number.isSafeInteger(brokenLocks) || brokenLocks < 0 || previous.lockedCleared + brokenLocks > MAX_COLLECTED_GEMS) throw new RangeError('invalid_locked_gem_delta');
+      next.lockedCleared = previous.lockedCleared + brokenLocks;
+    }
+    const hasJelly = definition.jelly && jellyCount(definition.jelly) > 0;
+    if (definition.generatorVersion >= 6 && hasJelly) {
+      if (!Number.isSafeInteger(brokenJelly) || brokenJelly < 0 || previous.jellyCleared + brokenJelly > MAX_COLLECTED_GEMS) throw new RangeError('invalid_jelly_delta');
+      next.jellyCleared = previous.jellyCleared + brokenJelly;
+    }
+    const hasChocolate = definition.chocolate && chocolateCount(definition.chocolate) > 0;
+    if (definition.generatorVersion >= 6 && hasChocolate) {
+      if (!Number.isSafeInteger(brokenChocolate) || brokenChocolate < 0 || previous.chocolateCleared + brokenChocolate > MAX_COLLECTED_GEMS) throw new RangeError('invalid_chocolate_delta');
+      next.chocolateCleared = previous.chocolateCleared + brokenChocolate;
+    }
+    const hasLiquorice = definition.liquorice && liquoriceCount(definition.liquorice) > 0;
+    if (definition.generatorVersion >= 6 && hasLiquorice) {
+      if (!Number.isSafeInteger(brokenLiquorice) || brokenLiquorice < 0 || previous.liquoriceCleared + brokenLiquorice > MAX_COLLECTED_GEMS) throw new RangeError('invalid_liquorice_delta');
+      next.liquoriceCleared = previous.liquoriceCleared + brokenLiquorice;
+    }
   }
   return next;
 }
@@ -2530,7 +2912,11 @@ function objectiveStatus(definition, score, progress) {
   const items = levelObjectives(definition).map((goal) => {
     const current = goal.type === 'score' ? safeScore : !validProgress ? 0
       : goal.type === 'clear-shields' ? progress.shieldsCleared
-        : goal.type === 'clear-blockers' ? progress.blockersCleared : ownCount(progress.collected, goal.gemType);
+        : goal.type === 'clear-blockers' ? progress.blockersCleared
+          : goal.type === 'clear-locked-gems' ? progress.lockedCleared
+            : goal.type === 'clear-jelly' ? progress.jellyCleared
+              : goal.type === 'clear-chocolate' ? progress.chocolateCleared
+                : goal.type === 'clear-liquorice' ? progress.liquoriceCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -2545,7 +2931,7 @@ function objectiveStars(definition, score, progress) {
 function objectiveCompletionError(definition, score, progress) {
   if (!Number.isSafeInteger(score) || score < 0) return 'invalid_score';
   if (!validObjectives(definition)) return 'invalid_level_objectives';
-  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers');
+  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers' || goal.type === 'clear-jelly' || goal.type === 'clear-chocolate' || goal.type === 'clear-liquorice');
   if (collects && progress === undefined) return 'objective_progress_required';
   if (progress !== undefined && !validObjectiveProgress(definition, progress)) return 'invalid_objective_progress';
   const status = objectiveStatus(definition, score, progress);
@@ -2557,20 +2943,24 @@ function objectiveDescription(definition) {
   return (levelObjectives(definition) || []).map((goal) => goal.type === 'collect'
     ? `Collect ${goal.target} ${goal.gemType}` : goal.type === 'clear-shields'
       ? `Clear ${goal.target} shields (numbered hits)` : goal.type === 'clear-blockers'
-        ? `Clear ${goal.target} blockers` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+        ? `Clear ${goal.target} blockers` : goal.type === 'clear-locked-gems'
+          ? `Free ${goal.target} locked gems` : goal.type === 'clear-jelly'
+            ? `Clear ${goal.target} jelly layers` : goal.type === 'clear-chocolate'
+              ? `Clear ${goal.target} chocolate` : goal.type === 'clear-liquorice'
+                ? `Clear ${goal.target} liquorice locks` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
 }
 
 function objectiveSummary(definition, score, progress, showRemaining = false) {
   return objectiveStatus(definition, score, progress).items.map((goal) => {
     const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields'
-      : goal.type === 'clear-blockers' ? 'Blockers' : 'Score';
+      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : goal.type === 'clear-chocolate' ? 'Chocolate' : goal.type === 'clear-liquorice' ? 'Liquorice' : 'Score';
     const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
     return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
   }).join(' · ');
 }
 
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
-function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null) {
+function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null, chocolate = null, liquorice = null) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
   for (const action of actions) {
@@ -2578,11 +2968,23 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
       ? simulateShieldMove(definition, { board, specials, refillState, shields }, action.cells) : null;
     const blockerResult = goals.some((goal) => goal.type === 'clear-blockers') && blockers
       ? simulateBlockerMove(definition, { board, specials, refillState, shields, blockers }, action.cells) : null;
+    const lockedResult = goals.some((goal) => goal.type === 'clear-locked-gems') && lockedGems
+      ? simulateLockedGemMove(definition, { board, specials, refillState, shields, locked: lockedGems }, action.cells) : null;
+    const jellyResult = goals.some((goal) => goal.type === 'clear-jelly') && jelly
+      ? applyJellyClear({ events: [{ cleared: action.cells }] }, jelly) : null;
+    const chocolateResult = goals.some((goal) => goal.type === 'clear-chocolate') && chocolate
+      ? applyChocolateClear({ events: [{ cleared: action.cells }] }, chocolate) : null;
+    const liquoriceResult = goals.some((goal) => goal.type === 'clear-liquorice') && liquorice
+      ? applyLiquoriceClear({ events: [{ cleared: action.cells }], board: { length: liquorice.length } }, liquorice) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
       goal.type === 'score' ? action.points : goal.type === 'clear-shields'
         ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
         : goal.type === 'clear-blockers' ? (blockerResult?.brokenBlockers || 0)
-          : action.collected[goal.gemType] || 0) / goal.target, 0);
+          : goal.type === 'clear-locked-gems' ? (lockedResult?.brokenLocks || 0)
+            : goal.type === 'clear-jelly' ? (jellyResult?.cleared || 0)
+              : goal.type === 'clear-chocolate' ? (chocolateResult?.cleared || 0)
+                : goal.type === 'clear-liquorice' ? (liquoriceResult?.liquoriceCleared || 0)
+                  : action.collected[goal.gemType] || 0) / goal.target, 0);
   }
   return actions;
 }
@@ -2590,33 +2992,65 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
 function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
+  const hasLocked = state.locked && lockedGemCount(state.locked) > 0;
+  const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
+  const hasChocolate = state.chocolate && chocolateCount(state.chocolate) > 0;
+  const hasLiquorice = state.liquorice && liquoriceCount(state.liquorice) > 0;
   const result = definition.generatorVersion >= 6
-    ? simulateBlockerMove(definition, state, cells, visualTrace)
+    ? (hasLocked ? simulateLockedGemMove(definition, state, cells, visualTrace)
+      : hasJelly ? applyJellyClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.jelly)
+        : hasChocolate ? applyChocolateClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.chocolate)
+          : hasLiquorice ? applyLiquoriceClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.liquorice)
+            : simulateBlockerMove(definition, state, cells, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldMove(definition, state, cells, visualTrace)
       : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers) } : null;
+  if (!result) return null;
+  const brokenJelly = hasJelly ? result.jellyCleared || 0 : 0;
+  const brokenChocolate = hasChocolate ? result.chocolateCleared || 0 : 0;
+  const brokenLiquorice = hasLiquorice ? result.liquoriceCleared || 0 : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice) };
 }
 
 function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
-  const result = definition.generatorVersion >= 6
-    ? simulateBlockerClear(definition, state, keys, points, visualTrace)
+  const hasLocked = state.locked && lockedGemCount(state.locked) > 0;
+  const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
+  const hasChocolate = state.chocolate && chocolateCount(state.chocolate) > 0;
+  const hasLiquorice = state.liquorice && liquoriceCount(state.liquorice) > 0;
+  const baseResult = definition.generatorVersion >= 6
+    ? (hasLocked ? simulateLockedGemClear(definition, state, keys, points, visualTrace)
+      : simulateBlockerClear(definition, state, keys, points, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldClear(definition, state, keys, points, visualTrace)
       : simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers) } : null;
+  if (!baseResult) return null;
+  const result = hasJelly ? applyJellyClear(baseResult, state.jelly) : hasChocolate ? applyChocolateClear(baseResult, state.chocolate) : hasLiquorice ? applyLiquoriceClear(baseResult, state.liquorice) : baseResult;
+  const brokenJelly = hasJelly ? (result.jellyCleared || 0) : 0;
+  const brokenChocolate = hasChocolate ? (result.chocolateCleared || 0) : 0;
+  const brokenLiquorice = hasLiquorice ? (result.liquoriceCleared || 0) : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice) };
 }
 
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
 function certifyObjectiveLevel(definition) {
   const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
-  const proof = definition.generatorVersion >= 6 ? certifyBlockerBoard(definition)
+  const isLocked = definition.generatorVersion >= 6 && lockedGemCount(definition.lockedGems) > 0;
+  const isJelly = definition.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
+  const isChocolate = definition.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
+  const isLiquorice = definition.generatorVersion >= 6 && liquoriceCount(definition.liquorice) > 0;
+  const proof = definition.generatorVersion >= 6
+    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : isChocolate ? certifyChocolateBoard(definition) : isLiquorice ? certifyLiquoriceBoard(definition) : certifyBlockerBoard(definition))
     : definition.generatorVersion >= 5 ? certifyShieldBoard(definition)
       : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
-  const objectiveProgress = { collected: proof.collected, ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}),
-    ...(definition.generatorVersion >= 6 ? { blockersCleared: proof.brokenBlockers } : {}) };
+  const objectiveProgress = { collected: proof.collected,
+    ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}),
+    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly && !isChocolate && !isLiquorice ? { blockersCleared: proof.brokenBlockers } : {}),
+    ...(definition.generatorVersion >= 6 && isLocked ? { lockedCleared: proof.brokenLocks } : {}),
+    ...(definition.generatorVersion >= 6 && isJelly ? { jellyCleared: proof.jellyCleared } : {}),
+    ...(definition.generatorVersion >= 6 && isChocolate ? { chocolateCleared: proof.chocolateCleared } : {}),
+    ...(definition.generatorVersion >= 6 && isLiquorice ? { liquoriceCleared: proof.liquoriceCleared } : {}) };
   return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }
 
@@ -2732,10 +3166,12 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-shields', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-shields', target: shieldsTotal }] };
   }
-  // V6 blockers occupy a stage of their own (never with shields), so each definition adds one objective.
-  // Their overlay never changes gems, so the witness and score are the v5 witness and score.
-  // Classic only (plan M5): daily, timed and endless never receive blockers.
-  const blockerStage = version >= 6 && !shieldStage && mode === 'classic' && level >= 3 && level % 4 === 2;
+  // V6 obstacles occupy distinct stages (never with shields), each adding one objective.
+  // Their overlays never change gems, so the witness and score are the v5 witness and score.
+  // Classic only (plan M5): daily, timed and endless never receive v6 obstacles.
+  // Stages cycle every 6 levels: %6===0 locked gems, %6===1 jelly, %6===2 blockers,
+  // %6===3 chocolate, %6===4 liquorice, %6===5 no obstacle.
+  const blockerStage = version >= 6 && !shieldStage && mode === 'classic' && level >= 3 && level % 6 === 2;
   const blockers = version >= 6 ? blockerStage
     ? witnessedBlockers(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
     : blankBlockers(size) : null;
@@ -2744,14 +3180,71 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-blockers', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-blockers', target: blockersTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, objectives: goals.objectives }, proof.score,
-    { collected: proof.collected, ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}), ...(version >= 6 ? { blockersCleared: blockersTotal } : {}) }).complete) throw new Error('objective_quality_failed');
+  // V6 locked gems occupy their own stage (never with shields or blockers). The gem underneath stays
+  // playable but the cell cannot be swapped until a match clears the lock.
+  const lockedGemStage = version >= 6 && !shieldStage && !blockerStage && mode === 'classic' && level >= 3 && level % 6 === 0;
+  const lockedGems = version >= 6 ? lockedGemStage
+    ? witnessedLockedGems(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankLockedGems(size) : null;
+  const lockedTotal = lockedGems ? lockedGemCount(lockedGems) : 0;
+  if (lockedGemStage && lockedTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-locked-gems', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-locked-gems', target: lockedTotal }] };
+  }
+  // V6 jelly occupies its own stage (never with shields, blockers, or locked gems). Jelly
+  // sits on top of gems and is consumed one layer at a time by clears over its cell.
+  // Classic only: daily, timed and endless never receive jelly.
+  const jellyStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && mode === 'classic' && level >= 3 && level % 6 === 1;
+  const jelly = version >= 6 ? jellyStage
+    ? witnessedJelly(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankJelly(size) : null;
+  const jellyTotal = jelly ? jellyCount(jelly) : 0;
+  if (jellyStage && jellyTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-jelly', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-jelly', target: jellyTotal }] };
+  }
+  // V6 chocolate occupies its own stage (never with shields, blockers, locked gems, or jelly).
+  // Chocolate spreads one cell per accepted move to a lowest eligible neighbour, cap 8.
+  // Classic only: daily, timed and endless never receive chocolate.
+  const chocolateStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && !jellyStage && mode === 'classic' && level >= 3 && level % 6 === 3;
+  const chocolate = version >= 6 ? chocolateStage
+    ? witnessedChocolate(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankChocolate(size) : null;
+  const chocolateTotal = chocolate ? chocolateCount(chocolate) : 0;
+  if (chocolateStage && chocolateTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-chocolate', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-chocolate', target: chocolateTotal }] };
+  }
+  // V6 liquorice occupies its own stage (never with other v6 obstacles). Liquorice locks
+  // block swaps involving their cell until an adjacent match clears them, cap 6.
+  // Classic only: daily, timed and endless never receive liquorice.
+  const liquoriceStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && !jellyStage && !chocolateStage && mode === 'classic' && level >= 3 && level % 6 === 4;
+  const liquorice = version >= 6 ? liquoriceStage
+    ? witnessedLiquorice(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankLiquorice(size) : null;
+  const liquoriceTotal = liquorice ? liquoriceCount(liquorice) : 0;
+  if (liquoriceStage && liquoriceTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-liquorice', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-liquorice', target: liquoriceTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, liquorice, objectives: goals.objectives }, proof.score,
+    { collected: proof.collected,
+      ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}),
+      ...(version >= 6 && blockersTotal > 0 ? { blockersCleared: blockersTotal } : {}),
+      ...(version >= 6 && lockedTotal > 0 ? { lockedCleared: lockedTotal } : {}),
+      ...(version >= 6 && jellyTotal > 0 ? { jellyCleared: jellyTotal } : {}),
+      ...(version >= 6 && chocolateTotal > 0 ? { chocolateCleared: chocolateTotal } : {}),
+      ...(version >= 6 && liquoriceTotal > 0 ? { liquoriceCleared: liquoriceTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
     ...(version >= 3 ? { specials: blankSpecials(size) } : {}),
     ...(version >= 5 ? { shields } : {}),
     ...(version >= 6 ? { blockers } : {}),
+    ...(version >= 6 ? { lockedGems } : {}),
+    ...(version >= 6 ? { jelly } : {}),
+    ...(version >= 6 ? { chocolate } : {}),
+    ...(version >= 6 ? { liquorice } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -2773,21 +3266,25 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     context: { ...context },
     quality: {
       initialMatches: 0,
-      legalOpeningMoves: legalSwaps(board).length,
+      legalOpeningMoves: lockedGems ? legalSwapsExcludingLocks(board, lockedGems).length : legalSwaps(board).length,
       verifiedWithoutBoosters: true,
       verifiedMoves: moveBudget,
       verifiedScore: proof.score,
       ...(version >= 4 ? { verifiedCollected: proof.collected, verifiedObjectives: true } : {}),
       ...(version >= 5 ? { verifiedShields: shieldsTotal } : {}),
       ...(version >= 6 ? { verifiedBlockers: blockersTotal } : {}),
+      ...(version >= 6 ? { verifiedLockedGems: lockedTotal } : {}),
+      ...(version >= 6 ? { verifiedJelly: jellyTotal } : {}),
+      ...(version >= 6 ? { verifiedChocolate: chocolateTotal } : {}),
+      ...(version >= 6 ? { verifiedLiquorice: liquoriceTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers);
+function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate, liquorice = definition.liquorice) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate, liquorice);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
@@ -2809,5 +3306,5 @@ function certifyLevel(definition) {
     : certifyBoard(board, refillState, gemTypes, gemWeights, budget);
 }
 
-root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, PRESENTATION_FRAME_LIMIT, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, validShields, shieldCount, witnessedShields, simulateShieldMove, simulateShieldClear, certifyShieldBoard, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
+root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, PRESENTATION_FRAME_LIMIT, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, validShields, shieldCount, witnessedShields, simulateShieldMove, simulateShieldClear, certifyShieldBoard, BLOCKER_CAP, BLOCKER_STAGE_COUNT, blankBlockers, validBlockers, blockerCount, blockerKeys, spreadEligible, spreadBlockers, clearBlockers, witnessedBlockers, simulateBlockerMove, simulateBlockerClear, certifyBlockerBoard, LOCKED_GEM_CAP, LOCKED_GEM_STAGE_COUNT, blankLockedGems, validLockedGems, lockedGemCount, lockedGemKeys, lockEligible, clearLockedGems, witnessedLockedGems, simulateLockedGemMove, simulateLockedGemClear, certifyLockedGemBoard, legalSwapsExcludingLocks, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
 })(globalThis);

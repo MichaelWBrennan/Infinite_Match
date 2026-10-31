@@ -535,13 +535,12 @@
               "red": 0,
               "blue": 3
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 23,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 30,
           "verifiedScore": 16000,
@@ -553,7 +552,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -860,13 +863,12 @@
               "blue": 0,
               "green": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 14,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 27,
           "verifiedScore": 5560,
@@ -878,7 +880,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 3,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -1321,13 +1327,12 @@
               "blue": 0,
               "purple": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 18,
+          "legalOpeningMoves": 112,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 28,
           "verifiedScore": 4070,
@@ -1341,7 +1346,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 3,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -1482,11 +1491,11 @@
         "moves": 21,
         "objectives": [
           {
-            "type": "clear-blockers",
-            "target": 3
+            "type": "clear-liquorice",
+            "target": 6
           }
         ],
-        "objectiveProfile": "clear-blockers",
+        "objectiveProfile": "clear-liquorice",
         "shields": [
           [
             0,
@@ -1560,11 +1569,11 @@
             0,
             0,
             0,
-            1
+            0
           ],
           [
-            1,
-            1,
+            0,
+            0,
             0,
             0,
             0,
@@ -1702,7 +1711,7 @@
           },
           "brokenShields": 0,
           "brokenBlockers": 0,
-          "blockerSpread": "0,0",
+          "blockerSpread": null,
           "objectiveProgress": {
             "collected": {
               "orange": 0,
@@ -1713,12 +1722,12 @@
               "green": 0
             },
             "shieldsCleared": 0,
-            "blockersCleared": 0
+            "liquoriceCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 12,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 21,
           "verifiedScore": 1280,
@@ -1732,7 +1741,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 3
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 6
         }
       }
     },
@@ -2163,13 +2176,12 @@
               "red": 3,
               "green": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 37,
+          "legalOpeningMoves": 112,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
           "verifiedScore": 38280,
@@ -2181,7 +2193,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -2493,13 +2509,12 @@
               "red": 0,
               "blue": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 6,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 27,
           "verifiedScore": 1410,
@@ -2513,7 +2528,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -2816,13 +2835,12 @@
               "green": 0,
               "blue": 3
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 11,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 26,
           "verifiedScore": 11260,
@@ -2834,7 +2852,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -3205,13 +3227,12 @@
               "red": 0,
               "green": 3
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 7,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
           "verifiedScore": 2020,
@@ -3224,7 +3245,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 3,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -3358,12 +3383,11 @@
         "moves": 29,
         "objectives": [
           {
-            "type": "collect",
-            "gemType": "purple",
-            "target": 25
+            "type": "clear-chocolate",
+            "target": 8
           }
         ],
-        "objectiveProfile": "collect",
+        "objectiveProfile": "clear-chocolate",
         "shields": [
           [
             0,
@@ -3588,12 +3612,12 @@
               "blue": 0
             },
             "shieldsCleared": 0,
-            "blockersCleared": 0
+            "chocolateCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 18,
+          "legalOpeningMoves": 84,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
           "verifiedScore": 12230,
@@ -3606,7 +3630,11 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 8,
+          "verifiedLiquorice": 0
         }
       }
     },
@@ -3912,13 +3940,12 @@
               "green": 0,
               "yellow": 0
             },
-            "shieldsCleared": 0,
-            "blockersCleared": 0
+            "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 9,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 30,
           "verifiedScore": 1520,
@@ -3932,14 +3959,18 @@
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 0
+          "verifiedBlockers": 0,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
     {
-      "name": "classic-6-blocker-stage",
+      "name": "classic-14-blocker-stage",
       "input": {
-        "level": 6,
+        "level": 14,
         "mode": "classic",
         "location": {
           "timeZone": "America/New_York",
@@ -3950,11 +3981,11 @@
         "rulesVersion": 6
       },
       "expected": {
-        "id": "v6-classic-6-2026-10-31-dd8978bb",
+        "id": "v6-classic-14-2026-10-31-f35f8754",
         "generatorVersion": 6,
         "mode": "classic",
-        "level": 6,
-        "seed": 3716774075,
+        "level": 14,
+        "seed": 4083124052,
         "environmentKey": "morning-unknown-unknown-calm",
         "context": {
           "timeZone": "America/New_York",
@@ -3986,91 +4017,74 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 3837080169,
-        "boardSize": 7,
+        "refillState": 1867911057,
+        "boardSize": 6,
         "board": [
           [
-            "green",
-            "red",
-            "green",
+            "blue",
             "orange",
-            "orange",
+            "blue",
+            "yellow",
             "red",
             "yellow"
           ],
           [
-            "orange",
-            "yellow",
-            "red",
-            "orange",
-            "green",
-            "blue",
-            "yellow"
-          ],
-          [
-            "yellow",
-            "orange",
-            "orange",
-            "yellow",
-            "yellow",
-            "blue",
-            "red"
-          ],
-          [
-            "orange",
-            "green",
-            "orange",
-            "blue",
-            "red",
-            "red",
-            "green"
-          ],
-          [
-            "red",
-            "orange",
             "yellow",
             "purple",
-            "yellow",
             "blue",
+            "purple",
+            "blue",
+            "yellow"
+          ],
+          [
+            "yellow",
+            "red",
+            "yellow",
+            "yellow",
+            "orange",
             "orange"
           ],
           [
+            "purple",
+            "purple",
+            "blue",
             "blue",
             "orange",
-            "blue",
-            "orange",
-            "orange",
-            "green",
-            "blue"
+            "yellow"
           ],
           [
             "orange",
+            "blue",
+            "purple",
             "red",
-            "orange",
-            "yellow",
-            "orange",
-            "yellow",
+            "purple",
             "red"
+          ],
+          [
+            "purple",
+            "purple",
+            "blue",
+            "yellow",
+            "orange",
+            "orange"
           ]
         ],
         "gemTypes": [
           "orange",
           "yellow",
-          "red",
           "purple",
           "blue",
-          "green"
+          "red"
         ],
         "gemWeights": {
           "orange": 1.35,
           "yellow": 1.25,
-          "red": 1,
           "purple": 1,
           "blue": 1,
-          "green": 1.1
+          "red": 1
         },
-        "targetScore": 1000,
-        "moves": 30,
+        "targetScore": 1550,
+        "moves": 27,
         "objectives": [
           {
             "type": "clear-blockers",
@@ -4085,20 +4099,9 @@
             0,
             0,
             0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
             0,
             0,
             0,
@@ -4112,6 +4115,13 @@
             0,
             0,
             0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ],
@@ -4121,20 +4131,9 @@
             0,
             0,
             0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
             0,
             0,
             0,
@@ -4150,20 +4149,9 @@
             0,
             0,
             0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
             0,
             0,
             0,
@@ -4174,32 +4162,28 @@
           [
             0,
             0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
             0,
             0,
             1,
             1,
-            0
-          ],
-          [
-            0,
             1,
-            0,
-            0,
-            0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
             0,
             0,
             0,
@@ -4208,100 +4192,83 @@
             0
           ]
         ],
-        "legalOpeningMoves": 19,
+        "legalOpeningMoves": 8,
         "firstLegalSwap": [
-          1,
+          2,
           0,
           2,
-          0
+          1
         ],
         "firstMove": {
-          "score": 30,
-          "refillState": 741843016,
+          "score": 90,
+          "refillState": 4267371343,
           "board": [
             [
-              "yellow",
               "blue",
-              "yellow",
-              "orange",
-              "orange",
-              "red",
-              "yellow"
-            ],
-            [
-              "green",
-              "red",
-              "green",
-              "orange",
-              "green",
-              "blue",
-              "yellow"
-            ],
-            [
-              "yellow",
-              "yellow",
-              "red",
-              "yellow",
-              "yellow",
-              "blue",
-              "red"
-            ],
-            [
-              "orange",
-              "green",
-              "orange",
-              "blue",
-              "red",
-              "red",
-              "green"
-            ],
-            [
-              "red",
-              "orange",
-              "yellow",
               "purple",
+              "orange",
+              "purple",
+              "red",
+              "yellow"
+            ],
+            [
+              "yellow",
+              "orange",
+              "red",
               "yellow",
               "blue",
+              "yellow"
+            ],
+            [
+              "red",
+              "purple",
+              "orange",
+              "purple",
+              "orange",
               "orange"
             ],
             [
+              "purple",
+              "purple",
+              "blue",
               "blue",
               "orange",
-              "blue",
-              "orange",
-              "orange",
-              "green",
-              "blue"
+              "yellow"
             ],
             [
               "orange",
+              "blue",
+              "purple",
               "red",
-              "orange",
-              "yellow",
-              "orange",
-              "yellow",
+              "purple",
               "red"
+            ],
+            [
+              "purple",
+              "purple",
+              "blue",
+              "yellow",
+              "orange",
+              "orange"
             ]
           ],
           "collected": {
-            "orange": 3,
-            "yellow": 0,
-            "red": 0,
+            "orange": 0,
+            "yellow": 3,
             "purple": 0,
-            "blue": 0,
-            "green": 0
+            "blue": 3,
+            "red": 0
           },
           "brokenShields": 0,
           "brokenBlockers": 0,
-          "blockerSpread": "2,4",
+          "blockerSpread": "3,3",
           "objectiveProgress": {
             "collected": {
-              "orange": 3,
-              "yellow": 0,
-              "red": 0,
+              "orange": 0,
+              "yellow": 3,
               "purple": 0,
-              "blue": 0,
-              "green": 0
+              "blue": 3,
+              "red": 0
             },
             "shieldsCleared": 0,
             "blockersCleared": 0
@@ -4309,28 +4276,31 @@
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 19,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
-          "verifiedMoves": 30,
-          "verifiedScore": 1670,
+          "verifiedMoves": 27,
+          "verifiedScore": 2100,
           "verifiedCollected": {
-            "orange": 35,
-            "yellow": 24,
-            "red": 18,
-            "purple": 20,
-            "blue": 23,
-            "green": 20
+            "orange": 28,
+            "yellow": 34,
+            "purple": 27,
+            "blue": 28,
+            "red": 27
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 3
+          "verifiedBlockers": 3,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     },
     {
-      "name": "classic-10-boss-blocker-stage",
+      "name": "classic-50-boss-blocker-stage",
       "input": {
-        "level": 10,
+        "level": 50,
         "mode": "classic",
         "location": {
           "timeZone": "America/New_York",
@@ -4341,11 +4311,11 @@
         "rulesVersion": 6
       },
       "expected": {
-        "id": "v6-classic-10-2026-10-31-c20736f8",
+        "id": "v6-classic-50-2026-10-31-2d5b7b44",
         "generatorVersion": 6,
         "mode": "classic",
-        "level": 10,
-        "seed": 3255252728,
+        "level": 50,
+        "seed": 760970052,
         "environmentKey": "morning-unknown-unknown-calm",
         "context": {
           "timeZone": "America/New_York",
@@ -4377,90 +4347,75 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 1543993009,
-        "boardSize": 7,
+        "refillState": 1009158540,
+        "boardSize": 6,
         "board": [
-          [
-            "blue",
-            "red",
-            "red",
-            "purple",
-            "purple",
-            "orange",
-            "yellow"
-          ],
-          [
-            "green",
-            "purple",
-            "orange",
-            "purple",
-            "blue",
-            "blue",
-            "yellow"
-          ],
           [
             "purple",
             "yellow",
+            "purple",
+            "green",
+            "blue",
+            "orange"
+          ],
+          [
+            "green",
+            "blue",
+            "purple",
+            "red",
+            "purple",
+            "purple"
+          ],
+          [
             "green",
             "orange",
-            "red",
             "green",
+            "yellow",
+            "blue",
             "blue"
           ],
           [
             "blue",
+            "blue",
+            "green",
+            "orange",
             "purple",
+            "orange"
+          ],
+          [
+            "red",
             "red",
             "yellow",
-            "green",
-            "green",
-            "yellow"
+            "orange",
+            "orange",
+            "purple"
           ],
           [
-            "green",
-            "purple",
             "blue",
-            "orange",
-            "green",
+            "blue",
             "yellow",
-            "yellow"
-          ],
-          [
             "green",
-            "blue",
             "orange",
-            "orange",
-            "purple",
-            "yellow",
-            "green"
-          ],
-          [
-            "purple",
-            "orange",
-            "blue",
-            "green",
-            "green",
-            "red",
             "orange"
           ]
         ],
         "gemTypes": [
           "orange",
           "yellow",
-          "purple",
           "red",
+          "green",
           "blue",
-          "green"
+          "purple"
         ],
         "gemWeights": {
           "orange": 1.35,
           "yellow": 1.25,
-          "purple": 1,
           "red": 1,
+          "green": 1.1,
           "blue": 1,
-          "green": 1.1
+          "purple": 1
         },
-        "targetScore": 1100,
+        "targetScore": 750,
         "moves": 21,
         "objectives": [
           {
@@ -4476,20 +4431,9 @@
             0,
             0,
             0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
             0,
             0,
             0,
@@ -4503,6 +4447,13 @@
             0,
             0,
             0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ],
@@ -4512,20 +4463,9 @@
             0,
             0,
             0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
             0,
             0,
             0,
@@ -4540,13 +4480,11 @@
             0,
             0,
             0,
-            0,
-            0,
+            1,
             1
           ],
           [
             1,
-            1,
             0,
             0,
             0,
@@ -4554,16 +4492,6 @@
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
             0,
             0,
             0,
@@ -4577,7 +4505,6 @@
             0,
             0,
             0,
-            0,
             0
           ],
           [
@@ -4586,11 +4513,9 @@
             0,
             0,
             0,
-            0,
             0
           ],
           [
-            0,
             0,
             0,
             0,
@@ -4599,88 +4524,73 @@
             0
           ]
         ],
-        "legalOpeningMoves": 12,
+        "legalOpeningMoves": 9,
         "firstLegalSwap": [
           1,
-          1,
           2,
-          1
+          1,
+          3
         ],
         "firstMove": {
           "score": 30,
-          "refillState": 2743723152,
+          "refillState": 2208888683,
           "board": [
             [
-              "blue",
-              "orange",
-              "red",
               "purple",
+              "yellow",
               "purple",
               "orange",
-              "yellow"
+              "green",
+              "green"
             ],
             [
               "green",
+              "blue",
+              "red",
               "green",
-              "orange",
-              "purple",
               "blue",
-              "blue",
-              "yellow"
+              "orange"
             ],
             [
-              "purple",
-              "red",
               "green",
               "orange",
-              "red",
               "green",
+              "yellow",
+              "blue",
               "blue"
             ],
             [
               "blue",
-              "red",
-              "red",
-              "yellow",
-              "green",
-              "green",
-              "yellow"
-            ],
-            [
-              "green",
-              "yellow",
               "blue",
-              "orange",
               "green",
-              "yellow",
-              "yellow"
-            ],
-            [
-              "green",
-              "blue",
-              "orange",
               "orange",
               "purple",
-              "yellow",
-              "green"
+              "orange"
             ],
             [
-              "purple",
-              "orange",
-              "blue",
-              "green",
-              "green",
               "red",
+              "red",
+              "yellow",
+              "orange",
+              "orange",
+              "purple"
+            ],
+            [
+              "blue",
+              "blue",
+              "yellow",
+              "green",
+              "orange",
               "orange"
             ]
           ],
           "collected": {
             "orange": 0,
             "yellow": 0,
-            "purple": 3,
             "red": 0,
+            "green": 0,
             "blue": 0,
-            "green": 0
+            "purple": 3
           },
           "brokenShields": 0,
           "brokenBlockers": 0,
@@ -4689,10 +4599,10 @@
             "collected": {
               "orange": 0,
               "yellow": 0,
-              "purple": 3,
               "red": 0,
+              "green": 0,
               "blue": 0,
-              "green": 0
+              "purple": 3
             },
             "shieldsCleared": 0,
             "blockersCleared": 0
@@ -4700,21 +4610,25 @@
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 12,
+          "legalOpeningMoves": 60,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 21,
-          "verifiedScore": 1280,
+          "verifiedScore": 930,
           "verifiedCollected": {
-            "orange": 26,
-            "yellow": 18,
-            "purple": 14,
-            "red": 21,
-            "blue": 17,
-            "green": 14
+            "orange": 24,
+            "yellow": 12,
+            "red": 9,
+            "green": 12,
+            "blue": 9,
+            "purple": 12
           },
           "verifiedObjectives": true,
           "verifiedShields": 0,
-          "verifiedBlockers": 3
+          "verifiedBlockers": 3,
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0,
+          "verifiedChocolate": 0,
+          "verifiedLiquorice": 0
         }
       }
     }
