@@ -51,8 +51,9 @@ export async function notifyPlayer({ userId, title, body, data = {} }) {
     data: { ...data, playerId: userId },
   }));
 
+  getTransport();
   try {
-    const result = await t.sendBatch(payloads);
+    const result = await transport.sendBatch(payloads);
     logger.info('Push notifications sent', {
       userId,
       successCount: result.successCount,

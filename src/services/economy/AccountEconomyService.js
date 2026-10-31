@@ -868,7 +868,7 @@ class AccountEconomyService {
   async renovateRoom(playerId, roomId) {
     return this.withPlayerLock(playerId, async () => {
       const playerEconomy = await this.getPlayerEconomy(playerId);
-      const kingdom = ensureKingdom(playerEconomy);
+      let kingdom = ensureKingdom(playerEconomy);
       const room = roomById(roomId);
       if (!room) throw new EconomyRuleError('unknown_room');
 
