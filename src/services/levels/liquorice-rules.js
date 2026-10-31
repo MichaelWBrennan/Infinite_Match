@@ -94,7 +94,7 @@ function validLiquoriceState(definition, state) {
 export function applyLiquoriceClear(result, initialLiquorice) {
   if (!result) return null;
   const size = result.board?.length || initialLiquorice.length;
-  const liquorice = initialLiquorice.map((row) => row.slice());
+  let liquorice = initialLiquorice.map((row) => row.slice());
   const trace = result.presentation;
   if (trace) trace.initial.liquorice = initialLiquorice.map((row) => row.slice());
   const events = result.events.map((event, index) => {

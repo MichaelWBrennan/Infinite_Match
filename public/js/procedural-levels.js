@@ -2913,10 +2913,10 @@ function objectiveStatus(definition, score, progress) {
     const current = goal.type === 'score' ? safeScore : !validProgress ? 0
       : goal.type === 'clear-shields' ? progress.shieldsCleared
         : goal.type === 'clear-blockers' ? progress.blockersCleared
-        : goal.type === 'clear-locked-gems' ? progress.lockedCleared
-        : goal.type === 'clear-jelly' ? progress.jellyCleared
-        : goal.type === 'clear-chocolate' ? progress.chocolateCleared
-        : goal.type === 'clear-liquorice' ? progress.liquoriceCleared : ownCount(progress.collected, goal.gemType);
+          : goal.type === 'clear-locked-gems' ? progress.lockedCleared
+            : goal.type === 'clear-jelly' ? progress.jellyCleared
+              : goal.type === 'clear-chocolate' ? progress.chocolateCleared
+                : goal.type === 'clear-liquorice' ? progress.liquoriceCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -2999,9 +2999,9 @@ function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const result = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemMove(definition, state, cells, visualTrace)
       : hasJelly ? applyJellyClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.jelly)
-      : hasChocolate ? applyChocolateClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.chocolate)
-      : hasLiquorice ? applyLiquoriceClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.liquorice)
-      : simulateBlockerMove(definition, state, cells, visualTrace))
+        : hasChocolate ? applyChocolateClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.chocolate)
+          : hasLiquorice ? applyLiquoriceClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.liquorice)
+            : simulateBlockerMove(definition, state, cells, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldMove(definition, state, cells, visualTrace)
       : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);

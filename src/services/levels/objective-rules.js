@@ -5,9 +5,9 @@ import { starsForTarget } from '../meta/rewards.js';
 import { validShields, shieldCount, simulateShieldMove, simulateShieldClear, certifyShieldBoard } from './shield-rules.js';
 import { validBlockers, blockerCount, simulateBlockerMove, simulateBlockerClear, certifyBlockerBoard } from './blocker-rules.js';
 import { validLockedGems, lockedGemCount, simulateLockedGemMove, simulateLockedGemClear, certifyLockedGemBoard, legalSwapsExcludingLocks } from './locked-gem-rules.js';
-import { validJelly, jellyCount, blankJelly, applyJellyClear } from './jelly-rules.js';
-import { validChocolate, chocolateCount, blankChocolate, applyChocolateClear } from './chocolate-rules.js';
-import { validLiquorice, liquoriceCount, blankLiquorice, applyLiquoriceClear } from './liquorice-rules.js';
+import { validJelly, jellyCount, blankJelly, applyJellyClear, certifyJellyBoard } from './jelly-rules.js';
+import { validChocolate, chocolateCount, blankChocolate, applyChocolateClear, certifyChocolateBoard } from './chocolate-rules.js';
+import { validLiquorice, liquoriceCount, blankLiquorice, applyLiquoriceClear, certifyLiquoriceBoard } from './liquorice-rules.js';
 
 export const MAX_COLLECTED_GEMS = 1000000;
 const ownCount = (counts, color) => Object.hasOwn(counts, color) ? counts[color] : 0;
@@ -165,10 +165,10 @@ export function objectiveStatus(definition, score, progress) {
     const current = goal.type === 'score' ? safeScore : !validProgress ? 0
       : goal.type === 'clear-shields' ? progress.shieldsCleared
         : goal.type === 'clear-blockers' ? progress.blockersCleared
-        : goal.type === 'clear-locked-gems' ? progress.lockedCleared
-        : goal.type === 'clear-jelly' ? progress.jellyCleared
-        : goal.type === 'clear-chocolate' ? progress.chocolateCleared
-        : goal.type === 'clear-liquorice' ? progress.liquoriceCleared : ownCount(progress.collected, goal.gemType);
+          : goal.type === 'clear-locked-gems' ? progress.lockedCleared
+            : goal.type === 'clear-jelly' ? progress.jellyCleared
+              : goal.type === 'clear-chocolate' ? progress.chocolateCleared
+                : goal.type === 'clear-liquorice' ? progress.liquoriceCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -251,9 +251,9 @@ export function simulateObjectiveMove(definition, state, cells, visualTrace = fa
   const result = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemMove(definition, state, cells, visualTrace)
       : hasJelly ? applyJellyClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.jelly)
-      : hasChocolate ? applyChocolateClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.chocolate)
-      : hasLiquorice ? applyLiquoriceClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.liquorice)
-      : simulateBlockerMove(definition, state, cells, visualTrace))
+        : hasChocolate ? applyChocolateClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.chocolate)
+          : hasLiquorice ? applyLiquoriceClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.liquorice)
+            : simulateBlockerMove(definition, state, cells, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldMove(definition, state, cells, visualTrace)
       : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
