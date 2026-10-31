@@ -14,6 +14,7 @@ import EconomyService from '../services/economy/UnifiedEconomyService.js';
 import UnityService from '../services/unity/UnifiedUnityService.js';
 import { readLevelResults, summarizeLevelResults } from '../services/level-tuning.js';
 import { readAttemptObservations, summarizeAttemptObservations } from '../services/levels/attempt-observations.js';
+import { rejectionCounts, totalRejections } from '../services/levels/replay-telemetry.js';
 import { retentionStudyStore } from '../services/study/retention-study.js';
 import { reportStalePaymentClaims } from '../services/payments/claim-report.js';
 
@@ -195,6 +196,24 @@ router.get('/attempt-observations', async (req, res) => {
   } catch (error) {
     logger.error('Attempt observation report failed', { error: error.message });
     res.status(503).json({ success: false, error: 'observation_report_unavailable', requestId: req.requestId });
+  }
+});
+
+// Server-side replay false-rejection counters. Operators use these to detect
+// replay-logic regressions that would incorrectly refuse legitimate player wins.
+// Counts live in memory for the process lifetime; they never gate rewards or ranking.
+router.get('/replay-telemetry', (_req, res) => {
+  try {
+    res.set('Cache-Control', 'private, no-store');
+    res.json({
+      success: true,
+      totalRejections: totalRejections(),
+      byReason: rejectionCounts(),
+      requestId: _req.requestId,
+    });
+  } catch (error) {
+    logger.error('Replay telemetry report failed', { error: error.message });
+    res.status(503).json({ success: false, error: 'replay_telemetry_unavailable', requestId: _req.requestId });
   }
 });
 
