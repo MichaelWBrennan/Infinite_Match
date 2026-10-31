@@ -8,6 +8,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { createServer, Server as HttpServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import jwtVerify from '../core/security/jwt.js';
 import * as Sentry from '@sentry/node';
 import AppConfig from '../core/config/index.js';
 import { Logger } from '../core/logger/index.js';
@@ -30,7 +31,7 @@ import { assertSocialStoreForEnvironment } from '../services/social/social-backe
 import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
-import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
+import { router as multiplayerRoutes, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem } from '../routes/multiplayer.js';
 import playerAccountRoutes from '../routes/player-accounts.js';
 import authRoutes from '../routes/auth.js';
 import accountEconomyRoutes from '../routes/account-economy.js';
@@ -657,7 +658,7 @@ class GameServer {
       return;
     }
 
-    this.io.on('connection', (socket) => {
+    this.io.on('connection', async (socket) => {
       this.logger.info('Client connected:', socket.id);
 
       // Get platform info
@@ -716,6 +717,167 @@ class GameServer {
         } catch (error) {
           this.logger.error('Error handling platform event:', { error });
           socket.emit('error', { message: 'Failed to process platform event' });
+        }
+      });
+
+      // ---- PvP Socket.IO handlers ----
+
+      // Authenticate socket: expect `token` in handshake auth
+      const socketToken = socket.handshake.auth?.['token'];
+      let socketPlayerId: string | null = null;
+
+      if (socketToken) {
+        try {
+          const decoded = await jwtVerify.verify(socketToken, AppConfig.security.jwt.secret);
+          socketPlayerId = (decoded as { id?: string; playerId?: string; userId?: string; sub?: string }).id
+            ?? (decoded as { id?: string; playerId?: string; userId?: string; sub?: string }).playerId
+            ?? (decoded as { id?: string; playerId?: string; userId?: string; sub?: string }).userId
+            ?? (decoded as { id?: string; playerId?: string; userId?: string; sub?: string }).sub ?? null;
+        } catch {
+          // Token invalid — socket remains unauthenticated; PvP events will reject
+        }
+      }
+
+      const requireAuth = () => {
+        if (!socketPlayerId) {
+          socket.emit('pvp_error', { code: 'unauthenticated', message: 'Player session required' });
+          throw new Error('unauthenticated');
+        }
+        return socketPlayerId;
+      };
+
+      socket.on('pvp_create_room', async (data: { gameType?: string; options?: Record<string, unknown> }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const rm = getRoomManager();
+          if (!rm) throw new Error('room manager unavailable');
+          const result = rm.createRoom(playerId, data?.gameType || 'match3_versus', data?.options || {});
+          socket.join(`room_${result.room.id}`);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_join_room', async (data: { roomId: string; password?: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const rm = getRoomManager();
+          if (!rm) throw new Error('room manager unavailable');
+          const result = rm.joinRoom(playerId, data.roomId, data.password);
+          socket.join(`room_${data.roomId}`);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_leave_room', async (data: { roomId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const rm = getRoomManager();
+          if (!rm) throw new Error('room manager unavailable');
+          const result = rm.leaveRoom(playerId, data.roomId);
+          socket.leave(`room_${data.roomId}`);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_start_matchmaking', async (data: { gameType?: string; preferences?: Record<string, unknown> }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const rm = getRoomManager();
+          if (!rm) throw new Error('room manager unavailable');
+          const result = rm.startMatchmaking(playerId, data?.gameType || 'match3_versus', data?.preferences || {});
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_stop_matchmaking', async (ack?) => {
+        try {
+          const playerId = requireAuth();
+          const rm = getRoomManager();
+          if (!rm) throw new Error('room manager unavailable');
+          const result = rm.stopMatchmaking(playerId);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_start_session', async (data: { roomId: string; gameType: string; settings?: Record<string, unknown> }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const sm = getSessionManager();
+          if (!sm) throw new Error('session manager unavailable');
+          const result = sm.startSession(data.roomId, [playerId], data.gameType, data.settings || {});
+          socket.join(`room_${data.roomId}`);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_move', async (data: { sessionId: string; move: Record<string, unknown> }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const sm = getSessionManager();
+          const acs = getAntiCheatSystem();
+          if (!sm || !acs) throw new Error('services unavailable');
+
+          const session = sm.sessions.get(data.sessionId);
+          if (!session) throw new Error('Session not found');
+
+          const cheatValidation = acs.validateMove(playerId, data.move, session.gameState, session);
+          if (!cheatValidation.valid) {
+            throw new Error('Invalid move detected by anti-cheat system');
+          }
+
+          const result = sm.makeMove(data.sessionId, playerId, data.move);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_leave_session', async (data: { sessionId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const sm = getSessionManager();
+          if (!sm) throw new Error('session manager unavailable');
+          const result = sm.leaveSession(data.sessionId, playerId);
+          socket.leave(`room_${data.sessionId}`);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_pause', async (data: { sessionId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const sm = getSessionManager();
+          if (!sm) throw new Error('session manager unavailable');
+          const result = sm.pauseSession(data.sessionId, playerId);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('pvp_resume', async (data: { sessionId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const sm = getSessionManager();
+          if (!sm) throw new Error('session manager unavailable');
+          const result = sm.resumeSession(data.sessionId, playerId);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
         }
       });
 
