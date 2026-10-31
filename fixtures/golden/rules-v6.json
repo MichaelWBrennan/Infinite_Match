@@ -553,7 +553,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -878,7 +879,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 3,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -1341,7 +1343,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 3,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -1733,7 +1736,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 3,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -1889,9 +1893,13 @@
           {
             "type": "score",
             "target": 2400
+          },
+          {
+            "type": "clear-jelly",
+            "target": 3
           }
         ],
-        "objectiveProfile": "score",
+        "objectiveProfile": "clear-jelly",
         "shields": [
           [
             0,
@@ -2164,7 +2172,8 @@
               "red": 3,
               "green": 0
             },
-            "shieldsCleared": 0
+            "shieldsCleared": 0,
+            "jellyCleared": 0
           }
         },
         "quality": {
@@ -2182,7 +2191,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 3
         }
       }
     },
@@ -2514,7 +2524,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -2835,7 +2846,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -3225,7 +3237,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 3,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -3607,7 +3620,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -3933,7 +3947,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 0,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -4325,7 +4340,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 3,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     },
@@ -4717,7 +4733,8 @@
           "verifiedObjectives": true,
           "verifiedShields": 0,
           "verifiedBlockers": 3,
-          "verifiedLockedGems": 0
+          "verifiedLockedGems": 0,
+          "verifiedJelly": 0
         }
       }
     }

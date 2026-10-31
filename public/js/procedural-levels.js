@@ -2799,6 +2799,8 @@ function validObjectives(definition) {
       if (definition.generatorVersion < 6 || !validBlockers(definition.blockers, definition.boardSize) || goal.target !== blockerCount(definition.blockers)) return false;
     } else if (goal.type === 'clear-locked-gems') {
       if (definition.generatorVersion < 6 || !validLockedGems(definition.lockedGems, definition.boardSize) || goal.target !== lockedGemCount(definition.lockedGems)) return false;
+    } else if (goal.type === 'clear-jelly') {
+      if (definition.generatorVersion < 6 || !validJelly(definition.jelly, definition.boardSize) || goal.target !== jellyCount(definition.jelly)) return false;
     } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
     const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : goal.type;
     if (identities.has(identity)) return false;
@@ -2814,6 +2816,7 @@ function initialObjectiveProgress(definition) {
   if (definition.generatorVersion >= 6) {
     if (blockerCount(definition.blockers) > 0) extra.blockersCleared = 0;
     if (lockedGemCount(definition.lockedGems) > 0) extra.lockedCleared = 0;
+    if (jellyCount(definition.jelly) > 0) extra.jellyCleared = 0;
   }
   return { ...base, ...extra };
 }
@@ -2824,7 +2827,8 @@ function validObjectiveProgress(definition, progress) {
   const hasShields = definition?.generatorVersion >= 5;
   const hasBlockers = definition?.generatorVersion >= 6 && blockerCount(definition.blockers) > 0;
   const hasLocked = definition?.generatorVersion >= 6 && lockedGemCount(definition.lockedGems) > 0;
-  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0);
+  const hasJelly = definition?.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
+  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
     && (!hasShields || (validShields(definition.shields, definition.boardSize)
       && Object.hasOwn(progress, 'shieldsCleared') && Number.isSafeInteger(progress.shieldsCleared) && progress.shieldsCleared >= 0
@@ -2834,13 +2838,16 @@ function validObjectiveProgress(definition, progress) {
       && progress.blockersCleared <= MAX_COLLECTED_GEMS))
     && (!hasLocked || (validLockedGems(definition.lockedGems, definition.boardSize)
       && Object.hasOwn(progress, 'lockedCleared') && Number.isSafeInteger(progress.lockedCleared) && progress.lockedCleared >= 0
-      && progress.lockedCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
+      && progress.lockedCleared <= MAX_COLLECTED_GEMS))
+    && (!hasJelly || (validJelly(definition.jelly, definition.boardSize)
+      && Object.hasOwn(progress, 'jellyCleared') && Number.isSafeInteger(progress.jellyCleared) && progress.jellyCleared >= 0
+      && progress.jellyCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
     && Object.keys(progress.collected).length <= definition.gemTypes.length
     && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
       && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
 }
 
-function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0) {
+function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0) {
   if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
   const next = initialObjectiveProgress(definition);
   for (const color of definition.gemTypes) {
@@ -2863,6 +2870,11 @@ function addObjectiveProgress(definition, previous, collected, brokenShields = 0
       if (!Number.isSafeInteger(brokenLocks) || brokenLocks < 0 || previous.lockedCleared + brokenLocks > MAX_COLLECTED_GEMS) throw new RangeError('invalid_locked_gem_delta');
       next.lockedCleared = previous.lockedCleared + brokenLocks;
     }
+    const hasJelly = definition.jelly && jellyCount(definition.jelly) > 0;
+    if (definition.generatorVersion >= 6 && hasJelly) {
+      if (!Number.isSafeInteger(brokenJelly) || brokenJelly < 0 || previous.jellyCleared + brokenJelly > MAX_COLLECTED_GEMS) throw new RangeError('invalid_jelly_delta');
+      next.jellyCleared = previous.jellyCleared + brokenJelly;
+    }
   }
   return next;
 }
@@ -2877,7 +2889,8 @@ function objectiveStatus(definition, score, progress) {
     const current = goal.type === 'score' ? safeScore : !validProgress ? 0
       : goal.type === 'clear-shields' ? progress.shieldsCleared
         : goal.type === 'clear-blockers' ? progress.blockersCleared
-        : goal.type === 'clear-locked-gems' ? progress.lockedCleared : ownCount(progress.collected, goal.gemType);
+        : goal.type === 'clear-locked-gems' ? progress.lockedCleared
+        : goal.type === 'clear-jelly' ? progress.jellyCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -2892,7 +2905,7 @@ function objectiveStars(definition, score, progress) {
 function objectiveCompletionError(definition, score, progress) {
   if (!Number.isSafeInteger(score) || score < 0) return 'invalid_score';
   if (!validObjectives(definition)) return 'invalid_level_objectives';
-  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers');
+  const collects = levelObjectives(definition).some((goal) => goal.type === 'collect' || goal.type === 'clear-shields' || goal.type === 'clear-blockers' || goal.type === 'clear-jelly');
   if (collects && progress === undefined) return 'objective_progress_required';
   if (progress !== undefined && !validObjectiveProgress(definition, progress)) return 'invalid_objective_progress';
   const status = objectiveStatus(definition, score, progress);
@@ -2905,20 +2918,21 @@ function objectiveDescription(definition) {
     ? `Collect ${goal.target} ${goal.gemType}` : goal.type === 'clear-shields'
       ? `Clear ${goal.target} shields (numbered hits)` : goal.type === 'clear-blockers'
         ? `Clear ${goal.target} blockers` : goal.type === 'clear-locked-gems'
-          ? `Free ${goal.target} locked gems` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+          ? `Free ${goal.target} locked gems` : goal.type === 'clear-jelly'
+            ? `Clear ${goal.target} jelly layers` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
 }
 
 function objectiveSummary(definition, score, progress, showRemaining = false) {
   return objectiveStatus(definition, score, progress).items.map((goal) => {
     const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields'
-      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : 'Score';
+      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : 'Score';
     const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
     return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
   }).join(' · ');
 }
 
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
-function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null) {
+function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
   for (const action of actions) {
@@ -2928,12 +2942,15 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
       ? simulateBlockerMove(definition, { board, specials, refillState, shields, blockers }, action.cells) : null;
     const lockedResult = goals.some((goal) => goal.type === 'clear-locked-gems') && lockedGems
       ? simulateLockedGemMove(definition, { board, specials, refillState, shields, locked: lockedGems }, action.cells) : null;
+    const jellyResult = goals.some((goal) => goal.type === 'clear-jelly') && jelly
+      ? applyJellyClear({ events: [{ cleared: action.cells }] }, jelly) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
       goal.type === 'score' ? action.points : goal.type === 'clear-shields'
         ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
         : goal.type === 'clear-blockers' ? (blockerResult?.brokenBlockers || 0)
           : goal.type === 'clear-locked-gems' ? (lockedResult?.brokenLocks || 0)
-            : action.collected[goal.gemType] || 0) / goal.target, 0);
+            : goal.type === 'clear-jelly' ? (jellyResult?.cleared || 0)
+              : action.collected[goal.gemType] || 0) / goal.target, 0);
   }
   return actions;
 }
@@ -2942,40 +2959,50 @@ function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
   const hasLocked = state.locked && lockedGemCount(state.locked) > 0;
+  const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
   const result = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemMove(definition, state, cells, visualTrace)
+      : hasJelly ? applyJellyClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.jelly)
       : simulateBlockerMove(definition, state, cells, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldMove(definition, state, cells, visualTrace)
       : simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks) } : null;
+  if (!result) return null;
+  const brokenJelly = hasJelly ? result.jellyCleared || 0 : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly) };
 }
 
 function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
   const previous = state.objectiveProgress === undefined ? initialObjectiveProgress(definition) : state.objectiveProgress;
   if (!validObjectiveProgress(definition, previous)) return null;
   const hasLocked = state.locked && lockedGemCount(state.locked) > 0;
-  const result = definition.generatorVersion >= 6
+  const hasJelly = state.jelly && jellyCount(state.jelly) > 0;
+  const baseResult = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemClear(definition, state, keys, points, visualTrace)
       : simulateBlockerClear(definition, state, keys, points, visualTrace))
     : definition.generatorVersion >= 5
       ? simulateShieldClear(definition, state, keys, points, visualTrace)
       : simulateSpecialClear(state.board, state.refillState, definition.gemTypes, definition.gemWeights, keys, state.specials, points, true, visualTrace);
-  return result ? { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks) } : null;
+  if (!baseResult) return null;
+  const result = hasJelly ? applyJellyClear(baseResult, state.jelly) : baseResult;
+  const brokenJelly = hasJelly ? (result.jellyCleared || 0) : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly) };
 }
 
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
 function certifyObjectiveLevel(definition) {
   const budget = definition.quality?.verifiedMoves || Math.min(30, definition.moves);
   const isLocked = definition.generatorVersion >= 6 && lockedGemCount(definition.lockedGems) > 0;
+  const isJelly = definition.generatorVersion >= 6 && jellyCount(definition.jelly) > 0;
   const proof = definition.generatorVersion >= 6
-    ? (isLocked ? certifyLockedGemBoard(definition) : certifyBlockerBoard(definition))
+    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : certifyBlockerBoard(definition))
     : definition.generatorVersion >= 5 ? certifyShieldBoard(definition)
       : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
   const objectiveProgress = { collected: proof.collected,
     ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}),
-    ...(definition.generatorVersion >= 6 && !isLocked ? { blockersCleared: proof.brokenBlockers } : {}),
-    ...(definition.generatorVersion >= 6 && isLocked ? { lockedCleared: proof.brokenLocks } : {}) };
+    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly ? { blockersCleared: proof.brokenBlockers } : {}),
+    ...(definition.generatorVersion >= 6 && isLocked ? { lockedCleared: proof.brokenLocks } : {}),
+    ...(definition.generatorVersion >= 6 && isJelly ? { jellyCleared: proof.jellyCleared } : {}) };
   return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }
 
@@ -3114,11 +3141,24 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-locked-gems', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-locked-gems', target: lockedTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, objectives: goals.objectives }, proof.score,
+  // V6 jelly occupies its own stage (never with shields, blockers, or locked gems). Jelly
+  // sits on top of gems and is consumed one layer at a time by clears over its cell.
+  // Classic only: daily, timed and endless never receive jelly.
+  const jellyStage = version >= 6 && !shieldStage && !blockerStage && !lockedGemStage && mode === 'classic' && level >= 3 && level % 4 === 1;
+  const jelly = version >= 6 ? jellyStage
+    ? witnessedJelly(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed)
+    : blankJelly(size) : null;
+  const jellyTotal = jelly ? jellyCount(jelly) : 0;
+  if (jellyStage && jellyTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-jelly', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-jelly', target: jellyTotal }] };
+  }
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, objectives: goals.objectives }, proof.score,
     { collected: proof.collected,
       ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}),
       ...(version >= 6 && blockersTotal > 0 ? { blockersCleared: blockersTotal } : {}),
-      ...(version >= 6 && lockedTotal > 0 ? { lockedCleared: lockedTotal } : {}) }).complete) throw new Error('objective_quality_failed');
+      ...(version >= 6 && lockedTotal > 0 ? { lockedCleared: lockedTotal } : {}),
+      ...(version >= 6 && jellyTotal > 0 ? { jellyCleared: jellyTotal } : {}) }).complete) throw new Error('objective_quality_failed');
   return {
     id: `v${version}-${mode}-${level}-${context.localDate}-${seed.toString(16)}`,
     generatorVersion: version,
@@ -3126,6 +3166,7 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     ...(version >= 5 ? { shields } : {}),
     ...(version >= 6 ? { blockers } : {}),
     ...(version >= 6 ? { lockedGems } : {}),
+    ...(version >= 6 ? { jelly } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -3155,14 +3196,15 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
       ...(version >= 5 ? { verifiedShields: shieldsTotal } : {}),
       ...(version >= 6 ? { verifiedBlockers: blockersTotal } : {}),
       ...(version >= 6 ? { verifiedLockedGems: lockedTotal } : {}),
+      ...(version >= 6 ? { verifiedJelly: jellyTotal } : {}),
     },
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems);
+function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
