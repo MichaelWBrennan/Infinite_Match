@@ -219,12 +219,12 @@ class PhaserMatch3Game {
             return;
         }
         const gemColors = {
-            red: 0xff4757,
-            blue: 0x3742fa,
-            green: 0x2ed573,
-            yellow: 0xffa502,
-            purple: 0x9c88ff,
-            orange: 0xff6348
+            red: 0xff6b6b,
+            blue: 0x74b9ff,
+            green: 0x00b894,
+            yellow: 0xfdcb6e,
+            purple: 0xa29bfe,
+            orange: 0xfd79a8
         };
 
         Object.keys(gemColors).forEach(color => {
@@ -244,32 +244,32 @@ class PhaserMatch3Game {
         const graphics = this.scene.add.graphics();
         
         // Power-up textures
-        graphics.fillStyle(0xff6b6b);
+        graphics.fillStyle(0xff6b6b);  // --im-danger
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_bomb', 64, 64);
-        
+
         graphics.clear();
-        graphics.fillStyle(0x4ecdc4);
+        graphics.fillStyle(0x667eea);  // --im-secondary royal periwinkle
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_rainbow', 64, 64);
-        
+
         graphics.clear();
-        graphics.fillStyle(0xffe66d);
+        graphics.fillStyle(0xfdcb6e);  // --im-tile-yellow
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_lightning', 64, 64);
 
         graphics.clear();
-        graphics.fillStyle(0x9b59b6);
+        graphics.fillStyle(0xa29bfe);  // --im-tile-purple
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_diamond', 64, 64);
 
         graphics.clear();
-        graphics.fillStyle(0xe67e22);
+        graphics.fillStyle(0xfd79a8);  // --im-tile-orange
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_target', 64, 64);
 
         graphics.clear();
-        graphics.fillStyle(0xf1c40f);
+        graphics.fillStyle(0xffd700);  // --im-gold
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_star', 64, 64);
         

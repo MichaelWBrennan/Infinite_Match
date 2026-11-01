@@ -260,7 +260,7 @@ describe('mini-game and offers routes', () => {
   test('the offers are public and priced from the catalog, with any deal', async () => {
     const res = await request(app).get('/api/live-ops/offers');
     expect(res.status).toBe(200);
-    expect(res.body.coinPacks.map((p: any) => p.productId)).toEqual(['coins_small', 'coins_medium', 'coins_large']);
+    expect(res.body.coinPacks.map((p: any) => p.productId)).toEqual(['coins_small', 'coins_medium', 'coins_large', 'coins_extra_small', 'coins_extra_large', 'coins_mega']);
     for (const pack of res.body.coinPacks) {
       expect(pack.currency).toBe('usd');
       if (pack.deal) expect(pack.priceCents).toBeLessThan(pack.catalogPriceCents);

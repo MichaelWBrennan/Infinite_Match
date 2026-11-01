@@ -8,14 +8,7 @@ export function grantPurchase({ playerId, productId, transactionId, platform, at
     transactionId: any;
     platform: any;
     atMs?: number | undefined;
-    credit?: ((playerId: any, grants: any) => Promise<{
-        success: boolean;
-        currencyId: any;
-        oldAmount: any;
-        newAmount: any;
-        operation: string;
-        source: string;
-    }>) | undefined;
+    credit?: ((playerId: any, grants: any, transactionId: any) => Promise<any>) | undefined;
     durable?: boolean | undefined;
 }): Promise<{
     granted: boolean;

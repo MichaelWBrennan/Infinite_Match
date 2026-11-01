@@ -7,7 +7,7 @@ export function reverseTransaction({ transactionIds, reason, durable, debit, }: 
     transactionIds: any;
     reason: any;
     durable?: boolean | undefined;
-    debit?: ((playerId: any, grants: any) => Promise<any>) | undefined;
+    debit?: ((playerId: any, grants: any, transactionId: any) => Promise<any>) | undefined;
 }): Promise<{
     reversed: boolean;
     reason: string;

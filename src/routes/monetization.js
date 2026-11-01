@@ -1,3 +1,20 @@
+/**
+ * Monetization Routes - revenue-generating endpoints.
+ *
+ *   POST   /api/monetization/receipt/verify   - Verify a store purchase receipt
+ *   GET    /api/monetization/ad-config        - Get ad config for the player
+ *   GET    /api/monetization/purchase-history - Player's purchase history
+ *   GET    /api/monetization/pricing          - Get localized pricing tiers
+ *   POST   /api/monetization/offers           - Get personalized offers
+ *   POST   /api/monetization/pvp/booster      - Purchase a PvP booster with coins
+ *   POST   /api/monetization/continue-level   - Continue a failed level (spend coins for extra moves)
+ *   POST   /api/monetization/skip-level       - Skip a level entirely (spend coins)
+ *   POST   /api/monetization/streak-freeze    - Purchase a streak freeze (coins or USD checkout)
+ *   POST   /api/monetization/life-refill      - Create Stripe checkout for instant life refill
+ *   POST   /api/ads/rewarded                  - Grant reward for watching a rewarded ad
+ *   GET    /api/monetization/status           - Get player's monetization status
+ */
+
 import express from 'express';
 import { body, validationResult, query } from 'express-validator';
 import security from '../core/security/index.js';
@@ -10,6 +27,7 @@ import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { grantPurchase } from '../services/payments/purchase-grants.js';
 import { productIdForSku } from '../services/payments/product-catalog.js';
 import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
+import { monetizationService } from '../services/monetization/monetization-service.js';
 
 const router = express.Router();
 const logger = new Logger('MonetizationRoutes');
@@ -233,7 +251,174 @@ router.post(
       logger.error('PvP booster purchase failed', { error: error.message });
       res.status(500).json({ success: false, error: 'booster_purchase_error' });
     }
+  },
+);
+
+/**
+ * GET /api/monetization/status
+ * Get the player's monetization status: continue availability, streak freeze, ad grants.
+ */
+router.get('/status', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const status = await monetizationService.getPlayerStatus(playerId);
+    return res.json({ success: true, ...status, requestId: req.requestId });
+  } catch (error) {
+    logger.error('Monetization status failed', { error: error.message });
+    return res.status(500).json({ success: false, error: 'status_error', requestId: req.requestId });
   }
+});
+
+/**
+ * POST /api/monetization/continue-level
+ * Spend coins to continue a failed level with +5 moves.
+ * Body: { levelNumber }
+ */
+router.post(
+  '/continue-level',
+  security.sessionValidation,
+  [body('levelNumber').isInt({ min: 1 }).withMessage('levelNumber is required')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    try {
+      const { playerId } = req.user;
+      const { levelNumber } = req.body;
+      const result = await monetizationService.continueLevel(playerId, levelNumber);
+      if (!result.success) {
+        const status = result.error === 'insufficient_coins' ? 400 : 409;
+        return res.status(status).json({ success: false, error: result.error, requestId: req.requestId });
+      }
+      return res.json({ success: true, ...result, requestId: req.requestId });
+    } catch (error) {
+      logger.error('Level continue failed', { error: error.message });
+      return res.status(500).json({ success: false, error: 'continue_failed', requestId: req.requestId });
+    }
+  },
+);
+
+/**
+ * POST /api/monetization/skip-level
+ * Spend coins to skip a level entirely. Grants a 1-star win reward.
+ * Body: { levelNumber }
+ */
+router.post(
+  '/skip-level',
+  security.sessionValidation,
+  [body('levelNumber').isInt({ min: 1 }).withMessage('levelNumber is required')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    try {
+      const { playerId } = req.user;
+      const { levelNumber } = req.body;
+      const result = await monetizationService.skipLevel(playerId, levelNumber);
+      if (!result.success) {
+        const status = result.error === 'insufficient_coins' ? 400 : 409;
+        return res.status(status).json({ success: false, error: result.error, requestId: req.requestId });
+      }
+      return res.json({ success: true, ...result, requestId: req.requestId });
+    } catch (error) {
+      logger.error('Level skip failed', { error: error.message });
+      return res.status(500).json({ success: false, error: 'skip_failed', requestId: req.requestId });
+    }
+  },
+);
+
+/**
+ * POST /api/monetization/streak-freeze
+ * Purchase a streak freeze with coins (24h). Returns a Stripe checkout if paying with USD.
+ * Body: { payWith: 'coins' | 'usd' }
+ */
+router.post(
+  '/streak-freeze',
+  security.sessionValidation,
+  [body('payWith').optional().isIn(['coins', 'usd']).withMessage("payWith must be 'coins' or 'usd'")],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    try {
+      const { playerId } = req.user;
+      const { payWith = 'coins' } = req.body;
+
+      if (payWith === 'usd') {
+        // Create a checkout for the streak freeze product
+        const result = await monetizationService.createStreakFreezeCheckout(playerId);
+        if (!result.success) {
+          return res.status(400).json({ success: false, error: result.error, requestId: req.requestId });
+        }
+        return res.json({ success: true, payWith: 'usd', ...result, requestId: req.requestId });
+      }
+
+      const result = await monetizationService.purchaseStreakFreeze(playerId, { payWith: 'coins' });
+      if (!result.success) {
+        const status = result.error === 'insufficient_coins' ? 400 : 409;
+        return res.status(status).json({ success: false, error: result.error, requestId: req.requestId });
+      }
+      return res.json({ success: true, payWith: 'coins', ...result, requestId: req.requestId });
+    } catch (error) {
+      logger.error('Streak freeze purchase failed', { error: error.message });
+      return res.status(500).json({ success: false, error: 'streak_freeze_failed', requestId: req.requestId });
+    }
+  },
+);
+
+/**
+ * POST /api/monetization/life-refill
+ * Create a Stripe checkout session for an instant life refill (5 lives).
+ */
+router.post(
+  '/life-refill',
+  security.sessionValidation,
+  async (req, res) => {
+    try {
+      const { playerId } = req.user;
+      const result = await monetizationService.createLifeRefillCheckout(playerId);
+      if (!result.success) {
+        return res.status(400).json({ success: false, error: result.error, requestId: req.requestId });
+      }
+      return res.json({ success: true, ...result, requestId: req.requestId });
+    } catch (error) {
+      logger.error('Life refill checkout failed', { error: error.message });
+      return res.status(500).json({ success: false, error: 'life_refill_failed', requestId: req.requestId });
+    }
+  },
+);
+
+/**
+ * POST /api/ads/rewarded
+ * Grant a reward for watching a rewarded ad.
+ * Body: { rewardType: 'coins' | 'lives' }
+ */
+router.post(
+  '/ads/rewarded',
+  security.sessionValidation,
+  [body('rewardType').isIn(['coins', 'lives']).withMessage("rewardType must be 'coins' or 'lives'")],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    try {
+      const { playerId } = req.user;
+      const { rewardType } = req.body;
+      const result = await monetizationService.grantAdReward(playerId, rewardType);
+      if (!result.success) {
+        const status = result.error === 'daily_ad_limit_reached' ? 409 : 400;
+        return res.status(status).json({ success: false, error: result.error, requestId: req.requestId });
+      }
+      return res.json({ success: true, ...result, requestId: req.requestId });
+    } catch (error) {
+      logger.error('Ad reward grant failed', { error: error.message });
+      return res.status(500).json({ success: false, error: 'ad_reward_failed', requestId: req.requestId });
+    }
+  },
 );
 
 export default router;

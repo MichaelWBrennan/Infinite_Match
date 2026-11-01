@@ -20,6 +20,8 @@ import { AIPersonalizationEngine } from '../ai-personalization-engine.js';
 
 const logger = new Logger('AdaptiveLevelService');
 
+const ALL_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+
 /**
  * Player skill profile tracked for adaptive difficulty.
  */
@@ -63,15 +65,81 @@ class PlayerSkillProfile {
 }
 
 /**
+ * Cache entry for a generated level.
+ */
+class CacheEntry {
+  constructor(level, mode, definition, generatedAt) {
+    this.level = level;
+    this.mode = mode;
+    this.definition = definition;
+    this.generatedAt = generatedAt;
+    this.accessCount = 0;
+    this.lastAccessed = generatedAt;
+  }
+}
+
+/**
  * AdaptiveLevelService - generates AI-tuned levels per player.
+ * Uses a composite cache key (playerId:level:mode) with LRU eviction
+ * and bounded profile storage.
  */
 export class AdaptiveLevelService {
   constructor(personalizationEngine = null) {
     this.logger = new Logger('AdaptiveLevelService');
     this.personalizationEngine = personalizationEngine || new AIPersonalizationEngine();
     this.playerProfiles = new Map(); // playerId -> PlayerSkillProfile
-    this.difficultyCache = new Map(); // playerId -> { level, definition, generatedAt }
+    this.difficultyCache = new Map(); // cacheKey -> CacheEntry
     this.cacheTtlMs = 5 * 60 * 1000; // 5 minutes
+    this.maxCacheSize = 500; // max cached level definitions
+    this.maxProfiles = 10000; // max player profiles in memory
+    this.profileAccessOrder = []; // LRU tracking for profiles
+  }
+
+  /**
+   * Build a composite cache key to avoid cross-level/mode collisions.
+   */
+  _cacheKey(playerId, levelNumber, mode) {
+    return `${playerId}:${levelNumber}:${mode}`;
+  }
+
+  /**
+   * Evict expired cache entries and enforce max size (LRU).
+   */
+  _evictCache() {
+    const now = Date.now();
+    // Remove expired entries
+    for (const [key, entry] of this.difficultyCache) {
+      if (now - entry.generatedAt > this.cacheTtlMs) {
+        this.difficultyCache.delete(key);
+      }
+    }
+    // Enforce max size - evict least recently accessed
+    while (this.difficultyCache.size > this.maxCacheSize) {
+      let lruKey = null;
+      let lruAccess = Infinity;
+      for (const [key, entry] of this.difficultyCache) {
+        if (entry.lastAccessed < lruAccess) {
+          lruAccess = entry.lastAccessed;
+          lruKey = key;
+        }
+      }
+      if (lruKey) this.difficultyCache.delete(lruKey);
+    }
+  }
+
+  /**
+   * Evict stale player profiles to prevent memory leaks.
+   */
+  _evictProfiles() {
+    if (this.playerProfiles.size <= this.maxProfiles) return;
+    // Sort by lastUpdated, remove oldest 10%
+    const toRemove = Math.floor(this.maxProfiles * 0.1);
+    const sorted = Array.from(this.playerProfiles.entries())
+      .sort((a, b) => a[1].lastUpdated - b[1].lastUpdated)
+      .slice(0, toRemove);
+    for (const [playerId] of sorted) {
+      this.playerProfiles.delete(playerId);
+    }
   }
 
   /**
@@ -83,6 +151,7 @@ export class AdaptiveLevelService {
     if (!profile) {
       profile = new PlayerSkillProfile(playerId);
       this.playerProfiles.set(playerId, profile);
+      this.profileAccessOrder.push(playerId);
     }
 
     profile.gamesPlayed++;
@@ -96,8 +165,18 @@ export class AdaptiveLevelService {
     if (boosterUsed) profile.boosterUses++;
     profile.lastUpdated = Date.now();
 
-    // Invalidate difficulty cache so next level is regenerated with new skill
-    this.difficultyCache.delete(playerId);
+    // Invalidate all cached levels for this player (skill changed)
+    const prefix = `${playerId}:`;
+    for (const key of this.difficultyCache.keys()) {
+      if (key.startsWith(prefix)) {
+        this.difficultyCache.delete(key);
+      }
+    }
+
+    // Periodic profile cleanup
+    if (this.playerProfiles.size > this.maxProfiles) {
+      this._evictProfiles();
+    }
 
     logger.debug('Recorded attempt for adaptive difficulty', {
       playerId, won, stars, moves, skillScore: profile.skillScore.toFixed(2),
@@ -110,6 +189,10 @@ export class AdaptiveLevelService {
   getSkillProfile(playerId) {
     if (!this.playerProfiles.has(playerId)) {
       this.playerProfiles.set(playerId, new PlayerSkillProfile(playerId));
+      this.profileAccessOrder.push(playerId);
+      if (this.playerProfiles.size > this.maxProfiles) {
+        this._evictProfiles();
+      }
     }
     return this.playerProfiles.get(playerId);
   }
@@ -124,10 +207,12 @@ export class AdaptiveLevelService {
    * mode - 'classic' | 'daily' | 'timed' | 'endless'
    */
   async generateAdaptiveLevel(playerId, { levelNumber = 1, mode = 'classic', context = null, nowMs = Date.now() } = {}) {
-    // Check cache
-    const cached = this.difficultyCache.get(playerId);
-    if (cached && cached.level === levelNumber && cached.mode === mode
-      && nowMs - cached.generatedAt < this.cacheTtlMs) {
+    // Check cache with composite key
+    const cacheKey = this._cacheKey(playerId, levelNumber, mode);
+    const cached = this.difficultyCache.get(cacheKey);
+    if (cached && nowMs - cached.generatedAt < this.cacheTtlMs) {
+      cached.accessCount++;
+      cached.lastAccessed = nowMs;
       return { ...cached.definition, fromCache: true };
     }
 
@@ -182,13 +267,9 @@ export class AdaptiveLevelService {
       fromCache: false,
     };
 
-    // Cache for this player/level
-    this.difficultyCache.set(playerId, {
-      level: levelNumber,
-      mode,
-      definition: result,
-      generatedAt: nowMs,
-    });
+    // Cache for this player/level/mode
+    this.difficultyCache.set(cacheKey, new CacheEntry(levelNumber, mode, result, nowMs));
+    this._evictCache();
 
     logger.info('Generated adaptive level', {
       playerId, level: levelNumber, mode, skillScore: skillScore.toFixed(2),
@@ -219,8 +300,7 @@ export class AdaptiveLevelService {
     const maxColors = definition.gemTypes.length;
     if (colorAdjustment > 0 && maxColors < 6) {
       // Add a color to the palette
-      const allColors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
-      const missing = allColors.filter((c) => !definition.gemTypes.includes(c));
+      const missing = ALL_COLORS.filter((c) => !definition.gemTypes.includes(c));
       if (missing.length > 0) {
         tuned.gemTypes = [...definition.gemTypes, missing[0]];
         tuned.gemWeights = { ...definition.gemWeights, [missing[0]]: 0.8 };
@@ -260,6 +340,13 @@ export class AdaptiveLevelService {
     if (skillScore >= 0.4) return 'steady';
     if (skillScore >= 0.2) return 'gentle';
     return 'beginner';
+  }
+
+  /**
+   * Clear all cached data (useful for testing or memory pressure).
+   */
+  clearCache() {
+    this.difficultyCache.clear();
   }
 }
 

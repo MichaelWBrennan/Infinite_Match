@@ -2,8 +2,10 @@ import express from 'express';
 import security from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import AdEventDb from '../services/ads/AdEventDb.js';
+import AdConfigService from '../services/ad/AdConfigService.js';
 const router = express.Router();
 const logger = new Logger('AdsRoutes');
+const adConfigService = new AdConfigService();
 // Only known values are stored, so the metrics cannot be polluted with arbitrary strings.
 const ALLOWED_EVENTS = new Set(['request', 'impression', 'click', 'completed', 'closed', 'failed']);
 const ALLOWED_FORMATS = new Set(['rewarded', 'interstitial', 'banner']);
@@ -47,6 +49,22 @@ router.get('/metrics', security.sessionValidation, async (req, res) => {
     catch (error) {
         logger.error('ad metrics error', { error: error.message });
         res.status(500).json({ success: false });
+    }
+});
+// Ad mediation config for the client: frequency caps, intervals, waterfall order.
+// The client must never decide ad frequency or revenue on its own.
+router.get('/config', security.sessionValidation, async (req, res) => {
+    try {
+        const profile = {
+            country: req.query.country || undefined,
+            region: req.query.region || undefined,
+        };
+        const adConfig = await adConfigService.getAdConfigForPlayer(profile);
+        res.json({ success: true, config: adConfig });
+    }
+    catch (error) {
+        logger.error('ad config error', { error: error.message });
+        res.status(500).json({ success: false, error: 'ad_config_error' });
     }
 });
 export default router;

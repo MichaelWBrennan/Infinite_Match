@@ -6,7 +6,9 @@ export function isDurableEconomy(): boolean;
 export function assertEconomyStoreForEnvironment(env?: NodeJS.ProcessEnv): void;
 export namespace PlayerEconomyDb {
     function load(playerId: any): Promise<any>;
-    function save(playerId: any, economy: any): Promise<void>;
+    function insertIfAbsent(playerId: any, economy: any): Promise<boolean>;
+    function save(playerId: any, economy: any): Promise<boolean>;
+    function saveIfPending(playerId: any, attemptId: any, economy: any): Promise<boolean>;
 }
 export default PlayerEconomyDb;
 //# sourceMappingURL=PlayerEconomyDb.d.ts.map

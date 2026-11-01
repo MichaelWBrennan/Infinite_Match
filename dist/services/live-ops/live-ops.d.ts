@@ -1,13 +1,16 @@
 export function liveOpsConfigPath(): string;
 /** Checks a raw config. Returns { errors, config } where config is normalised when valid. */
 export function validateLiveOps(raw: any): {
-    errors: any[];
+    errors: string[];
     config: null;
 } | {
-    errors: any[];
+    errors: string[];
     config: {
         events: any[];
         deals: any[];
+        scoreChallenges: any[];
+        weeklyEvents: any[];
+        weeklyEventArchive: any[];
     };
 };
 /** Loads the config once per process. Restart the server to pick up changes. */

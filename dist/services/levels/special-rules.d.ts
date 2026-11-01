@@ -1,5 +1,6 @@
 /**
- * @typedef {{ board: string[][], specials: (string|null)[][] }} PresentationGrid
+ * @typedef {{ board: string[][], specials: (string|null)[][], shields?: number[][] }} PresentationGrid
+ * Shield snapshots are attached by the v5 wrapper only; v3/v4 traces stay unchanged.
  * @typedef {{ initial: PresentationGrid, cells: number[]|null, frames: Array<{before: PresentationGrid, after: PresentationGrid}> }} PresentationTrace
  */
 export function blankSpecials(size: any): any[][];
@@ -94,9 +95,13 @@ export function certifySpecialBoard(board: any, refillState: any, palette: any, 
 };
 export const SPECIAL_TYPES: readonly string[];
 export const PRESENTATION_FRAME_LIMIT: 3;
+/**
+ * Shield snapshots are attached by the v5 wrapper only; v3/v4 traces stay unchanged.
+ */
 export type PresentationGrid = {
     board: string[][];
     specials: (string | null)[][];
+    shields?: number[][];
 };
 export type PresentationTrace = {
     initial: PresentationGrid;

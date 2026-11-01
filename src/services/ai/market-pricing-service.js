@@ -1,9 +1,7 @@
 /**
  * Market Pricing Service - market-responsive pricing via competitor monitoring.
- *
- * Uses the Market Research Engine to track competitor prices, promotions,
- * and events across 10+ match-3 games. Adjusts our prices and offer timing
- * to stay competitive without a race to the bottom.
+ * Tracks competitor prices and promotions; adjusts our pricing to stay
+ * competitive without a race to the bottom.
  */
 
 import { Logger } from '../../core/logger/index.js';
@@ -11,8 +9,12 @@ import { MarketResearchEngine } from '../market-research-engine.js';
 
 const logger = new Logger('MarketPricingService');
 
-const DEFAULT_MARKUP = 1.0; // no markup by default
+const DEFAULT_MARKUP = 1.0;
 const COMPETITIVE_WINDOW_HOURS = 24;
+
+const MAX_COMPETITORS = 50;
+const MARKET_DATA_TTL_MS = 6 * 60 * 60 * 1000;
+const PRICE_CACHE_TTL_MS = 30 * 60 * 1000;
 
 /**
  * MarketPricingService - adjusts pricing based on real-time market data.
@@ -21,10 +23,43 @@ export class MarketPricingService {
   constructor(marketResearchEngine = null) {
     this.logger = new Logger('MarketPricingService');
     this.marketResearch = marketResearchEngine || new MarketResearchEngine();
-    this.marketData = new Map(); // competitorId -> { prices, promotions, events }
-    this.priceAdjustments = new Map(); // offerId -> { adjustedPriceCents, reason, generatedAt }
+    this.marketData = new Map();
+    this.priceAdjustments = new Map();
+    this.priceCache = new Map();
     this.lastRefreshMs = 0;
-    this.refreshIntervalMs = 6 * 60 * 60 * 1000; // 6 hours
+    this.refreshIntervalMs = 6 * 60 * 60 * 1000;
+    this.maxCompetitors = MAX_COMPETITORS;
+    this.marketDataTtlMs = MARKET_DATA_TTL_MS;
+  }
+
+  /**
+   * Evict expired market data entries and enforce max competitor count.
+   */
+  _evictData({ nowMs = Date.now() } = {}) {
+    // Remove expired competitor data
+    for (const [compId, data] of this.marketData) {
+      if (nowMs - data.lastSeenMs > this.marketDataTtlMs) {
+        this.marketData.delete(compId);
+      }
+    }
+    // Enforce max competitors - remove oldest
+    while (this.marketData.size > this.maxCompetitors) {
+      let oldestKey = null;
+      let oldestTime = Infinity;
+      for (const [key, data] of this.marketData) {
+        if (data.lastSeenMs < oldestTime) {
+          oldestTime = data.lastSeenMs;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) this.marketData.delete(oldestKey);
+    }
+    // Evict expired price cache entries
+    for (const [key, { generatedAt }] of this.priceCache) {
+      if (nowMs - generatedAt > PRICE_CACHE_TTL_MS) {
+        this.priceCache.delete(key);
+      }
+    }
   }
 
   /**
@@ -34,6 +69,8 @@ export class MarketPricingService {
     if (nowMs - this.lastRefreshMs < this.refreshIntervalMs && this.marketData.size > 0) {
       return { refreshed: false, competitors: this.marketData.size };
     }
+
+    this._evictData({ nowMs });
 
     let competitors = [];
     try {
@@ -58,18 +95,28 @@ export class MarketPricingService {
   /**
    * Get market-adjusted price for an offer type.
    * Compares our price against competitors and suggests an adjustment.
+   * Uses cached result when available.
    */
   async getAdjustedPrice(offerType, ourBasePriceCents, { nowMs = Date.now() } = {}) {
     await this.refreshMarketData({ nowMs });
 
+    // Check price cache
+    const priceCacheKey = `${offerType}:${ourBasePriceCents}`;
+    const cached = this.priceCache.get(priceCacheKey);
+    if (cached && nowMs - cached.generatedAt < PRICE_CACHE_TTL_MS) {
+      return cached.result;
+    }
+
     const competitorPrices = this.gatherCompetitorPrices(offerType);
     if (competitorPrices.length === 0) {
-      return {
+      const result = {
         adjustedPriceCents: ourBasePriceCents,
         adjustmentPercent: 0,
         reason: 'no_market_data',
         competitorCount: 0,
       };
+      this.priceCache.set(priceCacheKey, { result, generatedAt: nowMs });
+      return result;
     }
 
     const avgCompetitorPrice = competitorPrices.reduce((sum, p) => sum + p.priceCents, 0) / competitorPrices.length;
@@ -107,7 +154,9 @@ export class MarketPricingService {
       generatedAt: nowMs,
     };
 
+    this.priceCache.set(priceCacheKey, { result, generatedAt: nowMs });
     this.priceAdjustments.set(offerType, result);
+
     return result;
   }
 
@@ -199,6 +248,16 @@ export class MarketPricingService {
       lastRefreshMs: this.lastRefreshMs,
       priceAdjustments: Array.from(this.priceAdjustments.entries()).map(([k, v]) => ({ offerType: k, ...v })),
     };
+  }
+
+  /**
+   * Clear all caches (testing / memory pressure).
+   */
+  clearCache() {
+    this.marketData.clear();
+    this.priceCache.clear();
+    this.priceAdjustments.clear();
+    this.lastRefreshMs = 0;
   }
 }
 

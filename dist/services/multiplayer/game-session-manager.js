@@ -53,7 +53,7 @@ class GameSessionManager {
                 gameType,
                 players: new Set(players),
                 spectators: new Set(),
-                status: 'starting', // starting, active, paused, finished
+                status: 'active', // active, paused, finished
                 createdAt: now,
                 lastActivity: now,
                 currentTurn: players[0], // First player starts

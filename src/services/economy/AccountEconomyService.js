@@ -719,7 +719,16 @@ class AccountEconomyService {
    */
   async creditPurchaseOnce(playerId, transactionId, grants) {
     const key = paymentKey(transactionId);
-    if (grants?.currency !== 'coins' || !Number.isSafeInteger(grants.amount) || grants.amount <= 0) {
+    if (!grants || !Number.isSafeInteger(grants.amount) || grants.amount <= 0) {
+      throw new EconomyRuleError('invalid_purchase_grant');
+    }
+    const validCurrencies = ['coins', 'lives', 'stars'];
+    // streak_freeze is not a currency; it's granted via the monetization service.
+    if (grants.currency === 'streak_freeze') {
+      const { monetizationService } = await import('../services/monetization/monetization-service.js');
+      return monetizationService.grantStreakFreezeViaPurchase(playerId, { nowMs: Date.now() });
+    }
+    if (!validCurrencies.includes(grants.currency)) {
       throw new EconomyRuleError('invalid_purchase_grant');
     }
     return this.withPlayerLock(playerId, async () => {
@@ -730,14 +739,18 @@ class AccountEconomyService {
           if (receipt.currency !== grants.currency || receipt.amount !== grants.amount) {
             throw new EconomyRuleError('purchase_receipt_mismatch');
           }
-          return { duplicate: true, balance: original.currencies.coins.amount };
+          return { duplicate: true, balance: original.currencies[grants.currency]?.amount || 0 };
         }
         if (Object.keys(original.purchaseCredits || {}).length >= MAX_PAYMENT_RECEIPTS) {
           throw new EconomyRuleError('purchase_receipt_limit');
         }
         const economy = structuredClone(original);
-        const wallet = economy.currencies.coins;
-        const credited = Math.max(0, Math.min(grants.amount, wallet.maxAmount - wallet.amount));
+        const wallet = economy.currencies[grants.currency];
+        if (!wallet) {
+          throw new EconomyRuleError('unknown_currency');
+        }
+        const max = wallet.maxAmount ?? Number.MAX_SAFE_INTEGER;
+        const credited = Math.max(0, Math.min(grants.amount, max - wallet.amount));
         wallet.amount += credited;
         wallet.earned += credited;
         economy.purchaseCredits = { ...(economy.purchaseCredits || {}),
@@ -745,7 +758,7 @@ class AccountEconomyService {
         economy.lastUpdated = new Date().toISOString();
         try {
           await this.updatePlayerEconomyCache(playerId, economy);
-          return { duplicate: false, balance: economy.currencies.coins.amount };
+          return { duplicate: false, balance: economy.currencies[grants.currency].amount };
         } catch (error) {
           if (error.code !== 'economy_conflict' || attempt === 2) throw error;
           // Another writer won. Reload and re-evaluate the receipt, never reapply blindly.
@@ -753,6 +766,15 @@ class AccountEconomyService {
       }
       throw new EconomyRuleError('economy_conflict');
     });
+  }
+
+  /**
+   * Grant a streak freeze after a successful Stripe purchase.
+   * Called from the webhook handler for the streak_freeze product.
+   */
+  async grantStreakFreeze(playerId, { nowMs = Date.now() } = {}) {
+    const { monetizationService } = await import('../services/monetization/monetization-service.js');
+    return monetizationService.grantStreakFreezeViaPurchase(playerId, { nowMs });
   }
 
   /** Bypass per-process caches when reconciling a held provider claim. No state is changed. */
@@ -1520,8 +1542,23 @@ class AccountEconomyService {
       const now = new Date();
       const lastClaimed = dailyRewards.lastClaimed ? new Date(dailyRewards.lastClaimed) : null;
       if (lastClaimed && this.isSameDay(now, lastClaimed)) throw new Error('Daily reward already claimed today');
-      if (lastClaimed && this.getDaysDifference(now, lastClaimed) > 1) dailyRewards.streak = 0;
-      dailyRewards.streak++;
+      if (lastClaimed && this.getDaysDifference(now, lastClaimed) > 1) {
+        // Check if the player has an active streak freeze before resetting.
+        // Dynamic import avoids a circular dependency with monetization-service.
+        const { monetizationService } = await import('../services/monetization/monetization-service.js');
+        const freezeActive = monetizationService.hasActiveStreakFreeze(playerId, {
+          nowMs: now.getTime(),
+        });
+        if (freezeActive) {
+          monetizationService.consumeStreakFreeze(playerId, { nowMs: now.getTime() });
+          // Streak preserved: don't reset, just don't increment for the missed day
+        } else {
+          dailyRewards.streak = 0;
+        }
+      }
+      if (!lastClaimed || this.getDaysDifference(now, lastClaimed) > 0) {
+        dailyRewards.streak++;
+      }
       dailyRewards.lastClaimed = now.toISOString();
       const rewardIndex = Math.min(dailyRewards.streak - 1, dailyRewards.rewards.length - 1);
       let reward = dailyRewards.rewards[rewardIndex];

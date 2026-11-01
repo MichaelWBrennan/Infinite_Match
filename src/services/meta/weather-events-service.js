@@ -1,16 +1,7 @@
 /**
- * Weather & Context Events Service - real-world weather-linked gameplay.
- *
- * Ties real-world weather (from MET Norway / Open-Meteo via weather-context.js),
- * time of day, and holidays (from location-context.js) to in-game events and
- * modifiers. Examples:
- *   - Rainy day: double coin rewards
- *   - Snowstorm: free life refill
- *   - Storm: bonus booster drops
- *   - Clear night: star rush event
- *   - Holiday: themed event + bonus prizes
- *
- * All weather data is server-fetched and cached; clients cannot spoof weather.
+ * Weather & Context Events Service - ties real-world weather, time of day,
+ * and holidays to in-game modifiers. All weather data is server-fetched and
+ * cached; clients cannot spoof weather.
  */
 
 import { Logger } from '../../core/logger/index.js';
@@ -45,6 +36,11 @@ const HOLIDAY_EFFECTS = {
   thanksgiving: { name: 'Thanksgiving Feast', coinMultiplier: 1.5, lifeBonus: 2, boosterDropRate: 1.5, description: 'Give thanks with bonus rewards.' },
 };
 
+const MAX_WEATHER_CACHE_SIZE = 500;
+const WEATHER_CACHE_TTL_MS = 30 * 60 * 1000;
+const CONTEXT_CACHE_TTL_MS = 15 * 60 * 1000;
+const MODIFIER_CACHE_TTL_MS = 15 * 60 * 1000;
+
 /**
  * WeatherEventsService - computes active weather/context gameplay modifiers.
  */
@@ -52,7 +48,47 @@ export class WeatherEventsService {
   constructor() {
     this.logger = new Logger('WeatherEventsService');
     this.weatherCache = new Map(); // lat/lon -> { weather, fetchedAt }
-    this.cacheTtlMs = 30 * 60 * 1000; // 30 minutes
+    this.contextCache = new Map(); // locationKey -> { context, fetchedAt }
+    this.modifierCache = new Map(); // modifierKey -> { modifiers, generatedAt }
+    this.cacheTtlMs = WEATHER_CACHE_TTL_MS;
+    this.maxCacheSize = MAX_WEATHER_CACHE_SIZE;
+  }
+
+  _evictCaches({ nowMs = Date.now() } = {}) {
+    for (const [key, { fetchedAt }] of this.weatherCache) {
+      if (nowMs - fetchedAt > this.cacheTtlMs) this.weatherCache.delete(key);
+    }
+    while (this.weatherCache.size > this.maxCacheSize) {
+      let oldestKey = null;
+      let oldestTime = Infinity;
+      for (const [key, { fetchedAt }] of this.weatherCache) {
+        if (fetchedAt < oldestTime) {
+          oldestTime = fetchedAt;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) this.weatherCache.delete(oldestKey);
+    }
+    for (const [key, { fetchedAt }] of this.contextCache) {
+      if (nowMs - fetchedAt > CONTEXT_CACHE_TTL_MS) this.contextCache.delete(key);
+    }
+    for (const [key, { generatedAt }] of this.modifierCache) {
+      if (nowMs - generatedAt > MODIFIER_CACHE_TTL_MS) this.modifierCache.delete(key);
+    }
+  }
+
+  /**
+   * Build a cache key for location context.
+   */
+  _contextKey(timezone, country) {
+    return `${timezone}:${country}`;
+  }
+
+  /**
+   * Build a cache key for combined modifiers.
+   */
+  _modifierKey(playerId, lat, lon, timezone, country) {
+    return `${playerId}:${lat}:${lon}:${timezone}:${country}`;
   }
 
   /**
@@ -61,12 +97,26 @@ export class WeatherEventsService {
    * nowMs - reference time (default: now)
    */
   async getActiveModifiers(playerContext = {}, { nowMs = Date.now() } = {}) {
+    this._evictCaches({ nowMs });
+
     const { lat, lon, timezone = 'UTC', country = 'US', playerId } = playerContext;
 
-    // Build full local context (timeOfDay, season, holidays, civil date)
-    const context = localLevelContext({ timezone, country, holidayThemes: true, timeOfDayEnabled: true }, nowMs);
+    const modifierKey = this._modifierKey(playerId, lat, lon, timezone, country);
+    const cachedModifier = this.modifierCache.get(modifierKey);
+    if (cachedModifier && nowMs - cachedModifier.generatedAt < MODIFIER_CACHE_TTL_MS) {
+      return { ...cachedModifier.modifiers, fromCache: true };
+    }
 
-    // Fetch current weather (cached)
+    const contextKey = this._contextKey(timezone, country);
+    let context = null;
+    const cachedContext = this.contextCache.get(contextKey);
+    if (cachedContext && nowMs - cachedContext.fetchedAt < CONTEXT_CACHE_TTL_MS) {
+      context = cachedContext.context;
+    } else {
+      context = localLevelContext({ timezone, country, holidayThemes: true, timeOfDayEnabled: true }, nowMs);
+      this.contextCache.set(contextKey, { context, fetchedAt: nowMs });
+    }
+
     let weather = null;
     if (lat !== undefined && lon !== undefined) {
       weather = await this.getWeather({ lat, lon, timezone }, nowMs);
@@ -76,16 +126,13 @@ export class WeatherEventsService {
     const season = context.season || 'spring';
     const holidays = context.holidays || [];
 
-    // Build combined modifier
     const weatherEffect = weather ? WEATHER_EFFECTS[weather.condition] || WEATHER_EFFECTS.clear : WEATHER_EFFECTS.clear;
     const timeEffect = TIME_OF_DAY_EFFECTS[timeOfDay] || TIME_OF_DAY_EFFECTS.afternoon;
 
-    // Holiday effect: use the first active holiday
     const activeHoliday = holidays.length > 0 ? holidays[0] : null;
     const holidayKey = activeHoliday ? activeHoliday.name.toLowerCase() : null;
     const holidayEffect = HOLIDAY_EFFECTS[holidayKey] || null;
 
-    // Combine multipliers (weather * time * holiday, capped)
     const coinMultiplier = Math.min(5, weatherEffect.coinMultiplier * timeEffect.coinMultiplier * (holidayEffect ? holidayEffect.coinMultiplier : 1));
     const lifeBonus = weatherEffect.lifeBonus + (holidayEffect ? holidayEffect.lifeBonus : 0);
     const boosterDropRate = Math.min(5, weatherEffect.boosterDropRate * timeEffect.boosterDropRate * (holidayEffect ? holidayEffect.boosterDropRate : 1));
@@ -132,7 +179,11 @@ export class WeatherEventsService {
       activeEvents,
       computedAt: nowMs,
       expiresAt: nowMs + 15 * 60 * 1000, // 15 minute cache
+      fromCache: false,
     };
+
+    // Cache the modifiers
+    this.modifierCache.set(modifierKey, { modifiers, generatedAt: nowMs });
 
     logger.debug('Computed weather/context modifiers', {
       playerId, weather: weather?.condition, timeOfDay, season, holiday: activeHoliday?.name,
@@ -180,10 +231,20 @@ export class WeatherEventsService {
 
   /**
    * Check if a specific weather condition is active for a location.
+   * Uses modifier cache when possible.
    */
   async isWeatherActive(playerContext, condition, { nowMs = Date.now() } = {}) {
     const modifiers = await this.getActiveModifiers(playerContext, { nowMs });
     return modifiers.weather?.condition === condition;
+  }
+
+  /**
+   * Clear all caches (testing / memory pressure).
+   */
+  clearCache() {
+    this.weatherCache.clear();
+    this.contextCache.clear();
+    this.modifierCache.clear();
   }
 }
 

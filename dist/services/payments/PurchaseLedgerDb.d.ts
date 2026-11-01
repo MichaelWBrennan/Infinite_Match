@@ -1,3 +1,5 @@
+/** Merge two bounded, disjoint index walks by claim age; never mutate caller rows. */
+export function mergeStaleClaims(fulfillments: any, reversals: any, limit: any): any[];
 export namespace PurchaseLedgerDb {
     /**
      * Stores one purchase, keyed on transactionId. Resolves { inserted } and throws on
@@ -12,7 +14,7 @@ export namespace PurchaseLedgerDb {
     function claimFulfillment(transactionId: any): Promise<boolean>;
     /** Gives back a claim after a failed credit, so a retry can take it again. */
     function releaseFulfillment(transactionId: any): Promise<void>;
-    function markFulfilled(transactionId: any): Promise<void>;
+    function markFulfilled(transactionId: any): Promise<boolean>;
     /**
      * Reverses a consumable that was never credited. Atomic with the grant's claim: whichever of
      * the two runs first wins, and the other one refuses. Resolves true only for the reversal.
@@ -25,8 +27,12 @@ export namespace PurchaseLedgerDb {
     function markReversed(transactionId: any, { shortfall, reason }?: {
         shortfall?: number | undefined;
         reason?: string | undefined;
-    }): Promise<void>;
+    }): Promise<boolean>;
     function findPurchaseByTransaction(transactionId: any): Promise<any>;
+    /** Bounded, read-only sample for operator triage. Never time out or clear a claim.
+     * The extra row lets the caller know its report is incomplete; each result set is capped.
+     */
+    function listStaleClaims(before: any, limit?: number): Promise<any[]>;
     function recordRefund(doc: any): Promise<void>;
     function recordSubscriptionEvent(doc: any): Promise<void>;
     function revenueSince(days?: number): Promise<{

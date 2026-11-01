@@ -6,10 +6,14 @@
  *   'entitlement' - a one-time unlock recorded in the purchase ledger.
  *   'consumable'  - adds `grants.amount` of `grants.currency` to the player's account, once per purchase.
  *
- * `skus` are the store product IDs created in App Store Connect and Google Play
- * Console. They default to the catalog ID; change them here if the store IDs differ.
+ * `skus` are the store product IDs. Web purchases go through Stripe Checkout and use
+ * the catalog product ID directly; ios/android SKUs are created in App Store Connect
+ * and Google Play Console. They default to the catalog ID; change them here if the
+ * store IDs differ.
+ *
+ * Product is web-first: `web` is a first-class platform alongside ios/android.
  */
-const sku = (id) => Object.freeze({ ios: id, android: id });
+const sku = (id) => Object.freeze({ web: id, ios: id, android: id });
 export const PRODUCTS = Object.freeze({
     remove_ads: Object.freeze({
         kind: 'entitlement',
@@ -49,6 +53,101 @@ export const PRODUCTS = Object.freeze({
         grants: Object.freeze({ currency: 'coins', amount: 8000 }),
         skus: sku('coins_large'),
     }),
+    coins_extra_small: Object.freeze({
+        kind: 'consumable',
+        priceCents: 199,
+        currency: 'usd',
+        label: '1,200 coins',
+        grants: Object.freeze({ currency: 'coins', amount: 1200 }),
+        skus: sku('coins_extra_small'),
+    }),
+    coins_extra_large: Object.freeze({
+        kind: 'consumable',
+        priceCents: 1999,
+        currency: 'usd',
+        label: '20,000 coins',
+        grants: Object.freeze({ currency: 'coins', amount: 20000 }),
+        skus: sku('coins_extra_large'),
+    }),
+    coins_mega: Object.freeze({
+        kind: 'consumable',
+        priceCents: 4999,
+        currency: 'usd',
+        label: '55,000 coins',
+        grants: Object.freeze({ currency: 'coins', amount: 55000 }),
+        skus: sku('coins_mega'),
+    }),
+    lives_refill: Object.freeze({
+        kind: 'consumable',
+        priceCents: 199,
+        currency: 'usd',
+        label: 'Instant Life Refill (5 lives)',
+        grants: Object.freeze({ currency: 'lives', amount: 5 }),
+        skus: sku('lives_refill'),
+    }),
+    streak_freeze: Object.freeze({
+        kind: 'consumable',
+        priceCents: 99,
+        currency: 'usd',
+        label: 'Streak Freeze (24 hours)',
+        grants: Object.freeze({ currency: 'streak_freeze', amount: 1 }),
+        skus: sku('streak_freeze'),
+    }),
+    vip: Object.freeze({
+        kind: 'entitlement',
+        priceCents: 499,
+        currency: 'usd',
+        label: 'VIP Month',
+        skus: sku('vip'),
+    }),
+    season_pass_premium: Object.freeze({
+        kind: 'entitlement',
+        priceCents: 999,
+        currency: 'usd',
+        label: 'Season Pass Premium',
+        skus: sku('season_pass_premium'),
+    }),
+    // ----- PvP / Tournament products -----
+    tournament_entry_100: Object.freeze({
+        kind: 'consumable',
+        priceCents: 99,
+        currency: 'usd',
+        label: 'Tournament Entry (100 coins)',
+        grants: Object.freeze({ currency: 'coins', amount: 100 }),
+        skus: sku('tournament_entry_100'),
+        // Purchased with coins in-game via tournament join, not sold for USD in the shop
+        tournamentEntry: true,
+    }),
+    pvp_booster_extra_moves: Object.freeze({
+        kind: 'consumable',
+        priceCents: 49,
+        currency: 'usd',
+        label: 'PvP Booster: Extra Moves (+3)',
+        grants: Object.freeze({ currency: 'coins', amount: 0 }),
+        skus: sku('pvp_booster_extra_moves'),
+        // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
+        pvpBooster: true,
+    }),
+    pvp_booster_color_bomb: Object.freeze({
+        kind: 'consumable',
+        priceCents: 79,
+        currency: 'usd',
+        label: 'PvP Booster: Color Bomb',
+        grants: Object.freeze({ currency: 'coins', amount: 0 }),
+        skus: sku('pvp_booster_color_bomb'),
+        // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
+        pvpBooster: true,
+    }),
+    pvp_booster_extra_time: Object.freeze({
+        kind: 'consumable',
+        priceCents: 59,
+        currency: 'usd',
+        label: 'PvP Booster: Extra Time (+30s)',
+        grants: Object.freeze({ currency: 'coins', amount: 0 }),
+        skus: sku('pvp_booster_extra_time'),
+        // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
+        pvpBooster: true,
+    }),
 });
 export function productFor(productId) {
     if (typeof productId !== 'string')
@@ -57,7 +156,7 @@ export function productFor(productId) {
 }
 /** Maps a store product ID (per platform) back to a catalog product ID, or null. */
 export function productIdForSku(platform, sku) {
-    if (platform !== 'ios' && platform !== 'android')
+    if (platform !== 'web' && platform !== 'ios' && platform !== 'android')
         return null;
     if (typeof sku !== 'string' || sku === '')
         return null;

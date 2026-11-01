@@ -71,11 +71,14 @@ export function planTuning(records: any, { levels, tuned }?: {
  * Reads the results and plans a tuning step. With `apply`, saves the new levels. Runs are
  * serialized, so two requests cannot both apply the same batch.
  */
-export function runTuning({ store, file, apply, now }: {
+export function runTuning({ store, file, apply, now, approvedLevel, expectedUpdatedAt, expectedFrom }: {
     store: any;
     file: any;
     apply?: boolean | undefined;
     now?: number | undefined;
+    approvedLevel?: null | undefined;
+    expectedUpdatedAt?: undefined;
+    expectedFrom?: undefined;
 }): Promise<{
     applied: boolean;
     summary: {
