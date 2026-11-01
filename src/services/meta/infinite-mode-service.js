@@ -1,19 +1,7 @@
 /**
- * Infinite Mode Service - makes "Infinite Match" live up to its name.
- *
- * Core systems:
- * 1. Endless Level Progression - Levels scale forever (no cap), difficulty
- *    escalates with each level. Uses the existing deterministic generator
- *    in 'endless' mode (Number.MAX_SAFE_INTEGER moves, no clock).
- * 2. Paragon/Prestige System - Infinite XP, paragon levels that never cap,
- *    prestige tiers with permanent bonuses.
- * 3. Perpetual Live Events - AI-generated events that rotate forever,
- *    never repeating, integrated with the EventGeneratorService.
- * 4. Infinite Streaks - Win streaks with escalating rewards that never cap.
- * 5. Endless Leaderboard - Global endless runs leaderboard.
- *
- * All progression is server-authoritative. The client reports a run score;
- * the server verifies it via attempt replay before accepting it.
+ * Infinite Mode Service - endless levels, paragon/prestige, perpetual events.
+ * All progression is server-authoritative; run scores are verified via
+ * attempt replay before being accepted.
  */
 
 import { Logger } from '../../core/logger/index.js';
@@ -24,8 +12,15 @@ import { EventGeneratorService } from '../ai/event-generator-service.js';
 
 const logger = new Logger('InfiniteModeService');
 
+const MAX_PLAYERS = 50000;
+const PLAYER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_PERPETUAL_EVENTS = 100;
+const MAX_LEADERBOARD_SIZE = 1000;
+const LEADERBOARD_CACHE_TTL_MS = 5 * 60 * 1000;
+
 /**
  * Paragon tier thresholds (XP required). Never caps - keeps growing.
+ * Sorted ascending by xp for binary search.
  */
 const PARAGON_TIERS = [
   { name: 'Novice', xp: 0, multiplier: 1.00 },
@@ -41,6 +36,7 @@ const PARAGON_TIERS = [
 
 /**
  * Prestige tiers. Each prestige resets level but grants permanent bonuses.
+ * Sorted ascending by requiredLevel.
  */
 const PRESTIGE_TIERS = [
   { name: 'Iron', requiredLevel: 100, coinBonus: 0.05, xpBonus: 0.05 },
@@ -52,6 +48,8 @@ const PRESTIGE_TIERS = [
   { name: 'Infinite', requiredLevel: 10_000, coinBonus: 1.00, xpBonus: 1.00 },
 ];
 
+const STREAK_MILESTONES = [3, 5, 10, 25, 50, 100, 250, 500, 1000];
+
 /**
  * InfiniteModeService - tracks endless gameplay with no level cap.
  */
@@ -61,37 +59,58 @@ export class InfiniteModeService {
     this.personalizationEngine = personalizationEngine || new AIPersonalizationEngine();
     this.eventGenerator = eventGenerator || new EventGeneratorService();
 
-    // Player infinite state: playerId -> InfinitePlayerState
     this.playerState = new Map();
-
-    // Perpetual event rotation: scheduled events that never end
     this.perpetualEvents = [];
-
-    // Global endless leaderboard: [{ playerId, score, level, at }]
     this.endlessLeaderboard = [];
+    this.leaderboardCache = null;
+    this.maxPlayers = MAX_PLAYERS;
+    this.playerTtlMs = PLAYER_TTL_MS;
 
-    // Initialize perpetual events
     this.initializePerpetualEvents();
   }
 
-  // ========================================================================
-  // PLAYER STATE
-  // ========================================================================
+  /**
+   * Evict stale player states and enforce max count.
+   */
+  _evictPlayers({ nowMs = Date.now() } = {}) {
+    for (const [playerId, state] of this.playerState) {
+      if (nowMs - (state.lastAccessedMs || state.createdAt) > this.playerTtlMs) {
+        this.playerState.delete(playerId);
+      }
+    }
+    while (this.playerState.size > this.maxPlayers) {
+      let lruKey = null;
+      let lruTime = Infinity;
+      for (const [key, state] of this.playerState) {
+        const t = state.lastAccessedMs || state.createdAt;
+        if (t < lruTime) {
+          lruTime = t;
+          lruKey = key;
+        }
+      }
+      if (lruKey) this.playerState.delete(lruKey);
+    }
+  }
 
   /**
    * Get or create a player's infinite mode state.
    */
   getPlayerState(playerId) {
+    const now = Date.now();
     if (!this.playerState.has(playerId)) {
-      this.playerState.set(playerId, this.createInitialState(playerId));
+      this.playerState.set(playerId, this.createInitialState(playerId, now));
+      if (this.playerState.size > this.maxPlayers) {
+        this._evictPlayers({ nowMs: now });
+      }
+    } else {
+      this.playerState.get(playerId).lastAccessedMs = now;
     }
     return this.playerState.get(playerId);
   }
 
-  createInitialState(playerId) {
+  createInitialState(playerId, nowMs = Date.now()) {
     return {
       playerId,
-      // Endless progression
       endlessLevel: 1,
       totalEndlessLevels: 0,
       totalEndlessXP: 0,
@@ -99,42 +118,37 @@ export class InfiniteModeService {
       paragonXP: 0,
       prestige: 0,
       prestigePoints: 0,
-      // Streaks
       currentStreak: 0,
       bestStreak: 0,
       streakRewardsClaimed: new Set(),
-      // Run history
       runsCompleted: 0,
       bestRunScore: 0,
       bestRunLevel: 1,
       totalCoinsEarned: 0,
       totalTimePlayedMs: 0,
       lastRunAt: null,
-      createdAt: Date.now(),
+      lastAccessedMs: nowMs,
+      createdAt: nowMs,
     };
   }
 
-  /**
-   * Get the paragon tier for a given paragon level.
-   */
   getParagonTier(paragonLevel) {
-    let tier = PARAGON_TIERS[0];
-    for (const t of PARAGON_TIERS) {
-      if (paragonLevel >= t.xp / 1000) tier = t; // approximate: XP/1000 = level
-    }
-    // Find exact tier by XP
-    for (let i = PARAGON_TIERS.length - 1; i >= 0; i--) {
-      if (paragonLevel * 1000 >= PARAGON_TIERS[i].xp) {
-        return PARAGON_TIERS[i];
+    const paragonXP = paragonLevel * 1000;
+    let lo = 0;
+    let hi = PARAGON_TIERS.length - 1;
+    let result = PARAGON_TIERS[0];
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (PARAGON_TIERS[mid].xp <= paragonXP) {
+        result = PARAGON_TIERS[mid];
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
       }
     }
-    return PARAGON_TIERS[0];
+    return result;
   }
 
-  /**
-   * Calculate XP needed for next paragon level.
-   * Formula: base * 1.5^level, never caps.
-   */
   xpForParagonLevel(level) {
     return Math.floor(1000 * Math.pow(1.5, level));
   }
@@ -144,12 +158,12 @@ export class InfiniteModeService {
    */
   getPrestigeTier(prestige) {
     if (prestige >= PRESTIGE_TIERS.length) {
-      // Infinite prestiges beyond the last tier
+      const last = PRESTIGE_TIERS[PRESTIGE_TIERS.length - 1];
       return {
         name: `Infinite ${prestige}`,
-        requiredLevel: PRESTIGE_TIERS[PRESTIGE_TIERS.length - 1].requiredLevel,
-        coinBonus: PRESTIGE_TIERS[PRESTIGE_TIERS.length - 1].coinBonus * (1 + prestige * 0.1),
-        xpBonus: PRESTIGE_TIERS[PRESTIGE_TIERS.length - 1].xpBonus * (1 + prestige * 0.1),
+        requiredLevel: last.requiredLevel,
+        coinBonus: last.coinBonus * (1 + prestige * 0.1),
+        xpBonus: last.xpBonus * (1 + prestige * 0.1),
       };
     }
     return PRESTIGE_TIERS[prestige];
@@ -235,6 +249,7 @@ export class InfiniteModeService {
     }
 
     const state = this.getPlayerState(playerId);
+    state.lastAccessedMs = nowMs;
     const previousLevel = state.endlessLevel;
     const previousStreak = state.currentStreak;
 
@@ -350,8 +365,7 @@ export class InfiniteModeService {
    */
   checkStreakRewards(state) {
     const rewards = [];
-    const milestones = [3, 5, 10, 25, 50, 100, 250, 500, 1000];
-    for (const milestone of milestones) {
+    for (const milestone of STREAK_MILESTONES) {
       if (state.currentStreak >= milestone && !state.streakRewardsClaimed.has(milestone)) {
         state.streakRewardsClaimed.add(milestone);
         rewards.push({
@@ -373,8 +387,6 @@ export class InfiniteModeService {
    * Initialize perpetual events that rotate forever.
    */
   initializePerpetualEvents() {
-    // Generate an initial batch of perpetual events
-    // These rotate continuously - when one ends, another begins
     this.perpetualEvents = [];
     this.logger.info('Perpetual event rotation initialized');
   }
@@ -382,8 +394,10 @@ export class InfiniteModeService {
   /**
    * Get active perpetual events at nowMs.
    * Generates new events on-demand so the rotation never ends.
+   * Bounded to MAX_PERPETUAL_EVENTS to prevent memory leaks.
    */
   async getPerpetualEvents({ nowMs = Date.now(), count = 3 } = {}) {
+    // Filter to active events
     const active = this.perpetualEvents.filter(
       (e) => e.startsAt <= nowMs && e.endsAt > nowMs && e.status === 'active'
     );
@@ -392,6 +406,7 @@ export class InfiniteModeService {
     if (active.length < count) {
       const needed = count - active.length;
       for (let i = 0; i < needed; i++) {
+        if (this.perpetualEvents.length >= MAX_PERPETUAL_EVENTS) break;
         const event = await this.eventGenerator.generateEvent({
           durationKey: i % 2 === 0 ? 'daily' : 'weekend',
           nowMs,
@@ -403,10 +418,11 @@ export class InfiniteModeService {
       }
     }
 
-    // Clean up old completed events (keep last 10)
+    // Clean up old completed events (keep last 10 days)
+    const cutoff = nowMs - 7 * 24 * 60 * 60 * 1000;
     this.perpetualEvents = this.perpetualEvents
-      .filter((e) => e.endsAt > nowMs - 7 * 24 * 60 * 60 * 1000)
-      .slice(-50);
+      .filter((e) => e.endsAt > cutoff)
+      .slice(-MAX_PERPETUAL_EVENTS);
 
     return active.sort((a, b) => a.endsAt - b.endsAt);
   }
@@ -417,6 +433,7 @@ export class InfiniteModeService {
 
   /**
    * Update the global endless leaderboard.
+   * Maintains sorted order for O(1) reads.
    */
   updateLeaderboard(playerId, score, levelReached, nowMs) {
     // Remove existing entry for this player
@@ -430,24 +447,41 @@ export class InfiniteModeService {
       at: nowMs,
     });
 
-    // Sort by score desc, keep top 1000 (infinite leaderboard - no cap on players)
+    // Sort by score desc, keep top MAX_LEADERBOARD_SIZE
     this.endlessLeaderboard.sort((a, b) => b.score - a.score);
-    this.endlessLeaderboard = this.endlessLeaderboard.slice(0, 1000);
+    this.endlessLeaderboard = this.endlessLeaderboard.slice(0, MAX_LEADERBOARD_SIZE);
+
+    // Invalidate cache
+    this.leaderboardCache = null;
   }
 
   /**
    * Get the endless leaderboard.
+   * Cached for LEADERBOARD_CACHE_TTL_MS.
    */
   getLeaderboard({ limit = 100 } = {}) {
-    return this.endlessLeaderboard
-      .slice(0, limit)
-      .map((entry, index) => ({
+    const now = Date.now();
+    if (this.leaderboardCache && now - this.leaderboardCache.generatedAt < LEADERBOARD_CACHE_TTL_MS) {
+      const entries = this.leaderboardCache.leaderboard.slice(0, limit).map((entry, index) => ({
         rank: index + 1,
         playerId: entry.playerId,
         score: entry.score,
         level: entry.level,
         at: entry.at,
       }));
+      return entries;
+    }
+
+    const entries = this.endlessLeaderboard.slice(0, limit).map((entry, index) => ({
+      rank: index + 1,
+      playerId: entry.playerId,
+      score: entry.score,
+      level: entry.level,
+      at: entry.at,
+    }));
+
+    this.leaderboardCache = { leaderboard: entries, generatedAt: now };
+    return entries;
   }
 
   // ========================================================================
@@ -488,12 +522,13 @@ export class InfiniteModeService {
   }
 
   /**
-   * Reset player state (for testing).
+   * Reset all state (for testing).
    */
   resetForTesting() {
     this.playerState.clear();
     this.endlessLeaderboard = [];
     this.perpetualEvents = [];
+    this.leaderboardCache = null;
   }
 }
 

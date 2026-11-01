@@ -117,6 +117,7 @@ router.get('/levels/skill-profile', async (req, res) => {
 /**
  * GET /api/ai/offers/personalized
  * Get personalized dynamic offers for a player.
+ * All context params are passed via query string (GET requests have no body).
  */
 router.get('/offers/personalized', async (req, res) => {
   try {
@@ -125,8 +126,19 @@ router.get('/offers/personalized', async (req, res) => {
       return res.status(400).json({ success: false, error: 'playerId is required' });
     }
 
+    // Parse spendHistory from JSON query param if provided
+    let spendHistory = [];
+    if (req.query.spendHistory) {
+      try {
+        spendHistory = JSON.parse(req.query.spendHistory);
+        if (!Array.isArray(spendHistory)) spendHistory = [];
+      } catch {
+        spendHistory = [];
+      }
+    }
+
     const context = {
-      spendHistory: req.body?.spendHistory || [],
+      spendHistory,
       sessionCount: parseInt(req.query.sessionCount) || 0,
       lastSessionMs: parseInt(req.query.lastSessionMs) || Date.now(),
       winRate: parseFloat(req.query.winRate) || 0.5,

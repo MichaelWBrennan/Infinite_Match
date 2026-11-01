@@ -415,6 +415,25 @@ this.app.use('/api/crm', crmRoutes);
     // Platform-specific API routes
     this.setupPlatformRoutes();
 
+    // Cache headers for static assets (immutable JS, images, fonts cache 1 year;
+    // CSS revalidates every 10 minutes). Set before express.static so headers
+    // are present on every static response.
+    this.app.use((req, res, next) => {
+      const reqUrl = req.url || '';
+      const queryIdx = reqUrl.indexOf('?');
+      const pathOnly = queryIdx >= 0 ? reqUrl.slice(0, queryIdx) : reqUrl;
+      const dotIdx = pathOnly.lastIndexOf('.');
+      const ext = dotIdx >= 0 ? pathOnly.slice(dotIdx + 1).toLowerCase() : '';
+      if (['js', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'woff', 'woff2', 'ttf', 'otf'].includes(ext)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (ext === 'css') {
+        res.setHeader('Cache-Control', 'public, max-age=600');
+      } else if (pathOnly === '/' || pathOnly.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      }
+      next();
+    });
+
     // Serve static files from public directory
     this.app.use(express.static('public'));
 

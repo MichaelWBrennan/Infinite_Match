@@ -4,6 +4,9 @@ import { Logger } from '../core/logger/index.js';
 import security from '../core/security/index.js';
 import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
+import { productFor } from '../services/payments/product-catalog.js';
+import { priceFor } from '../services/live-ops/live-ops.js';
+import StripeService from '../services/payments/StripeService.js';
 import { BattlePassError, planTierClaim, progressView, seasonStatus } from '../services/meta/battlepass.js';
 import { loadSeason, seasonConfigPath } from '../services/meta/battlepass-season.js';
 const router = express.Router();
@@ -45,6 +48,64 @@ router.get('/progress', security.sessionValidation, async (req, res) => {
     catch (error) {
         logger.error('Battle pass progress failed', { error: error.message });
         res.status(500).json({ success: false, error: 'battlepass_error', requestId: req.requestId });
+    }
+});
+// Purchase the premium battle pass. Creates a Stripe checkout session for the
+// season's premiumSku. Returns the checkout URL for the client to redirect to.
+router.post('/purchase-premium', security.sessionValidation, async (req, res) => {
+    try {
+        const { playerId } = req.user;
+        const season = await loadSeason();
+        if (seasonStatus(season) !== 'active') {
+            return res.status(409).json({ success: false, error: 'season_not_active', requestId: req.requestId });
+        }
+        const alreadyOwned = await PurchaseLedgerDb.hasPurchase(playerId, season.premiumSku);
+        if (alreadyOwned) {
+            return res.status(409).json({ success: false, error: 'already_owned', requestId: req.requestId });
+        }
+        const product = productFor(season.premiumSku);
+        if (!product) {
+            return res.status(400).json({ success: false, error: 'unknown_product', requestId: req.requestId });
+        }
+        const price = priceFor(season.premiumSku, Date.now());
+        if (!price) {
+            return res.status(400).json({ success: false, error: 'unknown_price', requestId: req.requestId });
+        }
+        const successUrl = process.env.STRIPE_CHECKOUT_SUCCESS_URL;
+        const cancelUrl = process.env.STRIPE_CHECKOUT_CANCEL_URL;
+        if (!successUrl || !cancelUrl) {
+            return res.status(503).json({ success: false, error: 'checkout_not_configured', requestId: req.requestId });
+        }
+        const result = await StripeService.createCheckoutSession({
+            amountCents: price.priceCents,
+            currency: price.currency,
+            productName: product.label || season.premiumSku,
+            metadata: {
+                playerId,
+                productId: season.premiumSku,
+                priceCents: String(price.priceCents),
+                quotedAtMs: String(Date.now()),
+            },
+            clientReferenceId: playerId,
+            successUrl,
+            cancelUrl,
+        });
+        if (!result.success) {
+            return res.status(400).json({ success: false, error: 'checkout_failed', requestId: req.requestId });
+        }
+        res.json({
+            success: true,
+            productId: season.premiumSku,
+            url: result.url,
+            sessionId: result.sessionId,
+            priceCents: price.priceCents,
+            currency: price.currency,
+            requestId: req.requestId,
+        });
+    }
+    catch (error) {
+        logger.error('Battle pass premium purchase failed', { error: error.message });
+        res.status(500).json({ success: false, error: 'battlepass_purchase_error', requestId: req.requestId });
     }
 });
 // Claims one tier on one track. The reward is granted on the server, once per tier and track.

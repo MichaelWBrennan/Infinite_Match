@@ -4,12 +4,45 @@ import { ServiceError } from '../core/errors/ErrorHandler.js';
 import { RoomManager } from '../services/multiplayer/room-manager.js';
 import { GameSessionManager } from '../services/multiplayer/game-session-manager.js';
 import { AntiCheatSystem } from '../services/multiplayer/anti-cheat-system.js';
+import { TournamentManager } from '../services/multiplayer/tournament-manager.js';
+import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
+import { loadLiveOps } from '../services/live-ops/live-ops.js';
+import { recordVerifiedChallengeWin } from '../services/live-ops/score-challenge-economy.js';
+import security from '../core/security/index.js';
 const router = express.Router();
 const logger = new Logger('MultiplayerRoutes');
+// All multiplayer routes require an authenticated player session.
+// The player id comes from the JWT, never from the request body.
+router.use(security.sessionValidation);
 // Initialize multiplayer services
 let roomManager = null;
 let sessionManager = null;
 let antiCheatSystem = null;
+let tournamentManager = null;
+/**
+ * Get the initialized room manager (for Socket.IO handlers)
+ */
+function getRoomManager() {
+    return roomManager;
+}
+/**
+ * Get the initialized session manager (for Socket.IO handlers)
+ */
+function getSessionManager() {
+    return sessionManager;
+}
+/**
+ * Get the initialized anti-cheat system (for Socket.IO handlers)
+ */
+function getAntiCheatSystem() {
+    return antiCheatSystem;
+}
+/**
+ * Get the initialized tournament manager (for Socket.IO handlers)
+ */
+function getTournamentManager() {
+    return tournamentManager;
+}
 /**
  * Initialize multiplayer services
  */
@@ -18,6 +51,7 @@ function initializeMultiplayerServices(io) {
         roomManager = new RoomManager(io);
         sessionManager = new GameSessionManager(io);
         antiCheatSystem = new AntiCheatSystem();
+        tournamentManager = new TournamentManager(io, roomManager, sessionManager, antiCheatSystem);
         logger.info('Multiplayer services initialized');
     }
 }
@@ -27,11 +61,12 @@ function initializeMultiplayerServices(io) {
 // Create a new room
 router.post('/rooms', async (req, res) => {
     try {
-        const { playerId, gameType, options = {} } = req.body;
-        if (!playerId || !gameType) {
+        const playerId = req.user.id;
+        const { gameType, options = {} } = req.body;
+        if (!gameType) {
             return res.status(400).json({
                 success: false,
-                error: 'Player ID and game type are required'
+                error: 'Game type is required'
             });
         }
         const result = roomManager.createRoom(playerId, gameType, options);
@@ -52,13 +87,8 @@ router.post('/rooms', async (req, res) => {
 router.post('/rooms/:roomId/join', async (req, res) => {
     try {
         const { roomId } = req.params;
-        const { playerId, password } = req.body;
-        if (!playerId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Player ID is required'
-            });
-        }
+        const playerId = req.user.id;
+        const { password } = req.body;
         const result = roomManager.joinRoom(playerId, roomId, password);
         res.json({
             success: true,
@@ -77,13 +107,7 @@ router.post('/rooms/:roomId/join', async (req, res) => {
 router.post('/rooms/:roomId/leave', async (req, res) => {
     try {
         const { roomId } = req.params;
-        const { playerId } = req.body;
-        if (!playerId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Player ID is required'
-            });
-        }
+        const playerId = req.user.id;
         const result = roomManager.leaveRoom(playerId, roomId);
         res.json({
             success: true,
@@ -146,11 +170,12 @@ router.get('/rooms/:roomId', async (req, res) => {
 // Start matchmaking
 router.post('/matchmaking/start', async (req, res) => {
     try {
-        const { playerId, gameType, preferences = {} } = req.body;
-        if (!playerId || !gameType) {
+        const playerId = req.user.id;
+        const { gameType, preferences = {} } = req.body;
+        if (!gameType) {
             return res.status(400).json({
                 success: false,
-                error: 'Player ID and game type are required'
+                error: 'Game type is required'
             });
         }
         const result = roomManager.startMatchmaking(playerId, gameType, preferences);
@@ -170,13 +195,7 @@ router.post('/matchmaking/start', async (req, res) => {
 // Stop matchmaking
 router.post('/matchmaking/stop', async (req, res) => {
     try {
-        const { playerId } = req.body;
-        if (!playerId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Player ID is required'
-            });
-        }
+        const playerId = req.user.id;
         const result = roomManager.stopMatchmaking(playerId);
         res.json({
             success: true,
@@ -197,13 +216,15 @@ router.post('/matchmaking/stop', async (req, res) => {
 // Start a game session
 router.post('/sessions/start', async (req, res) => {
     try {
-        const { roomId, players, gameType, settings = {} } = req.body;
-        if (!roomId || !players || !gameType) {
+        const playerId = req.user.id;
+        const { roomId, gameType, settings = {} } = req.body;
+        if (!roomId || !gameType) {
             return res.status(400).json({
                 success: false,
-                error: 'Room ID, players, and game type are required'
+                error: 'Room ID and game type are required'
             });
         }
+        const players = [playerId];
         const result = sessionManager.startSession(roomId, players, gameType, settings);
         res.json({
             success: true,
@@ -222,11 +243,12 @@ router.post('/sessions/start', async (req, res) => {
 router.post('/sessions/:sessionId/move', async (req, res) => {
     try {
         const { sessionId } = req.params;
-        const { playerId, move } = req.body;
-        if (!playerId || !move) {
+        const playerId = req.user.id;
+        const { move } = req.body;
+        if (!move) {
             return res.status(400).json({
                 success: false,
-                error: 'Player ID and move are required'
+                error: 'Move is required'
             });
         }
         // Get session for anti-cheat validation
@@ -246,7 +268,18 @@ router.post('/sessions/:sessionId/move', async (req, res) => {
                 details: cheatValidation.warnings
             });
         }
-        const result = sessionManager.makeMove(sessionId, playerId, move);
+        let result;
+        try {
+            result = sessionManager.makeMove(sessionId, playerId, move);
+        }
+        catch (moveError) {
+            // Game validation errors (not your turn, invalid move, session not active)
+            // are client errors, not server errors.
+            return res.status(400).json({
+                success: false,
+                error: moveError.message
+            });
+        }
         res.json({
             success: true,
             data: result
@@ -264,13 +297,7 @@ router.post('/sessions/:sessionId/move', async (req, res) => {
 router.post('/sessions/:sessionId/spectate', async (req, res) => {
     try {
         const { sessionId } = req.params;
-        const { playerId } = req.body;
-        if (!playerId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Player ID is required'
-            });
-        }
+        const playerId = req.user.id;
         const result = sessionManager.joinAsSpectator(sessionId, playerId);
         res.json({
             success: true,
@@ -289,13 +316,7 @@ router.post('/sessions/:sessionId/spectate', async (req, res) => {
 router.post('/sessions/:sessionId/leave', async (req, res) => {
     try {
         const { sessionId } = req.params;
-        const { playerId } = req.body;
-        if (!playerId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Player ID is required'
-            });
-        }
+        const playerId = req.user.id;
         const result = sessionManager.leaveSession(sessionId, playerId);
         res.json({
             success: true,
@@ -314,13 +335,7 @@ router.post('/sessions/:sessionId/leave', async (req, res) => {
 router.post('/sessions/:sessionId/pause', async (req, res) => {
     try {
         const { sessionId } = req.params;
-        const { playerId } = req.body;
-        if (!playerId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Player ID is required'
-            });
-        }
+        const playerId = req.user.id;
         const result = sessionManager.pauseSession(sessionId, playerId);
         res.json({
             success: true,
@@ -339,13 +354,7 @@ router.post('/sessions/:sessionId/pause', async (req, res) => {
 router.post('/sessions/:sessionId/resume', async (req, res) => {
     try {
         const { sessionId } = req.params;
-        const { playerId } = req.body;
-        if (!playerId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Player ID is required'
-            });
-        }
+        const playerId = req.user.id;
         const result = sessionManager.resumeSession(sessionId, playerId);
         res.json({
             success: true,
@@ -387,7 +396,7 @@ router.get('/sessions/:sessionId', async (req, res) => {
 // Get player's current session
 router.get('/players/:playerId/session', async (req, res) => {
     try {
-        const { playerId } = req.params;
+        const playerId = req.user.id;
         const session = sessionManager.getPlayerSession(playerId);
         res.json({
             success: true,
@@ -408,7 +417,7 @@ router.get('/players/:playerId/session', async (req, res) => {
 // Get player anti-cheat statistics
 router.get('/anti-cheat/players/:playerId', async (req, res) => {
     try {
-        const { playerId } = req.params;
+        const playerId = req.user.id;
         const stats = antiCheatSystem.getPlayerStatistics(playerId);
         res.json({
             success: true,
@@ -482,6 +491,207 @@ router.post('/anti-cheat/unban', async (req, res) => {
     }
     catch (error) {
         logger.error('Failed to unban player:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+/**
+ * TOURNAMENT ROUTES
+ */
+// Create a new tournament
+router.post('/tournaments', async (req, res) => {
+    try {
+        const playerId = req.user.id;
+        const { name, maxPlayers, entryFee, prizePool, settings = {} } = req.body;
+        const result = tournamentManager.createTournament(playerId, {
+            name,
+            maxPlayers,
+            entryFee,
+            prizePool,
+            settings
+        });
+        res.json({
+            success: true,
+            data: result
+        });
+    }
+    catch (error) {
+        logger.error('Failed to create tournament:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Join a tournament
+router.post('/tournaments/:tournamentId/join', async (req, res) => {
+    try {
+        const { tournamentId } = req.params;
+        const playerId = req.user.id;
+        const result = await tournamentManager.joinTournament(playerId, tournamentId);
+        res.json({
+            success: true,
+            data: result
+        });
+    }
+    catch (error) {
+        logger.error('Failed to join tournament:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Start a tournament
+router.post('/tournaments/:tournamentId/start', async (req, res) => {
+    try {
+        const { tournamentId } = req.params;
+        const playerId = req.user.id;
+        const result = tournamentManager.startTournament(tournamentId, playerId);
+        res.json({
+            success: true,
+            data: result
+        });
+    }
+    catch (error) {
+        logger.error('Failed to start tournament:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Get tournament details
+router.get('/tournaments/:tournamentId', async (req, res) => {
+    try {
+        const { tournamentId } = req.params;
+        const tournament = tournamentManager.getTournament(tournamentId);
+        if (!tournament) {
+            return res.status(404).json({
+                success: false,
+                error: 'Tournament not found'
+            });
+        }
+        res.json({
+            success: true,
+            data: tournament
+        });
+    }
+    catch (error) {
+        logger.error('Failed to get tournament details:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Get tournament standings
+router.get('/tournaments/:tournamentId/standings', async (req, res) => {
+    try {
+        const { tournamentId } = req.params;
+        const standings = tournamentManager.getTournamentStandings(tournamentId);
+        res.json({
+            success: true,
+            data: standings
+        });
+    }
+    catch (error) {
+        logger.error('Failed to get tournament standings:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// List available tournaments (registration phase)
+router.get('/tournaments', async (req, res) => {
+    try {
+        const tournaments = tournamentManager.getAvailableTournaments();
+        res.json({
+            success: true,
+            data: tournaments
+        });
+    }
+    catch (error) {
+        logger.error('Failed to list tournaments:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Record a match result
+router.post('/tournaments/:tournamentId/matches/:matchId/result', async (req, res) => {
+    try {
+        const { tournamentId, matchId } = req.params;
+        const playerId = req.user.id;
+        const { winnerId, scores = {} } = req.body;
+        if (!winnerId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Winner ID is required'
+            });
+        }
+        const result = await tournamentManager.recordMatchResult(tournamentId, matchId, winnerId, scores, playerId);
+        res.json({
+            success: true,
+            data: result
+        });
+    }
+    catch (error) {
+        logger.error('Failed to record match result:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+// Record a PvP match win toward the player's active score challenge.
+// The score comes from the completed PvP session.
+router.post('/sessions/:sessionId/record-win', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const playerId = req.user.id;
+        const { score } = req.body;
+        if (!Number.isInteger(score) || score < 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Score must be a non-negative integer'
+            });
+        }
+        const session = sessionManager.sessions.get(sessionId);
+        if (!session) {
+            return res.status(404).json({
+                success: false,
+                error: 'Session not found'
+            });
+        }
+        if (!session.players.has(playerId)) {
+            return res.status(403).json({
+                success: false,
+                error: 'Player not in session'
+            });
+        }
+        const economy = await accountEconomyService.getPlayerEconomy(playerId);
+        const config = loadLiveOps();
+        const result = await accountEconomyService.withPlayerLock(playerId, () => {
+            const currentEconomy = accountEconomyService.getPlayerEconomy(playerId);
+            const recorded = recordVerifiedChallengeWin(currentEconomy, config, score);
+            if (recorded) {
+                accountEconomyService.updatePlayerEconomyCache(playerId, currentEconomy);
+            }
+            return recorded;
+        });
+        res.json({
+            success: true,
+            data: result,
+            message: result ? 'Win recorded toward score challenge' : 'No active score challenge'
+        });
+    }
+    catch (error) {
+        logger.error('Failed to record PvP win:', error);
         res.status(500).json({
             success: false,
             error: error.message
@@ -570,6 +780,6 @@ router.get('/health', (req, res) => {
         }
     });
 });
-// Export the router and initialization function
-export { router, initializeMultiplayerServices };
+// Export the router, initialization function, and service accessors
+export { router, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem, getTournamentManager };
 //# sourceMappingURL=multiplayer.js.map

@@ -12,6 +12,28 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { socialBackendFromEnv } from './social-backend.js';
+const SHARED_WRITE_ATTEMPTS = 5;
+/** Energy gifts (S2): one friend gives one energy to another. Limits are per UTC day. */
+export const ENERGY_GIFT_AMOUNT = 1;
+/** Booster gifts (S2): one friend gives one booster to another. Limits are per UTC day,
+ * separate from energy. Boosters are more valuable, so the daily cap is lower. */
+export const BOOSTER_GIFT_AMOUNT = 1;
+export const GIFT_DAILY_LIMIT = 3;
+export const BOOSTER_GIFT_DAILY_LIMIT = 1;
+const GIFT_RECORD_MS = 14 * 24 * 60 * 60 * 1000;
+const GIFT_ID = /^[A-Za-z0-9_-]{8,64}$/;
+/** Valid gift types: energy (life) and booster. */
+export const GIFT_TYPES = ['energy', 'booster'];
+const VALID_BOOSTER_IDS = new Set([
+    'extra_moves', 'color_bomb', 'striped_candy',
+    'bomb', 'rocket', 'rainbow', 'lightning', 'target', 'diamond', 'star',
+]);
+/** Guild milestone (S3): verified classic/daily wins by a guild's members in one UTC week (Monday start). */
+export const MILESTONE_GOAL = 50;
+export const MILESTONE_REWARD_COINS = 25;
+const MILESTONE_RECORD_MS = 21 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 export const MAX_FRIENDS = 50;
 export const MAX_GUILD_MEMBERS = 30;
 export const NAME_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9 _-]{1,14}[A-Za-z0-9])$/;
@@ -26,7 +48,7 @@ export function socialStoreFile() {
     return process.env.SOCIAL_STORE_FILE || path.resolve('var', 'social', 'social.json');
 }
 const emptyData = () => ({
-    version: 1,
+    version: 2, // v2 scores only come from pinned replay; v1 client claims cannot remain ranked.
     profiles: {}, // playerId -> { name, code, createdAt }
     friends: {}, // playerId -> [playerId] (always symmetric)
     requests: {}, // toPlayerId -> [fromPlayerId]
@@ -34,7 +56,17 @@ const emptyData = () => ({
     guilds: {}, // guildId -> { id, name, ownerId, members: [playerId], createdAt }
     bestScores: {}, // playerId -> { score, level, at }
     competitions: {}, // 't:<id>' or 'c:<id>' -> tournament scores or challenge progress
+    rankReceipts: {}, // playerId -> recent paid attempt IDs applied to challenge progress
     payouts: {}, // '<kind>:<id>' -> [playerId] that have been paid
+    energyGifts: {}, // giftId -> { id, from, to, day, amount, status, credited, createdAt }
+    giftsSent: {}, // 'YYYY-MM-DD:playerId' -> energy gifts sent that day
+    giftsReceived: {}, // 'YYYY-MM-DD:playerId' -> energy gifts received that day
+    boosterGifts: {}, // giftId -> { id, from, to, day, boosterId, amount, status, credited, createdAt }
+    boosterGiftsSent: {}, // 'YYYY-MM-DD:playerId' -> booster gifts sent that day
+    boosterGiftsReceived: {}, // 'YYYY-MM-DD:playerId' -> booster gifts received that day
+    milestones: {}, // 'guildId:YYYY-MM-DD(week start)' -> { guildId, week, count, contributors, wins, claimed }
+    friendChallenges: {}, // challengeId -> { id, from, to, gameType, status, createdAt, acceptedAt, completedAt, winnerId, scores, targetScore }
+    friendChallengeInvites: {}, // 'playerId' -> [challengeId] pending invites
 });
 const randomCode = () => {
     let code = '';
@@ -55,11 +87,56 @@ function ensureProfile(d, playerId) {
 }
 const labelOf = (d, playerId) => d.profiles[playerId]?.name || anonLabel(playerId);
 const friendsOf = (d, playerId) => d.friends[playerId] || [];
+const utcDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+/** Monday 00:00 UTC of the week containing `ms`, as YYYY-MM-DD. */
+const weekStartOf = (ms) => {
+    const d = new Date(ms);
+    return utcDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7)));
+};
+const previousDay = (day) => utcDay(Date.parse(day) - DAY_MS);
+/** Keeps today's and yesterday's counters, and gift records for 14 days. */
+function pruneGifts(d, day, nowMs) {
+    const keep = new Set([day, previousDay(day)]);
+    for (const counter of [d.giftsSent, d.giftsReceived, d.boosterGiftsSent, d.boosterGiftsReceived]) {
+        for (const key of Object.keys(counter))
+            if (!keep.has(key.split(':')[0]))
+                delete counter[key];
+    }
+    for (const [id, gift] of Object.entries(d.energyGifts)) {
+        if (nowMs - Date.parse(gift.createdAt) > GIFT_RECORD_MS)
+            delete d.energyGifts[id];
+    }
+    for (const [id, gift] of Object.entries(d.boosterGifts)) {
+        if (nowMs - Date.parse(gift.createdAt) > GIFT_RECORD_MS)
+            delete d.boosterGifts[id];
+    }
+}
+/** Keeps milestone records for three weeks; older weeks cannot be claimed any more. */
+function pruneMilestones(d, nowMs) {
+    for (const [key, record] of Object.entries(d.milestones)) {
+        if (nowMs - Date.parse(record.week) > MILESTONE_RECORD_MS)
+            delete d.milestones[key];
+    }
+}
+const milestoneKey = (guildId, week) => `${guildId}:${week}`;
 export class SocialStore {
-    constructor(file = null) {
+    /** file: JSON path for the file store. backend: a shared store (MongoSocialBackend), which replaces the file. */
+    constructor(file = null, backend = null) {
         this.file = file;
+        this.backend = backend;
         this.data = null;
         this.queue = Promise.resolve();
+    }
+    /** Shared store: read the current revision on every call, so another server's writes are seen. */
+    async loadShared() {
+        const { data, revision } = await this.backend.load();
+        const merged = { ...emptyData(), ...(data || {}) };
+        if (merged.version < 2) {
+            merged.bestScores = {};
+            merged.competitions = {};
+            merged.version = 2;
+        }
+        return { data: merged, revision };
     }
     path() {
         return this.file || socialStoreFile();
@@ -70,6 +147,14 @@ export class SocialStore {
         try {
             const raw = await fs.readFile(this.path(), 'utf-8');
             this.data = { ...emptyData(), ...JSON.parse(raw) };
+            if (this.data.version < 2) {
+                // Do not migrate unverifiable scores or shared progress into verified boards.
+                // Preserve profiles, social links and payout receipts: resetting receipts would
+                // allow already-paid tournament/challenge prizes to be claimed twice.
+                this.data.bestScores = {};
+                this.data.competitions = {};
+                this.data.version = 2;
+            }
         }
         catch (error) {
             if (error.code !== 'ENOENT')
@@ -87,6 +172,8 @@ export class SocialStore {
     /** Runs fn on a copy of the data, saves it, and only then replaces the data. Serialised. */
     write(fn) {
         const run = this.queue.then(async () => {
+            if (this.backend)
+                return this.writeShared(fn);
             await this.load();
             const draft = structuredClone(this.data);
             const result = await fn(draft);
@@ -97,9 +184,22 @@ export class SocialStore {
         this.queue = run.catch(() => { });
         return run;
     }
+    /** Shared store write: reload, apply fn to a draft, save only if no other server wrote in between. */
+    async writeShared(fn) {
+        for (let attempt = 0; attempt < SHARED_WRITE_ATTEMPTS; attempt++) {
+            const { data, revision } = await this.loadShared();
+            const draft = structuredClone(data);
+            const result = await fn(draft);
+            if (await this.backend.save(draft, revision))
+                return result;
+        }
+        throw new SocialError('social_store_busy');
+    }
     /** Runs fn on the current data without changing it. Waits for pending writes first. */
     read(fn) {
         const run = this.queue.then(async () => {
+            if (this.backend)
+                return fn((await this.loadShared()).data);
             await this.load();
             return fn(this.data);
         });
@@ -196,6 +296,154 @@ export class SocialStore {
         });
     }
     /** Friends and incoming requests. Ids are included only for the player's own list. */
+    /**
+     * Records a gift (energy or booster) before it is credited. Checks: friends only, not to yourself,
+     * the sender's and the receiver's daily limits. A repeated giftId from the same pair returns the
+     * same gift and counts nothing new, so a retry after a lost response is safe.
+     *
+     * giftType: 'energy' (default) or 'booster'. When 'booster', boosterId must be a valid booster id.
+     * Energy and boosters share the same daily limit counters (3 per day per sender/receiver).
+     */
+    reserveEnergyGift(senderId, receiverId, giftId, nowMs = Date.now(), giftType = 'energy', boosterId = null) {
+        return this.write((d) => {
+            if (typeof giftId !== 'string' || !GIFT_ID.test(giftId))
+                throw new SocialError('invalid_gift');
+            if (!GIFT_TYPES.includes(giftType))
+                throw new SocialError('invalid_gift_type');
+            if (giftType === 'booster') {
+                if (typeof boosterId !== 'string' || !VALID_BOOSTER_IDS.has(boosterId)) {
+                    throw new SocialError('invalid_booster');
+                }
+            }
+            const store = giftType === 'booster' ? d.boosterGifts : d.energyGifts;
+            const sentCounter = giftType === 'booster' ? d.boosterGiftsSent : d.giftsSent;
+            const receivedCounter = giftType === 'booster' ? d.boosterGiftsReceived : d.giftsReceived;
+            const dailyLimit = giftType === 'booster' ? BOOSTER_GIFT_DAILY_LIMIT : GIFT_DAILY_LIMIT;
+            const existing = store[giftId];
+            if (existing) {
+                if (existing.from !== senderId || existing.to !== receiverId)
+                    throw new SocialError('gift_id_reused');
+                return { gift: { ...existing }, reserved: false };
+            }
+            if (senderId === receiverId)
+                throw new SocialError('self_gift');
+            if (!friendsOf(d, senderId).includes(receiverId))
+                throw new SocialError('not_friends');
+            const day = utcDay(nowMs);
+            const sentKey = `${day}:${senderId}`;
+            const receivedKey = `${day}:${receiverId}`;
+            if ((sentCounter[sentKey] || 0) >= dailyLimit)
+                throw new SocialError('gift_sender_limit');
+            if ((receivedCounter[receivedKey] || 0) >= dailyLimit)
+                throw new SocialError('gift_receiver_limit');
+            sentCounter[sentKey] = (sentCounter[sentKey] || 0) + 1;
+            receivedCounter[receivedKey] = (receivedCounter[receivedKey] || 0) + 1;
+            const amount = giftType === 'booster' ? BOOSTER_GIFT_AMOUNT : ENERGY_GIFT_AMOUNT;
+            const gift = {
+                id: giftId, from: senderId, to: receiverId, day, giftType,
+                ...(giftType === 'booster' ? { boosterId } : {}),
+                amount, status: 'reserved', credited: null, createdAt: new Date(nowMs).toISOString(),
+            };
+            store[giftId] = gift;
+            pruneGifts(d, day, nowMs);
+            return { gift: { ...gift }, reserved: true };
+        });
+    }
+    /** Marks a gift as credited with the amount actually added (0 when the receiver was full). */
+    markEnergyGiftCredited(giftId, credited) {
+        return this.write((d) => {
+            const gift = d.energyGifts[giftId] ?? d.boosterGifts[giftId];
+            if (!gift)
+                throw new SocialError('gift_not_found');
+            gift.status = 'credited';
+            gift.credited = credited;
+            return { id: giftId, credited };
+        });
+    }
+    /**
+     * Counts one verified classic/daily win toward the player's guild milestone for this UTC week.
+     * Only a server-verified win counts (`verified === true`), once per attempt: a retried completion
+     * with the same attempt id does not count again. A player outside a guild counts for nothing.
+     */
+    async recordMilestoneWin(playerId, attemptId, verified, nowMs = Date.now()) {
+        if (verified !== true)
+            return { counted: false, reason: 'unverified' };
+        const inGuild = await this.read((d) => !!d.guildOf[playerId]);
+        if (!inGuild)
+            return { counted: false, reason: 'not_in_guild' };
+        return this.write((d) => {
+            if (verified !== true)
+                return { counted: false, reason: 'unverified' };
+            if (typeof attemptId !== 'string' || attemptId.length === 0 || attemptId.length > 64) {
+                throw new SocialError('invalid_attempt');
+            }
+            const guildId = d.guildOf[playerId];
+            if (!guildId || !d.guilds[guildId])
+                return { counted: false, reason: 'not_in_guild' };
+            const week = weekStartOf(nowMs);
+            const key = milestoneKey(guildId, week);
+            const record = d.milestones[key] || (d.milestones[key] = { guildId, week, count: 0, contributors: {}, wins: {}, claimed: {} });
+            const winKey = `${playerId}:${attemptId}`;
+            if (record.wins[winKey])
+                return { counted: false, duplicate: true, count: record.count, goal: MILESTONE_GOAL };
+            record.wins[winKey] = true;
+            record.count += 1;
+            record.contributors[playerId] = (record.contributors[playerId] || 0) + 1;
+            pruneMilestones(d, nowMs);
+            return { counted: true, count: record.count, goal: MILESTONE_GOAL };
+        });
+    }
+    /** The player's view of this week's guild milestone. Read-only; guests and guildless players get no progress. */
+    milestoneView(playerId, nowMs = Date.now()) {
+        return this.read((d) => {
+            const week = weekStartOf(nowMs);
+            const guildId = d.guildOf[playerId];
+            const guild = guildId && d.guilds[guildId];
+            const base = { week, goal: MILESTONE_GOAL, rewardCoins: MILESTONE_REWARD_COINS, inGuild: !!guild };
+            if (!guild)
+                return { ...base, guildName: null, count: 0, reached: false, contributed: 0, claimed: false, canClaim: false };
+            const record = d.milestones[milestoneKey(guildId, week)];
+            const count = record?.count || 0;
+            const contributed = record?.contributors?.[playerId] || 0;
+            const claimed = !!record?.claimed?.[playerId];
+            const reached = count >= MILESTONE_GOAL;
+            return { ...base, guildName: guild.name, count, reached, contributed, claimed,
+                canClaim: reached && contributed > 0 && !claimed };
+        });
+    }
+    /**
+     * Checks that the player may claim this week's milestone reward. Read-only, so the caller can
+     * grant the coins (idempotent per milestone in the economy) and then call markMilestoneClaimed.
+     * Must be in the guild now; a member who left gets nothing new. Claims are limited to this UTC week.
+     */
+    milestoneClaim(playerId, nowMs = Date.now()) {
+        return this.read((d) => {
+            const guildId = d.guildOf[playerId];
+            if (!guildId || !d.guilds[guildId])
+                throw new SocialError('not_in_guild');
+            const week = weekStartOf(nowMs);
+            const key = milestoneKey(guildId, week);
+            const record = d.milestones[key];
+            if (record?.claimed?.[playerId])
+                return { key, week, coins: MILESTONE_REWARD_COINS, claimed: true };
+            if ((record?.count || 0) < MILESTONE_GOAL)
+                throw new SocialError('milestone_not_reached');
+            if (!record.contributors[playerId])
+                throw new SocialError('no_milestone_contribution');
+            return { key, week, coins: MILESTONE_REWARD_COINS, claimed: false };
+        });
+    }
+    /** Records that the player's reward for this milestone was granted. Idempotent. */
+    markMilestoneClaimed(key, playerId, nowMs = Date.now()) {
+        return this.write((d) => {
+            const record = d.milestones[key];
+            if (!record)
+                throw new SocialError('milestone_not_found');
+            record.claimed[playerId] = new Date(nowMs).toISOString();
+            pruneMilestones(d, nowMs);
+            return { key, claimed: true };
+        });
+    }
     friends(playerId) {
         return this.read((d) => ({
             friends: friendsOf(d, playerId).map((id) => ({
@@ -214,6 +462,156 @@ export class SocialStore {
                 .map((id) => ({ label: labelOf(d, id), score: d.bestScores[id]?.score ?? 0, isYou: id === playerId }))
                 .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
                 .map((row, i) => ({ rank: i + 1, ...row }));
+        });
+    }
+    // ----- friend challenges ---------------------------------------------------------------
+    /** Create a friend challenge. Returns the challenge id. */
+    createFriendChallenge(fromId, toId, gameType = 'match3_versus', targetScore = 1000) {
+        return this.write((d) => {
+            ensureProfile(d, fromId);
+            ensureProfile(d, toId);
+            if (fromId === toId)
+                throw new SocialError('self_challenge');
+            if (!friendsOf(d, fromId).includes(toId))
+                throw new SocialError('not_friends');
+            const id = `fc_${crypto.randomBytes(8).toString('hex')}`;
+            const now = Date.now();
+            d.friendChallenges[id] = {
+                id,
+                from: fromId,
+                to: toId,
+                gameType,
+                targetScore,
+                status: 'pending', // pending, accepted, completed, declined, expired
+                createdAt: now,
+            };
+            (d.friendChallengeInvites[toId] ??= []).push(id);
+            return { challengeId: id, challenge: d.friendChallenges[id] };
+        });
+    }
+    /** Accept a friend challenge. Only the challenged player can accept. */
+    acceptFriendChallenge(playerId, challengeId) {
+        return this.write((d) => {
+            const challenge = d.friendChallenges[challengeId];
+            if (!challenge)
+                throw new SocialError('challenge_not_found');
+            if (challenge.to !== playerId)
+                throw new SocialError('not_challenged_player');
+            if (challenge.status !== 'pending')
+                throw new SocialError('challenge_not_pending');
+            challenge.status = 'accepted';
+            challenge.acceptedAt = Date.now();
+            // Remove from pending invites
+            d.friendChallengeInvites[playerId] = (d.friendChallengeInvites[playerId] || []).filter((cid) => cid !== challengeId);
+            return { challengeId, challenge: d.friendChallenges[challengeId] };
+        });
+    }
+    /** Decline a friend challenge. Only the challenged player can decline. */
+    declineFriendChallenge(playerId, challengeId) {
+        return this.write((d) => {
+            const challenge = d.friendChallenges[challengeId];
+            if (!challenge)
+                throw new SocialError('challenge_not_found');
+            if (challenge.to !== playerId)
+                throw new SocialError('not_challenged_player');
+            if (challenge.status !== 'pending')
+                throw new SocialError('challenge_not_pending');
+            challenge.status = 'declined';
+            d.friendChallengeInvites[playerId] = (d.friendChallengeInvites[playerId] || []).filter((cid) => cid !== challengeId);
+            return { challengeId, challenge: d.friendChallenges[challengeId] };
+        });
+    }
+    /** Get pending friend challenges for a player (invites they received). */
+    getPendingFriendChallenges(playerId) {
+        return this.read((d) => {
+            const inviteIds = d.friendChallengeInvites[playerId] || [];
+            return inviteIds
+                .map((cid) => d.friendChallenges[cid])
+                .filter(Boolean)
+                .map((c) => ({ ...c, fromLabel: labelOf(d, c.from) }));
+        });
+    }
+    /** Get all friend challenges involving a player (sent and received). */
+    getFriendChallenges(playerId) {
+        return this.read((d) => {
+            return Object.values(d.friendChallenges)
+                .filter((c) => c.from === playerId || c.to === playerId)
+                .map((c) => ({
+                ...c,
+                fromLabel: labelOf(d, c.from),
+                toLabel: labelOf(d, c.to),
+            }))
+                .sort((a, b) => b.createdAt - a.createdAt);
+        });
+    }
+    /** Report the result of a completed friend challenge. Only participants can report. */
+    reportFriendChallengeResult(playerId, challengeId, winnerId, scores = {}) {
+        return this.write((d) => {
+            const challenge = d.friendChallenges[challengeId];
+            if (!challenge)
+                throw new SocialError('challenge_not_found');
+            if (challenge.from !== playerId && challenge.to !== playerId) {
+                throw new SocialError('not_challenge_participant');
+            }
+            if (challenge.status !== 'accepted') {
+                throw new SocialError('challenge_not_accepted');
+            }
+            if (challenge.winnerId) {
+                throw new SocialError('challenge_already_completed');
+            }
+            if (![challenge.from, challenge.to].includes(winnerId)) {
+                throw new SocialError('invalid_winner');
+            }
+            challenge.status = 'completed';
+            challenge.completedAt = Date.now();
+            challenge.winnerId = winnerId;
+            challenge.scores = scores;
+            // Update best scores for both players
+            const winnerScore = scores[winnerId] ?? 0;
+            const loserId = winnerId === challenge.from ? challenge.to : challenge.from;
+            const loserScore = scores[loserId] ?? 0;
+            if (!d.bestScores[winnerId] || winnerScore > d.bestScores[winnerId].score) {
+                d.bestScores[winnerId] = { score: winnerScore, level: 'pvp', at: new Date().toISOString() };
+            }
+            if (!d.bestScores[loserId] || loserScore > d.bestScores[loserId].score) {
+                d.bestScores[loserId] = { score: loserScore, level: 'pvp', at: new Date().toISOString() };
+            }
+            return {
+                challengeId,
+                challenge: d.friendChallenges[challengeId],
+                winnerId,
+                scores,
+            };
+        });
+    }
+    /** Get the friend challenge leaderboard for a player and their friends. */
+    friendChallengeLeaderboard(playerId, limit = 10) {
+        return this.read((d) => {
+            const ids = [playerId, ...friendsOf(d, playerId)];
+            const completedChallenges = Object.values(d.friendChallenges).filter((c) => c.status === 'completed' && ids.includes(c.from) && ids.includes(c.to));
+            // Aggregate each player's best challenge score
+            const playerScores = {};
+            for (const c of completedChallenges) {
+                const winnerScore = c.scores[c.winnerId] ?? 0;
+                const loserId = c.winnerId === c.from ? c.to : c.from;
+                const loserScore = c.scores[loserId] ?? 0;
+                if (!playerScores[c.winnerId] || winnerScore > playerScores[c.winnerId].score) {
+                    playerScores[c.winnerId] = { playerId: c.winnerId, score: winnerScore };
+                }
+                if (!playerScores[loserId] || loserScore > playerScores[loserId].score) {
+                    playerScores[loserId] = { playerId: loserId, score: loserScore };
+                }
+            }
+            return Object.values(playerScores)
+                .map((p) => ({
+                playerId: p.playerId,
+                label: labelOf(d, p.playerId),
+                score: p.score,
+                isYou: p.playerId === playerId,
+            }))
+                .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
+                .map((row, i) => ({ rank: i + 1, ...row }))
+                .slice(0, limit);
         });
     }
     // ----- guilds ---------------------------------------------------------------------------------
@@ -305,8 +703,15 @@ export class SocialStore {
      * Records a won level. Updates the player's best score, and their score and progress in each
      * active tournament and challenge. The caller decides which competitions are active.
      */
-    recordWin(playerId, { level, score, tournamentIds = [], challengeIds = [] }) {
+    recordWin(playerId, { level, score, tournamentIds = [], challengeIds = [], attemptId = null }) {
         return this.write((d) => {
+            // A response or social-write acknowledgment may be lost after the economy pays.
+            // Replaying the same verified receipt must not increment challenge progress twice.
+            const seen = (d.rankReceipts ??= {});
+            const recent = (seen[playerId] ??= []);
+            if (attemptId && recent.includes(attemptId)) {
+                return { bestScore: d.bestScores[playerId]?.score ?? 0, duplicate: true };
+            }
             const best = d.bestScores[playerId];
             if (!best || score > best.score)
                 d.bestScores[playerId] = { score, level, at: new Date().toISOString() };
@@ -321,7 +726,9 @@ export class SocialStore {
                 c.progress += 1;
                 c.contributors[playerId] = (c.contributors[playerId] || 0) + 1;
             }
-            return { bestScore: d.bestScores[playerId].score };
+            if (attemptId)
+                seen[playerId] = [...recent.slice(-63), attemptId];
+            return { bestScore: d.bestScores[playerId].score, ...(attemptId ? { duplicate: false } : {}) };
         });
     }
     /** Full ranking for a tournament: [{ playerId, score }], highest first. */
@@ -383,6 +790,6 @@ export class SocialStore {
         });
     }
 }
-export const socialStore = new SocialStore();
+export const socialStore = new SocialStore(null, socialBackendFromEnv());
 export default socialStore;
 //# sourceMappingURL=social-store.js.map

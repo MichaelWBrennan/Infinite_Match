@@ -1,12 +1,7 @@
 /**
  * Verified Tournament Service - replay-verified competitive play.
- *
- * Every tournament match result requires a server-verified replay before
- * it enters competitive leaderboards. Unverified results are rejected,
- * making replay verification the core moat against cheating.
- *
- * Integrates with the existing attempt-replay.js (server-verified replay
- * simulation) and the level-service/generator.js (deterministic levels).
+ * Every match result requires a server-verified replay before entering
+ * leaderboards. Unverified results are rejected.
  */
 
 import { Logger } from '../../core/logger/index.js';
@@ -15,6 +10,11 @@ import { generateLevel, GENERATOR_VERSION } from '../levels/generator.js';
 import { localLevelContext } from '../levels/location-context.js';
 
 const logger = new Logger('VerifiedTournamentService');
+
+const MAX_TOURNAMENTS = 500;
+const TOURNAMENT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_ENTRIES_PER_TOURNAMENT = 10000;
+const LEADERBOARD_CACHE_TTL_MS = 5 * 60 * 1000;
 
 /**
  * VerifiedTournamentService - manages replay-verified tournaments.
@@ -25,6 +25,60 @@ export class VerifiedTournamentService {
     this.tournaments = new Map(); // tournamentId -> tournament
     this.entries = new Map(); // entryId -> entry
     this.playerEntries = new Map(); // playerId -> Set of entryIds
+    this.leaderboardCache = new Map(); // tournamentId -> { leaderboard, generatedAt }
+  }
+
+  /**
+   * Evict expired tournaments and enforce max count.
+   */
+  _evictTournaments({ nowMs = Date.now() } = {}) {
+    for (const [id, t] of this.tournaments) {
+      if (t.status === 'completed' && t.completedAt && nowMs - t.completedAt > TOURNAMENT_TTL_MS) {
+        this._removeTournament(id);
+      }
+    }
+    while (this.tournaments.size > MAX_TOURNAMENTS) {
+      let oldestKey = null;
+      let oldestTime = Infinity;
+      for (const [key, t] of this.tournaments) {
+        if (t.status === 'completed' && t.completedAt && t.completedAt < oldestTime) {
+          oldestTime = t.completedAt;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) this._removeTournament(oldestKey);
+      else break;
+    }
+  }
+
+  _removeTournament(tournamentId) {
+    const tournament = this.tournaments.get(tournamentId);
+    if (!tournament) return;
+
+    // Remove entries associated with this tournament
+    for (const entryId of tournament.entries) {
+      const entry = this.entries.get(entryId);
+      if (entry) {
+        const playerEntries = this.playerEntries.get(entry.playerId);
+        if (playerEntries) {
+          playerEntries.delete(tournamentId);
+          if (playerEntries.size === 0) {
+            this.playerEntries.delete(entry.playerId);
+          }
+        }
+        this.entries.delete(entryId);
+      }
+    }
+
+    this.tournaments.delete(tournamentId);
+    this.leaderboardCache.delete(tournamentId);
+  }
+
+  /**
+   * Invalidate leaderboard cache for a tournament.
+   */
+  _invalidateLeaderboardCache(tournamentId) {
+    this.leaderboardCache.delete(tournamentId);
   }
 
   /**
@@ -32,6 +86,8 @@ export class VerifiedTournamentService {
    * config - { name, levelNumber, mode, startsAt, endsAt, entryFee, prizePool, maxEntries }
    */
   createTournament(config, { nowMs = Date.now() } = {}) {
+    this._evictTournaments({ nowMs });
+
     const tournamentId = `tournament-${config.levelNumber}-${Math.floor(nowMs / 1000)}-${Math.random().toString(36).slice(2, 8)}`;
 
     const tournament = {
@@ -87,6 +143,8 @@ export class VerifiedTournamentService {
     };
     tournament.activatedAt = nowMs;
 
+    this._invalidateLeaderboardCache(tournamentId);
+
     logger.info('Activated tournament', { tournamentId, seed: levelDefinition.seed });
     return tournament;
   }
@@ -108,6 +166,7 @@ export class VerifiedTournamentService {
       if (t.status === 'active' && nowMs >= t.endsAt) {
         t.status = 'completed';
         t.completedAt = nowMs;
+        this._invalidateLeaderboardCache(id);
       }
     }
     return active.sort((a, b) => a.endsAt - b.endsAt);
@@ -157,6 +216,11 @@ export class VerifiedTournamentService {
     const existingEntryIds = this.playerEntries.get(playerId);
     if (existingEntryIds && existingEntryIds.has(tournamentId)) {
       return { accepted: false, reason: 'Player already has an entry in this tournament' };
+    }
+
+    // Bound entries per tournament
+    if (tournament.entries.length >= MAX_ENTRIES_PER_TOURNAMENT) {
+      return { accepted: false, reason: 'Tournament entry limit reached' };
     }
 
     // Verify the replay server-side using the tournament's level definition
@@ -217,6 +281,8 @@ export class VerifiedTournamentService {
     tournament.entries.push(entryId);
     tournament.verifiedEntries = (tournament.verifiedEntries || 0) + 1;
 
+    this._invalidateLeaderboardCache(tournamentId);
+
     logger.info('Accepted verified tournament result', {
       tournamentId, playerId, score: verification.score, verified: true,
     });
@@ -232,8 +298,30 @@ export class VerifiedTournamentService {
 
   /**
    * Get the leaderboard for a tournament (verified entries only, sorted by score desc).
+   * Results cached for LEADERBOARD_CACHE_TTL_MS.
    */
   getLeaderboard(tournamentId, { limit = 100 } = {}) {
+    const now = Date.now();
+    const cached = this.leaderboardCache.get(tournamentId);
+    if (cached && now - cached.generatedAt < LEADERBOARD_CACHE_TTL_MS) {
+      const entries = cached.leaderboard.slice(0, limit).map((e, rank) => ({
+        rank: rank + 1,
+        playerId: e.playerId,
+        score: e.score,
+        progress: e.progress,
+        moves: e.moves,
+        verified: e.verified,
+        verifiedAt: e.verifiedAt,
+      }));
+      return {
+        tournamentId,
+        tournamentName: this.tournaments.get(tournamentId)?.name || '',
+        entries,
+        verifiedCount: cached.verifiedCount,
+        rejectedCount: cached.rejectedCount,
+      };
+    }
+
     const tournament = this.tournaments.get(tournamentId);
     if (!tournament) {
       return { tournamentId, entries: [], verifiedCount: 0 };
@@ -243,23 +331,31 @@ export class VerifiedTournamentService {
       .map((entryId) => this.entries.get(entryId))
       .filter(Boolean)
       .filter((e) => e.verified)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map((e, rank) => ({
-        rank: rank + 1,
-        playerId: e.playerId,
-        score: e.score,
-        progress: e.progress,
-        moves: e.moves,
-        verified: e.verified,
-        verifiedAt: e.verifiedAt,
-      }));
+      .sort((a, b) => b.score - a.score);
+
+    const verifiedCount = leaderboard.length;
+    const topEntries = leaderboard.slice(0, limit).map((e, rank) => ({
+      rank: rank + 1,
+      playerId: e.playerId,
+      score: e.score,
+      progress: e.progress,
+      moves: e.moves,
+      verified: e.verified,
+      verifiedAt: e.verifiedAt,
+    }));
+
+    this.leaderboardCache.set(tournamentId, {
+      leaderboard,
+      generatedAt: now,
+      verifiedCount,
+      rejectedCount: tournament.rejectedEntries || 0,
+    });
 
     return {
       tournamentId,
       tournamentName: tournament.name,
-      entries: leaderboard,
-      verifiedCount: tournament.verifiedEntries || 0,
+      entries: topEntries,
+      verifiedCount,
       rejectedCount: tournament.rejectedEntries || 0,
     };
   }
@@ -291,6 +387,7 @@ export class VerifiedTournamentService {
     tournament.status = 'completed';
     tournament.completedAt = nowMs;
     tournament.winners = winners;
+    this._invalidateLeaderboardCache(tournamentId);
 
     logger.info('Finalized tournament', { tournamentId, winnerCount: winners.length });
 
@@ -301,6 +398,16 @@ export class VerifiedTournamentService {
       totalVerifiedEntries: tournament.verifiedEntries,
       totalRejectedEntries: tournament.rejectedEntries,
     };
+  }
+
+  /**
+   * Clear all data (testing / memory pressure).
+   */
+  clearCache() {
+    this.tournaments.clear();
+    this.entries.clear();
+    this.playerEntries.clear();
+    this.leaderboardCache.clear();
   }
 }
 

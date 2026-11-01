@@ -13,7 +13,7 @@ export function unavailableWeather(area?: null, reason?: string, expiresAt?: nul
     attribution: null;
 };
 export function metCondition(symbol: any): string;
-export function wmoCondition(code: any): "unknown" | "clear" | "partly_cloudy" | "cloudy" | "fog" | "storm" | "sleet" | "snow" | "rain";
+export function wmoCondition(code: any): "unknown" | "clear" | "partly_cloudy" | "cloudy" | "rain" | "snow" | "sleet" | "storm" | "fog";
 /** Never treat unknown/malformed data as sunny weather or a current observation. */
 export function normalizeForecast(body: any, provider: any, area: any, nowMs: any, cacheExpiresAt: any): {
     available: boolean;

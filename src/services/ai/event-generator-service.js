@@ -1,11 +1,7 @@
 /**
  * Event Generator Service - AI-generated live events.
- *
- * Uses the AI Content Generator + Personalization Engine to produce
- * rotating live events (themes, mechanics, prizes, schedules). Events
- * are server-authoritative with generated content and configurable
- * durations. Integrates with the Infinite Content Pipeline for
- * perpetual fresh content.
+ * Produces rotating live events (themes, mechanics, prizes, schedules).
+ * Events are server-authoritative with bounded history to prevent leaks.
  */
 
 import { Logger } from '../../core/logger/index.js';
@@ -16,10 +12,10 @@ import { InfiniteContentPipeline } from '../infinite-content-pipeline.js';
 const logger = new Logger('EventGeneratorService');
 
 const EVENT_DURATIONS_MS = {
-  flash: 2 * 60 * 60 * 1000,        // 2 hours
-  daily: 24 * 60 * 60 * 1000,       // 24 hours
-  weekend: 3 * 24 * 60 * 60 * 1000, // 3 days
-  weekly: 7 * 24 * 60 * 60 * 1000,  // 7 days
+  flash: 2 * 60 * 60 * 1000,
+  daily: 24 * 60 * 60 * 1000,
+  weekend: 3 * 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
 };
 
 const EVENT_THEMES = [
@@ -33,6 +29,10 @@ const EVENT_MECHANICS = [
   'Time Attack', 'Star Rush', 'Color Cascade', 'Life Bonus',
 ];
 
+const MAX_ACTIVE_EVENTS = 200;
+const MAX_EVENT_HISTORY = 100;
+const MAX_LEADERBOARD_SIZE = 100;
+
 /**
  * EventGeneratorService - generates and manages AI live events.
  */
@@ -43,7 +43,8 @@ export class EventGeneratorService {
     this.personalizationEngine = personalizationEngine || new AIPersonalizationEngine();
     this.contentPipeline = contentPipeline || new InfiniteContentPipeline();
     this.activeEvents = new Map(); // eventId -> event
-    this.eventHistory = []; // past events
+    this.eventById = new Map(); // eventId -> event (O(1) lookup across active + history)
+    this.eventHistory = []; // past events (bounded)
     this.generationSchedule = null;
   }
 
@@ -97,6 +98,8 @@ export class EventGeneratorService {
       leaderboardEnabled: durationKey !== 'flash',
       playerCount: 0,
       generatedAt: nowMs,
+      leaderboard: [], // array of {playerId, score, verified, recordedAt}
+      leaderboardIndex: new Map(), // playerId -> index in leaderboard array
     };
 
     logger.info('Generated AI live event', { eventId, theme: themeName, mechanic: mechanics, durationKey });
@@ -123,16 +126,20 @@ export class EventGeneratorService {
 
   /**
    * Get all events that are active at nowMs.
+   * Cleans up expired events and bounds history size.
    */
   getActiveEvents({ nowMs = Date.now() } = {}) {
     const active = [];
+    const toDelete = [];
+
     for (const [id, event] of this.activeEvents) {
       // Scheduled but already ended -> mark completed without activating
       if (event.status === 'scheduled' && nowMs >= event.endsAt) {
         event.status = 'completed';
         event.completedAt = nowMs;
         this.eventHistory.push(event);
-        this.activeEvents.delete(id);
+        this.eventById.set(event.id, event);
+        toDelete.push(id);
         continue;
       }
       if (event.status === 'scheduled' && nowMs >= event.startsAt && nowMs < event.endsAt) {
@@ -146,17 +153,40 @@ export class EventGeneratorService {
         event.status = 'completed';
         event.completedAt = nowMs;
         this.eventHistory.push(event);
+        this.eventById.set(event.id, event);
+        toDelete.push(id);
+      }
+    }
+
+    // Remove completed events from active map
+    for (const id of toDelete) {
+      this.activeEvents.delete(id);
+    }
+
+    // Bound event history to prevent memory leaks
+    if (this.eventHistory.length > MAX_EVENT_HISTORY) {
+      this.eventHistory = this.eventHistory.slice(-MAX_EVENT_HISTORY);
+    }
+
+    // Bound active events count
+    if (this.activeEvents.size > MAX_ACTIVE_EVENTS) {
+      const oldest = Array.from(this.activeEvents.entries())
+        .sort((a, b) => a[1].startsAt - b[1].startsAt)
+        .slice(0, this.activeEvents.size - MAX_ACTIVE_EVENTS);
+      for (const [id] of oldest) {
         this.activeEvents.delete(id);
       }
     }
+
     return active.sort((a, b) => a.endsAt - b.endsAt);
   }
 
   /**
    * Get a specific event by ID.
+   * O(1) lookup across active and history.
    */
   getEvent(eventId) {
-    return this.activeEvents.get(eventId) || this.eventHistory.find((e) => e.id === eventId);
+    return this.activeEvents.get(eventId) || this.eventById.get(eventId);
   }
 
   /**
@@ -192,29 +222,72 @@ export class EventGeneratorService {
 
   /**
    * Record a player's score in an event leaderboard.
+   * O(1) player lookup via leaderboardIndex Map.
+   * Leaderboard kept sorted by inserting at correct position.
    */
   recordEventScore(eventId, playerId, score, { verified = false, nowMs = Date.now() } = {}) {
     const event = this.activeEvents.get(eventId);
     if (!event || event.status !== 'active') {
       return { success: false, reason: 'Event not active' };
     }
+
     if (!event.leaderboard) {
       event.leaderboard = [];
+      event.leaderboardIndex = new Map();
     }
-    // Upsert player's best score
-    const existing = event.leaderboard.find((e) => e.playerId === playerId);
-    if (existing) {
+
+    const idx = event.leaderboardIndex.get(playerId);
+    if (idx !== undefined) {
+      const existing = event.leaderboard[idx];
       if (score > existing.score) {
         existing.score = score;
         existing.verified = verified;
         existing.recordedAt = nowMs;
+        this._reinsertSorted(event.leaderboard, idx);
       }
     } else {
-      event.leaderboard.push({ playerId, score, verified, recordedAt: nowMs });
-      event.leaderboard.sort((a, b) => b.score - a.score);
-      event.leaderboard = event.leaderboard.slice(0, 100); // top 100
+      const entry = { playerId, score, verified, recordedAt: nowMs };
+      // Insert at correct sorted position (descending by score)
+      let insertPos = 0;
+      while (insertPos < event.leaderboard.length && event.leaderboard[insertPos].score > score) {
+        insertPos++;
+      }
+      event.leaderboard.splice(insertPos, 0, entry);
+      event.leaderboardIndex.set(playerId, insertPos);
+      // Rebuild index after splice (positions changed)
+      this._rebuildLeaderboardIndex(event);
+
+      // Bound leaderboard size
+      if (event.leaderboard.length > MAX_LEADERBOARD_SIZE) {
+        const removed = event.leaderboard.pop();
+        event.leaderboardIndex.delete(removed.playerId);
+        this._rebuildLeaderboardIndex(event);
+      }
     }
+
     return { success: true, leaderboard: event.leaderboard };
+  }
+
+  /**
+   * Re-insert an element at its correct sorted position after a score update.
+   */
+  _reinsertSorted(leaderboard, fromIdx) {
+    const entry = leaderboard.splice(fromIdx, 1)[0];
+    let insertPos = 0;
+    while (insertPos < leaderboard.length && leaderboard[insertPos].score > entry.score) {
+      insertPos++;
+    }
+    leaderboard.splice(insertPos, 0, entry);
+  }
+
+  /**
+   * Rebuild the leaderboardIndex map after array mutations.
+   */
+  _rebuildLeaderboardIndex(event) {
+    event.leaderboardIndex.clear();
+    for (let i = 0; i < event.leaderboard.length; i++) {
+      event.leaderboardIndex.set(event.leaderboard[i].playerId, i);
+    }
   }
 
   generatePrizes(theme, mechanic) {
@@ -242,6 +315,15 @@ export class EventGeneratorService {
 
   capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  /**
+   * Clear all events and caches (testing / memory pressure).
+   */
+  clearCache() {
+    this.activeEvents.clear();
+    this.eventById.clear();
+    this.eventHistory = [];
   }
 }
 

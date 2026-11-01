@@ -8,6 +8,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import jwtVerify from '../core/security/jwt.js';
 import * as Sentry from '@sentry/node';
 import AppConfig from '../core/config/index.js';
 import { Logger } from '../core/logger/index.js';
@@ -26,10 +27,16 @@ import OpenSourceCloudServices from '../services/open-source-cloud-services.js';
 import { ASOOptimizationService } from '../services/aso-optimization-service.js';
 import gameRoutes from '../routes/game-routes.js';
 import { assertEconomyStoreForEnvironment } from '../services/economy/PlayerEconomyDb.js';
+import { assertSocialStoreForEnvironment } from '../services/social/social-backend.js';
+import { socialStore } from '../services/social/social-store.js';
 import aiContentRoutes from '../routes/ai-content.js';
+import aiAdaptiveRoutes from '../routes/ai-adaptive.js';
+import infiniteModeRoutes from '../routes/infinite-mode.js';
+import verifiedCompetitionRoutes from '../routes/verified-competition.js';
+import weatherEventsRoutes from '../routes/weather-events.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
-import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
+import { router as multiplayerRoutes, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem } from '../routes/multiplayer.js';
 import playerAccountRoutes from '../routes/player-accounts.js';
 import authRoutes from '../routes/auth.js';
 import accountEconomyRoutes from '../routes/account-economy.js';
@@ -41,7 +48,10 @@ import analyticsRoutes from '../routes/analytics.js';
 import adsRoutes from '../routes/ads.js';
 import adminRoutes from '../routes/admin.js';
 import consentRoutes from '../routes/consent.js';
+import retentionStudyRoutes from '../routes/retention-study.js';
+import crmRoutes from '../routes/crm.js';
 import pushRoutes from '../routes/push.js';
+import pushTriggerRoutes from '../routes/push-triggers.js';
 import experimentsRoutes from '../routes/experiments.js';
 import levelResultsRoutes from '../routes/level-results.js';
 import levelsRoutes from '../routes/levels.js';
@@ -311,7 +321,9 @@ class GameServer {
         this.app.use('/api/admin', adminRoutes);
         // Player routes that check their own session and only act on the caller's own data.
         this.app.use('/api/consent', consentRoutes);
+        this.app.use('/api/retention-study', retentionStudyRoutes);
         this.app.use('/api/push', pushRoutes);
+        this.app.use('/api/push/triggers', pushTriggerRoutes);
         this.app.use('/api/experiments', experimentsRoutes);
         this.app.use('/api/level-results', levelResultsRoutes);
         // Procedural levels are public; rewarded attempts still require the player's session.
@@ -330,11 +342,40 @@ class GameServer {
         this.app.use('/api/social', socialRoutes);
         // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
         this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
+        // Phase 8: AI-first live ops - adaptive levels, dynamic offers, AI events, market pricing.
+        this.app.use('/api/ai-adaptive', aiAdaptiveRoutes);
+        // Phase 9: Verified competitive play - replay-verified tournaments, cross-platform sync.
+        this.app.use('/api/competition', verifiedCompetitionRoutes);
+        // Phase 10: Weather & context-aware gameplay.
+        this.app.use('/api/weather', weatherEventsRoutes);
+        // Infinite Mode: endless progression, paragon, prestige, perpetual events.
+        this.app.use('/api/infinite-mode', infiniteModeRoutes);
+        // CRM: operator-only campaign management. Requires ADMIN_API_TOKEN.
+        this.app.use('/api/crm', crmRoutes);
         // Not mounted:
         // - economy: its write routes would reopen the exploits fixed in account-economy.
-        // - crm: webhook and push send are logging stubs that deliver nothing.
         // Platform-specific API routes
         this.setupPlatformRoutes();
+        // Cache headers for static assets (immutable JS, images, fonts cache 1 year;
+        // CSS revalidates every 10 minutes). Set before express.static so headers
+        // are present on every static response.
+        this.app.use((req, res, next) => {
+            const reqUrl = req.url || '';
+            const queryIdx = reqUrl.indexOf('?');
+            const pathOnly = queryIdx >= 0 ? reqUrl.slice(0, queryIdx) : reqUrl;
+            const dotIdx = pathOnly.lastIndexOf('.');
+            const ext = dotIdx >= 0 ? pathOnly.slice(dotIdx + 1).toLowerCase() : '';
+            if (['js', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'woff', 'woff2', 'ttf', 'otf'].includes(ext)) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            }
+            else if (ext === 'css') {
+                res.setHeader('Cache-Control', 'public, max-age=600');
+            }
+            else if (pathOnly === '/' || pathOnly.endsWith('.html')) {
+                res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+            }
+            next();
+        });
         // Serve static files from public directory
         this.app.use(express.static('public'));
         // Serve static files for WebGL build with platform optimization (only when
@@ -583,7 +624,7 @@ class GameServer {
             this.logger.warn('Socket.IO server unavailable, skipping WebSocket handlers');
             return;
         }
-        this.io.on('connection', (socket) => {
+        this.io.on('connection', async (socket) => {
             this.logger.info('Client connected:', socket.id);
             // Get platform info
             const platform = this.platformDetector.getCurrentPlatform();
@@ -636,6 +677,282 @@ class GameServer {
                 catch (error) {
                     this.logger.error('Error handling platform event:', { error });
                     socket.emit('error', { message: 'Failed to process platform event' });
+                }
+            });
+            // ---- PvP Socket.IO handlers ----
+            // Authenticate socket: expect `token` in handshake auth
+            const socketToken = socket.handshake.auth?.['token'];
+            let socketPlayerId = null;
+            if (socketToken) {
+                try {
+                    const decoded = await jwtVerify.verify(socketToken, AppConfig.security.jwt.secret);
+                    socketPlayerId = decoded.id
+                        ?? decoded.playerId
+                        ?? decoded.userId
+                        ?? decoded.sub ?? null;
+                }
+                catch {
+                    // Token invalid — socket remains unauthenticated; PvP events will reject
+                }
+            }
+            const requireAuth = () => {
+                if (!socketPlayerId) {
+                    socket.emit('pvp_error', { code: 'unauthenticated', message: 'Player session required' });
+                    throw new Error('unauthenticated');
+                }
+                return socketPlayerId;
+            };
+            socket.on('pvp_create_room', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const rm = getRoomManager();
+                    if (!rm)
+                        throw new Error('room manager unavailable');
+                    const result = rm.createRoom(playerId, data?.gameType || 'match3_versus', data?.options || {});
+                    socket.join(`room_${result.room.id}`);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_join_room', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const rm = getRoomManager();
+                    if (!rm)
+                        throw new Error('room manager unavailable');
+                    const result = rm.joinRoom(playerId, data.roomId, data.password);
+                    socket.join(`room_${data.roomId}`);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_leave_room', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const rm = getRoomManager();
+                    if (!rm)
+                        throw new Error('room manager unavailable');
+                    const result = rm.leaveRoom(playerId, data.roomId);
+                    socket.leave(`room_${data.roomId}`);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_start_matchmaking', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const rm = getRoomManager();
+                    if (!rm)
+                        throw new Error('room manager unavailable');
+                    const result = rm.startMatchmaking(playerId, data?.gameType || 'match3_versus', data?.preferences || {});
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_stop_matchmaking', async (ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const rm = getRoomManager();
+                    if (!rm)
+                        throw new Error('room manager unavailable');
+                    const result = rm.stopMatchmaking(playerId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_start_session', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const sm = getSessionManager();
+                    if (!sm)
+                        throw new Error('session manager unavailable');
+                    const result = sm.startSession(data.roomId, [playerId], data.gameType, data.settings || {});
+                    socket.join(`room_${data.roomId}`);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_move', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const sm = getSessionManager();
+                    const acs = getAntiCheatSystem();
+                    if (!sm || !acs)
+                        throw new Error('services unavailable');
+                    const session = sm.sessions.get(data.sessionId);
+                    if (!session)
+                        throw new Error('Session not found');
+                    const cheatValidation = acs.validateMove(playerId, data.move, session.gameState, session);
+                    if (!cheatValidation.valid) {
+                        throw new Error('Invalid move detected by anti-cheat system');
+                    }
+                    const result = sm.makeMove(data.sessionId, playerId, data.move);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_leave_session', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const sm = getSessionManager();
+                    if (!sm)
+                        throw new Error('session manager unavailable');
+                    const result = sm.leaveSession(data.sessionId, playerId);
+                    socket.leave(`room_${data.sessionId}`);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_pause', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const sm = getSessionManager();
+                    if (!sm)
+                        throw new Error('session manager unavailable');
+                    const result = sm.pauseSession(data.sessionId, playerId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('pvp_resume', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const sm = getSessionManager();
+                    if (!sm)
+                        throw new Error('session manager unavailable');
+                    const result = sm.resumeSession(data.sessionId, playerId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            // ---- Tournament Socket.IO handlers ----
+            socket.on('tournament_create', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const tm = getTournamentManager();
+                    if (!tm)
+                        throw new Error('tournament manager unavailable');
+                    const result = tm.createTournament(playerId, {
+                        name: data?.name,
+                        maxPlayers: data?.maxPlayers,
+                        entryFee: data?.entryFee,
+                        prizePool: data?.prizePool,
+                        settings: data?.settings || {}
+                    });
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('tournament_join', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const tm = getTournamentManager();
+                    if (!tm)
+                        throw new Error('tournament manager unavailable');
+                    const result = tm.joinTournament(playerId, data.tournamentId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('tournament_start', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const tm = getTournamentManager();
+                    if (!tm)
+                        throw new Error('tournament manager unavailable');
+                    const result = tm.startTournament(data.tournamentId, playerId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('tournament_match_result', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const tm = getTournamentManager();
+                    if (!tm)
+                        throw new Error('tournament manager unavailable');
+                    const result = tm.recordMatchResult(data.tournamentId, data.matchId, data.winnerId, data.scores || {}, playerId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            // ---- Friend Challenge Socket.IO handlers ----
+            socket.on('friend_challenge_create', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const result = await socialStore.createFriendChallenge(playerId, data.toId, data.gameType || 'match3_versus', data.targetScore || 1000);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('friend_challenge_accept', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const result = await socialStore.acceptFriendChallenge(playerId, data.challengeId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('friend_challenge_decline', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const result = await socialStore.declineFriendChallenge(playerId, data.challengeId);
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('friend_challenge_result', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const result = await socialStore.reportFriendChallengeResult(playerId, data.challengeId, data.winnerId, data.scores || {});
+                    ack?.({ success: true, data: result });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+            socket.on('friend_challenge_leaderboard', async (data, ack) => {
+                try {
+                    const playerId = requireAuth();
+                    const leaderboard = await socialStore.friendChallengeLeaderboard(playerId, data.limit || 10);
+                    ack?.({ success: true, data: leaderboard });
+                }
+                catch (error) {
+                    ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
                 }
             });
             // Handle disconnection
@@ -694,6 +1011,7 @@ class GameServer {
     }
     async start() {
         assertEconomyStoreForEnvironment(process.env);
+        assertSocialStoreForEnvironment(process.env);
         await this.initializeServices();
         this.server.listen(this.config.port, this.config.host, () => {
             this.logger.info(`🚀 Infinite Match Game Server running on port ${this.config.port}`);

@@ -12,12 +12,13 @@
 
 import express from 'express';
 import { Logger } from '../core/logger/index.js';
-import { InfiniteModeService } from '../services/meta/infinite-mode-service.js';
+import { infiniteModeService } from '../services/meta/infinite-mode-service.js';
 
 const router = express.Router();
 const logger = new Logger('InfiniteModeRoutes');
 
-const infiniteModeService = new InfiniteModeService();
+// Use the exported singleton so state is shared with account-economy.js
+// (which also imports infiniteModeService for endless run completion).
 
 /**
  * GET /api/infinite-mode/level

@@ -20,6 +20,16 @@ export const DeviceTokenDb = {
         await ensure();
         await DeviceToken.updateOne({ token }, { $set: { userId, platform: platform || null, locale: locale || null } }, { upsert: true });
     },
+    /** All device tokens registered for a user. Returns [{ token, platform, locale }]. */
+    async findByUserId(userId) {
+        await ensure();
+        const docs = await DeviceToken.find({ userId }).lean();
+        return docs.map((doc) => ({
+            token: doc.token,
+            platform: doc.platform,
+            locale: doc.locale,
+        }));
+    },
 };
 export default DeviceTokenDb;
 //# sourceMappingURL=DeviceTokenDb.js.map

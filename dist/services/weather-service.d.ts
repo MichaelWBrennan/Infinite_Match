@@ -453,7 +453,7 @@ export class WeatherService {
     /**
      * Get season based on date
      */
-    getSeason(date: any): "winter" | "spring" | "summer" | "autumn";
+    getSeason(date: any): "summer" | "autumn" | "winter" | "spring";
     /**
      * Get weather types for location and season
      */
@@ -493,7 +493,7 @@ export class WeatherService {
     /**
      * Get country from coordinates (simplified)
      */
-    getCountryFromCoordinates(latitude: any, longitude: any): "US" | "XX" | "AU" | "EU" | "CN" | "ID";
+    getCountryFromCoordinates(latitude: any, longitude: any): "US" | "XX" | "AU" | "ID" | "CN" | "EU";
     /**
      * Map Weather.gov conditions to OpenWeatherMap format
      */
