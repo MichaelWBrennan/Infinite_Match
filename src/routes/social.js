@@ -12,6 +12,7 @@ const logger = new Logger('SocialRoutes');
 const ERROR_STATUS = {
   invalid_name: 400,
   self_request: 400,
+  self_challenge: 409,
   code_not_found: 404,
   guild_not_found: 404,
   no_request: 404,
@@ -256,6 +257,94 @@ router.post('/guilds/leave', async (req, res) => {
   try {
     const result = await socialStore.leaveGuild(req.user.playerId);
     res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+// ----- friend challenges ---------------------------------------------------
+
+router.post('/friend-challenges', async (req, res) => {
+  try {
+    const fromId = req.user.playerId;
+    const { toId, gameType = 'match3_versus', targetScore = 1000 } = req.body || {};
+
+    if (!toId) {
+      return res.status(400).json({ success: false, error: 'toId is required', requestId: req.requestId });
+    }
+
+    const result = await socialStore.createFriendChallenge(fromId, toId, gameType, targetScore);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+router.post('/friend-challenges/:challengeId/accept', async (req, res) => {
+  try {
+    const playerId = req.user.playerId;
+    const { challengeId } = req.params;
+    const result = await socialStore.acceptFriendChallenge(playerId, challengeId);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+router.post('/friend-challenges/:challengeId/decline', async (req, res) => {
+  try {
+    const playerId = req.user.playerId;
+    const { challengeId } = req.params;
+    const result = await socialStore.declineFriendChallenge(playerId, challengeId);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+router.get('/friend-challenges/pending', async (req, res) => {
+  try {
+    const playerId = req.user.playerId;
+    const challenges = await socialStore.getPendingFriendChallenges(playerId);
+    res.json({ success: true, challenges, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+router.get('/friend-challenges', async (req, res) => {
+  try {
+    const playerId = req.user.playerId;
+    const challenges = await socialStore.getFriendChallenges(playerId);
+    res.json({ success: true, challenges, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+router.post('/friend-challenges/:challengeId/result', async (req, res) => {
+  try {
+    const playerId = req.user.playerId;
+    const { challengeId } = req.params;
+    const { winnerId, scores = {} } = req.body || {};
+
+    if (!winnerId) {
+      return res.status(400).json({ success: false, error: 'winnerId is required', requestId: req.requestId });
+    }
+
+    const result = await socialStore.reportFriendChallengeResult(playerId, challengeId, winnerId, scores);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+router.get('/friend-challenges/leaderboard', async (req, res) => {
+  try {
+    const playerId = req.user.playerId;
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;
+    const leaderboard = await socialStore.friendChallengeLeaderboard(playerId, limit);
+    res.json({ success: true, leaderboard, requestId: req.requestId });
   } catch (error) {
     handleError(res, error, req.requestId);
   }

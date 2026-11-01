@@ -70,6 +70,8 @@ const emptyData = () => ({
   boosterGiftsSent: {}, // 'YYYY-MM-DD:playerId' -> booster gifts sent that day
   boosterGiftsReceived: {}, // 'YYYY-MM-DD:playerId' -> booster gifts received that day
   milestones: {}, // 'guildId:YYYY-MM-DD(week start)' -> { guildId, week, count, contributors, wins, claimed }
+  friendChallenges: {}, // challengeId -> { id, from, to, gameType, status, createdAt, acceptedAt, completedAt, winnerId, scores, targetScore }
+  friendChallengeInvites: {}, // 'playerId' -> [challengeId] pending invites
 });
 
 const randomCode = () => {
@@ -451,6 +453,176 @@ export class SocialStore {
         .map((id) => ({ label: labelOf(d, id), score: d.bestScores[id]?.score ?? 0, isYou: id === playerId }))
         .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
         .map((row, i) => ({ rank: i + 1, ...row }));
+    });
+  }
+
+  // ----- friend challenges ---------------------------------------------------------------
+
+  /** Create a friend challenge. Returns the challenge id. */
+  createFriendChallenge(fromId, toId, gameType = 'match3_versus', targetScore = 1000) {
+    return this.write((d) => {
+      ensureProfile(d, fromId);
+      ensureProfile(d, toId);
+      if (fromId === toId) throw new SocialError('self_challenge');
+      if (!friendsOf(d, fromId).includes(toId)) throw new SocialError('not_friends');
+
+      const id = `fc_${crypto.randomBytes(8).toString('hex')}`;
+      const now = Date.now();
+
+      d.friendChallenges[id] = {
+        id,
+        from: fromId,
+        to: toId,
+        gameType,
+        targetScore,
+        status: 'pending', // pending, accepted, completed, declined, expired
+        createdAt: now,
+      };
+
+      (d.friendChallengeInvites[toId] ??= []).push(id);
+      return { challengeId: id, challenge: d.friendChallenges[id] };
+    });
+  }
+
+  /** Accept a friend challenge. Only the challenged player can accept. */
+  acceptFriendChallenge(playerId, challengeId) {
+    return this.write((d) => {
+      const challenge = d.friendChallenges[challengeId];
+      if (!challenge) throw new SocialError('challenge_not_found');
+      if (challenge.to !== playerId) throw new SocialError('not_challenged_player');
+      if (challenge.status !== 'pending') throw new SocialError('challenge_not_pending');
+
+      challenge.status = 'accepted';
+      challenge.acceptedAt = Date.now();
+
+      // Remove from pending invites
+      d.friendChallengeInvites[playerId] = (d.friendChallengeInvites[playerId] || []).filter(
+        (cid) => cid !== challengeId
+      );
+
+      return { challengeId, challenge: d.friendChallenges[challengeId] };
+    });
+  }
+
+  /** Decline a friend challenge. Only the challenged player can decline. */
+  declineFriendChallenge(playerId, challengeId) {
+    return this.write((d) => {
+      const challenge = d.friendChallenges[challengeId];
+      if (!challenge) throw new SocialError('challenge_not_found');
+      if (challenge.to !== playerId) throw new SocialError('not_challenged_player');
+      if (challenge.status !== 'pending') throw new SocialError('challenge_not_pending');
+
+      challenge.status = 'declined';
+      d.friendChallengeInvites[playerId] = (d.friendChallengeInvites[playerId] || []).filter(
+        (cid) => cid !== challengeId
+      );
+
+      return { challengeId, challenge: d.friendChallenges[challengeId] };
+    });
+  }
+
+  /** Get pending friend challenges for a player (invites they received). */
+  getPendingFriendChallenges(playerId) {
+    return this.read((d) => {
+      const inviteIds = d.friendChallengeInvites[playerId] || [];
+      return inviteIds
+        .map((cid) => d.friendChallenges[cid])
+        .filter(Boolean)
+        .map((c) => ({ ...c, fromLabel: labelOf(d, c.from) }));
+    });
+  }
+
+  /** Get all friend challenges involving a player (sent and received). */
+  getFriendChallenges(playerId) {
+    return this.read((d) => {
+      return Object.values(d.friendChallenges)
+        .filter((c) => c.from === playerId || c.to === playerId)
+        .map((c) => ({
+          ...c,
+          fromLabel: labelOf(d, c.from),
+          toLabel: labelOf(d, c.to),
+        }))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    });
+  }
+
+  /** Report the result of a completed friend challenge. Only participants can report. */
+  reportFriendChallengeResult(playerId, challengeId, winnerId, scores = {}) {
+    return this.write((d) => {
+      const challenge = d.friendChallenges[challengeId];
+      if (!challenge) throw new SocialError('challenge_not_found');
+      if (challenge.from !== playerId && challenge.to !== playerId) {
+        throw new SocialError('not_challenge_participant');
+      }
+      if (challenge.status !== 'accepted') {
+        throw new SocialError('challenge_not_accepted');
+      }
+      if (challenge.winnerId) {
+        throw new SocialError('challenge_already_completed');
+      }
+      if (![challenge.from, challenge.to].includes(winnerId)) {
+        throw new SocialError('invalid_winner');
+      }
+
+      challenge.status = 'completed';
+      challenge.completedAt = Date.now();
+      challenge.winnerId = winnerId;
+      challenge.scores = scores;
+
+      // Update best scores for both players
+      const winnerScore = scores[winnerId] ?? 0;
+      const loserId = winnerId === challenge.from ? challenge.to : challenge.from;
+      const loserScore = scores[loserId] ?? 0;
+
+      if (!d.bestScores[winnerId] || winnerScore > d.bestScores[winnerId].score) {
+        d.bestScores[winnerId] = { score: winnerScore, level: 'pvp', at: new Date().toISOString() };
+      }
+      if (!d.bestScores[loserId] || loserScore > d.bestScores[loserId].score) {
+        d.bestScores[loserId] = { score: loserScore, level: 'pvp', at: new Date().toISOString() };
+      }
+
+      return {
+        challengeId,
+        challenge: d.friendChallenges[challengeId],
+        winnerId,
+        scores,
+      };
+    });
+  }
+
+  /** Get the friend challenge leaderboard for a player and their friends. */
+  friendChallengeLeaderboard(playerId, limit = 10) {
+    return this.read((d) => {
+      const ids = [playerId, ...friendsOf(d, playerId)];
+      const completedChallenges = Object.values(d.friendChallenges).filter(
+        (c) => c.status === 'completed' && ids.includes(c.from) && ids.includes(c.to)
+      );
+
+      // Aggregate each player's best challenge score
+      const playerScores = {};
+      for (const c of completedChallenges) {
+        const winnerScore = c.scores[c.winnerId] ?? 0;
+        const loserId = c.winnerId === c.from ? c.to : c.from;
+        const loserScore = c.scores[loserId] ?? 0;
+
+        if (!playerScores[c.winnerId] || winnerScore > playerScores[c.winnerId].score) {
+          playerScores[c.winnerId] = { playerId: c.winnerId, score: winnerScore };
+        }
+        if (!playerScores[loserId] || loserScore > playerScores[loserId].score) {
+          playerScores[loserId] = { playerId: loserId, score: loserScore };
+        }
+      }
+
+      return Object.values(playerScores)
+        .map((p) => ({
+          playerId: p.playerId,
+          label: labelOf(d, p.playerId),
+          score: p.score,
+          isYou: p.playerId === playerId,
+        }))
+        .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
+        .map((row, i) => ({ rank: i + 1, ...row }))
+        .slice(0, limit);
     });
   }
 
