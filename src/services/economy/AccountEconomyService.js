@@ -1876,6 +1876,27 @@ class AccountEconomyService {
       version: '1.0.0'
     };
   }
+
+  /**
+   * Get all player economies (for retention analytics, segmentation, win-back).
+   * Returns a Map of playerId -> economy. Uses the in-memory cache which is
+   * populated as players log in and play.
+   */
+  async getAllPlayerEconomies() {
+    try {
+      const all = new Map();
+
+      // From memory cache (populated as players interact with the game)
+      for (const [playerId, economy] of this.accountEconomyData.entries()) {
+        all.set(playerId, structuredClone(economy));
+      }
+
+      return all;
+    } catch (error) {
+      logger.error('Failed to get all player economies', { error: error.message });
+      return new Map();
+    }
+  }
 }
 
 /** The one economy instance. Every route and the purchase path must share it, or balances diverge. */
