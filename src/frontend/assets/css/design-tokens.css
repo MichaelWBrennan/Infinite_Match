@@ -1,0 +1,316 @@
+/*
+ * Infinite Match — Unified Design System
+ * Single source of truth for colors, typography, spacing, and components.
+ * All platform stylesheets (web, desktop, mobile, WebGL) import this file
+ * so the aesthetic stays coherent everywhere.
+ */
+
+/* ==========================================================================
+   COLOR PALETTE — "Royal Match" coherent theme
+   ========================================================================== */
+
+:root {
+  /* Backgrounds */
+  --im-bg-start: #0c1445;
+  --im-bg-mid: #1a1a2e;
+  --im-bg-end: #16213e;
+  --im-bg-panel: rgba(26, 26, 46, 0.85);
+  --im-bg-panel-hover: rgba(26, 26, 46, 0.95);
+  --im-bg-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Brand / accent */
+  --im-gold: #ffd700;
+  --im-gold-light: #ffed4e;
+  --im-gold-dark: #d4af37;
+  --im-royal-blue: #1e3c72;
+  --im-royal-blue-light: #2a5298;
+  --im-royal-purple: #6c5ce7;
+  --im-royal-purple-light: #a29bfe;
+
+  /* Action colors */
+  --im-primary: #ff6b35;      /* coral-orange CTA */
+  --im-primary-light: #f7931e;
+  --im-primary-dark: #e85113;
+  --im-secondary: #667eea;    /* royal periwinkle */
+  --im-secondary-light: #764ba2;
+  --im-success: #00b894;     /* emerald */
+  --im-success-light: #00a085;
+  --im-warning: #fdcb6e;     /* amber */
+  --im-danger: #ff6b6b;      /* coral red */
+  --im-danger-dark: #ee5a24;
+
+  /* Neutral / text */
+  --im-text-on-dark: #ffffff;
+  --im-text-on-light: #1e3c72;
+  --im-text-muted: rgba(255, 255, 255, 0.7);
+  --im-text-dim: rgba(255, 255, 255, 0.4);
+  --im-border: rgba(255, 255, 255, 0.2);
+  --im-border-focus: #ffd700;
+
+  /* Tile colors (match-3 gems) — consistent across all platforms */
+  --im-tile-red: #ff6b6b;
+  --im-tile-red-dark: #ee5a24;
+  --im-tile-blue: #74b9ff;
+  --im-tile-blue-dark: #0984e3;
+  --im-tile-green: #00b894;
+  --im-tile-green-dark: #00a085;
+  --im-tile-yellow: #fdcb6e;
+  --im-tile-yellow-dark: #e17055;
+  --im-tile-purple: #a29bfe;
+  --im-tile-purple-dark: #6c5ce7;
+  --im-tile-orange: #fd79a8;
+  --im-tile-orange-dark: #e84393;
+
+  /* Weather / context overlays (Phase 10) */
+  --im-weather-rain: rgba(0, 191, 255, 0.15);
+  --im-weather-snow: rgba(255, 255, 255, 0.15);
+  --im-weather-storm: rgba(138, 43, 226, 0.15);
+  --im-weather-clear: rgba(255, 215, 0, 0.08);
+}
+
+/* ==========================================================================
+   TYPOGRAPHY
+   ========================================================================== */
+
+:root {
+  --im-font-family: 'Fredoka', 'Fredoka One', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --im-font-display: 'Fredoka One', cursive, var(--im-font-family);
+
+  --im-text-xs: 0.75rem;
+  --im-text-sm: 0.875rem;
+  --im-text-base: 1rem;
+  --im-text-lg: 1.125rem;
+  --im-text-xl: 1.25rem;
+  --im-text-2xl: 1.5rem;
+  --im-text-3xl: 1.875rem;
+  --im-text-4xl: 2.25rem;
+  --im-text-5xl: 3rem;
+
+  --im-font-weight-normal: 400;
+  --im-font-weight-medium: 500;
+  --im-font-weight-semibold: 600;
+  --im-font-weight-bold: 700;
+
+  --im-line-height-tight: 1.2;
+  --im-line-height-normal: 1.5;
+  --im-line-height-loose: 1.75;
+}
+
+/* ==========================================================================
+   SPACING & BORDER RADIUS
+   ========================================================================== */
+
+:root {
+  --im-space-1: 0.25rem;
+  --im-space-2: 0.5rem;
+  --im-space-3: 0.75rem;
+  --im-space-4: 1rem;
+  --im-space-5: 1.25rem;
+  --im-space-6: 1.5rem;
+  --im-space-8: 2rem;
+  --im-space-10: 2.5rem;
+  --im-space-12: 3rem;
+
+  --im-radius-sm: 8px;
+  --im-radius-md: 12px;
+  --im-radius-lg: 16px;
+  --im-radius-xl: 20px;
+  --im-radius-pill: 9999px;
+  --im-radius-board: 20px;
+}
+
+/* ==========================================================================
+   SHADOWS & BORDERS
+   ========================================================================== */
+
+:root {
+  --im-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.15);
+  --im-shadow-md: 0 6px 16px rgba(0, 0, 0, 0.25);
+  --im-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --im-shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.45);
+  --im-shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+  --im-border-width: 2px;
+  --im-border-width-focus: 3px;
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+:root {
+  --im-duration-fast: 0.15s;
+  --im-duration-normal: 0.3s;
+  --im-duration-slow: 0.5s;
+
+  --im-ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --im-ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ==========================================================================
+   BASE RESET
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--im-font-family);
+  font-size: var(--im-text-base);
+  font-weight: var(--im-font-weight-normal);
+  line-height: var(--im-line-height-normal);
+  color: var(--im-text-on-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: linear-gradient(
+    135deg,
+    var(--im-bg-start) 0%,
+    var(--im-bg-mid) 50%,
+    var(--im-bg-end) 100%
+  );
+}
+
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  display: none;
+  flex-direction: column;
+  background: linear-gradient(
+    135deg,
+    var(--im-bg-start) 0%,
+    var(--im-bg-mid) 50%,
+    var(--im-bg-end) 100%
+  );
+  overflow-y: auto;
+  z-index: 1;
+}
+
+.screen.active {
+  display: flex;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   ROYAL BACKGROUND EFFECTS (consistent across all screens)
+   ========================================================================== */
+
+.royal-pattern-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(circle at 20% 80%, rgba(108, 92, 231, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0, 191, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.royal-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(2px 2px at 20px 30px, rgba(0, 191, 255, 0.6), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(108, 92, 231, 0.4), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255, 215, 0, 0.5), transparent),
+    radial-gradient(1px 1px at 60px 20px, rgba(255, 255, 255, 0.3), transparent);
+  background-size: 100px 100px;
+  animation: imParticleFloat 20s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes imParticleFloat {
+  0% { transform: translateY(0px); }
+  100% { transform: translateY(-100px); }
+}
+
+@keyframes imRoyalFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes imRoyalPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* ==========================================================================
+   TYPOGRAPHY UTILITIES
+   ========================================================================== */
+
+.im-text-xs  { font-size: var(--im-text-xs); }
+.im-text-sm  { font-size: var(--im-text-sm); }
+.im-text-base{ font-size: var(--im-text-base); }
+.im-text-lg  { font-size: var(--im-text-lg); }
+.im-text-xl  { font-size: var(--im-text-xl); }
+.im-text-2xl { font-size: var(--im-text-2xl); }
+.im-text-3xl { font-size: var(--im-text-3xl); }
+.im-text-4xl { font-size: var(--im-text-4xl); }
+.im-text-5xl { font-size: var(--im-text-5xl); }
+
+.im-font-display { font-family: var(--im-font-display); }
+.im-font-bold    { font-weight: var(--im-font-weight-bold); }
+.im-font-semibold{ font-weight: var(--im-font-weight-semibold); }
+.im-font-medium  { font-weight: var(--im-font-weight-medium); }
+
+.im-text-center  { text-align: center; }
+.im-text-left    { text-align: left; }
+.im-text-right   { text-align: right; }
+.im-text-white   { color: var(--im-text-on-dark); }
+.im-text-gold    { color: var(--im-gold); }
+.im-text-muted   { color: var(--im-text-muted); }
+.im-text-shadow  { text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+
+/* ==========================================================================
+   LAYOUT UTILITIES
+   ========================================================================== */
+
+.im-flex        { display: flex; }
+.im-flex-col    { flex-direction: column; }
+.im-items-center{ align-items: center; }
+.im-justify-center{ justify-content: center; }
+.im-justify-between{ justify-content: space-between; }
+.im-gap-1 { gap: var(--im-space-1); }
+.im-gap-2 { gap: var(--im-space-2); }
+.im-gap-3 { gap: var(--im-space-3); }
+.im-gap-4 { gap: var(--im-space-4); }
+.im-gap-5 { gap: var(--im-space-5); }
+.im-gap-6 { gap: var(--im-space-6); }
+.im-gap-8 { gap: var(--im-space-8); }
+
+.im-w-full   { width: 100%; }
+.im-h-full   { height: 100%; }
+.im-w-fit    { width: fit-content; }
+.im-mx-auto  { margin-left: auto; margin-right: auto; }
+.im-my-auto  { margin-top: auto; margin-bottom: auto; }
+
+.im-overflow-hidden { overflow: hidden; }
+.im-position-relative { position: relative; }
+.im-position-absolute { position: absolute; }
+.im-z-1 { z-index: 1; }
+.im-z-2 { z-index: 2; }
+.im-z-10 { z-index: 1000; }
+.im-z-20 { z-index: 2000; }

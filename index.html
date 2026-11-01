@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#2b2d4a">
+    <meta name="theme-color" content="#0c1445">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -14,40 +14,9 @@
     <!-- Address of the free self-hosted server (see docs/FREE_SERVER.md). Empty = offline static build.
          Example: https://api.your-domain.example. Must be https (or http://localhost for development). -->
     <meta name="infinite-match-api-base" content="">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="unified.css">
     <link href="/css/fonts.css" rel="stylesheet">
     <style>
-        /* Loading screen improvements */
-        
-        .loading-bar-fill {
-            transition: width 0.3s ease-out;
-            background: linear-gradient(90deg, #4ecdc4, #44a08d);
-            border-radius: 10px;
-            height: 100%;
-            width: 0%;
-        }
-        
-        .loading-error {
-            text-align: center;
-            font-size: 12px;
-        }
-        
-        .loading-error a {
-            text-decoration: underline;
-        }
-        
-        /* Mobile optimizations */
-        @media (max-width: 768px) {
-            .loading-text {
-                font-size: 14px;
-            }
-            
-            
-            .royal-logo {
-                transform: scale(0.8);
-            }
-        }
-        
         /* Prevent zoom on input focus for mobile */
         input, select, textarea {
             font-size: 16px;

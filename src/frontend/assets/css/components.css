@@ -1,0 +1,527 @@
+/*
+ * Infinite Match — Unified Components
+ * Built on top of design-tokens.css. All platforms share these component
+ * styles so buttons, cards, tiles, boards, and modals look identical
+ * everywhere the game runs.
+ */
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+
+.im-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--im-space-2);
+  padding: var(--im-space-3) var(--im-space-6);
+  border: none;
+  border-radius: var(--im-radius-pill);
+  font-family: var(--im-font-family);
+  font-size: var(--im-text-lg);
+  font-weight: var(--im-font-weight-bold);
+  cursor: pointer;
+  transition: all var(--im-duration-normal) var(--im-ease-out);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-height: 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+.im-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.im-btn-icon {
+  font-size: 1.25rem;
+}
+
+.im-btn-text {
+  font-weight: var(--im-font-weight-bold);
+}
+
+/* Primary — coral-orange CTA */
+.im-btn-primary {
+  background: linear-gradient(135deg, var(--im-primary) 0%, var(--im-primary-light) 100%);
+  color: var(--im-text-on-dark);
+  box-shadow:
+    0 6px 20px rgba(255, 107, 53, 0.4),
+    var(--im-shadow-inner);
+}
+
+.im-btn-primary:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 25px rgba(255, 107, 53, 0.55),
+    var(--im-shadow-inner);
+}
+
+.im-btn-primary:active:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* Secondary — royal purple gradient */
+.im-btn-secondary {
+  background: linear-gradient(135deg, var(--im-secondary) 0%, var(--im-secondary-light) 100%);
+  color: var(--im-text-on-dark);
+  box-shadow:
+    0 6px 20px rgba(102, 126, 234, 0.4),
+    var(--im-shadow-inner);
+}
+
+.im-btn-secondary:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 25px rgba(102, 126, 234, 0.55),
+    var(--im-shadow-inner);
+}
+
+/* Ghost / outline — subtle on dark bg */
+.im-btn-ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--im-text-on-dark);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.im-btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Gold / accent button */
+.im-btn-gold {
+  background: linear-gradient(135deg, var(--im-gold) 0%, var(--im-gold-light) 100%);
+  color: var(--im-text-on-light);
+  box-shadow:
+    0 6px 20px rgba(255, 215, 0, 0.4),
+    var(--im-shadow-inner);
+}
+
+.im-btn-gold:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 25px rgba(255, 215, 0, 0.55),
+    var(--im-shadow-inner);
+}
+
+/* Sizes */
+.im-btn-sm {
+  padding: var(--im-space-2) var(--im-space-4);
+  font-size: var(--im-text-sm);
+  min-height: 36px;
+}
+
+.im-btn-lg {
+  padding: var(--im-space-5) var(--im-space-8);
+  font-size: var(--im-text-xl);
+  min-height: 56px;
+}
+
+/* Shine overlay for primary/gold */
+.im-btn-primary::before,
+.im-btn-gold::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.im-btn-primary:hover::before,
+.im-btn-gold:hover::before {
+  left: 100%;
+}
+
+/* ==========================================================================
+   CARDS & PANELS
+   ========================================================================== */
+
+.im-card {
+  background: var(--im-bg-panel);
+  border: var(--im-border-width) solid var(--im-border);
+  border-radius: var(--im-radius-xl);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--im-shadow-lg);
+}
+
+.im-card:hover {
+  border-color: var(--im-border-focus);
+}
+
+.im-card-padded {
+  padding: var(--im-space-6);
+}
+
+.im-panel {
+  background: rgba(0, 0, 0, 0.25);
+  border: var(--im-border-width) solid var(--im-border);
+  border-radius: var(--im-radius-lg);
+  backdrop-filter: blur(10px);
+}
+
+.im-raised {
+  box-shadow: var(--im-shadow-xl);
+  border: var(--im-border-width-focus) solid var(--im-border-focus);
+}
+
+/* ==========================================================================
+   GAME BOARD & TILES (match-3)
+   ========================================================================== */
+
+.im-board {
+  display: grid;
+  gap: 4px;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 60, 114, 0.75) 0%,
+    rgba(42, 82, 152, 0.75) 100%
+  );
+  padding: var(--im-space-4);
+  border-radius: var(--im-radius-board);
+  backdrop-filter: blur(12px);
+  border: 3px solid var(--im-gold);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  margin: var(--im-space-4) auto;
+  width: fit-content;
+}
+
+.im-tile {
+  width: 50px;
+  height: 50px;
+  border-radius: var(--im-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: var(--im-font-weight-bold);
+  cursor: pointer;
+  transition: all var(--im-duration-normal) var(--im-ease-out);
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.im-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+  border-radius: calc(var(--im-radius-md) - 2px);
+  pointer-events: none;
+}
+
+.im-tile:hover {
+  transform: scale(1.1) translateY(-2px);
+  border-color: var(--im-gold);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    0 0 0 2px var(--im-gold),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.im-tile:active {
+  transform: scale(0.95);
+}
+
+.im-tile.selected {
+  border-color: var(--im-gold);
+  box-shadow:
+    0 0 20px rgba(255, 215, 0, 0.8),
+    0 0 0 3px var(--im-gold),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  animation: imSelectedPulse 1s infinite;
+}
+
+@keyframes imSelectedPulse {
+  0%, 100% { transform: scale(1.1); }
+  50% { transform: scale(1.15); }
+}
+
+.im-tile.matched {
+  animation: imMatchExplosion 0.55s ease-in-out forwards;
+}
+
+@keyframes imMatchExplosion {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.3) rotate(180deg); opacity: 0.85; }
+  100% { transform: scale(0) rotate(360deg); opacity: 0; }
+}
+
+/* Tile colors — single source of truth */
+.im-tile-red {
+  background: linear-gradient(135deg, var(--im-tile-red) 0%, var(--im-tile-red-dark) 100%);
+  color: var(--im-text-on-dark);
+}
+.im-tile-blue {
+  background: linear-gradient(135deg, var(--im-tile-blue) 0%, var(--im-tile-blue-dark) 100%);
+  color: var(--im-text-on-dark);
+}
+.im-tile-green {
+  background: linear-gradient(135deg, var(--im-tile-green) 0%, var(--im-tile-green-dark) 100%);
+  color: var(--im-text-on-dark);
+}
+.im-tile-yellow {
+  background: linear-gradient(135deg, var(--im-tile-yellow) 0%, var(--im-tile-yellow-dark) 100%);
+  color: var(--im-text-on-light);
+}
+.im-tile-purple {
+  background: linear-gradient(135deg, var(--im-tile-purple) 0%, var(--im-tile-purple-dark) 100%);
+  color: var(--im-text-on-dark);
+}
+.im-tile-orange {
+  background: linear-gradient(135deg, var(--im-tile-orange) 0%, var(--im-tile-orange-dark) 100%);
+  color: var(--im-text-on-dark);
+}
+
+/* Mobile tile sizing */
+@media (max-width: 768px) {
+  .im-board {
+    grid-template-columns: repeat(8, 40px);
+    grid-template-rows: repeat(8, 40px);
+    gap: 2px;
+    padding: var(--im-space-3);
+  }
+  .im-tile {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: var(--im-radius-sm);
+  }
+}
+
+/* ==========================================================================
+   HUD / STATS DISPLAY
+   ========================================================================== */
+
+.im-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  background: linear-gradient(
+    180deg,
+    rgba(30, 60, 114, 0.92) 0%,
+    rgba(42, 82, 152, 0.9) 100%
+  );
+  backdrop-filter: blur(12px);
+  border-bottom: 3px solid var(--im-gold);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--im-space-5);
+  z-index: 1000;
+  box-shadow: var(--im-shadow-lg);
+}
+
+.im-stat {
+  background: linear-gradient(135deg, var(--im-gold) 0%, var(--im-gold-light) 100%);
+  color: var(--im-text-on-light);
+  padding: 6px 14px;
+  border-radius: var(--im-radius-pill);
+  font-weight: var(--im-font-weight-bold);
+  font-size: var(--im-text-sm);
+  min-width: 70px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  overflow: none;
+  box-shadow:
+    0 4px 8px rgba(0,0,0,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  border: 2px solid #fff;
+}
+
+.im-stat-icon {
+  font-size: 18px;
+}
+
+.im-stat-value {
+  font-weight: var(--im-font-weight-bold);
+  font-size: var(--im-text-base);
+}
+
+/* ==========================================================================
+   MODALS & OVERLAYS
+   ========================================================================== */
+
+.im-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(
+    135deg,
+    rgba(30, 60, 114, 0.97) 0%,
+    rgba(42, 82, 152, 0.97) 100%
+  );
+  color: var(--im-text-on-dark);
+  padding: var(--im-space-8) var(--im-space-6);
+  border-radius: var(--im-radius-xl);
+  text-align: center;
+  z-index: 2000;
+  display: none;
+  border: 3px solid var(--im-gold);
+  box-shadow:
+    0 15px 40px rgba(0,0,0,0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  animation: imModalAppear 0.45s ease-out;
+  max-width: 92vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@keyframes imModalAppear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.im-modal h2,
+.im-modal h3 {
+  font-family: var(--im-font-display);
+  color: var(--im-gold);
+  margin: 0 0 var(--im-space-3) 0;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.im-modal p {
+  color: var(--im-text-muted);
+  margin: 0 0 var(--im-space-4) 0;
+  line-height: var(--im-line-height-normal);
+}
+
+.im-backdrop {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: var(--im-bg-overlay);
+  backdrop-filter: blur(6px);
+  z-index: 1999;
+  display: none;
+}
+
+/* ==========================================================================
+   GAME OVER / LEVEL COMPLETE
+   ========================================================================== */
+
+.im-game-over {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(
+    135deg,
+    var(--im-bg-start) 0%,
+    var(--im-bg-mid) 50%,
+    var(--im-bg-end) 100%
+  );
+  color: var(--im-text-on-dark);
+  padding: var(--im-space-8);
+  border-radius: var(--im-radius-xl);
+  text-align: center;
+  z-index: 2000;
+  display: none;
+  border: 3px solid var(--im-gold);
+  box-shadow:
+    0 20px 50px rgba(0,0,0,0.5),
+    inset 0 0 0 1px rgba(255,215,0,0.15);
+}
+
+.im-game-over .crown {
+  font-size: 3rem;
+  margin-bottom: var(--im-space-3);
+  animation: imRoyalFloat 3s ease-in-out infinite;
+}
+
+.im-game-over h2 {
+  font-family: var(--im-font-display);
+  font-size: var(--im-text-4xl);
+  color: var(--im-gold);
+  margin-bottom: var(--im-space-4);
+  text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+}
+
+/* ==========================================================================
+   LOADING BAR
+   ========================================================================== */
+
+.im-loading-bar {
+  width: 280px;
+  height: 8px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 2px solid var(--im-gold);
+  margin: var(--im-space-4) auto;
+}
+
+.im-loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--im-gold) 0%, var(--im-gold-light) 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.im-loading-text {
+  color: var(--im-gold);
+  text-align: center;
+  font-weight: var(--im-font-weight-semibold);
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+/* ==========================================================================
+   CROWN ICON (brand mark)
+   ========================================================================== */
+
+.im-crown {
+  font-size: 4rem;
+  margin-bottom: var(--im-space-4);
+  animation: imRoyalFloat 3s ease-in-out infinite;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+.im-crown-small {
+  font-size: 2rem;
+  animation: imRoyalFloat 3s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+/* ==========================================================================
+   MOBILE SAFE AREA
+   ========================================================================== */
+
+@supports (padding: max(0px)) {
+  .im-hud {
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  body {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+}
