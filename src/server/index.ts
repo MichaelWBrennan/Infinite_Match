@@ -31,6 +31,7 @@ import { assertSocialStoreForEnvironment } from '../services/social/social-backe
 import { socialStore } from '../services/social/social-store.js';
 import aiContentRoutes from '../routes/ai-content.js';
 import aiAdaptiveRoutes from '../routes/ai-adaptive.js';
+import infiniteModeRoutes from '../routes/infinite-mode.js';
 import verifiedCompetitionRoutes from '../routes/verified-competition.js';
 import weatherEventsRoutes from '../routes/weather-events.js';
 import realtimeRoutes from '../routes/realtime.js';
@@ -403,6 +404,8 @@ class GameServer {
     this.app.use('/api/competition', verifiedCompetitionRoutes);
     // Phase 10: Weather & context-aware gameplay.
     this.app.use('/api/weather', weatherEventsRoutes);
+    // Infinite Mode: endless progression, paragon, prestige, perpetual events.
+    this.app.use('/api/infinite-mode', infiniteModeRoutes);
 // CRM: operator-only campaign management. Requires ADMIN_API_TOKEN.
 this.app.use('/api/crm', crmRoutes);
 
