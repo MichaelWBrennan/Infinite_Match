@@ -20,6 +20,7 @@ import { activeCompetitions, loadCompetitions } from '../services/live-ops/compe
 
 import { liveGeneratedLevel, clientRulesVersion, blockerLevelsEnabled } from '../services/levels/level-service.js';
 import { LevelInputError } from '../services/levels/location-context.js';
+import { infiniteModeService } from '../services/meta/infinite-mode-service.js';
 
 const router = express.Router();
 const logger = new Logger('AccountEconomyRoutes');
@@ -579,7 +580,7 @@ router.post('/level/complete', security.sessionValidation, async (req, res) => {
 router.post('/endless/complete', security.sessionValidation, async (req, res) => {
   try {
     const { playerId } = req.user;
-    const { score, attemptId } = req.body || {};
+    const { score, attemptId, levelReached, movesMade, timeMs } = req.body || {};
     if (!Number.isInteger(score) || score < 0 || score > LEVEL_LIMITS.maxScore) {
       return res.status(400).json({ success: false, error: 'Invalid score', requestId: req.requestId });
     }
@@ -587,7 +588,26 @@ router.post('/endless/complete', security.sessionValidation, async (req, res) =>
       return res.status(400).json({ success: false, error: 'attempt_required', requestId: req.requestId });
     }
     const result = await accountEconomyService.settleEndlessAttempt(playerId, attemptId, score);
-    res.json({ success: true, result, requestId: req.requestId });
+
+    // Also update infinite mode progression (paragon, prestige, streak, leaderboard).
+    // The endless run is verified by the settle call above (attempt must exist and match).
+    let infiniteResult = null;
+    if (levelReached !== undefined) {
+      infiniteResult = await infiniteModeService.completeEndlessRun(playerId, {
+        score,
+        levelReached,
+        movesMade: movesMade || 0,
+        timeMs: timeMs || 0,
+        verified: true,
+      });
+    }
+
+    res.json({
+      success: true,
+      result,
+      infinite: infiniteResult,
+      requestId: req.requestId,
+    });
   } catch (error) {
     if (error instanceof EconomyRuleError) {
       return res.status(error.code === 'economy_conflict' ? 503 : 400).json({

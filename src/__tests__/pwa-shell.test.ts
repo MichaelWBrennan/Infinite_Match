@@ -52,7 +52,7 @@ describe('index.html wiring', () => {
   test('links the manifest, icons and theme colour', () => {
     expect(html).toContain('<link rel="manifest" href="/manifest.webmanifest">');
     expect(html).toContain('<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">');
-    expect(html).toContain('<meta name="theme-color" content="#2b2d4a">');
+    expect(html).toContain('<meta name="theme-color" content="#0c1445">');
   });
 
   test('loads the service worker registration script, which exists', () => {
