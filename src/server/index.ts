@@ -30,6 +30,9 @@ import { assertEconomyStoreForEnvironment } from '../services/economy/PlayerEcon
 import { assertSocialStoreForEnvironment } from '../services/social/social-backend.js';
 import { socialStore } from '../services/social/social-store.js';
 import aiContentRoutes from '../routes/ai-content.js';
+import aiAdaptiveRoutes from '../routes/ai-adaptive.js';
+import verifiedCompetitionRoutes from '../routes/verified-competition.js';
+import weatherEventsRoutes from '../routes/weather-events.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
 import { router as multiplayerRoutes, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem } from '../routes/multiplayer.js';
@@ -394,6 +397,12 @@ class GameServer {
     this.app.use('/api/social', socialRoutes);
     // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
     this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
+    // Phase 8: AI-first live ops - adaptive levels, dynamic offers, AI events, market pricing.
+    this.app.use('/api/ai-adaptive', aiAdaptiveRoutes);
+    // Phase 9: Verified competitive play - replay-verified tournaments, cross-platform sync.
+    this.app.use('/api/competition', verifiedCompetitionRoutes);
+    // Phase 10: Weather & context-aware gameplay.
+    this.app.use('/api/weather', weatherEventsRoutes);
 // CRM: operator-only campaign management. Requires ADMIN_API_TOKEN.
 this.app.use('/api/crm', crmRoutes);
 
