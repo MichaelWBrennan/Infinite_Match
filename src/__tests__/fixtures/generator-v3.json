@@ -58,69 +58,69 @@
     "isDaily": false,
     "isBoss": false,
     "seed": 4154705885,
-    "refillState": 107927077,
+    "refillState": 1939492890,
     "boardSize": 6,
     "board": [
       [
-        "orange",
-        "red",
-        "blue",
-        "red",
-        "blue",
+        "moon_black",
+        "ghost_white",
+        "moon_black",
+        "ghost_white",
+        "yellow",
         "yellow"
       ],
       [
+        "pumpkin_orange",
+        "moon_black",
+        "ghost_white",
+        "ghost_white",
         "yellow",
-        "orange",
-        "red",
-        "blue",
-        "blue",
-        "yellow"
+        "ghost_white"
       ],
       [
-        "blue",
-        "orange",
+        "pumpkin_orange",
         "yellow",
-        "orange",
-        "orange",
-        "red"
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "moon_black",
+        "ghost_white"
       ],
       [
-        "blue",
-        "red",
+        "moon_black",
         "yellow",
-        "orange",
+        "pumpkin_orange",
         "yellow",
-        "orange"
+        "pumpkin_orange",
+        "pumpkin_orange"
       ],
       [
-        "orange",
-        "blue",
-        "orange",
-        "blue",
-        "blue",
-        "yellow"
+        "ghost_white",
+        "pumpkin_orange",
+        "ghost_white",
+        "ghost_white",
+        "yellow",
+        "ghost_white"
       ],
       [
-        "blue",
-        "orange",
-        "orange",
-        "blue",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "ghost_white",
         "yellow",
-        "red"
+        "moon_black",
+        "moon_black"
       ]
     ],
     "gemTypes": [
-      "orange",
+      "pumpkin_orange",
       "yellow",
-      "red",
-      "blue"
+      "moon_black",
+      "ghost_white"
     ],
     "gemWeights": {
-      "orange": 1.35,
+      "pumpkin_orange": 1.35,
       "yellow": 1.25,
-      "red": 1,
-      "blue": 1
+      "moon_black": 1,
+      "ghost_white": 1
     },
     "targetScore": 2400,
     "moves": 30,
@@ -136,14 +136,15 @@
       "name": "Halloween",
       "background": "#3b2931",
       "accent": "#ffa658",
-      "favorite": "orange",
-      "id": "holiday-28c94070",
+      "favorite": "pumpkin_orange",
       "environmentLabel": "Morning · Weather unavailable",
       "monthName": "October",
       "season": "autumn",
       "holidayNames": [
         "Halloween"
-      ]
+      ],
+      "tileSetSource": "holiday",
+      "id": "holiday-28c94070"
     },
     "context": {
       "timeZone": "America/New_York",
@@ -180,7 +181,7 @@
       "legalOpeningMoves": 13,
       "verifiedWithoutBoosters": true,
       "verifiedMoves": 30,
-      "verifiedScore": 9140
+      "verifiedScore": 10440
     }
   },
   {
@@ -257,96 +258,96 @@
     "isDaily": false,
     "isBoss": true,
     "seed": 1434885703,
-    "refillState": 4018593280,
+    "refillState": 1555191797,
     "boardSize": 7,
     "board": [
       [
-        "green",
-        "green",
-        "purple",
-        "purple",
+        "bat_purple",
+        "ghost_white",
+        "witch_green",
         "yellow",
-        "green",
-        "purple"
+        "bat_purple",
+        "witch_green",
+        "witch_green"
       ],
       [
-        "red",
-        "orange",
+        "pumpkin_orange",
         "yellow",
-        "red",
-        "purple",
-        "orange",
-        "orange"
-      ],
-      [
-        "orange",
-        "yellow",
-        "blue",
-        "orange",
-        "purple",
-        "blue",
+        "ghost_white",
+        "witch_green",
+        "pumpkin_orange",
+        "pumpkin_orange",
         "yellow"
       ],
       [
-        "green",
-        "red",
-        "green",
-        "blue",
         "yellow",
-        "orange",
-        "blue"
+        "moon_black",
+        "pumpkin_orange",
+        "witch_green",
+        "moon_black",
+        "yellow",
+        "bat_purple"
       ],
       [
-        "purple",
-        "blue",
-        "blue",
-        "green",
-        "orange",
-        "orange",
-        "blue"
+        "ghost_white",
+        "bat_purple",
+        "moon_black",
+        "yellow",
+        "pumpkin_orange",
+        "moon_black",
+        "witch_green"
       ],
       [
         "yellow",
-        "yellow",
-        "green",
-        "orange",
-        "blue",
-        "purple",
+        "moon_black",
+        "bat_purple",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "moon_black",
         "yellow"
       ],
       [
-        "green",
         "yellow",
-        "red",
-        "orange",
-        "orange",
+        "bat_purple",
+        "pumpkin_orange",
+        "moon_black",
+        "witch_green",
         "yellow",
-        "yellow"
+        "ghost_white"
+      ],
+      [
+        "moon_black",
+        "witch_green",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "yellow",
+        "yellow",
+        "pumpkin_orange"
       ]
     ],
     "gemTypes": [
-      "orange",
+      "pumpkin_orange",
       "yellow",
-      "blue",
-      "purple",
-      "red",
-      "green"
+      "moon_black",
+      "witch_green",
+      "ghost_white",
+      "bat_purple"
     ],
     "gemWeights": {
-      "orange": 1.35,
+      "pumpkin_orange": 1.35,
       "yellow": 1.25,
-      "blue": 1,
-      "purple": 1,
-      "red": 1,
-      "green": 1.1
+      "moon_black": 1,
+      "witch_green": 1,
+      "ghost_white": 1,
+      "bat_purple": 1
     },
-    "targetScore": 950,
+    "targetScore": 900,
     "moves": 21,
     "timeLimit": 0,
     "objectives": [
       {
         "type": "score",
-        "target": 950
+        "target": 900
       }
     ],
     "difficulty": "boss",
@@ -354,14 +355,15 @@
       "name": "Halloween",
       "background": "#3b2931",
       "accent": "#ffa658",
-      "favorite": "orange",
-      "id": "holiday-28c94070",
+      "favorite": "pumpkin_orange",
       "environmentLabel": "Morning · Weather unavailable",
       "monthName": "October",
       "season": "autumn",
       "holidayNames": [
         "Halloween"
-      ]
+      ],
+      "tileSetSource": "holiday",
+      "id": "holiday-28c94070"
     },
     "context": {
       "timeZone": "America/New_York",
@@ -398,7 +400,7 @@
       "legalOpeningMoves": 10,
       "verifiedWithoutBoosters": true,
       "verifiedMoves": 21,
-      "verifiedScore": 1130
+      "verifiedScore": 1060
     }
   },
   {
@@ -475,94 +477,94 @@
     "isDaily": false,
     "isBoss": false,
     "seed": 979261734,
-    "refillState": 1099567828,
+    "refillState": 2931133641,
     "boardSize": 7,
     "board": [
       [
-        "red",
-        "blue",
-        "orange",
-        "red",
-        "orange",
+        "moon_black",
+        "pumpkin_orange",
+        "bat_purple",
+        "pumpkin_orange",
         "yellow",
-        "orange"
-      ],
-      [
-        "blue",
-        "yellow",
-        "blue",
-        "orange",
-        "orange",
-        "yellow",
-        "purple"
-      ],
-      [
-        "orange",
-        "yellow",
-        "yellow",
-        "orange",
-        "red",
-        "red",
-        "orange"
+        "pumpkin_orange",
+        "moon_black"
       ],
       [
         "yellow",
-        "blue",
-        "blue",
+        "moon_black",
+        "pumpkin_orange",
+        "pumpkin_orange",
         "yellow",
-        "purple",
-        "yellow",
-        "orange"
+        "ghost_white",
+        "pumpkin_orange"
       ],
       [
-        "blue",
-        "yellow",
-        "purple",
-        "purple",
         "yellow",
         "yellow",
-        "red"
+        "pumpkin_orange",
+        "bat_purple",
+        "bat_purple",
+        "pumpkin_orange",
+        "yellow"
       ],
       [
-        "orange",
-        "red",
-        "orange",
-        "orange",
-        "purple",
-        "blue",
-        "orange"
+        "moon_black",
+        "moon_black",
+        "yellow",
+        "ghost_white",
+        "yellow",
+        "pumpkin_orange",
+        "moon_black"
       ],
       [
-        "blue",
-        "blue",
-        "orange",
+        "yellow",
+        "ghost_white",
+        "ghost_white",
         "yellow",
         "yellow",
-        "orange",
-        "orange"
+        "bat_purple",
+        "pumpkin_orange"
+      ],
+      [
+        "bat_purple",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "ghost_white",
+        "moon_black",
+        "pumpkin_orange",
+        "moon_black"
+      ],
+      [
+        "moon_black",
+        "pumpkin_orange",
+        "yellow",
+        "yellow",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "moon_black"
       ]
     ],
     "gemTypes": [
-      "orange",
+      "pumpkin_orange",
       "yellow",
-      "blue",
-      "red",
-      "purple"
+      "moon_black",
+      "bat_purple",
+      "ghost_white"
     ],
     "gemWeights": {
-      "orange": 1.35,
+      "pumpkin_orange": 1.35,
       "yellow": 1.25,
-      "blue": 1,
-      "red": 1,
-      "purple": 1
+      "moon_black": 1,
+      "bat_purple": 1,
+      "ghost_white": 1
     },
-    "targetScore": 2400,
+    "targetScore": 2000,
     "moves": 30,
     "timeLimit": 0,
     "objectives": [
       {
         "type": "score",
-        "target": 2400
+        "target": 2000
       }
     ],
     "difficulty": "gentle",
@@ -570,14 +572,15 @@
       "name": "Halloween",
       "background": "#3b2931",
       "accent": "#ffa658",
-      "favorite": "orange",
-      "id": "holiday-28c94070",
+      "favorite": "pumpkin_orange",
       "environmentLabel": "Morning · Weather unavailable",
       "monthName": "October",
       "season": "autumn",
       "holidayNames": [
         "Halloween"
-      ]
+      ],
+      "tileSetSource": "holiday",
+      "id": "holiday-28c94070"
     },
     "context": {
       "timeZone": "America/New_York",
@@ -611,10 +614,10 @@
     },
     "quality": {
       "initialMatches": 0,
-      "legalOpeningMoves": 21,
+      "legalOpeningMoves": 19,
       "verifiedWithoutBoosters": true,
       "verifiedMoves": 30,
-      "verifiedScore": 5420
+      "verifiedScore": 3280
     }
   },
   {
@@ -691,84 +694,84 @@
     "isDaily": true,
     "isBoss": false,
     "seed": 1630780418,
-    "refillState": 3582652325,
+    "refillState": 1119250842,
     "boardSize": 7,
     "board": [
       [
-        "red",
-        "orange",
-        "red",
-        "blue",
-        "red",
-        "orange",
+        "pumpkin_orange",
+        "ghost_white",
+        "moon_black",
+        "ghost_white",
+        "pumpkin_orange",
+        "yellow",
+        "pumpkin_orange"
+      ],
+      [
+        "yellow",
+        "ghost_white",
+        "yellow",
+        "yellow",
+        "pumpkin_orange",
+        "yellow",
+        "ghost_white"
+      ],
+      [
+        "ghost_white",
+        "yellow",
+        "moon_black",
+        "ghost_white",
+        "yellow",
+        "pumpkin_orange",
+        "ghost_white"
+      ],
+      [
+        "moon_black",
+        "yellow",
+        "yellow",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "yellow",
+        "moon_black"
+      ],
+      [
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "yellow",
+        "moon_black",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "ghost_white"
+      ],
+      [
+        "pumpkin_orange",
+        "yellow",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "ghost_white",
+        "ghost_white",
+        "pumpkin_orange"
+      ],
+      [
+        "ghost_white",
+        "moon_black",
+        "moon_black",
+        "yellow",
+        "moon_black",
+        "ghost_white",
         "yellow"
-      ],
-      [
-        "orange",
-        "yellow",
-        "red",
-        "yellow",
-        "yellow",
-        "orange",
-        "yellow"
-      ],
-      [
-        "red",
-        "red",
-        "yellow",
-        "blue",
-        "red",
-        "yellow",
-        "orange"
-      ],
-      [
-        "red",
-        "blue",
-        "yellow",
-        "yellow",
-        "orange",
-        "orange",
-        "yellow"
-      ],
-      [
-        "blue",
-        "orange",
-        "orange",
-        "yellow",
-        "blue",
-        "orange",
-        "orange"
-      ],
-      [
-        "red",
-        "orange",
-        "yellow",
-        "orange",
-        "orange",
-        "red",
-        "red"
-      ],
-      [
-        "yellow",
-        "red",
-        "blue",
-        "blue",
-        "yellow",
-        "blue",
-        "red"
       ]
     ],
     "gemTypes": [
-      "orange",
+      "pumpkin_orange",
       "yellow",
-      "red",
-      "blue"
+      "ghost_white",
+      "moon_black"
     ],
     "gemWeights": {
-      "orange": 1.35,
+      "pumpkin_orange": 1.35,
       "yellow": 1.25,
-      "red": 1,
-      "blue": 1
+      "ghost_white": 1,
+      "moon_black": 1
     },
     "targetScore": 2400,
     "moves": 27,
@@ -784,14 +787,15 @@
       "name": "Halloween",
       "background": "#3b2931",
       "accent": "#ffa658",
-      "favorite": "orange",
-      "id": "holiday-28c94070",
+      "favorite": "pumpkin_orange",
       "environmentLabel": "Morning · Weather unavailable",
       "monthName": "October",
       "season": "autumn",
       "holidayNames": [
         "Halloween"
-      ]
+      ],
+      "tileSetSource": "holiday",
+      "id": "holiday-28c94070"
     },
     "context": {
       "timeZone": "America/New_York",
@@ -825,10 +829,10 @@
     },
     "quality": {
       "initialMatches": 0,
-      "legalOpeningMoves": 26,
+      "legalOpeningMoves": 27,
       "verifiedWithoutBoosters": true,
       "verifiedMoves": 27,
-      "verifiedScore": 17720
+      "verifiedScore": 13350
     }
   },
   {
@@ -922,111 +926,111 @@
     "isDaily": false,
     "isBoss": false,
     "seed": 936381540,
-    "refillState": 2760371053,
+    "refillState": 296969570,
     "boardSize": 8,
     "board": [
       [
-        "red",
-        "red",
+        "bat_purple",
         "yellow",
-        "blue",
-        "red",
+        "ghost_white",
+        "bat_purple",
         "yellow",
-        "orange",
-        "blue"
+        "pumpkin_orange",
+        "ghost_white",
+        "moon_black"
       ],
       [
-        "purple",
-        "orange",
+        "pumpkin_orange",
         "yellow",
-        "blue",
-        "purple",
-        "orange",
-        "purple",
-        "purple"
+        "ghost_white",
+        "moon_black",
+        "pumpkin_orange",
+        "moon_black",
+        "moon_black",
+        "ghost_white"
       ],
       [
-        "red",
-        "blue",
-        "purple",
-        "purple",
-        "orange",
+        "ghost_white",
+        "moon_black",
+        "moon_black",
+        "pumpkin_orange",
         "yellow",
-        "orange",
-        "purple"
+        "pumpkin_orange",
+        "moon_black",
+        "ghost_white"
       ],
       [
-        "blue",
-        "blue",
-        "red",
-        "orange",
-        "red",
-        "purple",
+        "ghost_white",
+        "ghost_white",
+        "pumpkin_orange",
+        "bat_purple",
+        "moon_black",
         "yellow",
-        "red"
-      ],
-      [
-        "yellow",
-        "purple",
-        "blue",
-        "yellow",
-        "purple",
-        "yellow",
-        "red",
-        "purple"
-      ],
-      [
-        "orange",
-        "red",
-        "purple",
-        "orange",
-        "red",
-        "red",
-        "blue",
-        "blue"
-      ],
-      [
-        "yellow",
-        "red",
-        "orange",
-        "yellow",
-        "red",
-        "orange",
-        "yellow",
+        "bat_purple",
         "yellow"
       ],
       [
-        "orange",
+        "moon_black",
+        "ghost_white",
         "yellow",
-        "red",
-        "blue",
+        "moon_black",
         "yellow",
-        "blue",
-        "yellow",
+        "bat_purple",
+        "moon_black",
+        "pumpkin_orange"
+      ],
+      [
+        "bat_purple",
+        "moon_black",
+        "pumpkin_orange",
+        "bat_purple",
+        "bat_purple",
+        "ghost_white",
+        "ghost_white",
         "yellow"
+      ],
+      [
+        "bat_purple",
+        "pumpkin_orange",
+        "yellow",
+        "bat_purple",
+        "pumpkin_orange",
+        "yellow",
+        "yellow",
+        "pumpkin_orange"
+      ],
+      [
+        "yellow",
+        "bat_purple",
+        "ghost_white",
+        "yellow",
+        "ghost_white",
+        "yellow",
+        "yellow",
+        "bat_purple"
       ]
     ],
     "gemTypes": [
-      "orange",
+      "pumpkin_orange",
       "yellow",
-      "purple",
-      "red",
-      "blue"
+      "moon_black",
+      "bat_purple",
+      "ghost_white"
     ],
     "gemWeights": {
-      "orange": 1.35,
+      "pumpkin_orange": 1.35,
       "yellow": 1.25,
-      "purple": 1,
-      "red": 1,
-      "blue": 1
+      "moon_black": 1,
+      "bat_purple": 1,
+      "ghost_white": 1
     },
-    "targetScore": 2250,
+    "targetScore": 2400,
     "moves": 999,
     "timeLimit": 60,
     "objectives": [
       {
         "type": "score",
-        "target": 2250
+        "target": 2400
       }
     ],
     "difficulty": "challenging",
@@ -1034,14 +1038,15 @@
       "name": "Halloween",
       "background": "#3b2931",
       "accent": "#ffa658",
-      "favorite": "orange",
-      "id": "holiday-28c94070",
+      "favorite": "pumpkin_orange",
       "environmentLabel": "Morning · Weather unavailable",
       "monthName": "October",
       "season": "autumn",
       "holidayNames": [
         "Halloween"
-      ]
+      ],
+      "tileSetSource": "holiday",
+      "id": "holiday-28c94070"
     },
     "context": {
       "timeZone": "America/New_York",
@@ -1075,10 +1080,10 @@
     },
     "quality": {
       "initialMatches": 0,
-      "legalOpeningMoves": 12,
+      "legalOpeningMoves": 16,
       "verifiedWithoutBoosters": true,
       "verifiedMoves": 26,
-      "verifiedScore": 2910
+      "verifiedScore": 3610
     }
   },
   {
@@ -1155,84 +1160,84 @@
     "isDaily": false,
     "isBoss": false,
     "seed": 326025675,
-    "refillState": 2909733252,
+    "refillState": 446331769,
     "boardSize": 7,
     "board": [
       [
-        "purple",
         "yellow",
-        "orange",
-        "purple",
+        "pumpkin_orange",
+        "candy_corn_yellow",
         "yellow",
-        "purple",
-        "green"
+        "candy_corn_yellow",
+        "moon_black",
+        "pumpkin_orange"
       ],
       [
-        "orange",
-        "green",
-        "orange",
-        "green",
+        "moon_black",
+        "pumpkin_orange",
+        "moon_black",
         "yellow",
-        "green",
-        "orange"
+        "moon_black",
+        "pumpkin_orange",
+        "pumpkin_orange"
       ],
       [
-        "orange",
-        "orange",
+        "pumpkin_orange",
         "yellow",
-        "green",
-        "green",
-        "orange",
-        "orange"
+        "moon_black",
+        "moon_black",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "yellow"
       ],
       [
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "candy_corn_yellow",
+        "candy_corn_yellow",
         "yellow",
-        "orange",
-        "orange",
-        "purple",
-        "purple",
-        "yellow",
-        "purple"
-      ],
-      [
-        "orange",
-        "yellow",
-        "purple",
-        "yellow",
-        "purple",
-        "yellow",
-        "green"
-      ],
-      [
-        "purple",
-        "orange",
-        "yellow",
-        "orange",
-        "yellow",
-        "green",
-        "purple"
+        "candy_corn_yellow",
+        "pumpkin_orange"
       ],
       [
         "yellow",
-        "purple",
+        "candy_corn_yellow",
         "yellow",
-        "orange",
-        "orange",
+        "candy_corn_yellow",
+        "pumpkin_orange",
+        "moon_black",
+        "candy_corn_yellow"
+      ],
+      [
+        "pumpkin_orange",
         "yellow",
-        "green"
+        "pumpkin_orange",
+        "yellow",
+        "moon_black",
+        "candy_corn_yellow",
+        "yellow"
+      ],
+      [
+        "candy_corn_yellow",
+        "yellow",
+        "pumpkin_orange",
+        "pumpkin_orange",
+        "yellow",
+        "moon_black",
+        "pumpkin_orange"
       ]
     ],
     "gemTypes": [
-      "orange",
+      "pumpkin_orange",
       "yellow",
-      "purple",
-      "green"
+      "candy_corn_yellow",
+      "moon_black"
     ],
     "gemWeights": {
-      "orange": 1.35,
+      "pumpkin_orange": 1.35,
       "yellow": 1.25,
-      "purple": 1,
-      "green": 1.1
+      "candy_corn_yellow": 1,
+      "moon_black": 1
     },
     "targetScore": 2400,
     "moves": 9007199254740991,
@@ -1248,14 +1253,15 @@
       "name": "Halloween",
       "background": "#3b2931",
       "accent": "#ffa658",
-      "favorite": "orange",
-      "id": "holiday-28c94070",
+      "favorite": "pumpkin_orange",
       "environmentLabel": "Morning · Weather unavailable",
       "monthName": "October",
       "season": "autumn",
       "holidayNames": [
         "Halloween"
-      ]
+      ],
+      "tileSetSource": "holiday",
+      "id": "holiday-28c94070"
     },
     "context": {
       "timeZone": "America/New_York",
@@ -1289,10 +1295,10 @@
     },
     "quality": {
       "initialMatches": 0,
-      "legalOpeningMoves": 24,
+      "legalOpeningMoves": 20,
       "verifiedWithoutBoosters": true,
       "verifiedMoves": 28,
-      "verifiedScore": 8110
+      "verifiedScore": 6450
     }
   }
 ]

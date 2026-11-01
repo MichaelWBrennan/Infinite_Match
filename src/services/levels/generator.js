@@ -5,6 +5,7 @@
  */
 import { environmentRules, blendHex } from './environment.js';
 import { hashSeed, nextRandom, legalSwaps, dealPlayableBoard, certifyBoard, simulateMove } from './match-core.js';
+import { tileSetForContext, gemTypesForContext, gemWeightsForContext } from './tile-sets.js';
 import { blankSpecials, specialActions, certifySpecialBoard, simulateSpecialMove } from './special-rules.js';
 import { witnessedShields, shieldCount } from './shield-rules.js';
 import { witnessedBlockers, blockerCount, blankBlockers } from './blocker-rules.js';
@@ -24,46 +25,48 @@ export const GENERATOR_VERSION = 5;
 export const GEM_TYPES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 export const LEVEL_MODES = ['classic', 'timed', 'daily', 'endless'];
 
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const monthlyColors = {
+  winter: ['ice_blue', 'amethyst_purple', 'emerald_green'],
+  spring: ['emerald_green', 'amethyst_purple', 'sunset_yellow'],
+  summer: ['sunset_yellow', 'tangerine_orange', 'ice_blue'],
+  autumn: ['tangerine_orange', 'crimson_red', 'amethyst_purple'],
+};
+
 export function levelTheme(context) {
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const seasonal = {
-    winter: { name: 'Crystal Winter', background: '#142c46', accent: '#9edfff', favorite: 'blue' },
-    spring: { name: 'Blooming Gardens', background: '#183f38', accent: '#9cf0b5', favorite: 'green' },
-    summer: { name: 'Sunlit Shores', background: '#163d54', accent: '#ffe082', favorite: 'yellow' },
-    autumn: { name: 'Harvest Skies', background: '#40253d', accent: '#ffc078', favorite: 'orange' },
-  };
-  const season = seasonal[context.season] || seasonal.spring;
-  const monthlyColors = {
-    winter: ['blue', 'purple', 'green'], spring: ['green', 'purple', 'yellow'],
-    summer: ['yellow', 'orange', 'blue'], autumn: ['orange', 'red', 'purple'],
-  };
-  const seasonalFavorite = (monthlyColors[context.season] || monthlyColors.spring)[context.month % 3];
   const holidays = context.holidays || [];
   const holidayName = holidays.map((holiday) => holiday.name).join(' · ');
-  const special = /halloween/i.test(holidayName)
-    ? { name: 'Halloween', background: '#25133b', accent: '#ffa658', favorite: 'orange' }
-    : /christmas|no[eë]l/i.test(holidayName)
-      ? { name: 'Christmas', background: '#19372f', accent: '#f7d987', favorite: 'red' }
-      : /valentine/i.test(holidayName)
-        ? { name: 'Valentine Celebration', background: '#461e38', accent: '#ff9ec2', favorite: 'red' }
-        : /easter/i.test(holidayName)
-          ? { name: 'Easter Celebration', background: '#323b54', accent: '#d8b5ff', favorite: 'purple' }
-          : holidays.length
-            ? { name: holidays[0].name, background: '#2e2250', accent: '#ffd87a', favorite: 'purple' }
-            : null;
-  const selected = special || { ...season, favorite: seasonalFavorite };
+  const tileSet = tileSetForContext(context);
   const environment = environmentRules(context);
   const monthName = monthNames[context.month - 1] || 'Local';
+  // For seasonal/default contexts, rotate the favorite gem by month (preserves
+  // the pre-tile-set monthly variation). Holidays and events keep their set favorite.
+  const favorite = tileSet.source === 'holiday' || tileSet.source === 'event'
+    ? tileSet.favorite
+    : (monthlyColors[context.season] || monthlyColors.winter)[context.month % 3];
+  const holidayDisplayName = /halloween/.test(holidayName.toLowerCase()) ? 'Halloween'
+    : /christmas|no[eë]l/.test(holidayName.toLowerCase()) ? 'Christmas'
+    : /valentine/.test(holidayName.toLowerCase()) ? 'Valentine Celebration'
+    : /easter/.test(holidayName.toLowerCase()) ? 'Easter Celebration'
+    : tileSet.name;
+  const baseName = tileSet.source === 'holiday'
+    ? holidayDisplayName
+    : tileSet.source === 'event'
+      ? tileSet.name
+      : `${monthName} · ${tileSet.name}`;
   return {
-    ...selected,
-    id: special ? `holiday-${hashSeed(holidayName).toString(16)}` : `${context.season}-${context.month}`,
-    name: special ? selected.name : `${monthName} · ${selected.name}`,
-    background: blendHex(selected.background, environment.tint),
-    accent: special ? selected.accent : environment.accent || selected.accent,
+    name: baseName,
+    background: blendHex(tileSet.background, environment.tint),
+    accent: environment.accent || tileSet.accent,
+    favorite,
     environmentLabel: environment.label,
     monthName,
     season: context.season,
     holidayNames: holidays.map((holiday) => holiday.name),
+    tileSetSource: tileSet.source,
+    id: tileSet.source === 'holiday'
+      ? `holiday-${hashSeed(holidayName).toString(16)}`
+      : `${context.season}-${context.month}-${tileSet.source}`,
   };
 }
 
@@ -95,15 +98,17 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
   const baseColorCount = isBoss ? 6 : level <= 3 && mode !== 'daily' ? 4 : 4 + Math.floor(nextRandom(rng) * 3);
   const colorCount = Math.max(baseColorCount, environment.minimumColors);
   const priorities = [...new Set([theme.favorite, ...environment.priorities])];
-  const others = GEM_TYPES.filter((color) => !priorities.includes(color));
+  const availableGems = gemTypesForContext(context);
+  const others = availableGems.filter((color) => !priorities.includes(color));
   // Seeded Fisher-Yates: month/season/holiday changes the palette and refill mix.
   for (let i = others.length - 1; i > 0; i--) {
     const j = Math.floor(nextRandom(rng) * (i + 1));
     [others[i], others[j]] = [others[j], others[i]];
   }
   const palette = [...priorities, ...others].slice(0, colorCount);
+  const tileSetWeights = gemWeightsForContext(context);
   const weights = Object.fromEntries(palette.map((color) => [color,
-    Math.min(2.2, (color === theme.favorite ? 1.35 : 1) + (environment.gemBonuses[color] || 0))]));
+    Math.min(2.2, (color === theme.favorite ? 1.35 : tileSetWeights[color] || 1) + (environment.gemBonuses[color] || 0))]));
   const moveBudget = Math.max(20, Math.min(30, 30 - cycle - (isBoss ? 5 : 0) + environment.moveBonus));
   const board = dealPlayableBoard(size, palette, weights, rng);
   const refillState = rng.state;
