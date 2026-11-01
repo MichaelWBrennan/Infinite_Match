@@ -197,6 +197,50 @@ export class OffersService {
     });
     return offers;
   }
+
+  /**
+   * Validates that an offer can be purchased by a player at the given time.
+   * Returns { valid: true, priceCents, discount } or { valid: false, reason }.
+   * This is the server-side enforcement used at purchase time.
+   */
+  validateOffer(sku, profile = {}, nowMs = Date.now()) {
+    const offer = OFFER_CATALOG.find((o) => o.sku === sku);
+    if (!offer) {
+      return { valid: false, reason: 'unknown_offer' };
+    }
+
+    // Check segment eligibility
+    const playerSegments = new Set(computeSegments(profile));
+    const eligible =
+      offer.segments.length === 0 ||
+      offer.segments.some((s) => playerSegments.has(s));
+    if (!eligible) {
+      return { valid: false, reason: 'offer_not_eligible' };
+    }
+
+    // Check flash sale expiry
+    if (offer.expiresInSeconds && profile.offerSeenAt) {
+      const seenAt = new Date(profile.offerSeenAt).getTime();
+      if (nowMs - seenAt > offer.expiresInSeconds * 1000) {
+        return { valid: false, reason: 'offer_expired' };
+      }
+    }
+
+    // Check purchase limit
+    const alreadyPurchased = (profile.purchases || []).includes(offer.sku);
+    if (offer.maxPurchases && alreadyPurchased >= offer.maxPurchases) {
+      return { valid: false, reason: 'purchase_limit_reached' };
+    }
+
+    const pricing = computeOfferPrice(offer, profile);
+    return {
+      valid: true,
+      priceCents: pricing.priceCents,
+      discount: pricing.discount,
+      productId: offer.productId,
+    };
+  }
 }
 
+export { OFFER_CATALOG };
 export default OffersService;

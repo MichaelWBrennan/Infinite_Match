@@ -12,6 +12,7 @@ import { LEVEL_LIMITS } from '../services/economy/item-catalog.js';
 import { levelTarget, winRewards } from '../services/meta/rewards.js';
 import { levelMultiplier, readLevelOverrides } from '../services/meta/level-overrides.js';
 import { VIP_ENTITLEMENT } from '../services/meta/vip.js';
+import { getClaimableQuests, getQuestDefinitions } from '../services/meta/daily-quests/daily-quests.js';
 import { loadSeasonSafely } from '../services/meta/battlepass-season.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { socialStore } from '../services/social/social-store.js';
@@ -339,6 +340,39 @@ router.post('/lives/buy', security.sessionValidation, async (req, res) => {
       return res.status(400).json({ success: false, error: 'invalid_lives_amount', requestId: req.requestId });
     }
     handleRouteError(res, error, 'buy lives', req.requestId);
+  }
+});
+
+// Get the player's current daily quests.
+router.get('/daily-quests', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const quests = await accountEconomyService.getDailyQuests(playerId);
+    const claimable = getClaimableQuests(quests);
+    res.json({
+      success: true,
+      quests: quests.quests,
+      claimable: claimable.map((q) => q.id),
+      dayStartMs: quests.dayStartMs,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    handleRouteError(res, error, 'get daily quests', req.requestId);
+  }
+});
+
+// Claim a daily quest reward.
+router.post('/daily-quests/:questId/claim', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { questId } = req.params;
+    const result = await accountEconomyService.claimDailyQuest(playerId, questId);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error.message === 'quest_not_found' || error.message === 'already_claimed' || error.message === 'quest_not_complete') {
+      return res.status(400).json({ success: false, error: error.message, requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'claim daily quest', req.requestId);
   }
 });
 
