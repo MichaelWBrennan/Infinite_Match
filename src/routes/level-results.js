@@ -1,7 +1,7 @@
 import express from 'express';
 import security, { requireMinRole } from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
-import { validateLevelResult, runTuning } from '../services/level-tuning.js';
+import { validateLevelResult, runTuning, isNearMiss, nearMissUrgency } from '../services/level-tuning.js';
 import { levelResultsStore } from '../services/level-results-store.js';
 import { readLevelOverrides } from '../services/meta/level-overrides.js';
 
@@ -15,7 +15,9 @@ router.get('/targets', (req, res) => {
 });
 
 // Signed-in players report each finished level. The record has no player ID, so the
-// tuning data does not identify anyone.
+// tuning data does not identify anyone. When a loss is a near miss ("one step away"),
+// the response includes a time-boxed urgency offer for discounted extra moves — the
+// Royal Match loss-aversion monetization moment.
 router.post('/', security.sessionValidation, async (req, res) => {
   const parsed = validateLevelResult(req.body);
   if (parsed.error) {
@@ -23,7 +25,28 @@ router.post('/', security.sessionValidation, async (req, res) => {
   }
   try {
     await levelResultsStore().append(parsed.value);
-    res.json({ success: true, requestId: req.requestId });
+
+    // Costs are server-set; the client cannot override them.
+    const CONTINUE_COST_COINS = 100;
+    const CONTINUE_EXTRA_MOVES = 5;
+
+    let urgencyOffer = null;
+    if (isNearMiss(parsed.value)) {
+      const urgency = nearMissUrgency(parsed.value);
+      const discountedCost = Math.round(CONTINUE_COST_COINS * (1 - urgency.discountPercent / 100));
+      urgencyOffer = {
+        urgency: urgency.urgency,
+        offer: urgency.offer,
+        movesAdded: urgency.movesAdded,
+        normalCostCoins: CONTINUE_COST_COINS,
+        discountedCostCoins: Math.max(1, discountedCost),
+        discountPercent: urgency.discountPercent,
+        // Offer expires 10 minutes after the near-miss loss.
+        expiresAt: Date.now() + 10 * 60 * 1000,
+      };
+    }
+
+    res.json({ success: true, urgencyOffer, requestId: req.requestId });
   } catch (error) {
     logger.error('Failed to store level result', { error: error.message });
     res.status(500).json({ success: false, error: 'storage_failed', requestId: req.requestId });

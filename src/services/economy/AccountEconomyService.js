@@ -121,6 +121,7 @@ class AccountEconomyService {
         settings: this.initializeSettings(),
         statistics: this.initializeStatistics(),
         kingdom: initialKingdom(),
+        cards: {},
         createdAt: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),
         version: '1.0.0'
@@ -1472,6 +1473,67 @@ class AccountEconomyService {
       playerEconomy.lastUpdated = new Date(nowMs).toISOString();
       await this.updatePlayerEconomyCache(playerId, playerEconomy);
       return { duplicate: false, credited, booster: inventory.count };
+    });
+  }
+
+  /**
+   * Credits one lives gift to the receiver, once per giftId. Lives are capped at the player's
+   * max (VIP-aware), so `credited` can be less than `amount` (or 0) when the receiver is full.
+   * Saved in one write.
+   */
+  async creditLivesGift(playerId, giftId, amount = 1, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const prior = playerEconomy.livesGifts?.[giftId];
+      if (prior) return { duplicate: true, credited: prior.credited, lives: playerEconomy.currencies.lives.amount };
+      const hasVip = await PurchaseLedgerDb.hasPurchase(playerId, 'vip');
+      const maxLives = getMaxLives(hasVip, MAX_LIVES);
+      const lives = regenerateLives(playerEconomy.currencies.lives, nowMs);
+      const credited = Math.max(0, Math.min(amount, maxLives - lives.amount));
+      lives.amount += credited;
+      playerEconomy.livesGifts = { ...(playerEconomy.livesGifts || {}), [giftId]: { credited, at: new Date(nowMs).toISOString() } };
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { duplicate: false, credited, lives: lives.amount };
+    });
+  }
+
+  // ========================================================================
+  // CARD COLLECTION
+  // ========================================================================
+
+  /** Returns the player's card collection ({ cardId: count }). */
+  async getCardCollection(playerId) {
+    const playerEconomy = await this.getPlayerEconomy(playerId);
+    return { ...(playerEconomy.cards || {}) };
+  }
+
+  /** Replaces the player's card collection (used after pack opening / conversion). */
+  async setCardCollection(playerId, cards) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      playerEconomy.cards = { ...cards };
+      playerEconomy.lastUpdated = new Date().toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { success: true, cards: playerEconomy.cards };
+    });
+  }
+
+  /**
+   * Adds cards to the player's collection. Returns the updated collection.
+   * cards: array of { cardId, count }
+   */
+  async addCards(playerId, cards) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const collection = { ...(playerEconomy.cards || {}) };
+      for (const { cardId, count } of cards) {
+        collection[cardId] = (collection[cardId] || 0) + count;
+      }
+      playerEconomy.cards = collection;
+      playerEconomy.lastUpdated = new Date().toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return { success: true, cards: playerEconomy.cards };
     });
   }
 
