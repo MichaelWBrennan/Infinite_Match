@@ -28,6 +28,7 @@ import { ASOOptimizationService } from '../services/aso-optimization-service.js'
 import gameRoutes from '../routes/game-routes.js';
 import { assertEconomyStoreForEnvironment } from '../services/economy/PlayerEconomyDb.js';
 import { assertSocialStoreForEnvironment } from '../services/social/social-backend.js';
+import { socialStore } from '../services/social/social-store.js';
 import aiContentRoutes from '../routes/ai-content.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
@@ -938,6 +939,68 @@ class GameServer {
             playerId
           );
           ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      // ---- Friend Challenge Socket.IO handlers ----
+
+      socket.on('friend_challenge_create', async (data: { toId: string; gameType?: string; targetScore?: number }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const result = await socialStore.createFriendChallenge(
+            playerId,
+            data.toId,
+            data.gameType || 'match3_versus',
+            data.targetScore || 1000
+          );
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('friend_challenge_accept', async (data: { challengeId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const result = await socialStore.acceptFriendChallenge(playerId, data.challengeId);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('friend_challenge_decline', async (data: { challengeId: string }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const result = await socialStore.declineFriendChallenge(playerId, data.challengeId);
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('friend_challenge_result', async (data: { challengeId: string; winnerId: string; scores?: Record<string, number> }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const result = await socialStore.reportFriendChallengeResult(
+            playerId,
+            data.challengeId,
+            data.winnerId,
+            data.scores || {}
+          );
+          ack?.({ success: true, data: result });
+        } catch (error) {
+          ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      });
+
+      socket.on('friend_challenge_leaderboard', async (data: { limit?: number }, ack?) => {
+        try {
+          const playerId = requireAuth();
+          const leaderboard = await socialStore.friendChallengeLeaderboard(playerId, data.limit || 10);
+          ack?.({ success: true, data: leaderboard });
         } catch (error) {
           ack?.({ success: false, error: error instanceof Error ? error.message : String(error) });
         }
