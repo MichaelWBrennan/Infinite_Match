@@ -9,6 +9,7 @@ import OffersService from '../services/offers/OffersService.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { grantPurchase } from '../services/payments/purchase-grants.js';
 import { productIdForSku } from '../services/payments/product-catalog.js';
+import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
 
 const router = express.Router();
 const logger = new Logger('MonetizationRoutes');
@@ -121,5 +122,68 @@ router.post('/offers', security.sessionValidation, async (req, res) => {
     res.status(500).json({ success: false, error: 'offers_error' });
   }
 });
+
+/**
+ * Purchase a PvP booster with coins. Deducts coins from the player's account
+ * and records the booster purchase. Boosters can be used in PvP matches.
+ */
+router.post(
+  '/pvp/booster',
+  security.sessionValidation,
+  [body('boosterId').isString().withMessage('boosterId required')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    try {
+      const playerId = req.user?.playerId;
+      if (!playerId) {
+        return res.status(401).json({ success: false, error: 'unauthorized' });
+      }
+      const { boosterId } = req.body;
+
+      const boosterPrices = {
+        pvp_booster_extra_moves: 50,
+        pvp_booster_color_bomb: 75,
+        pvp_booster_extra_time: 60,
+      };
+
+      const priceCoins = boosterPrices[boosterId];
+      if (!priceCoins) {
+        return res.status(400).json({ success: false, error: 'unknown_booster' });
+      }
+
+      const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
+      const coins = playerEconomy.currencies.coins;
+      if (coins.amount < priceCoins) {
+        return res.status(400).json({
+          success: false,
+          error: 'insufficient_coins',
+          required: priceCoins,
+          balance: coins.amount,
+        });
+      }
+
+      await accountEconomyService.updateCurrency(
+        playerId,
+        'coins',
+        priceCoins,
+        'spend',
+        `pvp_booster:${boosterId}`
+      );
+
+      res.json({
+        success: true,
+        boosterId,
+        costCoins: priceCoins,
+        message: `Purchased ${boosterId}`,
+      });
+    } catch (error) {
+      logger.error('PvP booster purchase failed', { error: error.message });
+      res.status(500).json({ success: false, error: 'booster_purchase_error' });
+    }
+  }
+);
 
 export default router;

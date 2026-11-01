@@ -11,6 +11,7 @@ import os from 'os';
 import path from 'path';
 import { router as multiplayerRoutes, initializeMultiplayerServices, getTournamentManager } from '../routes/multiplayer.js';
 import { socialStore } from '../services/social/social-store.js';
+import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
 import security from '../core/security/index.js';
 
 // ---------------------------------------------------------------------------
@@ -139,9 +140,17 @@ afterAll(() => {
   delete process.env.SOCIAL_STORE_FILE;
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   // Reset tournament state between tests for isolation
   getTournamentManager().reset();
+
+  // Reset player coin balances to default for test isolation
+  for (const pid of PLAYER_IDS) {
+    const economy = await accountEconomyService.getPlayerEconomy(pid);
+    economy.currencies.coins.amount = 10000;
+    economy.currencies.coins.spent = 0;
+    await accountEconomyService.updatePlayerEconomyCache(pid, economy);
+  }
 });
 
 afterAll(() => {
@@ -554,5 +563,99 @@ describe('multiplayer tournament - live ops integration', () => {
     const board2 = await socialStore.tournamentBoard(tId, 'tourney_alice', 10);
     const aliceEntry2 = board2.entries.find((e: any) => e.isYou);
     expect(aliceEntry2.score).toBe(1500);
+  });
+});
+
+describe('multiplayer tournament - entry fees and prizes', () => {
+  test('entry fee is deducted when joining paid tournament', async () => {
+    const tId = await createTournamentViaApi('tourney_alice', {
+      maxPlayers: 4,
+      entryFee: 100,
+      prizePool: 400,
+    });
+
+    // Get bob's coin balance before joining
+    const economyBefore = await accountEconomyService.getPlayerEconomy(
+      'tourney_bob'
+    );
+    const balanceBefore = economyBefore.currencies.coins.amount;
+
+    await joinTournamentViaApi('tourney_bob', tId);
+    await joinTournamentViaApi('tourney_carol', tId);
+    await joinTournamentViaApi('tourney_dave', tId);
+
+    // Get bob's coin balance after joining (he paid the entry fee)
+    const economyAfter = await accountEconomyService.getPlayerEconomy(
+      'tourney_bob'
+    );
+    const balanceAfter = economyAfter.currencies.coins.amount;
+
+    expect(balanceAfter).toBe(balanceBefore - 100);
+  });
+
+  test('insufficient coins for entry fee is rejected', async () => {
+    // Set tourney_bob to 0 coins (he is the one attempting to join)
+    const economy = await accountEconomyService.getPlayerEconomy('tourney_bob');
+    economy.currencies.coins.amount = 0;
+    await accountEconomyService.updatePlayerEconomyCache(
+      'tourney_bob',
+      economy
+    );
+
+    const tId = await createTournamentViaApi('tourney_alice', {
+      maxPlayers: 4,
+      entryFee: 100,
+      prizePool: 400,
+    });
+
+    const res = await request(app)
+      .post(`/api/multiplayer/tournaments/${tId}/join`)
+      .set(authHeader('tourney_bob'))
+      .send({});
+    expect(res.status).toBe(500); // Insufficient coins
+  });
+
+  test('prize pool is distributed to winners on tournament completion', async () => {
+    const tId = await createTournamentViaApi('tourney_alice', {
+      maxPlayers: 4,
+      entryFee: 0,
+      prizePool: 400,
+    });
+    await joinTournamentViaApi('tourney_bob', tId);
+    await joinTournamentViaApi('tourney_carol', tId);
+    await joinTournamentViaApi('tourney_dave', tId);
+    await startTournamentViaApi('tourney_alice', tId);
+
+    // Get winner's balance before completion
+    const t = await getTournament(tId);
+    const round1 = t.brackets.find((b: any) => b.round === 1);
+    const aliceMatch = round1.matches.find(
+      (m: any) =>
+        m.player1Id === 'tourney_alice' || m.player2Id === 'tourney_alice'
+    );
+    const otherMatch = round1.matches.find(
+      (m: any) => m.id !== aliceMatch.id
+    );
+    const otherWinner = otherMatch.player1Id;
+
+    const economyBefore = await accountEconomyService.getPlayerEconomy(
+      'tourney_alice'
+    );
+    const balanceBefore = economyBefore.currencies.coins.amount;
+
+    // Complete the tournament
+    await recordMatchResult(tId, aliceMatch.id, 'tourney_alice', 'tourney_alice');
+    await recordMatchResult(tId, otherMatch.id, otherWinner, otherWinner);
+    const t2 = await getTournament(tId);
+    await recordMatchResult(tId, t2.brackets[1].matches[0].id, 'tourney_alice', 'tourney_alice');
+
+    // Get winner's balance after completion
+    const economyAfter = await accountEconomyService.getPlayerEconomy(
+      'tourney_alice'
+    );
+    const balanceAfter = economyAfter.currencies.coins.amount;
+
+    // Winner should get 50% of 400 = 200 coins
+    expect(balanceAfter).toBe(balanceBefore + 200);
   });
 });

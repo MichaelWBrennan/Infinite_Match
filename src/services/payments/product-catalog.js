@@ -68,6 +68,47 @@ export const PRODUCTS = Object.freeze({
     label: 'Season Pass Premium',
     skus: sku('season_pass_premium'),
   }),
+  // ----- PvP / Tournament products -----
+  tournament_entry_100: Object.freeze({
+    kind: 'consumable',
+    priceCents: 99,
+    currency: 'usd',
+    label: 'Tournament Entry (100 coins)',
+    grants: Object.freeze({ currency: 'coins', amount: 100 }),
+    skus: sku('tournament_entry_100'),
+    // Purchased with coins in-game via tournament join, not sold for USD in the shop
+    tournamentEntry: true,
+  }),
+  pvp_booster_extra_moves: Object.freeze({
+    kind: 'consumable',
+    priceCents: 49,
+    currency: 'usd',
+    label: 'PvP Booster: Extra Moves (+3)',
+    grants: Object.freeze({ currency: 'coins', amount: 0 }),
+    skus: sku('pvp_booster_extra_moves'),
+    // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
+    pvpBooster: true,
+  }),
+  pvp_booster_color_bomb: Object.freeze({
+    kind: 'consumable',
+    priceCents: 79,
+    currency: 'usd',
+    label: 'PvP Booster: Color Bomb',
+    grants: Object.freeze({ currency: 'coins', amount: 0 }),
+    skus: sku('pvp_booster_color_bomb'),
+    // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
+    pvpBooster: true,
+  }),
+  pvp_booster_extra_time: Object.freeze({
+    kind: 'consumable',
+    priceCents: 59,
+    currency: 'usd',
+    label: 'PvP Booster: Extra Time (+30s)',
+    grants: Object.freeze({ currency: 'coins', amount: 0 }),
+    skus: sku('pvp_booster_extra_time'),
+    // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
+    pvpBooster: true,
+  }),
 });
 
 export function productFor(productId) {
