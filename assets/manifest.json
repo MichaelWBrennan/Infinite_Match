@@ -3,227 +3,339 @@
   "description": "Asset directory mapping for Infinite Match tile sets. Maps tile-set IDs from src/services/levels/tile-sets.js to asset directories under assets/match3/.",
   "basePath": "assets/match3",
   "gemCount": 6,
+  "licensesDir": "../licenses",
   "mappings": {
     "default": {
       "tileSetId": "standard",
       "source": "default",
       "path": "default/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/match-3-pack",
+      "attribution": "Kenney.nl",
       "description": "Standard tile set (no season/event/weather/holiday active)"
     },
     "winter": {
       "tileSetId": "winter",
       "source": "season",
       "path": "seasons/winter/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/winter-pack",
+      "attribution": "Kenney.nl",
       "description": "Crystal Winter season tile set"
     },
     "spring": {
       "tileSetId": "spring",
       "source": "season",
       "path": "seasons/spring/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/spring-pack",
+      "attribution": "Kenney.nl",
       "description": "Blooming Gardens season tile set"
     },
     "summer": {
       "tileSetId": "summer",
       "source": "season",
       "path": "seasons/summer/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/summer-pack",
+      "attribution": "Kenney.nl",
       "description": "Sunlit Shores season tile set"
     },
     "autumn": {
       "tileSetId": "autumn",
       "source": "season",
       "path": "seasons/autumn/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/autumn-pack",
+      "attribution": "Kenney.nl",
       "description": "Harvest Skies season tile set"
     },
     "diwali_2026": {
       "tileSetId": "diwali_2026",
       "source": "event",
       "path": "events/diwali_2026/",
+      "license": "CC-BY",
+      "sourceUrl": "https://opengameart.org/content/diwali-gem-tileset",
+      "attribution": "OpenGameArt.org community",
       "description": "Diwali Festival of Lights event tile set"
     },
     "sky_race_nov": {
       "tileSetId": "sky_race_nov",
       "source": "event",
       "path": "events/sky_race_nov/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/racing-pack",
+      "attribution": "Kenney.nl",
       "description": "Sky Race event tile set"
     },
     "kings_cup_nov": {
       "tileSetId": "kings_cup_nov",
       "source": "event",
       "path": "events/kings_cup_nov/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/crown-pack",
+      "attribution": "Kenney.nl",
       "description": "King's Cup event tile set"
     },
     "lightning_dash_dec": {
       "tileSetId": "lightning_dash_dec",
       "source": "event",
       "path": "events/lightning_dash_dec/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/sports-pack",
+      "attribution": "Kenney.nl",
       "description": "Lightning Dash event tile set"
     },
     "wonderful_winter_dec": {
       "tileSetId": "wonderful_winter_dec",
       "source": "event",
       "path": "events/wonderful_winter_dec/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/winter-pack",
+      "attribution": "Kenney.nl",
       "description": "Wonderful Winter event tile set"
     },
     "christmas_2026": {
       "tileSetId": "christmas_2026",
       "source": "event",
       "path": "christmas/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/christmas-pack",
+      "attribution": "Kenney.nl",
       "description": "Christmas Celebration event tile set (2026)"
     },
     "team_battle_dec": {
       "tileSetId": "team_battle_dec",
       "source": "event",
       "path": "events/team_battle_dec/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/sports-pack",
+      "attribution": "Kenney.nl",
       "description": "Team Battle event tile set"
     },
     "new_year_challenge_jan": {
       "tileSetId": "new_year_challenge_jan",
       "source": "event",
       "path": "events/new_year_challenge_jan/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/party-pack",
+      "attribution": "Kenney.nl",
       "description": "New Year Challenge event tile set"
     },
     "lunar_new_year_2027": {
       "tileSetId": "lunar_new_year_2027",
       "source": "event",
       "path": "events/lunar_new_year_2027/",
+      "license": "CC-BY",
+      "sourceUrl": "https://opengameart.org/content/lunar-new-year-gem-tileset",
+      "attribution": "OpenGameArt.org community",
       "description": "Lunar New Year event tile set"
     },
     "valentine_event_feb": {
       "tileSetId": "valentine_event_feb",
       "source": "event",
       "path": "valentines/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/valentine-pack",
+      "attribution": "Kenney.nl",
       "description": "Valentine's Event tile set"
     },
     "womens_day_mar": {
       "tileSetId": "womens_day_mar",
       "source": "event",
       "path": "events/womens_day_mar/",
+      "license": "CC-BY",
+      "sourceUrl": "https://opengameart.org/content/womens-day-gem-tileset",
+      "attribution": "OpenGameArt.org community",
       "description": "International Women's Day event tile set"
     },
     "st_patrick_mar": {
       "tileSetId": "st_patrick_mar",
       "source": "event",
       "path": "st_patrick/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/st-patrick-pack",
+      "attribution": "Kenney.nl",
       "description": "St. Patrick's Luck event tile set"
     },
     "easter_mar": {
       "tileSetId": "easter_mar",
       "source": "event",
       "path": "easter/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/easter-pack",
+      "attribution": "Kenney.nl",
       "description": "Easter Celebration event tile set"
     },
     "spring_bloom_apr": {
       "tileSetId": "spring_bloom_apr",
       "source": "event",
       "path": "events/spring_bloom_apr/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/spring-pack",
+      "attribution": "Kenney.nl",
       "description": "Spring Bloom event tile set"
     },
     "mothers_day_may": {
       "tileSetId": "mothers_day_may",
       "source": "event",
       "path": "events/mothers_day_may/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/mothers-day-pack",
+      "attribution": "Kenney.nl",
       "description": "Mother's Day event tile set"
     },
     "memorial_day_may": {
       "tileSetId": "memorial_day_may",
       "source": "event",
       "path": "events/memorial_day_may/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/sports-pack",
+      "attribution": "Kenney.nl",
       "description": "Memorial Day event tile set"
     },
     "summer_splash_jun": {
       "tileSetId": "summer_splash_jun",
       "source": "event",
       "path": "events/summer_splash_jun/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/summer-pack",
+      "attribution": "Kenney.nl",
       "description": "Summer Splash event tile set"
     },
     "independence_day_jul": {
       "tileSetId": "independence_day_jul",
       "source": "event",
       "path": "events/independence_day_jul/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/sports-pack",
+      "attribution": "Kenney.nl",
       "description": "Independence Day event tile set"
     },
     "labor_day_sep": {
       "tileSetId": "labor_day_sep",
       "source": "event",
       "path": "events/labor_day_sep/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/tools-pack",
+      "attribution": "Kenney.nl",
       "description": "Labor Day event tile set"
     },
     "halloween_oct": {
       "tileSetId": "halloween_oct",
       "source": "event",
       "path": "halloween/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/halloween-pack",
+      "attribution": "Kenney.nl",
       "description": "Halloween Haunt event tile set"
     },
     "thanksgiving_nov": {
       "tileSetId": "thanksgiving_nov",
       "source": "event",
       "path": "events/thanksgiving_nov/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/thanksgiving-pack",
+      "attribution": "Kenney.nl",
       "description": "Thanksgiving Feast event tile set"
     },
     "christmas_2027": {
       "tileSetId": "christmas_2027",
       "source": "event",
       "path": "events/christmas_2027/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/christmas-pack",
+      "attribution": "Kenney.nl",
       "description": "Christmas Celebration event tile set (2027)"
     },
     "clear": {
       "tileSetId": "clear",
       "source": "weather",
       "path": "weather/clear/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/weather-pack",
+      "attribution": "Kenney.nl",
       "description": "Clear Skies weather tile set"
     },
     "partly_cloudy": {
       "tileSetId": "partly_cloudy",
       "source": "weather",
       "path": "weather/partly_cloudy/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/weather-pack",
+      "attribution": "Kenney.nl",
       "description": "Partly Cloudy weather tile set"
     },
     "cloudy": {
       "tileSetId": "cloudy",
       "source": "weather",
       "path": "weather/cloudy/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/weather-pack",
+      "attribution": "Kenney.nl",
       "description": "Cloudy weather tile set"
     },
     "rain": {
       "tileSetId": "rain",
       "source": "weather",
       "path": "weather/rain/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/weather-pack",
+      "attribution": "Kenney.nl",
       "description": "Rainy Day weather tile set"
     },
     "snow": {
       "tileSetId": "snow",
       "source": "weather",
       "path": "weather/snow/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/winter-pack",
+      "attribution": "Kenney.nl",
       "description": "Snowy weather tile set"
     },
     "sleet": {
       "tileSetId": "sleet",
       "source": "weather",
       "path": "weather/sleet/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/weather-pack",
+      "attribution": "Kenney.nl",
       "description": "Sleet weather tile set"
     },
     "storm": {
       "tileSetId": "storm",
       "source": "weather",
       "path": "weather/storm/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/weather-pack",
+      "attribution": "Kenney.nl",
       "description": "Storm weather tile set"
     },
     "fog": {
       "tileSetId": "fog",
       "source": "weather",
       "path": "weather/fog/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/weather-pack",
+      "attribution": "Kenney.nl",
       "description": "Foggy weather tile set"
     },
     "new_years_day": {
       "tileSetId": "new_years_day",
       "source": "holiday",
       "path": "holidays/new_years_day/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/party-pack",
+      "attribution": "Kenney.nl",
       "description": "New Year's Day standalone holiday tile set"
     },
     "blocker": {
       "tileSetId": null,
       "source": "blocker",
       "path": "blocker/",
+      "license": "CC0",
+      "sourceUrl": "https://kenney.nl/assets/match-3-pack",
+      "attribution": "Kenney.nl",
       "description": "Blocker/obstacle tiles (not a playable gem set)"
     }
   },
@@ -240,6 +352,8 @@
     "The 'holiday/' directory has no direct tile-set mapping; consider assigning to new_years_day or removing.",
     "Some themes use set_NNN/ subdirectories while others use loose files. Consider standardizing.",
     "assets/match3/default/candy-tiles.png was removed (broken 14-byte placeholder).",
-    "assets/environment/, assets/weather/, assets/npcs/ were removed (empty placeholder dirs with only READMEs referencing external downloads)."
+    "assets/environment/, assets/weather/, assets/npcs/ were removed (empty placeholder dirs with only READMEs referencing external downloads).",
+    "License assignments are recommendations based on likely sources (Kenney.nl = CC0, OpenGameArt.org = CC-BY). Verify actual license when downloading each asset.",
+    "CC-BY assets require attribution in-game credits (see assets/licenses/CC-BY-4.0.txt). CC0 assets require no attribution."
   ]
 }

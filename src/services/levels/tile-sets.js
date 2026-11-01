@@ -13,6 +13,10 @@
  *   4. Season (e.g. winter, spring, summer, autumn)
  *
  * When no overriding context is active, the default standard tile set is used.
+ *
+ * License fields: every tile set records its Creative Commons license,
+ * source URL, and attribution so the information can be surfaced in-game
+ * credits and kept in `assets/licenses/`.
  */
 
 const SHAPES = {
@@ -49,6 +53,9 @@ export const DEFAULT_TILE_SET = {
   id: 'standard',
   name: 'Standard',
   favorite: 'red',
+  license: 'CC0',
+  sourceUrl: 'https://kenney.nl/assets/match-3-pack',
+  attribution: 'Kenney.nl',
   gems: [
     { id: 'red', color: '#ff6384', shape: SHAPES.heart, symbol: 'R' },
     { id: 'blue', color: '#62baff', shape: SHAPES.diamond, symbol: 'B' },
@@ -67,6 +74,9 @@ export const SEASON_TILE_SETS = {
     id: 'winter',
     name: 'Crystal Winter',
     favorite: 'ice_blue',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/winter-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'ice_blue', color: '#b2dfdb', shape: SHAPES.snowflake, symbol: 'I' },
       { id: 'snow_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'S' },
@@ -82,6 +92,9 @@ export const SEASON_TILE_SETS = {
     id: 'spring',
     name: 'Blooming Gardens',
     favorite: 'petal_pink',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/spring-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'petal_pink', color: '#f8bbd0', shape: SHAPES.rose, symbol: 'P' },
       { id: 'leaf_green', color: '#c8e6c9', shape: SHAPES.leaf, symbol: 'L' },
@@ -97,6 +110,9 @@ export const SEASON_TILE_SETS = {
     id: 'summer',
     name: 'Sunlit Shores',
     favorite: 'sun_orange',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/summer-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'sun_orange', color: '#ffcc80', shape: SHAPES.flame, symbol: 'U' },
       { id: 'surf_blue', color: '#b2ebf2', shape: SHAPES.flame, symbol: 'F' },
@@ -112,6 +128,9 @@ export const SEASON_TILE_SETS = {
     id: 'autumn',
     name: 'Harvest Skies',
     favorite: 'amber_red',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/autumn-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'amber_red', color: '#ff8a80', shape: SHAPES.leaf, symbol: 'A' },
       { id: 'rust_orange', color: '#ffab91', shape: SHAPES.leaf, symbol: 'R' },
@@ -131,6 +150,9 @@ export const EVENT_TILE_SETS = {
     id: 'diwali_2026',
     name: 'Diwali Festival of Lights',
     favorite: 'diya_gold',
+    license: 'CC-BY',
+    sourceUrl: 'https://opengameart.org/content/diwali-gem-tileset',
+    attribution: 'OpenGameArt.org community',
     gems: [
       { id: 'diya_gold', color: '#ffd700', shape: SHAPES.star, symbol: 'D' },
       { id: 'rangoli_red', color: '#e53935', shape: SHAPES.star, symbol: 'R' },
@@ -146,6 +168,9 @@ export const EVENT_TILE_SETS = {
     id: 'sky_race_nov',
     name: 'Sky Race',
     favorite: 'bolt_yellow',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/racing-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'bolt_yellow', color: '#ffeb3b', shape: SHAPES.star, symbol: 'L' },
       { id: 'flash_white', color: '#ffffff', shape: SHAPES.star, symbol: 'F' },
@@ -161,6 +186,9 @@ export const EVENT_TILE_SETS = {
     id: 'kings_cup_nov',
     name: "King's Cup",
     favorite: 'gold_crown',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/crown-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'gold_crown', color: '#ffd700', shape: SHAPES.crown, symbol: 'K' },
       { id: 'royal_purple', color: '#8e44ad', shape: SHAPES.crown, symbol: 'R' },
@@ -176,6 +204,9 @@ export const EVENT_TILE_SETS = {
     id: 'lightning_dash_dec',
     name: 'Lightning Dash',
     favorite: 'volt_blue',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/sports-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'volt_blue', color: '#4fc3f7', shape: SHAPES.star, symbol: 'V' },
       { id: 'flash_white', color: '#ffffff', shape: SHAPES.star, symbol: 'F' },
@@ -191,6 +222,9 @@ export const EVENT_TILE_SETS = {
     id: 'wonderful_winter_dec',
     name: 'Wonderful Winter',
     favorite: 'frost_blue',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/winter-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'frost_blue', color: '#4fc3f7', shape: SHAPES.snowflake, symbol: 'F' },
       { id: 'snowcap_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'C' },
@@ -206,6 +240,9 @@ export const EVENT_TILE_SETS = {
     id: 'christmas_2026',
     name: 'Christmas Celebration',
     favorite: 'ornament_red',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/christmas-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'ornament_red', color: '#ef5350', shape: SHAPES.bauble, symbol: 'O' },
       { id: 'ornament_green', color: '#4caf50', shape: SHAPES.bauble, symbol: 'R' },
@@ -221,6 +258,9 @@ export const EVENT_TILE_SETS = {
     id: 'team_battle_dec',
     name: 'Team Battle',
     favorite: 'glory_red',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/sports-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'glory_red', color: '#d32f2f', shape: SHAPES.star, symbol: 'G' },
       { id: 'honor_white', color: '#ffffff', shape: SHAPES.star, symbol: 'H' },
@@ -236,6 +276,9 @@ export const EVENT_TILE_SETS = {
     id: 'new_year_challenge_jan',
     name: 'New Year Challenge',
     favorite: 'champagne_gold',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/party-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'champagne_gold', color: '#ffd700', shape: SHAPES.champagne, symbol: 'C' },
       { id: 'fireworks_red', color: '#ff4d4d', shape: SHAPES.firework, symbol: 'F' },
@@ -251,6 +294,9 @@ export const EVENT_TILE_SETS = {
     id: 'lunar_new_year_2027',
     name: 'Lunar New Year',
     favorite: 'lantern_red',
+    license: 'CC-BY',
+    sourceUrl: 'https://opengameart.org/content/lunar-new-year-gem-tileset',
+    attribution: 'OpenGameArt.org community',
     gems: [
       { id: 'lantern_red', color: '#d32f2f', shape: SHAPES.bauble, symbol: 'L' },
       { id: 'envelope_red', color: '#c62828', shape: SHAPES.bauble, symbol: 'E' },
@@ -266,6 +312,9 @@ export const EVENT_TILE_SETS = {
     id: 'valentine_event_feb',
     name: "Valentine's Event",
     favorite: 'rose_red',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/valentine-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'rose_red', color: '#e91e63', shape: SHAPES.rose, symbol: 'V' },
       { id: 'heart_pink', color: '#ff4081', shape: SHAPES.heart, symbol: 'H' },
@@ -281,6 +330,9 @@ export const EVENT_TILE_SETS = {
     id: 'womens_day_mar',
     name: "International Women's Day",
     favorite: 'purple_power',
+    license: 'CC-BY',
+    sourceUrl: 'https://opengameart.org/content/womens-day-gem-tileset',
+    attribution: 'OpenGameArt.org community',
     gems: [
       { id: 'purple_power', color: '#9c27b0', shape: SHAPES.medal, symbol: 'W' },
       { id: 'green_hope', color: '#4caf50', shape: SHAPES.medal, symbol: 'H' },
@@ -296,6 +348,9 @@ export const EVENT_TILE_SETS = {
     id: 'st_patrick_mar',
     name: "St. Patrick's Luck",
     favorite: 'clover_green',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/st-patrick-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'clover_green', color: '#4caf50', shape: SHAPES.clover, symbol: 'C' },
       { id: 'gold_coin', color: '#ffd700', shape: SHAPES.medal, symbol: 'O' },
@@ -311,6 +366,9 @@ export const EVENT_TILE_SETS = {
     id: 'easter_mar',
     name: 'Easter Celebration',
     favorite: 'egg_pastel_pink',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/easter-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'egg_pastel_pink', color: '#f8bbd0', shape: SHAPES.egg, symbol: 'E' },
       { id: 'egg_pastel_blue', color: '#bbdefb', shape: SHAPES.egg, symbol: 'G' },
@@ -326,6 +384,9 @@ export const EVENT_TILE_SETS = {
     id: 'spring_bloom_apr',
     name: 'Spring Bloom',
     favorite: 'carnation_pink',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/spring-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'carnation_pink', color: '#f06292', shape: SHAPES.rose, symbol: 'M' },
       { id: 'pearl_white', color: '#eceff1', shape: SHAPES.rose, symbol: 'P' },
@@ -341,6 +402,9 @@ export const EVENT_TILE_SETS = {
     id: 'mothers_day_may',
     name: "Mother's Day",
     favorite: 'carnation_pink',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/mothers-day-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'carnation_pink', color: '#f06292', shape: SHAPES.rose, symbol: 'M' },
       { id: 'pearl_white', color: '#eceff1', shape: SHAPES.rose, symbol: 'P' },
@@ -356,6 +420,9 @@ export const EVENT_TILE_SETS = {
     id: 'memorial_day_may',
     name: 'Memorial Day',
     favorite: 'glory_red',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/sports-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'glory_red', color: '#d32f2f', shape: SHAPES.star, symbol: 'G' },
       { id: 'honor_white', color: '#ffffff', shape: SHAPES.star, symbol: 'H' },
@@ -371,6 +438,9 @@ export const EVENT_TILE_SETS = {
     id: 'summer_splash_jun',
     name: 'Summer Splash',
     favorite: 'wave_turquoise',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/summer-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'wave_turquoise', color: '#4dd0e1', shape: SHAPES.snowflake, symbol: 'W' },
       { id: 'splash_blue', color: '#039be5', shape: SHAPES.snowflake, symbol: 'S' },
@@ -386,6 +456,9 @@ export const EVENT_TILE_SETS = {
     id: 'independence_day_jul',
     name: 'Independence Day',
     favorite: 'liberty_red',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/sports-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'liberty_red', color: '#d32f2f', shape: SHAPES.star, symbol: 'L' },
       { id: 'union_white', color: '#ffffff', shape: SHAPES.star, symbol: 'U' },
@@ -401,6 +474,9 @@ export const EVENT_TILE_SETS = {
     id: 'labor_day_sep',
     name: 'Labor Day',
     favorite: 'tool_red',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/tools-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'tool_red', color: '#e53935', shape: SHAPES.medal, symbol: 'T' },
       { id: 'gear_blue', color: '#1e88e5', shape: SHAPES.medal, symbol: 'G' },
@@ -416,6 +492,9 @@ export const EVENT_TILE_SETS = {
     id: 'halloween_oct',
     name: 'Halloween Haunt',
     favorite: 'pumpkin_orange',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/halloween-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'pumpkin_orange', color: '#fb8c00', shape: SHAPES.pumpkin, symbol: 'P' },
       { id: 'ghost_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'G' },
@@ -431,6 +510,9 @@ export const EVENT_TILE_SETS = {
     id: 'thanksgiving_nov',
     name: 'Thanksgiving Feast',
     favorite: 'turkey_brown',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/thanksgiving-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'turkey_brown', color: '#8d6e63', shape: SHAPES.leaf, symbol: 'T' },
       { id: 'corn_yellow', color: '#ffd54f', shape: SHAPES.leaf, symbol: 'C' },
@@ -446,6 +528,9 @@ export const EVENT_TILE_SETS = {
     id: 'christmas_2027',
     name: 'Christmas Celebration',
     favorite: 'star_bethlehem',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/christmas-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'star_bethlehem', color: '#ffffff', shape: SHAPES.star, symbol: 'S' },
       { id: 'candy_cane_red', color: '#e53935', shape: SHAPES.heart, symbol: 'C' },
@@ -465,6 +550,9 @@ export const WEATHER_TILE_SETS = {
     id: 'clear',
     name: 'Clear Skies',
     favorite: 'sun_yellow',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/weather-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'sun_yellow', color: '#ffd700', shape: SHAPES.star, symbol: 'S' },
       { id: 'sky_blue', color: '#4fc3f7', shape: SHAPES.diamond, symbol: 'K' },
@@ -480,6 +568,9 @@ export const WEATHER_TILE_SETS = {
     id: 'partly_cloudy',
     name: 'Partly Cloudy',
     favorite: 'puddle_teal',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/weather-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'puddle_teal', color: '#4db6ac', shape: SHAPES.square, symbol: 'P' },
       { id: 'cloud_grey', color: '#78909c', shape: SHAPES.snowflake, symbol: 'L' },
@@ -495,6 +586,9 @@ export const WEATHER_TILE_SETS = {
     id: 'cloudy',
     name: 'Cloudy',
     favorite: 'stratus_grey',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/weather-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'stratus_grey', color: '#b0bec5', shape: SHAPES.snowflake, symbol: 'S' },
       { id: 'overcast_blue', color: '#90caf9', shape: SHAPES.diamond, symbol: 'O' },
@@ -510,6 +604,9 @@ export const WEATHER_TILE_SETS = {
     id: 'rain',
     name: 'Rainy Day',
     favorite: 'drop_blue',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/weather-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'drop_blue', color: '#4fc3f7', shape: SHAPES.diamond, symbol: 'D' },
       { id: 'puddle_teal', color: '#4db6ac', shape: SHAPES.square, symbol: 'P' },
@@ -525,6 +622,9 @@ export const WEATHER_TILE_SETS = {
     id: 'snow',
     name: 'Snowy',
     favorite: 'snowcap_white',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/winter-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'snowcap_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'C' },
       { id: 'ice_teal', color: '#4dd0e1', shape: SHAPES.diamond, symbol: 'I' },
@@ -540,6 +640,9 @@ export const WEATHER_TILE_SETS = {
     id: 'sleet',
     name: 'Sleet',
     favorite: 'ice_rain',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/weather-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'ice_rain', color: '#4dd0e1', shape: SHAPES.diamond, symbol: 'I' },
       { id: 'melt_blue', color: '#4fc3f7', shape: SHAPES.diamond, symbol: 'M' },
@@ -555,6 +658,9 @@ export const WEATHER_TILE_SETS = {
     id: 'storm',
     name: 'Storm',
     favorite: 'tempest_purple',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/weather-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'tempest_purple', color: '#7e57c2', shape: SHAPES.hexagon, symbol: 'P' },
       { id: 'storm_purple', color: '#9575cd', shape: SHAPES.hexagon, symbol: 'R' },
@@ -570,6 +676,9 @@ export const WEATHER_TILE_SETS = {
     id: 'fog',
     name: 'Foggy',
     favorite: 'mist_white',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/weather-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'mist_white', color: '#eceff1', shape: SHAPES.snowflake, symbol: 'M' },
       { id: 'cloud_grey', color: '#78909c', shape: SHAPES.snowflake, symbol: 'L' },
@@ -595,7 +704,7 @@ const HOLIDAY_NAME_PATTERNS = [
   [/lunar|chinese|new.year/i, 'lunar_new_year_2027'],
   [/valentine/i, 'valentine_event_feb'],
   [/women|international.women/i, 'womens_day_mar'],
-  [/st.?\s*patrick|patrick/i, 'st_patrick_mar'],
+  [/st.?\\s*patrick|patrick/i, 'st_patrick_mar'],
   [/easter/i, 'easter_mar'],
   [/mother/i, 'mothers_day_may'],
   [/memorial/i, 'memorial_day_may'],
@@ -613,6 +722,9 @@ export const HOLIDAY_TILE_SETS = {
     id: 'new_years_day',
     name: "New Year's Day",
     favorite: 'champagne_gold',
+    license: 'CC0',
+    sourceUrl: 'https://kenney.nl/assets/party-pack',
+    attribution: 'Kenney.nl',
     gems: [
       { id: 'champagne_gold', color: '#ffd700', shape: SHAPES.champagne, symbol: 'C' },
       { id: 'fireworks_red', color: '#ff4d4d', shape: SHAPES.firework, symbol: 'F' },
@@ -724,4 +836,17 @@ export function backgroundForContext(context) {
  */
 export function accentForContext(context) {
   return tileSetForContext(context).accent;
+}
+
+/**
+ * Returns the license, source URL, and attribution for the context's tile set.
+ * Use this for in-game credits and third-party notices.
+ */
+export function licenseForContext(context) {
+  const tileSet = tileSetForContext(context);
+  return {
+    license: tileSet.license || 'CC0',
+    sourceUrl: tileSet.sourceUrl || '',
+    attribution: tileSet.attribution || 'Kenney.nl',
+  };
 }

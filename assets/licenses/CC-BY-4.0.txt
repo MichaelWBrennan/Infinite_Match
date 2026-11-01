@@ -1,0 +1,106 @@
+Creative Commons Attribution 4.0 International Public License
+
+By exercising the Licensed Rights (defined below), You accept and agree to be
+bound by the terms of this Creative Commons Attribution 4.0 International
+Public License ("CCBY 4.0"). To the extent this license may be interpreted as
+a contract, You are granted the Licensed Rights in consideration of Your
+acceptance of these terms, and the Licensor grants You such rights in
+consideration of benefits the Licensor receives from making the Licensed
+Material available under these terms.
+
+Section 1 -- Definitions.
+
+ a. Licensed Material means the work of authorship, literary or artistic,
+    which is made available under this license.
+ b. Licensed Rights means the rights granted to You to make use of the
+    Licensed Material in accordance with this license.
+ c. Adaptor's License means the license You apply to Your Copyright and
+    Related Rights in contributions to Adapted Material in accordance with
+    this license.
+ d. Copyright and Related Rights means copyright and/or similar rights
+    closely related to copyright including, without limitation, performance,
+    broadcast, sound recording, and Sui Generis Database Rights, without
+    regard to how the rights are labeled or categorized.
+ e. Effective Technological Measures means those measures that, in the
+    absence of proper authority, may not be circumvented under laws
+    fulfilling obligations under Article 11 of the WIPO Copyright Treaty.
+ f. Exceptions and Limitations means fair use, fair dealing, and/or any
+    other exception or limitation to Copyright and Related Rights that
+    applies to Your use of the Licensed Material.
+ g. Licensor means the individual(s) or entity(ies) granting rights under
+    this license.
+ h. You means the individual or entity exercising rights under this license.
+ i. Your means the possessive form of You.
+
+Section 2 -- Scope.
+
+ a. License grant. Subject to the terms and conditions of this license,
+    Licensor hereby grants You a worldwide, royalty-free, non-sublicensable,
+    non-exclusive, irrevocable license to exercise the Licensed Rights in
+    the Licensed Material to:
+
+   i. reproduce and Share the Licensed Material, in whole or in part; and
+  ii. produce, reproduce, and Share Adapted Material.
+
+ b. Exceptions and Limitations. For the avoidance of doubt, where Exceptions
+    and Limitations apply to Your use, this license does not apply, and You
+    do not need to comply with its terms and conditions.
+
+ c. Term. The term of this license is specified in Section 6.
+
+ d. Media and formats; technical modifications allowed. The Licensor
+    authorizes You to exercise the Licensed Rights in all media and formats
+    whether now known or hereafter created, and to make technical
+    modifications necessary to do so. The Licensor waives and/or agrees not
+    to assert any right or authority to forbid You from making technical
+    modifications necessary to exercise the Licensed Rights, including
+    without limitation modifications necessary to circumvent Effective
+    Technological Measures.
+
+ e. Downstream recipients.
+
+   i. Offer from the Licensor -- Licensed Material. Every recipient of the
+      Licensed Material automatically receives an offer from the Licensor to
+      exercise the Licensed Rights under the terms and conditions of this
+      license.
+  ii. No downstream restrictions. You may not offer or impose any additional
+      or different terms or conditions on, or apply any Effective
+      Technological Measures to, the Licensed Material if doing so restricts
+      exercise of the Licensed Rights by any recipient of the Licensed
+      Material.
+
+ f. No endorsement. Nothing in this license constitutes or may be construed
+    as permission to assert or imply that You are, or that Your use of the
+    Licensed Material is, connected with, or sponsored, endorsed, or granted
+    official status by, the Licensor or others designated to receive
+    attribution as provided in Section 3(a)(1)(A).
+
+Section 3 -- Attribution.
+
+You must give appropriate credit, provide a link to the license, and indicate
+if changes were made. You may do so in any reasonable manner, but not in any
+way that suggests the Licensor endorses You or Your use.
+
+Section 4 -- Sui Generis Database Rights.
+
+Where the Licensed Material includes a database, You have the right to
+extract, reuse, and distribute the contents of the database, subject to the
+attribution requirements in Section 3.
+
+Section 5 -- Disclaimer of Warranties and Limitation of Liability.
+
+The Licensed Material is provided as-is and as-available, and the Licensor
+makes no representations or warranties of any kind concerning the Licensed
+Material, express, implied, statutory, or other.
+
+Section 6 -- Term and Termination.
+
+This license applies for the term of the Copyright and Related Rights
+licensed here. If You fail to comply with this license, then Your rights
+under this license terminate automatically.
+
+Section 7 -- Additional Terms.
+
+The Licensor may impose additional terms, different from those stated in this
+license, solely with respect to the Licensed Material. If You accept the
+Licensed Material under such additional terms, You agree to be bound by them.
