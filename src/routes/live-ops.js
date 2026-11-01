@@ -31,7 +31,13 @@ router.get('/offers', (req, res) => {
     const config = loadLiveOps();
     const today = liveOpsToday(now, config);
     const coinPacks = Object.entries(PRODUCTS)
-      .filter(([, p]) => p.kind === 'consumable' && p.grants?.currency === 'coins')
+      .filter(
+        ([, p]) =>
+          p.kind === 'consumable' &&
+          p.grants?.currency === 'coins' &&
+          !p.tournamentEntry &&
+          !p.pvpBooster
+      )
       .map(([productId, product]) => {
         const price = priceFor(productId, now, config);
         const deal = today.deals.find((d) => d.productId === productId);

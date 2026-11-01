@@ -3,6 +3,7 @@ import express from 'express';
 import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
+import { loadLiveOps } from '../services/live-ops/live-ops.js';
 import authRoutes from '../routes/auth.js';
 import kingdomRoutes from '../routes/kingdom.js';
 import accountEconomyRoutes from '../routes/account-economy.js';
@@ -42,6 +43,26 @@ async function playerToken(): Promise<string> {
   }
   return sharedPlayerToken;
 }
+
+// Live ops deals in config/liveops.json are active on 2026-11-01 (today's sandbox
+// date), which would cause purchase grants to charge deal prices instead of
+// catalog prices. Disable deals for all tests in this file so pricing is
+// deterministic and based on the catalog.
+let savedLiveOpsConfig: string | undefined;
+beforeEach(() => {
+  savedLiveOpsConfig = process.env.LIVE_OPS_CONFIG;
+  process.env.LIVE_OPS_CONFIG = '/nonexistent/liveops.json';
+  loadLiveOps({ reload: true });
+});
+
+afterEach(() => {
+  if (savedLiveOpsConfig === undefined) {
+    delete process.env.LIVE_OPS_CONFIG;
+  } else {
+    process.env.LIVE_OPS_CONFIG = savedLiveOpsConfig;
+  }
+  loadLiveOps({ reload: true });
+});
 
 describe('kingdom rules', () => {
   const throne = KINGDOM_ROOMS.find((r) => r.id === 'throne') as any;

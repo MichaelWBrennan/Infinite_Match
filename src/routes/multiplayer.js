@@ -595,7 +595,7 @@ router.post('/tournaments/:tournamentId/join', async (req, res) => {
     const { tournamentId } = req.params;
     const playerId = req.user.id;
 
-    const result = tournamentManager.joinTournament(playerId, tournamentId);
+    const result = await tournamentManager.joinTournament(playerId, tournamentId);
 
     res.json({
       success: true,

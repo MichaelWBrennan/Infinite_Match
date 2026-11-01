@@ -2,6 +2,7 @@ import { Logger } from '../../core/logger/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { randomUUID as uuidv4 } from 'node:crypto';
 import { socialStore } from '../../services/social/social-store.js';
+import { accountEconomy as accountEconomyService } from '../../services/economy/AccountEconomyService.js';
 
 /**
  * Multiplayer Tournament Manager
@@ -104,7 +105,7 @@ class TournamentManager {
   }
 
   /** Join a tournament */
-  joinTournament(playerId, tournamentId) {
+  async joinTournament(playerId, tournamentId) {
     try {
       const tournament = this.tournaments.get(tournamentId);
       if (!tournament) {
@@ -126,6 +127,22 @@ class TournamentManager {
       // Player cannot be in another active tournament
       if (this.playerTournaments.has(playerId)) {
         throw new ServiceError('Player is already in a tournament');
+      }
+
+      // Collect entry fee if the tournament has one
+      if (tournament.entryFee && tournament.entryFee > 0) {
+        const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
+        const coins = playerEconomy.currencies.coins;
+        if (coins.amount < tournament.entryFee) {
+          throw new ServiceError('Insufficient coins for entry fee');
+        }
+        await accountEconomyService.updateCurrency(
+          playerId,
+          'coins',
+          tournament.entryFee,
+          'spend',
+          `tournament_entry:${tournamentId}`
+        );
       }
 
       tournament.players.add(playerId);
@@ -448,6 +465,11 @@ class TournamentManager {
         tournament.status = 'completed';
         tournament.completedAt = Date.now();
         tournament.winnerId = winnerId;
+
+        // Distribute prize pool to winners based on placement
+        if (tournament.prizePool && tournament.prizePool > 0) {
+          this.distributePrizes(tournament, winnerId);
+        }
       }
 
       this.logger.info(
@@ -464,6 +486,110 @@ class TournamentManager {
       this.logger.error('Failed to record match result:', error);
       throw error;
     }
+  }
+
+  /** Distribute prize pool to tournament winners based on placement. */
+  async distributePrizes(tournament, winnerId) {
+    const placements = this.getTournamentPlacements(tournament, winnerId);
+
+    // Prize distribution: 50% / 30% / 10% / 10% for 1st / 2nd / 3rd-4th
+    const prizeDistribution = {
+      1: 0.5,
+      2: 0.3,
+      3: 0.1,
+      4: 0.1,
+    };
+
+    const payouts = [];
+
+    for (const placement of placements) {
+      const pct = prizeDistribution[placement.placement];
+      if (!pct) continue;
+
+      const prizeAmount = Math.floor(tournament.prizePool * pct);
+      if (prizeAmount <= 0) continue;
+
+      try {
+        await accountEconomyService.updateCurrency(
+          placement.playerId,
+          'coins',
+          prizeAmount,
+          'add',
+          `tournament_prize:${tournament.id}:place_${placement.placement}`
+        );
+
+        payouts.push({
+          playerId: placement.playerId,
+          placement: placement.placement,
+          prizeAmount,
+        });
+
+        this.logger.info(
+          `Prize paid: ${prizeAmount} coins to ${placement.playerId} for place ${placement.placement} in tournament ${tournament.id}`
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to pay prize to ${placement.playerId}: ${error.message}`
+        );
+      }
+    }
+
+    tournament.prizePayouts = payouts;
+    return payouts;
+  }
+
+  /** Determine placement for all players in a completed tournament. */
+  getTournamentPlacements(tournament, winnerId) {
+    const players = Array.from(tournament.players);
+    const placements = [];
+
+    // Winner is 1st
+    placements.push({ playerId: winnerId, placement: 1 });
+
+    // Find all matches and determine elimination round for each player
+    const playerEliminationRound = {};
+    const playerLastMatch = {};
+
+    for (const bracket of tournament.brackets) {
+      for (const match of bracket.matches) {
+        if (match.status === 'completed' && match.winnerId) {
+          const loserId =
+            match.player1Id === match.winnerId
+              ? match.player2Id
+              : match.player1Id;
+          if (loserId) {
+            // Player was eliminated in this round
+            playerEliminationRound[loserId] = match.round;
+            playerLastMatch[loserId] = match.id;
+          }
+        }
+      }
+    }
+
+    const numRounds = tournament.brackets.length;
+
+    for (const playerId of players) {
+      if (playerId === winnerId) continue; // Already placed 1st
+
+      const elimRound = playerEliminationRound[playerId];
+      if (elimRound === numRounds) {
+        // Lost in final = 2nd place
+        placements.push({ playerId, placement: 2 });
+      } else if (elimRound === numRounds - 1) {
+        // Lost in semifinal = 3rd-4th place
+        placements.push({ playerId, placement: 3 });
+      } else if (elimRound === numRounds - 2) {
+        // Lost in quarterfinal = 5th-8th place
+        placements.push({ playerId, placement: 5 });
+      } else {
+        // Lost in earlier round or bye
+        placements.push({ playerId, placement: 9 });
+      }
+    }
+
+    // Sort by placement
+    placements.sort((a, b) => a.placement - b.placement);
+    return placements;
   }
 
   /** Get tournament details (public view) */
