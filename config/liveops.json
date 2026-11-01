@@ -1,6 +1,13 @@
 {
   "events": [
     {
+      "id": "diwali_2026",
+      "name": "Diwali Festival of Lights",
+      "description": "Celebrate Diwali with glowing lamps, fireworks power-ups, and golden rewards.",
+      "start": "2026-10-21T00:00:00Z",
+      "end": "2026-10-26T23:59:59Z"
+    },
+    {
       "id": "sky_race_nov",
       "name": "Sky Race",
       "description": "Climb the leaderboard by winning levels. Top 100 players win bonus coins and boosters.",
@@ -29,6 +36,13 @@
       "end": "2026-12-25T23:59:59Z"
     },
     {
+      "id": "christmas_2026",
+      "name": "Christmas Celebration",
+      "description": "Holiday magic with snow-covered levels, gift-box boosters, and festive rewards.",
+      "start": "2026-12-23T00:00:00Z",
+      "end": "2026-12-26T23:59:59Z"
+    },
+    {
       "id": "team_battle_dec",
       "name": "Team Battle",
       "description": "Guilds face off in real-time matches. Winning guild members share a coin bounty.",
@@ -43,11 +57,25 @@
       "end": "2027-01-07T23:59:59Z"
     },
     {
+      "id": "lunar_new_year_2027",
+      "name": "Lunar New Year",
+      "description": "Welcome the Year of the Dragon with lantern levels, dragon power-ups, and prosperity rewards.",
+      "start": "2027-02-01T00:00:00Z",
+      "end": "2027-02-07T23:59:59Z"
+    },
+    {
       "id": "valentine_event_feb",
       "name": "Valentine's Event",
       "description": "Romance-themed levels with heart power-ups and double coin rewards.",
       "start": "2027-02-10T00:00:00Z",
       "end": "2027-02-16T23:59:59Z"
+    },
+    {
+      "id": "womens_day_mar",
+      "name": "International Women's Day",
+      "description": "Celebrate inspiring women with special levels, empowerment boosters, and bonus rewards.",
+      "start": "2027-03-06T00:00:00Z",
+      "end": "2027-03-10T23:59:59Z"
     },
     {
       "id": "st_patrick_mar",
@@ -57,6 +85,13 @@
       "end": "2027-03-19T23:59:59Z"
     },
     {
+      "id": "easter_mar",
+      "name": "Easter Celebration",
+      "description": "Egg-citing levels with bunny power-ups, chocolate eggs, and springtime surprises.",
+      "start": "2027-03-26T00:00:00Z",
+      "end": "2027-03-30T23:59:59Z"
+    },
+    {
       "id": "spring_bloom_apr",
       "name": "Spring Bloom",
       "description": "Flower-themed levels and a garden renovation meta-event.",
@@ -64,11 +99,39 @@
       "end": "2027-04-20T23:59:59Z"
     },
     {
+      "id": "mothers_day_may",
+      "name": "Mother's Day",
+      "description": "Honor moms with heartfelt levels, flower boosters, and family-themed rewards.",
+      "start": "2027-05-07T00:00:00Z",
+      "end": "2027-05-11T23:59:59Z"
+    },
+    {
+      "id": "memorial_day_may",
+      "name": "Memorial Day",
+      "description": "Patriotic levels with star-spangled boosters and salute-themed rewards.",
+      "start": "2027-05-28T00:00:00Z",
+      "end": "2027-05-31T23:59:59Z"
+    },
+    {
       "id": "summer_splash_jun",
       "name": "Summer Splash",
       "description": "Beach-themed levels, water power-ups, and summer card set.",
       "start": "2027-06-15T00:00:00Z",
       "end": "2027-06-25T23:59:59Z"
+    },
+    {
+      "id": "independence_day_jul",
+      "name": "Independence Day",
+      "description": "Fireworks, stars and stripes levels, and patriotic boosters for July 4th.",
+      "start": "2027-07-02T00:00:00Z",
+      "end": "2027-07-06T23:59:59Z"
+    },
+    {
+      "id": "labor_day_sep",
+      "name": "Labor Day",
+      "description": "End-of-summer celebration with relaxation levels and bonus coin rewards.",
+      "start": "2027-09-03T00:00:00Z",
+      "end": "2027-09-07T23:59:59Z"
     },
     {
       "id": "halloween_oct",
@@ -83,6 +146,13 @@
       "description": "Harvest-themed levels with turkey boosters and gratitude rewards.",
       "start": "2027-11-20T00:00:00Z",
       "end": "2027-11-26T23:59:59Z"
+    },
+    {
+      "id": "christmas_2027",
+      "name": "Christmas Celebration",
+      "description": "Holiday magic returns with snow-covered levels, gift-box boosters, and festive rewards.",
+      "start": "2027-12-22T00:00:00Z",
+      "end": "2027-12-26T23:59:59Z"
     }
   ],
   "deals": [
