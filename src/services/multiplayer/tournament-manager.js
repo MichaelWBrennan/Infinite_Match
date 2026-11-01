@@ -1,6 +1,7 @@
 import { Logger } from '../../core/logger/index.js';
 import { ServiceError } from '../../core/errors/ErrorHandler.js';
 import { randomUUID as uuidv4 } from 'node:crypto';
+import { socialStore } from '../../services/social/social-store.js';
 
 /**
  * Multiplayer Tournament Manager
@@ -11,14 +12,19 @@ import { randomUUID as uuidv4 } from 'node:crypto';
  *
  * Each round pairs remaining players into head-to-head match3_versus sessions.
  * Winners advance; losers are eliminated. The last player standing wins.
+ *
+ * Live Ops integration: completed match results are published to the social
+ * store's competition system (t:<id> / c:<id>) so they appear in the
+ * /api/live-ops/competitions endpoint and count toward score challenges.
  */
 class TournamentManager {
-  constructor(io, roomManager, sessionManager, antiCheatSystem) {
+  constructor(io, roomManager, sessionManager, antiCheatSystem, socialStore_ = socialStore) {
     this.logger = new Logger('TournamentManager');
     this.io = io;
     this.roomManager = roomManager;
     this.sessionManager = sessionManager;
     this.antiCheatSystem = antiCheatSystem;
+    this.socialStore = socialStore_;
 
     // Tournament storage
     this.tournaments = new Map(); // tournamentId -> tournament data
@@ -335,7 +341,7 @@ class TournamentManager {
   }
 
   /** Record a match result and advance the winner */
-  recordMatchResult(tournamentId, matchId, winnerId, scores = {}, reportedBy) {
+  async recordMatchResult(tournamentId, matchId, winnerId, scores = {}, reportedBy) {
     try {
       const tournament = this.tournaments.get(tournamentId);
       if (!tournament) {
@@ -364,21 +370,18 @@ class TournamentManager {
         throw new ServiceError('Winner is not a participant in this match');
       }
 
-      // Validate with anti-cheat if session exists
-      if (match.sessionId) {
+      // Validate with anti-cheat if session exists; use session scores only when
+      // the caller did not provide explicit scores (e.g. from a game client).
+      if (match.sessionId && (!scores || Object.keys(scores).length === 0)) {
         const session = this.sessionManager.sessions.get(match.sessionId);
         if (session) {
           const loserId =
             winnerId === match.player1Id
               ? match.player2Id
               : match.player1Id;
-          // Record the winner's score from the session if available
-          const winnerScore = session.scores[winnerId] || 0;
-          const loserScore = session.scores[loserId] || 0;
-
           scores = {
-            [winnerId]: winnerScore,
-            [loserId]: loserScore
+            [winnerId]: session.scores[winnerId] || 0,
+            [loserId]: session.scores[loserId] || 0,
           };
         }
       }
@@ -387,6 +390,27 @@ class TournamentManager {
       match.scores = scores;
       match.status = 'completed';
       match.completedAt = Date.now();
+
+      // Publish both players' results to the social store competition system
+      // so they appear in the live ops tournament board.
+      try {
+        const loserId =
+          winnerId === match.player1Id ? match.player2Id : match.player1Id;
+        await this.socialStore.recordWin(winnerId, {
+          level: 'pvp',
+          score: scores[winnerId] ?? 0,
+          tournamentIds: [tournamentId],
+          attemptId: `${matchId}:${winnerId}`,
+        });
+        await this.socialStore.recordWin(loserId, {
+          level: 'pvp',
+          score: scores[loserId] ?? 0,
+          tournamentIds: [tournamentId],
+          attemptId: `${matchId}:${loserId}`,
+        });
+      } catch {
+        // Social store write failure must not block tournament progression.
+      }
 
       // End the session
       if (match.sessionId) {

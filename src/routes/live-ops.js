@@ -288,4 +288,100 @@ router.post('/tournaments/:id/settle', security.sessionValidation, requireMinRol
   }
 });
 
+// Upcoming events calendar: all deals, tournaments, challenges, score challenges,
+// and weekly events whose start time is in the future, sorted by start time.
+router.get('/calendar', security.sessionValidation, async (req, res) => {
+  try {
+    const now = Date.now();
+    const config = loadLiveOps();
+    const events = [];
+
+    // Deals
+    for (const deal of config.deals || []) {
+      const start = Date.parse(deal.start);
+      const end = Date.parse(deal.end);
+      if (start && end && end > now) {
+        events.push({
+          type: 'deal',
+          id: deal.id,
+          name: deal.name,
+          productId: deal.productId,
+          priceCents: deal.priceCents,
+          catalogPriceCents: deal.catalogPriceCents,
+          startsAt: new Date(start).toISOString(),
+          endsAt: new Date(end).toISOString(),
+        });
+      }
+    }
+
+    // Tournaments
+    for (const t of config.tournaments || []) {
+      events.push({
+        type: 'tournament',
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        startsAt: new Date(t.startMs).toISOString(),
+        endsAt: new Date(t.endMs).toISOString(),
+        prizes: t.prizes,
+      });
+    }
+
+    // Community challenges
+    for (const c of config.challenges || []) {
+      events.push({
+        type: 'challenge',
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        startsAt: new Date(c.startMs).toISOString(),
+        endsAt: new Date(c.endMs).toISOString(),
+        goal: c.goal,
+        reward: c.reward,
+      });
+    }
+
+    // Score challenges
+    for (const c of config.scoreChallenges || []) {
+      const start = Date.parse(c.start);
+      const end = Date.parse(c.end);
+      if (start && end && end > now) {
+        events.push({
+          type: 'score_challenge',
+          id: c.id,
+          name: c.name,
+          target: c.target,
+          tiers: c.tiers,
+          startsAt: new Date(start).toISOString(),
+          endsAt: new Date(end).toISOString(),
+        });
+      }
+    }
+
+    // Weekly events
+    for (const w of config.weeklyEvents || []) {
+      const start = Date.parse(w.start);
+      const end = Date.parse(w.end);
+      if (start && end && end > now) {
+        events.push({
+          type: 'weekly_event',
+          id: w.id,
+          name: w.name,
+          description: w.description,
+          startsAt: new Date(start).toISOString(),
+          endsAt: new Date(end).toISOString(),
+          milestones: w.milestones,
+        });
+      }
+    }
+
+    events.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+
+    res.json({ success: true, events, serverNow: new Date(now).toISOString(), requestId: req.requestId });
+  } catch (error) {
+    logger.error('Event calendar lookup failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'live_ops_error', requestId: req.requestId });
+  }
+});
+
 export default router;

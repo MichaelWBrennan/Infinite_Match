@@ -5,6 +5,9 @@ import { RoomManager } from '../services/multiplayer/room-manager.js';
 import { GameSessionManager } from '../services/multiplayer/game-session-manager.js';
 import { AntiCheatSystem } from '../services/multiplayer/anti-cheat-system.js';
 import { TournamentManager } from '../services/multiplayer/tournament-manager.js';
+import { accountEconomy as accountEconomyService } from '../services/economy/AccountEconomyService.js';
+import { loadLiveOps } from '../services/live-ops/live-ops.js';
+import { recordVerifiedChallengeWin } from '../services/live-ops/score-challenge-economy.js';
 import security from '../core/security/index.js';
 
 const router = express.Router();
@@ -707,7 +710,7 @@ router.post(
         });
       }
 
-      const result = tournamentManager.recordMatchResult(
+      const result = await tournamentManager.recordMatchResult(
         tournamentId,
         matchId,
         winnerId,
@@ -728,6 +731,61 @@ router.post(
     }
   }
 );
+
+// Record a PvP match win toward the player's active score challenge.
+// The score comes from the completed PvP session.
+router.post('/sessions/:sessionId/record-win', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const playerId = req.user.id;
+    const { score } = req.body;
+
+    if (!Number.isInteger(score) || score < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Score must be a non-negative integer'
+      });
+    }
+
+    const session = sessionManager.sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        error: 'Session not found'
+      });
+    }
+
+    if (!session.players.has(playerId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Player not in session'
+      });
+    }
+
+    const economy = await accountEconomyService.getPlayerEconomy(playerId);
+    const config = loadLiveOps();
+    const result = await accountEconomyService.withPlayerLock(playerId, () => {
+      const currentEconomy = accountEconomyService.getPlayerEconomy(playerId);
+      const recorded = recordVerifiedChallengeWin(currentEconomy, config, score);
+      if (recorded) {
+        accountEconomyService.updatePlayerEconomyCache(playerId, currentEconomy);
+      }
+      return recorded;
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: result ? 'Win recorded toward score challenge' : 'No active score challenge'
+    });
+  } catch (error) {
+    logger.error('Failed to record PvP win:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 /**
  * STATISTICS ROUTES
