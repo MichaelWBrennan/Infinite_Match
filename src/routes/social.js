@@ -176,6 +176,44 @@ router.post('/gifts/booster', async (req, res) => {
   }
 });
 
+// Gift inbox: view pending (unclaimed) energy and booster gifts sent to the player.
+router.get('/gifts/inbox', async (req, res) => {
+  try {
+    const playerId = req.user.playerId;
+    const inbox = await socialStore.read((d) => {
+      const now = Date.now();
+      const energyGifts = Object.values(d.energyGifts || {})
+        .filter((g) => g.to === playerId && g.status !== 'credited')
+        .map((g) => ({
+          giftId: g.id,
+          type: 'energy',
+          from: g.from,
+          amount: g.amount,
+          createdAt: g.createdAt,
+          status: g.status,
+        }));
+      const boosterGifts = Object.values(d.boosterGifts || {})
+        .filter((g) => g.to === playerId && g.status !== 'credited')
+        .map((g) => ({
+          giftId: g.id,
+          type: 'booster',
+          from: g.from,
+          boosterId: g.boosterId,
+          amount: g.amount,
+          createdAt: g.createdAt,
+          status: g.status,
+        }));
+      const all = [...energyGifts, ...boosterGifts].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
+      return { gifts: all, count: all.length };
+    });
+    res.json({ success: true, result: inbox, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
 // Guild milestone (S3): this week's shared goal. Progress is counted only from server-verified wins.
 router.get('/milestone', async (req, res) => {
   try {

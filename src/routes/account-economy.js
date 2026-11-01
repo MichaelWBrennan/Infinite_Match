@@ -269,6 +269,79 @@ router.post('/daily-reward/claim', security.sessionValidation, async (req, res) 
   }
 });
 
+// View the daily reward calendar: shows each day's reward and whether it can be claimed.
+// Does not grant anything; purely informational.
+router.get('/daily-reward/calendar', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const economy = await accountEconomyService.getPlayerEconomy(playerId);
+    const dailyRewards = economy.dailyRewards;
+    const now = new Date();
+    const lastClaimed = dailyRewards.lastClaimed ? new Date(dailyRewards.lastClaimed) : null;
+    const alreadyClaimedToday = lastClaimed && accountEconomyService.isSameDay(now, lastClaimed);
+    const streakBroken = lastClaimed && accountEconomyService.getDaysDifference(now, lastClaimed) > 1;
+
+    const calendar = dailyRewards.rewards.map((reward, index) => {
+      const day = index + 1;
+      const claimed = day < dailyRewards.streak;
+      const canClaim = !alreadyClaimedToday && !streakBroken && day === dailyRewards.nextReward && !claimed;
+      return {
+        day,
+        coins: reward.coins || 0,
+        stars: reward.stars || 0,
+        xp: reward.xp || 0,
+        bonus: reward.bonus || null,
+        claimed,
+        canClaim,
+      };
+    });
+
+    res.json({
+      success: true,
+      calendar,
+      streak: dailyRewards.streak,
+      canClaim: dailyRewards.canClaim && !alreadyClaimedToday && !streakBroken,
+      nextReward: dailyRewards.nextReward,
+      lastClaimed: dailyRewards.lastClaimed,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    handleRouteError(res, error, 'get daily reward calendar', req.requestId);
+  }
+});
+
+// Spend one life (e.g. after a failed level attempt).
+router.post('/lives/spend', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const result = await accountEconomyService.spendLife(playerId);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error.message === 'no_lives') {
+      return res.status(400).json({ success: false, error: 'no_lives', requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'spend life', req.requestId);
+  }
+});
+
+// Buy lives with coins.
+router.post('/lives/buy', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const { amount = 1 } = req.body || {};
+    const result = await accountEconomyService.buyLives(playerId, amount);
+    res.json({ success: true, result, requestId: req.requestId });
+  } catch (error) {
+    if (error.message === 'insufficient_coins') {
+      return res.status(400).json({ success: false, error: 'insufficient_coins', requestId: req.requestId });
+    }
+    if (error.message === 'invalid_lives_amount') {
+      return res.status(400).json({ success: false, error: 'invalid_lives_amount', requestId: req.requestId });
+    }
+    handleRouteError(res, error, 'buy lives', req.requestId);
+  }
+});
+
 // Sync with Unity
 router.post('/sync/unity', security.sessionValidation, async (req, res) => {
   try {

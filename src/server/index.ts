@@ -45,7 +45,9 @@ import adsRoutes from '../routes/ads.js';
 import adminRoutes from '../routes/admin.js';
 import consentRoutes from '../routes/consent.js';
 import retentionStudyRoutes from '../routes/retention-study.js';
+import crmRoutes from '../routes/crm.js';
 import pushRoutes from '../routes/push.js';
+import pushTriggerRoutes from '../routes/push-triggers.js';
 import experimentsRoutes from '../routes/experiments.js';
 import levelResultsRoutes from '../routes/level-results.js';
 import levelsRoutes from '../routes/levels.js';
@@ -373,6 +375,7 @@ class GameServer {
     this.app.use('/api/consent', consentRoutes);
     this.app.use('/api/retention-study', retentionStudyRoutes);
     this.app.use('/api/push', pushRoutes);
+    this.app.use('/api/push/triggers', pushTriggerRoutes);
     this.app.use('/api/experiments', experimentsRoutes);
     this.app.use('/api/level-results', levelResultsRoutes);
     // Procedural levels are public; rewarded attempts still require the player's session.
@@ -391,9 +394,11 @@ class GameServer {
     this.app.use('/api/social', socialRoutes);
     // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
     this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
-    // Not mounted:
-    // - economy: its write routes would reopen the exploits fixed in account-economy.
-    // - crm: webhook and push send are logging stubs that deliver nothing.
+// CRM: operator-only campaign management. Requires ADMIN_API_TOKEN.
+this.app.use('/api/crm', crmRoutes);
+
+// Not mounted:
+// - economy: its write routes would reopen the exploits fixed in account-economy.
 
     // Platform-specific API routes
     this.setupPlatformRoutes();
