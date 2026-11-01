@@ -185,7 +185,34 @@ router.post('/gifts/booster', async (req, res) => {
   }
 });
 
-// Gift inbox: view pending (unclaimed) energy and booster gifts sent to the player.
+// Lives gift (S2): a friend gives one life. Recorded in the shared social store first, then
+// credited to the receiver once (the economy keeps a receipt per gift id). A retry with the same
+// giftId is safe at both steps. Lives are the core retention resource, so this is a key viral
+// loop: a friend can keep you playing when you are out of lives.
+router.post('/gifts/lives', async (req, res) => {
+  const receiverId = idParam(req.body?.receiverId);
+  if (!receiverId) return res.status(400).json({ success: false, error: 'invalid_player', requestId: req.requestId });
+  try {
+    const nowMs = Date.now();
+    const { gift, reserved } = await socialStore.reserveEnergyGift(
+      req.user.playerId, receiverId, req.body?.giftId, nowMs, 'lives');
+    const credit = await accountEconomyService.creditLivesGift(receiverId, gift.id, gift.amount, nowMs);
+    if (gift.status !== 'credited') await socialStore.markEnergyGiftCredited(gift.id, credit.credited);
+    // Notify the receiver they have a new lives gift (fire and forget; push is best-effort).
+    void notifyPlayer({
+      userId: receiverId,
+      title: 'Lives gift received',
+      body: 'A friend sent you a life! Keep playing.',
+      data: { type: 'lives_gift', from: req.user.playerId, giftId: gift.id },
+    });
+    res.json({ success: true, result: { giftId: gift.id, credited: credit.credited,
+      duplicate: !reserved || credit.duplicate }, requestId: req.requestId });
+  } catch (error) {
+    handleError(res, error, req.requestId);
+  }
+});
+
+// Gift inbox: view pending (unclaimed) energy, booster, and lives gifts sent to the player.
 router.get('/gifts/inbox', async (req, res) => {
   try {
     const playerId = req.user.playerId;
@@ -212,7 +239,17 @@ router.get('/gifts/inbox', async (req, res) => {
           createdAt: g.createdAt,
           status: g.status,
         }));
-      const all = [...energyGifts, ...boosterGifts].sort(
+      const livesGifts = Object.values(d.livesGifts || {})
+        .filter((g) => g.to === playerId && g.status !== 'credited')
+        .map((g) => ({
+          giftId: g.id,
+          type: 'lives',
+          from: g.from,
+          amount: g.amount,
+          createdAt: g.createdAt,
+          status: g.status,
+        }));
+      const all = [...energyGifts, ...boosterGifts, ...livesGifts].sort(
         (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
       return { gifts: all, count: all.length };

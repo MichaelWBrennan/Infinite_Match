@@ -1,5 +1,90 @@
 {
-  "events": [],
+  "events": [
+    {
+      "id": "sky_race_nov",
+      "name": "Sky Race",
+      "description": "Climb the leaderboard by winning levels. Top 100 players win bonus coins and boosters.",
+      "start": "2026-11-15T00:00:00Z",
+      "end": "2026-11-21T23:59:59Z"
+    },
+    {
+      "id": "kings_cup_nov",
+      "name": "King's Cup",
+      "description": "Team-based tournament. Guilds compete for the crown and a shared prize pool.",
+      "start": "2026-11-22T00:00:00Z",
+      "end": "2026-11-28T23:59:59Z"
+    },
+    {
+      "id": "lightning_dash_dec",
+      "name": "Lightning Dash",
+      "description": "48-hour sprint: win as many levels as possible for escalating rewards.",
+      "start": "2026-12-01T00:00:00Z",
+      "end": "2026-12-02T23:59:59Z"
+    },
+    {
+      "id": "wonderful_winter_dec",
+      "name": "Wonderful Winter",
+      "description": "Seasonal event with winter-themed levels and exclusive rewards.",
+      "start": "2026-12-10T00:00:00Z",
+      "end": "2026-12-25T23:59:59Z"
+    },
+    {
+      "id": "team_battle_dec",
+      "name": "Team Battle",
+      "description": "Guilds face off in real-time matches. Winning guild members share a coin bounty.",
+      "start": "2026-12-26T00:00:00Z",
+      "end": "2027-01-01T23:59:59Z"
+    },
+    {
+      "id": "new_year_challenge_jan",
+      "name": "New Year Challenge",
+      "description": "Complete 7 daily challenges for a grand prize and a legendary card.",
+      "start": "2027-01-01T00:00:00Z",
+      "end": "2027-01-07T23:59:59Z"
+    },
+    {
+      "id": "valentine_event_feb",
+      "name": "Valentine's Event",
+      "description": "Romance-themed levels with heart power-ups and double coin rewards.",
+      "start": "2027-02-10T00:00:00Z",
+      "end": "2027-02-16T23:59:59Z"
+    },
+    {
+      "id": "st_patrick_mar",
+      "name": "St. Patrick's Luck",
+      "description": "Find the pot of gold in lucky levels. Rainbows and clovers abound.",
+      "start": "2027-03-15T00:00:00Z",
+      "end": "2027-03-19T23:59:59Z"
+    },
+    {
+      "id": "spring_bloom_apr",
+      "name": "Spring Bloom",
+      "description": "Flower-themed levels and a garden renovation meta-event.",
+      "start": "2027-04-10T00:00:00Z",
+      "end": "2027-04-20T23:59:59Z"
+    },
+    {
+      "id": "summer_splash_jun",
+      "name": "Summer Splash",
+      "description": "Beach-themed levels, water power-ups, and summer card set.",
+      "start": "2027-06-15T00:00:00Z",
+      "end": "2027-06-25T23:59:59Z"
+    },
+    {
+      "id": "halloween_oct",
+      "name": "Halloween Haunt",
+      "description": "Spooky levels, pumpkin bombs, and a haunted castle card set.",
+      "start": "2027-10-20T00:00:00Z",
+      "end": "2027-10-31T23:59:59Z"
+    },
+    {
+      "id": "thanksgiving_nov",
+      "name": "Thanksgiving Feast",
+      "description": "Harvest-themed levels with turkey boosters and gratitude rewards.",
+      "start": "2027-11-20T00:00:00Z",
+      "end": "2027-11-26T23:59:59Z"
+    }
+  ],
   "deals": [
     {
       "id": "deal_coins_medium",
@@ -46,16 +131,46 @@
       "startMs": 1762051200000,
       "endMs": 1762655999000,
       "prizes": [
-        { "rank": 1, "coins": 500 },
-        { "rank": 2, "coins": 300 },
-        { "rank": 3, "coins": 200 },
-        { "rank": 4, "coins": 150 },
-        { "rank": 5, "coins": 100 },
-        { "rank": 6, "coins": 75 },
-        { "rank": 7, "coins": 50 },
-        { "rank": 8, "coins": 40 },
-        { "rank": 9, "coins": 30 },
-        { "rank": 10, "coins": 20 }
+        {
+          "rank": 1,
+          "coins": 500
+        },
+        {
+          "rank": 2,
+          "coins": 300
+        },
+        {
+          "rank": 3,
+          "coins": 200
+        },
+        {
+          "rank": 4,
+          "coins": 150
+        },
+        {
+          "rank": 5,
+          "coins": 100
+        },
+        {
+          "rank": 6,
+          "coins": 75
+        },
+        {
+          "rank": 7,
+          "coins": 50
+        },
+        {
+          "rank": 8,
+          "coins": 40
+        },
+        {
+          "rank": 9,
+          "coins": 30
+        },
+        {
+          "rank": 10,
+          "coins": 20
+        }
       ]
     },
     {
@@ -65,16 +180,46 @@
       "startMs": 1762656000000,
       "endMs": 1763260799000,
       "prizes": [
-        { "rank": 1, "coins": 500 },
-        { "rank": 2, "coins": 300 },
-        { "rank": 3, "coins": 200 },
-        { "rank": 4, "coins": 150 },
-        { "rank": 5, "coins": 100 },
-        { "rank": 6, "coins": 75 },
-        { "rank": 7, "coins": 50 },
-        { "rank": 8, "coins": 40 },
-        { "rank": 9, "coins": 30 },
-        { "rank": 10, "coins": 20 }
+        {
+          "rank": 1,
+          "coins": 500
+        },
+        {
+          "rank": 2,
+          "coins": 300
+        },
+        {
+          "rank": 3,
+          "coins": 200
+        },
+        {
+          "rank": 4,
+          "coins": 150
+        },
+        {
+          "rank": 5,
+          "coins": 100
+        },
+        {
+          "rank": 6,
+          "coins": 75
+        },
+        {
+          "rank": 7,
+          "coins": 50
+        },
+        {
+          "rank": 8,
+          "coins": 40
+        },
+        {
+          "rank": 9,
+          "coins": 30
+        },
+        {
+          "rank": 10,
+          "coins": 20
+        }
       ]
     },
     {
@@ -84,16 +229,46 @@
       "startMs": 1763260800000,
       "endMs": 1763865599000,
       "prizes": [
-        { "rank": 1, "coins": 500 },
-        { "rank": 2, "coins": 300 },
-        { "rank": 3, "coins": 200 },
-        { "rank": 4, "coins": 150 },
-        { "rank": 5, "coins": 100 },
-        { "rank": 6, "coins": 75 },
-        { "rank": 7, "coins": 50 },
-        { "rank": 8, "coins": 40 },
-        { "rank": 9, "coins": 30 },
-        { "rank": 10, "coins": 20 }
+        {
+          "rank": 1,
+          "coins": 500
+        },
+        {
+          "rank": 2,
+          "coins": 300
+        },
+        {
+          "rank": 3,
+          "coins": 200
+        },
+        {
+          "rank": 4,
+          "coins": 150
+        },
+        {
+          "rank": 5,
+          "coins": 100
+        },
+        {
+          "rank": 6,
+          "coins": 75
+        },
+        {
+          "rank": 7,
+          "coins": 50
+        },
+        {
+          "rank": 8,
+          "coins": 40
+        },
+        {
+          "rank": 9,
+          "coins": 30
+        },
+        {
+          "rank": 10,
+          "coins": 20
+        }
       ]
     }
   ],
@@ -105,7 +280,9 @@
       "startMs": 1762051200000,
       "endMs": 1762655999000,
       "goal": 50000,
-      "reward": { "coins": 100 }
+      "reward": {
+        "coins": 100
+      }
     },
     {
       "id": "community_collector_20261109",
@@ -114,7 +291,9 @@
       "startMs": 1762656000000,
       "endMs": 1763260799000,
       "goal": 100000,
-      "reward": { "coins": 100 }
+      "reward": {
+        "coins": 100
+      }
     },
     {
       "id": "community_guardian_20261116",
@@ -123,7 +302,9 @@
       "startMs": 1763260800000,
       "endMs": 1763865599000,
       "goal": 60000,
-      "reward": { "coins": 100 }
+      "reward": {
+        "coins": 100
+      }
     }
   ],
   "scoreChallenges": [
@@ -134,9 +315,18 @@
       "end": "2026-11-09T00:00:00Z",
       "target": 5000,
       "tiers": [
-        { "threshold": 1000, "coins": 10 },
-        { "threshold": 3000, "coins": 25 },
-        { "threshold": 5000, "coins": 25 }
+        {
+          "threshold": 1000,
+          "coins": 10
+        },
+        {
+          "threshold": 3000,
+          "coins": 25
+        },
+        {
+          "threshold": 5000,
+          "coins": 25
+        }
       ]
     },
     {
@@ -146,9 +336,18 @@
       "end": "2026-11-09T00:00:00Z",
       "target": 10000,
       "tiers": [
-        { "threshold": 2000, "coins": 15 },
-        { "threshold": 6000, "coins": 30 },
-        { "threshold": 10000, "coins": 35 }
+        {
+          "threshold": 2000,
+          "coins": 15
+        },
+        {
+          "threshold": 6000,
+          "coins": 30
+        },
+        {
+          "threshold": 10000,
+          "coins": 35
+        }
       ]
     },
     {
@@ -158,9 +357,18 @@
       "end": "2026-11-09T00:00:00Z",
       "target": 15000,
       "tiers": [
-        { "threshold": 3000, "coins": 20 },
-        { "threshold": 9000, "coins": 30 },
-        { "threshold": 15000, "coins": 30 }
+        {
+          "threshold": 3000,
+          "coins": 20
+        },
+        {
+          "threshold": 9000,
+          "coins": 30
+        },
+        {
+          "threshold": 15000,
+          "coins": 30
+        }
       ]
     }
   ],
@@ -173,12 +381,20 @@
       "start": "2026-11-02T00:00:00Z",
       "end": "2026-11-09T00:00:00Z",
       "milestones": [
-        { "wins": 1, "coins": 15 },
-        { "wins": 3, "coins": 25 },
-        { "wins": 5, "coins": 40 }
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
       ]
     },
-
     {
       "id": "hall_lanterns_20261123",
       "name": "Hall Lanterns",
@@ -186,9 +402,18 @@
       "start": "2026-11-23T00:00:00Z",
       "end": "2026-11-30T00:00:00Z",
       "milestones": [
-        { "wins": 1, "coins": 15 },
-        { "wins": 3, "coins": 25 },
-        { "wins": 5, "coins": 40 }
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
       ]
     },
     {
@@ -198,9 +423,18 @@
       "start": "2026-11-09T00:00:00Z",
       "end": "2026-11-16T00:00:00Z",
       "milestones": [
-        { "wins": 5, "coins": 20 },
-        { "wins": 15, "coins": 50 },
-        { "wins": 20, "coins": 100 }
+        {
+          "wins": 5,
+          "coins": 20
+        },
+        {
+          "wins": 15,
+          "coins": 50
+        },
+        {
+          "wins": 20,
+          "coins": 100
+        }
       ],
       "rulesVersion": 6
     },
@@ -211,9 +445,18 @@
       "start": "2026-11-16T00:00:00Z",
       "end": "2026-11-23T00:00:00Z",
       "milestones": [
-        { "wins": 2, "coins": 20 },
-        { "wins": 4, "coins": 50 },
-        { "wins": 7, "coins": 100 }
+        {
+          "wins": 2,
+          "coins": 20
+        },
+        {
+          "wins": 4,
+          "coins": 50
+        },
+        {
+          "wins": 7,
+          "coins": 100
+        }
       ]
     },
     {
@@ -223,9 +466,18 @@
       "start": "2026-11-30T00:00:00Z",
       "end": "2026-12-07T00:00:00Z",
       "milestones": [
-        { "wins": 1, "coins": 15 },
-        { "wins": 3, "coins": 25 },
-        { "wins": 5, "coins": 40 }
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
       ]
     },
     {
@@ -235,9 +487,18 @@
       "start": "2026-12-07T00:00:00Z",
       "end": "2026-12-14T00:00:00Z",
       "milestones": [
-        { "wins": 1, "coins": 15 },
-        { "wins": 3, "coins": 25 },
-        { "wins": 5, "coins": 40 }
+        {
+          "wins": 1,
+          "coins": 15
+        },
+        {
+          "wins": 3,
+          "coins": 25
+        },
+        {
+          "wins": 5,
+          "coins": 40
+        }
       ]
     }
   ]

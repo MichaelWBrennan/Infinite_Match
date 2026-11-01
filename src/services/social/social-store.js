@@ -21,12 +21,16 @@ export const ENERGY_GIFT_AMOUNT = 1;
 /** Booster gifts (S2): one friend gives one booster to another. Limits are per UTC day,
  * separate from energy. Boosters are more valuable, so the daily cap is lower. */
 export const BOOSTER_GIFT_AMOUNT = 1;
+/** Lives gifts (S2): one friend gives one life to another. Lives are the core retention
+ * resource, so the daily cap matches energy (3 per sender/receiver per day). */
+export const LIVES_GIFT_AMOUNT = 1;
 export const GIFT_DAILY_LIMIT = 3;
 export const BOOSTER_GIFT_DAILY_LIMIT = 1;
+export const LIVES_GIFT_DAILY_LIMIT = 3;
 const GIFT_RECORD_MS = 14 * 24 * 60 * 60 * 1000;
 const GIFT_ID = /^[A-Za-z0-9_-]{8,64}$/;
-/** Valid gift types: energy (life) and booster. */
-export const GIFT_TYPES = ['energy', 'booster'];
+/** Valid gift types: energy, booster, and lives. */
+export const GIFT_TYPES = ['energy', 'booster', 'lives'];
 const VALID_BOOSTER_IDS = new Set([
   'extra_moves', 'color_bomb', 'striped_candy',
   'bomb', 'rocket', 'rainbow', 'lightning', 'target', 'diamond', 'star',
@@ -69,6 +73,9 @@ const emptyData = () => ({
   boosterGifts: {}, // giftId -> { id, from, to, day, boosterId, amount, status, credited, createdAt }
   boosterGiftsSent: {}, // 'YYYY-MM-DD:playerId' -> booster gifts sent that day
   boosterGiftsReceived: {}, // 'YYYY-MM-DD:playerId' -> booster gifts received that day
+  livesGifts: {}, // giftId -> { id, from, to, day, amount, status, credited, createdAt }
+  livesGiftsSent: {}, // 'YYYY-MM-DD:playerId' -> lives gifts sent that day
+  livesGiftsReceived: {}, // 'YYYY-MM-DD:playerId' -> lives gifts received that day
   milestones: {}, // 'guildId:YYYY-MM-DD(week start)' -> { guildId, week, count, contributors, wins, claimed }
   friendChallenges: {}, // challengeId -> { id, from, to, gameType, status, createdAt, acceptedAt, completedAt, winnerId, scores, targetScore }
   friendChallengeInvites: {}, // 'playerId' -> [challengeId] pending invites
@@ -108,7 +115,11 @@ const previousDay = (day) => utcDay(Date.parse(day) - DAY_MS);
 /** Keeps today's and yesterday's counters, and gift records for 14 days. */
 function pruneGifts(d, day, nowMs) {
   const keep = new Set([day, previousDay(day)]);
-  for (const counter of [d.giftsSent, d.giftsReceived, d.boosterGiftsSent, d.boosterGiftsReceived]) {
+  for (const counter of [
+    d.giftsSent, d.giftsReceived,
+    d.boosterGiftsSent, d.boosterGiftsReceived,
+    d.livesGiftsSent, d.livesGiftsReceived,
+  ]) {
     for (const key of Object.keys(counter)) if (!keep.has(key.split(':')[0])) delete counter[key];
   }
   for (const [id, gift] of Object.entries(d.energyGifts)) {
@@ -116,6 +127,9 @@ function pruneGifts(d, day, nowMs) {
   }
   for (const [id, gift] of Object.entries(d.boosterGifts)) {
     if (nowMs - Date.parse(gift.createdAt) > GIFT_RECORD_MS) delete d.boosterGifts[id];
+  }
+  for (const [id, gift] of Object.entries(d.livesGifts)) {
+    if (nowMs - Date.parse(gift.createdAt) > GIFT_RECORD_MS) delete d.livesGifts[id];
   }
 }
 
@@ -300,12 +314,13 @@ export class SocialStore {
 
   /** Friends and incoming requests. Ids are included only for the player's own list. */
   /**
-   * Records a gift (energy or booster) before it is credited. Checks: friends only, not to yourself,
+   * Records a gift (energy, booster, or lives) before it is credited. Checks: friends only, not to yourself,
    * the sender's and the receiver's daily limits. A repeated giftId from the same pair returns the
    * same gift and counts nothing new, so a retry after a lost response is safe.
    *
-   * giftType: 'energy' (default) or 'booster'. When 'booster', boosterId must be a valid booster id.
-   * Energy and boosters share the same daily limit counters (3 per day per sender/receiver).
+   * giftType: 'energy' (default), 'booster', or 'lives'. When 'booster', boosterId must be a valid booster id.
+   * Energy, boosters, and lives share the same daily limit counters (3 per day per sender/receiver for
+   * energy and lives; 1 per day for boosters).
    */
   reserveEnergyGift(senderId, receiverId, giftId, nowMs = Date.now(), giftType = 'energy', boosterId = null) {
     return this.write((d) => {
@@ -316,10 +331,10 @@ export class SocialStore {
           throw new SocialError('invalid_booster');
         }
       }
-      const store = giftType === 'booster' ? d.boosterGifts : d.energyGifts;
-      const sentCounter = giftType === 'booster' ? d.boosterGiftsSent : d.giftsSent;
-      const receivedCounter = giftType === 'booster' ? d.boosterGiftsReceived : d.giftsReceived;
-      const dailyLimit = giftType === 'booster' ? BOOSTER_GIFT_DAILY_LIMIT : GIFT_DAILY_LIMIT;
+      const store = giftType === 'booster' ? d.boosterGifts : giftType === 'lives' ? d.livesGifts : d.energyGifts;
+      const sentCounter = giftType === 'booster' ? d.boosterGiftsSent : giftType === 'lives' ? d.livesGiftsSent : d.giftsSent;
+      const receivedCounter = giftType === 'booster' ? d.boosterGiftsReceived : giftType === 'lives' ? d.livesGiftsReceived : d.giftsReceived;
+      const dailyLimit = giftType === 'booster' ? BOOSTER_GIFT_DAILY_LIMIT : giftType === 'lives' ? LIVES_GIFT_DAILY_LIMIT : GIFT_DAILY_LIMIT;
       const existing = store[giftId];
       if (existing) {
         if (existing.from !== senderId || existing.to !== receiverId) throw new SocialError('gift_id_reused');
@@ -334,7 +349,7 @@ export class SocialStore {
       if ((receivedCounter[receivedKey] || 0) >= dailyLimit) throw new SocialError('gift_receiver_limit');
       sentCounter[sentKey] = (sentCounter[sentKey] || 0) + 1;
       receivedCounter[receivedKey] = (receivedCounter[receivedKey] || 0) + 1;
-      const amount = giftType === 'booster' ? BOOSTER_GIFT_AMOUNT : ENERGY_GIFT_AMOUNT;
+      const amount = giftType === 'booster' ? BOOSTER_GIFT_AMOUNT : giftType === 'lives' ? LIVES_GIFT_AMOUNT : ENERGY_GIFT_AMOUNT;
       const gift = {
         id: giftId, from: senderId, to: receiverId, day, giftType,
         ...(giftType === 'booster' ? { boosterId } : {}),
@@ -349,7 +364,8 @@ export class SocialStore {
   /** Marks a gift as credited with the amount actually added (0 when the receiver was full). */
   markEnergyGiftCredited(giftId, credited) {
     return this.write((d) => {
-      const gift = d.energyGifts[giftId] ?? d.boosterGifts[giftId];
+      const gift =
+        d.energyGifts[giftId] ?? d.boosterGifts[giftId] ?? d.livesGifts[giftId];
       if (!gift) throw new SocialError('gift_not_found');
       gift.status = 'credited';
       gift.credited = credited;

@@ -827,15 +827,33 @@
     -->
     <script src="js/offline-api.js"></script>
     <script src="js/pwa-register.js"></script>
-    <script src="js/phaser.min.js"></script>
+    <script defer src="js/phaser.min.js" id="phaser-script"></script>
     <script>
       // If the local copy is missing (e.g. an incomplete checkout), fall back
-      // to jsDelivr. document.write keeps this synchronous, so the CDN script
-      // is fetched and evaluated before any Phaser-dependent script below.
+      // to jsDelivr before any Phaser-dependent script runs.
       if (!window.Phaser) {
         document.write(
-          '<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/script>'
+          '<script defer src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js" id="phaser-script"><\/script>'
         );
+      }
+
+      // Once Phaser has loaded (deferred), initialize the game. This keeps the
+      // initial page render unblocked by the 1.2MB Phaser bundle, improving
+      // time-to-first-paint on mobile. initializePhaser3Game guards against
+      // double initialization, so the DOMContentLoaded listener below is also safe.
+      const phaserScript = document.getElementById('phaser-script');
+      if (phaserScript) {
+        phaserScript.addEventListener('load', () => {
+          console.log('🎮 Phaser loaded, initializing game...');
+          if (typeof checkPhaser3 === 'function' && checkPhaser3()) {
+            initializePhaser3Game();
+          } else {
+            showWebGLNotice();
+          }
+        });
+        phaserScript.addEventListener('error', () => {
+          showWebGLNotice();
+        });
       }
     </script>
     <script src="js/procedural-levels.js"></script>
@@ -898,11 +916,13 @@
 
             console.log('📱 Platform info:', platformInfo);
 
+            // Phaser loads with `defer`; if it's already available (synchronous
+            // fallback or already loaded), initialize now. Otherwise the Phaser
+            // load event listener (added right after the script tag) will
+            // initialize the game once Phaser is ready.
             if (checkPhaser3()) {
                 console.log('🎮 Phaser 3 found, initializing game...');
                 initializePhaser3Game();
-            } else {
-                showWebGLNotice();
             }
 
             // Add platform-specific optimizations

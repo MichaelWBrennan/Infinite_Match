@@ -52,6 +52,62 @@ export function starsFor(score, targetScore) {
 }
 
 /**
+ * "One step away" urgency detection (Royal Match-style loss aversion).
+ *
+ * A near-miss is a lost attempt where the player was close to winning:
+ *  - they still had moves left when they lost (ran out of time/objectives), or
+ *  - their score reached at least NEAR_MISS_SCORE_RATIO of the target.
+ *
+ * These are the moments of maximum frustration and the best time to offer
+ * a time-boxed, discounted continue (extra moves) — the core Royal Match
+ * monetization mechanic.
+ */
+export const NEAR_MISS_SCORE_RATIO = 0.85;
+
+/** Returns true when a lost attempt was a near miss worth an urgency offer. */
+export function isNearMiss(record) {
+  if (record.outcome !== 'lost') return false;
+  const target = record.targetScore || 1000;
+  const scoreRatio = record.score / target;
+  return record.movesLeft > 0 || scoreRatio >= NEAR_MISS_SCORE_RATIO;
+}
+
+/**
+ * Classifies the urgency of a near miss and the matching offer.
+ * Returns { urgency, offer, movesAdded, discountPercent } or null when not a near miss.
+ *
+ * Urgency tiers:
+ *  - 'critical': movesLeft === 1 or scoreRatio >= 0.98 — one move / one percent away
+ *  - 'high': movesLeft <= 3 or scoreRatio >= 0.90 — very close
+ *  - 'medium': movesLeft > 0 or scoreRatio >= 0.85 — close but not desperate
+ */
+export function nearMissUrgency(record) {
+  if (!isNearMiss(record)) return null;
+  const target = record.targetScore || 1000;
+  const scoreRatio = record.score / target;
+  const movesLeft = record.movesLeft || 0;
+
+  let urgency, offer, movesAdded, discountPercent;
+  if (movesLeft === 1 || scoreRatio >= 0.98) {
+    urgency = 'critical';
+    offer = 'extra_moves_critical';
+    movesAdded = 5;
+    discountPercent = 50; // half price for a critical near miss
+  } else if ((movesLeft >= 2 && movesLeft <= 3) || scoreRatio >= 0.90) {
+    urgency = 'high';
+    offer = 'extra_moves_high';
+    movesAdded = 5;
+    discountPercent = 30;
+  } else {
+    urgency = 'medium';
+    offer = 'extra_moves_medium';
+    movesAdded = 5;
+    discountPercent = 15;
+  }
+  return { urgency, offer, movesAdded, discountPercent, scoreRatio, movesLeft };
+}
+
+/**
  * Checks a client report. Returns { value } with the normalised record, or { error }.
  * A win must reach the target score, and a loss must not.
  */
