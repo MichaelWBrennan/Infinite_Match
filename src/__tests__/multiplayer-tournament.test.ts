@@ -1,11 +1,16 @@
 // Multiplayer tournament mode tests.
 // Covers: tournament creation, joining, starting, bracket generation,
-// match results, advancement, standings, and prize distribution.
+// match results, advancement, standings, prize distribution, and live ops
+// integration (social store publication).
 // Each test is self-contained; state is reset before each test.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { router as multiplayerRoutes, initializeMultiplayerServices, getTournamentManager } from '../routes/multiplayer.js';
+import { socialStore } from '../services/social/social-store.js';
 import security from '../core/security/index.js';
 
 // ---------------------------------------------------------------------------
@@ -101,7 +106,12 @@ async function recordMatchResult(tournamentId: string, matchId: string, winnerId
   return res.body.data;
 }
 
+let socialDir: string;
+
 beforeAll(async () => {
+  socialDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tourney-social-'));
+  process.env.SOCIAL_STORE_FILE = path.join(socialDir, 'social.json');
+
   app = express();
   app.use(express.json());
   app.use('/api/multiplayer', multiplayerRoutes);
@@ -111,6 +121,22 @@ beforeAll(async () => {
   for (const pid of PLAYER_IDS) {
     tokens[pid] = await login(pid);
   }
+});
+
+afterAll(() => {
+  for (const pid of PLAYER_IDS) {
+    try {
+      security.destroySession('');
+    } catch {
+      // ignore
+    }
+  }
+  try {
+    fs.rmSync(socialDir, { recursive: true, force: true });
+  } catch {
+    // ignore
+  }
+  delete process.env.SOCIAL_STORE_FILE;
 });
 
 beforeEach(() => {
@@ -424,5 +450,109 @@ describe('multiplayer tournament - statistics', () => {
       .set(authHeader('tourney_alice'));
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+  });
+});
+
+describe('multiplayer tournament - live ops integration', () => {
+  test('match win is published to social store tournament board', async () => {
+    const tId = await createAndStartFullTournament();
+    const t = await getTournament(tId);
+
+    const round1 = t.brackets.find((b: any) => b.round === 1);
+    const aliceMatch = round1.matches.find((m: any) =>
+      m.player1Id === 'tourney_alice' || m.player2Id === 'tourney_alice'
+    );
+    const aliceScore = 1500;
+
+    // Record alice's win
+    await recordMatchResult(tId, aliceMatch.id, 'tourney_alice', 'tourney_alice', {
+      tourney_alice: aliceScore,
+    });
+
+    // Verify the win appears in the social store tournament board
+    const board = await socialStore.tournamentBoard(tId, 'tourney_alice', 10);
+    expect(board.entries.length).toBeGreaterThan(0);
+
+    const aliceEntry = board.entries.find((e: any) => e.isYou);
+    expect(aliceEntry).toBeDefined();
+    expect(aliceEntry.score).toBe(aliceScore);
+    expect(aliceEntry.rank).toBe(1);
+  });
+
+  test('tournament board ranks players by score', async () => {
+    const tId = await createAndStartFullTournament();
+    const t = await getTournament(tId);
+
+    const round1 = t.brackets.find((b: any) => b.round === 1);
+    // Find alice's match and the other match
+    const aliceMatch = round1.matches.find((m: any) =>
+      m.player1Id === 'tourney_alice' || m.player2Id === 'tourney_alice'
+    );
+    const otherMatch = round1.matches.find(
+      (m: any) => m.id !== aliceMatch.id
+    );
+    const aliceOpponent = aliceMatch.player1Id === 'tourney_alice'
+      ? aliceMatch.player2Id
+      : aliceMatch.player1Id;
+    const otherWinner = otherMatch.player1Id;
+
+    // Alice wins with 2000
+    await recordMatchResult(tId, aliceMatch.id, 'tourney_alice', 'tourney_alice', {
+      tourney_alice: 2000,
+      [aliceOpponent]: 800,
+    });
+    // Other match winner scores 1200
+    await recordMatchResult(tId, otherMatch.id, otherWinner, otherWinner, {
+      [otherWinner]: 1200,
+      [otherMatch.player1Id === otherWinner ? otherMatch.player2Id : otherMatch.player1Id]: 900,
+    });
+
+    const board = await socialStore.tournamentBoard(tId, 'tourney_alice', 10);
+    expect(board.entries.length).toBe(4);
+
+    // Scores should be sorted descending
+    const scores = board.entries.map((e: any) => e.score);
+    for (let i = 1; i < scores.length; i++) {
+      expect(scores[i - 1]).toBeGreaterThanOrEqual(scores[i]);
+    }
+
+    // Alice should be rank 1 with 2000
+    const aliceEntry = board.entries.find((e: any) => e.isYou);
+    expect(aliceEntry.score).toBe(2000);
+    expect(aliceEntry.rank).toBe(1);
+  });
+
+  test('duplicate win reporting does not double-count', async () => {
+    const tId = await createAndStartFullTournament();
+    const t = await getTournament(tId);
+
+    const round1 = t.brackets.find((b: any) => b.round === 1);
+    // Find alice's match
+    const aliceMatch = round1.matches.find((m: any) =>
+      m.player1Id === 'tourney_alice' || m.player2Id === 'tourney_alice'
+    );
+    const winnerId = 'tourney_alice';
+
+    // Record alice's win
+    await recordMatchResult(tId, aliceMatch.id, winnerId, winnerId, {
+      [winnerId]: 1500,
+    });
+
+    const board1 = await socialStore.tournamentBoard(tId, 'tourney_alice', 10);
+    const aliceEntry1 = board1.entries.find((e: any) => e.isYou);
+    expect(aliceEntry1).toBeDefined();
+    expect(aliceEntry1.score).toBe(1500);
+
+    // Match is already completed, so retrying should fail
+    const res = await request(app)
+      .post(`/api/multiplayer/tournaments/${tId}/matches/${aliceMatch.id}/result`)
+      .set(authHeader(winnerId))
+      .send({ winnerId, scores: { [winnerId]: 1500 } });
+    expect(res.status).toBe(500);
+
+    // Score should not have changed
+    const board2 = await socialStore.tournamentBoard(tId, 'tourney_alice', 10);
+    const aliceEntry2 = board2.entries.find((e: any) => e.isYou);
+    expect(aliceEntry2.score).toBe(1500);
   });
 });

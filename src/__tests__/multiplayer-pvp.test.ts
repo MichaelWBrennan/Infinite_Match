@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { router as multiplayerRoutes, initializeMultiplayerServices } from '../routes/multiplayer.js';
+import liveOpsRoutes from '../routes/live-ops.js';
 import security from '../core/security/index.js';
 
 // ---------------------------------------------------------------------------
@@ -77,6 +78,7 @@ beforeAll(async () => {
   app = express();
   app.use(express.json());
   app.use('/api/multiplayer', multiplayerRoutes);
+  app.use('/api/live-ops', liveOpsRoutes);
 
   initializeMultiplayerServices(createMockIo() as unknown as never);
 
@@ -338,5 +340,80 @@ describe('multiplayer PvP - health', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.services).toBeDefined();
+  });
+});
+
+describe('multiplayer PvP - record win toward score challenge', () => {
+  test('record a PvP win with valid score', async () => {
+    // Use pvp_carol who has no existing room/session
+    const roomId = await createRoomViaApi('pvp_carol');
+    const sessionId = await startSessionViaApi('pvp_carol', roomId);
+
+    const res = await request(app)
+      .post(`/api/multiplayer/sessions/${sessionId}/record-win`)
+      .set(authHeader('pvp_carol'))
+      .send({ score: 1500 });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('record win with invalid score is rejected', async () => {
+    const roomId = await createRoomViaApi('pvp_carol');
+    const sessionId = await startSessionViaApi('pvp_carol', roomId);
+
+    const res = await request(app)
+      .post(`/api/multiplayer/sessions/${sessionId}/record-win`)
+      .set(authHeader('pvp_carol'))
+      .send({ score: -100 });
+    expect(res.status).toBe(400);
+  });
+
+  test('record win for nonexistent session is rejected', async () => {
+    const res = await request(app)
+      .post('/api/multiplayer/sessions/nonexistent/record-win')
+      .set(authHeader('pvp_carol'))
+      .send({ score: 100 });
+    expect(res.status).toBe(404);
+  });
+
+  test('record win without score is rejected', async () => {
+    const roomId = await createRoomViaApi('pvp_carol');
+    const sessionId = await startSessionViaApi('pvp_carol', roomId);
+
+    const res = await request(app)
+      .post(`/api/multiplayer/sessions/${sessionId}/record-win`)
+      .set(authHeader('pvp_carol'))
+      .send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('multiplayer PvP - live ops calendar', () => {
+  test('event calendar returns upcoming events', async () => {
+    const res = await request(app)
+      .get('/api/live-ops/calendar')
+      .set(authHeader('pvp_alice'));
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.events)).toBe(true);
+    expect(res.body.serverNow).toBeDefined();
+  });
+
+  test('calendar events are sorted by start time', async () => {
+    const res = await request(app)
+      .get('/api/live-ops/calendar')
+      .set(authHeader('pvp_alice'));
+    expect(res.status).toBe(200);
+    const events = res.body.events;
+    for (let i = 1; i < events.length; i++) {
+      expect(new Date(events[i - 1].startsAt).getTime()).toBeLessThanOrEqual(
+        new Date(events[i].startsAt).getTime()
+      );
+    }
+  });
+
+  test('unauthenticated calendar access is rejected', async () => {
+    const res = await request(app).get('/api/live-ops/calendar');
+    expect(res.status).toBe(401);
   });
 });
