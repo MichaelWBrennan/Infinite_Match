@@ -5,7 +5,7 @@ import { Logger } from '../core/logger/index.js';
 import ReceiptVerificationService from '../services/payments/ReceiptVerificationService.js';
 import PricingService from '../services/pricing/PricingService.js';
 import AdConfigService from '../services/ad/AdConfigService.js';
-import OffersService from '../services/offers/OffersService.js';
+import OffersService, { OFFER_CATALOG } from '../services/offers/OffersService.js';
 import PurchaseLedgerDb from '../services/payments/PurchaseLedgerDb.js';
 import { grantPurchase } from '../services/payments/purchase-grants.js';
 import { productIdForSku } from '../services/payments/product-catalog.js';
@@ -53,6 +53,32 @@ router.post(
       if (!productId) {
         return res.status(400).json({ success: false, error: 'unknown_product' });
       }
+
+      // Server-side offer validation: enforce offer expiry and limits at purchase time.
+      const playerProfile = req.user || {};
+      const productOffer = OFFER_CATALOG.find((o) => o.productId === productId);
+      if (productOffer) {
+        // Build a profile from the player's economy to check segments and purchase history
+        const playerEconomy = await accountEconomyService.getPlayerEconomy(playerId);
+        const profile = {
+          playerId,
+          level: playerEconomy.progression?.level || 0,
+          totalSpentUsd: playerEconomy.statistics?.totalSpentUsd || 0,
+          lastPlay: playerEconomy.statistics?.lastPlayed || undefined,
+          streak: playerEconomy.dailyRewards?.streak || 0,
+          hasVip: await PurchaseLedgerDb.hasPurchase(playerId, 'vip'),
+          purchases: [],
+          offerSeenAt: playerProfile.offerSeenAt,
+        };
+        const validation = offersService.validateOffer(productOffer.sku, profile);
+        if (!validation.valid) {
+          return res.status(400).json({
+            success: false,
+            error: validation.reason,
+          });
+        }
+      }
+
       const grant = await grantPurchase({
         playerId,
         productId,
@@ -94,6 +120,29 @@ router.get('/ad-config', security.sessionValidation, async (req, res) => {
   } catch (error) {
     logger.error('Ad config retrieval failed', { error: error.message });
     res.status(500).json({ success: false, error: 'ad_config_error' });
+  }
+});
+
+// Purchase history for the signed-in player.
+router.get('/purchase-history', security.sessionValidation, async (req, res) => {
+  try {
+    const { playerId } = req.user;
+    const purchases = await PurchaseLedgerDb.listPurchases(playerId);
+    const history = purchases.map((p) => ({
+      transactionId: p.transactionId,
+      productId: p.productId,
+      platform: p.platform,
+      amountUsd: p.amountUsd,
+      currency: p.currency,
+      priceCents: p.priceCents,
+      onDeal: p.onDeal,
+      fulfilled: p.fulfilled,
+      createdAt: p.createdAt,
+    }));
+    res.json({ success: true, purchases: history, requestId: req.requestId });
+  } catch (error) {
+    logger.error('Purchase history failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'purchase_history_error', requestId: req.requestId });
   }
 });
 

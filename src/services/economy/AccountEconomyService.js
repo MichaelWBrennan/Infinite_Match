@@ -15,13 +15,21 @@ import crypto from 'crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { pickWheelReward, ITEM_CATALOG, LEVEL_LIMITS } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
+import PurchaseLedgerDb from '../payments/PurchaseLedgerDb.js';
 import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier, markRoomCompleted, KINGDOM_MAX_LEVEL } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
 import { LIFE_COST_PER_ATTEMPT, COST_COINS_PER_LIFE, MAX_LIVES, LIFE_REGEN_MINUTES, regenerateLives, nextRegenInMs as nextLifeRegenInMs, spendLife, grantLives } from '../meta/lives.js';
 import { endlessRewards, winRewards } from '../meta/rewards.js';
 import { addSeasonXp } from '../meta/battlepass.js';
-import { applyVip } from '../meta/vip.js';
+import { VIP_ENTITLEMENT, applyVip, getMaxLives, getEnergyRegenRate, applyVipToDailyReward } from '../meta/vip.js';
+import {
+  initializeDailyQuests,
+  updateQuestProgress,
+  claimQuest,
+  getQuestDefinitions,
+  getClaimableQuests,
+} from '../meta/daily-quests/daily-quests.js';
 import { loadLiveOps } from '../live-ops/live-ops.js';
 import { MAX_PRIZE_COINS } from '../live-ops/competitions.js';
 import { recordWeeklyWin } from '../live-ops/weekly-event.js';
@@ -96,7 +104,8 @@ class AccountEconomyService {
         }
       }
 
-      // Create new player economy profile
+      // Create new player economy profile. VIP benefits are applied when the economy
+      // is viewed (getPlayerEconomyView), so initialization always uses default values.
       let playerEconomy = {
         playerId,
         platform,
@@ -105,6 +114,7 @@ class AccountEconomyService {
         inventory: this.initializeInventory(),
         achievements: this.initializeAchievements(),
         dailyRewards: this.initializeDailyRewards(),
+        dailyQuests: initializeDailyQuests(),
         subscription: this.initializeSubscription(),
         battlePass: this.initializeBattlePass(),
         social: this.initializeSocial(),
@@ -145,9 +155,9 @@ class AccountEconomyService {
   }
 
   /**
-   * Initialize currencies with industry standards
+   * Initialize currencies with industry standards. `isVip` applies VIP benefits.
    */
-  initializeCurrencies() {
+  initializeCurrencies(isVip = false) {
     return {
       coins: {
         id: 'coins',
@@ -184,15 +194,15 @@ class AccountEconomyService {
         icon: 'energy_icon',
         color: '#32CD32',
         description: 'Energy required to play levels',
-        regenRate: 1, // per minute
+        regenRate: getEnergyRegenRate(isVip, 1),
         lastRegen: Date.now()
       },
       lives: {
         id: 'lives',
         name: 'Lives',
         type: 'consumable',
-        amount: MAX_LIVES,
-        maxAmount: MAX_LIVES,
+        amount: getMaxLives(isVip, MAX_LIVES),
+        maxAmount: getMaxLives(isVip, MAX_LIVES),
         earned: 0,
         spent: 0,
         icon: 'life_icon',
@@ -963,7 +973,9 @@ class AccountEconomyService {
     return this.withPlayerLock(playerId, async () => {
       const playerEconomy = await this.getPlayerEconomy(playerId);
       const energy = regenerateEnergy(playerEconomy.currencies.energy, nowMs);
+      const lives = regenerateLives(playerEconomy.currencies.lives, nowMs);
       if (energy.amount < ATTEMPT_ENERGY_COST) throw new EconomyRuleError('energy_empty');
+      if (lives.amount <= 0) throw new EconomyRuleError('no_lives');
       energy.amount -= ATTEMPT_ENERGY_COST;
       energy.spent += ATTEMPT_ENERGY_COST;
       const previous = playerEconomy.pendingAttempt;
@@ -1219,6 +1231,20 @@ class AccountEconomyService {
         const weekly = replay?.verified === true ? recordWeeklyWin(economy, loadLiveOps(), nowMs) : null;
         const scoreChallenge = replay?.verified === true
           ? recordVerifiedChallengeWin(economy, loadLiveOps(), replay.score, nowMs) : null;
+
+        // Deduct a life on level failure (0 stars). Regeneration is applied first so the
+        // player is never charged for lives that have already come back.
+        let livesResult = null;
+        if (stars === 0) {
+          const lives = regenerateLives(economy.currencies.lives, nowMs);
+          const lifeResult = spendLife(lives);
+          if (!lifeResult.success) throw new EconomyRuleError('no_lives');
+          lives.spent = (lives.spent || 0) + 1;
+          livesResult = {
+            livesRemaining: lifeResult.livesRemaining,
+            nextRegenInMs: nextLifeRegenInMs(lives, nowMs),
+          };
+        }
         const base = winRewards(stars);
         const roomBoosted = { ...base, coins: Math.floor(base.coins * kingdomCoinMultiplier(economy.kingdom)) };
         const reward = applyVip(roomBoosted, isVip);
@@ -1244,7 +1270,8 @@ class AccountEconomyService {
           stars, verified: replay?.verified === true, ranked, vip: isVip,
           balances: { coins: economy.currencies.coins.amount, stars: economy.currencies.stars.amount },
           statistics: { gamesPlayed: stats.gamesPlayed, levelsCompleted: stats.levelsCompleted,
-            totalScore: stats.totalScore, averageScore: stats.averageScore, bestScore: stats.bestScore } };
+            totalScore: stats.totalScore, averageScore: stats.averageScore, bestScore: stats.bestScore },
+          ...(livesResult ? { lives: livesResult } : {}) };
         economy.levelReceipts = [...(economy.levelReceipts || []).slice(-31),
           { attemptId, fingerprint, result, rankedScore: ranked ? replay.score : null,
             competitionIds: ranked ? competitionIds : { tournamentIds: [], challengeIds: [] },
@@ -1279,6 +1306,16 @@ class AccountEconomyService {
         }
         if (weekly) logger.info('Weekly event win recorded', { playerId, ...weekly });
         if (scoreChallenge) logger.info('Score challenge win recorded', { playerId, ...scoreChallenge });
+
+        // Update daily quest progress for level completion (same atomic save)
+        if (economy.dailyQuests) {
+          economy.dailyQuests = updateQuestProgress(economy.dailyQuests, 'level_played', 1, nowMs);
+          if (stars > 0) {
+            economy.dailyQuests = updateQuestProgress(economy.dailyQuests, 'levels_won', 1, nowMs);
+            economy.dailyQuests = updateQuestProgress(economy.dailyQuests, 'stars_earned', stars, nowMs);
+          }
+        }
+
         return { result, rankedScore: ranked ? replay.score : null, competitionIds };
       }
       throw new EconomyRuleError('economy_conflict');
@@ -1361,6 +1398,17 @@ class AccountEconomyService {
     regenerateLives(view.currencies.lives, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
     view.currencies.lives.nextRegenInMs = nextLifeRegenInMs(view.currencies.lives, nowMs);
+    // Apply VIP benefits to existing economies (player may have become VIP after init)
+    const hasVip = await PurchaseLedgerDb.hasPurchase(playerId, VIP_ENTITLEMENT);
+    if (hasVip) {
+      const vipMaxLives = getMaxLives(true, 5); // VIP max lives
+      if (view.currencies.lives.maxAmount < vipMaxLives) {
+        view.currencies.lives.maxAmount = vipMaxLives;
+        view.currencies.lives.amount = Math.min(view.currencies.lives.amount + VIP_BENEFITS.bonusMaxLives, vipMaxLives);
+      }
+      // Energy regen rate stored might be base (1) or already doubled (2); ensure it's doubled
+      view.currencies.energy.regenRate = getEnergyRegenRate(true, 1);
+    }
     return view;
   }
 
@@ -1476,7 +1524,9 @@ class AccountEconomyService {
       dailyRewards.streak++;
       dailyRewards.lastClaimed = now.toISOString();
       const rewardIndex = Math.min(dailyRewards.streak - 1, dailyRewards.rewards.length - 1);
-      const reward = dailyRewards.rewards[rewardIndex];
+      let reward = dailyRewards.rewards[rewardIndex];
+      const hasVip = await PurchaseLedgerDb.hasPurchase(playerId, VIP_ENTITLEMENT);
+      if (hasVip) reward = applyVipToDailyReward(reward, true);
       if (reward.coins) this.applyReward(economy, { type: 'currency', currencyId: 'coins', amount: reward.coins });
       if (reward.stars) this.applyReward(economy, { type: 'currency', currencyId: 'stars', amount: reward.stars });
       if (reward.xp) this.applyXp(economy, reward.xp, now.getTime());
@@ -1491,6 +1541,63 @@ class AccountEconomyService {
       logger.error('Failed to claim daily reward', { error: error.message, playerId });
       throw new ServiceError(`Failed to claim daily reward: ${error.message}`, 'AccountEconomyService');
     }
+  }
+
+  /** Get the player's current daily quests, resetting to a new day if needed. */
+  async getDailyQuests(playerId) {
+    const playerEconomy = await this.getPlayerEconomy(playerId);
+    const now = Date.now();
+    const updated = initializeDailyQuests(playerEconomy.dailyQuests, now);
+    if (updated !== playerEconomy.dailyQuests) {
+      playerEconomy.dailyQuests = updated;
+      playerEconomy.lastUpdated = new Date(now).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+    }
+    return updated;
+  }
+
+  /** Update daily quest progress for an event. Returns the updated quests. */
+  async updateDailyQuestProgress(playerId, event, amount = 1) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const now = Date.now();
+      const updated = updateQuestProgress(playerEconomy.dailyQuests, event, amount, now);
+      if (updated !== playerEconomy.dailyQuests) {
+        playerEconomy.dailyQuests = updated;
+        playerEconomy.lastUpdated = new Date(now).toISOString();
+        await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      }
+      return updated;
+    });
+  }
+
+  /** Claim a daily quest reward. Grants the reward and marks the quest claimed. */
+  async claimDailyQuest(playerId, questId) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const now = Date.now();
+      const result = claimQuest(playerEconomy.dailyQuests, questId, now);
+      if (!result.success) {
+        throw new EconomyRuleError(result.reason);
+      }
+      // Grant the reward
+      if (result.reward.coins) {
+        this.applyReward(playerEconomy, { type: 'currency', currencyId: 'coins', amount: result.reward.coins });
+      }
+      if (result.reward.xp) {
+        this.applyXp(playerEconomy, result.reward.xp, now);
+      }
+      playerEconomy.dailyQuests = result.quests;
+      playerEconomy.lastUpdated = new Date(now).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      logger.info('Daily quest claimed', { playerId, questId, reward: result.reward });
+      return {
+        success: true,
+        questId,
+        reward: result.reward,
+        quests: result.quests,
+      };
+    });
   }
 
   /** One coin debit and inventory grant; a save failure leaves both unchanged. */
