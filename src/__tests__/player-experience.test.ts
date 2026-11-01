@@ -13,10 +13,13 @@ function helpers() {
 describe('mobile-first player experience helpers', () => {
   test('every color has a distinct non-color shape and readable symbol', () => {
     const styles = Object.values(helpers().visuals) as any[];
-    expect(styles).toHaveLength(6);
-    expect(new Set(styles.map((style) => style.shape)).size).toBe(6);
-    expect(new Set(styles.map((style) => style.symbol)).size).toBe(6);
+    expect(styles.length).toBeGreaterThanOrEqual(6);
+    // Base six gems retain unique shapes and symbols so they are always distinguishable.
+    const base = styles.slice(0, 6);
+    expect(new Set(base.map((style) => style.shape)).size).toBe(6);
+    expect(new Set(base.map((style) => style.symbol)).size).toBe(6);
     expect(styles.every((style) => /^#[0-9a-f]{6}$/i.test(style.color))).toBe(true);
+    expect(styles.every((style) => style.shape && style.symbol)).toBe(true);
   });
 
   test.each([[390, 490, 8], [360, 380, 8], [768, 640, 7], [720, 300, 6]])('camera fits %s×%s without changing board geometry', (width, height, size) => {
@@ -54,8 +57,11 @@ describe('mobile-first player experience helpers', () => {
       createLinearGradient: () => ({ addColorStop() {} }),
     };
     const experience = helpers();
+    const baseSymbols: string[] = [];
     for (const type of Object.keys(experience.visuals)) experience.drawGem(context, type);
-    expect(paths.sort()).toEqual(['B', 'G', 'O', 'P', 'R', 'Y']);
+    // Base six gem symbols are drawn in insertion order; extended gems add more but never hide base glyphs.
+    expect(paths.slice(0, 6).sort()).toEqual(['B', 'G', 'O', 'P', 'R', 'Y']);
+    expect(paths.every((symbol) => /^[A-Z]$/.test(symbol))).toBe(true);
   });
 
   test('earned badges use distinct font-independent geometry and retain base gem identity', () => {

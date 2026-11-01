@@ -226,101 +226,101 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 4034285959,
+        "refillState": 1570884476,
         "boardSize": 8,
         "board": [
           [
-            "orange",
             "yellow",
-            "green",
+            "moon_black",
             "yellow",
             "yellow",
-            "green",
-            "green",
-            "red"
+            "moon_black",
+            "moon_black",
+            "witch_green",
+            "pumpkin_orange"
           ],
           [
-            "orange",
             "yellow",
-            "orange",
+            "pumpkin_orange",
             "yellow",
-            "orange",
-            "green",
-            "green",
-            "red"
-          ],
-          [
-            "green",
-            "red",
-            "orange",
-            "red",
-            "green",
-            "orange",
-            "orange",
+            "pumpkin_orange",
+            "moon_black",
+            "moon_black",
+            "witch_green",
             "yellow"
           ],
           [
-            "red",
-            "orange",
-            "red",
-            "green",
-            "red",
-            "orange",
+            "witch_green",
+            "pumpkin_orange",
+            "witch_green",
+            "moon_black",
+            "pumpkin_orange",
+            "pumpkin_orange",
             "yellow",
-            "red"
+            "witch_green"
           ],
           [
-            "red",
-            "green",
-            "green",
-            "orange",
-            "orange",
+            "pumpkin_orange",
+            "witch_green",
+            "moon_black",
+            "witch_green",
+            "pumpkin_orange",
             "yellow",
-            "yellow",
-            "orange"
+            "witch_green",
+            "witch_green"
           ],
           [
-            "green",
+            "moon_black",
+            "moon_black",
+            "pumpkin_orange",
+            "pumpkin_orange",
             "yellow",
-            "red",
-            "orange",
-            "orange",
-            "green",
-            "orange",
+            "pumpkin_orange",
+            "yellow",
+            "moon_black"
+          ],
+          [
+            "yellow",
+            "witch_green",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "moon_black",
+            "pumpkin_orange",
+            "yellow",
+            "pumpkin_orange"
+          ],
+          [
+            "yellow",
+            "pumpkin_orange",
+            "moon_black",
+            "moon_black",
+            "yellow",
+            "witch_green",
+            "witch_green",
             "yellow"
           ],
           [
-            "orange",
+            "moon_black",
+            "pumpkin_orange",
+            "witch_green",
             "yellow",
-            "orange",
-            "green",
-            "green",
-            "yellow",
-            "red",
-            "red"
-          ],
-          [
-            "green",
-            "green",
-            "orange",
-            "red",
-            "yellow",
-            "green",
-            "red",
-            "green"
+            "moon_black",
+            "witch_green",
+            "moon_black",
+            "witch_green"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "green",
-          "red"
+          "moon_black",
+          "witch_green"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "green": 1.1,
-          "red": 1
+          "moon_black": 1,
+          "witch_green": 1
         },
         "targetScore": 2400,
         "moves": 30,
@@ -413,126 +413,126 @@
             0
           ]
         ],
-        "legalOpeningMoves": 25,
+        "legalOpeningMoves": 29,
         "firstLegalSwap": [
           0,
-          1,
           0,
-          2
+          0,
+          1
         ],
         "firstMove": {
-          "score": 30,
-          "refillState": 939048806,
+          "score": 90,
+          "refillState": 3970344762,
           "board": [
             [
-              "orange",
-              "green",
-              "red",
+              "moon_black",
               "yellow",
-              "orange",
-              "green",
-              "green",
-              "red"
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "witch_green",
+              "moon_black",
+              "witch_green",
+              "pumpkin_orange"
             ],
             [
-              "orange",
               "yellow",
-              "orange",
+              "pumpkin_orange",
               "yellow",
-              "orange",
-              "green",
-              "green",
-              "red"
-            ],
-            [
-              "green",
-              "red",
-              "orange",
-              "red",
-              "green",
-              "orange",
-              "orange",
+              "pumpkin_orange",
+              "moon_black",
+              "moon_black",
+              "witch_green",
               "yellow"
             ],
             [
-              "red",
-              "orange",
-              "red",
-              "green",
-              "red",
-              "orange",
+              "witch_green",
+              "pumpkin_orange",
+              "witch_green",
+              "moon_black",
+              "pumpkin_orange",
+              "pumpkin_orange",
               "yellow",
-              "red"
+              "witch_green"
             ],
             [
-              "red",
-              "green",
-              "green",
-              "orange",
-              "orange",
+              "pumpkin_orange",
+              "witch_green",
+              "moon_black",
+              "witch_green",
+              "pumpkin_orange",
               "yellow",
-              "yellow",
-              "orange"
+              "witch_green",
+              "witch_green"
             ],
             [
-              "green",
+              "moon_black",
+              "moon_black",
+              "pumpkin_orange",
+              "pumpkin_orange",
               "yellow",
-              "red",
-              "orange",
-              "orange",
-              "green",
-              "orange",
+              "pumpkin_orange",
+              "yellow",
+              "moon_black"
+            ],
+            [
+              "yellow",
+              "witch_green",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "moon_black",
+              "pumpkin_orange",
+              "yellow",
+              "pumpkin_orange"
+            ],
+            [
+              "yellow",
+              "pumpkin_orange",
+              "moon_black",
+              "moon_black",
+              "yellow",
+              "witch_green",
+              "witch_green",
               "yellow"
             ],
             [
-              "orange",
+              "moon_black",
+              "pumpkin_orange",
+              "witch_green",
               "yellow",
-              "orange",
-              "green",
-              "green",
-              "yellow",
-              "red",
-              "red"
-            ],
-            [
-              "green",
-              "green",
-              "orange",
-              "red",
-              "yellow",
-              "green",
-              "red",
-              "green"
+              "moon_black",
+              "witch_green",
+              "moon_black",
+              "witch_green"
             ]
           ],
           "collected": {
-            "orange": 0,
+            "pumpkin_orange": 0,
             "yellow": 3,
-            "green": 0,
-            "red": 0
+            "moon_black": 3,
+            "witch_green": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 0,
+              "pumpkin_orange": 0,
               "yellow": 3,
-              "green": 0,
-              "red": 0
+              "moon_black": 3,
+              "witch_green": 0
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 25,
+          "legalOpeningMoves": 29,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 30,
-          "verifiedScore": 9440,
+          "verifiedScore": 29900,
           "verifiedCollected": {
-            "orange": 120,
-            "yellow": 134,
-            "green": 110,
-            "red": 85
+            "pumpkin_orange": 280,
+            "yellow": 318,
+            "moon_black": 224,
+            "witch_green": 222
           },
           "verifiedObjectives": true,
           "verifiedShields": 0
@@ -589,112 +589,112 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 1638065191,
+        "refillState": 3469631004,
         "boardSize": 8,
         "board": [
           [
-            "blue",
-            "blue",
-            "green",
-            "red",
-            "green",
+            "bat_purple",
+            "bat_purple",
+            "ghost_white",
+            "witch_green",
             "yellow",
-            "orange",
-            "red"
+            "pumpkin_orange",
+            "ghost_white",
+            "witch_green"
           ],
           [
-            "green",
-            "orange",
-            "red",
-            "blue",
-            "orange",
-            "green",
+            "pumpkin_orange",
+            "ghost_white",
+            "bat_purple",
+            "pumpkin_orange",
+            "bat_purple",
             "yellow",
-            "green"
+            "witch_green",
+            "witch_green"
           ],
           [
-            "green",
-            "red",
+            "ghost_white",
             "yellow",
             "yellow",
-            "green",
-            "green",
-            "red",
-            "green"
+            "witch_green",
+            "witch_green",
+            "ghost_white",
+            "witch_green",
+            "ghost_white"
           ],
           [
-            "red",
-            "blue",
+            "bat_purple",
             "yellow",
             "yellow",
-            "orange",
+            "pumpkin_orange",
             "yellow",
             "yellow",
-            "orange"
-          ],
-          [
-            "blue",
-            "yellow",
-            "purple",
-            "blue",
-            "orange",
-            "green",
-            "purple",
-            "purple"
-          ],
-          [
-            "green",
-            "green",
-            "orange",
-            "red",
-            "green",
-            "yellow",
-            "yellow",
-            "orange"
+            "pumpkin_orange",
+            "bat_purple"
           ],
           [
             "yellow",
-            "orange",
-            "yellow",
-            "purple",
-            "green",
-            "green",
-            "yellow",
-            "orange"
+            "candy_corn_yellow",
+            "bat_purple",
+            "pumpkin_orange",
+            "witch_green",
+            "candy_corn_yellow",
+            "candy_corn_yellow",
+            "bat_purple"
           ],
           [
+            "witch_green",
+            "pumpkin_orange",
+            "ghost_white",
+            "witch_green",
             "yellow",
-            "orange",
-            "purple",
-            "purple",
-            "blue",
-            "purple",
-            "red",
-            "green"
+            "yellow",
+            "pumpkin_orange",
+            "yellow"
+          ],
+          [
+            "pumpkin_orange",
+            "yellow",
+            "candy_corn_yellow",
+            "bat_purple",
+            "witch_green",
+            "ghost_white",
+            "pumpkin_orange",
+            "yellow"
+          ],
+          [
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "candy_corn_yellow",
+            "witch_green",
+            "candy_corn_yellow",
+            "yellow",
+            "witch_green",
+            "witch_green"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "red",
-          "blue",
-          "green",
-          "purple"
+          "ghost_white",
+          "bat_purple",
+          "witch_green",
+          "candy_corn_yellow"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "red": 1,
-          "blue": 1,
-          "green": 1.1,
-          "purple": 1
+          "ghost_white": 1,
+          "bat_purple": 1,
+          "witch_green": 1,
+          "candy_corn_yellow": 1
         },
-        "targetScore": 1950,
+        "targetScore": 1600,
         "moves": 27,
         "objectives": [
           {
             "type": "score",
-            "target": 1950
+            "target": 1600
           },
           {
             "type": "clear-shields",
@@ -704,62 +704,62 @@
         "objectiveProfile": "clear-shields",
         "shields": [
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
+            2,
+            2,
             2,
             0,
             0,
-            2,
-            2,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ],
@@ -787,112 +787,112 @@
         "legalOpeningMoves": 15,
         "firstLegalSwap": [
           0,
-          4,
-          0,
-          5
+          2,
+          1,
+          2
         ],
         "firstMove": {
           "score": 30,
-          "refillState": 2837795334,
+          "refillState": 374393851,
           "board": [
             [
-              "blue",
-              "blue",
-              "green",
-              "red",
+              "candy_corn_yellow",
+              "witch_green",
+              "candy_corn_yellow",
+              "witch_green",
               "yellow",
-              "green",
-              "orange",
-              "red"
+              "pumpkin_orange",
+              "ghost_white",
+              "witch_green"
             ],
             [
-              "green",
-              "orange",
-              "red",
-              "blue",
-              "orange",
-              "purple",
+              "pumpkin_orange",
+              "ghost_white",
+              "ghost_white",
+              "pumpkin_orange",
+              "bat_purple",
               "yellow",
-              "green"
+              "witch_green",
+              "witch_green"
             ],
             [
-              "green",
-              "red",
+              "ghost_white",
               "yellow",
               "yellow",
-              "green",
-              "blue",
-              "red",
-              "green"
+              "witch_green",
+              "witch_green",
+              "ghost_white",
+              "witch_green",
+              "ghost_white"
             ],
             [
-              "red",
-              "blue",
+              "bat_purple",
               "yellow",
               "yellow",
-              "orange",
+              "pumpkin_orange",
               "yellow",
               "yellow",
-              "orange"
-            ],
-            [
-              "blue",
-              "yellow",
-              "purple",
-              "blue",
-              "orange",
-              "green",
-              "purple",
-              "purple"
-            ],
-            [
-              "green",
-              "green",
-              "orange",
-              "red",
-              "green",
-              "yellow",
-              "yellow",
-              "orange"
+              "pumpkin_orange",
+              "bat_purple"
             ],
             [
               "yellow",
-              "orange",
-              "yellow",
-              "purple",
-              "green",
-              "green",
-              "yellow",
-              "orange"
+              "candy_corn_yellow",
+              "bat_purple",
+              "pumpkin_orange",
+              "witch_green",
+              "candy_corn_yellow",
+              "candy_corn_yellow",
+              "bat_purple"
             ],
             [
+              "witch_green",
+              "pumpkin_orange",
+              "ghost_white",
+              "witch_green",
               "yellow",
-              "orange",
-              "purple",
-              "purple",
-              "blue",
-              "purple",
-              "red",
-              "green"
+              "yellow",
+              "pumpkin_orange",
+              "yellow"
+            ],
+            [
+              "pumpkin_orange",
+              "yellow",
+              "candy_corn_yellow",
+              "bat_purple",
+              "witch_green",
+              "ghost_white",
+              "pumpkin_orange",
+              "yellow"
+            ],
+            [
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow",
+              "witch_green",
+              "candy_corn_yellow",
+              "yellow",
+              "witch_green",
+              "witch_green"
             ]
           ],
           "collected": {
-            "orange": 0,
+            "pumpkin_orange": 0,
             "yellow": 0,
-            "red": 0,
-            "blue": 0,
-            "green": 3,
-            "purple": 0
+            "ghost_white": 0,
+            "bat_purple": 3,
+            "witch_green": 0,
+            "candy_corn_yellow": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 0,
+              "pumpkin_orange": 0,
               "yellow": 0,
-              "red": 0,
-              "blue": 0,
-              "green": 3,
-              "purple": 0
+              "ghost_white": 0,
+              "bat_purple": 3,
+              "witch_green": 0,
+              "candy_corn_yellow": 0
             },
             "shieldsCleared": 0
           }
@@ -902,14 +902,14 @@
           "legalOpeningMoves": 15,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 27,
-          "verifiedScore": 2650,
+          "verifiedScore": 2210,
           "verifiedCollected": {
-            "orange": 41,
-            "yellow": 40,
-            "red": 37,
-            "blue": 25,
-            "green": 35,
-            "purple": 23
+            "pumpkin_orange": 29,
+            "yellow": 29,
+            "ghost_white": 30,
+            "bat_purple": 23,
+            "witch_green": 27,
+            "candy_corn_yellow": 14
           },
           "verifiedObjectives": true,
           "verifiedShields": 3
@@ -966,101 +966,101 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 821628307,
+        "refillState": 2653194120,
         "boardSize": 8,
         "board": [
           [
+            "candy_corn_yellow",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "bat_purple",
             "yellow",
-            "purple",
-            "orange",
-            "purple",
-            "orange",
-            "purple",
-            "blue",
+            "bat_purple"
+          ],
+          [
+            "pumpkin_orange",
+            "yellow",
+            "pumpkin_orange",
+            "bat_purple",
+            "bat_purple",
+            "yellow",
+            "yellow",
+            "pumpkin_orange"
+          ],
+          [
+            "bat_purple",
+            "bat_purple",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "bat_purple",
+            "bat_purple",
+            "pumpkin_orange"
+          ],
+          [
+            "yellow",
+            "candy_corn_yellow",
+            "bat_purple",
+            "bat_purple",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "bat_purple"
+          ],
+          [
+            "candy_corn_yellow",
+            "yellow",
+            "bat_purple",
+            "yellow",
+            "candy_corn_yellow",
+            "yellow",
+            "pumpkin_orange",
             "yellow"
           ],
           [
-            "blue",
-            "orange",
             "yellow",
-            "orange",
-            "blue",
-            "blue",
+            "bat_purple",
             "yellow",
-            "yellow"
+            "pumpkin_orange",
+            "bat_purple",
+            "candy_corn_yellow",
+            "yellow",
+            "candy_corn_yellow"
           ],
           [
             "yellow",
-            "blue",
-            "blue",
-            "orange",
-            "orange",
-            "purple",
-            "blue",
-            "blue"
+            "bat_purple",
+            "bat_purple",
+            "yellow",
+            "pumpkin_orange",
+            "bat_purple",
+            "bat_purple",
+            "candy_corn_yellow"
           ],
           [
-            "orange",
+            "pumpkin_orange",
+            "pumpkin_orange",
             "yellow",
-            "purple",
-            "blue",
-            "blue",
-            "orange",
-            "orange",
-            "purple"
-          ],
-          [
-            "yellow",
-            "purple",
-            "yellow",
-            "blue",
-            "yellow",
-            "purple",
-            "yellow",
-            "orange"
-          ],
-          [
-            "yellow",
-            "yellow",
-            "purple",
-            "yellow",
-            "orange",
-            "blue",
-            "purple",
-            "yellow"
-          ],
-          [
-            "purple",
-            "yellow",
-            "blue",
-            "blue",
-            "yellow",
-            "orange",
-            "blue",
-            "blue"
-          ],
-          [
-            "purple",
-            "orange",
-            "yellow",
-            "orange",
-            "blue",
-            "orange",
-            "purple",
-            "orange"
+            "bat_purple",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "pumpkin_orange",
+            "bat_purple"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "blue",
-          "purple"
+          "bat_purple",
+          "candy_corn_yellow"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "blue": 1,
-          "purple": 1
+          "bat_purple": 1,
+          "candy_corn_yellow": 1
         },
         "targetScore": 2400,
         "moves": 28,
@@ -1157,126 +1157,126 @@
             0
           ]
         ],
-        "legalOpeningMoves": 32,
+        "legalOpeningMoves": 30,
         "firstLegalSwap": [
           0,
-          2,
+          1,
           0,
-          3
+          2
         ],
         "firstMove": {
-          "score": 180,
-          "refillState": 125851440,
+          "score": 170,
+          "refillState": 3788983066,
           "board": [
             [
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow",
               "yellow",
-              "purple",
-              "purple",
+              "bat_purple",
               "yellow",
-              "purple",
-              "orange",
-              "blue",
+              "bat_purple"
+            ],
+            [
+              "candy_corn_yellow",
+              "candy_corn_yellow",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "yellow",
+              "yellow",
+              "pumpkin_orange"
+            ],
+            [
+              "pumpkin_orange",
+              "yellow",
+              "yellow",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "bat_purple",
+              "bat_purple",
+              "pumpkin_orange"
+            ],
+            [
+              "yellow",
+              "candy_corn_yellow",
+              "yellow",
+              "bat_purple",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "bat_purple"
+            ],
+            [
+              "candy_corn_yellow",
+              "yellow",
+              "bat_purple",
+              "yellow",
+              "candy_corn_yellow",
+              "yellow",
+              "pumpkin_orange",
               "yellow"
             ],
             [
-              "blue",
-              "orange",
               "yellow",
-              "blue",
-              "orange",
-              "purple",
+              "bat_purple",
               "yellow",
-              "yellow"
+              "pumpkin_orange",
+              "bat_purple",
+              "candy_corn_yellow",
+              "yellow",
+              "candy_corn_yellow"
             ],
             [
               "yellow",
-              "blue",
-              "blue",
-              "purple",
+              "bat_purple",
+              "bat_purple",
               "yellow",
-              "purple",
-              "blue",
-              "blue"
+              "pumpkin_orange",
+              "bat_purple",
+              "bat_purple",
+              "candy_corn_yellow"
             ],
             [
-              "orange",
+              "pumpkin_orange",
+              "pumpkin_orange",
               "yellow",
-              "purple",
-              "blue",
-              "blue",
-              "orange",
-              "orange",
-              "purple"
-            ],
-            [
-              "yellow",
-              "purple",
-              "yellow",
-              "blue",
-              "yellow",
-              "purple",
-              "yellow",
-              "orange"
-            ],
-            [
-              "yellow",
-              "yellow",
-              "purple",
-              "yellow",
-              "orange",
-              "blue",
-              "purple",
-              "yellow"
-            ],
-            [
-              "purple",
-              "yellow",
-              "blue",
-              "blue",
-              "yellow",
-              "orange",
-              "blue",
-              "blue"
-            ],
-            [
-              "purple",
-              "orange",
-              "yellow",
-              "orange",
-              "blue",
-              "orange",
-              "purple",
-              "orange"
+              "bat_purple",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "pumpkin_orange",
+              "bat_purple"
             ]
           ],
           "collected": {
-            "orange": 6,
+            "pumpkin_orange": 3,
             "yellow": 0,
-            "blue": 3,
-            "purple": 0
+            "bat_purple": 7,
+            "candy_corn_yellow": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 6,
+              "pumpkin_orange": 3,
               "yellow": 0,
-              "blue": 3,
-              "purple": 0
+              "bat_purple": 7,
+              "candy_corn_yellow": 0
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 32,
+          "legalOpeningMoves": 30,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 28,
-          "verifiedScore": 18150,
+          "verifiedScore": 17110,
           "verifiedCollected": {
-            "orange": 243,
-            "yellow": 204,
-            "blue": 185,
-            "purple": 184
+            "pumpkin_orange": 232,
+            "yellow": 172,
+            "bat_purple": 171,
+            "candy_corn_yellow": 162
           },
           "verifiedObjectives": true,
           "verifiedShields": 3
@@ -1333,81 +1333,81 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 1564968865,
+        "refillState": 3396534678,
         "boardSize": 6,
         "board": [
           [
-            "orange",
-            "purple",
+            "witch_green",
             "yellow",
-            "red",
-            "orange",
-            "green"
+            "moon_black",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "candy_corn_yellow"
           ],
           [
-            "green",
-            "orange",
-            "orange",
-            "purple",
-            "orange",
-            "green"
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "witch_green",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "pumpkin_orange"
           ],
           [
-            "orange",
-            "orange",
-            "purple",
-            "orange",
-            "purple",
+            "pumpkin_orange",
+            "witch_green",
+            "pumpkin_orange",
+            "moon_black",
+            "yellow",
             "yellow"
           ],
           [
             "yellow",
-            "yellow",
-            "green",
-            "green",
-            "purple",
-            "purple"
+            "bat_purple",
+            "candy_corn_yellow",
+            "witch_green",
+            "witch_green",
+            "bat_purple"
           ],
           [
-            "blue",
-            "red",
+            "moon_black",
             "yellow",
-            "green",
-            "green",
-            "orange"
+            "candy_corn_yellow",
+            "witch_green",
+            "yellow",
+            "candy_corn_yellow"
           ],
           [
-            "green",
-            "orange",
+            "pumpkin_orange",
             "yellow",
-            "orange",
-            "orange",
-            "red"
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "moon_black",
+            "moon_black"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "blue",
-          "green",
-          "purple",
-          "red"
+          "bat_purple",
+          "candy_corn_yellow",
+          "witch_green",
+          "moon_black"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "blue": 1,
-          "green": 1.1,
-          "purple": 1,
-          "red": 1
+          "bat_purple": 1,
+          "candy_corn_yellow": 1,
+          "witch_green": 1,
+          "moon_black": 1
         },
-        "targetScore": 1000,
+        "targetScore": 1150,
         "moves": 21,
         "objectives": [
           {
             "type": "collect",
-            "gemType": "orange",
-            "target": 20
+            "gemType": "pumpkin_orange",
+            "target": 15
           }
         ],
         "objectiveProfile": "collect",
@@ -1461,100 +1461,100 @@
             0
           ]
         ],
-        "legalOpeningMoves": 14,
+        "legalOpeningMoves": 6,
         "firstLegalSwap": [
-          0,
-          0,
-          0,
+          1,
+          1,
+          2,
           1
         ],
         "firstMove": {
           "score": 30,
-          "refillState": 2764699008,
+          "refillState": 301297525,
           "board": [
             [
-              "purple",
+              "moon_black",
               "yellow",
-              "yellow",
-              "red",
-              "orange",
-              "green"
+              "bat_purple",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow"
             ],
             [
-              "green",
-              "red",
-              "orange",
-              "purple",
-              "orange",
-              "green"
+              "witch_green",
+              "yellow",
+              "moon_black",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "pumpkin_orange"
             ],
             [
-              "orange",
-              "red",
-              "purple",
-              "orange",
-              "purple",
+              "pumpkin_orange",
+              "witch_green",
+              "witch_green",
+              "moon_black",
+              "yellow",
               "yellow"
             ],
             [
               "yellow",
-              "yellow",
-              "green",
-              "green",
-              "purple",
-              "purple"
+              "bat_purple",
+              "candy_corn_yellow",
+              "witch_green",
+              "witch_green",
+              "bat_purple"
             ],
             [
-              "blue",
-              "red",
+              "moon_black",
               "yellow",
-              "green",
-              "green",
-              "orange"
+              "candy_corn_yellow",
+              "witch_green",
+              "yellow",
+              "candy_corn_yellow"
             ],
             [
-              "green",
-              "orange",
+              "pumpkin_orange",
               "yellow",
-              "orange",
-              "orange",
-              "red"
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "moon_black",
+              "moon_black"
             ]
           ],
           "collected": {
-            "orange": 3,
+            "pumpkin_orange": 3,
             "yellow": 0,
-            "blue": 0,
-            "green": 0,
-            "purple": 0,
-            "red": 0
+            "bat_purple": 0,
+            "candy_corn_yellow": 0,
+            "witch_green": 0,
+            "moon_black": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 3,
+              "pumpkin_orange": 3,
               "yellow": 0,
-              "blue": 0,
-              "green": 0,
-              "purple": 0,
-              "red": 0
+              "bat_purple": 0,
+              "candy_corn_yellow": 0,
+              "witch_green": 0,
+              "moon_black": 0
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 14,
+          "legalOpeningMoves": 6,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 21,
-          "verifiedScore": 1180,
+          "verifiedScore": 1340,
           "verifiedCollected": {
-            "orange": 25,
+            "pumpkin_orange": 22,
             "yellow": 23,
-            "blue": 5,
-            "green": 19,
-            "purple": 19,
-            "red": 12
+            "bat_purple": 9,
+            "candy_corn_yellow": 16,
+            "witch_green": 18,
+            "moon_black": 13
           },
           "verifiedObjectives": true,
           "verifiedShields": 0
@@ -1611,101 +1611,101 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 4098861911,
+        "refillState": 1635460428,
         "boardSize": 8,
         "board": [
           [
+            "pumpkin_orange",
+            "pumpkin_orange",
             "yellow",
-            "orange",
-            "orange",
             "yellow",
-            "yellow",
-            "blue",
-            "blue",
-            "orange"
+            "moon_black",
+            "moon_black",
+            "pumpkin_orange",
+            "pumpkin_orange"
           ],
           [
-            "orange",
-            "purple",
-            "orange",
-            "purple",
-            "orange",
-            "orange",
-            "blue",
-            "orange"
+            "candy_corn_yellow",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "moon_black",
+            "pumpkin_orange",
+            "yellow"
           ],
           [
+            "moon_black",
             "yellow",
-            "blue",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "candy_corn_yellow",
             "yellow",
-            "orange",
-            "orange",
-            "purple",
-            "purple",
             "yellow"
           ],
           [
             "yellow",
             "yellow",
-            "purple",
-            "orange",
-            "purple",
-            "purple",
-            "orange",
-            "orange"
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "candy_corn_yellow",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "moon_black"
           ],
           [
-            "purple",
-            "blue",
-            "blue",
+            "moon_black",
+            "moon_black",
             "yellow",
-            "purple",
+            "candy_corn_yellow",
             "yellow",
-            "purple",
-            "blue"
-          ],
-          [
-            "yellow",
-            "yellow",
-            "blue",
-            "purple",
-            "yellow",
-            "yellow",
-            "purple",
-            "orange"
+            "candy_corn_yellow",
+            "moon_black",
+            "yellow"
           ],
           [
             "yellow",
-            "blue",
+            "moon_black",
+            "candy_corn_yellow",
             "yellow",
             "yellow",
-            "orange",
-            "blue",
-            "orange",
-            "purple"
+            "candy_corn_yellow",
+            "pumpkin_orange",
+            "yellow"
           ],
           [
-            "purple",
-            "orange",
-            "purple",
-            "purple",
-            "blue",
-            "blue",
-            "orange",
-            "purple"
+            "moon_black",
+            "yellow",
+            "yellow",
+            "pumpkin_orange",
+            "moon_black",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "candy_corn_yellow"
+          ],
+          [
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "candy_corn_yellow",
+            "moon_black",
+            "moon_black",
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "pumpkin_orange"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "purple",
-          "blue"
+          "candy_corn_yellow",
+          "moon_black"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "purple": 1,
-          "blue": 1
+          "candy_corn_yellow": 1,
+          "moon_black": 1
         },
         "targetScore": 2400,
         "moves": 29,
@@ -1798,126 +1798,126 @@
             0
           ]
         ],
-        "legalOpeningMoves": 37,
+        "legalOpeningMoves": 32,
         "firstLegalSwap": [
-          0,
-          0,
           1,
-          0
+          1,
+          1,
+          2
         ],
         "firstMove": {
-          "score": 120,
-          "refillState": 3403085044,
+          "score": 40,
+          "refillState": 371789088,
           "board": [
             [
-              "orange",
-              "orange",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "pumpkin_orange",
               "yellow",
-              "purple",
-              "yellow",
-              "blue",
-              "blue",
-              "orange"
+              "moon_black",
+              "pumpkin_orange",
+              "pumpkin_orange"
             ],
             [
-              "purple",
-              "purple",
-              "orange",
-              "purple",
-              "orange",
-              "orange",
-              "blue",
-              "orange"
-            ],
-            [
+              "candy_corn_yellow",
+              "candy_corn_yellow",
               "yellow",
-              "blue",
               "yellow",
-              "orange",
-              "orange",
-              "purple",
-              "purple",
+              "moon_black",
+              "moon_black",
+              "pumpkin_orange",
               "yellow"
             ],
             [
-              "orange",
+              "moon_black",
               "yellow",
-              "purple",
-              "orange",
-              "purple",
-              "purple",
-              "orange",
-              "orange"
-            ],
-            [
-              "purple",
-              "blue",
-              "blue",
               "yellow",
-              "purple",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow",
               "yellow",
-              "purple",
-              "blue"
+              "yellow"
             ],
             [
               "yellow",
               "yellow",
-              "blue",
-              "purple",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "moon_black"
+            ],
+            [
+              "moon_black",
+              "moon_black",
               "yellow",
+              "candy_corn_yellow",
               "yellow",
-              "purple",
-              "orange"
+              "candy_corn_yellow",
+              "moon_black",
+              "yellow"
             ],
             [
               "yellow",
-              "blue",
+              "moon_black",
+              "candy_corn_yellow",
               "yellow",
               "yellow",
-              "orange",
-              "blue",
-              "orange",
-              "purple"
+              "candy_corn_yellow",
+              "pumpkin_orange",
+              "yellow"
             ],
             [
-              "purple",
-              "orange",
-              "purple",
-              "purple",
-              "blue",
-              "blue",
-              "orange",
-              "purple"
+              "moon_black",
+              "yellow",
+              "yellow",
+              "pumpkin_orange",
+              "moon_black",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow"
+            ],
+            [
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow",
+              "moon_black",
+              "moon_black",
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "pumpkin_orange"
             ]
           ],
           "collected": {
-            "orange": 3,
-            "yellow": 6,
-            "purple": 0,
-            "blue": 0
+            "pumpkin_orange": 4,
+            "yellow": 0,
+            "candy_corn_yellow": 0,
+            "moon_black": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 3,
-              "yellow": 6,
-              "purple": 0,
-              "blue": 0
+              "pumpkin_orange": 4,
+              "yellow": 0,
+              "candy_corn_yellow": 0,
+              "moon_black": 0
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 37,
+          "legalOpeningMoves": 32,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
-          "verifiedScore": 26030,
+          "verifiedScore": 23730,
           "verifiedCollected": {
-            "orange": 242,
-            "yellow": 228,
-            "purple": 212,
-            "blue": 178
+            "pumpkin_orange": 284,
+            "yellow": 270,
+            "candy_corn_yellow": 248,
+            "moon_black": 213
           },
           "verifiedObjectives": true,
           "verifiedShields": 0
@@ -1974,84 +1974,84 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 3445888171,
+        "refillState": 982486688,
         "boardSize": 7,
         "board": [
           [
-            "orange",
-            "orange",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "moon_black",
+            "moon_black",
             "yellow",
-            "blue",
-            "purple",
             "yellow",
-            "yellow"
+            "moon_black"
           ],
           [
-            "purple",
-            "blue",
+            "witch_green",
             "yellow",
-            "blue",
-            "blue",
-            "purple",
-            "orange"
+            "witch_green",
+            "witch_green",
+            "moon_black",
+            "pumpkin_orange",
+            "pumpkin_orange"
           ],
           [
-            "orange",
-            "orange",
-            "blue",
+            "pumpkin_orange",
             "yellow",
-            "blue",
             "yellow",
-            "blue"
+            "witch_green",
+            "yellow",
+            "witch_green",
+            "pumpkin_orange"
           ],
           [
-            "orange",
             "yellow",
-            "blue",
-            "orange",
+            "witch_green",
+            "pumpkin_orange",
             "yellow",
             "yellow",
-            "purple"
+            "moon_black",
+            "witch_green"
           ],
           [
-            "blue",
-            "orange",
+            "pumpkin_orange",
             "yellow",
             "yellow",
-            "orange",
-            "purple",
-            "blue"
+            "pumpkin_orange",
+            "moon_black",
+            "witch_green",
+            "moon_black"
           ],
           [
-            "purple",
-            "purple",
-            "blue",
+            "moon_black",
+            "moon_black",
             "yellow",
-            "orange",
-            "orange",
-            "purple"
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "moon_black",
+            "pumpkin_orange"
           ],
           [
-            "orange",
-            "orange",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "moon_black",
             "yellow",
-            "purple",
             "yellow",
-            "yellow",
-            "purple"
+            "moon_black",
+            "moon_black"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "blue",
-          "purple"
+          "witch_green",
+          "moon_black"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "blue": 1,
-          "purple": 1
+          "witch_green": 1,
+          "moon_black": 1
         },
         "targetScore": 2400,
         "moves": 30,
@@ -2127,109 +2127,109 @@
             0
           ]
         ],
-        "legalOpeningMoves": 24,
+        "legalOpeningMoves": 20,
         "firstLegalSwap": [
           0,
-          0,
+          4,
           1,
-          0
+          4
         ],
         "firstMove": {
-          "score": 30,
-          "refillState": 350651018,
+          "score": 120,
+          "refillState": 286709821,
           "board": [
             [
-              "purple",
-              "orange",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "moon_black",
+              "moon_black",
+              "witch_green",
               "yellow",
-              "blue",
-              "purple",
-              "yellow",
-              "yellow"
+              "moon_black"
             ],
             [
-              "orange",
-              "blue",
+              "witch_green",
               "yellow",
-              "blue",
-              "blue",
-              "purple",
-              "orange"
+              "witch_green",
+              "witch_green",
+              "moon_black",
+              "pumpkin_orange",
+              "pumpkin_orange"
             ],
             [
-              "purple",
-              "orange",
-              "blue",
+              "pumpkin_orange",
               "yellow",
-              "blue",
               "yellow",
-              "blue"
+              "witch_green",
+              "pumpkin_orange",
+              "witch_green",
+              "pumpkin_orange"
             ],
             [
-              "purple",
               "yellow",
-              "blue",
-              "orange",
+              "witch_green",
+              "pumpkin_orange",
               "yellow",
-              "yellow",
-              "purple"
+              "pumpkin_orange",
+              "moon_black",
+              "witch_green"
             ],
             [
-              "blue",
-              "orange",
+              "pumpkin_orange",
               "yellow",
               "yellow",
-              "orange",
-              "purple",
-              "blue"
+              "pumpkin_orange",
+              "moon_black",
+              "witch_green",
+              "moon_black"
             ],
             [
-              "purple",
-              "purple",
-              "blue",
+              "moon_black",
+              "moon_black",
               "yellow",
-              "orange",
-              "orange",
-              "purple"
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "moon_black",
+              "pumpkin_orange"
             ],
             [
-              "orange",
-              "orange",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "moon_black",
               "yellow",
-              "purple",
               "yellow",
-              "yellow",
-              "purple"
+              "moon_black",
+              "moon_black"
             ]
           ],
           "collected": {
-            "orange": 3,
-            "yellow": 0,
-            "blue": 0,
-            "purple": 0
+            "pumpkin_orange": 3,
+            "yellow": 3,
+            "witch_green": 0,
+            "moon_black": 3
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 3,
-              "yellow": 0,
-              "blue": 0,
-              "purple": 0
+              "pumpkin_orange": 3,
+              "yellow": 3,
+              "witch_green": 0,
+              "moon_black": 3
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 24,
+          "legalOpeningMoves": 20,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 30,
-          "verifiedScore": 21460,
+          "verifiedScore": 10270,
           "verifiedCollected": {
-            "orange": 226,
-            "yellow": 197,
-            "blue": 160,
-            "purple": 141
+            "pumpkin_orange": 152,
+            "yellow": 146,
+            "witch_green": 99,
+            "moon_black": 104
           },
           "verifiedObjectives": true,
           "verifiedShields": 0
@@ -2286,95 +2286,95 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 796927120,
+        "refillState": 2628492933,
         "boardSize": 7,
         "board": [
           [
             "yellow",
-            "yellow",
-            "red",
-            "green",
-            "orange",
-            "blue",
-            "blue"
+            "witch_green",
+            "ghost_white",
+            "pumpkin_orange",
+            "moon_black",
+            "moon_black",
+            "witch_green"
           ],
           [
-            "blue",
-            "blue",
-            "orange",
-            "green",
+            "moon_black",
+            "pumpkin_orange",
+            "ghost_white",
             "yellow",
-            "purple",
-            "blue"
-          ],
-          [
-            "yellow",
-            "orange",
-            "red",
-            "purple",
-            "yellow",
-            "red",
-            "orange"
-          ],
-          [
-            "blue",
-            "orange",
-            "blue",
-            "blue",
-            "orange",
-            "green",
-            "blue"
-          ],
-          [
-            "red",
-            "blue",
-            "blue",
-            "purple",
-            "red",
-            "green",
+            "candy_corn_yellow",
+            "moon_black",
             "yellow"
           ],
           [
-            "green",
-            "blue",
-            "green",
-            "orange",
-            "green",
-            "red",
-            "orange"
+            "pumpkin_orange",
+            "witch_green",
+            "candy_corn_yellow",
+            "yellow",
+            "witch_green",
+            "pumpkin_orange",
+            "moon_black"
           ],
           [
-            "purple",
+            "pumpkin_orange",
+            "moon_black",
+            "moon_black",
+            "pumpkin_orange",
+            "ghost_white",
+            "moon_black",
+            "witch_green"
+          ],
+          [
+            "moon_black",
+            "moon_black",
+            "candy_corn_yellow",
+            "witch_green",
+            "ghost_white",
+            "yellow",
+            "ghost_white"
+          ],
+          [
+            "moon_black",
+            "ghost_white",
+            "pumpkin_orange",
+            "ghost_white",
+            "witch_green",
+            "pumpkin_orange",
+            "candy_corn_yellow"
+          ],
+          [
             "yellow",
             "yellow",
-            "orange",
-            "purple",
-            "purple",
-            "red"
+            "pumpkin_orange",
+            "candy_corn_yellow",
+            "candy_corn_yellow",
+            "witch_green",
+            "yellow"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "purple",
-          "green",
-          "red",
-          "blue"
+          "candy_corn_yellow",
+          "ghost_white",
+          "witch_green",
+          "moon_black"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "purple": 1,
-          "green": 1.1,
-          "red": 1,
-          "blue": 1
+          "candy_corn_yellow": 1,
+          "ghost_white": 1,
+          "witch_green": 1,
+          "moon_black": 1
         },
-        "targetScore": 2300,
+        "targetScore": 1800,
         "moves": 999,
         "objectives": [
           {
             "type": "score",
-            "target": 2300
+            "target": 1800
           }
         ],
         "objectiveProfile": "score",
@@ -2443,115 +2443,115 @@
             0
           ]
         ],
-        "legalOpeningMoves": 9,
+        "legalOpeningMoves": 8,
         "firstLegalSwap": [
           1,
+          0,
           1,
-          1,
-          2
+          1
         ],
         "firstMove": {
           "score": 30,
-          "refillState": 1996657263,
+          "refillState": 3828223076,
           "board": [
             [
-              "yellow",
-              "blue",
-              "red",
-              "green",
-              "orange",
-              "blue",
-              "blue"
+              "pumpkin_orange",
+              "witch_green",
+              "ghost_white",
+              "pumpkin_orange",
+              "moon_black",
+              "moon_black",
+              "witch_green"
             ],
             [
-              "blue",
-              "green",
-              "blue",
-              "green",
+              "moon_black",
+              "moon_black",
+              "ghost_white",
               "yellow",
-              "purple",
-              "blue"
-            ],
-            [
-              "yellow",
-              "yellow",
-              "red",
-              "purple",
-              "yellow",
-              "red",
-              "orange"
-            ],
-            [
-              "blue",
-              "yellow",
-              "blue",
-              "blue",
-              "orange",
-              "green",
-              "blue"
-            ],
-            [
-              "red",
-              "blue",
-              "blue",
-              "purple",
-              "red",
-              "green",
+              "candy_corn_yellow",
+              "moon_black",
               "yellow"
             ],
             [
-              "green",
-              "blue",
-              "green",
-              "orange",
-              "green",
-              "red",
-              "orange"
+              "ghost_white",
+              "witch_green",
+              "candy_corn_yellow",
+              "yellow",
+              "witch_green",
+              "pumpkin_orange",
+              "moon_black"
             ],
             [
-              "purple",
+              "yellow",
+              "moon_black",
+              "moon_black",
+              "pumpkin_orange",
+              "ghost_white",
+              "moon_black",
+              "witch_green"
+            ],
+            [
+              "moon_black",
+              "moon_black",
+              "candy_corn_yellow",
+              "witch_green",
+              "ghost_white",
+              "yellow",
+              "ghost_white"
+            ],
+            [
+              "moon_black",
+              "ghost_white",
+              "pumpkin_orange",
+              "ghost_white",
+              "witch_green",
+              "pumpkin_orange",
+              "candy_corn_yellow"
+            ],
+            [
               "yellow",
               "yellow",
-              "orange",
-              "purple",
-              "purple",
-              "red"
+              "pumpkin_orange",
+              "candy_corn_yellow",
+              "candy_corn_yellow",
+              "witch_green",
+              "yellow"
             ]
           ],
           "collected": {
-            "orange": 3,
+            "pumpkin_orange": 3,
             "yellow": 0,
-            "purple": 0,
-            "green": 0,
-            "red": 0,
-            "blue": 0
+            "candy_corn_yellow": 0,
+            "ghost_white": 0,
+            "witch_green": 0,
+            "moon_black": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 3,
+              "pumpkin_orange": 3,
               "yellow": 0,
-              "purple": 0,
-              "green": 0,
-              "red": 0,
-              "blue": 0
+              "candy_corn_yellow": 0,
+              "ghost_white": 0,
+              "witch_green": 0,
+              "moon_black": 0
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 9,
+          "legalOpeningMoves": 8,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 26,
-          "verifiedScore": 2980,
+          "verifiedScore": 2350,
           "verifiedCollected": {
-            "orange": 49,
-            "yellow": 42,
-            "purple": 25,
-            "green": 29,
-            "red": 18,
-            "blue": 42
+            "pumpkin_orange": 42,
+            "yellow": 34,
+            "candy_corn_yellow": 19,
+            "ghost_white": 24,
+            "witch_green": 19,
+            "moon_black": 31
           },
           "verifiedObjectives": true,
           "verifiedShields": 0
@@ -2608,69 +2608,69 @@
           "holidayCoverage": true,
           "refreshAt": "2026-11-01T04:00:00.000Z"
         },
-        "refillState": 3268506584,
+        "refillState": 805105101,
         "boardSize": 6,
         "board": [
           [
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "witch_green",
             "yellow",
-            "orange",
-            "orange",
-            "blue",
-            "yellow",
-            "green"
+            "bat_purple",
+            "pumpkin_orange"
           ],
           [
-            "orange",
-            "orange",
+            "pumpkin_orange",
+            "pumpkin_orange",
             "yellow",
-            "orange",
-            "orange",
+            "pumpkin_orange",
+            "yellow",
             "yellow"
           ],
           [
             "yellow",
             "yellow",
-            "orange",
-            "orange",
-            "blue",
-            "blue"
-          ],
-          [
-            "yellow",
-            "yellow",
-            "green",
-            "blue",
-            "green",
+            "pumpkin_orange",
+            "witch_green",
+            "witch_green",
             "yellow"
           ],
           [
-            "orange",
-            "green",
-            "orange",
-            "orange",
-            "green",
-            "green"
+            "yellow",
+            "yellow",
+            "witch_green",
+            "bat_purple",
+            "yellow",
+            "pumpkin_orange"
           ],
           [
-            "orange",
+            "bat_purple",
+            "pumpkin_orange",
+            "pumpkin_orange",
+            "bat_purple",
+            "bat_purple",
+            "pumpkin_orange"
+          ],
+          [
             "yellow",
-            "blue",
-            "orange",
+            "witch_green",
+            "pumpkin_orange",
             "yellow",
-            "orange"
+            "pumpkin_orange",
+            "witch_green"
           ]
         ],
         "gemTypes": [
-          "orange",
+          "pumpkin_orange",
           "yellow",
-          "green",
-          "blue"
+          "bat_purple",
+          "witch_green"
         ],
         "gemWeights": {
-          "orange": 1.35,
+          "pumpkin_orange": 1.35,
           "yellow": 1.25,
-          "green": 1.1,
-          "blue": 1
+          "bat_purple": 1,
+          "witch_green": 1
         },
         "targetScore": 2400,
         "moves": 9007199254740991,
@@ -2735,94 +2735,94 @@
             0
           ]
         ],
-        "legalOpeningMoves": 14,
+        "legalOpeningMoves": 10,
         "firstLegalSwap": [
           0,
-          0,
+          3,
           1,
-          0
+          3
         ],
         "firstMove": {
-          "score": 60,
-          "refillState": 1372999574,
+          "score": 30,
+          "refillState": 2004835244,
           "board": [
             [
-              "yellow",
-              "yellow",
-              "blue",
-              "blue",
-              "yellow",
-              "green"
-            ],
-            [
-              "orange",
-              "orange",
-              "yellow",
-              "orange",
-              "orange",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "bat_purple",
+              "pumpkin_orange",
+              "pumpkin_orange",
               "yellow"
             ],
             [
-              "green",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "witch_green",
               "yellow",
-              "orange",
-              "orange",
-              "blue",
-              "blue"
+              "bat_purple",
+              "pumpkin_orange"
             ],
             [
-              "green",
               "yellow",
-              "green",
-              "blue",
-              "green",
+              "yellow",
+              "pumpkin_orange",
+              "witch_green",
+              "witch_green",
               "yellow"
             ],
             [
-              "orange",
-              "green",
-              "orange",
-              "orange",
-              "green",
-              "green"
+              "yellow",
+              "yellow",
+              "witch_green",
+              "bat_purple",
+              "yellow",
+              "pumpkin_orange"
             ],
             [
-              "orange",
+              "bat_purple",
+              "pumpkin_orange",
+              "pumpkin_orange",
+              "bat_purple",
+              "bat_purple",
+              "pumpkin_orange"
+            ],
+            [
               "yellow",
-              "blue",
-              "orange",
+              "witch_green",
+              "pumpkin_orange",
               "yellow",
-              "orange"
+              "pumpkin_orange",
+              "witch_green"
             ]
           ],
           "collected": {
-            "orange": 3,
+            "pumpkin_orange": 0,
             "yellow": 3,
-            "green": 0,
-            "blue": 0
+            "bat_purple": 0,
+            "witch_green": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "orange": 3,
+              "pumpkin_orange": 0,
               "yellow": 3,
-              "green": 0,
-              "blue": 0
+              "bat_purple": 0,
+              "witch_green": 0
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 14,
+          "legalOpeningMoves": 10,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
-          "verifiedScore": 7180,
+          "verifiedScore": 7520,
           "verifiedCollected": {
-            "orange": 106,
-            "yellow": 107,
-            "green": 97,
-            "blue": 80
+            "pumpkin_orange": 127,
+            "yellow": 128,
+            "bat_purple": 105,
+            "witch_green": 98
           },
           "verifiedObjectives": true,
           "verifiedShields": 3
@@ -2843,11 +2843,11 @@
         "rulesVersion": 5
       },
       "expected": {
-        "id": "v5-classic-3-2026-10-31-bf3f9319",
+        "id": "v5-classic-3-2026-10-31-4b10614d",
         "generatorVersion": 5,
         "mode": "classic",
         "level": 3,
-        "seed": 3208614681,
+        "seed": 1259364685,
         "environmentKey": "night-unknown-unknown-calm",
         "context": {
           "timeZone": "Australia/Sydney",
@@ -2874,110 +2874,78 @@
           "holidayCoverage": true,
           "refreshAt": "2026-10-31T13:00:00.000Z"
         },
-        "refillState": 737636898,
-        "boardSize": 8,
+        "refillState": 875717503,
+        "boardSize": 6,
         "board": [
           [
-            "blue",
-            "green",
-            "blue",
-            "blue",
+            "sprout_lime",
+            "amethyst_purple",
+            "blossom_mint",
             "purple",
-            "yellow",
-            "yellow",
+            "sprout_lime",
             "purple"
           ],
           [
-            "red",
-            "red",
+            "leaf_green",
+            "sprout_lime",
+            "amethyst_purple",
             "purple",
-            "yellow",
-            "yellow",
-            "blue",
-            "red",
-            "yellow"
+            "purple",
+            "sprout_lime"
           ],
           [
-            "purple",
-            "yellow",
-            "red",
-            "red",
-            "purple",
-            "blue",
-            "purple",
-            "blue"
+            "sprout_lime",
+            "blossom_mint",
+            "sprout_lime",
+            "amethyst_purple",
+            "blossom_mint",
+            "amethyst_purple"
           ],
           [
+            "amethyst_purple",
+            "blossom_mint",
             "purple",
-            "green",
-            "blue",
-            "red",
             "purple",
-            "green",
-            "blue",
-            "green"
-          ],
-          [
-            "green",
-            "purple",
-            "blue",
-            "yellow",
-            "green",
-            "green",
-            "purple",
-            "purple"
-          ],
-          [
-            "green",
-            "red",
-            "yellow",
-            "purple",
-            "green",
-            "red",
-            "green",
-            "blue"
+            "amethyst_purple",
+            "blossom_mint"
           ],
           [
             "purple",
             "purple",
-            "blue",
-            "purple",
-            "yellow",
-            "purple",
-            "yellow",
-            "red"
+            "blossom_mint",
+            "blossom_mint",
+            "leaf_green",
+            "amethyst_purple"
           ],
           [
+            "amethyst_purple",
+            "sprout_lime",
             "purple",
-            "red",
-            "purple",
-            "green",
-            "red",
-            "purple",
-            "blue",
-            "green"
+            "amethyst_purple",
+            "sprout_lime",
+            "leaf_green"
           ]
         ],
         "gemTypes": [
+          "amethyst_purple",
           "purple",
-          "red",
-          "blue",
-          "yellow",
-          "green"
+          "sprout_lime",
+          "leaf_green",
+          "blossom_mint"
         ],
         "gemWeights": {
-          "purple": 1.6500000000000001,
-          "red": 1,
-          "blue": 1.15,
-          "yellow": 1,
-          "green": 1
+          "amethyst_purple": 1.35,
+          "purple": 1.3,
+          "sprout_lime": 1,
+          "leaf_green": 1,
+          "blossom_mint": 1
         },
-        "targetScore": 2400,
+        "targetScore": 1850,
         "moves": 29,
         "objectives": [
           {
             "type": "collect",
-            "gemType": "purple",
+            "gemType": "amethyst_purple",
             "target": 25
           }
         ],
@@ -2989,23 +2957,9 @@
             0,
             0,
             0,
-            0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
-            0,
             0,
             0,
             0,
@@ -3019,23 +2973,9 @@
             0,
             0,
             0,
-            0,
-            0,
             0
           ],
           [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          [
-            0,
-            0,
             0,
             0,
             0,
@@ -3049,13 +2989,9 @@
             0,
             0,
             0,
-            0,
-            0,
             0
           ],
           [
-            0,
-            0,
             0,
             0,
             0,
@@ -3064,129 +3000,97 @@
             0
           ]
         ],
-        "legalOpeningMoves": 20,
+        "legalOpeningMoves": 11,
         "firstLegalSwap": [
           0,
-          0,
-          0,
-          1
+          4,
+          1,
+          4
         ],
         "firstMove": {
           "score": 30,
-          "refillState": 1937367041,
+          "refillState": 2075447646,
           "board": [
             [
-              "green",
-              "purple",
-              "blue",
-              "purple",
-              "purple",
-              "yellow",
-              "yellow",
-              "purple"
+              "sprout_lime",
+              "amethyst_purple",
+              "blossom_mint",
+              "amethyst_purple",
+              "amethyst_purple",
+              "sprout_lime"
             ],
             [
-              "red",
-              "red",
+              "leaf_green",
+              "sprout_lime",
+              "amethyst_purple",
               "purple",
-              "yellow",
-              "yellow",
-              "blue",
-              "red",
-              "yellow"
+              "sprout_lime",
+              "sprout_lime"
             ],
             [
-              "purple",
-              "yellow",
-              "red",
-              "red",
-              "purple",
-              "blue",
-              "purple",
-              "blue"
+              "sprout_lime",
+              "blossom_mint",
+              "sprout_lime",
+              "amethyst_purple",
+              "blossom_mint",
+              "amethyst_purple"
             ],
             [
+              "amethyst_purple",
+              "blossom_mint",
               "purple",
-              "green",
-              "blue",
-              "red",
               "purple",
-              "green",
-              "blue",
-              "green"
-            ],
-            [
-              "green",
-              "purple",
-              "blue",
-              "yellow",
-              "green",
-              "green",
-              "purple",
-              "purple"
-            ],
-            [
-              "green",
-              "red",
-              "yellow",
-              "purple",
-              "green",
-              "red",
-              "green",
-              "blue"
+              "amethyst_purple",
+              "blossom_mint"
             ],
             [
               "purple",
               "purple",
-              "blue",
-              "purple",
-              "yellow",
-              "purple",
-              "yellow",
-              "red"
+              "blossom_mint",
+              "blossom_mint",
+              "leaf_green",
+              "amethyst_purple"
             ],
             [
+              "amethyst_purple",
+              "sprout_lime",
               "purple",
-              "red",
-              "purple",
-              "green",
-              "red",
-              "purple",
-              "blue",
-              "green"
+              "amethyst_purple",
+              "sprout_lime",
+              "leaf_green"
             ]
           ],
           "collected": {
-            "purple": 0,
-            "red": 0,
-            "blue": 3,
-            "yellow": 0,
-            "green": 0
+            "amethyst_purple": 0,
+            "purple": 3,
+            "sprout_lime": 0,
+            "leaf_green": 0,
+            "blossom_mint": 0
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
-              "purple": 0,
-              "red": 0,
-              "blue": 3,
-              "yellow": 0,
-              "green": 0
+              "amethyst_purple": 0,
+              "purple": 3,
+              "sprout_lime": 0,
+              "leaf_green": 0,
+              "blossom_mint": 0
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 20,
+          "legalOpeningMoves": 11,
           "verifiedWithoutBoosters": true,
           "verifiedMoves": 29,
-          "verifiedScore": 4610,
+          "verifiedScore": 2700,
           "verifiedCollected": {
-            "purple": 95,
-            "red": 40,
-            "blue": 59,
-            "yellow": 49,
-            "green": 40
+            "amethyst_purple": 47,
+            "purple": 50,
+            "sprout_lime": 46,
+            "leaf_green": 26,
+            "blossom_mint": 42
           },
           "verifiedObjectives": true,
           "verifiedShields": 0
@@ -3207,11 +3111,11 @@
         "rulesVersion": 5
       },
       "expected": {
-        "id": "v5-daily-1-2026-10-31-32016934",
+        "id": "v5-daily-1-2026-10-31-ddd8538e",
         "generatorVersion": 5,
         "mode": "daily",
         "level": 1,
-        "seed": 838953268,
+        "seed": 3721941902,
         "environmentKey": "night-unknown-unknown-calm",
         "context": {
           "timeZone": "Australia/Sydney",
@@ -3238,79 +3142,90 @@
           "holidayCoverage": true,
           "refreshAt": "2026-10-31T13:00:00.000Z"
         },
-        "refillState": 2286871899,
-        "boardSize": 6,
+        "refillState": 747010843,
+        "boardSize": 7,
         "board": [
           [
-            "red",
-            "green",
-            "yellow",
-            "yellow",
-            "orange",
-            "purple"
+            "leaf_green",
+            "amethyst_purple",
+            "sprout_lime",
+            "vine_olive",
+            "sprout_lime",
+            "purple",
+            "amethyst_purple"
+          ],
+          [
+            "leaf_green",
+            "leaf_green",
+            "purple",
+            "sprout_lime",
+            "purple",
+            "purple",
+            "vine_olive"
+          ],
+          [
+            "amethyst_purple",
+            "purple",
+            "vine_olive",
+            "amethyst_purple",
+            "amethyst_purple",
+            "sprout_lime",
+            "vine_olive"
+          ],
+          [
+            "amethyst_purple",
+            "vine_olive",
+            "purple",
+            "leaf_green",
+            "purple",
+            "amethyst_purple",
+            "amethyst_purple"
+          ],
+          [
+            "sprout_lime",
+            "vine_olive",
+            "leaf_green",
+            "purple",
+            "sprout_lime",
+            "purple",
+            "vine_olive"
+          ],
+          [
+            "leaf_green",
+            "purple",
+            "leaf_green",
+            "vine_olive",
+            "sprout_lime",
+            "vine_olive",
+            "vine_olive"
           ],
           [
             "purple",
-            "red",
-            "yellow",
-            "green",
-            "red",
-            "purple"
-          ],
-          [
-            "orange",
-            "red",
             "purple",
-            "yellow",
-            "orange",
-            "orange"
-          ],
-          [
-            "green",
-            "purple",
-            "orange",
-            "orange",
-            "red",
-            "red"
-          ],
-          [
-            "yellow",
-            "yellow",
-            "purple",
-            "red",
-            "purple",
-            "orange"
-          ],
-          [
-            "red",
-            "orange",
-            "orange",
-            "green",
-            "orange",
-            "purple"
+            "amethyst_purple",
+            "leaf_green",
+            "vine_olive",
+            "amethyst_purple",
+            "amethyst_purple"
           ]
         ],
         "gemTypes": [
+          "amethyst_purple",
           "purple",
-          "orange",
-          "red",
-          "yellow",
-          "green"
+          "vine_olive",
+          "leaf_green",
+          "sprout_lime"
         ],
         "gemWeights": {
-          "purple": 1.6500000000000001,
-          "orange": 1,
-          "red": 1,
-          "yellow": 1,
-          "green": 1
+          "amethyst_purple": 1.35,
+          "purple": 1.3,
+          "vine_olive": 1,
+          "leaf_green": 1,
+          "sprout_lime": 1
         },
-        "targetScore": 1750,
-        "moves": 29,
+        "targetScore": 2400,
+        "moves": 30,
         "objectives": [
-          {
-            "type": "score",
-            "target": 1750
-          },
           {
             "type": "clear-shields",
             "target": 3
@@ -3324,6 +3239,16 @@
             0,
             0,
             0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           [
@@ -3332,9 +3257,11 @@
             0,
             0,
             0,
+            0,
             0
           ],
           [
+            0,
             0,
             0,
             0,
@@ -3348,17 +3275,20 @@
             2,
             0,
             0,
-            0
-          ],
-          [
-            0,
-            0,
-            0,
-            0,
             0,
             0
           ],
           [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
             0,
             0,
             0,
@@ -3367,97 +3297,112 @@
             0
           ]
         ],
-        "legalOpeningMoves": 8,
+        "legalOpeningMoves": 13,
         "firstLegalSwap": [
           0,
-          0,
-          0,
-          1
+          3,
+          1,
+          3
         ],
         "firstMove": {
           "score": 30,
-          "refillState": 3486602042,
+          "refillState": 1946740986,
           "board": [
             [
-              "green",
-              "red",
-              "yellow",
-              "yellow",
-              "orange",
-              "purple"
+              "leaf_green",
+              "amethyst_purple",
+              "purple",
+              "purple",
+              "amethyst_purple",
+              "purple",
+              "amethyst_purple"
+            ],
+            [
+              "leaf_green",
+              "leaf_green",
+              "purple",
+              "vine_olive",
+              "purple",
+              "purple",
+              "vine_olive"
+            ],
+            [
+              "amethyst_purple",
+              "purple",
+              "vine_olive",
+              "amethyst_purple",
+              "amethyst_purple",
+              "sprout_lime",
+              "vine_olive"
+            ],
+            [
+              "amethyst_purple",
+              "vine_olive",
+              "purple",
+              "leaf_green",
+              "purple",
+              "amethyst_purple",
+              "amethyst_purple"
+            ],
+            [
+              "sprout_lime",
+              "vine_olive",
+              "leaf_green",
+              "purple",
+              "sprout_lime",
+              "purple",
+              "vine_olive"
+            ],
+            [
+              "leaf_green",
+              "purple",
+              "leaf_green",
+              "vine_olive",
+              "sprout_lime",
+              "vine_olive",
+              "vine_olive"
             ],
             [
               "purple",
-              "orange",
-              "yellow",
-              "green",
-              "red",
-              "purple"
-            ],
-            [
-              "orange",
-              "yellow",
               "purple",
-              "yellow",
-              "orange",
-              "orange"
-            ],
-            [
-              "green",
-              "purple",
-              "orange",
-              "orange",
-              "red",
-              "red"
-            ],
-            [
-              "yellow",
-              "yellow",
-              "purple",
-              "red",
-              "purple",
-              "orange"
-            ],
-            [
-              "red",
-              "orange",
-              "orange",
-              "green",
-              "orange",
-              "purple"
+              "amethyst_purple",
+              "leaf_green",
+              "vine_olive",
+              "amethyst_purple",
+              "amethyst_purple"
             ]
           ],
           "collected": {
+            "amethyst_purple": 0,
             "purple": 0,
-            "orange": 0,
-            "red": 3,
-            "yellow": 0,
-            "green": 0
+            "vine_olive": 0,
+            "leaf_green": 0,
+            "sprout_lime": 3
           },
           "brokenShields": 0,
           "objectiveProgress": {
             "collected": {
+              "amethyst_purple": 0,
               "purple": 0,
-              "orange": 0,
-              "red": 3,
-              "yellow": 0,
-              "green": 0
+              "vine_olive": 0,
+              "leaf_green": 0,
+              "sprout_lime": 3
             },
             "shieldsCleared": 0
           }
         },
         "quality": {
           "initialMatches": 0,
-          "legalOpeningMoves": 8,
+          "legalOpeningMoves": 13,
           "verifiedWithoutBoosters": true,
-          "verifiedMoves": 29,
-          "verifiedScore": 2540,
+          "verifiedMoves": 30,
+          "verifiedScore": 4770,
           "verifiedCollected": {
-            "purple": 53,
-            "orange": 46,
-            "red": 33,
-            "yellow": 25,
-            "green": 31
+            "amethyst_purple": 73,
+            "purple": 66,
+            "vine_olive": 58,
+            "leaf_green": 56,
+            "sprout_lime": 43
           },
           "verifiedObjectives": true,
           "verifiedShields": 3

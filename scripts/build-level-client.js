@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const modules = ['time-zone-regions.js', 'environment.js', 'match-core.js', 'special-rules.js', 'shield-rules.js', 'blocker-rules.js', 'locked-gem-rules.js', '../meta/rewards.js', 'objective-rules.js', 'generator.js'];
+const modules = ['time-zone-regions.js', 'environment.js', 'match-core.js', 'special-rules.js', 'shield-rules.js', 'blocker-rules.js', 'locked-gem-rules.js', 'tile-sets.js', '../meta/rewards.js', 'objective-rules.js', 'generator.js'];
 
 export function renderLevelClient() {
   const sources = modules.map((name) => readFileSync(new URL(`../src/services/levels/${name}`, import.meta.url), 'utf8'));
