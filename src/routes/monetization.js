@@ -80,10 +80,11 @@ router.get('/ad-config', security.sessionValidation, async (req, res) => {
   try {
     const profile = req.user || {};
     const config = await adConfigService.getAdConfigForPlayer(profile);
-    // Entitlement enforcement: disable ads if user owns remove_ads
+    // Entitlement enforcement: disable ads if user owns remove_ads or has an active VIP subscription
     if (req.user?.playerId) {
       const hasRemoveAds = await PurchaseLedgerDb.hasPurchase(req.user.playerId, 'remove_ads');
-      if (hasRemoveAds) {
+      const hasVip = await PurchaseLedgerDb.hasPurchase(req.user.playerId, 'vip');
+      if (hasRemoveAds || hasVip) {
         config.enabled = false;
         config.rewarded.enabled = false;
         config.interstitial.enabled = false;

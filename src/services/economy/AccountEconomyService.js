@@ -18,6 +18,7 @@ import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier, markRoomCompleted, KINGDOM_MAX_LEVEL } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
+import { LIFE_COST_PER_ATTEMPT, COST_COINS_PER_LIFE, MAX_LIVES, LIFE_REGEN_MINUTES, regenerateLives, nextRegenInMs as nextLifeRegenInMs, spendLife, grantLives } from '../meta/lives.js';
 import { endlessRewards, winRewards } from '../meta/rewards.js';
 import { addSeasonXp } from '../meta/battlepass.js';
 import { applyVip } from '../meta/vip.js';
@@ -56,7 +57,7 @@ class AccountEconomyService {
     
     // Industry-standard match-3 economy features
     this.economyFeatures = {
-      currencies: ['coins', 'stars', 'energy'],
+      currencies: ['coins', 'stars', 'energy', 'lives'],
       progression: ['levels', 'xp', 'achievements', 'daily_rewards'],
       monetization: ['iap', 'ads', 'subscriptions', 'battle_pass'],
       social: ['gifts', 'leaderboards', 'guilds', 'events'],
@@ -184,6 +185,20 @@ class AccountEconomyService {
         color: '#32CD32',
         description: 'Energy required to play levels',
         regenRate: 1, // per minute
+        lastRegen: Date.now()
+      },
+      lives: {
+        id: 'lives',
+        name: 'Lives',
+        type: 'consumable',
+        amount: MAX_LIVES,
+        maxAmount: MAX_LIVES,
+        earned: 0,
+        spent: 0,
+        icon: 'life_icon',
+        color: '#FF6B6B',
+        description: 'Lives lost when a level is failed; regenerate over time',
+        regenRate: 1, // per LIFE_REGEN_MINUTES
         lastRegen: Date.now()
       }
     };
@@ -978,6 +993,52 @@ class AccountEconomyService {
     });
   }
 
+  /** Spend one life for a failed level attempt. Regeneration is applied first. */
+  async spendLife(playerId, nowMs = Date.now()) {
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const lives = regenerateLives(playerEconomy.currencies.lives, nowMs);
+      const result = spendLife(lives);
+      if (!result.success) throw new EconomyRuleError(result.reason);
+      lives.spent = (lives.spent || 0) + 1;
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return {
+        success: true,
+        livesRemaining: result.livesRemaining,
+        nextRegenInMs: nextLifeRegenInMs(lives, nowMs),
+      };
+    });
+  }
+
+  /** Buy lives with coins. Returns { livesAdded, livesRemaining, coinsSpent, coinsRemaining }. */
+  async buyLives(playerId, amount = 1, nowMs = Date.now()) {
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 10) {
+      throw new EconomyRuleError('invalid_lives_amount');
+    }
+    return this.withPlayerLock(playerId, async () => {
+      const playerEconomy = await this.getPlayerEconomy(playerId);
+      const coins = playerEconomy.currencies.coins;
+      const costCoins = amount * COST_COINS_PER_LIFE;
+      if (coins.amount < costCoins) {
+        throw new EconomyRuleError('insufficient_coins');
+      }
+      this.spendCoins(playerEconomy, costCoins);
+      const lives = regenerateLives(playerEconomy.currencies.lives, nowMs);
+      const grant = grantLives(lives, amount);
+      playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+      await this.updatePlayerEconomyCache(playerId, playerEconomy);
+      return {
+        success: true,
+        livesAdded: grant.livesAdded,
+        livesRemaining: grant.livesRemaining,
+        coinsSpent: costCoins,
+        coinsRemaining: coins.amount - costCoins,
+        nextRegenInMs: nextLifeRegenInMs(lives, nowMs),
+      };
+    });
+  }
+
   /** Atomically spend one inventory item and, when requested, bind an effect receipt to
    * the pending paid attempt. A legacy spend during a run is marked unranked, not silently
    * treated as a no-booster attempt. The lock also serialises spends with completion.
@@ -1297,7 +1358,9 @@ class AccountEconomyService {
     delete view.milestoneGrants;
     delete view.writeRevision;
     regenerateEnergy(view.currencies.energy, nowMs);
+    regenerateLives(view.currencies.lives, nowMs);
     view.currencies.energy.nextRegenInMs = nextRegenInMs(view.currencies.energy, nowMs);
+    view.currencies.lives.nextRegenInMs = nextLifeRegenInMs(view.currencies.lives, nowMs);
     return view;
   }
 

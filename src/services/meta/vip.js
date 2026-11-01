@@ -1,7 +1,8 @@
 /**
  * VIP benefits. A player is VIP while they hold the `vip` entitlement in the purchase ledger.
- * No store product grants it yet: the product needs a price and a store SKU before it can be
- * sold. The benefit below applies as soon as the entitlement exists.
+ * The `vip` product is in the server catalog (product-catalog.js) and can be purchased
+ * through the standard receipt verification / checkout flow. Benefits apply as soon as
+ * the entitlement exists.
  */
 
 export const VIP_ENTITLEMENT = 'vip';
