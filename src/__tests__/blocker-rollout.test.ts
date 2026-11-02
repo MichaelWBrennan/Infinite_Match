@@ -77,18 +77,18 @@ describe('client opt-in for rules v6', () => {
     return { sandbox, game: Object.create(sandbox.PhaserMatch3Game.prototype) };
   }
 
-  test('a classic request asks for v6 only with ?blockers=1', () => {
+  test('a classic request defaults to v6', () => {
     const { sandbox, game } = loadClient();
-    expect(game.requestedRulesVersion('classic')).toBe(5);
+    expect(game.requestedRulesVersion('classic')).toBe(6);
     sandbox.location = { search: '?blockers=1' };
     expect(game.requestedRulesVersion('classic')).toBe(6);
-    expect(game.requestedRulesVersion(undefined)).toBe(5);
+    expect(game.requestedRulesVersion(undefined)).toBe(6);
   });
 
-  test('daily, timed and endless never ask for v6, even with the playtest flag', () => {
+  test('daily, timed and endless use v6 rules too (obstacles are classic-only)', () => {
     const { sandbox, game } = loadClient();
     sandbox.location = { search: '?blockers=1' };
-    for (const mode of ['daily', 'timed', 'endless']) expect(game.requestedRulesVersion(mode)).toBe(5);
+    for (const mode of ['daily', 'timed', 'endless']) expect(game.requestedRulesVersion(mode)).toBe(6);
   });
 
   test('the server wiring passes the mode and the flag at every call site', () => {

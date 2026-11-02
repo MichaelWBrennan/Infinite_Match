@@ -158,7 +158,7 @@ export function certifyChocolateBoard(definition) {
   }
   const remaining = chocolateCount(state.chocolate || blankChocolate(board.length));
   if (remaining > 0) throw new Error(`chocolate_certify_incomplete:${remaining}`);
-  return { score, collected, chocolateCleared, events: [] };
+  return { score, collected, chocolateCleared, witness, events: [] };
 }
 
 export default {

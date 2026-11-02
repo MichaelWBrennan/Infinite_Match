@@ -108,7 +108,7 @@ export function certifyFrostingBoard(definition) {
   }
   const remaining = frostingCount(state.frosting || blankFrosting(board.length));
   if (remaining > 0) throw new Error(`frosting_certify_incomplete:${remaining}`);
-  return { score, collected, frostingCleared, events: [] };
+  return { score, collected, frostingCleared, witness, events: [] };
 }
 
 export default {

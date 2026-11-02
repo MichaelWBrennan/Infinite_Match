@@ -260,6 +260,14 @@ export function objectiveSummary(definition, score, progress, showRemaining = fa
 export function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null, chocolate = null, liquorice = null, marmalade = null, frosting = null, delivery = null) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
+  const cellKeys = (action) => {
+    const cells = action.cells;
+    // Cells may be flat [r, c, r2, c2] or paired [[r, c], [r2, c2]].
+    if (cells.length > 0 && !Array.isArray(cells[0])) {
+      return cells.map((v, i) => i % 2 === 0 ? `${v},${cells[i + 1]}` : null).filter(Boolean);
+    }
+    return cells.map(([r, c]) => `${r},${c}`);
+  };
   for (const action of actions) {
     const shieldResult = goals.some((goal) => goal.type === 'clear-shields') && shields
       ? simulateShieldMove(definition, { board, specials, refillState, shields }, action.cells) : null;
@@ -267,14 +275,15 @@ export function objectiveActions(definition, board, specials, progress, score = 
       ? simulateBlockerMove(definition, { board, specials, refillState, shields, blockers }, action.cells) : null;
     const lockedResult = goals.some((goal) => goal.type === 'clear-locked-gems') && lockedGems
       ? simulateLockedGemMove(definition, { board, specials, refillState, shields, locked: lockedGems }, action.cells) : null;
+    const keys = cellKeys(action);
     const jellyResult = goals.some((goal) => goal.type === 'clear-jelly') && jelly
-      ? applyJellyClear({ events: [{ cleared: action.cells }] }, jelly) : null;
+      ? applyJellyClear({ events: [{ cleared: keys }] }, jelly) : null;
     const chocolateResult = goals.some((goal) => goal.type === 'clear-chocolate') && chocolate
-      ? applyChocolateClear({ events: [{ cleared: action.cells }] }, chocolate) : null;
+      ? applyChocolateClear({ events: [{ cleared: keys }] }, chocolate) : null;
     const liquoriceResult = goals.some((goal) => goal.type === 'clear-liquorice') && liquorice
-      ? applyLiquoriceClear({ events: [{ cleared: action.cells }], board: { length: liquorice.length } }, liquorice) : null;
+      ? applyLiquoriceClear({ events: [{ cleared: keys }], board: { length: liquorice.length } }, liquorice) : null;
     const marmaladeResult = goals.some((goal) => goal.type === 'clear-marmalade') && marmalade
-      ? applyMarmaladeClear({ events: [{ cleared: action.cells }] }, marmalade) : null;
+      ? applyMarmaladeClear({ events: [{ cleared: keys }] }, marmalade) : null;
     const frostingResult = goals.some((goal) => goal.type === 'clear-frosting') && frosting
       ? applyFrostingClear({ events: [{ cleared: action.cells }] }, frosting) : null;
     const deliveryResult = goals.some((goal) => goal.type === 'clear-delivery') && delivery

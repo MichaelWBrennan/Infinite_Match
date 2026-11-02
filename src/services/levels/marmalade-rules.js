@@ -104,7 +104,7 @@ export function certifyMarmaladeBoard(definition) {
   }
   const remaining = marmaladeCount(state.marmalade || blankMarmalade(board.length));
   if (remaining > 0) throw new Error(`marmalade_certify_incomplete:${remaining}`);
-  return { score, collected, marmaladeCleared, events: [] };
+  return { score, collected, marmaladeCleared, witness, events: [] };
 }
 
 export default {

@@ -132,7 +132,7 @@ export function certifyLiquoriceBoard(definition) {
   }
   const remaining = liquoriceCount(state.liquorice || blankLiquorice(board.length));
   if (remaining > 0) throw new Error(`liquorice_certify_incomplete:${remaining}`);
-  return { score, collected, liquoriceCleared, events: [] };
+  return { score, collected, liquoriceCleared, witness, events: [] };
 }
 
 export default {

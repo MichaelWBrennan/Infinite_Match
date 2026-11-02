@@ -10,7 +10,9 @@ export function inventoryReplayEffect(definition, state, action) {
   if (!REPLAY_POWERUPS.includes(type) || !Number.isSafeInteger(size) || size < 1 || size > 8) return null;
   const target = action.target;
   if (type === 'rainbow' ? target !== undefined
-    : !Array.isArray(target) || target.length !== 2 || target.some((n) => !Number.isSafeInteger(n) || n < 0 || n >= size)
+    : !Array.isArray(target)
+      || (type === 'swap' ? target.length !== 4 : target.length !== 2)
+      || target.some((n) => !Number.isSafeInteger(n) || n < 0 || n >= size)
       || (type === 'lightning' && target[0] !== 0)) return null;
   const keys = new Set();
   const add = (r, c) => {

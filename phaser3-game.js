@@ -117,8 +117,8 @@ function dailyChallengeLevel(dateString) {
 }
 
 // Power-ups that need a tapped gem. They arm on press and fire on the next tap.
-const TARGETED_POWERUPS = ['diamond', 'target', 'star'];
-const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star'];
+const TARGETED_POWERUPS = ['diamond', 'target', 'star', 'swap', 'crush'];
+const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star', 'swap', 'crush'];
 
 // Checkpoints are a presentation convenience, not a new reward rule. The server still
 // enforces its three-hour attempt lifetime and the 300-coin / 500-XP payout caps.
@@ -820,11 +820,9 @@ class PhaserMatch3Game {
         this.playerUI?.assistiveBoard?.sync();
     }
 
-    /** Rules v6 is a playtest opt-in: a classic request with ?blockers=1. The server still decides. */
+    /** Rules v6 is the default generator version for all classic levels. */
     requestedRulesVersion(mode) {
-        let playtest = false;
-        try { playtest = mode === 'classic' && new URLSearchParams(window.location.search).get('blockers') === '1'; } catch (error) { playtest = false; }
-        return playtest ? 6 : globalThis.InfiniteLevels.GENERATOR_VERSION;
+        return globalThis.InfiniteLevels.GENERATOR_VERSION;
     }
 
     /** Render all v6 obstacle overlays on top of gems. Only the family present
@@ -1794,7 +1792,7 @@ class PhaserMatch3Game {
             for (const type of ['bomb', 'rainbow', 'lightning']) {
                 const slot = this.playerUI.powerups.get(type); this[`${type}Btn`] = slot.btn; this[`${type}Text`] = slot.text;
             }
-            this.powerButtons = Object.fromEntries(['diamond', 'target', 'star'].map((type) => [type, this.playerUI.powerups.get(type)]));
+            this.powerButtons = Object.fromEntries(['diamond', 'target', 'star', 'swap', 'crush'].map((type) => [type, this.playerUI.powerups.get(type)]));
             return;
         }
         const powerUpY = 530;
@@ -1844,6 +1842,8 @@ class PhaserMatch3Game {
             { type: 'diamond', x: 450, count: 1 },
             { type: 'target', x: 550, count: 1 },
             { type: 'star', x: 650, count: 1 },
+            { type: 'swap', x: 750, count: 1 },
+            { type: 'crush', x: 850, count: 1 },
         ];
         for (const { type, x, count } of targeted) {
             const btn = this.scene.add.image(x, powerUpY, `powerup_${type}`);
@@ -2074,7 +2074,7 @@ class PhaserMatch3Game {
         this.setSelectedGem(null);
         this.armedPowerUp = type;
         btn.setAlpha(0.5);
-        this.playerUI?.announce({ diamond: 'Color: tap a gem to clear that color.', target: 'Cross: tap a gem to clear it and its neighbours.', star: 'Sweep: tap a gem to clear its row and column.' }[type]);
+        this.playerUI?.announce({ diamond: 'Color: tap a gem to clear that color.', target: 'Cross: tap a gem to clear it and its neighbours.', star: 'Sweep: tap a gem to clear its row and column.', swap: 'Switch: tap two adjacent gems to swap them.', crush: 'Hammer: tap a gem to crush it.' }[type]);
     }
 
     disarmPowerUp() {
@@ -2107,6 +2107,9 @@ class PhaserMatch3Game {
                 keys.add(`${r},${i}`);
                 keys.add(`${i},${c}`);
             }
+        } else if (type === 'crush') {
+            // Crush: just the tapped gem.
+            keys.add(`${r},${c}`);
         }
         return keys;
     }
@@ -2115,11 +2118,39 @@ class PhaserMatch3Game {
         const type = this.armedPowerUp;
         const r = gem.getData('row');
         const c = gem.getData('col');
+        const wasSwap = type === 'swap';
         this.disarmPowerUp();
+
+        if (wasSwap) {
+            // Two-tap swap: first tap stores, second tap spends and swaps.
+            if (!this._swapCells) this._swapCells = [];
+            if (this._swapCells.length === 0) {
+                this._swapCells.push([r, c]);
+                this.armedPowerUp = 'swap'; // re-arm for second tap
+                this.powerButtons[type]?.btn?.setAlpha(0.5);
+                return;
+            }
+            const [[r1, c1]] = this._swapCells;
+            this._swapCells = [];
+            const adjacent = Math.abs(r1 - r) + Math.abs(c1 - c) === 1;
+            this.spendPowerUp(type, () => {
+                if (adjacent) {
+                    const tmp = this.board[r1][c1];
+                    this.board[r1][c1] = this.board[r][c];
+                    this.board[r][c] = tmp;
+                    this.resolveBoard();
+                    this.updateUI();
+                    this.playSound('swap');
+                    this.attemptMoves.push({ type: 'swap', target: [r1, c1, r, c], receiptId: this.powerReceipt?.receiptId });
+                }
+                this.showPowerUpAnimation(type);
+            });
+            return;
+        }
 
         this.spendPowerUp(type, () => {
             const keys = this.powerUpKeys(type, r, c);
-            const points = { diamond: 400, target: 200, star: 250 }[type];
+            const points = { diamond: 400, target: 200, star: 250, crush: 150 }[type];
             this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam', { type, target: [r, c] });
             this.showPowerUpAnimation(type);
         });
@@ -2137,7 +2168,9 @@ class PhaserMatch3Game {
             lightning: '⚡',
             diamond: '💎',
             target: '🎯',
-            star: '🌟'
+            star: '🌟',
+            swap: '🔄',
+            crush: '🔨'
         };
         
         const animation = this.scene.add.text(400, 300, animations[powerType], {
