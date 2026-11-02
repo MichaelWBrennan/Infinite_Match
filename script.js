@@ -434,9 +434,15 @@ class InfiniteMatchGame {
             const id = encodeURIComponent(f.playerId);
             const row = this.communityEl('div', '', 'community-row');
             row.appendChild(this.communityEl('span', `${f.label} · best ${f.bestScore || 0}`));
-            const gift = this.communityButton('Send energy', () => this.sendEnergyGift(f.playerId));
-            gift.setAttribute('aria-label', `Send 1 energy to ${f.label}`);
-            row.appendChild(gift);
+            const giftEnergy = this.communityButton('Send energy', () => this.sendEnergyGift(f.playerId));
+            giftEnergy.setAttribute('aria-label', `Send 1 energy to ${f.label}`);
+            row.appendChild(giftEnergy);
+            const giftBooster = this.communityButton('Send booster', () => this.sendBoosterGift(f.playerId));
+            giftBooster.setAttribute('aria-label', `Send 1 booster to ${f.label}`);
+            row.appendChild(giftBooster);
+            const giftLives = this.communityButton('Send lives', () => this.sendLivesGift(f.playerId));
+            giftLives.setAttribute('aria-label', `Send 1 life to ${f.label}`);
+            row.appendChild(giftLives);
             const remove = this.communityButton('Remove', () => this.communityAction(`/api/social/friends/${id}`, 'DELETE', 'friends'));
             remove.setAttribute('aria-label', `Remove ${f.label} from friends`);
             row.appendChild(remove);
@@ -469,6 +475,54 @@ class InfiniteMatchGame {
         delete this.giftIds[receiverId];
         this.communityFlash = !result.ok ? `Not sent: ${this.communityError(result.data)}.`
             : result.data.result.credited > 0 ? 'Energy sent.' : 'Gift recorded. Their energy is already full.';
+        this.showCommunityTab('friends');
+    }
+
+    // One booster gift. Same idempotent retry pattern as energy gifts.
+    async sendBoosterGift(receiverId) {
+        this.giftIds = this.giftIds || {};
+        const giftKey = `b:${receiverId}`;
+        const giftId = this.giftIds[giftKey] || (globalThis.crypto && crypto.randomUUID
+            ? crypto.randomUUID() : `b${Date.now()}${Math.random().toString(36).slice(2, 12)}`);
+        this.giftIds[giftKey] = giftId;
+        // Offer a small booster choice; default to extra_moves if the server accepts any.
+        const boosterId = 'extra_moves';
+        let result;
+        try {
+            result = await this.communityRequest('/api/social/gifts/booster', {
+                method: 'POST',
+                body: JSON.stringify({ receiverId, giftId, boosterId })
+            });
+        } catch (error) {
+            this.communityFlash = 'Could not reach the server. Tap Send booster again; it will not send twice.';
+            return this.showCommunityTab('friends');
+        }
+        delete this.giftIds[giftKey];
+        this.communityFlash = !result.ok ? `Not sent: ${this.communityError(result.data)}.`
+            : result.data.result.credited > 0 ? 'Booster sent.' : 'Gift recorded.';
+        this.showCommunityTab('friends');
+    }
+
+    // One lives gift. Same idempotent retry pattern as energy gifts.
+    async sendLivesGift(receiverId) {
+        this.giftIds = this.giftIds || {};
+        const giftKey = `l:${receiverId}`;
+        const giftId = this.giftIds[giftKey] || (globalThis.crypto && crypto.randomUUID
+            ? crypto.randomUUID() : `l${Date.now()}${Math.random().toString(36).slice(2, 12)}`);
+        this.giftIds[giftKey] = giftId;
+        let result;
+        try {
+            result = await this.communityRequest('/api/social/gifts/lives', {
+                method: 'POST',
+                body: JSON.stringify({ receiverId, giftId })
+            });
+        } catch (error) {
+            this.communityFlash = 'Could not reach the server. Tap Send lives again; it will not send twice.';
+            return this.showCommunityTab('friends');
+        }
+        delete this.giftIds[giftKey];
+        this.communityFlash = !result.ok ? `Not sent: ${this.communityError(result.data)}.`
+            : result.data.result.credited > 0 ? 'Lives sent.' : 'Gift recorded.';
         this.showCommunityTab('friends');
     }
 

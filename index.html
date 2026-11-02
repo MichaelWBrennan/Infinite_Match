@@ -62,9 +62,26 @@
     .minigame-card.matched{background:#ffd700;color:#111}
     .minigame-pad{width:200px;height:200px;border-radius:50%;background:#9b59b6;color:#fff;font-size:28px;border:0;cursor:pointer;display:block;margin:12px auto}
     .minigame-pad.beat{background:#ffd700;color:#111}
+    .skip-to-content {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #4ecdc4;
+        color: #111;
+        padding: 8px 16px;
+        text-decoration: none;
+        font-weight: bold;
+        border-radius: 4px;
+        z-index: 10000;
+        transition: top 0.3s;
+    }
+    .skip-to-content:focus {
+        top: 10px;
+    }
     </style>
 </head>
 <body>
+    <a href="#match-board-surface" class="skip-to-content">Skip to game board</a>
     <!-- Loading Screen -->
     <div id="loading-screen" class="screen active">
         <div class="loading-background">
