@@ -33,6 +33,8 @@ export const WHEEL_REWARDS = [
   { id: 'stars_1', weight: 20, type: 'currency', currencyId: 'stars', amount: 1 },
   { id: 'bomb_1', weight: 10, type: 'inventory', category: 'powerups', itemId: 'bomb', amount: 1 },
   { id: 'diamond_1', weight: 5, type: 'inventory', category: 'powerups', itemId: 'diamond', amount: 1 },
+  { id: 'swap_1', weight: 8, type: 'inventory', category: 'powerups', itemId: 'swap', amount: 1 },
+  { id: 'crush_1', weight: 12, type: 'inventory', category: 'powerups', itemId: 'crush', amount: 1 },
 ];
 
 /** Picks one wheel reward. `randomInt(max)` must return an integer in [0, max). */

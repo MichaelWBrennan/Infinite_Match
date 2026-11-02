@@ -3558,6 +3558,8 @@ class PhaserMatch3Game {
         this.kingdomSceneData = null;
         this.kingdomFocusChoice = null;
         this.kingdomFocusRoom = false;
+        // Kingdom music while browsing rooms.
+        try { this.soundEffects?.playMusic('kingdom'); } catch { /* Music optional. */ }
         this.createKingdomUI();
     }
 
@@ -3778,6 +3780,7 @@ class PhaserMatch3Game {
         this.closeOverlay();
         this.currentScreen = 'game';
         this.resumeAfterOverlay();
+        try { this.soundEffects?.playMusic('gameplay'); } catch { /* Music optional. */ }
     }
 
     // Integration with existing game system
@@ -3865,6 +3868,8 @@ class PhaserMatch3Game {
         let stars = 0;
         stars = this.starsFor(this.score);
         this.playSound(stars > 0 ? 'win' : 'loss');
+        // Level-complete music on a win; gameplay music otherwise.
+        try { this.soundEffects?.playMusic(stars > 0 ? 'levelcomplete' : 'gameplay'); } catch { /* Music optional. */ }
         
         this.reportLevelResult(stars);
         this.rewardSubmission = stars > 0 || !this.getAuthToken() || !this.attemptId
@@ -3965,6 +3970,7 @@ class PhaserMatch3Game {
             }
         });
         this.openMenu();
+        try { this.soundEffects?.playMusic('title'); } catch { /* Music optional. */ }
     }
 
     destroy() {

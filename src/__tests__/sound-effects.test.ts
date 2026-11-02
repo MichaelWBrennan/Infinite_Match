@@ -71,7 +71,7 @@ describe('original opt-in sound settings and semantic cues', () => {
 
   test('all cues schedule short, finite, enveloped original oscillators and clean up after ending', () => {
     const api = helpers(); const names = Array.from(api.cueNames);
-    expect(new Set(names).size).toBe(16);
+    expect(new Set(names).size).toBe(23);
     const signatures = new Set();
     for (const name of names) {
       const mock = environment('running'); const context: any = new mock.env.AudioContext({});
@@ -87,7 +87,7 @@ describe('original opt-in sound settings and semantic cues', () => {
       }
       signatures.add(JSON.stringify(context.oscillators.map((oscillator: any) => [oscillator.type, oscillator.frequency.events, oscillator.starts, oscillator.stops])));
     }
-    expect(signatures.size).toBe(16);
+    expect(signatures.size).toBe(23);
     expect(api.MAX_GAIN).toBeLessThan(0.2); expect(api.MAX_VOICES).toBe(8);
     expect(source).not.toMatch(/Math\.random|nextRandom|fetch\(|new Image|\.load\.audio|mediaDevices|generateSpeech/);
   });
