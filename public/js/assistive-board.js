@@ -24,12 +24,27 @@
     const special = game.specials?.[row]?.[col] || null;
     const shield = game.shields?.[row]?.[col] || 0;
     const blocker = game.blockers?.[row]?.[col] ? 1 : 0;
+    const locked = game.lockedGems?.[row]?.[col] ? 1 : 0;
+    const jelly = game.jelly?.[row]?.[col] ? 1 : 0;
+    const chocolate = game.chocolate?.[row]?.[col] ? 1 : 0;
+    const liquorice = game.liquorice?.[row]?.[col] ? 1 : 0;
+    const marmalade = game.marmalade?.[row]?.[col] ? 1 : 0;
+    const frosting = game.frosting?.[row]?.[col] ? 1 : 0;
     const selected = game.selectedGem?.getData('row') === row && game.selectedGem?.getData('col') === col;
     const hint = game.hintCells;
     const hinted = hint?.[0] === row && hint?.[1] === col ? (hint.length === 2 ? 'Hint activation' : 'Hint start')
       : hint?.[2] === row && hint?.[3] === col ? 'Hint partner' : '';
-    return { row, col, type, special, shield, blocker, selected, hinted, symbol: style.symbol,
-      label: `Row ${row + 1}, column ${col + 1}: ${type} ${style.shape}${special ? `, ${specialNames[special] || special}` : ' gem'}${shield ? `, fixed shield ${shield} ${shield === 1 ? 'hit' : 'hits'} left` : ''}${blocker ? ', blocked: a match on this cell removes the blocker' : ''}${selected ? ', selected' : ''}${hinted ? `, ${hinted.toLowerCase()}` : ''}` };
+    const obstacle = locked ? ', locked: match an adjacent cell to free this gem'
+      : jelly ? ', jelly: one layer cleared per match over this cell'
+      : chocolate ? ', chocolate: spreads after each move unless cleared'
+      : liquorice ? ', liquorice: blocks swaps until an adjacent match clears it'
+      : marmalade ? ', marmalade: multiple layers, cleared one per match over this cell'
+      : frosting ? ', frosting: one layer cleared per match over this cell'
+      : blocker ? ', blocked: a match on this cell removes the blocker'
+      : '';
+    return { row, col, type, special, shield, blocker, locked, jelly, chocolate, liquorice, marmalade, frosting,
+      selected, hinted, symbol: style.symbol,
+      label: `Row ${row + 1}, column ${col + 1}: ${type} ${style.shape}${special ? `, ${specialNames[special] || special}` : ' gem'}${shield ? `, fixed shield ${shield} ${shield === 1 ? 'hit' : 'hits'} left` : ''}${obstacle}${selected ? ', selected' : ''}${hinted ? `, ${hinted.toLowerCase()}` : ''}` };
   }
 
   /** The existing guarded methods remain the only action/spend path. */
@@ -137,7 +152,7 @@
         if (slot.type !== info.type) {
           slot.type = info.type; slot.symbol.textContent = info.symbol; slot.symbol.style.color = root.InfinitePlayerExperience.visuals[info.type].color;
         }
-        const badge = `${specialSymbols[info.special] || root.InfinitePlayerExperience.visuals[info.type].shape}${info.shield ? ` · Shield ${info.shield}` : ''}${info.blocker ? ' · Block' : ''}${info.selected ? ' · S' : info.hinted ? ' · H' : ''}`;
+        const badge = `${specialSymbols[info.special] || root.InfinitePlayerExperience.visuals[info.type].shape}${info.shield ? ` · Shield ${info.shield}` : ''}${info.locked ? ' · Locked' : ''}${info.jelly ? ' · Jelly' : ''}${info.chocolate ? ' · Choc' : ''}${info.liquorice ? ' · Liq' : ''}${info.marmalade ? ' · Marm' : ''}${info.frosting ? ' · Frost' : ''}${info.blocker ? ' · Block' : ''}${info.selected ? ' · S' : info.hinted ? ' · H' : ''}`;
         if (slot.badge.textContent !== badge) slot.badge.textContent = badge;
       }
       const active = describeCell(game, coordinate[0], coordinate[1]);

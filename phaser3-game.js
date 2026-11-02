@@ -156,6 +156,7 @@ class PhaserMatch3Game {
         this.achievements = [];
         this.settings = {
             music: false,
+            musicVolume: 0.5,
             sfx: false,
             soundChoiceVersion: 1,
             soundVolume: 0.55,
@@ -247,6 +248,9 @@ class PhaserMatch3Game {
         void _getSoundEffects();
         if (window.InfiniteSoundEffects) {
             this.soundEffects = window.InfiniteSoundEffects.create(this.settings);
+            if (this.settings.music) {
+                try { this.soundEffects.playMusic('gameplay'); } catch { /* Music is optional; play continues silently. */ }
+            }
         } else {
             this.soundEffects = null;
         }
@@ -777,7 +781,14 @@ class PhaserMatch3Game {
         this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
         this.specials = this.usesEarnedSpecials() ? (this.generatedLevel.specials || globalThis.InfiniteLevels.blankSpecials(n)).map((row) => row.slice()) : null;
         this.shields = this.generatedLevel?.generatorVersion >= 5 ? this.generatedLevel.shields.map((row) => row.slice()) : null;
+        // blockers are an overlay drawn on top of gems, not a gem replacement.
         this.blockers = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.blockers ? this.generatedLevel.blockers.map((row) => row.slice()) : null;
+        this.lockedGems = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.lockedGems ? this.generatedLevel.lockedGems.map((row) => row.slice()) : null;
+        this.jelly = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.jelly ? this.generatedLevel.jelly.map((row) => row.slice()) : null;
+        this.chocolate = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.chocolate ? this.generatedLevel.chocolate.map((row) => row.slice()) : null;
+        this.liquorice = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.liquorice ? this.generatedLevel.liquorice.map((row) => row.slice()) : null;
+        this.marmalade = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.marmalade ? this.generatedLevel.marmalade.map((row) => row.slice()) : null;
+        this.frosting = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.frosting ? this.generatedLevel.frosting.map((row) => row.slice()) : null;
 
         if (this.generatedLevel) {
             this.board = this.generatedLevel.board.map((row) => row.slice());
@@ -793,7 +804,7 @@ class PhaserMatch3Game {
                 this.gemSprites[row][col] = this.createGemSprite(row, col, this.board[row][col]);
             }
         }
-        this.renderBlockers();
+        this.renderTerrain();
         this.playerUI?.assistiveBoard?.sync();
     }
 
@@ -804,19 +815,55 @@ class PhaserMatch3Game {
         return playtest ? 6 : globalThis.InfiniteLevels.GENERATOR_VERSION;
     }
 
-    /** v6 blockers are an overlay: the gem underneath stays playable. Drawn only when present. */
+    /** Render all v6 obstacle overlays on top of gems. Only the family present
+     *  in the current level is drawn; others are null. */
+    // Backward-compatible wrapper: renders only the blocker overlay.
     renderBlockers() {
-        if (!this.blockers && !this.blockerLayer?.active) return;
-        if (!this.blockerLayer?.active) this.blockerLayer = this.scene.add.graphics().setDepth(3);
-        this.blockerLayer.clear();
-        if (!this.blockers) return;
-        this.blockers.forEach((row, r) => row.forEach((on, c) => {
+        const grid = this.blockers;
+        const gfx = this.blockerLayer;
+        if (!grid && !gfx?.active) return;
+        if (!gfx?.active) this.blockerLayer = this.scene.add.graphics().setDepth(3);
+        const g = this.blockerLayer;
+        g.clear();
+        if (!grid) return;
+        const fill = 0x0b1020; const stroke = 0xffd166;
+        grid.forEach((row, r) => row.forEach((on, c) => {
             if (!on) return;
             const x = this.cellX(c) - this.gemSize / 2;
             const y = this.cellY(r) - this.gemSize / 2;
-            this.blockerLayer.fillStyle(0x0b1020, 0.62).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
-            this.blockerLayer.lineStyle(3, 0xffd166, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+            g.fillStyle(fill, 0.55).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+            g.lineStyle(3, stroke, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
         }));
+    }
+
+    renderTerrain() {
+        const layers = [
+            { layer: 'blockerLayer', grid: this.blockers, fill: 0x0b1020, stroke: 0xffd166, symbol: 'B' },
+            { layer: 'lockedLayer', grid: this.lockedGems, fill: 0x2c3e50, stroke: 0xf1c40f, symbol: 'L' },
+            { layer: 'jellyLayer', grid: this.jelly, fill: 0x3498db, stroke: 0x2980b9, symbol: 'J' },
+            { layer: 'chocolateLayer', grid: this.chocolate, fill: 0x5d4037, stroke: 0x3e2723, symbol: 'C' },
+            { layer: 'liquoriceLayer', grid: this.liquorice, fill: 0x1a1a1a, stroke: 0x4a4a4a, symbol: 'Q' },
+            { layer: 'marmaladeLayer', grid: this.marmalade, fill: 0xff9800, stroke: 0xf57c00, symbol: 'M' },
+            { layer: 'frostingLayer', grid: this.frosting, fill: 0xe3f2fd, stroke: 0x90caf9, symbol: 'F' },
+        ];
+        for (const { layer, grid, fill, stroke, symbol } of layers) {
+            const gfx = this[layer];
+            if (!grid && !gfx?.active) continue;
+            if (!gfx?.active) this[layer] = this.scene.add.graphics().setDepth(3);
+            const g = this[layer];
+            g.clear();
+            if (!grid) continue;
+            grid.forEach((row, r) => row.forEach((on, c) => {
+                if (!on) return;
+                const x = this.cellX(c) - this.gemSize / 2;
+                const y = this.cellY(r) - this.gemSize / 2;
+                g.fillStyle(fill, 0.55).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+                g.lineStyle(3, stroke, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+                // Draw the obstacle symbol in the center of the cell.
+                g.fillStyle(stroke, 0.9);
+                g.fillRect(x + this.gemSize * 0.4, y + this.gemSize * 0.4, this.gemSize * 0.2, this.gemSize * 0.2);
+            }));
+        }
     }
 
     usesEarnedSpecials() {
@@ -872,7 +919,10 @@ class PhaserMatch3Game {
     commitEarnedAction(cells) {
         if (!this.canInteractWithBoard()) return null;
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
+            { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers,
+              locked: this.lockedGems, jelly: this.jelly, chocolate: this.chocolate, liquorice: this.liquorice,
+              marmalade: this.marmalade, frosting: this.frosting,
+              refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -897,7 +947,16 @@ class PhaserMatch3Game {
         }));
         const free = previous.flat().filter((sprite) => !kept.has(sprite));
         const drops = new Array(this.boardSize).fill(0);
-        this.board = result.board; this.specials = result.specials; if (result.shields) this.shields = result.shields; this.levelRng.state = result.refillState;
+        this.board = result.board; this.specials = result.specials;
+        if (result.shields) this.shields = result.shields;
+        if (result.blockers) this.blockers = result.blockers;
+        if (result.locked) this.lockedGems = result.locked;
+        if (result.jelly) this.jelly = result.jelly;
+        if (result.chocolate) this.chocolate = result.chocolate;
+        if (result.liquorice) this.liquorice = result.liquorice;
+        if (result.marmalade) this.marmalade = result.marmalade;
+        if (result.frosting) this.frosting = result.frosting;
+        this.levelRng.state = result.refillState;
         this.gemSprites = result.board.map((row, r) => row.map((type, c) => {
             const origin = result.origins[r][c];
             const [oldRow, oldCol] = origin ? origin.split(',').map(Number) : [];
@@ -911,8 +970,7 @@ class PhaserMatch3Game {
             return sprite;
         }));
         if (result.objectiveProgress) this.objectiveProgress = result.objectiveProgress;
-        if (result.blockers) this.blockers = result.blockers;
-        this.renderBlockers();
+        this.renderTerrain();
         if (result.blockerSpread) {
             const [spreadRow, spreadCol] = result.blockerSpread.split(',').map(Number);
             this.playerUI?.announce?.(`A blocker spread to row ${spreadRow + 1}, column ${spreadCol + 1}.`);
@@ -1005,6 +1063,11 @@ class PhaserMatch3Game {
     }
 
     handleBoardKey(event) {
+        if (event.key.toLowerCase() === 'm' && event.ctrlKey && !event.altKey && !event.metaKey) {
+            event.preventDefault(); event.stopPropagation();
+            if (!event.repeat) this.setMusic(!this.settings.music, event);
+            return;
+        }
         if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             event.preventDefault(); event.stopPropagation();
             if (!event.repeat) this.setSoundEffects(!this.settings.sfx, event);
@@ -2830,6 +2893,27 @@ class PhaserMatch3Game {
         this.soundEffects?.unlock(event);
     }
 
+    setMusic(enabled, event) {
+        this.settings.music = enabled === true && this.getSoundStatus().supported;
+        this.settings.soundChoiceVersion = window.InfiniteSoundEffects?.SETTINGS_VERSION || 1;
+        this.soundEffects?.configure(this.settings);
+        if (this.settings.music) {
+            try { this.soundEffects.playMusic('gameplay'); } catch { /* Music start is optional. */ }
+        } else {
+            this.soundEffects?.stopMusic();
+        }
+        this.saveUserData(); this.playerUI?.refresh();
+        this.playerUI?.announce(this.getSoundStatus().supported ? this.settings.music ? 'Music on.' : 'Music off.' : 'Sound is unavailable in this browser. Play stays silent.');
+        return this.settings.music;
+    }
+
+    setMusicVolume(volume, event) {
+        if (!Number.isFinite(volume)) return;
+        this.settings.musicVolume = Math.max(0, Math.min(1, volume));
+        this.soundEffects?.configure(this.settings);
+        this.saveUserData(); this.playerUI?.refresh();
+    }
+
     async previewSound(event) {
         const accepted = await this.soundEffects?.unlock(event);
         const played = accepted && this.soundEffects.play('test');
@@ -3634,6 +3718,9 @@ class PhaserMatch3Game {
         if (this.feedbackEndPending) this.checkEndConditions();
         if (this.isGameRunning) {
             this.startTimer();
+        }
+        if (this.settings.music && this.soundEffects) {
+            try { this.soundEffects.playMusic('gameplay'); } catch { /* Music restart is optional. */ }
         }
         this.playerUI?.refresh();
         this.trackEvent('game_resumed');

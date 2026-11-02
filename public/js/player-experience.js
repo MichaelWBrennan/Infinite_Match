@@ -351,6 +351,11 @@
                         : state.state === 'ready' ? 'Sound is on. Test the volume below; M mutes it while the board is focused.'
                             : 'Sound is on but needs a player gesture. Press Test sound; device mute or browser media policy may still silence it.';
             const legacy = document.getElementById('sfx-toggle'); if (legacy) legacy.checked = !!game.settings.sfx;
+            const musicCheckbox = find('[data-music-choice]');
+            if (musicCheckbox) { musicCheckbox.checked = !!game.settings.music; musicCheckbox.disabled = !state.supported && !musicCheckbox.checked; }
+            const musicVolume = find('[data-music-volume]');
+            if (musicVolume) { musicVolume.value = String(Math.round((state.musicVolume ?? 0.5) * 100)); musicVolume.disabled = !state.music || !state.supported; }
+            const musicOutput = find('[data-music-volume-label]'); if (musicOutput) musicOutput.textContent = `${Math.round((state.musicVolume ?? 0.5) * 100)}%`;
         }
         function refresh() {
             renderGoals();
@@ -524,6 +529,8 @@
             overlayButton('Play preferences', () => preferences(wasRunning));
             overlayButton(soundLabel(), (event) => { game.setSoundEffects(!game.settings.sfx, event); refresh(); });
             content.lastElementChild.dataset.soundToggle = 'true';
+            overlayButton(game.settings.music ? 'Music on — mute' : 'Music off — enable', (event) => { game.setMusic(!game.settings.music, event); refresh(); });
+            content.lastElementChild.dataset.musicToggle = 'true';
             overlayButton(game.settings.textBoard === true ? 'Use visual board' : 'Use text board', () => {
                 game.settings.textBoard = game.settings.textBoard !== true; game.saveUserData();
                 game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard();
@@ -608,6 +615,17 @@
             volumeLabel.append(document.createTextNode('Sound volume'), volume, output); content.append(volumeLabel);
             overlayButton('Test sound', (event) => game.previewSound(event)); content.lastElementChild.dataset.soundTest = 'true';
             overlayText(''); content.lastElementChild.dataset.soundStatus = 'true'; content.lastElementChild.setAttribute('role', 'status');
+            const musicLabel = document.createElement('label'); const musicChoice = document.createElement('input');
+            musicChoice.type = 'checkbox'; musicChoice.dataset.musicChoice = 'true';
+            musicChoice.checked = game.settings.music === true;
+            musicChoice.addEventListener('change', (event) => { game.setMusic(musicChoice.checked, event); refresh(); });
+            musicLabel.append(musicChoice, document.createTextNode('Music (optional, procedural)')); content.append(musicLabel);
+            const musicVolumeLabel = document.createElement('label'); musicVolumeLabel.className = 'match-sound-volume';
+            const musicVolume = document.createElement('input'); musicVolume.type = 'range'; musicVolume.min = '0'; musicVolume.max = '100'; musicVolume.step = '1';
+            musicVolume.dataset.musicVolume = 'true'; musicVolume.setAttribute('aria-label', 'Music volume');
+            const musicOutput = document.createElement('span'); musicOutput.dataset.musicVolumeLabel = 'true'; musicOutput.setAttribute('aria-hidden', 'true');
+            musicVolume.addEventListener('input', (event) => { game.setMusicVolume(Number(musicVolume.value) / 100, event); refresh(); });
+            musicVolumeLabel.append(document.createTextNode('Music volume'), musicVolume, musicOutput); content.append(musicVolumeLabel);
             for (const [key, title] of Object.entries({ textBoard: 'Text board (named cells and larger targets)', highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', haptics: 'Touch vibration' })) {
                 const label = document.createElement('label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
                 checkbox.checked = game.settings[key] === true; checkbox.disabled = key === 'textBoard' && !assistiveBoard; checkbox.addEventListener('change', () => {
