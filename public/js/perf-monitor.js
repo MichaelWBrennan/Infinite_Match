@@ -48,6 +48,15 @@ class PerfMonitor {
     this._maxPoolSnapshots = 60; // ~1 minute at 1s samples
     this._leakWarningThreshold = 1.5; // 50% growth over window = warning
 
+    // Web Vitals
+    this._webVitals = {
+      lcp: null,      // Largest Contentful Paint
+      cls: null,      // Cumulative Layout Shift
+      inp: null,      // Interaction to Next Paint
+      fcp: null,      // First Contentful Paint
+      ttfb: null,     // Time to First Byte
+    };
+
     // Idle work scheduler
     this._idleQueue = []; // [{ callback, deadline }]
     this._idleHandle = null;
@@ -91,8 +100,58 @@ class PerfMonitor {
       }
     }
 
+    // Observe web vitals (LCP, CLS, INP, FCP, TTFB)
+    this._observeWebVitals();
+
     // Kick off idle work processing
     this._processIdleQueue();
+  }
+
+  _observeWebVitals() {
+    if (!('PerformanceObserver' in window)) return;
+    try {
+      this._webVitalObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const { name, entryType, startTime, duration, value } = entry;
+          if (entryType === 'largest-contentful-paint') {
+            this._webVitals.lcp = startTime;
+          } else if (entryType === 'layout-shift' && !entry.hadRecentInput) {
+            this._webVitals.cls = (this._webVitals.cls || 0) + value;
+          } else if (entryType === 'first-contentful-paint') {
+            this._webVitals.fcp = startTime;
+          }
+        }
+      });
+      this._webVitalObserver.observe({
+        entryTypes: ['largest-contentful-paint', 'layout-shift', 'first-contentful-paint'],
+      });
+    } catch (e) {
+      // Web Vitals observation not supported
+    }
+
+    // INP via event timing (fallback for browsers without event-timing)
+    if ('EventTiming' in window || 'PerformanceEventTiming' in window) {
+      try {
+        this._inpObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (entry.entryType === 'event' || entry.entryType === 'first-input') {
+              const processingDuration = entry.duration || 0;
+              const currentInp = this._webVitals.inp || 0;
+              this._webVitals.inp = Math.max(currentInp, processingDuration);
+            }
+          }
+        });
+        this._inpObserver.observe({ entryTypes: ['event', 'first-input'] });
+      } catch (e) {
+        // INP observation not supported
+      }
+    }
+
+    // TTFB from navigation timing
+    if ('performance' in window && performance.timing) {
+      const nav = performance.timing;
+      this._webVitals.ttfb = nav.responseStart - nav.requestStart;
+    }
   }
 
   stop() {
@@ -100,6 +159,8 @@ class PerfMonitor {
     this._rafId = null;
     if (this._sampleId) clearInterval(this._sampleId);
     if (this._observer) this._observer.disconnect();
+    if (this._webVitalObserver) this._webVitalObserver.disconnect();
+    if (this._inpObserver) this._inpObserver.disconnect();
     if (this._idleHandle !== null) {
       cancelIdleCallback?.(this._idleHandle);
       this._idleHandle = null;
@@ -225,7 +286,29 @@ class PerfMonitor {
       frameBudget: this.getFrameBudget(),
       shouldDeferWork: this.shouldDeferWork(),
       hardPause: this.isHardPaused(),
+      webVitals: { ...this._webVitals },
     };
+  }
+
+  /** Get web vitals scores for scoring. */
+  _getWebVitalsScore() {
+    let penalty = 0;
+    const lcp = this._webVitals.lcp;
+    if (lcp !== null) {
+      if (lcp > 4000) penalty += 15; // Poor LCP > 4s
+      else if (lcp > 2500) penalty += 5; // Needs improvement > 2.5s
+    }
+    const cls = this._webVitals.cls;
+    if (cls !== null) {
+      if (cls > 0.25) penalty += 10; // Poor CLS > 0.25
+      else if (cls > 0.1) penalty += 3; // Needs improvement > 0.1
+    }
+    const inp = this._webVitals.inp;
+    if (inp !== null) {
+      if (inp > 500) penalty += 15; // Poor INP > 500ms
+      else if (inp > 200) penalty += 5; // Needs improvement > 200ms
+    }
+    return penalty;
   }
 
   /** Returns true when recent frames have exceeded the soft budget. */
@@ -332,6 +415,7 @@ class PerfMonitor {
     if (mem && mem.usedJSHeapSize > mem.jsHeapSizeLimit * 0.9) score -= 10;
     const leak = this.checkMemoryLeaks();
     if (leak.leaking) score -= 10;
+    score -= this._getWebVitalsScore();
     return Math.max(0, Math.min(100, score));
   }
 }
