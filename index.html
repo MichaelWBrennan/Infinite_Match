@@ -870,6 +870,7 @@
         });
       }
     </script>
+    <!-- Critical scripts: loaded upfront for instant game start -->
     <script src="js/pwa-register.js"></script>
     <script src="js/resource-config.js" type="module"></script>
     <script src="js/resource-streamer.js" type="module"></script>
@@ -877,18 +878,17 @@
     <script src="js/perf-monitor.js" type="module"></script>
     <script src="js/object-pool.js" type="module"></script>
     <script src="js/cache-manager.js" type="module"></script>
+    <script src="js/lazy-loader.js" type="module"></script>
     <script src="js/procedural-levels.js"></script>
     <script src="js/level-location.js"></script>
     <script src="js/sound-effects.js"></script>
-    <script src="js/kingdom-scene.js"></script>
     <script src="js/player-experience.js"></script>
-    <script src="js/assistive-board.js"></script>
-    <script src="js/match-feedback.js"></script>
-    <script src="js/score-challenge-card.js"></script>
-    <script src="js/win-queue.js"></script>
     <script src="phaser3-game.js"></script>
     <script src="platform-detection.js"></script>
     <script src="script.js"></script>
+
+    <!-- Non-critical features are lazy-loaded on demand via lazy-loader.js:
+         kingdom-scene, assistive-board, match-feedback, score-challenge-card, win-queue -->
     <script>
         // window.game is the Phaser game. window.ui is the DOM menu controller, which script.js
         // creates once at load. This page never creates a second menu controller.

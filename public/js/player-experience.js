@@ -2,6 +2,13 @@
    No remote assets, trackers, paid SDKs or alternate match/scoring algorithm. */
 (function (root) {
     'use strict';
+
+    // Code splitting: preload non-critical assistive-board and kingdom-scene
+    // scripts in the background so they're ready when the player needs them.
+    if (typeof window !== 'undefined' && window.lazyLoad) {
+        void window.lazyLoad(['assistive-board', 'kingdom-scene']).catch(() => {});
+    }
+
     const visuals = Object.freeze({
         red: { color: '#ff6384', shape: 'heart', symbol: 'R' },
         blue: { color: '#62baff', shape: 'diamond', symbol: 'B' },

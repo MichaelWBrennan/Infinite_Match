@@ -179,7 +179,24 @@ class PhaserMatch3Game {
         // Performance monitor: tracks FPS, latency, memory.
         this.perfMonitor = window.perfMonitor;
 
+        // Code splitting: kick off lazy loading of non-critical feature scripts
+        // in the background so they're ready when needed without blocking initial load.
+        this._lazyLoadPromise = this._loadLazyScripts();
+
         this.init();
+    }
+
+    // Lazy-load non-critical feature scripts in the background.
+    async _loadLazyScripts() {
+        const lazyLoad = window.lazyLoad;
+        if (!lazyLoad) return;
+        try {
+            // Load match-feedback and assistive-board early (needed during create() / mount())
+            await lazyLoad(['match-feedback', 'assistive-board', 'kingdom-scene']);
+        } catch (e) {
+            console.warn('Lazy load of early feature scripts failed:', e.message);
+        }
+        // Win-queue and score-challenge-card are loaded on demand later
     }
 
     init() {
@@ -2012,7 +2029,12 @@ class PhaserMatch3Game {
     // Offline reconciliation (S4). Queued wins are per account (the token's playerId) and are
     // sent again by flushPendingWins: on start, when the browser comes back online, and before a
     // new attempt is spent, because a new spend replaces the server's pending attempt.
-    queueWin(attemptId, body) {
+    async queueWin(attemptId, body) {
+        // Ensure win-queue script is loaded (code splitting: lazy-loaded on demand).
+        const lazyLoad = window.lazyLoad;
+        if (lazyLoad && !window.WinQueue) {
+            try { await lazyLoad('win-queue'); } catch (e) { /* win-queue unavailable */ }
+        }
         const playerId = window.WinQueue ? window.WinQueue.playerIdFromToken(this.getAuthToken()) : '';
         if (!playerId) return;
         window.WinQueue.create(localStorage).add(playerId, attemptId, body, Date.now());
@@ -2020,7 +2042,15 @@ class PhaserMatch3Game {
 
     async flushPendingWins() {
         const token = this.getAuthToken();
-        if (!token || !window.WinQueue || this.flushingWins) return [];
+        if (!token || !window.WinQueue) {
+            // Try to load win-queue on demand.
+            const lazyLoad = window.lazyLoad;
+            if (lazyLoad && !window.WinQueue) {
+                try { await lazyLoad('win-queue'); } catch (e) { return []; }
+            }
+            if (!window.WinQueue) return [];
+        }
+        if (this.flushingWins) return [];
         const playerId = window.WinQueue.playerIdFromToken(token);
         const queue = window.WinQueue.create(localStorage);
         if (!playerId || !queue.pendingFor(playerId, Date.now()).length) return [];
