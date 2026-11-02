@@ -52,6 +52,7 @@ function authoredLevelShape(def, context) {
   const liquorice = def.liquorice ?? blankLiquoriceArray(size);
   const marmalade = def.marmalade ?? blankMarmaladeArray(size);
   const frosting = def.frosting ?? blankFrostingArray(size);
+  const delivery = def.delivery ?? blankDeliveryArray(size);
   const witness = def.witness ?? null;
 
   const definition = {
@@ -65,6 +66,7 @@ function authoredLevelShape(def, context) {
     liquorice,
     marmalade,
     frosting,
+    delivery,
     specials,
     witness,
     environmentKey: 'authored',
@@ -106,6 +108,7 @@ function authoredLevelShape(def, context) {
     verifiedLiquorice: liquorice ? liquoriceCount(liquorice) : 0,
     verifiedMarmalade: marmalade ? marmaladeCount(marmalade) : 0,
     verifiedFrosting: frosting ? frostingCount(frosting) : 0,
+    verifiedDelivery: delivery ? deliveryCount(delivery) : 0,
   };
 
   return { ...definition, quality };
@@ -155,6 +158,9 @@ function blankMarmaladeArray(size) {
 }
 function blankFrostingArray(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+function blankDeliveryArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(null));
 }
 
 /** Synchronous, no-network generation for tooling, tests and calendar-only callers. */
