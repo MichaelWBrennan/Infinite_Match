@@ -543,6 +543,22 @@ class PhaserMatch3Game {
             this.perfMonitor.start();
         }
 
+        // Visibility change: pause non-essential work when tab is hidden
+        // to save CPU/battery, resume when visible again.
+        if (!this._visibilityBound) {
+            this._visibilityBound = true;
+            const onVisibilityChange = () => {
+                if (document.hidden) {
+                    // Tab hidden: stop perf monitor RAF, pause background work
+                    this.perfMonitor?.stop();
+                } else {
+                    // Tab visible: restart perf monitor
+                    this.perfMonitor?.start();
+                }
+            };
+            window.addEventListener('visibilitychange', onVisibilityChange);
+        }
+
         if (!this.onlineFlushBound) {
             this.onlineFlushBound = true;
             window.addEventListener('online', () => { this.flushPendingWins().catch(() => {}); });
