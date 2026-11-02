@@ -19,9 +19,9 @@
     <link rel="preconnect" href="https://registry.npmjs.org" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
-    <!-- Preload critical resources -->
-    <link rel="preload" as="script" href="/js/phaser.min.js">
-    <link rel="preload" as="script" href="/js/procedural-levels.js">
+    <!-- Preload critical resources (highest fetch priority) -->
+    <link rel="preload" as="script" href="/js/phaser.min.js" fetchpriority="high">
+    <link rel="preload" as="script" href="/js/procedural-levels.js" fetchpriority="high">
     <link rel="preload" as="script" href="/js/resource-config.js">
     <link rel="preload" as="script" href="/js/resource-streamer.js">
     <link rel="preload" as="script" href="/js/player-experience.js">
@@ -844,7 +844,7 @@
     -->
     <script src="js/offline-api.js"></script>
     <script src="js/pwa-register.js"></script>
-    <script defer src="js/phaser.min.js" id="phaser-script"></script>
+    <script defer src="js/phaser.min.js" id="phaser-script" fetchpriority="high"></script>
     <script>
       // If the local copy is missing (e.g. an incomplete checkout), fall back
       // to jsDelivr before any Phaser-dependent script runs.
