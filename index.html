@@ -10,6 +10,20 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
+    <!-- Performance resource hints -->
+    <link rel="dns-prefetch" href="https://api.github.com">
+    <link rel="dns-prefetch" href="https://registry.npmjs.org">
+    <link rel="preconnect" href="https://api.github.com" crossorigin>
+    <link rel="preconnect" href="https://registry.npmjs.org" crossorigin>
+
+    <!-- Preload critical resources -->
+    <link rel="preload" as="script" href="/js/phaser.min.js">
+    <link rel="preload" as="script" href="/js/procedural-levels.js">
+    <link rel="preload" as="script" href="/js/resource-config.js">
+    <link rel="preload" as="script" href="/js/resource-streamer.js">
+    <link rel="preload" as="style" href="/css/fonts.css">
+
     <title>Infinite Match - Puzzle Game</title>
     <!-- Address of the free self-hosted server (see docs/FREE_SERVER.md). Empty = offline static build.
          Example: https://api.your-domain.example. Must be https (or http://localhost for development). -->
@@ -856,8 +870,13 @@
         });
       }
     </script>
+    <script src="js/pwa-register.js"></script>
     <script src="js/resource-config.js" type="module"></script>
     <script src="js/resource-streamer.js" type="module"></script>
+    <script src="js/game-worker-proxy.js" type="module"></script>
+    <script src="js/perf-monitor.js" type="module"></script>
+    <script src="js/object-pool.js" type="module"></script>
+    <script src="js/cache-manager.js" type="module"></script>
     <script src="js/procedural-levels.js"></script>
     <script src="js/level-location.js"></script>
     <script src="js/sound-effects.js"></script>

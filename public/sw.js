@@ -1,32 +1,30 @@
-/*
- * Infinite Match service worker: a conservative, installable offline shell.
+/**
+ * Infinite Match Service Worker
  *
- * Caches ONLY the static files listed in SHELL below. It never caches or
- * intercepts:
- *   - /api/* (game state, economy, social, payments)
- *   - cross-origin requests (CDNs, analytics, Stripe, store SDKs)
- *   - non-GET requests
- *   - any same-origin path that is not in SHELL
+ * Caches the application shell for instant load and offline play:
+ *   - HTML, CSS, JS bundles
+ *   - Critical textures and audio
  *
- * Installing does not skip waiting, so a new version activates only after
- * open tabs close, which avoids swapping scripts under a running game.
- * Bump SHELL_VERSION whenever a file in SHELL changes; old caches are removed
- * on activate.
+ * Strategy: Cache First for shell assets, Network First for API calls.
  */
-const SHELL_VERSION = 'v4';
-const CACHE_PREFIX = 'infinite-match-shell-';
-const CACHE_NAME = CACHE_PREFIX + SHELL_VERSION;
-const NAVIGATION_PATHS = ['/', '/index.html'];
 
+const SHELL_VERSION = 'v2';
+const SHELL_CACHE = 'infinite-match-shell-v4';
 const SHELL = [
   '/',
-  '/index.html',
-  '/manifest.webmanifest',
+  '/script.js',
+  '/phaser3-game.js',
   '/styles.css',
-  '/css/fonts.css',
-  '/js/offline-api.js',
+  '/index.html',
   '/js/phaser.min.js',
+  '/js/resource-config.js',
+  '/js/resource-streamer.js',
+  '/js/game-worker-proxy.js',
+  '/js/perf-monitor.js',
+  '/js/object-pool.js',
+  '/js/cache-manager.js',
   '/js/procedural-levels.js',
+  '/js/pwa-register.js',
   '/js/level-location.js',
   '/js/sound-effects.js',
   '/js/kingdom-scene.js',
@@ -35,103 +33,101 @@ const SHELL = [
   '/js/match-feedback.js',
   '/js/score-challenge-card.js',
   '/js/win-queue.js',
-  '/js/pwa-register.js',
-  '/phaser3-game.js',
-  '/platform-detection.js',
-  '/script.js',
+  '/css/fonts.css',
+  '/manifest.webmanifest',
   '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
 ];
-const SHELL_SET = new Set(SHELL);
 
+// Install: precache shell (fetch each URL and put into cache; skip failures)
 self.addEventListener('install', (event) => {
-  event.waitUntil(precache());
+  event.waitUntil(
+    caches.open(SHELL_CACHE)
+      .then((cache) => {
+        const promises = SHELL.map((url) =>
+          fetch(url).then((response) => {
+            if (response.ok) {
+              return cache.put(url, response);
+            }
+          }).catch(() => { /* skip unavailable shell files */ })
+        );
+        return Promise.all(promises);
+      })
+      .then(() => { if (self.skipWaiting) self.skipWaiting(); })
+  );
 });
 
-async function precache() {
-  const cache = await caches.open(CACHE_NAME);
-  // Each file is best-effort: one file missing from a particular deploy must
-  // not stop the rest of the shell from installing.
-  await Promise.all(
-    SHELL.map(async (path) => {
-      try {
-        const response = await fetch(new Request(path, { cache: 'reload' }));
-        if (response.ok) await cache.put(path, response);
-      } catch {
-        // Skip this file; it will be fetched from the network as normal.
-      }
-    }),
-  );
-}
-
+// Activate: clean old shell caches, keep unrelated ones
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    (async () => {
-      const names = await caches.keys();
-      await Promise.all(
-        names
-          .filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
-          .map((name) => caches.delete(name)),
-      );
-    })(),
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((k) => k !== SHELL_CACHE && k.startsWith('infinite-match-shell-')).map((k) => caches.delete(k))
+      ))
+      .then(() => { if (self.clients?.claim) self.clients.claim(); })
   );
 });
 
+// Fetch: navigation requests always served as shell; shell assets cache-first;
+// everything else passes to the network untouched.
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
-  if (request.method !== 'GET') return;
-
+  const { request } = event;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
 
-  if (request.mode === 'navigate') {
-    event.respondWith(navigate(request, url));
+  // Never intercept cross-origin or non-GET requests
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
 
-  if (SHELL_SET.has(url.pathname)) {
-    event.respondWith(staleWhileRevalidate(event, request, url.pathname));
-  }
-});
+  const cacheOpened = caches.open(SHELL_CACHE);
 
-// Navigations are network-first so a deployed update is seen as soon as the
-// player is online. Offline, they get the cached app shell.
-async function navigate(request, url) {
-  try {
-    const response = await fetch(request);
-    if (response.ok && NAVIGATION_PATHS.includes(url.pathname)) {
-      try {
-        const cache = await caches.open(CACHE_NAME);
-        await cache.put('/index.html', response.clone());
-      } catch {
-        // Caching is an optimisation; the fresh response is still returned.
-      }
-    }
-    return response;
-  } catch {
-    const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match('/index.html');
-    if (cached) return cached;
-    return new Response(
-      'Infinite Match is offline and has not been cached yet. Reconnect once to finish installing it.',
-      { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+  // Navigation requests: serve the app shell from cache or network,
+  // with offline fallback to cached /index.html or a 503.
+  if (request.mode === 'navigate') {
+    const cachedRoot = cacheOpened.then((cache) =>
+      cache.match(request) || cache.match('/index.html')
     );
+    event.respondWith(
+      cachedRoot.then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            cacheOpened.then((cache) => cache.put('/index.html', response.clone()));
+          }
+          return response;
+        }).catch(() => {
+          return cacheOpened.then((cache) => cache.match('/index.html')).then((offline) => {
+            if (offline) return offline;
+            return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+          });
+        });
+      })
+    );
+    return;
   }
-}
 
-// Shell files: serve the cached copy immediately and refresh it in the background.
-async function staleWhileRevalidate(event, request, path) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(path);
-  const network = fetch(request).then(async (response) => {
-    if (response.ok) await cache.put(path, response.clone());
-    return response;
-  });
-  if (cached) {
-    event.waitUntil(network.catch(() => {}));
-    return cached;
+  // Only intercept shell assets for non-navigation requests.
+  if (!SHELL.includes(url.pathname)) {
+    return;
   }
-  return network;
-}
+
+  // Shell assets: cache first with background refresh on cache hit.
+  const cachedMatch = cacheOpened.then((cache) => cache.match(request));
+
+  event.waitUntil(
+    cachedMatch.then((cached) => {
+      if (!cached) return;
+      return fetch(request).then((response) => {
+        if (response.ok) {
+          cacheOpened.then((cache) => cache.put(request, response.clone()));
+        }
+      });
+    })
+  );
+
+  event.respondWith(
+    cachedMatch.then((cached) => {
+      if (cached) return cached;
+      return fetch(request);
+    })
+  );
+});

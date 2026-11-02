@@ -168,7 +168,17 @@ class PhaserMatch3Game {
         this.streamedTextures = new Map(); // themeId -> bool (streamed texture available)
         this.streamedUiTextures = new Map(); // uiName -> bool
         this.pendingStreaming = null;
-        
+
+        // Game worker proxy: offloads CPU-intensive logic to Web Worker thread.
+        this.gameWorker = window.gameWorker || new (window.GameWorkerProxy)();
+
+        // Object pools: zero-GC gameplay object recycling.
+        this.spritePool = null; // Initialized in create() after scene exists
+        this._poolsInitialized = false;
+
+        // Performance monitor: tracks FPS, latency, memory.
+        this.perfMonitor = window.perfMonitor;
+
         this.init();
     }
 
@@ -453,6 +463,22 @@ class PhaserMatch3Game {
 
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
+
+        // Initialize object pools for zero-GC gameplay.
+        if (!this._poolsInitialized) {
+            this.spritePool = new (window.ObjectPool)(
+                () => ({ sprite: null, row: 0, col: 0, type: null, special: null, shield: 0 }),
+                (entry) => { entry.sprite = null; entry.row = 0; entry.col = 0; entry.type = null; entry.special = null; entry.shield = 0; },
+                64, 512
+            );
+            this._poolsInitialized = true;
+        }
+
+        // Start performance monitoring.
+        if (this.perfMonitor && !this.perfMonitor._rafId) {
+            this.perfMonitor.start();
+        }
+
         if (!this.onlineFlushBound) {
             this.onlineFlushBound = true;
             window.addEventListener('online', () => { this.flushPendingWins().catch(() => {}); });
@@ -509,6 +535,25 @@ class PhaserMatch3Game {
         this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
         this.overlayButton(400, 460, 300, 55, 0xe09d54, 'Today’s Local Level', () => this.startDaily());
         if (this.playerUI) this.overlayButton(400, 530, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
+
+        // Performance-based quality adjustment after first frame.
+        setTimeout(() => this.checkPerformanceAndAdjustQuality(), 2000);
+    }
+
+    // Adjust rendering quality based on measured performance score (0-100).
+    checkPerformanceAndAdjustQuality() {
+        if (!this.perfMonitor) return;
+        const report = this.perfMonitor.getReport();
+        const score = report.score;
+        if (score < 40) {
+            // Low-end device: reduce particle count, disable screen shake, lower animation fidelity.
+            this.animationsReduced = () => true;
+            console.log('📉 Low performance score (', score, '): enabling reduced-motion mode.');
+        } else if (score < 70) {
+            console.log('📊 Medium performance score (', score, '): standard quality.');
+        } else {
+            console.log('🚀 High performance score (', score, '): full quality.');
+        }
     }
 
     // Opens the DOM login modal. It sits above the canvas (z-index 2000).
@@ -889,6 +934,24 @@ class PhaserMatch3Game {
             scan(Array.from({ length: n }, (_, r) => [r, c]));
         }
         return found;
+    }
+
+    // Off-main-thread match detection via Web Worker when available,
+    // with synchronous fallback for VM-sandboxed / worker-blocked environments.
+    async findMatchesAsync() {
+        if (this.gameWorker) {
+            try {
+                const matches = await this.gameWorker.findMatches(this.board);
+                if (matches) {
+                    const found = new Set();
+                    for (const cell of matches || []) found.add(`${cell[0]},${cell[1]}`);
+                    return found;
+                }
+            } catch (e) {
+                // Fall through to synchronous path
+            }
+        }
+        return this.findMatches();
     }
 
     hasPossibleMove() {
@@ -2141,7 +2204,25 @@ class PhaserMatch3Game {
                             region: null, hemisphere: 'north', month, holidays: [], offline: true,
                             season: ['winter', 'spring', 'summer', 'autumn'][Math.floor((month % 12) / 3)] };
                     }
-                    definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+
+                    // Try cache manager for cached level definition first.
+                    const cacheManager = window.cacheManager;
+                    if (cacheManager) {
+                        try {
+                            const cached = await cacheManager.getLevelDefinition(number, context, mode);
+                            if (cached) {
+                                definition = cached;
+                                console.log('📦 Level definition served from cache:', number);
+                            } else {
+                                definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                                cacheManager.storeLevelDefinition(number, context, mode, definition).catch(() => {});
+                            }
+                        } catch (e) {
+                            definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                        }
+                    } else {
+                        definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                    }
                 }
             }
             this.endlessTotalScore = 0;
@@ -2595,6 +2676,20 @@ class PhaserMatch3Game {
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(data.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
                 console.log('✅ User data loaded');
+                return;
+            }
+
+            // Fallback: try cache manager (IndexedDB) for persisted player state.
+            const cacheManager = window.cacheManager;
+            if (cacheManager) {
+                try {
+                    const cached = await cacheManager.getPlayerState();
+                    if (cached) {
+                        this.achievements = cached.achievements || this.achievements;
+                        this.settings = { ...this.settings, ...cached.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(cached.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
+                        console.log('✅ User data loaded from cache manager');
+                    }
+                } catch (e) { /* ignore cache errors */ }
             }
         } catch (error) {
             console.error('❌ Failed to load user data:', error);
@@ -2613,6 +2708,15 @@ class PhaserMatch3Game {
                 lastSaved: Date.now()
             };
             localStorage.setItem('phaser3_game_data', JSON.stringify(data));
+
+            // Also persist via cache manager for IndexedDB-backed durability.
+            const cacheManager = window.cacheManager;
+            if (cacheManager) {
+                try {
+                    await cacheManager.storePlayerState(data);
+                } catch (e) { /* cache manager unavailable, localStorage is the fallback */ }
+            }
+
             console.log('✅ User data saved');
         } catch (error) {
             console.error('❌ Failed to save user data:', error);
