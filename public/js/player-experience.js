@@ -548,6 +548,41 @@
             loadScoreChallengeLine(challengeLine);
             overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
+            overlayButton('Credits & Attribution', () => { credits(wasRunning); });
+        }
+        function credits(wasRunning = game.isGameRunning && !game.isPaused) {
+            const returnToTitle = !!game.titleShowing;
+            if (wasRunning) game.pauseGame();
+            game.openOverlay('Credits & Attribution');
+            overlayButton(returnToTitle ? 'Back to title' : 'Back to game', () => {
+                game.closeOverlay(); delete game.playerOverlayResume;
+                if (returnToTitle) game.showTitleOverlay();
+                else { if (wasRunning) game.resumeGame(); refresh(); focusBoard(); }
+            });
+            content.lastElementChild.className = 'match-guide-close';
+
+            overlayText('Infinite Match uses free-to-use / Creative Commons assets. Third-party tile sets are credited below; full license texts are in assets/licenses/.');
+
+            overlayText('');
+            overlayText('CC-BY 4.0 tile sets (attribution required):');
+            const tileSets = window.InfiniteLevels?.EVENT_TILE_SETS;
+            if (tileSets) {
+                const ccbySets = Object.values(tileSets).filter((ts) => ts.license === 'CC-BY');
+                for (const ts of ccbySets) {
+                    const p = document.createElement('p');
+                    p.textContent = `${ts.name} (${ts.id}) — Attribution: ${ts.attribution}. Source: ${ts.sourceUrl}`;
+                    content.append(p);
+                }
+            } else {
+                overlayText('diwali_2026 — Attribution: OpenGameArt.org community — https://opengameart.org/content/diwali-gem-tileset');
+                overlayText('lunar_new_year_2027 — Attribution: OpenGameArt.org community — https://opengameart.org/content/lunar-new-year-gem-tileset');
+                overlayText('womens_day_mar — Attribution: OpenGameArt.org community — https://opengameart.org/content/womens-day-gem-tileset');
+            }
+
+            overlayText('');
+            overlayText('CC0 tile sets (no attribution required): Kenney.nl asset packs (Match-3, Winter, Spring, Summer, Autumn, Christmas, Halloween, St. Patrick, Valentine\'s, Easter, Holiday, Blocker, UI).');
+            overlayText('All asset licenses and full license texts: assets/licenses/CC0-1.0.txt and assets/licenses/CC-BY-4.0.txt');
+            overlayText('See THIRD_PARTY_NOTICES.md for the complete third-party asset inventory.');
         }
         // Fills the Explore card with the same wording as the Community events tab. Stale replies are dropped.
         function loadScoreChallengeLine(line) {
