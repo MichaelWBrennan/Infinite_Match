@@ -591,6 +591,12 @@ class PhaserMatch3Game {
             this.perfMonitor.start();
         }
 
+        // Initialize performance overlay (Ctrl+Shift+P to toggle).
+        if (window.perfOverlay && !this._perfOverlayInit) {
+            window.perfOverlay.init(this.perfMonitor);
+            this._perfOverlayInit = true;
+        }
+
         // Visibility change: pause non-essential work when tab is hidden
         // to save CPU/battery, resume when visible again.
         if (!this._visibilityBound) {
