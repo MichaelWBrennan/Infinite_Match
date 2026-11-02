@@ -1196,14 +1196,14 @@ class InfiniteMatchGame {
 
             // Apply power-up effect
             switch (powerType) {
-                case 'bomb':
-                    this.activateBomb();
+                case 'blast':
+                    this.activateBlast();
                     break;
-                case 'rainbow':
-                    this.activateRainbow();
+                case 'prism':
+                    this.activatePrism();
                     break;
-                case 'lightning':
-                    this.activateLightning();
+                case 'bolt':
+                    this.activateBolt();
                     break;
             }
 
@@ -1212,7 +1212,7 @@ class InfiniteMatchGame {
         }
     }
 
-    activateBomb() {
+    activateBlast() {
         // Remove random gems
         const gems = document.querySelectorAll('.game-gem');
         const randomGems = Array.from(gems).sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -1229,11 +1229,11 @@ class InfiniteMatchGame {
         
         // Play bomb sound
         if (this.gameState.settings.sfx) {
-            playSound('bomb_explode');
+            playSound('blast');
         }
     }
 
-    activateRainbow() {
+    activatePrism() {
         // Clear entire row
         const gems = document.querySelectorAll('.game-gem');
         gems.forEach(gem => {
@@ -1248,11 +1248,11 @@ class InfiniteMatchGame {
         
         // Play rainbow sound
         if (this.gameState.settings.sfx) {
-            playSound('rainbow_clear');
+            playSound('prism_clear');
         }
     }
 
-    activateLightning() {
+    activateBolt() {
         // Clear entire column
         const gems = document.querySelectorAll('.game-gem');
         gems.forEach(gem => {
@@ -1267,15 +1267,15 @@ class InfiniteMatchGame {
         
         // Play lightning sound
         if (this.gameState.settings.sfx) {
-            playSound('lightning_strike');
+            playSound('bolt_strike');
         }
     }
 
     showPowerUpAnimation(powerType) {
         const animations = {
-            bomb: '💥',
-            rainbow: '🌈',
-            lightning: '⚡'
+            blast: '💥',
+            prism: '🔮',
+            bolt: '⚡'
         };
 
         const animation = document.createElement('div');

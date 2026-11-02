@@ -103,7 +103,7 @@ describe('semantic controls forward to the guarded Phaser methods only', () => {
   });
 
   test('explicit special activation cannot fire an armed inventory booster, or a frozen plain-gem level', () => {
-    const { api } = helpers(); const g = game(); g.armedPowerUp = 'target'; expect(api.interact(g, 0, 1, true)).toBe(false);
+    const { api } = helpers(); const g = game(); g.armedPowerUp = 'mark'; expect(api.interact(g, 0, 1, true)).toBe(false);
     g.armedPowerUp = null; g.usesEarnedSpecials = () => false; expect(api.interact(g, 0, 1, true)).toBe(false); expect(g.calls).toEqual([]);
   });
 

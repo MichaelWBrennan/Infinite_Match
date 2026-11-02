@@ -117,8 +117,8 @@ function dailyChallengeLevel(dateString) {
 }
 
 // Power-ups that need a tapped gem. They arm on press and fire on the next tap.
-const TARGETED_POWERUPS = ['diamond', 'target', 'star', 'swap', 'crush'];
-const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star', 'swap', 'crush'];
+const TARGETED_POWERUPS = ['facet', 'mark', 'nova', 'shift', 'hammer'];
+const POWERUP_TYPES = ['blast', 'prism', 'bolt', 'facet', 'mark', 'nova', 'shift', 'hammer'];
 
 // Checkpoints are a presentation convenience, not a new reward rule. The server still
 // enforces its three-hour attempt lifetime and the 300-coin / 500-XP payout caps.
@@ -170,9 +170,9 @@ class PhaserMatch3Game {
         this.timerInterval = null;
         this.tutorialShown = false;
         this.powerUps = {
-            bomb: 3,
-            rainbow: 1,
-            lightning: 2,
+            blast: 3,
+            prism: 1,
+            bolt: 2,
             hammer: 1,
             shuffle: 1
         };
@@ -444,44 +444,44 @@ class PhaserMatch3Game {
         // Power-up textures
         graphics.fillStyle(0xff6b6b);  // --im-danger
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_bomb', 64, 64);
+        graphics.generateTexture('powerup_blast', 64, 64);
 
         graphics.clear();
         graphics.fillStyle(0x667eea);  // --im-secondary royal periwinkle
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_rainbow', 64, 64);
+        graphics.generateTexture('powerup_prism', 64, 64);
 
         graphics.clear();
         graphics.fillStyle(0xfdcb6e);  // --im-tile-yellow
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_lightning', 64, 64);
+        graphics.generateTexture('powerup_bolt', 64, 64);
 
         graphics.clear();
         graphics.fillStyle(0xa29bfe);  // --im-tile-purple
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_diamond', 64, 64);
+        graphics.generateTexture('powerup_facet', 64, 64);
 
         graphics.clear();
         graphics.fillStyle(0xfd79a8);  // --im-tile-orange
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_target', 64, 64);
+        graphics.generateTexture('powerup_mark', 64, 64);
 
         graphics.clear();
         graphics.fillStyle(0xffd700);  // --im-gold
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_star', 64, 64);
+        graphics.generateTexture('powerup_nova', 64, 64);
 
-        // Rocket: clears a full row — blue with a tail
+        // Ray: clears a full row — blue with a tail
         graphics.clear();
         graphics.fillStyle(0x00cec9);  // --im-tile-cyan
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_rocket', 64, 64);
+        graphics.generateTexture('powerup_ray', 64, 64);
 
-        // Color bomb: clears all gems of one color — black with colored swirl
+        // Spectrum: clears all gems of one color — black with colored swirl
         graphics.clear();
         graphics.fillStyle(0x2d3436);  // --im-dark
         graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_color_bomb', 64, 64);
+        graphics.generateTexture('powerup_spectrum', 64, 64);
 
         graphics.destroy();
     }
@@ -1582,7 +1582,7 @@ class PhaserMatch3Game {
         // attempt. Legacy and guest spends remain playable but cannot claim replay.
         const receipt = this.powerReceipt;
         const track = this.replayEligible && receipt?.receiptId && inventoryAction?.type === receipt.type;
-        if (!track) this.replayEligible = false;
+        if (!track) this.replayEligible = false;        
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
@@ -1617,7 +1617,7 @@ class PhaserMatch3Game {
         return keys;
     }
 
-    activateBomb() {
+    activateBlast() {
         // 3x3 blast around a random gem.
         const n = this.boardSize;
         const r0 = Math.floor(Math.random() * n);
@@ -1630,31 +1630,31 @@ class PhaserMatch3Game {
                 if (this.isInBounds(r, c)) keys.add(`${r},${c}`);
             }
         }
-        this.clearAndCascade(keys, 100, 'burst', { type: 'bomb', target: [r0, c0] });
+        this.clearAndCascade(keys, 100, 'burst', { type: 'blast', target: [r0, c0] });
     }
 
-    activateRainbow() {
+    activatePrism() {
         // Clears the whole board.
-        this.clearAndCascade(this.allCellKeys(), 500, 'prism', { type: 'rainbow' });
+        this.clearAndCascade(this.allCellKeys(), 500, 'prism', { type: 'prism' });
     }
 
-    activateLightning() {
+    activateBolt() {
         // Clears one random column.
         const col = Math.floor(Math.random() * this.boardSize);
         const keys = new Set();
         for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
-        this.clearAndCascade(keys, 300, 'beam', { type: 'lightning', target: [0, col] });
+        this.clearAndCascade(keys, 300, 'beam', { type: 'bolt', target: [0, col] });
     }
 
-    activateRocket() {
+    activateRay() {
         // Clears one full row.
         const row = Math.floor(Math.random() * this.boardSize);
         const keys = new Set();
         for (let c = 0; c < this.boardSize; c++) keys.add(`${row},${c}`);
-        this.clearAndCascade(keys, 300, 'beam', { type: 'rocket', target: [row, 0] });
+        this.clearAndCascade(keys, 300, 'beam', { type: 'ray', target: [row, 0] });
     }
 
-    activateColorBomb() {
+    activateSpectrum() {
         // Clears all gems of a random color present on the board.
         const n = this.boardSize;
         const colorCounts = {};
@@ -1684,7 +1684,7 @@ class PhaserMatch3Game {
                 if (gem && gem.getData?.('type') === targetColor) keys.add(`${r},${c}`);
             }
         }
-        this.clearAndCascade(keys, 500, 'prism', { type: 'color_bomb', target: anchor });
+        this.clearAndCascade(keys, 500, 'prism', { type: 'spectrum', target: anchor });
     }
 
     createUI() {
@@ -1819,49 +1819,49 @@ class PhaserMatch3Game {
 
     createPowerUps() {
         if (this.playerUI) {
-            for (const type of ['bomb', 'rainbow', 'lightning']) {
+            for (const type of ['blast', 'prism', 'bolt']) {
                 const slot = this.playerUI.powerups.get(type); this[`${type}Btn`] = slot.btn; this[`${type}Text`] = slot.text;
             }
-            this.powerButtons = Object.fromEntries(['diamond', 'target', 'star', 'swap', 'crush'].map((type) => [type, this.playerUI.powerups.get(type)]));
+            this.powerButtons = Object.fromEntries(['facet', 'mark', 'nova', 'shift', 'hammer'].map((type) => [type, this.playerUI.powerups.get(type)]));
             return;
         }
         const powerUpY = 530;
         const powerUpSpacing = 100;
         
-        // Bomb power-up
-        this.bombBtn = this.scene.add.image(150, powerUpY, 'powerup_bomb');
-        this.bombBtn.setDisplaySize(50, 50);
-        this.bombBtn.setInteractive();
-        this.bombBtn.setData('type', 'bomb');
-        this.bombBtn.setData('count', 3);
-        
-        this.bombText = this.scene.add.text(150, powerUpY + 40, '3', {
+// Blast power-up
+        this.blastBtn = this.scene.add.image(150, powerUpY, 'powerup_blast');
+        this.blastBtn.setDisplaySize(50, 50);
+        this.blastBtn.setInteractive();
+        this.blastBtn.setData('type', 'blast');
+        this.blastBtn.setData('count', 3);
+
+        this.blastText = this.scene.add.text(150, powerUpY + 40, '3', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
-        // Rainbow power-up
-        this.rainbowBtn = this.scene.add.image(250, powerUpY, 'powerup_rainbow');
-        this.rainbowBtn.setDisplaySize(50, 50);
-        this.rainbowBtn.setInteractive();
-        this.rainbowBtn.setData('type', 'rainbow');
-        this.rainbowBtn.setData('count', 1);
-        
-        this.rainbowText = this.scene.add.text(250, powerUpY + 40, '1', {
+        // Prism power-up
+        this.prismBtn = this.scene.add.image(250, powerUpY, 'powerup_prism');
+        this.prismBtn.setDisplaySize(50, 50);
+        this.prismBtn.setInteractive();
+        this.prismBtn.setData('type', 'prism');
+        this.prismBtn.setData('count', 1);
+
+        this.prismText = this.scene.add.text(250, powerUpY + 40, '1', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
-        // Lightning power-up
-        this.lightningBtn = this.scene.add.image(350, powerUpY, 'powerup_lightning');
-        this.lightningBtn.setDisplaySize(50, 50);
-        this.lightningBtn.setInteractive();
-        this.lightningBtn.setData('type', 'lightning');
-        this.lightningBtn.setData('count', 2);
-        
-        this.lightningText = this.scene.add.text(350, powerUpY + 40, '2', {
+        // Bolt power-up
+        this.boltBtn = this.scene.add.image(350, powerUpY, 'powerup_bolt');
+        this.boltBtn.setDisplaySize(50, 50);
+        this.boltBtn.setInteractive();
+        this.boltBtn.setData('type', 'bolt');
+        this.boltBtn.setData('count', 2);
+
+        this.boltText = this.scene.add.text(350, powerUpY + 40, '2', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -1869,11 +1869,11 @@ class PhaserMatch3Game {
 
         // Targeted power-ups: press to arm, then tap a gem.
         const targeted = [
-            { type: 'diamond', x: 450, count: 1 },
-            { type: 'target', x: 550, count: 1 },
-            { type: 'star', x: 650, count: 1 },
-            { type: 'swap', x: 750, count: 1 },
-            { type: 'crush', x: 850, count: 1 },
+            { type: 'facet', x: 450, count: 1 },
+            { type: 'mark', x: 550, count: 1 },
+            { type: 'nova', x: 650, count: 1 },
+            { type: 'shift', x: 750, count: 1 },
+            { type: 'hammer', x: 850, count: 1 },
         ];
         for (const { type, x, count } of targeted) {
             const btn = this.scene.add.image(x, powerUpY, `powerup_${type}`);
@@ -1890,10 +1890,10 @@ class PhaserMatch3Game {
             this.powerButtons[type] = { btn, text };
         }
 
-        // Additional instant power-ups: rocket (clears a row) and color bomb (clears all gems of one color).
+        // Additional instant power-ups: ray (clears a row) and spectrum (clears all gems of one color).
         const extra = [
-            { type: 'rocket', x: 750, count: 1, btnProp: 'rocketBtn', textProp: 'rocketText' },
-            { type: 'color_bomb', x: 750, count: 1, y: powerUpY + 60, btnProp: 'colorBombBtn', textProp: 'colorBombText' },
+            { type: 'ray', x: 750, count: 1, btnProp: 'rayBtn', textProp: 'rayText' },
+            { type: 'spectrum', x: 750, count: 1, y: powerUpY + 60, btnProp: 'spectrumBtn', textProp: 'spectrumText' },
         ];
         for (const { type, x, count, y = powerUpY, btnProp, textProp } of extra) {
             const btn = this.scene.add.image(x, y, `powerup_${type}`);
@@ -1919,10 +1919,10 @@ class PhaserMatch3Game {
             this.scene.input.on('pointerupoutside', (pointer) => this.endGemGesture(pointer, true));
         }
         // Gems bind their own pointerdown handler in createGemSprite().
-        this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
-        this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
-        this.lightningBtn.on('pointerdown', () => this.usePowerUp('lightning'));
-        for (const type of ['diamond', 'target', 'star', 'rocket', 'color_bomb']) {
+        this.blastBtn.on('pointerdown', () => this.usePowerUp('blast'));
+        this.prismBtn.on('pointerdown', () => this.usePowerUp('prism'));
+        this.boltBtn.on('pointerdown', () => this.usePowerUp('bolt'));
+        for (const type of ['facet', 'mark', 'nova', 'ray', 'spectrum']) {
             this.powerButtons[type]?.btn?.on('pointerdown', () => this.usePowerUp(type));
         }
     }
@@ -1985,11 +1985,11 @@ class PhaserMatch3Game {
 
     applyInstantPowerUp(type) {
         switch (type) {
-            case 'bomb': this.activateBomb(); break;
-            case 'rainbow': this.activateRainbow(); break;
-            case 'lightning': this.activateLightning(); break;
-            case 'rocket': this.activateRocket(); break;
-            case 'color_bomb': this.activateColorBomb(); break;
+            case 'blast': this.activateBlast(); break;
+            case 'prism': this.activatePrism(); break;
+            case 'bolt': this.activateBolt(); break;
+            case 'ray': this.activateRay(); break;
+            case 'spectrum': this.activateSpectrum(); break;
         }
     }
 
@@ -2355,7 +2355,7 @@ class PhaserMatch3Game {
         this.setSelectedGem(null);
         this.armedPowerUp = type;
         btn.setAlpha(0.5);
-        this.playerUI?.announce({ diamond: 'Color: tap a gem to clear that color.', target: 'Cross: tap a gem to clear it and its neighbours.', star: 'Sweep: tap a gem to clear its row and column.', swap: 'Switch: tap two adjacent gems to swap them.', crush: 'Hammer: tap a gem to crush it.' }[type]);
+        this.playerUI?.announce({ facet: 'Facet: tap a gem to clear that color.', mark: 'Mark: tap a gem to clear it and its neighbours.', nova: 'Nova: tap a gem to clear its row and column.', shift: 'Shift: tap two adjacent gems to swap them.', hammer: 'Hammer: tap a gem to crush it.' }[type]);
     }
 
     disarmPowerUp() {
@@ -2369,27 +2369,27 @@ class PhaserMatch3Game {
     powerUpKeys(type, r, c) {
         const n = this.boardSize;
         const keys = new Set();
-        if (type === 'diamond') {
+        if (type === 'facet') {
             const gemType = this.board[r][c];
             for (let rr = 0; rr < n; rr++) {
                 for (let cc = 0; cc < n; cc++) {
                     if (this.board[rr][cc] === gemType) keys.add(`${rr},${cc}`);
                 }
             }
-        } else if (type === 'target') {
+        } else if (type === 'mark') {
             // The tapped gem and its four orthogonal neighbours.
             const offsets = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
             for (const [dr, dc] of offsets) {
                 if (this.isInBounds(r + dr, c + dc)) keys.add(`${r + dr},${c + dc}`);
             }
-        } else if (type === 'star') {
+        } else if (type === 'nova') {
             // The tapped gem's whole row and column.
             for (let i = 0; i < n; i++) {
                 keys.add(`${r},${i}`);
                 keys.add(`${i},${c}`);
             }
-        } else if (type === 'crush') {
-            // Crush: just the tapped gem.
+        } else if (type === 'hammer') {
+            // Hammer: just the tapped gem.
             keys.add(`${r},${c}`);
         }
         return keys;
@@ -2399,20 +2399,20 @@ class PhaserMatch3Game {
         const type = this.armedPowerUp;
         const r = gem.getData('row');
         const c = gem.getData('col');
-        const wasSwap = type === 'swap';
+        const wasShift = type === 'shift';
         this.disarmPowerUp();
 
-        if (wasSwap) {
-            // Two-tap swap: first tap stores, second tap spends and swaps.
-            if (!this._swapCells) this._swapCells = [];
-            if (this._swapCells.length === 0) {
-                this._swapCells.push([r, c]);
-                this.armedPowerUp = 'swap'; // re-arm for second tap
+        if (wasShift) {
+            // Two-tap shift: first tap stores, second tap spends and shifts.
+            if (!this._shiftCells) this._shiftCells = [];
+            if (this._shiftCells.length === 0) {
+                this._shiftCells.push([r, c]);
+                this.armedPowerUp = 'shift'; // re-arm for second tap
                 this.powerButtons[type]?.btn?.setAlpha(0.5);
                 return;
             }
-            const [[r1, c1]] = this._swapCells;
-            this._swapCells = [];
+            const [[r1, c1]] = this._shiftCells;
+            this._shiftCells = [];
             const adjacent = Math.abs(r1 - r) + Math.abs(c1 - c) === 1;
             this.spendPowerUp(type, () => {
                 if (adjacent) {
@@ -2421,8 +2421,8 @@ class PhaserMatch3Game {
                     this.board[r][c] = tmp;
                     this.resolveBoard();
                     this.updateUI();
-                    this.playSound('swap');
-                    this.attemptMoves.push({ type: 'swap', target: [r1, c1, r, c], receiptId: this.powerReceipt?.receiptId });
+                    this.playSound('shift');
+                    this.attemptMoves.push({ type: 'shift', target: [r1, c1, r, c], receiptId: this.powerReceipt?.receiptId });
                 }
                 this.showPowerUpAnimation(type);
             });
@@ -2431,8 +2431,8 @@ class PhaserMatch3Game {
 
         this.spendPowerUp(type, () => {
             const keys = this.powerUpKeys(type, r, c);
-            const points = { diamond: 400, target: 200, star: 250, crush: 150 }[type];
-            this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam', { type, target: [r, c] });
+            const points = { facet: 400, mark: 200, nova: 250, hammer: 150 }[type];
+            this.clearAndCascade(keys, points, type === 'facet' ? 'prism' : 'beam', { type, target: [r, c] });
             this.showPowerUpAnimation(type);
         });
     }
@@ -2444,14 +2444,16 @@ class PhaserMatch3Game {
         }
         if (this.animationsReduced()) return;
         const animations = {
-            bomb: '💥',
-            rainbow: '🌈',
-            lightning: '⚡',
-            diamond: '💎',
-            target: '🎯',
-            star: '🌟',
-            swap: '🔄',
-            crush: '🔨'
+            blast: '💥',
+            prism: '🔮',
+            bolt: '⚡',
+            facet: '💎',
+            mark: '🎯',
+            nova: '✨',
+            shift: '🔄',
+            hammer: '🔨',
+            ray: '🔦',
+            spectrum: '🌈'
         };
         
         const animation = this.scene.add.text(400, 300, animations[powerType], {

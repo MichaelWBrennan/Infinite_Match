@@ -101,7 +101,7 @@ describe('battle pass rules', () => {
   test('a free tier claim grants its reward once', () => {
     const e: any = economy(100);
     const plan = planTierClaim(e, season, { level: 2, track: 'free', owned: false, nowMs: now });
-    expect(plan.operations).toEqual([{ type: 'inventory', category: 'powerups', itemId: 'bomb', amount: 1 }]);
+    expect(plan.operations).toEqual([{ type: 'inventory', category: 'powerups', itemId: 'blast', amount: 1 }]);
     plan.mark();
     expect(codeOf(() => planTierClaim(e, season, { level: 2, track: 'free', owned: false, nowMs: now }))).toBe(
       'already_claimed',

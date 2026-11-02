@@ -124,20 +124,20 @@ describe('single-save account reward paths', () => {
   test('catalog purchase cannot debit without its item or charge for a full inventory', async () => {
     const { service, id } = await newAccount();
     const fail = failOneSave(service);
-    await expect(service.purchaseCatalogItem(id, 'bomb')).rejects.toThrow('store unavailable');
+    await expect(service.purchaseCatalogItem(id, 'blast')).rejects.toThrow('store unavailable');
     fail.mockRestore();
     const before = await service.getPlayerEconomy(id);
     expect(before.currencies.coins.amount).toBe(1000);
-    expect(before.inventory.powerups.bomb.count).toBe(3);
+    expect(before.inventory.powerups.blast.count).toBe(3);
     const write = jest.spyOn(service, 'updatePlayerEconomyCache');
-    const result = await service.purchaseCatalogItem(id, 'bomb');
+    const result = await service.purchaseCatalogItem(id, 'blast');
     expect(result.currency).toMatchObject({ oldAmount: 1000, newAmount: 850 });
     expect(result.inventory).toMatchObject({ oldCount: 3, newCount: 4 });
     expect(write).toHaveBeenCalledTimes(1);
     write.mockRestore();
     const economy = await service.getPlayerEconomy(id);
-    economy.inventory.powerups.bomb.count = economy.inventory.powerups.bomb.maxCount;
-    await expect(service.purchaseCatalogItem(id, 'bomb')).rejects.toMatchObject({ code: 'item_full' });
+    economy.inventory.powerups.blast.count = economy.inventory.powerups.blast.maxCount;
+    await expect(service.purchaseCatalogItem(id, 'blast')).rejects.toMatchObject({ code: 'item_full' });
     expect((await service.getPlayerEconomy(id)).currencies.coins.amount).toBe(850);
   });
 });

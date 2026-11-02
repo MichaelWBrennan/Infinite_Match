@@ -272,14 +272,14 @@
             if (game.feedbackResultStars !== null && game.feedbackResultStars !== undefined && name !== 'finish-feedback') game.matchFeedback?.finish('result');
             else action();
         });
-        const powerupNames = { bomb: 'Bomb', rainbow: 'Board', lightning: 'Bolt', diamond: 'Color', target: 'Cross', star: 'Sweep' };
+        const powerupNames = { blast: 'Blast', ray: 'Ray', prism: 'Prism', bolt: 'Bolt', facet: 'Facet', mark: 'Mark', nova: 'Nova', spectrum: 'Spectrum', shift: 'Shift', hammer: 'Hammer' };
         for (const [type, name] of Object.entries(powerupNames)) {
             const button = document.createElement('button'); button.type = 'button';
             const count = document.createElement('span');
             button.dataset.powerup = type; button.append(document.createTextNode(`${name} `), count);
             button.addEventListener('click', () => { game.usePowerUp(type); refresh(); });
             find('.match-powerups').append(button);
-            const data = { type, count: ({ bomb: 3, rainbow: 1, lightning: 2 })[type] ?? 1 };
+            const data = { type, count: ({ blast: 3, ray: 2, prism: 1, bolt: 1, facet: 0, mark: 0, nova: 0, spectrum: 0, shift: 0, hammer: 0 })[type] ?? 1 };
             const slot = {
                 btn: { getData: (key) => data[key], setData(key, value) { data[key] = value; refresh(); return this; },
                     setAlpha(value) { button.setAttribute('aria-pressed', String(value < 1)); return this; }, on() { return this; } },

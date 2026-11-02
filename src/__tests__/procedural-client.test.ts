@@ -1255,7 +1255,7 @@ describe('optional sound is presentation only', () => {
     };
     await game.submitLevelWin(1);
     expect(bodies[0].moves).toEqual([cells]);
-    game.attemptId = 'second'; game.activateBomb();
+    game.attemptId = 'second'; game.activateBlast();
     expect(game.replayEligible).toBe(false);
     await game.submitLevelWin(1);
     expect(bodies[1].moves).toBeUndefined();
@@ -1270,10 +1270,10 @@ describe('optional sound is presentation only', () => {
       game.showPowerUpAnimation = () => {};
       game.consumePowerUpOnServer = async () => ({ ok: true, receiptId: `receipt-${type}` });
       const slot = { btn: sprite().setData('count', 3), text: sprite() };
-      if (type === 'bomb' || type === 'rainbow' || type === 'lightning' || type === 'rocket' || type === 'color_bomb') {
+      if (type === 'blast' || type === 'prism' || type === 'bolt' || type === 'ray' || type === 'spectrum') {
         game[`${type}Btn`] = slot.btn; game[`${type}Text`] = slot.text;
         game.usePowerUp(type);
-      } else if (type === 'swap') {
+      } else if (type === 'shift') {
         // Swap needs two adjacent taps.
         game.powerButtons = { [type]: slot };
         game.toggleArmedPowerUp(type);
@@ -1295,7 +1295,7 @@ describe('optional sound is presentation only', () => {
       const result = simulateObjectiveClear(def, state, effect.keys, effect.points)!;
       // Swap and crush have indirect/direct-clear-only mechanics that differ from
       // area-effect power-ups; their board/score outcomes are not directly comparable.
-      if (type !== 'swap' && type !== 'crush') {
+      if (type !== 'shift' && type !== 'hammer') {
         expect(game.score).toBe(result.score);
         expect(JSON.parse(JSON.stringify(game.board))).toEqual(result.board);
         expect(JSON.parse(JSON.stringify(game.shields))).toEqual(result.shields);
@@ -1311,20 +1311,20 @@ describe('optional sound is presentation only', () => {
     game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
     game.isGameRunning = true; game.attemptId = 'pinned'; game.getAuthToken = () => 'token';
     game.checkEndConditions = () => {}; game.showPowerUpAnimation = () => {};
-    game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    game.blastBtn = sprite().setData('count', 1); game.blastText = sprite();
     const calls: any[] = [];
     game.consumePowerUpOnServer = async (type: string, token: string, useId: string, attemptId: string) => {
       calls.push({ type, token, useId, attemptId });
       if (calls.length === 1) throw new Error('response lost after spend');
       return { ok: true, receiptId: 'recovered-receipt' };
     };
-    game.usePowerUp('bomb');
+    game.usePowerUp('blast');
     await new Promise((resolve) => setImmediate(resolve));
     expect(calls).toHaveLength(2);
     expect(calls[0]).toEqual(calls[1]);
-    expect(calls[0]).toMatchObject({ type: 'bomb', token: 'token', attemptId: 'pinned', useId: expect.any(String) });
+    expect(calls[0]).toMatchObject({ type: 'blast', token: 'token', attemptId: 'pinned', useId: expect.any(String) });
     expect(calls[0].useId.length).toBeGreaterThanOrEqual(8);
-    expect(game.bombBtn.getData('count')).toBe(0);
+    expect(game.blastBtn.getData('count')).toBe(0);
     expect(game.attemptMoves).toHaveLength(1);
     expect(game.attemptMoves[0].receiptId).toBe('recovered-receipt');
     expect(game.replayEligible).toBe(true);
@@ -1334,17 +1334,17 @@ describe('optional sound is presentation only', () => {
     const { game } = makeBrowserGame();
     const def = generatedLevel({ level: 4, location, rulesVersion: 5 }, now);
     game.applyGeneratedDefinition(def); game.isGameRunning = true; game.attemptId = 'old';
-    game.getAuthToken = () => 'token'; game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    game.getAuthToken = () => 'token'; game.blastBtn = sprite().setData('count', 1); game.blastText = sprite();
     let confirm = (value: any) => { void value; };
     game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
-    game.usePowerUp('bomb');
+    game.usePowerUp('blast');
     const next = generatedLevel({ level: 5, location, rulesVersion: 5 }, now);
     game.applyGeneratedDefinition(next); game.attemptId = 'new'; game.isGameRunning = true;
     confirm({ ok: true, receiptId: 'old-receipt' });
     await new Promise((resolve) => setImmediate(resolve));
     expect(JSON.parse(JSON.stringify(game.board))).toEqual(next.board);
     expect(game.score).toBe(0); expect(game.attemptMoves).toHaveLength(0);
-    expect(game.bombBtn.getData('count')).toBe(1);
+    expect(game.blastBtn.getData('count')).toBe(1);
     expect(game.powerUpPending).toBe(false);
   });
 
@@ -1352,16 +1352,16 @@ describe('optional sound is presentation only', () => {
     const { game } = makeBrowserGame();
     game.applyGeneratedDefinition(generatedLevel({ level: 4, location, rulesVersion: 5 }, now));
     game.isGameRunning = true; game.attemptId = 'pinned'; game.getAuthToken = () => 'token';
-    game.bombBtn = sprite().setData('count', 1); game.bombText = sprite();
+    game.blastBtn = sprite().setData('count', 1); game.blastText = sprite();
     const calls: string[] = [];
     game.consumePowerUpOnServer = async (_type: string, _token: string, useId: string) => {
       calls.push(useId); throw new Error('lost response');
     };
-    game.usePowerUp('bomb');
+    game.usePowerUp('blast');
     await new Promise((resolve) => setImmediate(resolve));
     expect(calls).toHaveLength(2); expect(calls[0]).toBe(calls[1]);
     expect(game.replayEligible).toBe(false);
-    expect(game.bombBtn.getData('count')).toBe(1);
+    expect(game.blastBtn.getData('count')).toBe(1);
     expect(game.attemptMoves).toHaveLength(0);
   });
 
@@ -1369,8 +1369,8 @@ describe('optional sound is presentation only', () => {
     const { game } = makeBrowserGame();
     const messages: string[] = [];
     game.playerUI = { announce: (message: string) => messages.push(message) };
-    game.powerReceipt = { receiptId: 'bound', type: 'bomb' };
-    game.showPowerUpAnimation('bomb');
+    game.powerReceipt = { receiptId: 'bound', type: 'blast' };
+    game.showPowerUpAnimation('blast');
     expect(messages[0]).toContain('do not rank in competitions');
   });
 
@@ -1383,15 +1383,15 @@ describe('optional sound is presentation only', () => {
       payload = JSON.parse(options.body);
       return { ok: true, json: async () => ({ success: true, result: { receiptId: 'receipt' } }) };
     };
-    expect(await game.consumePowerUpOnServer('bomb', 'token')).toEqual({ ok: true, receiptId: 'receipt' });
-    expect(payload).toEqual({ powerupId: 'bomb', quantity: 1, attemptId: 'paid-attempt' });
-    await game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt');
-    expect(payload).toEqual({ powerupId: 'bomb', quantity: 1, attemptId: 'paid-attempt', useId: 'stable-use-001' });
+    expect(await game.consumePowerUpOnServer('blast', 'token')).toEqual({ ok: true, receiptId: 'receipt' });
+    expect(payload).toEqual({ powerupId: 'blast', quantity: 1, attemptId: 'paid-attempt' });
+    await game.consumePowerUpOnServer('blast', 'token', 'stable-use-001', 'paid-attempt');
+    expect(payload).toEqual({ powerupId: 'blast', quantity: 1, attemptId: 'paid-attempt', useId: 'stable-use-001' });
     sandbox.fetch = async () => ({ ok: false, status: 503 });
-    await expect(game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt'))
+    await expect(game.consumePowerUpOnServer('blast', 'token', 'stable-use-001', 'paid-attempt'))
       .rejects.toThrow('powerup_response_uncertain');
     sandbox.fetch = async () => ({ ok: false, status: 400 });
-    expect(await game.consumePowerUpOnServer('bomb', 'token', 'stable-use-001', 'paid-attempt')).toEqual({ ok: false });
+    expect(await game.consumePowerUpOnServer('blast', 'token', 'stable-use-001', 'paid-attempt')).toEqual({ ok: false });
   });
 
   test('unsupported audio cannot gate valid swaps or request a reward or inventory spend', () => {
@@ -1440,7 +1440,7 @@ describe('optional sound is presentation only', () => {
   });
 
   test('inventory effects keep one semantic cue per settled clear and do not spend an ordinary move', () => {
-    for (const [activate, cue] of [['activateBomb', 'burst'], ['activateRainbow', 'prism'], ['activateLightning', 'beam']]) {
+    for (const [activate, cue] of [['activateBlast', 'burst'], ['activatePrism', 'prism'], ['activateBolt', 'beam']]) {
       const { game, cues } = soundGame();
       const definition = generatedLevel({ level: 1, location, rulesVersion: 4 }, now);
       definition.objectives = [{ type: 'score', target: 1000000 }]; definition.targetScore = 1000000;
@@ -1506,14 +1506,14 @@ describe('named semantic controls preserve the real Phaser rules', () => {
 
   test('named inventory targeting uses server-confirmed spending, never the special-activation shortcut', async () => {
     const { game, sandbox } = makeBrowserGame(); game.applyGeneratedDefinition(definition(2)); game.isGameRunning = true;
-    const btn = sprite().setData('type', 'target').setData('count', 1);
-    game.powerButtons = { target: { btn, text: sprite() } }; game.getAuthToken = () => 'token';
+    const btn = sprite().setData('type', 'mark').setData('count', 1);
+    game.powerButtons = { mark: { btn, text: sprite() } }; game.getAuthToken = () => 'token';
     let acknowledge = (value: boolean) => { void value; }; const calls: string[] = [];
     game.consumePowerUpOnServer = (type: string) => { calls.push(type); return new Promise((resolve) => { acknowledge = resolve; }); };
     const before = JSON.stringify(game.board); const moves = game.moves;
-    game.toggleArmedPowerUp('target');
+    game.toggleArmedPowerUp('mark');
     expect(sandbox.InfiniteAssistiveBoard.interact(game, 0, 0, true)).toBe(false); expect(calls).toEqual([]);
-    expect(sandbox.InfiniteAssistiveBoard.interact(game, 0, 0)).toBe(true); expect(calls).toEqual(['target']);
+    expect(sandbox.InfiniteAssistiveBoard.interact(game, 0, 0)).toBe(true); expect(calls).toEqual(['mark']);
     expect(JSON.stringify(game.board)).toBe(before); expect(game.powerUpPending).toBe(true);
     expect(sandbox.InfiniteAssistiveBoard.interact(game, 0, 1)).toBe(false); expect(calls).toHaveLength(1);
     acknowledge(true); await new Promise((resolve) => setImmediate(resolve));

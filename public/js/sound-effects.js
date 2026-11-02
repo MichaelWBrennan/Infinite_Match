@@ -27,10 +27,10 @@
     hint: Object.freeze([note(740, 0, 0.065, 0.1)]),
     inventory: Object.freeze([note(300, 0, 0.14, 0.2, 150), note(600, 0.04, 0.1, 0.09)]),
     test: Object.freeze([note(523, 0, 0.11, 0.15), note(784, 0.075, 0.13, 0.12)]),
-    rocket: Object.freeze([note(880, 0, 0.08, 0.14, 440, 'sawtooth'), note(659, 0.05, 0.06, 0.12)]),
-    color_bomb: Object.freeze([note(1046, 0, 0.06, 0.13, 1318, 'triangle'), note(1318, 0.04, 0.06, 0.12, 1568), note(1568, 0.04, 0.08, 0.1)]),
-    swap: Object.freeze([note(600, 0, 0.05, 0.1), note(800, 0.03, 0.05, 0.1)]),
-    crush: Object.freeze([note(400, 0, 0.08, 0.15, 200)]),
+    ray: Object.freeze([note(880, 0, 0.08, 0.14, 440, 'sawtooth'), note(659, 0.05, 0.06, 0.12)]),
+    spectrum: Object.freeze([note(1046, 0, 0.06, 0.13, 1318, 'triangle'), note(1318, 0.04, 0.06, 0.12, 1568), note(1568, 0.04, 0.08, 0.1)]),
+    shift: Object.freeze([note(600, 0, 0.05, 0.1), note(800, 0.03, 0.05, 0.1)]),
+    hammer: Object.freeze([note(400, 0, 0.08, 0.15, 200)]),
     gift: Object.freeze([note(659, 0, 0.08, 0.12), note(784, 0.06, 0.08, 0.12), note(1046, 0.12, 0.12, 0.1)]),
     levelup: Object.freeze([note(523, 0, 0.1, 0.14), note(659, 0.08, 0.1, 0.14), note(784, 0.08, 0.12, 0.15), note(1046, 0.16, 0.2, 0.16)]),
     notification: Object.freeze([note(800, 0, 0.06, 0.1), note(1000, 0.1, 0.06, 0.1)]),
@@ -54,8 +54,8 @@
     ]),
   });
 
-  const aliases = Object.freeze({ gem_select: 'select', combo: 'cascade', bomb_explode: 'burst',
-    rainbow_clear: 'prism', lightning_strike: 'beam' });
+  const aliases = Object.freeze({ gem_select: 'select', combo: 'cascade', blast: 'burst',
+    prism_clear: 'prism', bolt_strike: 'beam' });
   const cueName = (name) => Object.hasOwn(aliases, name) ? aliases[name] : Object.hasOwn(cues, name) ? name : null;
   const volumeOf = (value) => typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : DEFAULT_VOLUME;
 

@@ -32,8 +32,8 @@ const GIFT_ID = /^[A-Za-z0-9_-]{8,64}$/;
 /** Valid gift types: energy, booster, and lives. */
 export const GIFT_TYPES = ['energy', 'booster', 'lives'];
 const VALID_BOOSTER_IDS = new Set([
-  'extra_moves', 'color_bomb', 'striped_candy',
-  'bomb', 'rocket', 'rainbow', 'lightning', 'target', 'diamond', 'star',
+  'extra_moves', 'spectrum',
+  'blast', 'ray', 'prism', 'bolt', 'mark', 'facet', 'nova',
 ]);
 /** Guild milestone (S3): verified classic/daily wins by a guild's members in one UTC week (Monday start). */
 export const MILESTONE_GOAL = 50;

@@ -139,15 +139,15 @@ describe('booster gifts between friends (S2)', () => {
 
   test('guests cannot send a booster gift', async () => {
     const res = await request(app).post('/api/social/gifts/booster')
-      .send({ receiverId: 'bob', giftId: 'guest_bg_1', boosterId: 'color_bomb' });
+      .send({ receiverId: 'bob', giftId: 'guest_bg_1', boosterId: 'spectrum' });
     expect(res.status).toBe(401);
   });
 
   test('only a friend can receive a booster gift, and never yourself', async () => {
-    const stranger = await boosterGift('gina', 'bob', 'color_bomb');
+    const stranger = await boosterGift('gina', 'bob', 'spectrum');
     expect(stranger.status).toBe(404);
     expect(stranger.body.error).toBe('not_friends');
-    const self = await boosterGift('alice', 'alice', 'color_bomb');
+    const self = await boosterGift('alice', 'alice', 'spectrum');
     expect(self.status).toBe(400);
     expect(self.body.error).toBe('self_gift');
   });
@@ -160,20 +160,20 @@ describe('booster gifts between friends (S2)', () => {
   });
 
   test('a friend booster gift adds one booster once, costs the sender nothing', async () => {
-    const before = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.color_bomb.count;
-    const sent = await boosterGift('hank', 'gina', 'color_bomb', 'gift_booster_hank_gina_1');
+    const before = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.spectrum.count;
+    const sent = await boosterGift('hank', 'gina', 'spectrum', 'gift_booster_hank_gina_1');
     expect(sent.status).toBe(200);
     expect(sent.body.result).toMatchObject({ giftId: 'gift_booster_hank_gina_1', credited: BOOSTER_GIFT_AMOUNT, duplicate: false });
-    const after = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.color_bomb.count;
+    const after = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.spectrum.count;
     expect(after).toBe(before + BOOSTER_GIFT_AMOUNT);
   });
 
   test('a retry with the same gift id is acknowledged and credits nothing new', async () => {
-    const before = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.color_bomb.count;
-    const retry = await boosterGift('hank', 'gina', 'color_bomb', 'gift_booster_hank_gina_1');
+    const before = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.spectrum.count;
+    const retry = await boosterGift('hank', 'gina', 'spectrum', 'gift_booster_hank_gina_1');
     expect(retry.status).toBe(200);
     expect(retry.body.result.duplicate).toBe(true);
-    const after = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.color_bomb.count;
+    const after = (await accountEconomy.getPlayerEconomy('gina') as any).inventory.boosters.spectrum.count;
     expect(after).toBe(before);
   });
 
@@ -183,14 +183,14 @@ describe('booster gifts between friends (S2)', () => {
     await socialStore.requestFriend('alice', ginaCode);
     await socialStore.acceptFriend('gina', 'alice');
     // hank already used gift_booster_hank_gina_1 to send to gina
-    const reused = await boosterGift('alice', 'gina', 'color_bomb', 'gift_booster_hank_gina_1');
+    const reused = await boosterGift('alice', 'gina', 'spectrum', 'gift_booster_hank_gina_1');
     expect(reused.status).toBe(409);
     expect(reused.body.error).toBe('gift_id_reused');
   });
 
   test('a sender gives at most one booster a day (carol and bob are already friends)', async () => {
     // carol→bob: carol hasn't sent any boosters, bob hasn't received any boosters
-    expect((await boosterGift('carol', 'bob', 'striped_candy', 'bg_sender_0')).status).toBe(200);
+    expect((await boosterGift('carol', 'bob', 'spectrum', 'bg_sender_0')).status).toBe(200);
     const senderLimit = await boosterGift('carol', 'bob', 'extra_moves', 'bg_sender_limit');
     expect(senderLimit.status).toBe(409);
     expect(senderLimit.body.error).toBe('gift_sender_limit');
@@ -198,19 +198,19 @@ describe('booster gifts between friends (S2)', () => {
 
   test('a receiver takes at most one booster a day, from any senders (bob already received from carol)', async () => {
     // bob's booster receiver counter is now 1 from the previous test
-    const receiverLimit = await boosterGift('alice', 'bob', 'bomb', 'bg_receiver_limit');
+    const receiverLimit = await boosterGift('alice', 'bob', 'blast', 'bg_receiver_limit');
     expect(receiverLimit.status).toBe(409);
     expect(receiverLimit.body.error).toBe('gift_receiver_limit');
   });
 
   test('booster gift counts are capped at maxCount (99)', async () => {
     const economy: any = await accountEconomy.getPlayerEconomy('alice');
-    economy.inventory.boosters.color_bomb.count = 99;
+    economy.inventory.boosters.spectrum.count = 99;
     await accountEconomy.updatePlayerEconomyCache('alice', economy);
-    const full = await boosterGift('bob', 'alice', 'color_bomb', 'gift_booster_bob_alice_1');
+    const full = await boosterGift('bob', 'alice', 'spectrum', 'gift_booster_bob_alice_1');
     expect(full.status).toBe(200);
     expect(full.body.result.credited).toBe(0);
-    const again = await boosterGift('bob', 'alice', 'color_bomb', 'gift_booster_bob_alice_1');
+    const again = await boosterGift('bob', 'alice', 'spectrum', 'gift_booster_bob_alice_1');
     expect(again.body.result.duplicate).toBe(true);
   });
 

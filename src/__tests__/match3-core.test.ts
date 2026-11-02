@@ -254,11 +254,11 @@ describe('match-3 core', () => {
       game.isGameRunning = true;
       const roll = picker();
       if (roll < 0.1) {
-        game.activateBomb();
+        game.activateBlast();
       } else if (roll < 0.15) {
-        game.activateLightning();
+        game.activateBolt();
       } else if (roll < 0.17) {
-        game.activateRainbow();
+        game.activatePrism();
       } else {
         const r = Math.floor(picker() * 8);
         const c = Math.floor(picker() * 8);
@@ -277,28 +277,28 @@ describe('match-3 core', () => {
   });
 
   describe('targeted power-ups', () => {
-    test('target clears the tapped gem and its four neighbours', () => {
+    test('mark clears the tapped gem and its four neighbours', () => {
       const game = makeGame(21);
-      expect(game.powerUpKeys('target', 4, 4).size).toBe(5);
-      expect(game.powerUpKeys('target', 0, 0).size).toBe(3);
-      expect(game.powerUpKeys('target', 4, 4).has('3,4')).toBe(true);
+      expect(game.powerUpKeys('mark', 4, 4).size).toBe(5);
+      expect(game.powerUpKeys('mark', 0, 0).size).toBe(3);
+      expect(game.powerUpKeys('mark', 4, 4).has('3,4')).toBe(true);
     });
 
-    test('star clears the whole row and column of the tapped gem', () => {
+    test('nova clears the whole row and column of the tapped gem', () => {
       const game = makeGame(22);
-      const keys = game.powerUpKeys('star', 3, 4);
+      const keys = game.powerUpKeys('nova', 3, 4);
       expect(keys.size).toBe(15); // 8 + 8 - 1 shared cell
       expect(keys.has('3,0')).toBe(true);
       expect(keys.has('7,4')).toBe(true);
       expect(keys.has('0,0')).toBe(false);
     });
 
-    test('diamond clears every gem of the tapped colour', () => {
+    test('facet clears every gem of the tapped colour', () => {
       const game = makeGame(23);
       const colour = game.board[2][5];
       let expected = 0;
       for (const row of game.board) for (const cell of row) if (cell === colour) expected++;
-      const keys = game.powerUpKeys('diamond', 2, 5);
+      const keys = game.powerUpKeys('facet', 2, 5);
       expect(keys.size).toBe(expected);
       for (const key of keys) {
         const [r, c] = key.split(',').map(Number);
@@ -309,29 +309,29 @@ describe('match-3 core', () => {
     test('arming then tapping a gem fires once, spends the charge, and keeps the board valid', () => {
       const game = makeGame(24);
       const before = game.moves;
-      game.usePowerUp('target');
-      expect(game.armedPowerUp).toBe('target');
+      game.usePowerUp('mark');
+      expect(game.armedPowerUp).toBe('mark');
       game.selectGem(game.gemSprites[4][4]);
       expect(game.armedPowerUp).toBeNull();
-      expect(game.powerButtons.target.btn.getData('count')).toBe(0);
+      expect(game.powerButtons.mark.btn.getData('count')).toBe(0);
       expect(game.moves).toBe(before); // power-ups do not spend a move
       assertBoardInvariants(game);
     });
 
     test('a spent targeted power-up cannot be armed again', () => {
       const game = makeGame(25);
-      game.usePowerUp('star');
+      game.usePowerUp('nova');
       game.selectGem(game.gemSprites[1][1]);
-      game.usePowerUp('star');
+      game.usePowerUp('nova');
       expect(game.armedPowerUp).toBeNull();
     });
 
     test('pressing an armed power-up again disarms it', () => {
       const game = makeGame(26);
-      game.usePowerUp('diamond');
-      game.usePowerUp('diamond');
+      game.usePowerUp('facet');
+      game.usePowerUp('facet');
       expect(game.armedPowerUp).toBeNull();
-      expect(game.powerButtons.diamond.btn.getData('count')).toBe(1);
+      expect(game.powerButtons.facet.btn.getData('count')).toBe(1);
     });
 
     test('random targeted power-up use keeps every invariant', () => {
@@ -339,7 +339,7 @@ describe('match-3 core', () => {
       game.targetScore = Number.POSITIVE_INFINITY;
       game.moves = 1_000_000;
       const picker = seeded(7);
-      const types = ['diamond', 'target', 'star'];
+      const types = ['facet', 'mark', 'nova'];
       for (let step = 0; step < 120; step++) {
         game.isGameRunning = true;
         const type = types[Math.floor(picker() * 3)];
@@ -424,10 +424,10 @@ describe('levels', () => {
 
     test('signed-in counts load from the server inventory', async () => {
       const game = makeGame(41);
-      signedIn(game, { bomb: { count: 7 }, diamond: { count: 2 } });
+      signedIn(game, { blast: { count: 7 }, facet: { count: 2 } });
       await game.syncPowerUpInventory();
-      expect(game.bombBtn.getData('count')).toBe(7);
-      expect(game.powerButtons.diamond.btn.getData('count')).toBe(2);
+      expect(game.blastBtn.getData('count')).toBe(7);
+      expect(game.powerButtons.facet.btn.getData('count')).toBe(2);
     });
 
     test('guests keep local counts and make no request', async () => {
@@ -436,49 +436,49 @@ describe('levels', () => {
       game.constructor.sandbox.fetch = async () => { called = true; throw new Error('no'); };
       await game.syncPowerUpInventory();
       expect(called).toBe(false);
-      expect(game.bombBtn.getData('count')).toBe(3);
+      expect(game.blastBtn.getData('count')).toBe(3);
     });
 
     test('a power-up takes effect only after the server confirms the spend', async () => {
       const game = makeGame(43);
-      signedIn(game, { bomb: { count: 3 } });
+      signedIn(game, { blast: { count: 3 } });
       let confirm: any = () => {};
       game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
       const scoreBefore = game.score;
 
-      game.usePowerUp('bomb');
-      expect(game.bombBtn.getData('count')).toBe(3); // not spent yet
+      game.usePowerUp('blast');
+      expect(game.blastBtn.getData('count')).toBe(3); // not spent yet
       expect(game.score).toBe(scoreBefore);
 
       confirm(true);
       await flush();
-      expect(game.bombBtn.getData('count')).toBe(2);
+      expect(game.blastBtn.getData('count')).toBe(2);
       expect(game.score).toBeGreaterThan(scoreBefore);
       expect(game.powerUpPending).toBe(false);
     });
 
     test('a refused spend changes nothing and resyncs the count', async () => {
       const game = makeGame(44);
-      signedIn(game, { bomb: { count: 0 } });
+      signedIn(game, { blast: { count: 0 } });
       game.consumePowerUpOnServer = async () => false;
       const scoreBefore = game.score;
 
-      game.usePowerUp('bomb');
+      game.usePowerUp('blast');
       await flush();
       expect(game.score).toBe(scoreBefore);
-      expect(game.bombBtn.getData('count')).toBe(0);
+      expect(game.blastBtn.getData('count')).toBe(0);
     });
 
     test('input is blocked while a server check is pending', async () => {
       const game = makeGame(45);
-      signedIn(game, { bomb: { count: 3 } });
+      signedIn(game, { blast: { count: 3 } });
       let confirm: any = () => {};
       game.consumePowerUpOnServer = () => new Promise((resolve) => { confirm = resolve; });
-      game.usePowerUp('bomb');
-      game.usePowerUp('bomb'); // ignored while pending
+      game.usePowerUp('blast');
+      game.usePowerUp('blast'); // ignored while pending
       confirm(true);
       await flush();
-      expect(game.bombBtn.getData('count')).toBe(2);
+      expect(game.blastBtn.getData('count')).toBe(2);
     });
   });
 });

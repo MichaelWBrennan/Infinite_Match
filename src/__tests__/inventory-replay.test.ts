@@ -18,8 +18,8 @@ const initial = () => ({ board: definition.board, specials: definition.specials,
   refillState: definition.refillState, objectiveProgress: initialObjectiveProgress(definition) });
 
 const targets: Record<string, any> = {
-  bomb: [0, 0], rainbow: undefined, lightning: [0, 1], diamond: [2, 2], target: [0, 0], star: [2, 2],
-  rocket: [0, 0], color_bomb: [0, 0],
+  blast: [0, 0], prism: undefined, bolt: [0, 1], facet: [2, 2], mark: [0, 0], nova: [2, 2],
+  ray: [0, 0], spectrum: [0, 0],
 };
 
 describe('server inventory-effect replay', () => {
@@ -36,13 +36,13 @@ describe('server inventory-effect replay', () => {
     expect(replayLevelAttempt(definition, [action], result.score, result.objectiveProgress).error).toBe('invalid_move_history');
     expect(replayLevelAttempt(definition, [action, action], result.score, result.objectiveProgress, [receipt]).error)
       .toBe('invalid_move_history');
-    expect(replayLevelAttempt(definition, [{ ...action, type: 'rainbow' }], result.score, result.objectiveProgress, [receipt]).error)
-      .toBe(type === 'rainbow' ? 'replay_result_mismatch' : 'invalid_move_history');
+    expect(replayLevelAttempt(definition, [{ ...action, type: 'prism' }], result.score, result.objectiveProgress, [receipt]).error)
+      .toBe(type === 'prism' ? 'replay_result_mismatch' : 'invalid_move_history');
   });
 
   test('rejects altered target geometry, wrong receipts and unaccounted spends', () => {
-    const action = { type: 'bomb', receiptId: 'paid', target: [0, 0] };
-    const receipts = [{ id: 'paid', type: 'bomb' }];
+    const action = { type: 'blast', receiptId: 'paid', target: [0, 0] };
+    const receipts = [{ id: 'paid', type: 'blast' }];
     for (const wrong of [{ ...action, target: [99, 0] }, { ...action, target: [0.5, 0] },
       { ...action, target: [0] }, { ...action, receiptId: 'other' }]) {
       expect(replayLevelAttempt(definition, [wrong], 500, initial().objectiveProgress, receipts).error)
@@ -78,14 +78,14 @@ describe('paid booster receipts and completion', () => {
     const spend = await post('/energy/spend', { level: 4, mode: 'classic', location, rulesVersion: 5 });
     expect(spend.status).toBe(200);
     const { attemptId } = spend.body.result;
-    const before = (await request(app).get('/api/account-economy/data').set(auth())).body.data.inventory.powerups.bomb.count;
-    const invalid = await post('/powerup/use', { powerupId: 'bomb', attemptId: 'wrong', quantity: 1 });
+    const before = (await request(app).get('/api/account-economy/data').set(auth())).body.data.inventory.powerups.blast.count;
+    const invalid = await post('/powerup/use', { powerupId: 'blast', attemptId: 'wrong', quantity: 1 });
     expect(invalid.status).toBe(400); expect(invalid.body.error).toBe('attempt_not_found');
-    const unsupported = await post('/powerup/use', { powerupId: 'rocket', attemptId, quantity: 2 });
+    const unsupported = await post('/powerup/use', { powerupId: 'ray', attemptId, quantity: 2 });
     expect(unsupported.status).toBe(400); expect(unsupported.body.error).toBe('replay_unsupported');
-    const bulk = await post('/powerup/use', { powerupId: 'bomb', attemptId, quantity: 2 });
+    const bulk = await post('/powerup/use', { powerupId: 'blast', attemptId, quantity: 2 });
     expect(bulk.status).toBe(400); expect(bulk.body.error).toBe('replay_unsupported');
-    const after = (await request(app).get('/api/account-economy/data').set(auth())).body.data.inventory.powerups.bomb.count;
+    const after = (await request(app).get('/api/account-economy/data').set(auth())).body.data.inventory.powerups.blast.count;
     expect(after).toBe(before);
   });
 
@@ -93,15 +93,15 @@ describe('paid booster receipts and completion', () => {
     const spent = await post('/energy/spend', { level: 4, mode: 'classic', location, rulesVersion: 5 });
     expect(spent.status).toBe(200);
     const attemptId = spent.body.result.attemptId;
-    await accountEconomy.updateInventory(player, 'powerups', 'target', 1, 'add');
+    await accountEconomy.updateInventory(player, 'powerups', 'mark', 1, 'add');
     const [one, two] = await Promise.all([
-      post('/powerup/use', { attemptId, powerupId: 'target' }),
-      post('/powerup/use', { attemptId, powerupId: 'target' }),
+      post('/powerup/use', { attemptId, powerupId: 'mark' }),
+      post('/powerup/use', { attemptId, powerupId: 'mark' }),
     ]);
     expect([one.status, two.status].sort()).toEqual([200, 400]);
     expect([one.body.result?.receiptId, two.body.result?.receiptId].filter(Boolean)).toHaveLength(1);
     const economy = await accountEconomy.getPlayerEconomy(player);
-    expect(economy.inventory.powerups.target.count).toBe(0);
+    expect(economy.inventory.powerups.mark.count).toBe(0);
     expect(economy.pendingAttempt.powerupReceipts).toHaveLength(1);
   });
 
@@ -110,8 +110,8 @@ describe('paid booster receipts and completion', () => {
     expect(spent.status).toBe(200);
     const attemptId = spent.body.result.attemptId;
     const useId = 'booster-use-retry-001';
-    await accountEconomy.updateInventory(player, 'powerups', 'star', 1, 'add');
-    const body = { attemptId, powerupId: 'star', quantity: 1, useId };
+    await accountEconomy.updateInventory(player, 'powerups', 'nova', 1, 'add');
+    const body = { attemptId, powerupId: 'nova', quantity: 1, useId };
     const [first, second] = await Promise.all([post('/powerup/use', body), post('/powerup/use', body)]);
     expect(first.status).toBe(200); expect(second.status).toBe(200);
     expect(first.body.result.receiptId).toBe(second.body.result.receiptId);
@@ -121,21 +121,21 @@ describe('paid booster receipts and completion', () => {
     const retry = await post('/powerup/use', body);
     expect(retry.status).toBe(200);
     expect(retry.body.result).toMatchObject({ receiptId: first.body.result.receiptId, reused: true, newCount: 0 });
-    const mismatch = await post('/powerup/use', { ...body, powerupId: 'bomb' });
+    const mismatch = await post('/powerup/use', { ...body, powerupId: 'blast' });
     expect(mismatch.status).toBe(400); expect(mismatch.body.error).toBe('powerup_use_mismatch');
     const invalid = await post('/powerup/use', { ...body, useId: 'bad' });
     expect(invalid.status).toBe(400); expect(invalid.body.error).toBe('invalid_powerup_use_id');
-    const unbound = await post('/powerup/use', { powerupId: 'bomb', useId });
+    const unbound = await post('/powerup/use', { powerupId: 'blast', useId });
     expect(unbound.status).toBe(400); expect(unbound.body.error).toBe('invalid_powerup_use_id');
     const economy = await accountEconomy.getPlayerEconomy(player);
-    expect(economy.inventory.powerups.star.count).toBe(0);
+    expect(economy.inventory.powerups.nova.count).toBe(0);
     expect(economy.pendingAttempt.powerupReceipts).toHaveLength(1);
 
     const replacement = await post('/energy/spend', { level: 4, mode: 'classic', location, rulesVersion: 5 });
     expect(replacement.status).toBe(200);
     const old = await post('/powerup/use', body);
     expect(old.status).toBe(400); expect(old.body.error).toBe('attempt_not_found');
-    await accountEconomy.updateInventory(player, 'powerups', 'star', 1, 'add');
+    await accountEconomy.updateInventory(player, 'powerups', 'nova', 1, 'add');
     const newAttempt = await post('/powerup/use', { ...body, attemptId: replacement.body.result.attemptId });
     expect(newAttempt.status).toBe(200);
     expect(newAttempt.body.result.receiptId).not.toBe(first.body.result.receiptId);
@@ -146,17 +146,17 @@ describe('paid booster receipts and completion', () => {
     const spent = await post('/energy/spend', { level: 4, mode: 'classic', location, rulesVersion: 5 });
     expect(spent.status).toBe(200);
     const { attemptId, generatedLevel: def } = spent.body.result;
-    await accountEconomy.updateInventory(player, 'powerups', 'rainbow', 12, 'add');
+    await accountEconomy.updateInventory(player, 'powerups', 'prism', 12, 'add');
     const actions: any[] = [];
     let state: any = { board: def.board, specials: def.specials, shields: def.shields,
       refillState: def.refillState, objectiveProgress: initialObjectiveProgress(def) };
     let score = 0;
     for (let i = 0; i < 10 && !objectiveStatus(def, score, state.objectiveProgress).complete; i++) {
-      const spend = await post('/powerup/use', { attemptId, powerupId: 'rainbow', quantity: 1 });
+      const spend = await post('/powerup/use', { attemptId, powerupId: 'prism', quantity: 1 });
       expect(spend.status).toBe(200);
       const receiptId = spend.body.result.receiptId;
       expect(receiptId).toMatch(/^[0-9a-f-]{36}$/i);
-      const action = { type: 'rainbow', receiptId };
+      const action = { type: 'prism', receiptId };
       actions.push(action);
       const effect = inventoryReplayEffect(def, state, action)!;
       const result = simulateObjectiveClear(def, state, effect.keys, effect.points)!;
@@ -176,7 +176,7 @@ describe('paid booster receipts and completion', () => {
     expect((await socialStore.friendBoard(player))[0].score).toBe(0);
     const again = await post('/level/complete', payload);
     expect(again.status).toBe(200); expect(again.body.result.duplicate).toBe(true);
-    const lateBoost = await post('/powerup/use', { attemptId, powerupId: 'rainbow' });
+    const lateBoost = await post('/powerup/use', { attemptId, powerupId: 'prism' });
     expect(lateBoost.status).toBe(400); expect(lateBoost.body.error).toBe('attempt_not_found');
   });
 
@@ -184,7 +184,7 @@ describe('paid booster receipts and completion', () => {
     const spent = await post('/energy/spend', { level: 1, mode: 'classic', location, rulesVersion: 5 });
     expect(spent.status).toBe(200);
     const { attemptId, generatedLevel: def } = spent.body.result;
-    const item = await post('/powerup/use', { powerupId: 'bomb', quantity: 1 });
+    const item = await post('/powerup/use', { powerupId: 'blast', quantity: 1 });
     expect(item.status).toBe(200); expect(item.body.result.receiptId).toBeUndefined();
     let state: any = { board: def.board, specials: def.specials, shields: def.shields,
       refillState: def.refillState, objectiveProgress: initialObjectiveProgress(def) };

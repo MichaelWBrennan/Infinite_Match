@@ -238,20 +238,19 @@ class AccountEconomyService {
   initializeInventory() {
     return {
       powerups: {
-        bomb: { id: 'bomb', name: 'Bomb', count: 3, maxCount: 99, type: 'powerup', rarity: 'common' },
-        rocket: { id: 'rocket', name: 'Rocket', count: 2, maxCount: 99, type: 'powerup', rarity: 'common' },
-        rainbow: { id: 'rainbow', name: 'Rainbow', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
-        lightning: { id: 'lightning', name: 'Lightning', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
-        target: { id: 'target', name: 'Target Gem', count: 0, maxCount: 99, type: 'powerup', rarity: 'rare' },
-        diamond: { id: 'diamond', name: 'Diamond', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
-        star: { id: 'star', name: 'Star', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
-        swap: { id: 'swap', name: 'Swap', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
-        crush: { id: 'crush', name: 'Crush', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
+        blast: { id: 'blast', name: 'Blast', count: 3, maxCount: 99, type: 'powerup', rarity: 'common' },
+        ray: { id: 'ray', name: 'Ray', count: 2, maxCount: 99, type: 'powerup', rarity: 'common' },
+        prism: { id: 'prism', name: 'Prism', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
+        bolt: { id: 'bolt', name: 'Bolt', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
+        mark: { id: 'mark', name: 'Mark', count: 0, maxCount: 99, type: 'powerup', rarity: 'rare' },
+        facet: { id: 'facet', name: 'Facet', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
+        nova: { id: 'nova', name: 'Nova', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
+        shift: { id: 'shift', name: 'Shift', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
+        hammer: { id: 'hammer', name: 'Hammer', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
       },
       boosters: {
         extra_moves: { id: 'extra_moves', name: 'Extra Moves', count: 0, maxCount: 99, type: 'booster', rarity: 'common' },
-        color_bomb: { id: 'color_bomb', name: 'Color Bomb', count: 0, maxCount: 99, type: 'booster', rarity: 'rare' },
-        striped_candy: { id: 'striped_candy', name: 'Striped Candy', count: 0, maxCount: 99, type: 'booster', rarity: 'common' }
+        spectrum: { id: 'spectrum', name: 'Spectrum', count: 0, maxCount: 99, type: 'booster', rarity: 'rare' },
       },
       decorations: {
         castle: { id: 'castle', name: 'Castle', count: 1, maxCount: 1, type: 'decoration', rarity: 'legendary' },
@@ -629,11 +628,11 @@ class AccountEconomyService {
     
     // Special rewards for milestone levels
     if (level % 10 === 0) {
-      rewards.push({ type: 'inventory', category: 'powerups', itemId: 'rainbow', amount: 1 });
+      rewards.push({ type: 'inventory', category: 'powerups', itemId: 'prism', amount: 1 });
     }
     
     if (level % 25 === 0) {
-      rewards.push({ type: 'inventory', category: 'powerups', itemId: 'lightning', amount: 1 });
+      rewards.push({ type: 'inventory', category: 'powerups', itemId: 'bolt', amount: 1 });
     }
     
     return rewards;
