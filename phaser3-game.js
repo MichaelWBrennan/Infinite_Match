@@ -313,14 +313,22 @@ class PhaserMatch3Game {
         this.fetchAdConfig();
 
         // Background prefetch remaining themes during idle time.
-        // Defer when frames are over budget; skip entirely when hard-paused.
+        // Defer when frames are over budget; skip entirely when hard-paused or on slow connections.
         const remaining = allThemeUrls(this.config).map((t) => ({
             url: t.url, type: 'blob', priority: 'background',
         }));
-        if (remaining.length && (!this.perfMonitor || !this.perfMonitor.shouldDeferWork())) {
+        const connection = this.perfMonitor ? this.perfMonitor.getConnectionInfo() : null;
+        const skipBackgroundPrefetch = connection
+            ? connection.lowBandwidthMode || connection.quality === 'slow'
+            : false;
+        if (remaining.length && (!this.perfMonitor || !this.perfMonitor.shouldDeferWork()) && !skipBackgroundPrefetch) {
             void this.resourceStreamer.prefetchBackground(remaining);
         } else if (remaining.length) {
-            console.log('⏸️ Deferring background prefetch: frames over budget');
+            if (skipBackgroundPrefetch) {
+                console.log('📶 Skipping background prefetch: slow connection / data saver');
+            } else {
+                console.log('⏸️ Deferring background prefetch: frames over budget');
+            }
         }
 
         // Apply streamed textures as they arrive (non-blocking).
@@ -2473,11 +2481,17 @@ class PhaserMatch3Game {
 
         // Stream the level's theme texture in the background so it's ready
         // before the board renders. Falls back to programmatic rendering.
-        // Defer when frames are over budget; skip entirely when hard-paused.
-        if (definition?.context?.season && (!this.perfMonitor || (!this.perfMonitor.shouldDeferWork() && !this.perfMonitor.isHardPaused()))) {
+        // Defer when frames are over budget; skip entirely when hard-paused or on slow connections.
+        const connection = this.perfMonitor ? this.perfMonitor.getConnectionInfo() : null;
+        const skipThemeStream = connection ? connection.lowBandwidthMode || connection.quality === 'slow' : false;
+        if (definition?.context?.season && (!this.perfMonitor || (!this.perfMonitor.shouldDeferWork() && !this.perfMonitor.isHardPaused())) && !skipThemeStream) {
             void this.streamThemeTexture(definition.context);
         } else if (definition?.context?.season) {
-            console.log('⏸️ Deferring theme texture stream: frames over budget or hard-paused');
+            if (skipThemeStream) {
+                console.log('📶 Skipping theme texture stream: slow connection / data saver');
+            } else {
+                console.log('⏸️ Deferring theme texture stream: frames over budget or hard-paused');
+            }
         }
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {

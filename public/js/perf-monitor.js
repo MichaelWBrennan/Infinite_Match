@@ -57,6 +57,17 @@ class PerfMonitor {
       ttfb: null,     // Time to First Byte
     };
 
+    // Network Information API: connection-aware quality adjustment
+    this._connection = null;
+    this._connectionQuality = 'unknown'; // 'slow', 'moderate', 'fast', 'unknown'
+    this._lowBandwidthMode = false;
+
+    if (typeof navigator !== 'undefined' && navigator.connection) {
+      this._connection = navigator.connection;
+      this._updateConnectionQuality();
+      this._connection.addEventListener('change', () => this._updateConnectionQuality());
+    }
+
     // Idle work scheduler
     this._idleQueue = []; // [{ callback, deadline }]
     this._idleHandle = null;
@@ -248,6 +259,56 @@ class PerfMonitor {
     this._poolSizes[name] = size;
   }
 
+  _updateConnectionQuality() {
+    if (!this._connection) return;
+    const { effectiveType, downlink, saveData } = this._connection;
+
+    // Determine connection quality class
+    if (saveData || effectiveType === 'slow-2g' || effectiveType === '2g') {
+      this._connectionQuality = 'slow';
+      this._lowBandwidthMode = true;
+    } else if (effectiveType === '3g' || (downlink !== undefined && downlink < 1.5)) {
+      this._connectionQuality = 'moderate';
+      this._lowBandwidthMode = false;
+    } else if (effectiveType === '4g' || effectiveType === '5g' || (downlink !== undefined && downlink >= 5)) {
+      this._connectionQuality = 'fast';
+      this._lowBandwidthMode = false;
+    } else {
+      this._connectionQuality = 'moderate';
+      this._lowBandwidthMode = false;
+    }
+  }
+
+  /**
+   * Returns the current connection quality: 'slow', 'moderate', 'fast', or 'unknown'.
+   */
+  getConnectionQuality() {
+    return this._connectionQuality;
+  }
+
+  /**
+   * Returns true when the user is on a slow connection or has Data Saver enabled.
+   * Games should reduce texture streaming quality, skip background prefetch,
+   * and use lower-resolution assets when this is true.
+   */
+  shouldUseLowBandwidthMode() {
+    return this._lowBandwidthMode;
+  }
+
+  /**
+   * Returns connection info: { quality, effectiveType, downlink, saveData, lowBandwidthMode }.
+   */
+  getConnectionInfo() {
+    if (!this._connection) return { quality: 'unknown', lowBandwidthMode: false };
+    return {
+      quality: this._connectionQuality,
+      effectiveType: this._connection.effectiveType,
+      downlink: this._connection.downlink,
+      saveData: this._connection.saveData,
+      lowBandwidthMode: this._lowBandwidthMode,
+    };
+  }
+
   /**
    * Check for memory leaks: returns { leaking: boolean, pools: { name: growthRatio } }
    * A pool is flagged if it has grown more than leakWarningThreshold over the sample window.
@@ -287,6 +348,7 @@ class PerfMonitor {
       shouldDeferWork: this.shouldDeferWork(),
       hardPause: this.isHardPaused(),
       webVitals: { ...this._webVitals },
+      connection: this.getConnectionInfo(),
     };
   }
 
