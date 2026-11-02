@@ -28,14 +28,40 @@ export const STARS_REQUIRED = Object.freeze([0, 0, 5, 15, 30, 50]);
 // gatehouse 35, chapel 50. This makes level star earnings advance the kingdom.
 export const STARS_TO_UNLOCK = Object.freeze([0, 5, 10, 20, 35, 50]);
 
-// Item granted on reaching a level. Index = target level.
+// Item granted on reaching a level within a room. Index = target level.
+// Every room level grants a milestone reward to keep renovation meaningful.
 export const MILESTONE_REWARDS = Object.freeze({
-  3: { category: 'powerups', itemId: 'bomb', amount: 1 },
+  1: { category: 'powerups', itemId: 'bomb', amount: 1 },
+  2: { category: 'powerups', itemId: 'crush', amount: 1 },
+  3: { category: 'powerups', itemId: 'bomb', amount: 2 },
+  4: { category: 'powerups', itemId: 'swap', amount: 1 },
   5: { category: 'powerups', itemId: 'rainbow', amount: 1 },
 });
 
 // Completion bonus granted when every room reaches KINGDOM_MAX_LEVEL.
 export const KINGDOM_COMPLETION_REWARD = { category: 'powerups', itemId: 'rainbow', amount: 3 };
+
+// Kingdom-level milestones: total of all room levels across the kingdom.
+// These unlock as the player renovates more rooms, giving a second
+// progression axis beyond individual room levels.
+export const KINGDOM_LEVEL_MILESTONES = Object.freeze([
+  { totalLevel: 6,  reward: { category: 'powerups', itemId: 'bomb', amount: 1 } },
+  { totalLevel: 12, reward: { category: 'powerups', itemId: 'crush', amount: 1 } },
+  { totalLevel: 18, reward: { category: 'powerups', itemId: 'swap', amount: 1 } },
+  { totalLevel: 24, reward: { category: 'powerups', itemId: 'bomb', amount: 3 } },
+  { totalLevel: 30, reward: { category: 'powerups', itemId: 'rainbow', amount: 2 } },
+]);
+
+/** Returns the kingdom level (0-5) based on the sum of all room levels. */
+export function kingdomLevel(rooms) {
+  const total = Object.values(rooms || {}).reduce((sum, level) => sum + (Number.isInteger(level) ? level : 0), 0);
+  return Math.min(5, Math.floor(total / 6));
+}
+
+/** Returns milestone rewards unlocked at the given kingdom level. */
+export function kingdomMilestonesAtLevel(level) {
+  return KINGDOM_LEVEL_MILESTONES.filter((m) => Math.floor(m.totalLevel / 6) <= level);
+}
 
 export function roomById(roomId) {
   return KINGDOM_ROOMS.find((room) => room.id === roomId) || null;
@@ -56,6 +82,9 @@ export function initialKingdom() {
     renovations: 0,
     completedRooms: [],
     completedAt: null,
+    // Kingdom-level progression: total of all room levels determines kingdom level.
+    kingdomLevel: 0,
+    claimedKingdomMilestones: [],
   };
 }
 
@@ -78,6 +107,8 @@ export function ensureKingdom(playerEconomy) {
     playerEconomy.kingdom.completedRooms = [];
   }
   if (playerEconomy.kingdom.completedAt === undefined) playerEconomy.kingdom.completedAt = null;
+  if (typeof playerEconomy.kingdom.kingdomLevel !== 'number') playerEconomy.kingdom.kingdomLevel = 0;
+  if (!Array.isArray(playerEconomy.kingdom.claimedKingdomMilestones)) playerEconomy.kingdom.claimedKingdomMilestones = [];
   return playerEconomy.kingdom;
 }
 

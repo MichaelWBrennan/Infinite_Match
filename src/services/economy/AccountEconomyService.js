@@ -244,7 +244,9 @@ class AccountEconomyService {
         lightning: { id: 'lightning', name: 'Lightning', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
         target: { id: 'target', name: 'Target Gem', count: 0, maxCount: 99, type: 'powerup', rarity: 'rare' },
         diamond: { id: 'diamond', name: 'Diamond', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
-        star: { id: 'star', name: 'Star', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' }
+        star: { id: 'star', name: 'Star', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
+        swap: { id: 'swap', name: 'Swap', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
+        crush: { id: 'crush', name: 'Crush', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
       },
       boosters: {
         extra_moves: { id: 'extra_moves', name: 'Extra Moves', count: 0, maxCount: 99, type: 'booster', rarity: 'common' },
