@@ -58,6 +58,7 @@ function makeBrowserGame() {
     gemSprites: [], mode: 'classic', level: 1, campaignLevel: 25,
     score: 0, energy: 100, maxEnergy: 100, stars: 0, achievements: [],
     settings: { sfx: false }, tutorialShown: true, isGameRunning: false, isPaused: false,
+    attemptMoves: [],
     analytics: { gamesPlayed: 0, totalScore: 0, totalTime: 0 },
     scoreText: sprite(), movesText: sprite(), timerText: sprite(), levelText: sprite(), energyText: sprite(), starsText: sprite(), goalText: sprite(), themeText: sprite(),
     getAuthToken: () => null,
@@ -1262,7 +1263,7 @@ describe('optional sound is presentation only', () => {
       game.showPowerUpAnimation = () => {};
       game.consumePowerUpOnServer = async () => ({ ok: true, receiptId: `receipt-${type}` });
       const slot = { btn: sprite().setData('count', 3), text: sprite() };
-      if (type === 'bomb' || type === 'rainbow' || type === 'lightning') {
+      if (type === 'bomb' || type === 'rainbow' || type === 'lightning' || type === 'rocket' || type === 'color_bomb') {
         game[`${type}Btn`] = slot.btn; game[`${type}Text`] = slot.text;
         game.usePowerUp(type);
       } else {

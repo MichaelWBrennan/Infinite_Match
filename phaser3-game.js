@@ -454,7 +454,19 @@ class PhaserMatch3Game {
         graphics.fillStyle(0xffd700);  // --im-gold
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_star', 64, 64);
-        
+
+        // Rocket: clears a full row — blue with a tail
+        graphics.clear();
+        graphics.fillStyle(0x00cec9);  // --im-tile-cyan
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_rocket', 64, 64);
+
+        // Color bomb: clears all gems of one color — black with colored swirl
+        graphics.clear();
+        graphics.fillStyle(0x2d3436);  // --im-dark
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_color_bomb', 64, 64);
+
         graphics.destroy();
     }
 
@@ -1606,6 +1618,47 @@ class PhaserMatch3Game {
         this.clearAndCascade(keys, 300, 'beam', { type: 'lightning', target: [0, col] });
     }
 
+    activateRocket() {
+        // Clears one full row.
+        const row = Math.floor(Math.random() * this.boardSize);
+        const keys = new Set();
+        for (let c = 0; c < this.boardSize; c++) keys.add(`${row},${c}`);
+        this.clearAndCascade(keys, 300, 'beam', { type: 'rocket', target: [row, 0] });
+    }
+
+    activateColorBomb() {
+        // Clears all gems of a random color present on the board.
+        const n = this.boardSize;
+        const colorCounts = {};
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const gem = this.gemSprites?.[r]?.[c];
+                if (!gem) continue;
+                const type = gem.getData?.('type');
+                if (type) colorCounts[type] = (colorCounts[type] || 0) + 1;
+            }
+        }
+        const colors = Object.keys(colorCounts);
+        if (!colors.length) return;
+        const targetColor = colors[Math.floor(Math.random() * colors.length)];
+        // Find one cell of that color to use as the replay anchor.
+        let anchor = null;
+        for (let r = 0; r < n && !anchor; r++) {
+            for (let c = 0; c < n && !anchor; c++) {
+                const gem = this.gemSprites?.[r]?.[c];
+                if (gem && gem.getData?.('type') === targetColor) anchor = [r, c];
+            }
+        }
+        const keys = new Set();
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const gem = this.gemSprites?.[r]?.[c];
+                if (gem && gem.getData?.('type') === targetColor) keys.add(`${r},${c}`);
+            }
+        }
+        this.clearAndCascade(keys, 500, 'prism', { type: 'color_bomb', target: anchor });
+    }
+
     createUI() {
         if (this.playerUI) {
             for (const field of ['score', 'moves', 'timer', 'level', 'energy', 'stars', 'goal', 'theme']) this[`${field}Text`] = this.playerUI.fields[field];
@@ -1806,6 +1859,28 @@ class PhaserMatch3Game {
             this.powerButtons = this.powerButtons || {};
             this.powerButtons[type] = { btn, text };
         }
+
+        // Additional instant power-ups: rocket (clears a row) and color bomb (clears all gems of one color).
+        const extra = [
+            { type: 'rocket', x: 750, count: 1, btnProp: 'rocketBtn', textProp: 'rocketText' },
+            { type: 'color_bomb', x: 750, count: 1, y: powerUpY + 60, btnProp: 'colorBombBtn', textProp: 'colorBombText' },
+        ];
+        for (const { type, x, count, y = powerUpY, btnProp, textProp } of extra) {
+            const btn = this.scene.add.image(x, y, `powerup_${type}`);
+            btn.setDisplaySize(50, 50);
+            btn.setInteractive();
+            btn.setData('type', type);
+            btn.setData('count', count);
+            const text = this.scene.add.text(x, y + 40, String(count), {
+                fontSize: '16px',
+                fill: '#ffffff',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5);
+            this[btnProp] = btn;
+            this[textProp] = text;
+            this.powerButtons = this.powerButtons || {};
+            this.powerButtons[type] = { btn, text };
+        }
     }
 
     setupInput() {
@@ -1817,8 +1892,8 @@ class PhaserMatch3Game {
         this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
         this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
         this.lightningBtn.on('pointerdown', () => this.usePowerUp('lightning'));
-        for (const type of ['diamond', 'target', 'star']) {
-            this.powerButtons[type].btn.on('pointerdown', () => this.usePowerUp(type));
+        for (const type of ['diamond', 'target', 'star', 'rocket', 'color_bomb']) {
+            this.powerButtons[type]?.btn?.on('pointerdown', () => this.usePowerUp(type));
         }
     }
 
@@ -1865,12 +1940,10 @@ class PhaserMatch3Game {
 
     // Maps a power-up type to its button and count label.
     powerSlot(type) {
-        const direct = {
-            bomb: { btn: this.bombBtn, text: this.bombText },
-            rainbow: { btn: this.rainbowBtn, text: this.rainbowText },
-            lightning: { btn: this.lightningBtn, text: this.lightningText },
-        };
-        return direct[type] || (this.powerButtons && this.powerButtons[type]) || null;
+        const btn = this[`${type}Btn`];
+        const text = this[`${type}Text`];
+        if (btn) return { btn, text };
+        return (this.powerButtons && this.powerButtons[type]) || null;
     }
 
     setPowerCount(type, count) {
@@ -1885,6 +1958,8 @@ class PhaserMatch3Game {
             case 'bomb': this.activateBomb(); break;
             case 'rainbow': this.activateRainbow(); break;
             case 'lightning': this.activateLightning(); break;
+            case 'rocket': this.activateRocket(); break;
+            case 'color_bomb': this.activateColorBomb(); break;
         }
     }
 

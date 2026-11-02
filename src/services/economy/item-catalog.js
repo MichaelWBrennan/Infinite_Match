@@ -12,6 +12,7 @@ export const ITEM_CATALOG = {
   diamond: { category: 'powerups', currencyId: 'coins', price: 400 },
   target: { category: 'powerups', currencyId: 'coins', price: 250 },
   star: { category: 'powerups', currencyId: 'coins', price: 350 },
+  color_bomb: { category: 'powerups', currencyId: 'coins', price: 400 },
 };
 
 // Level-complete rules. The client reports the result, so the server bounds it.
