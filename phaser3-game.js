@@ -191,6 +191,16 @@ class PhaserMatch3Game {
         this.isAuthenticated = false;
         this.userData = null;
         this.platformInfo = null;
+        // ---- PvP (peer-to-peer via Socket.IO on our own server, no external deps) ----
+        this.pvpSocket = null;           // Socket.IO connection (same origin)
+        this.pvpSessionId = null;        // Active game session id
+        this.pvpRoomId = null;           // Room id we're in
+        this.pvpOpponentId = null;       // Opponent player id
+        this.pvpMyPlayerId = null;       // Our player id in the session
+        this.pvpIsMyTurn = false;        // Whether it's our turn
+        this.pvpScores = { me: 0, them: 0 };
+        this.pvpGameState = null;        // Last server-authoritative board state
+        this.pvpPendingMove = null;      // Move waiting for server ack
         this.analytics = {
             sessionStart: Date.now(),
             gamesPlayed: 0,
@@ -255,7 +265,13 @@ class PhaserMatch3Game {
             this.soundEffects = null;
         }
         this.playerUI = window.InfinitePlayerExperience?.mount(this, document.getElementById('phaser-game-container')) || null;
-        
+
+        // Connect PvP Socket.IO (same origin, served by our own server — no external deps).
+        // Only connects when the player is signed in; PvP requires an account.
+        if (this.getAuthToken() && typeof io !== 'undefined') {
+            this.connectPvpSocket();
+        }
+
         // Initialize Phaser 3 game
         const config = {
             type: Phaser.AUTO,
@@ -684,7 +700,10 @@ class PhaserMatch3Game {
         this.overlayButton(400, 300, 300, 60, 0x4ecdc4, 'Play', () => this.requestStart());
         this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
         this.overlayButton(400, 460, 300, 55, 0xe09d54, 'Today’s Local Level', () => this.startDaily());
-        if (this.playerUI) this.overlayButton(400, 530, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
+        if (signedIn && this.getAuthToken()) {
+            this.overlayButton(400, 530, 300, 55, 0x9b59b6, 'PvP Versus', () => this.showPvpMenu());
+        }
+        if (this.playerUI) this.overlayButton(400, 600, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
 
         // Performance-based quality adjustment after first frame.
         setTimeout(() => this.checkPerformanceAndAdjustQuality(), 2000);
@@ -1388,6 +1407,17 @@ class PhaserMatch3Game {
     }
 
     trySwap(r1, c1, r2, c2) {
+        // PvP mode: send the swap to the server instead of resolving locally.
+        // The server validates the move, updates scores, and broadcasts the result.
+        if (this.mode === 'pvp') {
+            if (!this.pvpIsMyTurn) {
+                this.playerUI?.announce("Not your turn — wait for your opponent.");
+                return;
+            }
+            this.sendPvpMove(r1, c1, r2, c2);
+            return;
+        }
+
         if (!this.canInteractWithBoard() || !this.isInBounds(r1, c1) || !this.isInBounds(r2, c2) || !this.isAdjacent(r1, c1, r2, c2)) return;
         this.hintCells = null;
         if (this.usesEarnedSpecials()) return this.commitEarnedAction([r1, c1, r2, c2]);
@@ -1970,6 +2000,257 @@ class PhaserMatch3Game {
             return '';
         }
     }
+
+    // ============================================================================
+    // PvP (Player vs Player) via Socket.IO on our own server — no external deps
+    // ============================================================================
+
+    connectPvpSocket() {
+        if (this.pvpSocket) return;
+        const token = this.getAuthToken();
+        if (!token) return;
+        try {
+            this.pvpSocket = io({ auth: { token }, transports: ['websocket', 'polling'] });
+            this.pvpSocket.on('connect', () => {
+                this.pvpMyPlayerId = this.pvpSocket.id;
+                console.log('🎮 PvP socket connected:', this.pvpMyPlayerId);
+            });
+            this.pvpSocket.on('disconnect', () => {
+                console.log('🎮 PvP socket disconnected');
+                this.pvpSocket = null;
+                if (this.pvpSessionId) this.endPvpSession('disconnected');
+            });
+            this.pvpSocket.on('pvp_error', (data) => {
+                console.warn('PvP error:', data);
+                this.playerUI?.announce(data.message || 'PvP error');
+            });
+            this.pvpSocket.on('room_created', (data) => {
+                this.pvpRoomId = data.room?.id;
+                this.playerUI?.announce(`Room created: ${this.pvpRoomId}`);
+            });
+            this.pvpSocket.on('room_joined', (data) => {
+                this.pvpRoomId = data.roomId;
+                this.playerUI?.announce('Joined room — waiting for opponent…');
+            });
+            this.pvpSocket.on('opponent_joined', (data) => {
+                this.pvpOpponentId = data.opponentId;
+                this.playerUI?.announce('Opponent joined! Starting match…');
+                // Auto-start session once both players are present
+                if (this.pvpRoomId) this.startPvpSession(this.pvpRoomId);
+            });
+            this.pvpSocket.on('session_started', (data) => {
+                this.pvpSessionId = data.sessionId;
+                this.pvpIsMyTurn = data.currentTurn === this.pvpMyPlayerId;
+                this.pvpScores = { me: 0, them: 0 };
+                this.pvpGameState = data.gameState;
+                this.playerUI?.announce(this.pvpIsMyTurn ? 'Your turn!' : "Opponent's turn...");
+                this.updateUI();
+                this.showPvpBoard();
+            });
+            this.pvpSocket.on('move_made', (data) => {
+                this.pvpScores = data.scores || this.pvpScores;
+                this.pvpIsMyTurn = data.currentTurn === this.pvpMyPlayerId;
+                this.pvpGameState = data.gameState;
+                this.pvpPendingMove = null;
+                if (data.playerId !== this.pvpMyPlayerId) {
+                    // Opponent made a move — apply it locally
+                    this.applyOpponentMove(data.move, data.result);
+                }
+                this.playerUI?.announce(this.pvpIsMyTurn ? 'Your turn!' : "Opponent's turn...");
+                this.updateUI();
+            });
+            this.pvpSocket.on('game_ended', (data) => {
+                this.isGameRunning = false;
+                this.pvpIsMyTurn = false;
+                const winner = data.winner;
+                const isDraw = winner === 'draw';
+                const won = winner === this.pvpMyPlayerId;
+                this.playerUI?.announce(isDraw ? "It's a draw!" : won ? 'You win!' : 'Opponent wins!');
+                this.showPvpResultScreen(won, isDraw, data.finalScores);
+            });
+        } catch (error) {
+            console.warn('PvP socket connection failed:', error);
+            this.pvpSocket = null;
+        }
+    }
+
+    disconnectPvpSocket() {
+        if (this.pvpSocket) {
+            this.pvpSocket.disconnect();
+            this.pvpSocket = null;
+        }
+        this.pvpSessionId = null;
+        this.pvpRoomId = null;
+        this.pvpOpponentId = null;
+        this.pvpIsMyTurn = false;
+        this.pvpScores = { me: 0, them: 0 };
+        this.pvpGameState = null;
+        this.pvpPendingMove = null;
+    }
+
+    endPvpSession(reason = 'ended') {
+        if (this.pvpSocket && this.pvpSessionId) {
+            this.pvpSocket.emit('pvp_leave_session', { sessionId: this.pvpSessionId });
+        }
+        this.disconnectPvpSocket();
+    }
+
+    createPvpRoom() {
+        if (!this.pvpSocket) {
+            this.playerUI?.announce('PvP not connected. Sign in and try again.');
+            return;
+        }
+        this.pvpSocket.emit('pvp_create_room', { gameType: 'match3_versus' }, (resp) => {
+            if (resp.success) {
+                this.playerUI?.announce('Room created. Waiting for opponent…');
+            } else {
+                this.playerUI?.announce('Failed to create room: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    joinPvpRoom(roomId) {
+        if (!this.pvpSocket) return;
+        this.pvpSocket.emit('pvp_join_room', { roomId }, (resp) => {
+            if (resp.success) {
+                this.playerUI?.announce('Joined room.');
+            } else {
+                this.playerUI?.announce('Failed to join: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    startPvpMatchmaking() {
+        if (!this.pvpSocket) return;
+        this.pvpSocket.emit('pvp_start_matchmaking', { gameType: 'match3_versus' }, (resp) => {
+            if (resp.success) {
+                this.playerUI?.announce('Matchmaking…');
+            } else {
+                this.playerUI?.announce('Matchmaking failed: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    startPvpSession(roomId) {
+        if (!this.pvpSocket) return;
+        this.pvpSocket.emit('pvp_start_session', {
+            roomId,
+            gameType: 'match3_versus',
+            settings: { boardSize: this.boardSize, gemTypes: this.gemTypes }
+        }, (resp) => {
+            if (!resp.success) {
+                this.playerUI?.announce('Failed to start session: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    sendPvpMove(fromX, fromY, toX, toY) {
+        if (!this.pvpSocket || !this.pvpSessionId || !this.pvpIsMyTurn) return;
+        if (this.pvpPendingMove) return; // Wait for server ack
+
+        const move = { from: [fromX, fromY], to: [toX, toY] };
+        this.pvpPendingMove = move;
+        this.pvpSocket.emit('pvp_move', { sessionId: this.pvpSessionId, move }, (resp) => {
+            this.pvpPendingMove = null;
+            if (!resp.success) {
+                this.playerUI?.announce('Move refused: ' + (resp.error || 'unknown'));
+                this.pvpIsMyTurn = true; // Retry our turn
+            }
+        });
+    }
+
+    applyOpponentMove(move, result) {
+        // Apply the opponent's move to our local board for visual sync
+        const [fromX, fromY] = move.from;
+        const [toX, toY] = move.to;
+        if (fromX === undefined || fromY === undefined || toX === undefined || toY === undefined) return;
+
+        // Swap visually
+        this.swapSprites(fromX, fromY, toX, toY);
+        this.swapModel(fromX, fromY, toX, toY);
+
+        // Apply score and cascades if the server says it matched
+        if (result && result.success && result.matches && result.matches.length > 0) {
+            this.addScore(result.score || 0);
+            // Remove matched cells
+            result.matches.forEach((key) => {
+                const [r, c] = key.split(',').map(Number);
+                this.board[r][c] = null;
+                const sprite = this.gemSprites[r][c];
+                if (sprite) {
+                    this.scene.tweens.killTweensOf(sprite);
+                    sprite.setVisible(false);
+                }
+            });
+            this.collapseColumns();
+            this.resolveBoard();
+        }
+
+        this.updateUI();
+        this.checkPvpEndConditions();
+    }
+
+    checkPvpEndConditions() {
+        if (!this.pvpSessionId || !this.isGameRunning) return;
+        // PvP ends when the server says so (game_ended event). We just track locally.
+    }
+
+    showPvpBoard() {
+        // Switch game into PvP mode
+        this.mode = 'pvp';
+        this.isGameRunning = true;
+        this.moves = 999; // No move limit in PvP — server governs turns
+        this.targetScore = 0;
+        this.updateUI();
+        this.playerUI?.announce(this.pvpIsMyTurn ? 'Your turn!' : "Opponent's turn...");
+    }
+
+    showPvpResultScreen(won, isDraw, scores) {
+        this.openOverlay(isDraw ? 'PvP Draw' : won ? 'PvP Victory!' : 'PvP Defeat');
+        const myScore = scores?.[this.pvpMyPlayerId] ?? this.pvpScores.me;
+        const theirScore = scores?.[this.pvpOpponentId] ?? this.pvpScores.them;
+        this.overlayText(400, 170, isDraw ? "It's a draw!" : won ? 'You Win!' : 'You Lose!', { size: 32, color: won ? '#4ecdc4' : '#ff6b6b' });
+        this.overlayText(400, 230, `Your score: ${myScore}`, { size: 22 });
+        this.overlayText(400, 265, `Opponent: ${theirScore}`, { size: 22 });
+        if (!isDraw) {
+            this.overlayButton(400, 330, 250, 55, 0x4ecdc4, 'Play Again', () => {
+                this.closeOverlay();
+                this.createPvpRoom();
+            });
+        } else {
+            this.overlayButton(400, 330, 250, 55, 0x4ecdc4, 'Rematch', () => {
+                this.closeOverlay();
+                this.createPvpRoom();
+            });
+        }
+        this.overlayButton(400, 410, 250, 55, 0x555555, 'Main Menu', () => {
+            this.closeOverlay();
+            this.returnToMenu();
+        });
+    }
+
+    showPvpMenu() {
+        this.pauseGame();
+        this.openOverlay('PvP — Versus');
+        this.overlayText(400, 120, 'Play head-to-head Match-3 against another player.', { size: 16, width: 600 });
+        this.overlayButton(400, 190, 260, 55, 0x4ecdc4, 'Quick Match', () => {
+            this.closeOverlay();
+            this.startPvpMatchmaking();
+        });
+        this.overlayButton(400, 260, 260, 55, 0x9b59b6, 'Create Room', () => {
+            this.closeOverlay();
+            this.createPvpRoom();
+        });
+        this.overlayButton(400, 330, 260, 55, 0x666666, 'Cancel', () => {
+            this.closeOverlay();
+            this.resumeAfterOverlay();
+        });
+        this.updateUI();
+    }
+
+    // ============================================================================
+    // End PvP section
+    // ============================================================================
 
     // Spends one charge, then runs the effect. Signed-in players are checked against
     // the server first, so the effect runs only when the server agrees. Guests spend locally.
