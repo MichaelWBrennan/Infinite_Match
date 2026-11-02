@@ -8,6 +8,39 @@
 // none). Loaded once when the page starts. The server applies the same overrides to every win.
 let levelOverrides = { levels: {} };
 
+// Resource streaming: fetches textures, audio, and JSON from remote URLs with
+// programmatic canvas fallback. All remote URLs are optional — the game works
+// fully offline using canvas-drawn gems if streaming is unavailable.
+//
+// ResourceStreamer and RESOURCE_CONFIG are loaded as separate scripts before
+// this file (see index.html) and exposed as window.ResourceStreamer and
+// window.RESOURCE_CONFIG so this file works both as a module and inside a VM
+// sandbox used by the test suite.
+// ResourceStreamer and RESOURCE_CONFIG are loaded as separate scripts before
+// this file (see index.html). In the test VM sandbox they may not be loaded,
+// so fall back to no-op implementations that keep the game functional.
+const ResourceStreamer = (window.ResourceStreamer || class {
+    constructor() { this.cache = new Map(); }
+    async preloadCritical() { return; }
+    async prefetchBackground() { return; }
+    async fetchOne() { return null; }
+    getUrl() { return null; }
+    getJson() { return null; }
+    has() { return false; }
+    clear() { return; }
+    getStats() { return { fetched: 0, failed: 0, cached: 0, bytes: 0 }; }
+    cancel() { return; }
+});
+const RESOURCE_CONFIG = window.RESOURCE_CONFIG || {
+    baseUrl: '',
+    themes: {},
+    ui: {},
+    audio: {},
+    behavior: { maxConcurrentLaunch: 4, maxConcurrentPlay: 2, fetchTimeoutMs: 8000, cacheTtlMs: 0, maxRetries: 2, blockLaunchOnCritical: false, preloadDuringPlay: true },
+};
+const allThemeUrls = window.allThemeUrls || (() => []);
+const allUiUrls = window.allUiUrls || (() => []);
+
 // Overlay objects are boxes or texts. A button's label is kept on the box, so both go together.
 function destroyOverlayObjects(objects) {
     (objects || []).forEach((obj) => {
@@ -129,6 +162,12 @@ class PhaserMatch3Game {
             totalScore: 0,
             totalTime: 0
         };
+
+        // Resource streamer: fetches remote textures/audio with programmatic fallback.
+        this.resourceStreamer = new ResourceStreamer(RESOURCE_CONFIG);
+        this.streamedTextures = new Map(); // themeId -> bool (streamed texture available)
+        this.streamedUiTextures = new Map(); // uiName -> bool
+        this.pendingStreaming = null;
         
         this.init();
     }
@@ -176,15 +215,41 @@ class PhaserMatch3Game {
 
     preload() {
         console.log('📦 Preloading Phaser 3 assets...');
-        
-        // Create gem textures programmatically
+
+        // Stream critical launch resources (standard theme + UI) with programmatic fallback.
+        // Fire-and-forget: Phaser does not await async preload, so textures are applied
+        // as they arrive via applyStreamedTextures()/applyStreamedUiTextures().
+        const criticalResources = [];
+        for (const theme of allThemeUrls(this.config)) {
+            criticalResources.push({ url: theme.url, type: 'blob', priority: 'critical' });
+        }
+        for (const ui of allUiUrls(this.config)) {
+            criticalResources.push({ url: ui.url, type: 'blob', priority: 'critical' });
+        }
+        void this.resourceStreamer.preloadCritical(criticalResources).catch((error) => {
+            console.warn('[ResourceStreamer] Critical preload failed:', error);
+        });
+
+        // Create gem textures programmatically (fallback).
         this.createGemTextures();
-        
+
         // Load UI assets
         this.loadUIAssets();
-        
+
         // Fetch ad mediation config from the server (non-blocking).
         this.fetchAdConfig();
+
+        // Background prefetch remaining themes during idle time.
+        const remaining = allThemeUrls(this.config).map((t) => ({
+            url: t.url, type: 'blob', priority: 'background',
+        }));
+        if (remaining.length) {
+            void this.resourceStreamer.prefetchBackground(remaining);
+        }
+
+        // Apply streamed textures as they arrive (non-blocking).
+        void this.applyStreamedTextures();
+        void this.applyStreamedUiTextures();
     }
 
     createGemTextures() {
@@ -274,6 +339,116 @@ class PhaserMatch3Game {
         graphics.generateTexture('powerup_star', 64, 64);
         
         graphics.destroy();
+    }
+
+    // ----- Resource streaming integration -----
+
+    /**
+     * Apply streamed theme textures over programmatic canvas textures.
+     * Called after createGemTextures() so streamed textures take precedence.
+     */
+    async applyStreamedTextures() {
+        if (!this.streamedTextures) this.streamedTextures = new Map();
+        if (!this.resourceStreamer) this.resourceStreamer = new ResourceStreamer(RESOURCE_CONFIG);
+        const scene = this.scene;
+        if (!scene || !scene.textures) return;
+        const promises = [];
+        for (const theme of allThemeUrls(this.config)) {
+            const objectUrl = this.resourceStreamer.getUrl(theme.url);
+            if (!objectUrl) continue;
+            const promise = this.loadTextureFromBlob(scene, `theme_${theme.themeId}`, objectUrl)
+                .then(() => { this.streamedTextures.set(theme.themeId, true); })
+                .catch(() => { this.streamedTextures.set(theme.themeId, false); });
+            promises.push(promise);
+        }
+        await Promise.all(promises);
+    }
+
+    /**
+     * Apply streamed UI textures over programmatic UI textures.
+     */
+    async applyStreamedUiTextures() {
+        if (!this.streamedUiTextures) this.streamedUiTextures = new Map();
+        if (!this.resourceStreamer) this.resourceStreamer = new ResourceStreamer(RESOURCE_CONFIG);
+        const scene = this.scene;
+        if (!scene || !scene.textures) return;
+        const promises = [];
+        for (const ui of allUiUrls(this.config)) {
+            const objectUrl = this.resourceStreamer.getUrl(ui.url);
+            if (!objectUrl) continue;
+            const promise = this.loadTextureFromBlob(scene, `ui_${ui.name}`, objectUrl)
+                .then(() => { this.streamedUiTextures.set(ui.name, true); })
+                .catch(() => { this.streamedUiTextures.set(ui.name, false); });
+            promises.push(promise);
+        }
+        await Promise.all(promises);
+    }
+
+    /**
+     * Stream a theme texture for the given level context. Called when a new
+     * level starts (applyGeneratedDefinition) so the theme's art is ready
+     * before the board renders. Falls back to programmatic rendering if the
+     * stream fails.
+     */
+    async streamThemeTexture(context) {
+        if (!context || !context.season) return false;
+        if (!this.streamedTextures) this.streamedTextures = new Map();
+        if (!this.resourceStreamer) this.resourceStreamer = new ResourceStreamer(RESOURCE_CONFIG);
+        const themeId = context.season;
+        if (this.streamedTextures.has(themeId)) return this.streamedTextures.get(themeId);
+
+        const themeUrl = RESOURCE_CONFIG.themes[themeId] || `textures/gems/${themeId}.png`;
+        const url = RESOURCE_CONFIG.baseUrl
+            ? (RESOURCE_CONFIG.baseUrl.endsWith('/') ? RESOURCE_CONFIG.baseUrl : RESOURCE_CONFIG.baseUrl + '/') + themeUrl
+            : themeUrl;
+        try {
+            await this.resourceStreamer.fetchOne({ url, type: 'blob', priority: 'normal' });
+            const objectUrl = this.resourceStreamer.getUrl(url);
+            if (!objectUrl) return false;
+            const scene = this.scene;
+            if (!scene || !scene.textures) return false;
+            await this.loadTextureFromBlob(scene, `theme_${themeId}`, objectUrl);
+            this.streamedTextures.set(themeId, true);
+            return true;
+        } catch (error) {
+            this.streamedTextures.set(themeId, false);
+            return false;
+        }
+    }
+
+    /**
+     * Load a texture from a blob URL into Phaser's texture manager as a canvas texture.
+     */
+    loadTextureFromBlob(scene, key, blobUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const canvas = scene.textures.createCanvas(key, img.width, img.height);
+                    const ctx = canvas.getContext();
+                    ctx.drawImage(img, 0, 0);
+                    canvas.refresh();
+                    URL.revokeObjectURL(blobUrl);
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(blobUrl);
+                reject(new Error(`Failed to decode image: ${blobUrl}`));
+            };
+            img.src = blobUrl;
+        });
+    }
+
+    /**
+     * Return the texture key for a gem type, preferring streamed theme textures
+     * over programmatic canvas textures.
+     */
+    gemTextureKey(type, special = null, shield = 0) {
+        const base = special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
+        return shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
     }
 
     create() {
@@ -1990,6 +2165,12 @@ class PhaserMatch3Game {
         this.matchFeedback?.finish('new-definition', false);
         this.soundEffects?.stop();
         if (this.timerInterval) clearInterval(this.timerInterval);
+
+        // Stream the level's theme texture in the background so it's ready
+        // before the board renders. Falls back to programmatic rendering.
+        if (definition?.context?.season) {
+            void this.streamThemeTexture(definition.context);
+        }
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {
                 if (!sprite) continue;
