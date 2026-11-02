@@ -883,14 +883,12 @@
     <script src="js/cache-manager.js" type="module"></script>
     <script src="js/lazy-loader.js" type="module"></script>
     <script src="js/procedural-levels.js"></script>
-    <script src="js/level-location.js"></script>
-    <script src="js/sound-effects.js"></script>
     <script src="js/player-experience.js"></script>
     <script src="phaser3-game.js"></script>
-    <script src="platform-detection.js"></script>
     <script src="script.js"></script>
 
-    <!-- Non-critical features are lazy-loaded on demand via lazy-loader.js:
+    <!-- Non-critical scripts are lazy-loaded on demand via lazy-loader.js:
+         level-location, sound-effects, platform-detection (settings/audio/platform),
          kingdom-scene, assistive-board, match-feedback, score-challenge-card, win-queue -->
     <script>
         // window.game is the Phaser game. window.ui is the DOM menu controller, which script.js

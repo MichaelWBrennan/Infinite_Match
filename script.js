@@ -1729,6 +1729,12 @@ class InfiniteMatchGame {
     // Initialize platform detection
     async initializePlatformDetection() {
         try {
+            if (!window.PlatformDetector) {
+                const lazyLoad = window.lazyLoad;
+                if (lazyLoad) {
+                    try { await lazyLoad('platform-detection'); } catch (e) { console.warn('Lazy load platform-detection failed:', e.message); }
+                }
+            }
             if (window.PlatformDetector) {
                 window.platformDetector = new PlatformDetector();
                 await window.platformDetector.initialize();

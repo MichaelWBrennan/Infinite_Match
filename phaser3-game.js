@@ -41,6 +41,40 @@ const RESOURCE_CONFIG = window.RESOURCE_CONFIG || {
 const allThemeUrls = window.allThemeUrls || (() => []);
 const allUiUrls = window.allUiUrls || (() => []);
 
+// Code splitting: lazy-load non-critical scripts on first access.
+// These provide global objects that are not needed at launch but are
+// required later (audio, location/weather context, platform SDKs).
+
+/** Lazy-load sound-effects.js and return the InfiniteSoundEffects API. */
+async function _getSoundEffects() {
+    if (window.InfiniteSoundEffects) return window.InfiniteSoundEffects;
+    const lazyLoad = window.lazyLoad;
+    if (lazyLoad) {
+        try { await lazyLoad('sound-effects'); } catch (e) { console.warn('Lazy load sound-effects failed:', e.message); }
+    }
+    return window.InfiniteSoundEffects || null;
+}
+
+/** Lazy-load level-location.js and return the InfiniteLevelLocation API. */
+async function _getLevelLocation() {
+    if (window.InfiniteLevelLocation) return window.InfiniteLevelLocation;
+    const lazyLoad = window.lazyLoad;
+    if (lazyLoad) {
+        try { await lazyLoad('level-location'); } catch (e) { console.warn('Lazy load level-location failed:', e.message); }
+    }
+    return window.InfiniteLevelLocation || null;
+}
+
+/** Lazy-load platform-detection.js and return the PlatformDetector class. */
+async function _getPlatformDetector() {
+    if (window.PlatformDetector) return window.PlatformDetector;
+    const lazyLoad = window.lazyLoad;
+    if (lazyLoad) {
+        try { await lazyLoad('platform-detection'); } catch (e) { console.warn('Lazy load platform-detection failed:', e.message); }
+    }
+    return window.PlatformDetector || null;
+}
+
 // Overlay objects are boxes or texts. A button's label is kept on the box, so both go together.
 function destroyOverlayObjects(objects) {
     (objects || []).forEach((obj) => {
@@ -209,7 +243,13 @@ class PhaserMatch3Game {
         console.log('🎮 Initializing Phaser 3 Match-3 Game...');
         const self = this;
         this.loadUserData(); // Local preferences are available on the title, not only after Play.
-        this.soundEffects = window.InfiniteSoundEffects?.create(this.settings) || null;
+        // Lazy-load sound effects (audio is opt-in and off by default).
+        void _getSoundEffects();
+        if (window.InfiniteSoundEffects) {
+            this.soundEffects = window.InfiniteSoundEffects.create(this.settings);
+        } else {
+            this.soundEffects = null;
+        }
         this.playerUI = window.InfinitePlayerExperience?.mount(this, document.getElementById('phaser-game-container')) || null;
         
         // Initialize Phaser 3 game
@@ -1398,7 +1438,7 @@ class PhaserMatch3Game {
         if (this.mode === 'endless' && this.generatedLevel) {
             if (this.hasWonLevel()) {
                 if (this.shouldCheckpointEndless()) this.endGame(false, true);
-                else this.advanceEndlessStage();
+                else void this.advanceEndlessStage();
             }
             return;
         }
@@ -2337,6 +2377,9 @@ class PhaserMatch3Game {
     }
 
     getLevelLocation() {
+        // Trigger lazy-load of level-location.js in the background (fire-and-forget).
+        // Returns immediately with a fallback; subsequent calls will use the real API.
+        void _getLevelLocation();
         if (window.InfiniteLevelLocation) return window.InfiniteLevelLocation.current();
         return { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', holidayThemes: true };
     }
@@ -2375,6 +2418,8 @@ class PhaserMatch3Game {
                     serverTime = result.data.serverTime;
                 } catch {
                     let context;
+                    // Trigger lazy-load of level-location.js in the background (fire-and-forget).
+                    void _getLevelLocation();
                     if (window.InfiniteLevelLocation) context = window.InfiniteLevelLocation.offlineContext(location);
                     else {
                         const date = new Date();
