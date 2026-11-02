@@ -197,11 +197,12 @@ class PhaserMatch3Game {
         if (!lazyLoad) return;
         try {
             // Load match-feedback and assistive-board early (needed during create() / mount())
-            await lazyLoad(['match-feedback', 'assistive-board', 'kingdom-scene']);
+            await lazyLoad(['match-feedback', 'assistive-board']);
         } catch (e) {
             console.warn('Lazy load of early feature scripts failed:', e.message);
         }
-        // Win-queue and score-challenge-card are loaded on demand later
+        // kingdom-scene is loaded on demand when the player opens the kingdom
+        // win-queue and score-challenge-card are loaded on demand later
     }
 
     init() {
@@ -272,7 +273,7 @@ class PhaserMatch3Game {
         this.fetchAdConfig();
 
         // Background prefetch remaining themes during idle time.
-        // Defer when frames are over budget to protect gameplay performance.
+        // Defer when frames are over budget; skip entirely when hard-paused.
         const remaining = allThemeUrls(this.config).map((t) => ({
             url: t.url, type: 'blob', priority: 'background',
         }));
@@ -283,8 +284,13 @@ class PhaserMatch3Game {
         }
 
         // Apply streamed textures as they arrive (non-blocking).
-        void this.applyStreamedTextures();
-        void this.applyStreamedUiTextures();
+        // Skip when hard-paused to protect gameplay frame time.
+        if (!this.perfMonitor || !this.perfMonitor.isHardPaused()) {
+            void this.applyStreamedTextures();
+            void this.applyStreamedUiTextures();
+        } else {
+            console.log('⏸️ Pausing texture application: frames hard-paused');
+        }
     }
 
     createGemTextures() {
@@ -524,6 +530,12 @@ class PhaserMatch3Game {
                 this.spritePool.push(sprite);
             }
             this._poolsInitialized = true;
+        }
+
+        // Register sprite pool size with perf monitor for memory leak detection.
+        const perfMonitor = this.perfMonitor;
+        if (perfMonitor && typeof perfMonitor.registerPoolSize === 'function') {
+            perfMonitor.registerPoolSize('spritePool', this.spritePool.length);
         }
 
         // Start performance monitoring.
@@ -981,6 +993,7 @@ class PhaserMatch3Game {
         }
         if (typeof sprite.setVisible === 'function') sprite.setVisible(true);
         if (typeof sprite.setActive === 'function') sprite.setActive(true);
+        this._registerSpritePoolSize();
         return sprite;
     }
 
@@ -1004,6 +1017,15 @@ class PhaserMatch3Game {
             sprite.setData('special', null);
         }
         this.spritePool.push(sprite);
+        this._registerSpritePoolSize();
+    }
+
+    /** Report the current sprite pool size to the perf monitor for leak detection. */
+    _registerSpritePoolSize() {
+        const perfMonitor = this.perfMonitor;
+        if (perfMonitor && typeof perfMonitor.registerPoolSize === 'function') {
+            perfMonitor.registerPoolSize('spritePool', this.spritePool ? this.spritePool.length : 0);
+        }
     }
 
     createGemSprite(row, col, type) {
@@ -2390,11 +2412,11 @@ class PhaserMatch3Game {
 
         // Stream the level's theme texture in the background so it's ready
         // before the board renders. Falls back to programmatic rendering.
-        // Defer when frames are over budget to protect gameplay performance.
-        if (definition?.context?.season && (!this.perfMonitor || !this.perfMonitor.shouldDeferWork())) {
+        // Defer when frames are over budget; skip entirely when hard-paused.
+        if (definition?.context?.season && (!this.perfMonitor || (!this.perfMonitor.shouldDeferWork() && !this.perfMonitor.isHardPaused()))) {
             void this.streamThemeTexture(definition.context);
         } else if (definition?.context?.season) {
-            console.log('⏸️ Deferring theme texture stream: frames over budget');
+            console.log('⏸️ Deferring theme texture stream: frames over budget or hard-paused');
         }
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {
@@ -3266,14 +3288,14 @@ class PhaserMatch3Game {
         this.createKingdomUI();
     }
 
-    createKingdomUI() {
+    async createKingdomUI() {
         this.openOverlay('Kingdom');
         this.kingdomRowObjects = [];
-        if (this.playerUI?.renderKingdomScene) { this.renderKingdom(); return; }
+        if (this.playerUI?.renderKingdomScene) { await this.renderKingdom(); return; }
         this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
         this.overlayButton(250, 500, 100, 50, 0x9b59b6, 'Decor', () => this.openDecor());
         this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeKingdom());
-        this.renderKingdom();
+        await this.renderKingdom();
     }
 
     // The decoration screen is its own overlay. It is rebuilt after each action, so it always shows
@@ -3353,15 +3375,15 @@ class PhaserMatch3Game {
         }
     }
 
-    selectKingdomRoom(roomId) {
+    async selectKingdomRoom(roomId) {
         if (!['throne', 'library', 'garden', 'armory', 'gatehouse', 'chapel'].includes(roomId) || roomId === this.kingdomRoomId) return;
         this.kingdomRoomId = roomId;
         this.kingdomFocusChoice = null;
         this.kingdomFocusRoom = true;
         if (this.kingdomSceneData && this.playerUI?.renderKingdomScene) {
-            this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, true));
+            await this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, true));
             this.kingdomFocusRoom = false;
-        } else this.renderKingdom();
+        } else await this.renderKingdom();
     }
 
     kingdomSceneCallbacks(focusChoice = null, focusRoom = false) {
@@ -3408,7 +3430,7 @@ class PhaserMatch3Game {
         if (!this.getAuthToken()) {
             if (this.playerUI?.renderKingdomScene) {
                 this.kingdomSceneData = { guest: true };
-                this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, this.kingdomFocusRoom));
+                await this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, this.kingdomFocusRoom));
                 this.kingdomFocusRoom = false;
             }
             return this.setOverlayStatus('Sign in to save room upgrades. Guest puzzles are always playable.');
@@ -3420,7 +3442,7 @@ class PhaserMatch3Game {
             if (!this.activeOverlay || this.activeOverlay !== overlay) return;
             if (this.playerUI?.renderKingdomScene) {
                 this.kingdomSceneData = data;
-                this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice, this.kingdomFocusRoom));
+                await this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice, this.kingdomFocusRoom));
                 this.kingdomFocusChoice = null;
                 this.kingdomFocusRoom = false;
                 return;

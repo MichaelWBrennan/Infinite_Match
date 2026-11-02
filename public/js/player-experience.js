@@ -3,10 +3,10 @@
 (function (root) {
     'use strict';
 
-    // Code splitting: preload non-critical assistive-board and kingdom-scene
-    // scripts in the background so they're ready when the player needs them.
+    // Code splitting: preload assistive-board in the background (needed during mount()).
+    // kingdom-scene is loaded on demand when the player opens the kingdom.
     if (typeof window !== 'undefined' && window.lazyLoad) {
-        void window.lazyLoad(['assistive-board', 'kingdom-scene']).catch(() => {});
+        void window.lazyLoad('assistive-board').catch(() => {});
     }
 
     const visuals = Object.freeze({
@@ -422,7 +422,18 @@
             button.addEventListener('click', onClick); content.append(button); return proxy(button);
         }
         let kingdomStorySkipped = false;
-        function renderKingdomScene(data, callbacks = {}) {
+        async function renderKingdomScene(data, callbacks = {}) {
+            // Lazy-load kingdom-scene on demand when the player opens the kingdom.
+            if (!root.InfiniteKingdomScene) {
+                try {
+                    const lazyLoad = (typeof window !== 'undefined' && window.lazyLoad);
+                    if (lazyLoad) {
+                        await lazyLoad('kingdom-scene');
+                    }
+                } catch (e) {
+                    console.warn('Failed to lazy-load kingdom-scene:', e.message);
+                }
+            }
             const scene = root.InfiniteKingdomScene;
             if (!scene) return false;
             const view = scene.roomView(data, callbacks.roomId);

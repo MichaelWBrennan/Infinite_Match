@@ -7,8 +7,10 @@
  *   - Resource load times
  *   - Memory usage (when available)
  *   - Long task detection
+ *   - Frame budget enforcement (soft defer / hard pause)
+ *   - requestIdleCallback scheduler for background work
+ *   - Memory leak detection (object pool growth tracking)
  *
- * Data is sent to analytics or stored locally for debugging.
  * Overhead is minimal: <1ms per frame.
  */
 
@@ -35,13 +37,25 @@ class PerfMonitor {
 
     // Frame budget (16.67ms = 60fps)
     this.frameBudgetMs = options.frameBudgetMs || 16.67;
+    this.hardPauseBudgetMs = options.hardPauseBudgetMs || 33.33; // 30fps threshold
     this.frameTimes = [];
     this.maxFrameTimes = 120; // ~2 seconds at 60fps
-    this._deferWork = false; // Set true when frames are over budget
+    this._deferWork = false; // Soft: defer non-urgent work
+    this._hardPause = false; // Hard: pause all non-essential work
+
+    // Memory leak detection: track object pool sizes over time
+    this._poolSnapshots = []; // { time, spritePoolSize, ... }
+    this._maxPoolSnapshots = 60; // ~1 minute at 1s samples
+    this._leakWarningThreshold = 1.5; // 50% growth over window = warning
+
+    // Idle work scheduler
+    this._idleQueue = []; // [{ callback, deadline }]
+    this._idleHandle = null;
 
     this._rafId = null;
     this._sampleId = null;
     this._observer = null;
+    this._idleTickId = null;
 
     if (this.enabled) this.start();
   }
@@ -76,6 +90,9 @@ class PerfMonitor {
         // Long task observation not supported
       }
     }
+
+    // Kick off idle work processing
+    this._processIdleQueue();
   }
 
   stop() {
@@ -83,6 +100,14 @@ class PerfMonitor {
     this._rafId = null;
     if (this._sampleId) clearInterval(this._sampleId);
     if (this._observer) this._observer.disconnect();
+    if (this._idleHandle !== null) {
+      cancelIdleCallback?.(this._idleHandle);
+      this._idleHandle = null;
+    }
+    if (this._idleTickId !== null) {
+      clearTimeout(this._idleTickId);
+      this._idleTickId = null;
+    }
   }
 
   _tick(now) {
@@ -94,10 +119,15 @@ class PerfMonitor {
     this.frameTimes.push(dt);
     if (this.frameTimes.length > this.maxFrameTimes) this.frameTimes.shift();
 
-    // Defer non-urgent work when recent frames exceed budget
+    // Budget enforcement based on recent average frame time
     const recent = this.frameTimes.slice(-30);
     const avgFrameTime = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
+
+    // Soft defer: frames over 16.67ms (under 60fps)
     this._deferWork = avgFrameTime > this.frameBudgetMs;
+
+    // Hard pause: frames over 33.33ms (under 30fps) — stop all non-essential work
+    this._hardPause = avgFrameTime > this.hardPauseBudgetMs;
 
     // Estimate FPS
     if (dt >= 1000) {
@@ -115,7 +145,11 @@ class PerfMonitor {
       fps: this.fps,
       longTasks: this.longTasks.length,
       memory: this._getMemory(),
+      frameBudget: this.getFrameBudget(),
     };
+
+    // Memory leak detection: record pool snapshot
+    this._recordPoolSnapshot();
 
     if (this.reportCallback) {
       try { this.reportCallback(sample); } catch (e) { /* ignore */ }
@@ -134,68 +168,161 @@ class PerfMonitor {
   }
 
   /**
-   * Record an input event for latency tracking.
-   * Call this when a touch/click/mouse event starts.
+   * Record a pool-size snapshot for leak detection. Callers (e.g. the game)
+   * should call registerPoolSize(name, size) to report pool sizes.
    */
-  markInput(type) {
-    if (!this.enabled) return;
-    this.inputEvents.push({ type, time: performance.now() });
-    if (this.inputEvents.length > this.maxInputEvents) this.inputEvents.shift();
+  _recordPoolSnapshot() {
+    const snapshot = { time: performance.now(), pools: { ...this._poolSizes } };
+    this._poolSnapshots.push(snapshot);
+    if (this._poolSnapshots.length > this._maxPoolSnapshots) this._poolSnapshots.shift();
   }
 
   /**
-   * Record that an input has been processed (paint completed).
-   * Returns latency in ms.
+   * Register a pool size for leak tracking. Call this whenever a pool changes size.
+   * @param {string} name - pool name (e.g. 'spritePool', 'gemDataPool')
+   * @param {number} size - current number of pooled items
    */
-  completeInput(type) {
-    if (!this.enabled) return null;
+  registerPoolSize(name, size) {
+    if (!this._poolSizes) this._poolSizes = {};
+    this._poolSizes[name] = size;
+  }
+
+  /**
+   * Check for memory leaks: returns { leaking: boolean, pools: { name: growthRatio } }
+   * A pool is flagged if it has grown more than leakWarningThreshold over the sample window.
+   */
+  checkMemoryLeaks() {
+    if (!this._poolSizes || this._poolSnapshots.length < 2) return { leaking: false, pools: {} };
+
     const now = performance.now();
-    const idx = this.inputEvents.findLastIndex((e) => e.type === type && !e.completed);
-    if (idx >= 0) {
-      this.inputEvents[idx].completed = true;
-      this.inputEvents[idx].completedTime = now;
-      return now - this.inputEvents[idx].time;
+    const windowMs = 60000; // 1 minute
+    const oldSnapshots = this._poolSnapshots.filter((s) => now - s.time < windowMs);
+    if (oldSnapshots.length < 2) return { leaking: false, pools: {} };
+
+    const oldest = oldSnapshots[0];
+    const newest = oldSnapshots[oldSnapshots.length - 1];
+    const pools = {};
+    let leaking = false;
+
+    for (const [name, currentSize] of Object.entries(this._poolSizes)) {
+      const oldSize = oldest.pools[name] || 0;
+      if (oldSize <= 0) continue;
+      const ratio = currentSize / oldSize;
+      pools[name] = ratio;
+      if (ratio > this._leakWarningThreshold) leaking = true;
     }
-    return null;
+
+    return { leaking, pools };
   }
 
-  /**
-   * Get current metrics snapshot.
-   */
+  /** Get current metrics snapshot. */
   getMetrics() {
     return {
       fps: this.fps,
       longTasks: this.longTasks.length,
       memory: this._getMemory(),
       pendingInputs: this.inputEvents.filter((e) => !e.completed).length,
+      frameBudget: this.getFrameBudget(),
+      shouldDeferWork: this.shouldDeferWork(),
+      hardPause: this.isHardPaused(),
     };
   }
 
-  /**
-   * Returns true when recent frames have exceeded the budget, signaling
-   * that non-urgent work (prefetching, analytics, non-critical rendering)
-   * should be deferred until frames are cheaper.
-   */
+  /** Returns true when recent frames have exceeded the soft budget. */
   shouldDeferWork() {
     return this._deferWork;
   }
 
+  /** Returns true when frames are severely over budget (hard pause). */
+  isHardPaused() {
+    return this._hardPause;
+  }
+
   /**
-   * Returns frame budget info: { budgetMs, avgFrameMs, overBudget }.
+   * Returns frame budget info: { budgetMs, hardPauseBudgetMs, avgFrameMs,
+   * overBudget, hardPaused }.
    */
   getFrameBudget() {
     const recent = this.frameTimes.slice(-30);
     const avg = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
     return {
       budgetMs: this.frameBudgetMs,
+      hardPauseBudgetMs: this.hardPauseBudgetMs,
       avgFrameMs: avg,
       overBudget: avg > this.frameBudgetMs,
+      hardPaused: avg > this.hardPauseBudgetMs,
     };
   }
 
   /**
-   * Get a performance score (0-100).
+   * Schedule a callback to run during idle periods using requestIdleCallback.
+   * Falls back to setTimeout(0) if requestIdleCallback is unavailable.
+   * Returns an id that can be used to cancel via cancelIdleWork(id).
    */
+  scheduleIdleWork(callback, options = {}) {
+    const id = Symbol('idle-work');
+    const entry = { id, callback, deadline: options.deadline || 0 };
+    this._idleQueue.push(entry);
+    this._scheduleIdleTick();
+    return id;
+  }
+
+  /** Cancel a previously scheduled idle work item. */
+  cancelIdleWork(id) {
+    this._idleQueue = this._idleQueue.filter((e) => e.id !== id);
+  }
+
+  _scheduleIdleTick() {
+    if (this._idleHandle !== null || this._idleTickId !== null) return;
+    if ('requestIdleCallback' in window) {
+      this._idleHandle = requestIdleCallback((deadline) => this._processIdleQueue(deadline), { timeout: 1000 });
+    } else {
+      this._idleTickId = setTimeout(() => this._processIdleQueue(), 0);
+    }
+  }
+
+  _processIdleQueue(deadline) {
+    this._idleHandle = null;
+    this._idleTickId = null;
+
+    // Don't run idle work if frames are hard-paused
+    if (this._hardPause) {
+      // Re-queue everything and try again later
+      this._idleQueue.forEach((e) => { /* keep in queue */ });
+      this._scheduleIdleTick();
+      return;
+    }
+
+    const start = performance.now();
+    const timeRemaining = deadline && typeof deadline.timeRemaining === 'function'
+      ? deadline.timeRemaining()
+      : 50; // Default 50ms budget for setTimeout fallback
+
+    const remaining = [];
+    while (this._idleQueue.length > 0) {
+      const entry = this._idleQueue.shift();
+      const entryStart = performance.now();
+      try { entry.callback(); } catch (e) { /* ignore idle work errors */ }
+      const elapsed = performance.now() - entryStart;
+
+      // If we're running out of time, re-queue the rest
+      if (performance.now() - start > timeRemaining - 5) {
+        remaining.push(entry);
+        break;
+      }
+    }
+
+    // Add any unprocessed entries back
+    remaining.push(...this._idleQueue);
+    this._idleQueue = remaining;
+
+    // Schedule more if there's work left
+    if (this._idleQueue.length > 0) {
+      this._scheduleIdleTick();
+    }
+  }
+
+  /** Get a performance score (0-100). */
   getScore() {
     let score = 100;
     if (this.fps < 30) score -= 30;
@@ -203,6 +330,8 @@ class PerfMonitor {
     if (this.longTasks.length > 10) score -= 20;
     const mem = this._getMemory();
     if (mem && mem.usedJSHeapSize > mem.jsHeapSizeLimit * 0.9) score -= 10;
+    const leak = this.checkMemoryLeaks();
+    if (leak.leaking) score -= 10;
     return Math.max(0, Math.min(100, score));
   }
 }
