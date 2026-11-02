@@ -173,7 +173,9 @@ class PhaserMatch3Game {
         this.gameWorker = window.gameWorker || new (window.GameWorkerProxy)();
 
         // Object pools: zero-GC gameplay object recycling.
-        this.spritePool = null; // Initialized in create() after scene exists
+        // spritePool holds reusable Phaser sprite Game Objects to avoid
+        // create/destroy churn during cascades and refills.
+        this.spritePool = []; // Array of available Phaser sprites
         this._poolsInitialized = false;
 
         // Texture atlas: single atlas for all gem frames, reducing draw calls.
@@ -270,11 +272,14 @@ class PhaserMatch3Game {
         this.fetchAdConfig();
 
         // Background prefetch remaining themes during idle time.
+        // Defer when frames are over budget to protect gameplay performance.
         const remaining = allThemeUrls(this.config).map((t) => ({
             url: t.url, type: 'blob', priority: 'background',
         }));
-        if (remaining.length) {
+        if (remaining.length && (!this.perfMonitor || !this.perfMonitor.shouldDeferWork())) {
             void this.resourceStreamer.prefetchBackground(remaining);
+        } else if (remaining.length) {
+            console.log('⏸️ Deferring background prefetch: frames over budget');
         }
 
         // Apply streamed textures as they arrive (non-blocking).
@@ -508,13 +513,16 @@ class PhaserMatch3Game {
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
 
-        // Initialize object pools for zero-GC gameplay.
+        // Initialize sprite object pool for zero-GC gameplay.
+        // Pre-warm Phaser sprite Game Objects so cascades and refills
+        // never create/destroy Game Objects mid-play.
         if (!this._poolsInitialized) {
-            this.spritePool = new (window.ObjectPool)(
-                () => ({ sprite: null, row: 0, col: 0, type: null, special: null, shield: 0 }),
-                (entry) => { entry.sprite = null; entry.row = 0; entry.col = 0; entry.type = null; entry.special = null; entry.shield = 0; },
-                64, 512
-            );
+            while (this.spritePool.length < 32) {
+                const sprite = this.scene.add.image(0, 0, 'gem_red');
+                sprite.setVisible(false);
+                sprite.setActive(false);
+                this.spritePool.push(sprite);
+            }
             this._poolsInitialized = true;
         }
 
@@ -964,9 +972,45 @@ class PhaserMatch3Game {
         return cells;
     }
 
+    /** Acquire a Phaser sprite from the zero-GC pool, creating one only if the pool is empty. */
+    acquireSprite() {
+        if (!this.spritePool) this.spritePool = [];
+        let sprite = this.spritePool.pop();
+        if (!sprite) {
+            sprite = this.scene.add.image(0, 0, 'gem_red');
+        }
+        if (typeof sprite.setVisible === 'function') sprite.setVisible(true);
+        if (typeof sprite.setActive === 'function') sprite.setActive(true);
+        return sprite;
+    }
+
+    /** Return a sprite to the zero-GC pool, resetting its state for reuse. */
+    releaseSprite(sprite) {
+        if (!sprite) return;
+        if (!this.spritePool) this.spritePool = [];
+        // Remove input listeners so old gestures don't fire on a reused sprite.
+        if (typeof sprite.off === 'function') sprite.off('pointerdown');
+        if (typeof sprite.removeInteractive === 'function') sprite.removeInteractive();
+        if (typeof sprite.setVisible === 'function') sprite.setVisible(false);
+        if (typeof sprite.setActive === 'function') sprite.setActive(false);
+        if (typeof sprite.setPosition === 'function') sprite.setPosition(0, 0);
+        if (typeof sprite.setScale === 'function') sprite.setScale(1);
+        if (typeof sprite.setAlpha === 'function') sprite.setAlpha(1);
+        if (typeof sprite.clearTint === 'function') sprite.clearTint();
+        if (typeof sprite.setData === 'function') {
+            sprite.setData('row', null);
+            sprite.setData('col', null);
+            sprite.setData('type', null);
+            sprite.setData('special', null);
+        }
+        this.spritePool.push(sprite);
+    }
+
     createGemSprite(row, col, type) {
         const { texture, frame } = this.gemTextureDescriptor(type, this.specials?.[row]?.[col], this.shields?.[row]?.[col]);
-        const gem = frame ? this.scene.add.image(this.cellX(col), this.cellY(row), texture, frame) : this.scene.add.image(this.cellX(col), this.cellY(row), texture);
+        const gem = this.acquireSprite();
+        if (frame) gem.setTexture(texture, frame); else gem.setTexture(texture);
+        gem.setPosition(this.cellX(col), this.cellY(row));
         gem.setScale(this.gemScale);
         // Full cell hit area; shape/symbol is visual, not a smaller touch target.
         if (this.playerUI && window.Phaser?.Geom) gem.setInteractive(new Phaser.Geom.Rectangle(-3, -3, 70, 70), Phaser.Geom.Rectangle.Contains);
@@ -1230,7 +1274,10 @@ class PhaserMatch3Game {
             this.board[r][c] = null;
             const sprite = this.gemSprites[r][c];
             this.scene.tweens.killTweensOf(sprite);
-            if (this.animationsReduced()) { sprite.setVisible(false); return; }
+            if (this.animationsReduced()) {
+                sprite.setVisible(false);
+                return;
+            }
             this.scene.tweens.add({
                 targets: sprite,
                 alpha: 0,
@@ -2343,14 +2390,17 @@ class PhaserMatch3Game {
 
         // Stream the level's theme texture in the background so it's ready
         // before the board renders. Falls back to programmatic rendering.
-        if (definition?.context?.season) {
+        // Defer when frames are over budget to protect gameplay performance.
+        if (definition?.context?.season && (!this.perfMonitor || !this.perfMonitor.shouldDeferWork())) {
             void this.streamThemeTexture(definition.context);
+        } else if (definition?.context?.season) {
+            console.log('⏸️ Deferring theme texture stream: frames over budget');
         }
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {
                 if (!sprite) continue;
                 this.scene.tweens.killTweensOf(sprite);
-                if (typeof sprite.destroy === 'function') sprite.destroy();
+                this.releaseSprite(sprite);
             }
         }
         this.closeOverlay();
