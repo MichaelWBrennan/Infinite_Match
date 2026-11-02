@@ -38,7 +38,7 @@ describe('fully passive objective composition and certification', () => {
 
   test('v4 composes score, one-color, two-color and mixed goals without authored level files', () => {
     const definitions = Array.from({ length: 40 }, (_, index) => generateLevel(index + 1, old.context, 'classic', 4));
-    expect(new Set(definitions.map((definition) => definition.objectiveProfile))).toEqual(new Set(['score', 'collect', 'collect-pair', 'score-and-collect']));
+    expect(new Set(definitions.map((definition) => definition.objectiveProfile))).toEqual(new Set(['score', 'collect', 'collect-pair', 'score-and-collect', 'boss']));
     expect(definitions[0].objectiveProfile).toBe('score');
     expect(definitions[1].objectiveProfile).toBe('collect'); expect(definitions[2].objectiveProfile).toBe('collect');
     for (const definition of definitions) {

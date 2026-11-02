@@ -3724,6 +3724,16 @@ const ownCount = (counts, color) => Object.hasOwn(counts, color) ? counts[color]
 
 /** Deterministic goals are calibrated against an already-replayed no-inventory witness. */
 function composeObjectives({ level, mode, seed, palette, favorite, proof, targetScore, fraction }) {
+  const isBoss = level % 10 === 0;
+  // Timed mode: race the clock — score the target before time expires.
+  if (mode === 'timed') {
+    return { profile: 'timed', objectives: [{ type: 'timed', target: targetScore }] };
+  }
+  // Boss levels: distinguished objective type, same witnessed target (boss difficulty
+  // comes from more colors and fewer moves, not a higher score the witness can't reach).
+  if (isBoss) {
+    return { profile: 'boss', objectives: [{ type: 'boss', target: targetScore }] };
+  }
   const choice = mode === 'daily' ? hashSeed(`${seed}|objectives`) % 4
     : level === 1 ? 0 : level <= 3 ? 1 : (level - 1) % 4;
   const profiles = ['score', 'collect', 'collect-pair', 'score-and-collect'];
@@ -3773,6 +3783,8 @@ function validObjectives(definition) {
       if (definition.generatorVersion < 6 || !validFrosting(definition.frosting, definition.boardSize) || goal.target !== frostingCount(definition.frosting)) return false;
     } else if (goal.type === 'clear-delivery') {
       if (definition.generatorVersion < 6 || !validDelivery(definition.delivery, definition.boardSize, definition.gemTypes) || goal.target !== deliveryCount(definition.delivery)) return false;
+    } else if (goal.type === 'timed' || goal.type === 'boss') {
+      if (!Number.isSafeInteger(goal.target) || goal.target <= 0 || goal.target > MAX_COLLECTED_GEMS) return false;
     } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
     const identity = goal.type === 'collect' ? `collect:${goal.gemType}` : goal.type;
     if (identities.has(identity)) return false;
@@ -3908,7 +3920,7 @@ function objectiveStatus(definition, score, progress) {
   const safeScore = scoreValid ? score : 0;
   const validProgress = progress !== undefined && validObjectiveProgress(definition, progress);
   const items = levelObjectives(definition).map((goal) => {
-    const current = goal.type === 'score' ? safeScore : !validProgress ? 0
+    const current = (goal.type === 'score' || goal.type === 'timed' || goal.type === 'boss') ? safeScore : !validProgress ? 0
       : goal.type === 'clear-shields' ? progress.shieldsCleared
         : goal.type === 'clear-blockers' ? progress.blockersCleared
           : goal.type === 'clear-locked-gems' ? progress.lockedCleared
@@ -3951,13 +3963,15 @@ function objectiveDescription(definition) {
                 ? `Clear ${goal.target} liquorice locks` : goal.type === 'clear-marmalade'
                   ? `Clear ${goal.target} marmalade` : goal.type === 'clear-frosting'
                     ? `Clear ${goal.target} frosting layers` : goal.type === 'clear-delivery'
-                      ? `Deliver ${goal.target} gems to marked cells` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
+                      ? `Deliver ${goal.target} gems to marked cells` : goal.type === 'timed'
+                        ? `Score ${goal.target.toLocaleString('en-US')} before time runs out` : goal.type === 'boss'
+                          ? `Defeat the boss: score ${goal.target.toLocaleString('en-US')}` : `Score ${goal.target.toLocaleString('en-US')}`).join(' + ');
 }
 
 function objectiveSummary(definition, score, progress, showRemaining = false) {
   return objectiveStatus(definition, score, progress).items.map((goal) => {
     const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields'
-      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : goal.type === 'clear-chocolate' ? 'Chocolate' : goal.type === 'clear-liquorice' ? 'Liquorice' : goal.type === 'clear-marmalade' ? 'Marmalade' : goal.type === 'clear-frosting' ? 'Frosting' : goal.type === 'clear-delivery' ? 'Delivery' : 'Score';
+      : goal.type === 'clear-blockers' ? 'Blockers' : goal.type === 'clear-locked-gems' ? 'Locked gems' : goal.type === 'clear-jelly' ? 'Jelly' : goal.type === 'clear-chocolate' ? 'Chocolate' : goal.type === 'clear-liquorice' ? 'Liquorice' : goal.type === 'clear-marmalade' ? 'Marmalade' : goal.type === 'clear-frosting' ? 'Frosting' : goal.type === 'clear-delivery' ? 'Delivery' : goal.type === 'timed' ? 'Timed' : goal.type === 'boss' ? 'Boss' : 'Score';
     const total = `${name} ${Math.min(goal.current, goal.target).toLocaleString('en-US')}/${goal.target.toLocaleString('en-US')}`;
     return showRemaining ? `${total} (${goal.complete ? 'done' : `${goal.remaining.toLocaleString('en-US')} left`})` : total;
   }).join(' · ');
@@ -3996,7 +4010,7 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
     const deliveryResult = goals.some((goal) => goal.type === 'clear-delivery') && delivery
       ? applyDeliveryClear({ events: [{ cleared: action.cells }], board: { length: delivery.length } }, delivery, board) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
-      goal.type === 'score' ? action.points : goal.type === 'clear-shields'
+      (goal.type === 'score' || goal.type === 'timed' || goal.type === 'boss') ? action.points : goal.type === 'clear-shields'
         ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
         : goal.type === 'clear-blockers' ? (blockerResult?.brokenBlockers || 0)
           : goal.type === 'clear-locked-gems' ? (lockedResult?.brokenLocks || 0)

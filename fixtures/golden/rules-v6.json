@@ -5041,11 +5041,11 @@
         "moves": 999,
         "objectives": [
           {
-            "type": "score",
+            "type": "timed",
             "target": 2400
           }
         ],
-        "objectiveProfile": "score",
+        "objectiveProfile": "timed",
         "shields": [
           [
             0,

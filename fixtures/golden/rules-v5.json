@@ -1405,12 +1405,11 @@
         "moves": 21,
         "objectives": [
           {
-            "type": "collect",
-            "gemType": "pumpkin_orange",
-            "target": 15
+            "type": "boss",
+            "target": 1150
           }
         ],
-        "objectiveProfile": "collect",
+        "objectiveProfile": "boss",
         "shields": [
           [
             0,
@@ -2373,11 +2372,11 @@
         "moves": 999,
         "objectives": [
           {
-            "type": "score",
+            "type": "timed",
             "target": 1800
           }
         ],
-        "objectiveProfile": "score",
+        "objectiveProfile": "timed",
         "shields": [
           [
             0,
