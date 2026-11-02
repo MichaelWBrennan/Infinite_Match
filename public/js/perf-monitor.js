@@ -33,6 +33,12 @@ class PerfMonitor {
     // Memory
     this.memory = null;
 
+    // Frame budget (16.67ms = 60fps)
+    this.frameBudgetMs = options.frameBudgetMs || 16.67;
+    this.frameTimes = [];
+    this.maxFrameTimes = 120; // ~2 seconds at 60fps
+    this._deferWork = false; // Set true when frames are over budget
+
     this._rafId = null;
     this._sampleId = null;
     this._observer = null;
@@ -83,6 +89,15 @@ class PerfMonitor {
     const dt = now - this.lastFrameTime;
     this.frameCount++;
     this.lastFrameTime = now;
+
+    // Track per-frame time for budget monitoring
+    this.frameTimes.push(dt);
+    if (this.frameTimes.length > this.maxFrameTimes) this.frameTimes.shift();
+
+    // Defer non-urgent work when recent frames exceed budget
+    const recent = this.frameTimes.slice(-30);
+    const avgFrameTime = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
+    this._deferWork = avgFrameTime > this.frameBudgetMs;
 
     // Estimate FPS
     if (dt >= 1000) {
@@ -153,6 +168,28 @@ class PerfMonitor {
       longTasks: this.longTasks.length,
       memory: this._getMemory(),
       pendingInputs: this.inputEvents.filter((e) => !e.completed).length,
+    };
+  }
+
+  /**
+   * Returns true when recent frames have exceeded the budget, signaling
+   * that non-urgent work (prefetching, analytics, non-critical rendering)
+   * should be deferred until frames are cheaper.
+   */
+  shouldDeferWork() {
+    return this._deferWork;
+  }
+
+  /**
+   * Returns frame budget info: { budgetMs, avgFrameMs, overBudget }.
+   */
+  getFrameBudget() {
+    const recent = this.frameTimes.slice(-30);
+    const avg = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
+    return {
+      budgetMs: this.frameBudgetMs,
+      avgFrameMs: avg,
+      overBudget: avg > this.frameBudgetMs,
     };
   }
 
