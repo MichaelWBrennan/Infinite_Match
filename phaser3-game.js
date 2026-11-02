@@ -176,6 +176,9 @@ class PhaserMatch3Game {
         this.spritePool = null; // Initialized in create() after scene exists
         this._poolsInitialized = false;
 
+        // Texture atlas: single atlas for all gem frames, reducing draw calls.
+        this.textureAtlas = null;
+
         // Performance monitor: tracks FPS, latency, memory.
         this.perfMonitor = window.perfMonitor;
 
@@ -292,6 +295,30 @@ class PhaserMatch3Game {
                 context.textAlign = 'center'; context.textBaseline = 'middle';
                 context.fillText(String(shield), 52, 12); context.restore();
             };
+
+            // Build a texture atlas so all gem frames share one texture,
+            // letting Phaser batch sprites and cut draw calls dramatically.
+            // Falls back to individual textures if TextureAtlas isn't available
+            // (e.g. VM-sandboxed test execution).
+            if (window.TextureAtlas) {
+                this.textureAtlas = new (window.TextureAtlas)(this.scene, {
+                    size: 64,
+                    padding: 2,
+                    maxAtlasSize: 2048,
+                });
+                void this.textureAtlas.buildFromVisuals(
+                    window.InfinitePlayerExperience.visuals,
+                    window.InfinitePlayerExperience.specialTypes,
+                    window.InfinitePlayerExperience.drawGem,
+                    drawShieldFrame
+                );
+
+                // Shield overlays are drawn directly into atlas frames by buildFromVisuals.
+                // No separate shield textures needed.
+                return;
+            }
+
+            // Fallback: individual canvas textures (VM sandbox, no TextureAtlas).
             for (const shield of [1, 2]) {
                 const overlay = this.scene.textures.createCanvas(`shield_overlay_${shield}`, 64, 64);
                 drawShieldFrame(overlay.getContext(), shield);
@@ -706,9 +733,45 @@ class PhaserMatch3Game {
         return this.generatedLevel?.generatorVersion >= 3 && !!globalThis.InfiniteLevels?.simulateSpecialMove;
     }
 
+    /**
+     * Return the texture key for a gem type/special/shield combination.
+     * Backward-compatible string return: when the atlas is unavailable this is
+     * an individual canvas texture key. When the atlas is built, returns the
+     * atlas frame key (used with atlas texture name 'gem_atlas').
+     * Callers that need the texture name separately should use gemTextureDescriptor().
+     */
     gemTexture(type, special = null, shield = 0) {
+        const descriptor = this.gemTextureDescriptor(type, special, shield);
+        return descriptor.frame ? descriptor.frame : descriptor.texture;
+    }
+
+    /**
+     * Return the full texture descriptor { texture, frame } for a gem.
+     * When the atlas is built: { texture: 'gem_atlas', frame: '<frameKey>' }.
+     * Fallback: { texture: '<individualKey>', frame: null }.
+     */
+    gemTextureDescriptor(type, special = null, shield = 0) {
+        if (this.textureAtlas && this.textureAtlas.built && this.textureAtlas.hasFrame(type, special, shield)) {
+            const descriptor = this.textureAtlas.textureFor(type, special, shield);
+            return { texture: descriptor.texture, frame: descriptor.frame };
+        }
+        // Fallback: individual canvas texture key.
         const base = special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
-        return shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
+        const key = shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
+        return { texture: key, frame: null };
+    }
+
+    /**
+     * Apply a gem texture to a sprite, handling both atlas frames and
+     * individual texture keys. Use this instead of setTexture(gemTexture(...)).
+     */
+    applyGemTexture(sprite, type, special = null, shield = 0) {
+        const { texture, frame } = this.gemTextureDescriptor(type, special, shield);
+        if (frame) {
+            sprite.setTexture(texture, frame);
+        } else {
+            sprite.setTexture(texture);
+        }
     }
 
     activateEarnedSpecial(row, col) {
@@ -751,7 +814,7 @@ class PhaserMatch3Game {
             const sprite = origin ? previous[oldRow][oldCol] : free.shift();
             this.scene.tweens.killTweensOf(sprite);
             if (!origin) sprite.setPosition(this.cellX(c), this.cellY(-1 - drops[c]++));
-            sprite.setTexture(this.gemTexture(type, this.specials[r][c], this.shields?.[r]?.[c]));
+            this.applyGemTexture(sprite, type, this.specials[r][c], this.shields?.[r]?.[c]);
             sprite.setData('type', type); sprite.setData('special', this.specials[r][c]);
             sprite.setVisible(true); sprite.setAlpha(1); sprite.setScale(this.gemScale); sprite.clearTint();
             this.placeSprite(sprite, r, c, animateFallback);
@@ -902,7 +965,8 @@ class PhaserMatch3Game {
     }
 
     createGemSprite(row, col, type) {
-        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), this.gemTexture(type, this.specials?.[row]?.[col], this.shields?.[row]?.[col]));
+        const { texture, frame } = this.gemTextureDescriptor(type, this.specials?.[row]?.[col], this.shields?.[row]?.[col]);
+        const gem = frame ? this.scene.add.image(this.cellX(col), this.cellY(row), texture, frame) : this.scene.add.image(this.cellX(col), this.cellY(row), texture);
         gem.setScale(this.gemScale);
         // Full cell hit area; shape/symbol is visual, not a smaller touch target.
         if (this.playerUI && window.Phaser?.Geom) gem.setInteractive(new Phaser.Geom.Rectangle(-3, -3, 70, 70), Phaser.Geom.Rectangle.Contains);
@@ -1007,7 +1071,7 @@ class PhaserMatch3Game {
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
                 const sprite = this.gemSprites[r][c];
-                sprite.setTexture(`gem_${this.board[r][c]}`);
+                this.applyGemTexture(sprite, this.board[r][c]);
                 sprite.setData('type', this.board[r][c]);
             }
         }
@@ -1206,7 +1270,7 @@ class PhaserMatch3Game {
                     this.board[row][col] = type;
                     this.gemSprites[row][col] = sprite;
                     this.scene.tweens.killTweensOf(sprite);
-                    sprite.setTexture(`gem_${type}`);
+                    this.applyGemTexture(sprite, type);
                     sprite.setAlpha(1);
                     sprite.setScale(this.gemScale);
                     sprite.setVisible(true);
