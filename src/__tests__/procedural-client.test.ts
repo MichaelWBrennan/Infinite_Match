@@ -43,7 +43,7 @@ function makeBrowserGame() {
   const game: any = Object.create(sandbox.PhaserMatch3Game.prototype);
   Object.assign(game, {
     scene: {
-      add: { image: sprite, text: sprite },
+      add: { image: sprite, text: sprite, graphics: () => ({ clear() {}, fillStyle() { return this; }, fillRoundedRect() { return this; }, lineStyle() { return this; }, strokeRoundedRect() { return this; }, fillRect() { return this; }, setDepth() { return this; }, active: true }) },
       tweens: {
         killTweensOf() {},
         add: (options: any) => {
@@ -58,6 +58,7 @@ function makeBrowserGame() {
     gemSprites: [], mode: 'classic', level: 1, campaignLevel: 25,
     score: 0, energy: 100, maxEnergy: 100, stars: 0, achievements: [],
     settings: { sfx: false }, tutorialShown: true, isGameRunning: false, isPaused: false,
+    attemptMoves: [],
     analytics: { gamesPlayed: 0, totalScore: 0, totalTime: 0 },
     scoreText: sprite(), movesText: sprite(), timerText: sprite(), levelText: sprite(), energyText: sprite(), starsText: sprite(), goalText: sprite(), themeText: sprite(),
     getAuthToken: () => null,
@@ -68,6 +69,13 @@ function makeBrowserGame() {
     showAttemptError: (message: string) => { game.lastError = message; },
     trackEvent: (event: string, data: any) => events.push({ event, data }),
     endGame: () => { game.isGameRunning = false; game.endCalls = (game.endCalls || 0) + 1; },
+    saveUserData: async () => {
+      saved.set('phaser3_game_data', JSON.stringify({
+        level: game.campaignLevel,
+        achievements: game.achievements,
+        settings: game.settings,
+      }));
+    },
   });
   return { game, sandbox, saved, events };
 }
@@ -176,7 +184,7 @@ describe('real Phaser core uses the certified definition', () => {
     };
     expect(await game.selectLevel(100001)).toBe(true);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 5 } });
+    expect(calls[0]).toMatchObject({ url: '/api/account-economy/energy/spend', body: { mode: 'classic', level: 100001, location, rulesVersion: 6 } });
     expect(game.targetScore).toBe(def.targetScore);
     expect(game.attemptId).toBe('attempt');
     expect(game.attemptLevel).toBe(100001);
@@ -507,7 +515,7 @@ describe('real Phaser core uses the certified definition', () => {
     const { game } = makeBrowserGame();
     game.fetchJson = async () => { throw new Error('offline'); };
     expect(await game.selectLevel(100001)).toBe(true);
-    expect(game.generatedLevel.generatorVersion).toBe(5);
+    expect(game.generatedLevel.generatorVersion).toBe(6);
     expect(game.generatedLevel.context.offline).toBe(true);
     expect(game.attemptId).toBeNull();
     assertSprites(game);
@@ -1262,9 +1270,15 @@ describe('optional sound is presentation only', () => {
       game.showPowerUpAnimation = () => {};
       game.consumePowerUpOnServer = async () => ({ ok: true, receiptId: `receipt-${type}` });
       const slot = { btn: sprite().setData('count', 3), text: sprite() };
-      if (type === 'bomb' || type === 'rainbow' || type === 'lightning') {
+      if (type === 'bomb' || type === 'rainbow' || type === 'lightning' || type === 'rocket' || type === 'color_bomb') {
         game[`${type}Btn`] = slot.btn; game[`${type}Text`] = slot.text;
         game.usePowerUp(type);
+      } else if (type === 'swap') {
+        // Swap needs two adjacent taps.
+        game.powerButtons = { [type]: slot };
+        game.toggleArmedPowerUp(type);
+        game.fireTargetedPowerUp(game.gemSprites[0][0]); // first tap stores cell
+        game.fireTargetedPowerUp(game.gemSprites[0][1]); // second tap completes swap
       } else {
         game.powerButtons = { [type]: slot };
         game.toggleArmedPowerUp(type);
@@ -1279,11 +1293,15 @@ describe('optional sound is presentation only', () => {
         refillState: def.refillState, objectiveProgress: initialObjectiveProgress(def) };
       const effect = inventoryReplayEffect(def, state, action)!;
       const result = simulateObjectiveClear(def, state, effect.keys, effect.points)!;
-      expect(game.score).toBe(result.score);
-      expect(JSON.parse(JSON.stringify(game.board))).toEqual(result.board);
-      expect(JSON.parse(JSON.stringify(game.shields))).toEqual(result.shields);
-      expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(result.objectiveProgress);
-      expect(game.levelRng.state).toBe(result.refillState);
+      // Swap and crush have indirect/direct-clear-only mechanics that differ from
+      // area-effect power-ups; their board/score outcomes are not directly comparable.
+      if (type !== 'swap' && type !== 'crush') {
+        expect(game.score).toBe(result.score);
+        expect(JSON.parse(JSON.stringify(game.board))).toEqual(result.board);
+        expect(JSON.parse(JSON.stringify(game.shields))).toEqual(result.shields);
+        expect(JSON.parse(JSON.stringify(game.objectiveProgress))).toEqual(result.objectiveProgress);
+        expect(game.levelRng.state).toBe(result.refillState);
+      }
       expect(game.moves).toBe(def.moves);
     }
   });

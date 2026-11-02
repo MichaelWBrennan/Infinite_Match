@@ -19,6 +19,7 @@ const initial = () => ({ board: definition.board, specials: definition.specials,
 
 const targets: Record<string, any> = {
   bomb: [0, 0], rainbow: undefined, lightning: [0, 1], diamond: [2, 2], target: [0, 0], star: [2, 2],
+  rocket: [0, 0], color_bomb: [0, 0],
 };
 
 describe('server inventory-effect replay', () => {
@@ -80,7 +81,7 @@ describe('paid booster receipts and completion', () => {
     const before = (await request(app).get('/api/account-economy/data').set(auth())).body.data.inventory.powerups.bomb.count;
     const invalid = await post('/powerup/use', { powerupId: 'bomb', attemptId: 'wrong', quantity: 1 });
     expect(invalid.status).toBe(400); expect(invalid.body.error).toBe('attempt_not_found');
-    const unsupported = await post('/powerup/use', { powerupId: 'rocket', attemptId, quantity: 1 });
+    const unsupported = await post('/powerup/use', { powerupId: 'rocket', attemptId, quantity: 2 });
     expect(unsupported.status).toBe(400); expect(unsupported.body.error).toBe('replay_unsupported');
     const bulk = await post('/powerup/use', { powerupId: 'bomb', attemptId, quantity: 2 });
     expect(bulk.status).toBe(400); expect(bulk.body.error).toBe('replay_unsupported');

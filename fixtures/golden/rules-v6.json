@@ -948,7 +948,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -1578,7 +1579,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -2538,7 +2540,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -3325,7 +3328,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -4276,7 +4280,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -4913,7 +4918,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -5035,11 +5041,11 @@
         "moves": 999,
         "objectives": [
           {
-            "type": "score",
+            "type": "timed",
             "target": 2400
           }
         ],
-        "objectiveProfile": "score",
+        "objectiveProfile": "timed",
         "shields": [
           [
             0,
@@ -5539,7 +5545,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -6324,7 +6331,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -6951,7 +6959,8 @@
           "verifiedChocolate": 8,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -7732,7 +7741,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -8519,7 +8529,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     },
@@ -9156,7 +9167,8 @@
           "verifiedChocolate": 0,
           "verifiedLiquorice": 0,
           "verifiedMarmalade": 0,
-          "verifiedFrosting": 0
+          "verifiedFrosting": 0,
+          "verifiedDelivery": 0
         }
       }
     }

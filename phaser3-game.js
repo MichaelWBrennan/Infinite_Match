@@ -41,6 +41,40 @@ const RESOURCE_CONFIG = window.RESOURCE_CONFIG || {
 const allThemeUrls = window.allThemeUrls || (() => []);
 const allUiUrls = window.allUiUrls || (() => []);
 
+// Code splitting: lazy-load non-critical scripts on first access.
+// These provide global objects that are not needed at launch but are
+// required later (audio, location/weather context, platform SDKs).
+
+/** Lazy-load sound-effects.js and return the InfiniteSoundEffects API. */
+async function _getSoundEffects() {
+    if (window.InfiniteSoundEffects) return window.InfiniteSoundEffects;
+    const lazyLoad = window.lazyLoad;
+    if (lazyLoad) {
+        try { await lazyLoad('sound-effects'); } catch (e) { console.warn('Lazy load sound-effects failed:', e.message); }
+    }
+    return window.InfiniteSoundEffects || null;
+}
+
+/** Lazy-load level-location.js and return the InfiniteLevelLocation API. */
+async function _getLevelLocation() {
+    if (window.InfiniteLevelLocation) return window.InfiniteLevelLocation;
+    const lazyLoad = window.lazyLoad;
+    if (lazyLoad) {
+        try { await lazyLoad('level-location'); } catch (e) { console.warn('Lazy load level-location failed:', e.message); }
+    }
+    return window.InfiniteLevelLocation || null;
+}
+
+/** Lazy-load platform-detection.js and return the PlatformDetector class. */
+async function _getPlatformDetector() {
+    if (window.PlatformDetector) return window.PlatformDetector;
+    const lazyLoad = window.lazyLoad;
+    if (lazyLoad) {
+        try { await lazyLoad('platform-detection'); } catch (e) { console.warn('Lazy load platform-detection failed:', e.message); }
+    }
+    return window.PlatformDetector || null;
+}
+
 // Overlay objects are boxes or texts. A button's label is kept on the box, so both go together.
 function destroyOverlayObjects(objects) {
     (objects || []).forEach((obj) => {
@@ -83,8 +117,8 @@ function dailyChallengeLevel(dateString) {
 }
 
 // Power-ups that need a tapped gem. They arm on press and fire on the next tap.
-const TARGETED_POWERUPS = ['diamond', 'target', 'star'];
-const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star'];
+const TARGETED_POWERUPS = ['diamond', 'target', 'star', 'swap', 'crush'];
+const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star', 'swap', 'crush'];
 
 // Checkpoints are a presentation convenience, not a new reward rule. The server still
 // enforces its three-hour attempt lifetime and the 300-coin / 500-XP payout caps.
@@ -122,6 +156,7 @@ class PhaserMatch3Game {
         this.achievements = [];
         this.settings = {
             music: false,
+            musicVolume: 0.5,
             sfx: false,
             soundChoiceVersion: 1,
             soundVolume: 0.55,
@@ -168,15 +203,57 @@ class PhaserMatch3Game {
         this.streamedTextures = new Map(); // themeId -> bool (streamed texture available)
         this.streamedUiTextures = new Map(); // uiName -> bool
         this.pendingStreaming = null;
-        
+
+        // Game worker proxy: offloads CPU-intensive logic to Web Worker thread.
+        this.gameWorker = window.gameWorker || new (window.GameWorkerProxy)();
+
+        // Object pools: zero-GC gameplay object recycling.
+        // spritePool holds reusable Phaser sprite Game Objects to avoid
+        // create/destroy churn during cascades and refills.
+        this.spritePool = []; // Array of available Phaser sprites
+        this._poolsInitialized = false;
+
+        // Texture atlas: single atlas for all gem frames, reducing draw calls.
+        this.textureAtlas = null;
+
+        // Performance monitor: tracks FPS, latency, memory.
+        this.perfMonitor = window.perfMonitor;
+
+        // Code splitting: kick off lazy loading of non-critical feature scripts
+        // in the background so they're ready when needed without blocking initial load.
+        this._lazyLoadPromise = this._loadLazyScripts();
+
         this.init();
+    }
+
+    // Lazy-load non-critical feature scripts in the background.
+    async _loadLazyScripts() {
+        const lazyLoad = window.lazyLoad;
+        if (!lazyLoad) return;
+        try {
+            // Load match-feedback and assistive-board early (needed during create() / mount())
+            await lazyLoad(['match-feedback', 'assistive-board']);
+        } catch (e) {
+            console.warn('Lazy load of early feature scripts failed:', e.message);
+        }
+        // kingdom-scene is loaded on demand when the player opens the kingdom
+        // win-queue and score-challenge-card are loaded on demand later
     }
 
     init() {
         console.log('🎮 Initializing Phaser 3 Match-3 Game...');
         const self = this;
         this.loadUserData(); // Local preferences are available on the title, not only after Play.
-        this.soundEffects = window.InfiniteSoundEffects?.create(this.settings) || null;
+        // Lazy-load sound effects (audio is opt-in and off by default).
+        void _getSoundEffects();
+        if (window.InfiniteSoundEffects) {
+            this.soundEffects = window.InfiniteSoundEffects.create(this.settings);
+            if (this.settings.music) {
+                try { this.soundEffects.playMusic('gameplay'); } catch { /* Music is optional; play continues silently. */ }
+            }
+        } else {
+            this.soundEffects = null;
+        }
         this.playerUI = window.InfinitePlayerExperience?.mount(this, document.getElementById('phaser-game-container')) || null;
         
         // Initialize Phaser 3 game
@@ -240,16 +317,32 @@ class PhaserMatch3Game {
         this.fetchAdConfig();
 
         // Background prefetch remaining themes during idle time.
+        // Defer when frames are over budget; skip entirely when hard-paused or on slow connections.
         const remaining = allThemeUrls(this.config).map((t) => ({
             url: t.url, type: 'blob', priority: 'background',
         }));
-        if (remaining.length) {
+        const connection = this.perfMonitor ? this.perfMonitor.getConnectionInfo() : null;
+        const skipBackgroundPrefetch = connection
+            ? connection.lowBandwidthMode || connection.quality === 'slow'
+            : false;
+        if (remaining.length && (!this.perfMonitor || !this.perfMonitor.shouldDeferWork()) && !skipBackgroundPrefetch) {
             void this.resourceStreamer.prefetchBackground(remaining);
+        } else if (remaining.length) {
+            if (skipBackgroundPrefetch) {
+                console.log('📶 Skipping background prefetch: slow connection / data saver');
+            } else {
+                console.log('⏸️ Deferring background prefetch: frames over budget');
+            }
         }
 
         // Apply streamed textures as they arrive (non-blocking).
-        void this.applyStreamedTextures();
-        void this.applyStreamedUiTextures();
+        // Skip when hard-paused to protect gameplay frame time.
+        if (!this.perfMonitor || !this.perfMonitor.isHardPaused()) {
+            void this.applyStreamedTextures();
+            void this.applyStreamedUiTextures();
+        } else {
+            console.log('⏸️ Pausing texture application: frames hard-paused');
+        }
     }
 
     createGemTextures() {
@@ -265,6 +358,30 @@ class PhaserMatch3Game {
                 context.textAlign = 'center'; context.textBaseline = 'middle';
                 context.fillText(String(shield), 52, 12); context.restore();
             };
+
+            // Build a texture atlas so all gem frames share one texture,
+            // letting Phaser batch sprites and cut draw calls dramatically.
+            // Falls back to individual textures if TextureAtlas isn't available
+            // (e.g. VM-sandboxed test execution).
+            if (window.TextureAtlas) {
+                this.textureAtlas = new (window.TextureAtlas)(this.scene, {
+                    size: 64,
+                    padding: 2,
+                    maxAtlasSize: 2048,
+                });
+                void this.textureAtlas.buildFromVisuals(
+                    window.InfinitePlayerExperience.visuals,
+                    window.InfinitePlayerExperience.specialTypes,
+                    window.InfinitePlayerExperience.drawGem,
+                    drawShieldFrame
+                );
+
+                // Shield overlays are drawn directly into atlas frames by buildFromVisuals.
+                // No separate shield textures needed.
+                return;
+            }
+
+            // Fallback: individual canvas textures (VM sandbox, no TextureAtlas).
             for (const shield of [1, 2]) {
                 const overlay = this.scene.textures.createCanvas(`shield_overlay_${shield}`, 64, 64);
                 drawShieldFrame(overlay.getContext(), shield);
@@ -337,7 +454,19 @@ class PhaserMatch3Game {
         graphics.fillStyle(0xffd700);  // --im-gold
         graphics.fillRect(0, 0, 64, 64);
         graphics.generateTexture('powerup_star', 64, 64);
-        
+
+        // Rocket: clears a full row — blue with a tail
+        graphics.clear();
+        graphics.fillStyle(0x00cec9);  // --im-tile-cyan
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_rocket', 64, 64);
+
+        // Color bomb: clears all gems of one color — black with colored swirl
+        graphics.clear();
+        graphics.fillStyle(0x2d3436);  // --im-dark
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.generateTexture('powerup_color_bomb', 64, 64);
+
         graphics.destroy();
     }
 
@@ -453,6 +582,53 @@ class PhaserMatch3Game {
 
     create() {
         console.log('🎯 Creating Phaser 3 game scene...');
+
+        // Initialize sprite object pool for zero-GC gameplay.
+        // Pre-warm Phaser sprite Game Objects so cascades and refills
+        // never create/destroy Game Objects mid-play.
+        if (!this._poolsInitialized) {
+            while (this.spritePool.length < 32) {
+                const sprite = this.scene.add.image(0, 0, 'gem_red');
+                sprite.setVisible(false);
+                sprite.setActive(false);
+                this.spritePool.push(sprite);
+            }
+            this._poolsInitialized = true;
+        }
+
+        // Register sprite pool size with perf monitor for memory leak detection.
+        const perfMonitor = this.perfMonitor;
+        if (perfMonitor && typeof perfMonitor.registerPoolSize === 'function') {
+            perfMonitor.registerPoolSize('spritePool', this.spritePool.length);
+        }
+
+        // Start performance monitoring.
+        if (this.perfMonitor && !this.perfMonitor._rafId) {
+            this.perfMonitor.start();
+        }
+
+        // Initialize performance overlay (Ctrl+Shift+P to toggle).
+        if (window.perfOverlay && !this._perfOverlayInit) {
+            window.perfOverlay.init(this.perfMonitor);
+            this._perfOverlayInit = true;
+        }
+
+        // Visibility change: pause non-essential work when tab is hidden
+        // to save CPU/battery, resume when visible again.
+        if (!this._visibilityBound) {
+            this._visibilityBound = true;
+            const onVisibilityChange = () => {
+                if (document.hidden) {
+                    // Tab hidden: stop perf monitor RAF, pause background work
+                    this.perfMonitor?.stop();
+                } else {
+                    // Tab visible: restart perf monitor
+                    this.perfMonitor?.start();
+                }
+            };
+            window.addEventListener('visibilitychange', onVisibilityChange);
+        }
+
         if (!this.onlineFlushBound) {
             this.onlineFlushBound = true;
             window.addEventListener('online', () => { this.flushPendingWins().catch(() => {}); });
@@ -509,6 +685,25 @@ class PhaserMatch3Game {
         this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
         this.overlayButton(400, 460, 300, 55, 0xe09d54, 'Today’s Local Level', () => this.startDaily());
         if (this.playerUI) this.overlayButton(400, 530, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
+
+        // Performance-based quality adjustment after first frame.
+        setTimeout(() => this.checkPerformanceAndAdjustQuality(), 2000);
+    }
+
+    // Adjust rendering quality based on measured performance score (0-100).
+    checkPerformanceAndAdjustQuality() {
+        if (!this.perfMonitor) return;
+        const report = this.perfMonitor.getReport();
+        const score = report.score;
+        if (score < 40) {
+            // Low-end device: reduce particle count, disable screen shake, lower animation fidelity.
+            this.animationsReduced = () => true;
+            console.log('📉 Low performance score (', score, '): enabling reduced-motion mode.');
+        } else if (score < 70) {
+            console.log('📊 Medium performance score (', score, '): standard quality.');
+        } else {
+            console.log('🚀 High performance score (', score, '): full quality.');
+        }
     }
 
     // Opens the DOM login modal. It sits above the canvas (z-index 2000).
@@ -598,7 +793,14 @@ class PhaserMatch3Game {
         this.gemSprites = Array.from({ length: n }, () => new Array(n).fill(null));
         this.specials = this.usesEarnedSpecials() ? (this.generatedLevel.specials || globalThis.InfiniteLevels.blankSpecials(n)).map((row) => row.slice()) : null;
         this.shields = this.generatedLevel?.generatorVersion >= 5 ? this.generatedLevel.shields.map((row) => row.slice()) : null;
+        // blockers are an overlay drawn on top of gems, not a gem replacement.
         this.blockers = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.blockers ? this.generatedLevel.blockers.map((row) => row.slice()) : null;
+        this.lockedGems = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.lockedGems ? this.generatedLevel.lockedGems.map((row) => row.slice()) : null;
+        this.jelly = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.jelly ? this.generatedLevel.jelly.map((row) => row.slice()) : null;
+        this.chocolate = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.chocolate ? this.generatedLevel.chocolate.map((row) => row.slice()) : null;
+        this.liquorice = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.liquorice ? this.generatedLevel.liquorice.map((row) => row.slice()) : null;
+        this.marmalade = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.marmalade ? this.generatedLevel.marmalade.map((row) => row.slice()) : null;
+        this.frosting = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.frosting ? this.generatedLevel.frosting.map((row) => row.slice()) : null;
 
         if (this.generatedLevel) {
             this.board = this.generatedLevel.board.map((row) => row.slice());
@@ -614,39 +816,109 @@ class PhaserMatch3Game {
                 this.gemSprites[row][col] = this.createGemSprite(row, col, this.board[row][col]);
             }
         }
-        this.renderBlockers();
+        this.renderTerrain();
         this.playerUI?.assistiveBoard?.sync();
     }
 
-    /** Rules v6 is a playtest opt-in: a classic request with ?blockers=1. The server still decides. */
+    /** Rules v6 is the default generator version for all classic levels. */
     requestedRulesVersion(mode) {
-        let playtest = false;
-        try { playtest = mode === 'classic' && new URLSearchParams(window.location.search).get('blockers') === '1'; } catch (error) { playtest = false; }
-        return playtest ? 6 : globalThis.InfiniteLevels.GENERATOR_VERSION;
+        return globalThis.InfiniteLevels.GENERATOR_VERSION;
     }
 
-    /** v6 blockers are an overlay: the gem underneath stays playable. Drawn only when present. */
+    /** Render all v6 obstacle overlays on top of gems. Only the family present
+     *  in the current level is drawn; others are null. */
+    // Backward-compatible wrapper: renders only the blocker overlay.
     renderBlockers() {
-        if (!this.blockers && !this.blockerLayer?.active) return;
-        if (!this.blockerLayer?.active) this.blockerLayer = this.scene.add.graphics().setDepth(3);
-        this.blockerLayer.clear();
-        if (!this.blockers) return;
-        this.blockers.forEach((row, r) => row.forEach((on, c) => {
+        const grid = this.blockers;
+        const gfx = this.blockerLayer;
+        if (!grid && !gfx?.active) return;
+        if (!gfx?.active) this.blockerLayer = this.scene.add.graphics().setDepth(3);
+        const g = this.blockerLayer;
+        g.clear();
+        if (!grid) return;
+        const fill = 0x0b1020; const stroke = 0xffd166;
+        grid.forEach((row, r) => row.forEach((on, c) => {
             if (!on) return;
             const x = this.cellX(c) - this.gemSize / 2;
             const y = this.cellY(r) - this.gemSize / 2;
-            this.blockerLayer.fillStyle(0x0b1020, 0.62).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
-            this.blockerLayer.lineStyle(3, 0xffd166, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+            g.fillStyle(fill, 0.55).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+            g.lineStyle(3, stroke, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
         }));
+    }
+
+    renderTerrain() {
+        const layers = [
+            { layer: 'blockerLayer', grid: this.blockers, fill: 0x0b1020, stroke: 0xffd166, symbol: 'B' },
+            { layer: 'lockedLayer', grid: this.lockedGems, fill: 0x2c3e50, stroke: 0xf1c40f, symbol: 'L' },
+            { layer: 'jellyLayer', grid: this.jelly, fill: 0x3498db, stroke: 0x2980b9, symbol: 'J' },
+            { layer: 'chocolateLayer', grid: this.chocolate, fill: 0x5d4037, stroke: 0x3e2723, symbol: 'C' },
+            { layer: 'liquoriceLayer', grid: this.liquorice, fill: 0x1a1a1a, stroke: 0x4a4a4a, symbol: 'Q' },
+            { layer: 'marmaladeLayer', grid: this.marmalade, fill: 0xff9800, stroke: 0xf57c00, symbol: 'M' },
+            { layer: 'frostingLayer', grid: this.frosting, fill: 0xe3f2fd, stroke: 0x90caf9, symbol: 'F' },
+        ];
+        for (const { layer, grid, fill, stroke, symbol } of layers) {
+            const gfx = this[layer];
+            if (!grid && !gfx?.active) continue;
+            if (!gfx?.active) this[layer] = this.scene.add.graphics().setDepth(3);
+            const g = this[layer];
+            g.clear();
+            if (!grid) continue;
+            grid.forEach((row, r) => row.forEach((on, c) => {
+                if (!on) return;
+                const x = this.cellX(c) - this.gemSize / 2;
+                const y = this.cellY(r) - this.gemSize / 2;
+                g.fillStyle(fill, 0.55).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+                g.lineStyle(3, stroke, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
+                // Draw the obstacle symbol in the center of the cell.
+                g.fillStyle(stroke, 0.9);
+                g.fillRect(x + this.gemSize * 0.4, y + this.gemSize * 0.4, this.gemSize * 0.2, this.gemSize * 0.2);
+            }));
+        }
     }
 
     usesEarnedSpecials() {
         return this.generatedLevel?.generatorVersion >= 3 && !!globalThis.InfiniteLevels?.simulateSpecialMove;
     }
 
+    /**
+     * Return the texture key for a gem type/special/shield combination.
+     * Backward-compatible string return: when the atlas is unavailable this is
+     * an individual canvas texture key. When the atlas is built, returns the
+     * atlas frame key (used with atlas texture name 'gem_atlas').
+     * Callers that need the texture name separately should use gemTextureDescriptor().
+     */
     gemTexture(type, special = null, shield = 0) {
+        const descriptor = this.gemTextureDescriptor(type, special, shield);
+        return descriptor.frame ? descriptor.frame : descriptor.texture;
+    }
+
+    /**
+     * Return the full texture descriptor { texture, frame } for a gem.
+     * When the atlas is built: { texture: 'gem_atlas', frame: '<frameKey>' }.
+     * Fallback: { texture: '<individualKey>', frame: null }.
+     */
+    gemTextureDescriptor(type, special = null, shield = 0) {
+        if (this.textureAtlas && this.textureAtlas.built && this.textureAtlas.hasFrame(type, special, shield)) {
+            const descriptor = this.textureAtlas.textureFor(type, special, shield);
+            return { texture: descriptor.texture, frame: descriptor.frame };
+        }
+        // Fallback: individual canvas texture key.
         const base = special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
-        return shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
+        const key = shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
+        return { texture: key, frame: null };
+    }
+
+    /**
+     * Apply a gem texture to a sprite, handling both atlas frames and
+     * individual texture keys. Use this instead of setTexture(gemTexture(...)).
+     */
+    applyGemTexture(sprite, type, special = null, shield = 0) {
+        const { texture, frame } = this.gemTextureDescriptor(type, special, shield);
+        if (frame) {
+            sprite.setTexture(texture, frame);
+        } else {
+            sprite.setTexture(texture);
+        }
     }
 
     activateEarnedSpecial(row, col) {
@@ -657,7 +929,10 @@ class PhaserMatch3Game {
     commitEarnedAction(cells) {
         if (!this.canInteractWithBoard()) return null;
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
-            { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers, refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
+            { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers,
+              locked: this.lockedGems, jelly: this.jelly, chocolate: this.chocolate, liquorice: this.liquorice,
+              marmalade: this.marmalade, frosting: this.frosting,
+              refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
             this.playerUI?.announce('That swap does not make a match. No move spent.');
@@ -682,22 +957,30 @@ class PhaserMatch3Game {
         }));
         const free = previous.flat().filter((sprite) => !kept.has(sprite));
         const drops = new Array(this.boardSize).fill(0);
-        this.board = result.board; this.specials = result.specials; if (result.shields) this.shields = result.shields; this.levelRng.state = result.refillState;
+        this.board = result.board; this.specials = result.specials;
+        if (result.shields) this.shields = result.shields;
+        if (result.blockers) this.blockers = result.blockers;
+        if (result.locked) this.lockedGems = result.locked;
+        if (result.jelly) this.jelly = result.jelly;
+        if (result.chocolate) this.chocolate = result.chocolate;
+        if (result.liquorice) this.liquorice = result.liquorice;
+        if (result.marmalade) this.marmalade = result.marmalade;
+        if (result.frosting) this.frosting = result.frosting;
+        this.levelRng.state = result.refillState;
         this.gemSprites = result.board.map((row, r) => row.map((type, c) => {
             const origin = result.origins[r][c];
             const [oldRow, oldCol] = origin ? origin.split(',').map(Number) : [];
             const sprite = origin ? previous[oldRow][oldCol] : free.shift();
             this.scene.tweens.killTweensOf(sprite);
             if (!origin) sprite.setPosition(this.cellX(c), this.cellY(-1 - drops[c]++));
-            sprite.setTexture(this.gemTexture(type, this.specials[r][c], this.shields?.[r]?.[c]));
+            this.applyGemTexture(sprite, type, this.specials[r][c], this.shields?.[r]?.[c]);
             sprite.setData('type', type); sprite.setData('special', this.specials[r][c]);
             sprite.setVisible(true); sprite.setAlpha(1); sprite.setScale(this.gemScale); sprite.clearTint();
             this.placeSprite(sprite, r, c, animateFallback);
             return sprite;
         }));
         if (result.objectiveProgress) this.objectiveProgress = result.objectiveProgress;
-        if (result.blockers) this.blockers = result.blockers;
-        this.renderBlockers();
+        this.renderTerrain();
         if (result.blockerSpread) {
             const [spreadRow, spreadCol] = result.blockerSpread.split(',').map(Number);
             this.playerUI?.announce?.(`A blocker spread to row ${spreadRow + 1}, column ${spreadCol + 1}.`);
@@ -790,6 +1073,11 @@ class PhaserMatch3Game {
     }
 
     handleBoardKey(event) {
+        if (event.key.toLowerCase() === 'm' && event.ctrlKey && !event.altKey && !event.metaKey) {
+            event.preventDefault(); event.stopPropagation();
+            if (!event.repeat) this.setMusic(!this.settings.music, event);
+            return;
+        }
         if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             event.preventDefault(); event.stopPropagation();
             if (!event.repeat) this.setSoundEffects(!this.settings.sfx, event);
@@ -839,8 +1127,55 @@ class PhaserMatch3Game {
         return cells;
     }
 
+    /** Acquire a Phaser sprite from the zero-GC pool, creating one only if the pool is empty. */
+    acquireSprite() {
+        if (!this.spritePool) this.spritePool = [];
+        let sprite = this.spritePool.pop();
+        if (!sprite) {
+            sprite = this.scene.add.image(0, 0, 'gem_red');
+        }
+        if (typeof sprite.setVisible === 'function') sprite.setVisible(true);
+        if (typeof sprite.setActive === 'function') sprite.setActive(true);
+        this._registerSpritePoolSize();
+        return sprite;
+    }
+
+    /** Return a sprite to the zero-GC pool, resetting its state for reuse. */
+    releaseSprite(sprite) {
+        if (!sprite) return;
+        if (!this.spritePool) this.spritePool = [];
+        // Remove input listeners so old gestures don't fire on a reused sprite.
+        if (typeof sprite.off === 'function') sprite.off('pointerdown');
+        if (typeof sprite.removeInteractive === 'function') sprite.removeInteractive();
+        if (typeof sprite.setVisible === 'function') sprite.setVisible(false);
+        if (typeof sprite.setActive === 'function') sprite.setActive(false);
+        if (typeof sprite.setPosition === 'function') sprite.setPosition(0, 0);
+        if (typeof sprite.setScale === 'function') sprite.setScale(1);
+        if (typeof sprite.setAlpha === 'function') sprite.setAlpha(1);
+        if (typeof sprite.clearTint === 'function') sprite.clearTint();
+        if (typeof sprite.setData === 'function') {
+            sprite.setData('row', null);
+            sprite.setData('col', null);
+            sprite.setData('type', null);
+            sprite.setData('special', null);
+        }
+        this.spritePool.push(sprite);
+        this._registerSpritePoolSize();
+    }
+
+    /** Report the current sprite pool size to the perf monitor for leak detection. */
+    _registerSpritePoolSize() {
+        const perfMonitor = this.perfMonitor;
+        if (perfMonitor && typeof perfMonitor.registerPoolSize === 'function') {
+            perfMonitor.registerPoolSize('spritePool', this.spritePool ? this.spritePool.length : 0);
+        }
+    }
+
     createGemSprite(row, col, type) {
-        const gem = this.scene.add.image(this.cellX(col), this.cellY(row), this.gemTexture(type, this.specials?.[row]?.[col], this.shields?.[row]?.[col]));
+        const { texture, frame } = this.gemTextureDescriptor(type, this.specials?.[row]?.[col], this.shields?.[row]?.[col]);
+        const gem = this.acquireSprite();
+        if (frame) gem.setTexture(texture, frame); else gem.setTexture(texture);
+        gem.setPosition(this.cellX(col), this.cellY(row));
         gem.setScale(this.gemScale);
         // Full cell hit area; shape/symbol is visual, not a smaller touch target.
         if (this.playerUI && window.Phaser?.Geom) gem.setInteractive(new Phaser.Geom.Rectangle(-3, -3, 70, 70), Phaser.Geom.Rectangle.Contains);
@@ -891,6 +1226,24 @@ class PhaserMatch3Game {
         return found;
     }
 
+    // Off-main-thread match detection via Web Worker when available,
+    // with synchronous fallback for VM-sandboxed / worker-blocked environments.
+    async findMatchesAsync() {
+        if (this.gameWorker) {
+            try {
+                const matches = await this.gameWorker.findMatches(this.board);
+                if (matches) {
+                    const found = new Set();
+                    for (const cell of matches || []) found.add(`${cell[0]},${cell[1]}`);
+                    return found;
+                }
+            } catch (e) {
+                // Fall through to synchronous path
+            }
+        }
+        return this.findMatches();
+    }
+
     hasPossibleMove() {
         if (this.usesEarnedSpecials()) return this.specials.some((row) => row.some(Boolean)) || globalThis.InfiniteLevels.legalSwaps(this.board).length > 0;
         const n = this.boardSize;
@@ -927,7 +1280,7 @@ class PhaserMatch3Game {
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
                 const sprite = this.gemSprites[r][c];
-                sprite.setTexture(`gem_${this.board[r][c]}`);
+                this.applyGemTexture(sprite, this.board[r][c]);
                 sprite.setData('type', this.board[r][c]);
             }
         }
@@ -1086,7 +1439,10 @@ class PhaserMatch3Game {
             this.board[r][c] = null;
             const sprite = this.gemSprites[r][c];
             this.scene.tweens.killTweensOf(sprite);
-            if (this.animationsReduced()) { sprite.setVisible(false); return; }
+            if (this.animationsReduced()) {
+                sprite.setVisible(false);
+                return;
+            }
             this.scene.tweens.add({
                 targets: sprite,
                 alpha: 0,
@@ -1126,7 +1482,7 @@ class PhaserMatch3Game {
                     this.board[row][col] = type;
                     this.gemSprites[row][col] = sprite;
                     this.scene.tweens.killTweensOf(sprite);
-                    sprite.setTexture(`gem_${type}`);
+                    this.applyGemTexture(sprite, type);
                     sprite.setAlpha(1);
                     sprite.setScale(this.gemScale);
                     sprite.setVisible(true);
@@ -1169,7 +1525,7 @@ class PhaserMatch3Game {
         if (this.mode === 'endless' && this.generatedLevel) {
             if (this.hasWonLevel()) {
                 if (this.shouldCheckpointEndless()) this.endGame(false, true);
-                else this.advanceEndlessStage();
+                else void this.advanceEndlessStage();
             }
             return;
         }
@@ -1258,6 +1614,47 @@ class PhaserMatch3Game {
         const keys = new Set();
         for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
         this.clearAndCascade(keys, 300, 'beam', { type: 'lightning', target: [0, col] });
+    }
+
+    activateRocket() {
+        // Clears one full row.
+        const row = Math.floor(Math.random() * this.boardSize);
+        const keys = new Set();
+        for (let c = 0; c < this.boardSize; c++) keys.add(`${row},${c}`);
+        this.clearAndCascade(keys, 300, 'beam', { type: 'rocket', target: [row, 0] });
+    }
+
+    activateColorBomb() {
+        // Clears all gems of a random color present on the board.
+        const n = this.boardSize;
+        const colorCounts = {};
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const gem = this.gemSprites?.[r]?.[c];
+                if (!gem) continue;
+                const type = gem.getData?.('type');
+                if (type) colorCounts[type] = (colorCounts[type] || 0) + 1;
+            }
+        }
+        const colors = Object.keys(colorCounts);
+        if (!colors.length) return;
+        const targetColor = colors[Math.floor(Math.random() * colors.length)];
+        // Find one cell of that color to use as the replay anchor.
+        let anchor = null;
+        for (let r = 0; r < n && !anchor; r++) {
+            for (let c = 0; c < n && !anchor; c++) {
+                const gem = this.gemSprites?.[r]?.[c];
+                if (gem && gem.getData?.('type') === targetColor) anchor = [r, c];
+            }
+        }
+        const keys = new Set();
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const gem = this.gemSprites?.[r]?.[c];
+                if (gem && gem.getData?.('type') === targetColor) keys.add(`${r},${c}`);
+            }
+        }
+        this.clearAndCascade(keys, 500, 'prism', { type: 'color_bomb', target: anchor });
     }
 
     createUI() {
@@ -1395,7 +1792,7 @@ class PhaserMatch3Game {
             for (const type of ['bomb', 'rainbow', 'lightning']) {
                 const slot = this.playerUI.powerups.get(type); this[`${type}Btn`] = slot.btn; this[`${type}Text`] = slot.text;
             }
-            this.powerButtons = Object.fromEntries(['diamond', 'target', 'star'].map((type) => [type, this.playerUI.powerups.get(type)]));
+            this.powerButtons = Object.fromEntries(['diamond', 'target', 'star', 'swap', 'crush'].map((type) => [type, this.playerUI.powerups.get(type)]));
             return;
         }
         const powerUpY = 530;
@@ -1445,6 +1842,8 @@ class PhaserMatch3Game {
             { type: 'diamond', x: 450, count: 1 },
             { type: 'target', x: 550, count: 1 },
             { type: 'star', x: 650, count: 1 },
+            { type: 'swap', x: 750, count: 1 },
+            { type: 'crush', x: 850, count: 1 },
         ];
         for (const { type, x, count } of targeted) {
             const btn = this.scene.add.image(x, powerUpY, `powerup_${type}`);
@@ -1460,6 +1859,28 @@ class PhaserMatch3Game {
             this.powerButtons = this.powerButtons || {};
             this.powerButtons[type] = { btn, text };
         }
+
+        // Additional instant power-ups: rocket (clears a row) and color bomb (clears all gems of one color).
+        const extra = [
+            { type: 'rocket', x: 750, count: 1, btnProp: 'rocketBtn', textProp: 'rocketText' },
+            { type: 'color_bomb', x: 750, count: 1, y: powerUpY + 60, btnProp: 'colorBombBtn', textProp: 'colorBombText' },
+        ];
+        for (const { type, x, count, y = powerUpY, btnProp, textProp } of extra) {
+            const btn = this.scene.add.image(x, y, `powerup_${type}`);
+            btn.setDisplaySize(50, 50);
+            btn.setInteractive();
+            btn.setData('type', type);
+            btn.setData('count', count);
+            const text = this.scene.add.text(x, y + 40, String(count), {
+                fontSize: '16px',
+                fill: '#ffffff',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5);
+            this[btnProp] = btn;
+            this[textProp] = text;
+            this.powerButtons = this.powerButtons || {};
+            this.powerButtons[type] = { btn, text };
+        }
     }
 
     setupInput() {
@@ -1471,8 +1892,8 @@ class PhaserMatch3Game {
         this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
         this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
         this.lightningBtn.on('pointerdown', () => this.usePowerUp('lightning'));
-        for (const type of ['diamond', 'target', 'star']) {
-            this.powerButtons[type].btn.on('pointerdown', () => this.usePowerUp(type));
+        for (const type of ['diamond', 'target', 'star', 'rocket', 'color_bomb']) {
+            this.powerButtons[type]?.btn?.on('pointerdown', () => this.usePowerUp(type));
         }
     }
 
@@ -1519,12 +1940,10 @@ class PhaserMatch3Game {
 
     // Maps a power-up type to its button and count label.
     powerSlot(type) {
-        const direct = {
-            bomb: { btn: this.bombBtn, text: this.bombText },
-            rainbow: { btn: this.rainbowBtn, text: this.rainbowText },
-            lightning: { btn: this.lightningBtn, text: this.lightningText },
-        };
-        return direct[type] || (this.powerButtons && this.powerButtons[type]) || null;
+        const btn = this[`${type}Btn`];
+        const text = this[`${type}Text`];
+        if (btn) return { btn, text };
+        return (this.powerButtons && this.powerButtons[type]) || null;
     }
 
     setPowerCount(type, count) {
@@ -1539,6 +1958,8 @@ class PhaserMatch3Game {
             case 'bomb': this.activateBomb(); break;
             case 'rainbow': this.activateRainbow(); break;
             case 'lightning': this.activateLightning(); break;
+            case 'rocket': this.activateRocket(); break;
+            case 'color_bomb': this.activateColorBomb(); break;
         }
     }
 
@@ -1653,7 +2074,7 @@ class PhaserMatch3Game {
         this.setSelectedGem(null);
         this.armedPowerUp = type;
         btn.setAlpha(0.5);
-        this.playerUI?.announce({ diamond: 'Color: tap a gem to clear that color.', target: 'Cross: tap a gem to clear it and its neighbours.', star: 'Sweep: tap a gem to clear its row and column.' }[type]);
+        this.playerUI?.announce({ diamond: 'Color: tap a gem to clear that color.', target: 'Cross: tap a gem to clear it and its neighbours.', star: 'Sweep: tap a gem to clear its row and column.', swap: 'Switch: tap two adjacent gems to swap them.', crush: 'Hammer: tap a gem to crush it.' }[type]);
     }
 
     disarmPowerUp() {
@@ -1686,6 +2107,9 @@ class PhaserMatch3Game {
                 keys.add(`${r},${i}`);
                 keys.add(`${i},${c}`);
             }
+        } else if (type === 'crush') {
+            // Crush: just the tapped gem.
+            keys.add(`${r},${c}`);
         }
         return keys;
     }
@@ -1694,11 +2118,39 @@ class PhaserMatch3Game {
         const type = this.armedPowerUp;
         const r = gem.getData('row');
         const c = gem.getData('col');
+        const wasSwap = type === 'swap';
         this.disarmPowerUp();
+
+        if (wasSwap) {
+            // Two-tap swap: first tap stores, second tap spends and swaps.
+            if (!this._swapCells) this._swapCells = [];
+            if (this._swapCells.length === 0) {
+                this._swapCells.push([r, c]);
+                this.armedPowerUp = 'swap'; // re-arm for second tap
+                this.powerButtons[type]?.btn?.setAlpha(0.5);
+                return;
+            }
+            const [[r1, c1]] = this._swapCells;
+            this._swapCells = [];
+            const adjacent = Math.abs(r1 - r) + Math.abs(c1 - c) === 1;
+            this.spendPowerUp(type, () => {
+                if (adjacent) {
+                    const tmp = this.board[r1][c1];
+                    this.board[r1][c1] = this.board[r][c];
+                    this.board[r][c] = tmp;
+                    this.resolveBoard();
+                    this.updateUI();
+                    this.playSound('swap');
+                    this.attemptMoves.push({ type: 'swap', target: [r1, c1, r, c], receiptId: this.powerReceipt?.receiptId });
+                }
+                this.showPowerUpAnimation(type);
+            });
+            return;
+        }
 
         this.spendPowerUp(type, () => {
             const keys = this.powerUpKeys(type, r, c);
-            const points = { diamond: 400, target: 200, star: 250 }[type];
+            const points = { diamond: 400, target: 200, star: 250, crush: 150 }[type];
             this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam', { type, target: [r, c] });
             this.showPowerUpAnimation(type);
         });
@@ -1716,7 +2168,9 @@ class PhaserMatch3Game {
             lightning: '⚡',
             diamond: '💎',
             target: '🎯',
-            star: '🌟'
+            star: '🌟',
+            swap: '🔄',
+            crush: '🔨'
         };
         
         const animation = this.scene.add.text(400, 300, animations[powerType], {
@@ -1949,7 +2403,12 @@ class PhaserMatch3Game {
     // Offline reconciliation (S4). Queued wins are per account (the token's playerId) and are
     // sent again by flushPendingWins: on start, when the browser comes back online, and before a
     // new attempt is spent, because a new spend replaces the server's pending attempt.
-    queueWin(attemptId, body) {
+    async queueWin(attemptId, body) {
+        // Ensure win-queue script is loaded (code splitting: lazy-loaded on demand).
+        const lazyLoad = window.lazyLoad;
+        if (lazyLoad && !window.WinQueue) {
+            try { await lazyLoad('win-queue'); } catch (e) { /* win-queue unavailable */ }
+        }
         const playerId = window.WinQueue ? window.WinQueue.playerIdFromToken(this.getAuthToken()) : '';
         if (!playerId) return;
         window.WinQueue.create(localStorage).add(playerId, attemptId, body, Date.now());
@@ -1957,7 +2416,15 @@ class PhaserMatch3Game {
 
     async flushPendingWins() {
         const token = this.getAuthToken();
-        if (!token || !window.WinQueue || this.flushingWins) return [];
+        if (!token || !window.WinQueue) {
+            // Try to load win-queue on demand.
+            const lazyLoad = window.lazyLoad;
+            if (lazyLoad && !window.WinQueue) {
+                try { await lazyLoad('win-queue'); } catch (e) { return []; }
+            }
+            if (!window.WinQueue) return [];
+        }
+        if (this.flushingWins) return [];
         const playerId = window.WinQueue.playerIdFromToken(token);
         const queue = window.WinQueue.create(localStorage);
         if (!playerId || !queue.pendingFor(playerId, Date.now()).length) return [];
@@ -2095,6 +2562,9 @@ class PhaserMatch3Game {
     }
 
     getLevelLocation() {
+        // Trigger lazy-load of level-location.js in the background (fire-and-forget).
+        // Returns immediately with a fallback; subsequent calls will use the real API.
+        void _getLevelLocation();
         if (window.InfiniteLevelLocation) return window.InfiniteLevelLocation.current();
         return { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', holidayThemes: true };
     }
@@ -2133,6 +2603,8 @@ class PhaserMatch3Game {
                     serverTime = result.data.serverTime;
                 } catch {
                     let context;
+                    // Trigger lazy-load of level-location.js in the background (fire-and-forget).
+                    void _getLevelLocation();
                     if (window.InfiniteLevelLocation) context = window.InfiniteLevelLocation.offlineContext(location);
                     else {
                         const date = new Date();
@@ -2141,7 +2613,25 @@ class PhaserMatch3Game {
                             region: null, hemisphere: 'north', month, holidays: [], offline: true,
                             season: ['winter', 'spring', 'summer', 'autumn'][Math.floor((month % 12) / 3)] };
                     }
-                    definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+
+                    // Try cache manager for cached level definition first.
+                    const cacheManager = window.cacheManager;
+                    if (cacheManager) {
+                        try {
+                            const cached = await cacheManager.getLevelDefinition(number, context, mode);
+                            if (cached) {
+                                definition = cached;
+                                console.log('📦 Level definition served from cache:', number);
+                            } else {
+                                definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                                cacheManager.storeLevelDefinition(number, context, mode, definition).catch(() => {});
+                            }
+                        } catch (e) {
+                            definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                        }
+                    } else {
+                        definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                    }
                 }
             }
             this.endlessTotalScore = 0;
@@ -2168,14 +2658,23 @@ class PhaserMatch3Game {
 
         // Stream the level's theme texture in the background so it's ready
         // before the board renders. Falls back to programmatic rendering.
-        if (definition?.context?.season) {
+        // Defer when frames are over budget; skip entirely when hard-paused or on slow connections.
+        const connection = this.perfMonitor ? this.perfMonitor.getConnectionInfo() : null;
+        const skipThemeStream = connection ? connection.lowBandwidthMode || connection.quality === 'slow' : false;
+        if (definition?.context?.season && (!this.perfMonitor || (!this.perfMonitor.shouldDeferWork() && !this.perfMonitor.isHardPaused())) && !skipThemeStream) {
             void this.streamThemeTexture(definition.context);
+        } else if (definition?.context?.season) {
+            if (skipThemeStream) {
+                console.log('📶 Skipping theme texture stream: slow connection / data saver');
+            } else {
+                console.log('⏸️ Deferring theme texture stream: frames over budget or hard-paused');
+            }
         }
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {
                 if (!sprite) continue;
                 this.scene.tweens.killTweensOf(sprite);
-                if (typeof sprite.destroy === 'function') sprite.destroy();
+                this.releaseSprite(sprite);
             }
         }
         this.closeOverlay();
@@ -2502,6 +3001,27 @@ class PhaserMatch3Game {
         this.soundEffects?.unlock(event);
     }
 
+    setMusic(enabled, event) {
+        this.settings.music = enabled === true && this.getSoundStatus().supported;
+        this.settings.soundChoiceVersion = window.InfiniteSoundEffects?.SETTINGS_VERSION || 1;
+        this.soundEffects?.configure(this.settings);
+        if (this.settings.music) {
+            try { this.soundEffects.playMusic('gameplay'); } catch { /* Music start is optional. */ }
+        } else {
+            this.soundEffects?.stopMusic();
+        }
+        this.saveUserData(); this.playerUI?.refresh();
+        this.playerUI?.announce(this.getSoundStatus().supported ? this.settings.music ? 'Music on.' : 'Music off.' : 'Sound is unavailable in this browser. Play stays silent.');
+        return this.settings.music;
+    }
+
+    setMusicVolume(volume, event) {
+        if (!Number.isFinite(volume)) return;
+        this.settings.musicVolume = Math.max(0, Math.min(1, volume));
+        this.soundEffects?.configure(this.settings);
+        this.saveUserData(); this.playerUI?.refresh();
+    }
+
     async previewSound(event) {
         const accepted = await this.soundEffects?.unlock(event);
         const played = accepted && this.soundEffects.play('test');
@@ -2595,6 +3115,20 @@ class PhaserMatch3Game {
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(data.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
                 console.log('✅ User data loaded');
+                return;
+            }
+
+            // Fallback: try cache manager (IndexedDB) for persisted player state.
+            const cacheManager = window.cacheManager;
+            if (cacheManager) {
+                try {
+                    const cached = await cacheManager.getPlayerState();
+                    if (cached) {
+                        this.achievements = cached.achievements || this.achievements;
+                        this.settings = { ...this.settings, ...cached.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(cached.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
+                        console.log('✅ User data loaded from cache manager');
+                    }
+                } catch (e) { /* ignore cache errors */ }
             }
         } catch (error) {
             console.error('❌ Failed to load user data:', error);
@@ -2613,6 +3147,15 @@ class PhaserMatch3Game {
                 lastSaved: Date.now()
             };
             localStorage.setItem('phaser3_game_data', JSON.stringify(data));
+
+            // Also persist via cache manager for IndexedDB-backed durability.
+            const cacheManager = window.cacheManager;
+            if (cacheManager) {
+                try {
+                    await cacheManager.storePlayerState(data);
+                } catch (e) { /* cache manager unavailable, localStorage is the fallback */ }
+            }
+
             console.log('✅ User data saved');
         } catch (error) {
             console.error('❌ Failed to save user data:', error);
@@ -3015,17 +3558,19 @@ class PhaserMatch3Game {
         this.kingdomSceneData = null;
         this.kingdomFocusChoice = null;
         this.kingdomFocusRoom = false;
+        // Kingdom music while browsing rooms.
+        try { this.soundEffects?.playMusic('kingdom'); } catch { /* Music optional. */ }
         this.createKingdomUI();
     }
 
-    createKingdomUI() {
+    async createKingdomUI() {
         this.openOverlay('Kingdom');
         this.kingdomRowObjects = [];
-        if (this.playerUI?.renderKingdomScene) { this.renderKingdom(); return; }
+        if (this.playerUI?.renderKingdomScene) { await this.renderKingdom(); return; }
         this.kingdomCoinsText = this.overlayText(400, 80, '', { size: 20, color: '#ffd700' });
         this.overlayButton(250, 500, 100, 50, 0x9b59b6, 'Decor', () => this.openDecor());
         this.overlayButton(400, 500, 100, 50, 0x666666, 'Close', () => this.closeKingdom());
-        this.renderKingdom();
+        await this.renderKingdom();
     }
 
     // The decoration screen is its own overlay. It is rebuilt after each action, so it always shows
@@ -3105,15 +3650,15 @@ class PhaserMatch3Game {
         }
     }
 
-    selectKingdomRoom(roomId) {
+    async selectKingdomRoom(roomId) {
         if (!['throne', 'library', 'garden', 'armory', 'gatehouse', 'chapel'].includes(roomId) || roomId === this.kingdomRoomId) return;
         this.kingdomRoomId = roomId;
         this.kingdomFocusChoice = null;
         this.kingdomFocusRoom = true;
         if (this.kingdomSceneData && this.playerUI?.renderKingdomScene) {
-            this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, true));
+            await this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, true));
             this.kingdomFocusRoom = false;
-        } else this.renderKingdom();
+        } else await this.renderKingdom();
     }
 
     kingdomSceneCallbacks(focusChoice = null, focusRoom = false) {
@@ -3160,7 +3705,7 @@ class PhaserMatch3Game {
         if (!this.getAuthToken()) {
             if (this.playerUI?.renderKingdomScene) {
                 this.kingdomSceneData = { guest: true };
-                this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, this.kingdomFocusRoom));
+                await this.playerUI.renderKingdomScene(this.kingdomSceneData, this.kingdomSceneCallbacks(null, this.kingdomFocusRoom));
                 this.kingdomFocusRoom = false;
             }
             return this.setOverlayStatus('Sign in to save room upgrades. Guest puzzles are always playable.');
@@ -3172,7 +3717,7 @@ class PhaserMatch3Game {
             if (!this.activeOverlay || this.activeOverlay !== overlay) return;
             if (this.playerUI?.renderKingdomScene) {
                 this.kingdomSceneData = data;
-                this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice, this.kingdomFocusRoom));
+                await this.playerUI.renderKingdomScene(data, this.kingdomSceneCallbacks(this.kingdomFocusChoice, this.kingdomFocusRoom));
                 this.kingdomFocusChoice = null;
                 this.kingdomFocusRoom = false;
                 return;
@@ -3235,6 +3780,7 @@ class PhaserMatch3Game {
         this.closeOverlay();
         this.currentScreen = 'game';
         this.resumeAfterOverlay();
+        try { this.soundEffects?.playMusic('gameplay'); } catch { /* Music optional. */ }
     }
 
     // Integration with existing game system
@@ -3284,6 +3830,9 @@ class PhaserMatch3Game {
         if (this.isGameRunning) {
             this.startTimer();
         }
+        if (this.settings.music && this.soundEffects) {
+            try { this.soundEffects.playMusic('gameplay'); } catch { /* Music restart is optional. */ }
+        }
         this.playerUI?.refresh();
         this.trackEvent('game_resumed');
     }
@@ -3319,6 +3868,8 @@ class PhaserMatch3Game {
         let stars = 0;
         stars = this.starsFor(this.score);
         this.playSound(stars > 0 ? 'win' : 'loss');
+        // Level-complete music on a win; gameplay music otherwise.
+        try { this.soundEffects?.playMusic(stars > 0 ? 'levelcomplete' : 'gameplay'); } catch { /* Music optional. */ }
         
         this.reportLevelResult(stars);
         this.rewardSubmission = stars > 0 || !this.getAuthToken() || !this.attemptId
@@ -3419,6 +3970,7 @@ class PhaserMatch3Game {
             }
         });
         this.openMenu();
+        try { this.soundEffects?.playMusic('title'); } catch { /* Music optional. */ }
     }
 
     destroy() {

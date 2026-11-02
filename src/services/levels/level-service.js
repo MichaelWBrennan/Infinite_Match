@@ -1,4 +1,13 @@
 import { generateLevel, generationKey, LEVEL_MODES, GENERATOR_VERSION } from './generator.js';
+import { legalSwaps } from './match-core.js';
+import { legalSwapsExcludingLocks, lockedGemCount } from './locked-gem-rules.js';
+import { blockerCount } from './blocker-rules.js';
+import { jellyCount } from './jelly-rules.js';
+import { chocolateCount } from './chocolate-rules.js';
+import { liquoriceCount } from './liquorice-rules.js';
+import { marmaladeCount } from './marmalade-rules.js';
+import { frostingCount } from './frosting-rules.js';
+import { certifyObjectiveLevel } from './objective-rules.js';
 import { LevelInputError, localLevelContext } from './location-context.js';
 import { levelWeatherService } from './weather-context.js';
 import { authoredLevelFor } from './authored/levels.js';
@@ -29,7 +38,8 @@ export function levelForContext(level, mode, context, rulesVersion = GENERATOR_V
   return clone;
 }
 
-/** Convert an authored level definition into the same shape as a generated level. */
+/** Convert an authored level definition into the same shape as a generated level,
+ *  with real certification (witness replay) so quality metrics are genuine. */
 function authoredLevelShape(def, context) {
   const size = def.boardSize;
   const board = def.board ?? dealEmptyBoard(size, def.gemTypes, def.gemWeights);
@@ -42,9 +52,10 @@ function authoredLevelShape(def, context) {
   const liquorice = def.liquorice ?? blankLiquoriceArray(size);
   const marmalade = def.marmalade ?? blankMarmaladeArray(size);
   const frosting = def.frosting ?? blankFrostingArray(size);
-  // Authored levels use v6 rules so they can demonstrate all obstacle families
-  // (shields, blockers, locked gems, jelly, chocolate, liquorice, marmalade, frosting) without being gated behind BLOCKER_LEVELS.
-  return {
+  const delivery = def.delivery ?? blankDeliveryArray(size);
+  const witness = def.witness ?? null;
+
+  const definition = {
     id: `authored-v6-${def.mode}-${def.level}-${context.localDate}`,
     generatorVersion: 6,
     shields,
@@ -55,6 +66,9 @@ function authoredLevelShape(def, context) {
     liquorice,
     marmalade,
     frosting,
+    delivery,
+    specials,
+    witness,
     environmentKey: 'authored',
     level: def.level,
     mode: def.mode,
@@ -74,16 +88,30 @@ function authoredLevelShape(def, context) {
     difficulty: def.difficulty,
     theme: { name: 'Authored Level', background: '#2e2250', accent: '#ffd87a', favorite: 'red' },
     context: { ...context },
-    quality: {
-      initialMatches: 0,
-      legalOpeningMoves: 0,
-      verifiedWithoutBoosters: true,
-      verifiedMoves: def.moves,
-      verifiedScore: def.targetScore,
-      verifiedCollected: {},
-      verifiedObjectives: true,
-    },
   };
+
+  // Certify the authored level by replaying its witness path.
+  // This verifies the level is winnable without boosters and produces real quality metrics.
+  const proof = certifyObjectiveLevel(definition);
+  const quality = {
+    initialMatches: 0,
+    legalOpeningMoves: lockedGems ? legalSwapsExcludingLocks(board, lockedGems).length : legalSwaps(board).length,
+    verifiedWithoutBoosters: true,
+    verifiedMoves: def.moves,
+    verifiedScore: proof.score,
+    verifiedCollected: proof.collected || {},
+    verifiedObjectives: proof.objectivesComplete === true,
+    verifiedBlockers: blockers ? blockerCount(blockers) : 0,
+    verifiedLockedGems: lockedGems ? lockedGemCount(lockedGems) : 0,
+    verifiedJelly: jelly ? jellyCount(jelly) : 0,
+    verifiedChocolate: chocolate ? chocolateCount(chocolate) : 0,
+    verifiedLiquorice: liquorice ? liquoriceCount(liquorice) : 0,
+    verifiedMarmalade: marmalade ? marmaladeCount(marmalade) : 0,
+    verifiedFrosting: frosting ? frostingCount(frosting) : 0,
+    verifiedDelivery: delivery ? deliveryCount(delivery) : 0,
+  };
+
+  return { ...definition, quality };
 }
 
 function dealEmptyBoard(size, palette, weights) {
@@ -131,6 +159,9 @@ function blankMarmaladeArray(size) {
 function blankFrostingArray(size) {
   return Array.from({ length: size }, () => new Array(size).fill(0));
 }
+function blankDeliveryArray(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(null));
+}
 
 /** Synchronous, no-network generation for tooling, tests and calendar-only callers. */
 export function generatedLevel({ level = 1, mode = 'classic', location = {}, rulesVersion = GENERATOR_VERSION } = {}, nowMs = Date.now()) {
@@ -153,9 +184,12 @@ export async function liveGeneratedLevel({ level = 1, mode = 'classic', location
   return levelForContext(level, mode, await liveLevelContext(location, nowMs, weatherService), rulesVersion);
 }
 
-/** Look up an authored level by number and mode. Returns null if none exists. */
-export function authoredLevel(level, mode = 'classic') {
-  return authoredLevelFor(level, mode);
+/** Look up an authored level by number and mode, shaped into a full generated-level
+ *  definition with real certification. Returns null if no authored level exists. */
+export function authoredLevel(level, mode = 'classic', context = { localDate: new Date().toISOString().slice(0, 10) }) {
+  const def = authoredLevelFor(level, mode);
+  if (!def) return null;
+  return authoredLevelShape(def, context);
 }
 
 

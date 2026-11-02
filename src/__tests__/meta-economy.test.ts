@@ -136,7 +136,9 @@ describe('server-priced economy operations', () => {
       milestone: { itemId: 'bomb' },
     });
     const after = await economy.getPlayerEconomy(playerId);
-    expect(after.inventory.powerups.bomb.count).toBe(4);
+    // Level 1 grants bomb x1, level 3 grants bomb x2: 3 initial + 1 + 2 = 6
+    expect(after.inventory.powerups.bomb.count).toBe(6);
+    expect(after.inventory.powerups.crush.count).toBe(1);
     expect(after.kingdom.rooms.throne).toBe(3);
     expect(after.kingdom.renovations).toBe(3);
   });

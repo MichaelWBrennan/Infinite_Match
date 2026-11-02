@@ -2,6 +2,13 @@
    No remote assets, trackers, paid SDKs or alternate match/scoring algorithm. */
 (function (root) {
     'use strict';
+
+    // Code splitting: preload assistive-board in the background (needed during mount()).
+    // kingdom-scene is loaded on demand when the player opens the kingdom.
+    if (typeof window !== 'undefined' && window.lazyLoad) {
+        void window.lazyLoad('assistive-board').catch(() => {});
+    }
+
     const visuals = Object.freeze({
         red: { color: '#ff6384', shape: 'heart', symbol: 'R' },
         blue: { color: '#62baff', shape: 'diamond', symbol: 'B' },
@@ -224,7 +231,7 @@
             <div class="match-player-goal" data-stat="goal"></div>
             <progress class="match-goal-progress" aria-label="Level goal progress" max="100" value="0"></progress>
             <div class="match-player-theme" data-stat="theme"></div>
-            <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection."></div>
+            <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection." style="touch-action: none;"></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="finish-feedback" aria-label="Finish match animation" hidden>Finish <small>ANIMATION</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
                 <p class="match-endless-terms" hidden></p>
@@ -344,6 +351,11 @@
                         : state.state === 'ready' ? 'Sound is on. Test the volume below; M mutes it while the board is focused.'
                             : 'Sound is on but needs a player gesture. Press Test sound; device mute or browser media policy may still silence it.';
             const legacy = document.getElementById('sfx-toggle'); if (legacy) legacy.checked = !!game.settings.sfx;
+            const musicCheckbox = find('[data-music-choice]');
+            if (musicCheckbox) { musicCheckbox.checked = !!game.settings.music; musicCheckbox.disabled = !state.supported && !musicCheckbox.checked; }
+            const musicVolume = find('[data-music-volume]');
+            if (musicVolume) { musicVolume.value = String(Math.round((state.musicVolume ?? 0.5) * 100)); musicVolume.disabled = !state.music || !state.supported; }
+            const musicOutput = find('[data-music-volume-label]'); if (musicOutput) musicOutput.textContent = `${Math.round((state.musicVolume ?? 0.5) * 100)}%`;
         }
         function refresh() {
             renderGoals();
@@ -415,7 +427,18 @@
             button.addEventListener('click', onClick); content.append(button); return proxy(button);
         }
         let kingdomStorySkipped = false;
-        function renderKingdomScene(data, callbacks = {}) {
+        async function renderKingdomScene(data, callbacks = {}) {
+            // Lazy-load kingdom-scene on demand when the player opens the kingdom.
+            if (!root.InfiniteKingdomScene) {
+                try {
+                    const lazyLoad = (typeof window !== 'undefined' && window.lazyLoad);
+                    if (lazyLoad) {
+                        await lazyLoad('kingdom-scene');
+                    }
+                } catch (e) {
+                    console.warn('Failed to lazy-load kingdom-scene:', e.message);
+                }
+            }
             const scene = root.InfiniteKingdomScene;
             if (!scene) return false;
             const view = scene.roomView(data, callbacks.roomId);
@@ -506,6 +529,8 @@
             overlayButton('Play preferences', () => preferences(wasRunning));
             overlayButton(soundLabel(), (event) => { game.setSoundEffects(!game.settings.sfx, event); refresh(); });
             content.lastElementChild.dataset.soundToggle = 'true';
+            overlayButton(game.settings.music ? 'Music on — mute' : 'Music off — enable', (event) => { game.setMusic(!game.settings.music, event); refresh(); });
+            content.lastElementChild.dataset.musicToggle = 'true';
             overlayButton(game.settings.textBoard === true ? 'Use visual board' : 'Use text board', () => {
                 game.settings.textBoard = game.settings.textBoard !== true; game.saveUserData();
                 game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard();
@@ -523,6 +548,41 @@
             loadScoreChallengeLine(challengeLine);
             overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
+            overlayButton('Credits & Attribution', () => { credits(wasRunning); });
+        }
+        function credits(wasRunning = game.isGameRunning && !game.isPaused) {
+            const returnToTitle = !!game.titleShowing;
+            if (wasRunning) game.pauseGame();
+            game.openOverlay('Credits & Attribution');
+            overlayButton(returnToTitle ? 'Back to title' : 'Back to game', () => {
+                game.closeOverlay(); delete game.playerOverlayResume;
+                if (returnToTitle) game.showTitleOverlay();
+                else { if (wasRunning) game.resumeGame(); refresh(); focusBoard(); }
+            });
+            content.lastElementChild.className = 'match-guide-close';
+
+            overlayText('Infinite Match uses free-to-use / Creative Commons assets. Third-party tile sets are credited below; full license texts are in assets/licenses/.');
+
+            overlayText('');
+            overlayText('CC-BY 4.0 tile sets (attribution required):');
+            const tileSets = window.InfiniteLevels?.EVENT_TILE_SETS;
+            if (tileSets) {
+                const ccbySets = Object.values(tileSets).filter((ts) => ts.license === 'CC-BY');
+                for (const ts of ccbySets) {
+                    const p = document.createElement('p');
+                    p.textContent = `${ts.name} (${ts.id}) — Attribution: ${ts.attribution}. Source: ${ts.sourceUrl}`;
+                    content.append(p);
+                }
+            } else {
+                overlayText('diwali_2026 — Attribution: OpenGameArt.org community — https://opengameart.org/content/diwali-gem-tileset');
+                overlayText('lunar_new_year_2027 — Attribution: OpenGameArt.org community — https://opengameart.org/content/lunar-new-year-gem-tileset');
+                overlayText('womens_day_mar — Attribution: OpenGameArt.org community — https://opengameart.org/content/womens-day-gem-tileset');
+            }
+
+            overlayText('');
+            overlayText('CC0 tile sets (no attribution required): Kenney.nl asset packs (Match-3, Winter, Spring, Summer, Autumn, Christmas, Halloween, St. Patrick, Valentine\'s, Easter, Holiday, Blocker, UI).');
+            overlayText('All asset licenses and full license texts: assets/licenses/CC0-1.0.txt and assets/licenses/CC-BY-4.0.txt');
+            overlayText('See THIRD_PARTY_NOTICES.md for the complete third-party asset inventory.');
         }
         // Fills the Explore card with the same wording as the Community events tab. Stale replies are dropped.
         function loadScoreChallengeLine(line) {
@@ -590,6 +650,17 @@
             volumeLabel.append(document.createTextNode('Sound volume'), volume, output); content.append(volumeLabel);
             overlayButton('Test sound', (event) => game.previewSound(event)); content.lastElementChild.dataset.soundTest = 'true';
             overlayText(''); content.lastElementChild.dataset.soundStatus = 'true'; content.lastElementChild.setAttribute('role', 'status');
+            const musicLabel = document.createElement('label'); const musicChoice = document.createElement('input');
+            musicChoice.type = 'checkbox'; musicChoice.dataset.musicChoice = 'true';
+            musicChoice.checked = game.settings.music === true;
+            musicChoice.addEventListener('change', (event) => { game.setMusic(musicChoice.checked, event); refresh(); });
+            musicLabel.append(musicChoice, document.createTextNode('Music (optional, procedural)')); content.append(musicLabel);
+            const musicVolumeLabel = document.createElement('label'); musicVolumeLabel.className = 'match-sound-volume';
+            const musicVolume = document.createElement('input'); musicVolume.type = 'range'; musicVolume.min = '0'; musicVolume.max = '100'; musicVolume.step = '1';
+            musicVolume.dataset.musicVolume = 'true'; musicVolume.setAttribute('aria-label', 'Music volume');
+            const musicOutput = document.createElement('span'); musicOutput.dataset.musicVolumeLabel = 'true'; musicOutput.setAttribute('aria-hidden', 'true');
+            musicVolume.addEventListener('input', (event) => { game.setMusicVolume(Number(musicVolume.value) / 100, event); refresh(); });
+            musicVolumeLabel.append(document.createTextNode('Music volume'), musicVolume, musicOutput); content.append(musicVolumeLabel);
             for (const [key, title] of Object.entries({ textBoard: 'Text board (named cells and larger targets)', highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', haptics: 'Touch vibration' })) {
                 const label = document.createElement('label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
                 checkbox.checked = game.settings[key] === true; checkbox.disabled = key === 'textBoard' && !assistiveBoard; checkbox.addEventListener('change', () => {

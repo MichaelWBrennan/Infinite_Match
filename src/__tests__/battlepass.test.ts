@@ -53,8 +53,8 @@ describe('battle pass config', () => {
 
   test('a reward names a real power-up', () => {
     const raw = baseRaw();
-    raw.tiers[1].premium = { item: 'color_bomb', amount: 1 };
-    expect(validateSeason(raw).errors.join(' ')).toMatch(/unknown item color_bomb/);
+    raw.tiers[1].premium = { item: 'nonexistent_booster', amount: 1 };
+    expect(validateSeason(raw).errors.join(' ')).toMatch(/unknown item nonexistent_booster/);
   });
 
   test('tier XP must rise and tiers must be numbered in order', () => {

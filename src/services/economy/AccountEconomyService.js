@@ -16,7 +16,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { pickWheelReward, ITEM_CATALOG, LEVEL_LIMITS } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import PurchaseLedgerDb from '../payments/PurchaseLedgerDb.js';
-import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier, markRoomCompleted, KINGDOM_MAX_LEVEL } from '../meta/kingdom.js';
+import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier, markRoomCompleted, KINGDOM_MAX_LEVEL, unlockEligibleRooms, isRoomUnlocked } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
 import { LIFE_COST_PER_ATTEMPT, COST_COINS_PER_LIFE, MAX_LIVES, LIFE_REGEN_MINUTES, regenerateLives, nextRegenInMs as nextLifeRegenInMs, spendLife, grantLives } from '../meta/lives.js';
@@ -244,7 +244,9 @@ class AccountEconomyService {
         lightning: { id: 'lightning', name: 'Lightning', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
         target: { id: 'target', name: 'Target Gem', count: 0, maxCount: 99, type: 'powerup', rarity: 'rare' },
         diamond: { id: 'diamond', name: 'Diamond', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
-        star: { id: 'star', name: 'Star', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' }
+        star: { id: 'star', name: 'Star', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
+        swap: { id: 'swap', name: 'Swap', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
+        crush: { id: 'crush', name: 'Crush', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
       },
       boosters: {
         extra_moves: { id: 'extra_moves', name: 'Extra Moves', count: 0, maxCount: 99, type: 'booster', rarity: 'common' },
@@ -1276,6 +1278,13 @@ class AccountEconomyService {
           timestamp: new Date(nowMs).toISOString() });
         this.applyReward(economy, { type: 'currency', currencyId: 'coins', amount: reward.coins });
         this.applyReward(economy, { type: 'currency', currencyId: 'stars', amount: reward.stars });
+        // Star-gated kingdom progression: newly earned lifetime stars may unlock rooms.
+        const kingdom = ensureKingdom(economy);
+        const lifetimeStars = economy.currencies.stars.earned;
+        const { kingdom: updatedKingdom, justUnlocked } = unlockEligibleRooms(kingdom, lifetimeStars, nowMs);
+        if (justUnlocked.length > 0) {
+          economy.kingdom = updatedKingdom;
+        }
         const stats = economy.statistics;
         stats.gamesPlayed++;
         stats.levelsCompleted++;
@@ -1291,6 +1300,7 @@ class AccountEconomyService {
           rewards: [{ type: 'currency', currencyId: 'coins', amount: reward.coins },
             { type: 'currency', currencyId: 'stars', amount: reward.stars }],
           stars, verified: replay?.verified === true, ranked, vip: isVip,
+          ...(justUnlocked.length > 0 ? { justUnlocked } : {}),
           balances: { coins: economy.currencies.coins.amount, stars: economy.currencies.stars.amount },
           statistics: { gamesPlayed: stats.gamesPlayed, levelsCompleted: stats.levelsCompleted,
             totalScore: stats.totalScore, averageScore: stats.averageScore, bestScore: stats.bestScore },

@@ -2,7 +2,7 @@
  * Receipt authorization is deliberately handled by the account service/replayer.
  * This is not a browser RNG proof: random instant-effect locations are client reported.
  */
-export const REPLAY_POWERUPS = Object.freeze(['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star']);
+export const REPLAY_POWERUPS = Object.freeze(['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star', 'rocket', 'color_bomb']);
 
 export function inventoryReplayEffect(definition, state, action) {
   const size = definition.boardSize;
@@ -10,7 +10,9 @@ export function inventoryReplayEffect(definition, state, action) {
   if (!REPLAY_POWERUPS.includes(type) || !Number.isSafeInteger(size) || size < 1 || size > 8) return null;
   const target = action.target;
   if (type === 'rainbow' ? target !== undefined
-    : !Array.isArray(target) || target.length !== 2 || target.some((n) => !Number.isSafeInteger(n) || n < 0 || n >= size)
+    : !Array.isArray(target)
+      || (type === 'swap' ? target.length !== 4 : target.length !== 2)
+      || target.some((n) => !Number.isSafeInteger(n) || n < 0 || n >= size)
       || (type === 'lightning' && target[0] !== 0)) return null;
   const keys = new Set();
   const add = (r, c) => {
@@ -34,7 +36,17 @@ export function inventoryReplayEffect(definition, state, action) {
       for (const [dr, dc] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) add(r + dr, c + dc);
     } else if (type === 'star') {
       for (let i = 0; i < size; i++) { add(r, i); add(i, c); }
+    } else if (type === 'rocket') {
+      // Clears one full row (target[0] is the row).
+      for (let col = 0; col < size; col++) add(r, col);
+    } else if (type === 'color_bomb') {
+      // Clears all gems of the color at the anchor cell.
+      const color = state.board[r]?.[c];
+      if (!color || !definition.gemTypes.includes(color)) return null;
+      for (let row = 0; row < size; row++) for (let col = 0; col < size; col++) {
+        if (state.board[row][col] === color) add(row, col);
+      }
     }
   }
-  return { keys, points: { bomb: 100, rainbow: 500, lightning: 300, diamond: 400, target: 200, star: 250 }[type] };
+  return { keys, points: { bomb: 100, rainbow: 500, lightning: 300, diamond: 400, target: 200, star: 250, rocket: 300, color_bomb: 500 }[type] };
 }
