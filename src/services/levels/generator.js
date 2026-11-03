@@ -16,6 +16,7 @@ import { witnessedLiquorice, liquoriceCount, blankLiquorice } from './liquorice-
 import { witnessedMarmalade, marmaladeCount, blankMarmalade } from './marmalade-rules.js';
 import { witnessedFrosting, frostingCount, blankFrosting } from './frosting-rules.js';
 import { witnessedDelivery, deliveryCount, blankDelivery } from './delivery-rules.js';
+import { witnessedWeatherHazards, weatherHazardCount, blankWeatherHazards, certifyWeatherHazardBoard } from './weather-hazard-rules.js';
 import { composeObjectives, objectiveStatus, objectiveActions, simulateObjectiveMove, certifyObjectiveLevel } from './objective-rules.js';
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from './match-core.js';
 export { SPECIAL_TYPES, blankSpecials, earnedMatches, specialActions, simulateSpecialMove, simulateSpecialClear } from './special-rules.js';
@@ -229,7 +230,20 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-delivery', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-delivery', target: deliveryTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery, objectives: goals.objectives }, proof.score,
+  // V6 weather hazards occupy cells the witness clears, one hazard type per
+  // active weather condition. Storm lightning spreads; other hazards stay put.
+  // Classic only: daily, timed and endless never receive weather hazards.
+  const weatherHazardStage = version >= 6 && !shieldStage && !lockedGemStage && !jellyStage && !blockerStage && !chocolateStage && !liquoriceStage && !marmaladeStage && !frostingStage && !deliveryStage && mode === 'classic' && level >= 3 && environment.hazard;
+  const hazards = version >= 6 ? weatherHazardStage
+    ? witnessedWeatherHazards(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed, environment.hazard)
+    : blankWeatherHazards(size) : null;
+  const hazardsTotal = hazards ? weatherHazardCount(hazards) : 0;
+  if (weatherHazardStage && hazardsTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-weather-hazards', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-weather-hazards', target: hazardsTotal }] };
+  }
+
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery, hazards, objectives: goals.objectives }, proof.score,
     { collected: proof.collected,
       ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}),
       ...(version >= 6 && blockersTotal > 0 ? { blockersCleared: blockersTotal } : {}),
@@ -252,6 +266,7 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
     ...(version >= 6 ? { liquorice } : {}),
     ...(version >= 6 ? { marmalade } : {}),
     ...(version >= 6 ? { frosting } : {}),
+    ...(version >= 6 ? { hazards } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -287,16 +302,18 @@ export function generateLevel(levelNumber, context, mode = 'classic', version = 
       ...(version >= 6 ? { verifiedMarmalade: marmaladeTotal } : {}),
       ...(version >= 6 ? { verifiedFrosting: frostingTotal } : {}),
       ...(version >= 6 ? { verifiedDelivery: deliveryTotal } : {}),
+      ...(version >= 6 && hazardsTotal > 0 ? { verifiedHazards: hazardsTotal } : {}),
     },
     ...(version >= 6 ? { delivery } : {}),
+    ...(version >= 6 ? { hazards } : {}),
     ...(version >= 6 ? { witness: proof.witness } : {}),
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate, liquorice = definition.liquorice, marmalade = definition.marmalade, frosting = definition.frosting, delivery = definition.delivery) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery);
+export function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate, liquorice = definition.liquorice, marmalade = definition.marmalade, frosting = definition.frosting, delivery = definition.delivery, hazards = definition.hazards) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery, hazards);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
