@@ -8,8 +8,8 @@
  * Strategy: Cache First for shell assets, Network First for API calls.
  */
 
-const SHELL_VERSION = 'v2';
-const SHELL_CACHE = 'infinite-match-shell-v4';
+const SHELL_VERSION = 'v4';
+const SHELL_CACHE = 'infinite-match-shell-v6';
 const SHELL = [
   '/',
   '/script.js',
@@ -24,6 +24,8 @@ const SHELL = [
   '/js/object-pool.js',
   '/js/cache-manager.js',
   '/js/procedural-levels.js',
+  '/js/art-direction.js',
+  '/js/texture-atlas.js',
   '/js/pwa-register.js',
   '/js/level-location.js',
   '/js/sound-effects.js',
@@ -33,9 +35,15 @@ const SHELL = [
   '/js/match-feedback.js',
   '/js/score-challenge-card.js',
   '/js/win-queue.js',
+  '/unified.css',
   '/css/fonts.css',
+  '/css/design-tokens.css',
+  '/css/components.css',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-512.png',
+  '/icons/apple-touch-icon.png',
 ];
 
 // Install: precache shell (fetch each URL and put into cache; skip failures)

@@ -198,11 +198,11 @@ export const PRODUCTS: Readonly<{
         }>;
         pvpBooster: true;
     }>;
-    pvp_booster_color_bomb: Readonly<{
+    pvp_booster_spectrum: Readonly<{
         kind: "consumable";
         priceCents: 79;
         currency: "usd";
-        label: "PvP Booster: Color Bomb";
+        label: "PvP Booster: Spectrum";
         grants: Readonly<{
             currency: "coins";
             amount: 0;

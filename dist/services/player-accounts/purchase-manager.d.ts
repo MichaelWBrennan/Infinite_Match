@@ -98,28 +98,28 @@ export class PurchaseManager {
                 isActive: boolean;
                 consumable: boolean;
             };
-            bomb_boost: {
+            blast_boost: {
                 id: string;
                 name: string;
                 type: string;
                 price: number;
                 currency: string;
                 rewards: {
-                    bomb_boost: number;
+                    blast_boost: number;
                 };
                 description: string;
                 category: string;
                 isActive: boolean;
                 consumable: boolean;
             };
-            rainbow_boost: {
+            prism_boost: {
                 id: string;
                 name: string;
                 type: string;
                 price: number;
                 currency: string;
                 rewards: {
-                    rainbow_boost: number;
+                    prism_boost: number;
                 };
                 description: string;
                 category: string;
@@ -328,28 +328,28 @@ export class PurchaseManager {
                 isActive: boolean;
                 consumable: boolean;
             };
-            bomb_boost: {
+            blast_boost: {
                 id: string;
                 name: string;
                 type: string;
                 price: number;
                 currency: string;
                 rewards: {
-                    bomb_boost: number;
+                    blast_boost: number;
                 };
                 description: string;
                 category: string;
                 isActive: boolean;
                 consumable: boolean;
             };
-            rainbow_boost: {
+            prism_boost: {
                 id: string;
                 name: string;
                 type: string;
                 price: number;
                 currency: string;
                 rewards: {
-                    rainbow_boost: number;
+                    prism_boost: number;
                 };
                 description: string;
                 category: string;
@@ -644,28 +644,28 @@ export class PurchaseManager {
                 isActive: boolean;
                 consumable: boolean;
             };
-            bomb_boost: {
+            blast_boost: {
                 id: string;
                 name: string;
                 type: string;
                 price: number;
                 currency: string;
                 rewards: {
-                    bomb_boost: number;
+                    blast_boost: number;
                 };
                 description: string;
                 category: string;
                 isActive: boolean;
                 consumable: boolean;
             };
-            rainbow_boost: {
+            prism_boost: {
                 id: string;
                 name: string;
                 type: string;
                 price: number;
                 currency: string;
                 rewards: {
-                    rainbow_boost: number;
+                    prism_boost: number;
                 };
                 description: string;
                 category: string;

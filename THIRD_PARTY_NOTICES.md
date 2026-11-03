@@ -1,104 +1,38 @@
 # Third-Party Notices
 
-This document lists all third-party assets used in Infinite Match, their licenses,
-and required attributions. It satisfies the attribution requirements of CC-BY 4.0
-and other licenses that mandate credit.
+## Active game assets
 
-## Asset Inventory
+The active web runtime does not load third-party image packs. Gems, shields, terrain,
+boosters, UI icons, and app/brand icons are generated from the canonical project art
+system:
 
-### Match-3 Tile Assets (`assets/match3/`)
+- `public/js/art-direction.js` (`InfiniteArt`, `celestial-facets-v1`)
+- `src/services/levels/tile-sets.js`
+- `scripts/build-art.mjs`
+- exports under `public/art/`, `public/icons/`, `assets/ui/`, and Unity UI icon folders
 
-| Theme | File Count | License | Source | Attribution |
-|-------|-----------|---------|--------|-------------|
-| default | 4,176 | CC0 | Kenney.nl — Match-3 Pack | Kenney.nl |
-| winter | 280 | CC0 | Kenney.nl — Winter Pack | Kenney.nl |
-| spring | 138 | CC0 | Kenney.nl — Spring Pack | Kenney.nl |
-| summer | 132 | CC0 | Kenney.nl — Summer Pack | Kenney.nl |
-| autumn | 381 | CC0 | Kenney.nl — Autumn Pack | Kenney.nl |
-| christmas | 1,005 | CC0 | Kenney.nl — Christmas Pack | Kenney.nl |
-| halloween | 1,005 | CC0 | Kenney.nl — Halloween Pack | Kenney.nl |
-| st_patrick | 1,005 | CC0 | Kenney.nl — St. Patrick's Pack | Kenney.nl |
-| valentines | 1,005 | CC0 | Kenney.nl — Valentine's Pack | Kenney.nl |
-| easter | 150 | CC0 | Kenney.nl — Easter Pack | Kenney.nl |
-| holiday | 100 | CC0 | Kenney.nl — Holiday Pack | Kenney.nl |
-| blocker | 5 | CC0 | Kenney.nl — Match-3 Pack | Kenney.nl |
-| ui | 3 | CC0 | Kenney.nl — UI Pack | Kenney.nl |
+These active assets are original project art under the repository **MIT** license,
+attribution **Infinite Match contributors**.
 
-**Total match-3 PNGs: 9,395**
+## Dormant reference libraries
 
-### Event-Specific Tile Sets (subset of the themes above)
+The repository contains large reference-only image libraries, including:
 
-The following event tile sets reference CC-BY licensed assets from OpenGameArt.org.
-These require attribution in your game's credits:
+- `assets/match3/`
+- `assets_external/`
+- Unity reference texture folders where present
 
-| Tile Set ID | Theme Directory | License | Required Attribution |
-|-------------|----------------|---------|---------------------|
-| `diwali_2026` | `christmas/` (shared) | CC-BY 4.0 | OpenGameArt.org community |
-| `lunar_new_year_2027` | `valentines/` (shared) | CC-BY 4.0 | OpenGameArt.org community |
-| `womens_day_mar` | `valentines/` (shared) | CC-BY 4.0 | OpenGameArt.org community |
+Their provenance is **unverified**. Historical manifests/notes described them as
+likely CC0 from Kenney.nl or CC-BY from OpenGameArt.org, but those were source
+recommendations, not confirmed license grants. They are not loaded by the active web
+runtime and are not covered by the active canonical asset license grant.
 
-All other event tile sets (Sky Race, King's Cup, Lightning Dash, etc.) are assigned CC0
-from Kenney.nl sources.
+Do not publish or redistribute these reference libraries until each asset’s upstream
+source, license, and attribution requirements have been verified and recorded.
 
-### Weather Tile Sets
+## Verified third-party runtime code
 
-All 8 weather tile sets (clear, partly_cloudy, cloudy, rain, snow, sleet, storm, fog)
-are assigned CC0 from Kenney.nl Weather Pack.
-
-### Standalone Holiday Tile Sets
-
-`new_years_day` is assigned CC0 from Kenney.nl Party Pack.
-
-## License Texts
-
-Full license texts are in `assets/licenses/`:
-
-| File | License |
-|------|---------|
-| `assets/licenses/CC0-1.0.txt` | CC0 1.0 Universal (Public Domain) |
-| `assets/licenses/CC-BY-4.0.txt` | Creative Commons Attribution 4.0 International |
-
-## How Attributions Are Tracked in Code
-
-Each tile set in `src/services/levels/tile-sets.js` carries `license`, `sourceUrl`,
-and `attribution` fields. Use `licenseForContext(context)` to retrieve them for
-in-game credits:
-
-```js
-import { licenseForContext } from './src/services/levels/tile-sets.js';
-
-const { license, sourceUrl, attribution } = licenseForContext(context);
-// Example: { license: 'CC-BY', sourceUrl: 'https://opengameart.org/...', attribution: 'OpenGameArt.org community' }
-```
-
-## Asset Directory Manifest
-
-`assets/manifest.json` maps every tile-set ID to its asset directory, with license,
-source URL, and attribution per mapping. It also documents unmapped directories and
-known inconsistencies.
-
-## Important: Verify Before Publishing
-
-The license assignments in this document are **recommendations based on likely sources**
-(Kenney.nl = CC0, OpenGameArt.org = CC-BY). Before releasing your game, you must:
-
-1. **Download actual assets** from the listed sources (I cannot stream external URLs)
-2. **Verify each asset's actual license** on the download page
-3. **Update `tile-sets.js` and `assets/manifest.json`** if the actual license differs
-4. **Include required attributions** in your game's credits screen (mandatory for CC-BY)
-5. **Keep copies of license texts** (`assets/licenses/`) with your distributed assets
-
-## Removed Assets
-
-The following were removed during cleanup because they could not be verified as free use:
-
-| Removed | Reason |
-|---------|--------|
-| `assets/match3/default/candy-tiles.png` | Broken 14-byte file containing "404: Not Found" |
-| `assets/environment/` | Empty placeholder; only contained README referencing Unity Asset Store downloads |
-| `assets/weather/` | Empty placeholder; only contained README referencing Unity Asset Store downloads |
-| `assets/npcs/` | Empty placeholder; only contained README referencing Mixamo downloads |
-
-These directories no longer exist. If you need environment, weather, or NPC assets,
-download them from free/CC sources and add them under `assets/` with proper license
-documentation.
+Third-party JavaScript/runtime libraries remain subject to their own licenses. In
+particular, Phaser is vendored under `public/js/phaser.min.js` and is licensed under
+the MIT license; see its source/header and the repository dependency notices where
+applicable.

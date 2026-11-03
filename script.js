@@ -2300,10 +2300,14 @@ performanceObserver.observe({ entryTypes: ['measure'] });
 
 // Add error handling
 window.addEventListener('error', (e) => {
-    console.error('Game Error:', e.error);
+    // Browsers report benign ResizeObserver delivery warnings as error events.
+    // They do not indicate a game fault and should not spam analytics/console.
+    if (/ResizeObserver loop/i.test(e.message || '')) return;
+    const error = e.error || new Error(e.message || 'Unknown error');
+    console.error('Game Error:', error);
     trackEvent('game_error', {
-        error: e.error.message,
-        stack: e.error.stack,
+        error: error.message,
+        stack: error.stack,
         timestamp: new Date().toISOString()
     });
 });

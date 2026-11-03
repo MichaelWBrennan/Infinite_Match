@@ -4,9 +4,13 @@ export const ENERGY_GIFT_AMOUNT: 1;
 /** Booster gifts (S2): one friend gives one booster to another. Limits are per UTC day,
  * separate from energy. Boosters are more valuable, so the daily cap is lower. */
 export const BOOSTER_GIFT_AMOUNT: 1;
+/** Lives gifts (S2): one friend gives one life to another. Lives are the core retention
+ * resource, so the daily cap matches energy (3 per sender/receiver per day). */
+export const LIVES_GIFT_AMOUNT: 1;
 export const GIFT_DAILY_LIMIT: 3;
 export const BOOSTER_GIFT_DAILY_LIMIT: 1;
-/** Valid gift types: energy (life) and booster. */
+export const LIVES_GIFT_DAILY_LIMIT: 3;
+/** Valid gift types: energy, booster, and lives. */
 export const GIFT_TYPES: string[];
 /** Guild milestone (S3): verified classic/daily wins by a guild's members in one UTC week (Monday start). */
 export const MILESTONE_GOAL: 50;
@@ -52,12 +56,13 @@ export class SocialStore {
     removeFriend(playerId: any, friendId: any): Promise<any>;
     /** Friends and incoming requests. Ids are included only for the player's own list. */
     /**
-     * Records a gift (energy or booster) before it is credited. Checks: friends only, not to yourself,
+     * Records a gift (energy, booster, or lives) before it is credited. Checks: friends only, not to yourself,
      * the sender's and the receiver's daily limits. A repeated giftId from the same pair returns the
      * same gift and counts nothing new, so a retry after a lost response is safe.
      *
-     * giftType: 'energy' (default) or 'booster'. When 'booster', boosterId must be a valid booster id.
-     * Energy and boosters share the same daily limit counters (3 per day per sender/receiver).
+     * giftType: 'energy' (default), 'booster', or 'lives'. When 'booster', boosterId must be a valid booster id.
+     * Energy, boosters, and lives share the same daily limit counters (3 per day per sender/receiver for
+     * energy and lives; 1 per day for boosters).
      */
     reserveEnergyGift(senderId: any, receiverId: any, giftId: any, nowMs?: number, giftType?: string, boosterId?: null): Promise<any>;
     /** Marks a gift as credited with the amount actually added (0 when the receiver was full). */

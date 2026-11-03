@@ -8,6 +8,8 @@
     { "source": "/css/(.*)", "destination": "/public/css/$1" },
     { "source": "/licenses/(.*)", "destination": "/public/licenses/$1" },
     { "source": "/icons/(.*)", "destination": "/public/icons/$1" },
+    { "source": "/art/(.*)", "destination": "/public/art/$1" },
+    { "source": "/unified.css", "destination": "/unified.css" },
     { "source": "/manifest.webmanifest", "destination": "/public/manifest.webmanifest" },
     { "source": "/sw.js", "destination": "/public/sw.js" },
     { "source": "/", "destination": "/index.html" },

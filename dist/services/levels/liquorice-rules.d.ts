@@ -31,6 +31,7 @@ export function certifyLiquoriceBoard(definition: any): {
         [k: string]: any;
     };
     liquoriceCleared: number;
+    witness: any[];
     events: never[];
 };
 export const LIQUORICE_CAP: 6;

@@ -5,13 +5,14 @@
  * the currency it costs and how much. Keep this in step with the shop UI.
  */
 export const ITEM_CATALOG = {
-    bomb: { category: 'powerups', currencyId: 'coins', price: 150 },
-    rocket: { category: 'powerups', currencyId: 'coins', price: 200 },
-    rainbow: { category: 'powerups', currencyId: 'coins', price: 300 },
-    lightning: { category: 'powerups', currencyId: 'coins', price: 300 },
-    diamond: { category: 'powerups', currencyId: 'coins', price: 400 },
-    target: { category: 'powerups', currencyId: 'coins', price: 250 },
-    star: { category: 'powerups', currencyId: 'coins', price: 350 },
+    blast: { category: 'powerups', currencyId: 'coins', price: 150 },
+    ray: { category: 'powerups', currencyId: 'coins', price: 200 },
+    prism: { category: 'powerups', currencyId: 'coins', price: 300 },
+    bolt: { category: 'powerups', currencyId: 'coins', price: 300 },
+    facet: { category: 'powerups', currencyId: 'coins', price: 400 },
+    mark: { category: 'powerups', currencyId: 'coins', price: 250 },
+    nova: { category: 'powerups', currencyId: 'coins', price: 350 },
+    spectrum: { category: 'powerups', currencyId: 'coins', price: 400 },
 };
 // Level-complete rules. The client reports the result, so the server bounds it.
 export const LEVEL_LIMITS = {
@@ -27,8 +28,10 @@ export const WHEEL_REWARDS = [
     { id: 'coins_50', weight: 40, type: 'currency', currencyId: 'coins', amount: 50 },
     { id: 'coins_150', weight: 25, type: 'currency', currencyId: 'coins', amount: 150 },
     { id: 'stars_1', weight: 20, type: 'currency', currencyId: 'stars', amount: 1 },
-    { id: 'bomb_1', weight: 10, type: 'inventory', category: 'powerups', itemId: 'bomb', amount: 1 },
-    { id: 'diamond_1', weight: 5, type: 'inventory', category: 'powerups', itemId: 'diamond', amount: 1 },
+    { id: 'blast_1', weight: 10, type: 'inventory', category: 'powerups', itemId: 'blast', amount: 1 },
+    { id: 'facet_1', weight: 5, type: 'inventory', category: 'powerups', itemId: 'facet', amount: 1 },
+    { id: 'shift_1', weight: 8, type: 'inventory', category: 'powerups', itemId: 'shift', amount: 1 },
+    { id: 'hammer_1', weight: 12, type: 'inventory', category: 'powerups', itemId: 'hammer', amount: 1 },
 ];
 /** Picks one wheel reward. `randomInt(max)` must return an integer in [0, max). */
 export function pickWheelReward(randomInt) {

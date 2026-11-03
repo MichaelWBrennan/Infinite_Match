@@ -23,6 +23,7 @@ export function certifyMarmaladeBoard(definition: any): {
         [k: string]: any;
     };
     marmaladeCleared: number;
+    witness: any[];
     events: never[];
 };
 export const MARMALADE_CAP: 5;

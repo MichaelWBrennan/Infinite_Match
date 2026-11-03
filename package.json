@@ -42,6 +42,7 @@
   "devDependencies": {
     "@eslint/js": "^9.38.0",
     "@jest/globals": "^30.2.0",
+    "@napi-rs/canvas": "^1.1.0",
     "@stripe/stripe-js": "^10.0.0",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
@@ -81,7 +82,7 @@
   "main": "src/server/index.js",
   "name": "infinite-match-unity-optimized",
   "scripts": {
-    "build": "node scripts/build-level-client.js && tsc",
+    "build": "npm run art:build && tsc",
     "vectors:build": "node scripts/build-golden-vectors.mjs",
     "check:sync": "node --experimental-vm-modules node_modules/jest/bin/jest.js src/__tests__/canonical-sync.test.ts",
     "build:vercel": "echo 'Vercel build completed - WebGL files are already built'",
@@ -103,7 +104,9 @@
     "stripe:logs": "stripe logs tail",
     "offline:setup": "node scripts/setup-offline.js",
     "offline:verify": "node scripts/verify-offline.js",
-    "offline:start": "docker-compose -f docker-compose.opensource.yml up -d && npm run dev"
+    "offline:start": "docker-compose -f docker-compose.opensource.yml up -d && npm run dev",
+    "art:build": "node scripts/build-level-client.js && node scripts/build-art.mjs",
+    "art:check": "node scripts/build-art.mjs --check"
   },
   "type": "module",
   "version": "1.0.0"

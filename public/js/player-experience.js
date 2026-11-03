@@ -9,135 +9,14 @@
         void window.lazyLoad('assistive-board').catch(() => {});
     }
 
-    const visuals = Object.freeze({
-        red: { color: '#ff6384', shape: 'heart', symbol: 'R' },
-        blue: { color: '#62baff', shape: 'diamond', symbol: 'B' },
-        green: { color: '#58dfa9', shape: 'square', symbol: 'G' },
-        yellow: { color: '#ffe278', shape: 'triangle', symbol: 'Y' },
-        purple: { color: '#be9cff', shape: 'hexagon', symbol: 'P' },
-        orange: { color: '#ffad66', shape: 'star', symbol: 'O' },
-        ice_blue: { color: '#b2dfdb', shape: 'snowflake', symbol: 'I' },
-        snow_white: { color: '#ffffff', shape: 'snowflake', symbol: 'S' },
-        frost_purple: { color: '#d7bde2', shape: 'snowflake', symbol: 'F' },
-        crystal_blue: { color: '#aed6f1', shape: 'diamond', symbol: 'C' },
-        glacier_teal: { color: '#76d7c4', shape: 'snowflake', symbol: 'T' },
-        midnight_navy: { color: '#2c3e50', shape: 'snowflake', symbol: 'M' },
-        petal_pink: { color: '#f8bbd0', shape: 'rose', symbol: 'P' },
-        leaf_green: { color: '#c8e6c9', shape: 'leaf', symbol: 'L' },
-        bloom_yellow: { color: '#fff59d', shape: 'rose', symbol: 'B' },
-        sprout_lime: { color: '#dcedc8', shape: 'leaf', symbol: 'S' },
-        blossom_mint: { color: '#e8f5e9', shape: 'rose', symbol: 'O' },
-        vine_olive: { color: '#c5e1a5', shape: 'leaf', symbol: 'V' },
-        sun_orange: { color: '#ffcc80', shape: 'flame', symbol: 'U' },
-        surf_blue: { color: '#b2ebf2', shape: 'flame', symbol: 'F' },
-        sand_yellow: { color: '#ffe082', shape: 'flame', symbol: 'A' },
-        wave_teal: { color: '#b2dfdb', shape: 'flame', symbol: 'W' },
-        coral_pink: { color: '#ffab91', shape: 'flame', symbol: 'C' },
-        sky_cyan: { color: '#80deea', shape: 'flame', symbol: 'K' },
-        amber_red: { color: '#ff8a80', shape: 'leaf', symbol: 'A' },
-        rust_orange: { color: '#ffab91', shape: 'leaf', symbol: 'R' },
-        maple_yellow: { color: '#ffe082', shape: 'leaf', symbol: 'M' },
-        acorn_brown: { color: '#d7ccc8', shape: 'leaf', symbol: 'C' },
-        harvest_red: { color: '#ef5350', shape: 'leaf', symbol: 'H' },
-        pumpkin_gold: { color: '#ffcc80', shape: 'leaf', symbol: 'G' },
-        diya_gold: { color: '#ffd700', shape: 'star', symbol: 'D' },
-        rangoli_red: { color: '#e53935', shape: 'star', symbol: 'R' },
-        rangoli_orange: { color: '#fb8c00', shape: 'star', symbol: 'N' },
-        rangoli_green: { color: '#43a047', shape: 'star', symbol: 'G' },
-        rangoli_blue: { color: '#1e88e5', shape: 'star', symbol: 'L' },
-        sparkler_white: { color: '#ffffff', shape: 'star', symbol: 'S' },
-        bolt_yellow: { color: '#ffeb3b', shape: 'star', symbol: 'L' },
-        flash_white: { color: '#ffffff', shape: 'star', symbol: 'F' },
-        spark_orange: { color: '#ffb74d', shape: 'star', symbol: 'S' },
-        volt_blue: { color: '#4fc3f7', shape: 'star', symbol: 'V' },
-        surge_red: { color: '#f44336', shape: 'star', symbol: 'U' },
-        charge_green: { color: '#4caf50', shape: 'star', symbol: 'C' },
-        gold_crown: { color: '#ffd700', shape: 'crown', symbol: 'K' },
-        royal_purple: { color: '#8e44ad', shape: 'crown', symbol: 'R' },
-        throne_red: { color: '#c0392b', shape: 'crown', symbol: 'T' },
-        sceptre_gold: { color: '#f1c40f', shape: 'crown', symbol: 'S' },
-        realm_blue: { color: '#2980b9', shape: 'crown', symbol: 'E' },
-        emerald_seal: { color: '#27ae60', shape: 'crown', symbol: 'M' },
-        frost_blue: { color: '#4fc3f7', shape: 'snowflake', symbol: 'F' },
-        snowcap_white: { color: '#ffffff', shape: 'snowflake', symbol: 'C' },
-        ice_teal: { color: '#4dd0e1', shape: 'diamond', symbol: 'I' },
-        snowcap_blue: { color: '#42a5f5', shape: 'snowflake', symbol: 'N' },
-        hail_grey: { color: '#b0bec5', shape: 'diamond', symbol: 'H' },
-        glacier_cyan: { color: '#00acc1', shape: 'snowflake', symbol: 'G' },
-        champagne_gold: { color: '#ffd700', shape: 'champagne', symbol: 'C' },
-        fireworks_red: { color: '#ff4d4d', shape: 'firework', symbol: 'F' },
-        fireworks_blue: { color: '#4d79ff', shape: 'firework', symbol: 'W' },
-        fireworks_green: { color: '#4dff4d', shape: 'firework', symbol: 'R' },
-        confetti_pink: { color: '#ff80ab', shape: 'firework', symbol: 'X' },
-        midnight_black: { color: '#263238', shape: 'firework', symbol: 'M' },
-        lantern_red: { color: '#d32f2f', shape: 'bauble', symbol: 'L' },
-        envelope_red: { color: '#c62828', shape: 'bauble', symbol: 'E' },
-        orange_gold: { color: '#ffb300', shape: 'bauble', symbol: 'O' },
-        plum_blossom_pink: { color: '#f06292', shape: 'rose', symbol: 'P' },
-        jade_green: { color: '#43a047', shape: 'bauble', symbol: 'J' },
-        dragon_gold: { color: '#ffd700', shape: 'star', symbol: 'D' },
-        rose_red: { color: '#e91e63', shape: 'rose', symbol: 'V' },
-        heart_pink: { color: '#ff4081', shape: 'heart', symbol: 'H' },
-        cupid_gold: { color: '#ffd700', shape: 'heart', symbol: 'C' },
-        rose_gold: { color: '#f8bbd0', shape: 'rose', symbol: 'G' },
-        passion_magenta: { color: '#d81b60', shape: 'heart', symbol: 'P' },
-        cherry_blossom: { color: '#f48fb1', shape: 'rose', symbol: 'L' },
-        purple_power: { color: '#9c27b0', shape: 'medal', symbol: 'W' },
-        green_hope: { color: '#4caf50', shape: 'medal', symbol: 'H' },
-        white_equality: { color: '#ffffff', shape: 'medal', symbol: 'E' },
-        rose_strength: { color: '#e91e63', shape: 'medal', symbol: 'S' },
-        gold_achievement: { color: '#ffd700', shape: 'medal', symbol: 'A' },
-        violet_wisdom: { color: '#673ab7', shape: 'medal', symbol: 'I' },
-        clover_green: { color: '#4caf50', shape: 'clover', symbol: 'C' },
-        gold_coin: { color: '#ffd700', shape: 'medal', symbol: 'O' },
-        rainbow_red: { color: '#f44336', shape: 'clover', symbol: 'R' },
-        rainbow_orange: { color: '#ff9800', shape: 'clover', symbol: 'N' },
-        rainbow_yellow: { color: '#ffeb3b', shape: 'clover', symbol: 'Y' },
-        shamrock_light: { color: '#c8e6c9', shape: 'clover', symbol: 'M' },
-        egg_pastel_pink: { color: '#f8bbd0', shape: 'egg', symbol: 'E' },
-        egg_pastel_blue: { color: '#bbdefb', shape: 'egg', symbol: 'G' },
-        egg_pastel_yellow: { color: '#fff9c4', shape: 'egg', symbol: 'Y' },
-        egg_pastel_purple: { color: '#e1bee7', shape: 'egg', symbol: 'P' },
-        egg_pastel_green: { color: '#c8e6c9', shape: 'egg', symbol: 'L' },
-        egg_pastel_orange: { color: '#ffcc80', shape: 'egg', symbol: 'O' },
-        carnation_pink: { color: '#f06292', shape: 'rose', symbol: 'M' },
-        pearl_white: { color: '#eceff1', shape: 'rose', symbol: 'P' },
-        gold_love: { color: '#ffd700', shape: 'rose', symbol: 'L' },
-        rose_gold_warmth: { color: '#ffccbc', shape: 'rose', symbol: 'W' },
-        lavender_care: { color: '#b39ddb', shape: 'rose', symbol: 'C' },
-        ivory_grace: { color: '#fff3e0', shape: 'rose', symbol: 'G' },
-        turkey_brown: { color: '#8d6e63', shape: 'leaf', symbol: 'T' },
-        corn_yellow: { color: '#ffd54f', shape: 'leaf', symbol: 'C' },
-        pumpkin_pie_orange: { color: '#ffa726', shape: 'leaf', symbol: 'P' },
-        apple_red: { color: '#e53935', shape: 'leaf', symbol: 'A' },
-        sage_green: { color: '#aed581', shape: 'leaf', symbol: 'S' },
-        cranberry_dark: { color: '#ad1457', shape: 'leaf', symbol: 'R' },
-        liberty_red: { color: '#d32f2f', shape: 'star', symbol: 'L' },
-        union_white: { color: '#ffffff', shape: 'star', symbol: 'U' },
-        justice_blue: { color: '#0d47a1', shape: 'star', symbol: 'J' },
-        fireworks_gold: { color: '#ffd700', shape: 'firework', symbol: 'F' },
-        sparkle_white: { color: '#ffffff', shape: 'firework', symbol: 'K' },
-        glow_amber: { color: '#ffb300', shape: 'firework', symbol: 'G' },
-        tool_red: { color: '#e53935', shape: 'medal', symbol: 'T' },
-        gear_blue: { color: '#1e88e5', shape: 'medal', symbol: 'G' },
-        hardhat_yellow: { color: '#ffd54f', shape: 'medal', symbol: 'H' },
-        wrench_green: { color: '#43a047', shape: 'medal', symbol: 'W' },
-        steel_grey: { color: '#90a4ae', shape: 'medal', symbol: 'S' },
-        brick_orange: { color: '#fb8c00', shape: 'medal', symbol: 'B' },
-        pumpkin_orange: { color: '#fb8c00', shape: 'pumpkin', symbol: 'P' },
-        ghost_white: { color: '#ffffff', shape: 'snowflake', symbol: 'G' },
-        bat_purple: { color: '#7b1fa2', shape: 'pumpkin', symbol: 'B' },
-        candy_corn_yellow: { color: '#ffeb3b', shape: 'pumpkin', symbol: 'C' },
-        witch_green: { color: '#388e3c', shape: 'pumpkin', symbol: 'W' },
-        moon_black: { color: '#263238', shape: 'pumpkin', symbol: 'M' },
-        wave_turquoise: { color: '#4dd0e1', shape: 'snowflake', symbol: 'W' },
-        splash_blue: { color: '#039be5', shape: 'snowflake', symbol: 'S' },
-        foam_white: { color: '#ffffff', shape: 'snowflake', symbol: 'F' },
-        seaweed_green: { color: '#81c784', shape: 'snowflake', symbol: 'E' },
-        sand_beige: { color: '#ffe0b2', shape: 'snowflake', symbol: 'A' },
-    });
+    // The shared art module is the single source of truth for gem silhouettes,
+    // colors, letters, lighting, and badges. It reads the same tile-set catalog
+    // as the server, so themed boards never fall back to an unrelated pack.
+    const art = root.InfiniteArt;
+    let visuals = art ? art.visuals : {};
+    function setVisuals(next) { visuals = next || (art ? art.visuals : {}); }
 
-    const specialTypes = Object.freeze(['row', 'column', 'burst', 'prism']);
+    const specialTypes = art ? art.specialTypes : Object.freeze(['row', 'column', 'burst', 'prism']);
     const specialNames = Object.freeze({ row: 'Row Beam', column: 'Column Beam', burst: 'Burst', prism: 'Prism' });
 
     function boardZoom(width, height, size, step = 54) {
@@ -159,53 +38,7 @@
     }
 
     function drawGem(context, type, special = null) {
-        const style = visuals[type];
-        context.clearRect(0, 0, 64, 64);
-        context.beginPath();
-        if (style.shape === 'heart') {
-            context.moveTo(32, 57); context.bezierCurveTo(4, 39, 0, 18, 17, 9);
-            context.bezierCurveTo(24, 5, 31, 11, 32, 15); context.bezierCurveTo(35, 6, 51, 4, 58, 17);
-            context.bezierCurveTo(65, 34, 43, 49, 32, 57);
-        } else if (style.shape === 'square') {
-            context.roundRect(7, 7, 50, 50, 12);
-        } else {
-            const points = style.shape === 'diamond' ? [[32, 4], [60, 32], [32, 60], [4, 32]]
-                : style.shape === 'triangle' ? [[32, 5], [60, 57], [4, 57]]
-                    : Array.from({ length: style.shape === 'star' ? 10 : 6 }, (_, i) => {
-                        const count = style.shape === 'star' ? 10 : 6;
-                        const radius = style.shape === 'star' && i % 2 ? 17 : 29;
-                        const angle = -Math.PI / 2 + i * Math.PI * 2 / count;
-                        return [32 + Math.cos(angle) * radius, 32 + Math.sin(angle) * radius];
-                    });
-            points.forEach(([x, y], index) => index ? context.lineTo(x, y) : context.moveTo(x, y));
-        }
-        context.closePath();
-        const gradient = context.createLinearGradient(0, 6, 0, 58);
-        gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(0.22, style.color); gradient.addColorStop(1, style.color);
-        context.fillStyle = gradient; context.fill();
-        context.lineWidth = 3; context.strokeStyle = '#10213a'; context.stroke();
-        context.fillStyle = '#10213a'; context.font = 'bold 22px system-ui, sans-serif';
-        context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(style.symbol, 32, style.shape === 'triangle' ? 39 : 32);
-        if (specialTypes.includes(special)) {
-            context.beginPath(); context.roundRect(36, 36, 27, 27, 9);
-            context.fillStyle = '#10213a'; context.fill(); context.lineWidth = 2; context.strokeStyle = '#ffffff'; context.stroke();
-            // Draw every badge as geometry: a missing Unicode font must never hide its identity.
-            context.beginPath(); context.fillStyle = '#ffffff'; context.lineWidth = 2.5;
-            context.lineCap = 'round'; context.lineJoin = 'round';
-            const path = (points) => points.forEach(([x, y], index) => index ? context.lineTo(x, y) : context.moveTo(x, y));
-            if (special === 'row') {
-                path([[42, 49.5], [57, 49.5]]); path([[45, 46], [41.5, 49.5], [45, 53]]); path([[54, 46], [57.5, 49.5], [54, 53]]);
-            } else if (special === 'column') {
-                path([[49.5, 42], [49.5, 57]]); path([[46, 45], [49.5, 41.5], [53, 45]]); path([[46, 54], [49.5, 57.5], [53, 54]]);
-            } else if (special === 'burst') {
-                context.lineWidth = 3; path([[49.5, 43], [49.5, 56]]); path([[43, 49.5], [56, 49.5]]);
-                for (const [x, y] of [[42, 42], [57, 42], [42, 57], [57, 57]]) { context.moveTo(x, y); context.lineTo(x + (x < 49.5 ? 2 : -2), y + (y < 49.5 ? 2 : -2)); }
-            } else {
-                path([[49.5, 40], [52, 47], [59, 49.5], [52, 52], [49.5, 59], [47, 52], [40, 49.5], [47, 47]]);
-                context.closePath(); context.fill();
-            }
-            context.stroke(); context.lineCap = 'butt'; context.lineJoin = 'miter';
-        }
+        if (art && context) art.drawGem(context, type, special, visuals);
     }
 
     function proxy(element) {
@@ -276,7 +109,10 @@
         for (const [type, name] of Object.entries(powerupNames)) {
             const button = document.createElement('button'); button.type = 'button';
             const count = document.createElement('span');
-            button.dataset.powerup = type; button.append(document.createTextNode(`${name} `), count);
+            const icon = document.createElement('canvas'); icon.width = 64; icon.height = 64; icon.setAttribute('aria-hidden', 'true');
+            const iconContext = icon.getContext('2d');
+            if (art && iconContext) art.drawBooster(iconContext, type);
+            button.dataset.powerup = type; button.append(icon, document.createTextNode(`${name} `), count);
             button.addEventListener('click', () => { game.usePowerUp(type); refresh(); });
             find('.match-powerups').append(button);
             const data = { type, count: ({ blast: 3, ray: 2, prism: 1, bolt: 1, facet: 0, mark: 0, nova: 0, spectrum: 0, shift: 0, hammer: 0 })[type] ?? 1 };
@@ -296,6 +132,19 @@
         });
 
         function announce(message) { find('.match-announcement-message').textContent = message || ''; }
+        function objectiveTerrainKind(type, definition) {
+            if (type === 'clear-weather-hazards') {
+                return root.InfiniteLevels?.environmentRules?.(definition.context || {}).hazard?.type || 'mist';
+            }
+            return { 'clear-blockers': 'blocker', 'clear-locked-gems': 'locked', 'clear-jelly': 'jelly', 'clear-chocolate': 'chocolate',
+                'clear-liquorice': 'liquorice', 'clear-marmalade': 'marmalade', 'clear-frosting': 'frosting', 'clear-delivery': 'delivery' }[type] || 'blocker';
+        }
+        function objectiveLabel(goal) {
+            if (goal.type === 'collect') return goal.gemType;
+            return { 'clear-shields': 'Shields', 'clear-blockers': 'Blockers', 'clear-locked-gems': 'Locks', 'clear-jelly': 'Jelly',
+                'clear-chocolate': 'Chocolate', 'clear-liquorice': 'Liquorice', 'clear-marmalade': 'Marmalade', 'clear-frosting': 'Frosting',
+                'clear-delivery': 'Delivery', 'clear-weather-hazards': 'Weather' }[goal.type] || 'Score';
+        }
         function renderGoals() {
             const progress = find('progress'); const area = getField('goal');
             const definition = game.generatedLevel;
@@ -314,19 +163,28 @@
                 for (const goal of state.items) {
                     const item = document.createElement('span'); item.className = 'match-objective';
                     item.dataset.objective = goal.type; if (goal.gemType) item.dataset.gemType = goal.gemType;
-                    if (goal.type === 'collect') {
+                    if (goal.type === 'collect' || goal.type.startsWith('clear-')) {
                         const icon = document.createElement('canvas'); icon.width = 64; icon.height = 64;
-                        icon.setAttribute('aria-hidden', 'true'); drawGem(icon.getContext('2d'), goal.gemType); item.append(icon);
+                        icon.setAttribute('aria-hidden', 'true');
+                        const goalContext = icon.getContext('2d');
+                        if (goalContext) {
+                            if (goal.type === 'collect') drawGem(goalContext, goal.gemType);
+                            else if (art && goal.type === 'clear-shields') art.drawShield(goalContext, 2);
+                            else if (art) art.drawTerrain(goalContext, objectiveTerrainKind(goal.type, definition), 1);
+                        }
+                        item.append(icon);
                     }
                     const text = document.createElement('span'); item.append(text); area.append(item); goalLabels.push({ item, text });
                 }
             }
             state.items.forEach((goal, index) => {
                 const slot = goalLabels[index]; if (!slot) return;
-                const name = goal.type === 'collect' ? goal.gemType : goal.type === 'clear-shields' ? 'Shields' : goal.type === 'clear-blockers' ? 'Blockers' : 'Score';
+                const name = objectiveLabel(goal);
                 slot.text.textContent = `${name} ${Math.min(goal.current, goal.target).toLocaleString()}/${goal.target.toLocaleString()}`;
                 slot.item.dataset.complete = String(goal.complete);
-                slot.item.setAttribute('aria-label', `${goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType].shape} gems` : goal.type === 'clear-shields' ? `Clear ${goal.target} fixed shields, up to two hits each` : goal.type === 'clear-blockers' ? `Clear ${goal.target} blockers, one match each` : `Score ${goal.target} points`}. ${goal.current} achieved, ${goal.remaining} remaining.`);
+                const description = goal.type === 'collect' ? `Collect ${goal.target} ${goal.gemType} ${visuals[goal.gemType]?.shape || ''} gems`
+                    : goal.type === 'score' ? `Score ${goal.target.toLocaleString()} points` : `Clear ${goal.target} ${name.toLowerCase()}`;
+                slot.item.setAttribute('aria-label', `${description}. ${goal.current} achieved, ${goal.remaining} remaining.`);
             });
             progress.max = 100; progress.value = state.fraction * 100;
             progress.setAttribute('aria-valuetext', root.InfiniteLevels.objectiveSummary(definition, game.score, game.objectiveProgress, true));
@@ -688,5 +546,5 @@
             showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
-    root.InfinitePlayerExperience = Object.freeze({ visuals, specialTypes, specialNames, drawGem, boardZoom, swipeCells, keyboardCell, mount });
+    root.InfinitePlayerExperience = Object.freeze({ get visuals() { return visuals; }, setVisuals, specialTypes, specialNames, drawGem, boardZoom, swipeCells, keyboardCell, mount });
 })(globalThis);

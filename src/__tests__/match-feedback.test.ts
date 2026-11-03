@@ -81,7 +81,7 @@ function harness(definition = fixture()) {
     console: { log() {}, info() {}, warn() {}, error() {} }, localStorage: { getItem: () => null, setItem() {} } };
   sandbox.performance = { now: time.now };
   sandbox.window = sandbox; vm.createContext(sandbox);
-  for (const file of ['public/js/procedural-levels.js', 'public/js/player-experience.js', 'public/js/match-feedback.js', 'phaser3-game.js']) {
+  for (const file of ['public/js/procedural-levels.js', 'public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/match-feedback.js', 'phaser3-game.js']) {
     vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   }
   function graphic() {
@@ -220,7 +220,7 @@ describe('v5 shield presentation is fixed terrain, not a falling gem', () => {
 
   test('preload creates transparent numbered terrain textures separately from composite instant-play gems', () => {
     const h = harness(shieldFixture()); const textures: string[] = []; const marks: string[] = [];
-    h.sandbox.InfinitePlayerExperience = { ...h.sandbox.InfinitePlayerExperience, drawGem() {} };
+    h.sandbox.InfiniteArt = { ...h.sandbox.InfiniteArt, drawGem() {}, drawShield(context: any) { context.strokeRect(2, 2, 60, 60); } };
     h.game.scene.textures = { createCanvas: (key: string) => {
       textures.push(key);
       const context: any = { save() {}, restore() {}, strokeRect() { marks.push(key); }, fillRect() {}, fillText() {} };

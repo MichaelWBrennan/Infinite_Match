@@ -24,6 +24,7 @@ export function environmentRules(context: any): {
     tint: any;
     accent: any;
     label: string;
+    hazard: any;
 };
 export function blendHex(first: any, second: any, amount?: number): any;
 /** Pure, shared clock/weather rules. No network, GPS, random weather or player data. */

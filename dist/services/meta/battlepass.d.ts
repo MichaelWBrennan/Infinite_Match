@@ -15,7 +15,7 @@ export function validateSeason(raw: any): {
     };
 };
 /** 'upcoming', 'active' or 'ended' for a validated season. */
-export function seasonStatus(season: any, nowMs?: number): "active" | "upcoming" | "ended";
+export function seasonStatus(season: any, nowMs?: number): "upcoming" | "ended" | "active";
 /** The tier a player is on: the highest tier whose XP they have reached. */
 export function currentTier(season: any, xp: any): number;
 /**

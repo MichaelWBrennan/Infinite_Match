@@ -31,6 +31,7 @@ describe('authored kingdom scenes', () => {
     const sandbox: any = { document };
     vm.createContext(sandbox);
     vm.runInContext(readFileSync('public/js/kingdom-scene.js', 'utf8'), sandbox);
+    vm.runInContext(readFileSync('public/js/art-direction.js', 'utf8'), sandbox);
     vm.runInContext(readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
     const game: any = { score: 0, targetScore: 500, settings: { sfx: false },
       getSoundStatus: () => ({ enabled: false, supported: false, state: 'off', volume: 0.5 }),
@@ -67,6 +68,7 @@ describe('authored kingdom scenes', () => {
     const sandbox: any = { document };
     vm.createContext(sandbox);
     vm.runInContext(readFileSync('public/js/kingdom-scene.js', 'utf8'), sandbox);
+    vm.runInContext(readFileSync('public/js/art-direction.js', 'utf8'), sandbox);
     vm.runInContext(readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
     const game: any = { score: 0, targetScore: 500, settings: { sfx: false },
       getSoundStatus: () => ({ enabled: false, supported: false, state: 'off', volume: 0.5 }),
@@ -143,6 +145,7 @@ describe('authored kingdom scenes', () => {
     const sandbox: any = { document };
     vm.createContext(sandbox);
     vm.runInContext(readFileSync('public/js/kingdom-scene.js', 'utf8'), sandbox);
+    vm.runInContext(readFileSync('public/js/art-direction.js', 'utf8'), sandbox);
     vm.runInContext(readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
     const game: any = { score: 0, targetScore: 500, settings: { sfx: false },
       getSoundStatus: () => ({ enabled: false, supported: false, state: 'off', volume: 0.5 }),

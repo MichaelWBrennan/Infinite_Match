@@ -4,7 +4,7 @@
  * entitlement. All checks happen here on the server; the client only displays the result.
  *
  * Rewards are either coins (`{ coins: n }`) or a power-up from the item catalog
- * (`{ item: 'bomb', amount: n }`). Gems are not part of the game and are not accepted.
+ * (`{ item: 'blast', amount: n }`). Gems are not part of the game and are not accepted.
  */
 import { ITEM_CATALOG } from '../economy/item-catalog.js';
 export const POWERUP_IDS = Object.freeze(Object.keys(ITEM_CATALOG).filter((id) => ITEM_CATALOG[id].category === 'powerups'));

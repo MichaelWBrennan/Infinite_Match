@@ -128,13 +128,13 @@ export const PRODUCTS = Object.freeze({
         // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
         pvpBooster: true,
     }),
-    pvp_booster_color_bomb: Object.freeze({
+    pvp_booster_spectrum: Object.freeze({
         kind: 'consumable',
         priceCents: 79,
         currency: 'usd',
-        label: 'PvP Booster: Color Bomb',
+        label: 'PvP Booster: Spectrum',
         grants: Object.freeze({ currency: 'coins', amount: 0 }),
-        skus: sku('pvp_booster_color_bomb'),
+        skus: sku('pvp_booster_spectrum'),
         // Purchased with coins in-game via the PvP booster route, not sold for USD in the shop
         pvpBooster: true,
     }),

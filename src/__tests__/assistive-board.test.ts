@@ -5,7 +5,7 @@ import vm from 'node:vm';
 function helpers() {
   const sandbox: any = {};
   vm.createContext(sandbox);
-  for (const file of ['public/js/player-experience.js', 'public/js/assistive-board.js']) vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
+  for (const file of ['public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/assistive-board.js']) vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   return { api: sandbox.InfiniteAssistiveBoard, experience: sandbox.InfinitePlayerExperience };
 }
 

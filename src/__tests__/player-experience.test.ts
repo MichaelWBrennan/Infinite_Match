@@ -6,6 +6,7 @@ import { parseHTML } from 'linkedom';
 function helpers() {
   const sandbox: any = {};
   vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync('public/js/art-direction.js', 'utf8'), sandbox);
   vm.runInContext(fs.readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
   return sandbox.InfinitePlayerExperience;
 }
@@ -52,7 +53,7 @@ describe('mobile-first player experience helpers', () => {
   test('gem drawing needs no external image, font or tracker', () => {
     const paths: string[] = [];
     const context: any = {
-      clearRect() {}, beginPath() {}, closePath() {}, fill() {}, stroke() {}, moveTo() {}, lineTo() {},
+      clearRect() {}, save() {}, restore() {}, clip() {}, beginPath() {}, closePath() {}, fill() {}, stroke() {}, moveTo() {}, lineTo() {},
       bezierCurveTo() {}, roundRect() {}, fillText: (symbol: string) => paths.push(symbol),
       createLinearGradient: () => ({ addColorStop() {} }),
     };
@@ -70,7 +71,7 @@ describe('mobile-first player experience helpers', () => {
     const signatures = new Set();
     for (const kind of experience.specialTypes) {
       const symbols: string[] = []; const paths: any[] = [];
-      const context: any = { clearRect() {}, beginPath() {}, closePath() {}, fill() {}, stroke() {},
+      const context: any = { clearRect() {}, save() {}, restore() {}, clip() {}, beginPath() {}, closePath() {}, fill() {}, stroke() {},
         moveTo: (...point: number[]) => paths.push(['move', ...point]), lineTo: (...point: number[]) => paths.push(['line', ...point]),
         bezierCurveTo() {}, roundRect() {}, fillText: (symbol: string) => symbols.push(symbol),
         createLinearGradient: () => ({ addColorStop() {} }) };
@@ -86,7 +87,8 @@ describe('mobile-first player experience helpers', () => {
     const { document, window } = parseHTML('<html><body><div id="host"></div></body></html>');
     const sandbox: any = { document };
     vm.createContext(sandbox);
-    vm.runInContext(fs.readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
+    vm.runInContext(fs.readFileSync('public/js/art-direction.js', 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
     let saves = 0;
     const game: any = { mode: 'endless', isGameRunning: true, settings: { sfx: false, endlessAutoContinue: false },
       score: 0, targetScore: 500, isPaused: false, levelStarting: false, powerUpPending: false,

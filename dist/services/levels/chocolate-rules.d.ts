@@ -34,6 +34,7 @@ export function certifyChocolateBoard(definition: any): {
         [k: string]: any;
     };
     chocolateCleared: number;
+    witness: any[];
     events: never[];
 };
 export const CHOCOLATE_CAP: 8;
