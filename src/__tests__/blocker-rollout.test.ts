@@ -85,10 +85,12 @@ describe('client opt-in for rules v6', () => {
     expect(game.requestedRulesVersion(undefined)).toBe(6);
   });
 
-  test('daily, timed and endless use v6 rules too (obstacles are classic-only)', () => {
+  test('daily, timed and endless request the v5 path the level API accepts', () => {
     const { sandbox, game } = loadClient();
     sandbox.location = { search: '?blockers=1' };
-    for (const mode of ['daily', 'timed', 'endless']) expect(game.requestedRulesVersion(mode)).toBe(6);
+    // The server refuses v6 outside classic, so a v6 request here would make the
+    // daily card and flow's daily suggestion fail with unsupported_rules_version.
+    for (const mode of ['daily', 'timed', 'endless']) expect(game.requestedRulesVersion(mode)).toBe(5);
   });
 
   test('the server wiring passes the mode and the flag at every call site', () => {

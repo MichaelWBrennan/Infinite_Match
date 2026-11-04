@@ -240,6 +240,18 @@ class InfiniteMatchGame {
 
     showModeSelect() {
         this.showScreen('mode-select');
+        this.renderFlowSuggestion();
+    }
+
+    // Local, explainable mode suggestion. It never starts a run by itself.
+    renderFlowSuggestion() {
+        const panel = document.getElementById('flow-suggestion');
+        if (!panel) return;
+        const recommendation = window.game?.flowRecommendation?.();
+        const lines = window.InfinitePlayFlow?.cardLines(recommendation) || [];
+        panel.hidden = !recommendation;
+        const text = panel.querySelector('[data-flow-suggestion-text]');
+        if (text) text.textContent = lines.join('\n');
     }
 
     showSettings() {
@@ -2141,6 +2153,7 @@ function revealCanvas() {
 }
 
 function startGame() { revealCanvas(); return callGame('requestStart'); }
+function playFlowSuggestion() { revealCanvas(); return callGame('playFlowRecommendation'); }
 function pauseGame() { return callGame('pauseGame'); }
 function usePowerUp(type) { return callGame('usePowerUp', type); }
 function nextLevel() { revealCanvas(); return callGame('nextLevel'); }
@@ -2158,6 +2171,7 @@ window.showNews = showNews;
 window.showOffers = showOffers;
 window.showLeaderboard = showLeaderboard;
 window.startGame = startGame;
+window.playFlowSuggestion = playFlowSuggestion;
 window.pauseGame = pauseGame;
 window.usePowerUp = usePowerUp;
 window.nextLevel = nextLevel;

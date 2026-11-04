@@ -397,6 +397,7 @@
             game.openOverlay('Explore Infinite Match');
             overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard(); });
             overlayButton('Play preferences', () => preferences(wasRunning));
+            renderFlowCard(wasRunning);
             overlayButton(soundLabel(), (event) => { game.setSoundEffects(!game.settings.sfx, event); refresh(); });
             content.lastElementChild.dataset.soundToggle = 'true';
             overlayButton(game.settings.music ? 'Music on — mute' : 'Music off — enable', (event) => { game.setMusic(!game.settings.music, event); refresh(); });
@@ -419,6 +420,62 @@
             overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
             overlayButton('Credits & Attribution', () => { credits(wasRunning); });
+        }
+        function renderFlowCard(wasRunning) {
+            const flow = root.InfinitePlayFlow;
+            if (!flow || typeof game.flowRecommendation !== 'function') return;
+            const card = document.createElement('section');
+            card.className = 'play-flow-card';
+            card.setAttribute('data-play-flow-card', 'true');
+            const heading = document.createElement('h3');
+            heading.textContent = 'Suggested for this session';
+            card.append(heading);
+            const recommendation = game.flowRecommendation();
+            for (const line of flow.cardLines(recommendation)) {
+                const p = document.createElement('p');
+                p.textContent = line;
+                card.append(p);
+            }
+            if (recommendation) {
+                if (game.isGameRunning || wasRunning) {
+                    const note = document.createElement('p');
+                    note.textContent = 'Finish or bank your current run first; suggestions never interrupt play.';
+                    card.append(note);
+                } else {
+                    const play = document.createElement('button');
+                    play.type = 'button';
+                    play.dataset.playFlowAccept = 'true';
+                    play.textContent = `Play ${recommendation.title}`;
+                    play.addEventListener('click', () => { void game.playFlowRecommendation(); });
+                    card.append(play);
+                }
+            }
+            const settingsButton = document.createElement('button');
+            settingsButton.type = 'button';
+            settingsButton.textContent = 'Flow preferences';
+            settingsButton.addEventListener('click', () => preferences(wasRunning));
+            card.append(settingsButton);
+            content.append(card);
+        }
+        function flowSelect(labelText, key, options) {
+            const label = document.createElement('label');
+            const select = document.createElement('select');
+            select.dataset[key] = 'true';
+            select.setAttribute('aria-label', labelText);
+            for (const [value, title] of options) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = title;
+                option.selected = value === game.settings[key];
+                select.append(option);
+            }
+            select.addEventListener('change', () => {
+                game.settings[key] = select.value;
+                game.saveUserData();
+                refresh();
+            });
+            label.append(document.createTextNode(labelText), select);
+            content.append(label);
         }
         function credits(wasRunning = game.isGameRunning && !game.isPaused) {
             const returnToTitle = !!game.titleShowing;
@@ -546,6 +603,19 @@
             });
             endlessLabel.append(endlessChoice, document.createTextNode('Auto-bank signed-in Endless at a completed stage near 100,000 points or 3 hours, then start another run using 1 energy (no automatic refill). Only after the bank is confirmed. Optional, off by default.'));
             content.append(endlessLabel);
+            const flowLabel = document.createElement('label'); const flowChoice = document.createElement('input');
+            flowChoice.type = 'checkbox'; flowChoice.dataset.flowEnabled = 'true';
+            flowChoice.checked = game.settings.flowEnabled !== false;
+            flowChoice.addEventListener('change', () => {
+                game.settings.flowEnabled = flowChoice.checked; game.saveUserData(); refresh();
+            });
+            flowLabel.append(flowChoice, document.createTextNode('Local flow suggestions (optional, no network, no difficulty changes)'));
+            content.append(flowLabel);
+            flowSelect('Session length', 'flowSession', [['short', 'Short (about 5 minutes)'], ['medium', 'Standard (about 15 minutes)'], ['long', 'Long (about 30 minutes)']]);
+            flowSelect('Challenge preference', 'flowChallenge', [['relaxed', 'Relaxed (avoid clocks)'], ['steady', 'Steady'], ['spicy', 'Spicy (clocks are okay)']]);
+            flowSelect('Preferred mode', 'flowMode', [['auto', 'Let flow suggest'], ['classic', 'Classic'], ['daily', 'Today’s Local Level'], ['timed', 'Timed'], ['endless', 'Endless']]);
+            overlayButton('Clear local flow history', () => { game.clearFlowHistory(); });
+            overlayText('Flow only suggests a mode and session shape from your explicit preferences and up to 20 recent local results. It never changes boards, difficulty, rewards, prices, energy, or offers, and it never starts a run by itself.');
             overlayText('Text board uses the same puzzle and rewards. Click two adjacent cells to swap; a special is selected rather than fired. Enter or Activate special fires it. Arrows, Home/End and Control Home/End navigate; Tab leaves. Narrow text boards scroll instead of shrinking targets. Keyboard focus reveals named cells even with this preference off.');
             overlayText('Sound is generated locally, with no downloads or microphone permission. System reduced motion is respected; sound and vibration are separate, optional preferences. Hints are always free.');
             refresh();

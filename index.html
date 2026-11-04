@@ -165,6 +165,11 @@
             <div class="header-spacer"></div>
         </div>
         <div class="mode-selection-container">
+            <section id="flow-suggestion" class="flow-suggestion" hidden aria-label="Local flow suggestion">
+                <h3>Suggested for this session</h3>
+                <p data-flow-suggestion-text></p>
+                <button type="button" class="mode-play-btn" onclick="playFlowSuggestion()">Play suggestion</button>
+            </section>
             <div class="mode-cards-grid">
                 <div class="mode-card-royal unlocked">
                     <div class="mode-card-bg">
@@ -891,6 +896,7 @@
     <script src="js/sound-effects.js"></script>
     <script src="js/game-feel.js"></script>
     <script src="js/kingdom-payoff.js"></script>
+    <script src="js/play-flow.js"></script>
     <script src="phaser3-game.js"></script>
     <script src="script.js"></script>
 

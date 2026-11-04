@@ -2445,6 +2445,20 @@ body {
     .match-dialog-content .kingdom-room-choice { display: grid; grid-template-columns: minmax(72px, 28%) 1fr; align-items: center; min-height: 80px; }
     .kingdom-room-choice-art { grid-row: 1 / span 3; }
 }
+/* Local flow suggestions: explicit, readable, and never a countdown or offer. */
+.play-flow-card { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #8ce6be; border-radius: 16px; background: #173a3a; }
+.play-flow-card h3 { margin: 0; font-size: 18px; color: #d9ffe9; }
+.match-dialog-content .play-flow-card p { margin: 0; font-size: 14px; color: #e7fff2; }
+.match-dialog-content .play-flow-card button { background: #286a58; }
+.match-dialog-content select { width: 100%; min-height: 44px; padding: 8px; border-radius: 10px; border: 1px solid #99c3e86b; background: #10233a; color: #f8fbff; font-size: 15px; }
+.match-dialog-content label:has(select) { display: grid; gap: 6px; align-items: stretch; }
+.flow-suggestion { margin: 0 auto 18px; max-width: 720px; padding: 16px; border: 1px solid #8ce6be; border-radius: 18px; background: #173a3a; color: #e7fff2; }
+.flow-suggestion h3 { margin: 0 0 8px; color: #d9ffe9; }
+.flow-suggestion p { margin: 0 0 12px; white-space: pre-line; line-height: 1.5; }
+.flow-suggestion .mode-play-btn { width: auto; min-width: 180px; }
+.match-high-contrast .play-flow-card, .match-high-contrast .flow-suggestion { border-color: #fff; background: #000; }
+.match-reduced-motion .play-flow-card, .match-reduced-motion .flow-suggestion { animation: none !important; transition: none !important; }
+
 .match-high-contrast { --match-level-background: #07111e; color: #fff; }
 .match-high-contrast .match-player-stats > span, .match-high-contrast button { border-color: #fff; }
 .match-large-text .match-player-stats > span { font-size: 16px; }

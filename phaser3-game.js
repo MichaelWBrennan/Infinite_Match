@@ -166,8 +166,13 @@ class PhaserMatch3Game {
             haptics: false,
             impactEffects: true,
             textBoard: false,
-            endlessAutoContinue: false
+            endlessAutoContinue: false,
+            flowEnabled: true,
+            flowSession: 'medium',
+            flowChallenge: 'steady',
+            flowMode: 'auto'
         };
+        this.flowHistory = [];
         this.timerInterval = null;
         this.tutorialShown = false;
         this.powerUps = {
@@ -638,9 +643,11 @@ class PhaserMatch3Game {
         this.playerUI?.assistiveBoard?.sync();
     }
 
-    /** Rules v6 is the default generator version for all classic levels. */
+    /** Rules v6 is the default generator version for classic levels. The level API
+     * only accepts v6 for classic; daily/timed/endless stay on the supported v5 path. */
     requestedRulesVersion(mode) {
-        return globalThis.InfiniteLevels.GENERATOR_VERSION;
+        const latest = globalThis.InfiniteLevels.GENERATOR_VERSION;
+        return mode === 'classic' || mode === undefined ? latest : Math.min(latest, 5);
     }
 
     /** Render v6 terrain with the same original overlays used by goal chips and exports. */
@@ -2701,14 +2708,14 @@ class PhaserMatch3Game {
                                 definition = cached;
                                 console.log('📦 Level definition served from cache:', number);
                             } else {
-                                definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                                definition = globalThis.InfiniteLevels.generateLevel(number, context, mode, this.requestedRulesVersion(mode));
                                 cacheManager.storeLevelDefinition(number, context, mode, definition).catch(() => {});
                             }
                         } catch (e) {
-                            definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                            definition = globalThis.InfiniteLevels.generateLevel(number, context, mode, this.requestedRulesVersion(mode));
                         }
                     } else {
-                        definition = globalThis.InfiniteLevels.generateLevel(number, context, mode);
+                        definition = globalThis.InfiniteLevels.generateLevel(number, context, mode, this.requestedRulesVersion(mode));
                     }
                 }
             }
@@ -2905,6 +2912,42 @@ class PhaserMatch3Game {
         return Math.min(3600, Math.max(0, Math.floor((Date.now() - (this.runStartedAt || Date.now())) / 1000)));
     }
 
+    // Transparent local flow suggestions. This never changes a board, reward,
+    // price, or energy spend; it only recommends a mode the player may accept.
+    flowRecommendation() {
+        return window.InfinitePlayFlow?.recommend({
+            settings: this.settings,
+            history: this.flowHistory,
+            nowMs: Date.now(),
+        }) || null;
+    }
+
+    recordFlowResult(stars) {
+        if (!window.InfinitePlayFlow || this.settings.flowEnabled === false) return;
+        this.flowHistory = window.InfinitePlayFlow.recordResult(this.flowHistory, {
+            mode: this.mode,
+            stars: Math.max(0, Math.min(3, Math.floor(stars || 0))),
+            seconds: this.runSeconds(),
+            at: Date.now(),
+        });
+    }
+
+    clearFlowHistory() {
+        this.flowHistory = [];
+        this.saveUserData();
+        this.playerUI?.refresh();
+    }
+
+    async playFlowRecommendation() {
+        const recommendation = this.flowRecommendation();
+        if (!recommendation || this.isGameRunning || this.levelStarting || this.powerUpPending || this.endlessCheckpointPending) return false;
+        this.trackEvent('flow_recommendation_accepted', { mode: recommendation.mode });
+        if (recommendation.mode === 'daily') return this.startDaily();
+        if (recommendation.mode === 'endless') return this.startEndless();
+        this.setMode(recommendation.mode);
+        return this.requestStart();
+    }
+
     // An endless run has no target, so it is never a level win. The server pays for the score.
     async finishEndless() {
         const score = Math.max(0, Math.floor(this.score + (this.endlessTotalScore || 0)));
@@ -2924,6 +2967,7 @@ class PhaserMatch3Game {
             this.playerUI?.announce('Banking this Endless run. No new energy has been spent yet.');
             const payment = this.submitEndlessRun(score);
             this.rewardSubmission = payment;
+            this.recordFlowResult(0);
             const result = await payment;
             this.endlessCheckpointBank = false;
             this.saveUserData();
@@ -3190,6 +3234,7 @@ class PhaserMatch3Game {
                 // Energy is not restored from localStorage: signed-in energy comes from the server.
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(data.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
+                this.flowHistory = window.InfinitePlayFlow?.normalizeHistory(data.flowHistory) || [];
                 console.log('✅ User data loaded');
                 return;
             }
@@ -3202,6 +3247,7 @@ class PhaserMatch3Game {
                     if (cached) {
                         this.achievements = cached.achievements || this.achievements;
                         this.settings = { ...this.settings, ...cached.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(cached.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
+                        this.flowHistory = window.InfinitePlayFlow?.normalizeHistory(cached.flowHistory) || [];
                         console.log('✅ User data loaded from cache manager');
                     }
                 } catch (e) { /* ignore cache errors */ }
@@ -3220,6 +3266,7 @@ class PhaserMatch3Game {
                 energy: this.energy,
                 achievements: this.achievements,
                 settings: this.settings,
+                flowHistory: window.InfinitePlayFlow?.normalizeHistory(this.flowHistory) || [],
                 lastSaved: Date.now()
             };
             localStorage.setItem('phaser3_game_data', JSON.stringify(data));
@@ -3944,6 +3991,7 @@ class PhaserMatch3Game {
         // Calculate stars based on score
         let stars = 0;
         stars = this.starsFor(this.score);
+        this.recordFlowResult(stars);
         this.playSound(stars > 0 ? 'win' : 'loss');
         this.gameFeel?.celebrate(stars);
         // Level-complete music on a win; gameplay music otherwise.
