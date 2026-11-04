@@ -73,6 +73,7 @@ describe('first-play coach', () => {
     const experience = fs.readFileSync('public/js/player-experience.js', 'utf8');
     const worker = fs.readFileSync('public/sw.js', 'utf8');
     expect(html.indexOf('src="js/first-play-coach.js"')).toBeLessThan(html.indexOf('src="phaser3-game.js"'));
+    expect(html).toContain('<link rel="stylesheet" href="styles.css">');
     expect(worker).toContain('\'/js/first-play-coach.js\'');
     expect(game).toContain('startFirstPlayCoach()');
     expect(game).toContain('noteFirstPlayMove()');

@@ -25,7 +25,7 @@ The coach can be skipped at any point. Skip and completion are saved locally, so
 - `public/js/first-play-coach.js` — pure goal/hint copy and accessible rendering.
 - `phaser3-game.js` — coach state, persistence, free-hint reuse, and completion on a player-made valid move.
 - `public/js/player-experience.js` — stable non-modal coach host and Explore replay entry.
-- `public/sw.js` / `index.html` — offline shell and script order.
+- `public/sw.js` / `index.html` — offline shell, script order, and the player stylesheet link.
 - `src/__tests__/first-play-coach.test.ts` and coach cases in `src/__tests__/procedural-client.test.ts`.
 
 ## Verification limits
