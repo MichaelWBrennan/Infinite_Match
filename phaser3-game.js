@@ -177,6 +177,8 @@ class PhaserMatch3Game {
         this.weeklyRhythmDays = [];
         this.timerInterval = null;
         this.tutorialShown = false;
+        this.coachStatus = 'new';
+        this.coach = null;
         this.powerUps = {
             blast: 3,
             prism: 1,
@@ -758,6 +760,7 @@ class PhaserMatch3Game {
         this.moves--;
         if (this.replayEligible) this.attemptMoves.push(cells.slice());
         this.renderEarnedTransition(result);
+        this.noteFirstPlayMove();
         this.checkEndConditions();
         return result;
     }
@@ -1251,6 +1254,7 @@ class PhaserMatch3Game {
         if (this.playerUI && !this.animationsReduced() && !this.namedBoardActive()) this.inputLockedUntil = Date.now() + 220;
         this.playerUI?.announce(`${this.score - scoreBefore} points${chain > 1 ? ` · ${chain} cascades` : ''}. ${['classic', 'daily'].includes(this.mode) ? `${this.moves} moves left.` : 'Nice match.'}`);
         this.updateUI();
+        this.noteFirstPlayMove();
         this.checkEndConditions();
     }
 
@@ -1397,7 +1401,7 @@ class PhaserMatch3Game {
                 : globalThis.InfiniteLevels.simulateSpecialClear(this.board, this.levelRng.state, this.gemTypes, this.generatedLevel.gemWeights, keys, this.specials, points, false, this.matchFeedback?.canStage() === true);
             if (result) {
                 if (track) this.attemptMoves.push({ receiptId: receipt.receiptId, ...inventoryAction });
-                this.renderEarnedTransition(result, soundCue); this.checkEndConditions();
+                this.renderEarnedTransition(result, soundCue); this.resetCoachHint(); this.checkEndConditions();
             } else this.replayEligible = false;
             return;
         }
@@ -1411,6 +1415,7 @@ class PhaserMatch3Game {
         }
         this.updateUI();
         this.playSound(soundCue);
+        this.resetCoachHint();
         this.checkEndConditions();
     }
 
@@ -2740,6 +2745,8 @@ class PhaserMatch3Game {
     }
 
     applyGeneratedDefinition(definition, serverTime = null) {
+        this.coach = null;
+        this.playerUI?.renderFirstPlayCoach?.(null);
         this.feedbackEndPending = false;
         this.feedbackResultStars = null;
         this.matchFeedback?.finish('new-definition', false);
@@ -3086,6 +3093,7 @@ class PhaserMatch3Game {
         this.energyText.setText(`Energy: ${this.energy}/${this.maxEnergy}`);
         this.starsText.setText(this.getAuthToken() ? `Stars: ${this.stars}` : 'Guest · no paid rewards');
         this.playerUI?.refresh();
+        if (this.coach) this.renderFirstPlayCoach();
     }
 
     togglePause() {
@@ -3097,7 +3105,12 @@ class PhaserMatch3Game {
     }
 
     showTutorial() {
-        if (this.playerUI) { this.playerUI.announce(this.usesLevelObjectives() ? 'Complete every goal above. Match 3; 4+ earns specials. Tap specials or swipe them together. Explore has guides; hints are free.' : this.usesEarnedSpecials() ? 'Match 3 to score, 4+ to earn free special gems. Tap a special to activate; swipe specials together to combine. Explore has the guide. Hints are free.' : 'Match three or more. Tap two adjacent gems or swipe. Need help? The Hint button is free.'); this.tutorialShown = true; return; }
+        if (this.playerUI) {
+            this.tutorialShown = true;
+            if (this.coachStatus === 'new' && this.isGameRunning) this.startFirstPlayCoach();
+            else this.playerUI.announce(this.usesLevelObjectives() ? 'Complete every goal above. Match 3; 4+ earns specials. Tap specials or swipe them together. Explore has guides; hints are free.' : this.usesEarnedSpecials() ? 'Match 3 to score, 4+ to earn free special gems. Tap a special to activate; swipe specials together to combine. Explore has the guide. Hints are free.' : 'Match three or more. Tap two adjacent gems or swipe. Need help? The Hint button is free.');
+            return;
+        }
         const tutorial = this.scene.add.text(400, 300, 'Tap gems to match them!', {
             fontSize: '24px',
             fill: '#ffffff',
@@ -3114,6 +3127,109 @@ class PhaserMatch3Game {
         });
         
         this.tutorialShown = true;
+    }
+
+    // First-play coach: presentation-only, skippable, and driven by the player's
+    // own valid move. It reuses free hints and never starts a run or grants rewards.
+    startFirstPlayCoach({ replay = false } = {}) {
+        if (!this.playerUI || !this.isGameRunning || this.mode === 'pvp') return false;
+        if (!replay && this.coachStatus !== 'new') return false;
+        this.coach = { step: 'goal', hint: null };
+        this.renderFirstPlayCoach();
+        this.playerUI.announce('First-play coach: read the goal, ask for a free hint, then make the move yourself. Skip anytime.');
+        return true;
+    }
+
+    renderFirstPlayCoach() {
+        const api = window.InfiniteFirstPlayCoach;
+        if (!this.playerUI?.renderFirstPlayCoach || !api || !this.coach) {
+            this.playerUI?.renderFirstPlayCoach?.(null);
+            return;
+        }
+        const levels = globalThis.InfiniteLevels;
+        const goals = this.usesLevelObjectives() && levels
+            ? levels.objectiveStatus(this.generatedLevel, this.score, this.objectiveProgress).items
+            : null;
+        const payload = api.view({
+            step: this.coach.step,
+            hint: this.coach.hint,
+            goals,
+            score: this.score,
+            targetScore: this.targetScore,
+            earnedSpecials: this.usesEarnedSpecials(),
+        });
+        this.playerUI.renderFirstPlayCoach(payload, {
+            hint: () => this.coachHint(),
+            focus: () => this.focusCoachHint(),
+            skip: () => this.skipFirstPlayCoach(),
+            finish: () => this.finishFirstPlayCoach(),
+        });
+    }
+
+    coachHint() {
+        if (!this.coach) return;
+        const cells = this.showHint();
+        if (!cells) {
+            this.playerUI?.announce('No free hint is available right now. The board has not spent a move.');
+            return;
+        }
+        this.coach = { step: 'hint', hint: Array.from(cells) };
+        this.renderFirstPlayCoach();
+        this.focusCoachHint();
+    }
+
+    // Inventory boosters are separate from the coached first match. If one
+    // changes the board, drop any stale coach hint instead of counting it.
+    resetCoachHint() {
+        if (!this.coach || this.coach.step !== 'hint') return;
+        this.coach = { step: 'goal', hint: null };
+        this.renderFirstPlayCoach();
+    }
+
+    focusCoachHint() {
+        const hint = this.coach?.hint;
+        if (hint && Number.isInteger(hint[0]) && Number.isInteger(hint[1])) this.keyboardCursor = [hint[0], hint[1]];
+        this.playerUI?.focusBoard?.();
+    }
+
+    noteFirstPlayMove() {
+        if (!this.coach) return;
+        this.coachStatus = 'completed';
+        this.coach = { step: 'done', hint: null };
+        this.saveUserData();
+        if (this.isGameRunning) this.renderFirstPlayCoach();
+    }
+
+    skipFirstPlayCoach() {
+        this.coachStatus = 'skipped';
+        this.coach = null;
+        this.saveUserData();
+        this.playerUI?.renderFirstPlayCoach?.(null);
+        this.playerUI?.announce('First-play coach skipped. Hints remain free.');
+        this.playerUI?.focusBoard?.();
+    }
+
+    finishFirstPlayCoach() {
+        this.coachStatus = 'completed';
+        this.coach = null;
+        this.saveUserData();
+        this.playerUI?.renderFirstPlayCoach?.(null);
+        this.playerUI?.focusBoard?.();
+    }
+
+    openFirstPlayCoach(wasRunning = this.isGameRunning && !this.isPaused) {
+        if (this.playerUI && this.isGameRunning) {
+            this.closeOverlay();
+            delete this.playerOverlayResume;
+            if (wasRunning) this.resumeGame();
+            this.startFirstPlayCoach({ replay: true });
+            this.playerUI?.refresh();
+            return;
+        }
+        this.openOverlay('First-play coach');
+        this.overlayText(400, 190, 'The coach appears on your first board. It explains the current goal, shows a free hint, and waits for you to make the move. You can skip it anytime.', { size: 16, width: 650 });
+        this.overlayText(400, 290, 'It never spends moves, starts a run, grants rewards, or changes difficulty. Hints are always free.', { size: 16, width: 650 });
+        this.overlayButton(400, 390, 250, 55, 0x555555, 'Close', () => { this.closeOverlay(); if (!this.isGameRunning) this.showTitleOverlay(); });
     }
 
     playSound(soundType) {
@@ -3264,6 +3380,7 @@ class PhaserMatch3Game {
                 this.settings = { ...this.settings, ...data.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(data.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
                 this.flowHistory = window.InfinitePlayFlow?.normalizeHistory(data.flowHistory) || [];
                 this.weeklyRhythmDays = window.InfiniteWeeklyHub?.normalizeDays(data.weeklyRhythmDays) || [];
+                this.coachStatus = window.InfiniteFirstPlayCoach?.normalizeStatus(data.coachStatus) || 'new';
                 console.log('✅ User data loaded');
                 return;
             }
@@ -3278,6 +3395,7 @@ class PhaserMatch3Game {
                         this.settings = { ...this.settings, ...cached.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(cached.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
                         this.flowHistory = window.InfinitePlayFlow?.normalizeHistory(cached.flowHistory) || [];
                         this.weeklyRhythmDays = window.InfiniteWeeklyHub?.normalizeDays(cached.weeklyRhythmDays) || [];
+                        this.coachStatus = window.InfiniteFirstPlayCoach?.normalizeStatus(cached.coachStatus) || 'new';
                         console.log('✅ User data loaded from cache manager');
                     }
                 } catch (e) { /* ignore cache errors */ }
@@ -3298,6 +3416,7 @@ class PhaserMatch3Game {
                 settings: this.settings,
                 flowHistory: window.InfinitePlayFlow?.normalizeHistory(this.flowHistory) || [],
                 weeklyRhythmDays: window.InfiniteWeeklyHub?.normalizeDays(this.weeklyRhythmDays) || [],
+                coachStatus: window.InfiniteFirstPlayCoach?.normalizeStatus(this.coachStatus) || 'new',
                 lastSaved: Date.now()
             };
             localStorage.setItem('phaser3_game_data', JSON.stringify(data));
@@ -4005,6 +4124,8 @@ class PhaserMatch3Game {
     endGame(deferResultScreen = false, autoContinueEndless = false) {
         if (!this.isGameRunning) return;
         this.isGameRunning = false;
+        this.coach = null;
+        this.playerUI?.renderFirstPlayCoach?.(null);
         this.feedbackEndPending = false;
         this.feedbackResultStars = null;
         const presenting = deferResultScreen && this.mode !== 'endless' && this.matchFeedback?.isActive();

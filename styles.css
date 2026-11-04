@@ -2328,7 +2328,7 @@ body {
 .match-player-shell {
     --match-level-background: #152b43; --match-text: #f8fbff;
     position: absolute; inset: 0; display: grid;
-    grid-template-rows: auto auto auto auto auto minmax(180px, 1fr) auto auto;
+    grid-template-rows: auto auto auto auto auto auto minmax(180px, 1fr) auto auto;
     gap: 5px; box-sizing: border-box; color: var(--match-text);
     padding: max(10px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
     background: radial-gradient(ellipse at top, #35526c66, transparent 60%), var(--match-level-background);
@@ -2337,7 +2337,7 @@ body {
 }
 .match-player-shell [hidden] { display: none !important; }
 .match-player-header, .match-player-stats, .match-player-footer, .match-player-goal,
-.match-player-theme, .match-goal-progress, .match-player-announcement { width: min(100%, 720px); margin-inline: auto; box-sizing: border-box; }
+.match-player-theme, .match-goal-progress, .match-coach-host, .match-player-announcement { width: min(100%, 720px); margin-inline: auto; box-sizing: border-box; }
 .match-player-header { display: flex; justify-content: space-between; align-items: center; padding: 0 10px; gap: 8px; }
 .match-wordmark { font-size: 14px; letter-spacing: .13em; color: #cae2f2; }
 .match-wordmark b { color: #b5f9db; }
@@ -2355,6 +2355,15 @@ body {
 .match-goal-progress::-webkit-progress-value { background: #83e6bf; }
 .match-goal-progress::-moz-progress-bar { background: #83e6bf; }
 .match-player-theme { font-size: 11px; line-height: 1.3; text-align: center; white-space: pre-line; color: #d3e5f2; max-height: 44px; overflow: auto; }
+.match-coach-host { max-height: 148px; overflow: auto; overscroll-behavior: contain; }
+.first-play-coach { display: flex; flex-direction: column; gap: 5px; padding: 9px 12px; border: 1px solid #b5f9db66; border-radius: 14px; background: #08152d9c; }
+.first-play-coach h3 { margin: 0; font-size: 13px; letter-spacing: .04em; color: #b5f9db; text-transform: uppercase; }
+.first-play-coach p { margin: 0; font-size: 13px; line-height: 1.35; color: #e6f3fb; overflow-wrap: anywhere; }
+.first-play-coach-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.first-play-coach-actions button { flex: 1 1 150px; min-height: 44px; }
+.first-play-coach-actions [data-coach-hint] { background: #246552; border-color: #b5f9db66; }
+.match-high-contrast .first-play-coach { border-color: #fff; background: #000; }
+.match-large-text .first-play-coach p { font-size: 15px; }
 .match-board-surface { position: relative; width: min(100%, 760px); min-height: 180px; height: 100%; margin-inline: auto; overflow: hidden; touch-action: none; border-radius: 20px; background: #06182b55; }
 .match-board-surface canvas { display: block; touch-action: none; }
 .match-board-surface:focus-visible { outline: 3px solid #c3fce5; outline-offset: -3px; }
@@ -2498,10 +2507,11 @@ body {
 .match-reduced-motion *, .match-reduced-motion button:active { animation: none !important; transition: none !important; transform: none; }
 @media (max-width: 380px) { .match-player-shell button { padding-inline: 8px; } .match-powerups button { padding-inline: 2px; } .match-player-stats > span { font-size: 12px; } }
 @media (max-height: 560px) and (orientation: landscape) {
-    .match-player-shell { grid-template-columns: minmax(170px, 230px) minmax(220px, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto; padding: 8px; }
-    .match-player-header, .match-player-stats, .match-player-goal, .match-goal-progress, .match-player-theme, .match-player-footer { grid-column: 1; }
+    .match-player-shell { grid-template-columns: minmax(170px, 230px) minmax(220px, 1fr); grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr) auto; padding: 8px; }
+    .match-player-header, .match-player-stats, .match-player-goal, .match-goal-progress, .match-player-theme, .match-coach-host, .match-player-footer { grid-column: 1; }
     .match-board-surface { grid-column: 2; grid-row: 1 / -1; height: 100%; }
-    .match-player-announcement { grid-column: 1; grid-row: 7; max-height: 30px; align-self: start; overflow: auto; font-size: 11px; }
+    .match-player-announcement { grid-column: 1; grid-row: 8; max-height: 30px; align-self: start; overflow: auto; font-size: 11px; }
+    .match-coach-host { max-height: 120px; }
     .match-player-stats { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
     .match-player-stats > span { white-space: normal; overflow-wrap: anywhere; padding: 6px 3px; }
     .match-player-theme { max-height: 24px; }

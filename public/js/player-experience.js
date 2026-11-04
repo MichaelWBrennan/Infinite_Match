@@ -64,6 +64,7 @@
             <div class="match-player-goal" data-stat="goal"></div>
             <progress class="match-goal-progress" aria-label="Level goal progress" max="100" value="0"></progress>
             <div class="match-player-theme" data-stat="theme"></div>
+            <section class="match-coach-host" data-first-play-coach-host hidden></section>
             <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection." style="touch-action: none;"></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="finish-feedback" aria-label="Finish match animation" hidden>Finish <small>ANIMATION</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
@@ -86,6 +87,7 @@
         let resolutionBusy = false;
         let goalKey = '';
         let goalLabels = [];
+        let coachSignature = '';
         const getField = (name) => name === 'level' ? find('.match-player-level') : find(`[data-stat="${name}"]`);
         const fields = Object.fromEntries(['score', 'moves', 'timer', 'level', 'goal', 'theme', 'energy', 'stars'].map((name) => [name, proxy(getField(name))]));
         const writeTheme = fields.theme.setText;
@@ -223,6 +225,8 @@
             assistiveBoard?.sync();
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
             find('[data-action="hint"]').disabled = !game.canInteractWithBoard();
+            const coachHint = find('[data-coach-hint]');
+            if (coachHint) coachHint.disabled = !game.canInteractWithBoard();
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
             find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending || !!game.endlessCheckpointPending || (!!game.matchFeedback?.isActive() && !game.isGameRunning);
             find('[data-action="bank"]').disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending || !!game.endlessCheckpointPending;
@@ -304,6 +308,24 @@
             const host = document.createElement('div');
             host.className = 'loss-review-host';
             content.append(host);
+            return api.render(host, payload, callbacks);
+        }
+        function renderFirstPlayCoach(payload, callbacks = {}) {
+            const host = find('[data-first-play-coach-host]');
+            const api = root.InfiniteFirstPlayCoach;
+            if (!payload || !api) {
+                coachSignature = '';
+                host.hidden = true;
+                host.replaceChildren();
+                return null;
+            }
+            // refresh() runs on every HUD update. Keep coach nodes stable so a
+            // score tick cannot steal keyboard focus from the board/buttons.
+            const signature = JSON.stringify(payload);
+            if (signature === coachSignature) return host.firstElementChild;
+            coachSignature = signature;
+            host.hidden = false;
+            host.replaceChildren();
             return api.render(host, payload, callbacks);
         }
         function renderRewardReceipt(payload, callbacks = {}) {
@@ -427,6 +449,7 @@
                 game.settings.textBoard = game.settings.textBoard !== true; game.saveUserData();
                 game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard();
             });
+            overlayButton('First-play coach', () => game.openFirstPlayCoach(wasRunning));
             overlayButton('Special gem guide', () => specialGuide(wasRunning));
             if (game.usesLevelObjectives()) overlayButton('Level goal guide', () => goalGuide(wasRunning));
             overlayButton('Game modes and local level settings', () => game.openMenu());
@@ -732,10 +755,20 @@
             refresh();
         }
 
-        const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
+        let assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
+        // The assistive grid is lazy-loaded. If mount beat the download, attach
+        // it once available so text/keyboard play is not lost for this session.
+        if (!assistiveBoard && typeof window !== 'undefined' && window.lazyLoad) {
+            void window.lazyLoad('assistive-board').then(() => {
+                if (assistiveBoard || !root.InfiniteAssistiveBoard || !shell.isConnected) return;
+                assistiveBoard = root.InfiniteAssistiveBoard.mount(game, surface, announce);
+                surface.tabIndex = assistiveBoard ? -1 : 0;
+                refresh();
+            }).catch(() => {});
+        }
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderLossReview, renderRewardReceipt, renderKingdomScene,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, get assistiveBoard() { return assistiveBoard; }, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderLossReview, renderRewardReceipt, renderFirstPlayCoach, renderKingdomScene,
             showPreferences: preferences, showThisWeek: thisWeek, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 

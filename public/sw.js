@@ -10,8 +10,8 @@
  * A new worker waits for an explicit player restart instead of reloading play.
  */
 
-const SHELL_VERSION = 'v10';
-const SHELL_CACHE = 'infinite-match-shell-v12';
+const SHELL_VERSION = 'v11';
+const SHELL_CACHE = 'infinite-match-shell-v13';
 const SHELL = [
   '/',
   '/script.js',
@@ -41,6 +41,7 @@ const SHELL = [
   '/js/weekly-hub.js',
   '/js/loss-review.js',
   '/js/reward-receipt.js',
+  '/js/first-play-coach.js',
   '/js/offline-api.js',
   '/js/lazy-loader.js',
   '/js/perf-overlay.js',
@@ -61,7 +62,7 @@ const SHELL = [
 const CRITICAL_SHELL = new Set([
   '/', '/index.html', '/script.js', '/phaser3-game.js', '/styles.css',
   '/js/phaser.min.js', '/js/procedural-levels.js', '/js/offline-api.js',
-  '/js/pwa-register.js', '/js/player-experience.js', '/js/lazy-loader.js',
+  '/js/pwa-register.js', '/js/player-experience.js', '/js/first-play-coach.js', '/js/lazy-loader.js',
   '/js/cache-manager.js', '/js/art-direction.js', '/js/texture-atlas.js',
 ]);
 
