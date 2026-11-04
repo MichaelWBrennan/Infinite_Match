@@ -2370,6 +2370,7 @@ body {
 .match-play-tools [data-action="hint"] { background: #246552; border-color: #b5f9db66; }
 .match-powerups { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
 .match-powerups button { padding: 5px 3px; font-size: 11px; background: #172d49; }
+.match-powerups button canvas { display: block; width: 26px; height: 26px; margin: 0 auto 3px; }
 .match-powerups button span { display: block; font-size: 14px; color: #ffe9aa; margin-top: 2px; }
 .match-powerups button[aria-pressed="true"] { outline: 2px solid #ffe9aa; background: #57432e; }
 .match-player-account { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px 9px; font-size: 11px; }

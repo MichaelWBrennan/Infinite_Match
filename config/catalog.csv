@@ -1,10 +1,11 @@
 id,name,cost_currency,cost_amount,description,type,rewards,category
-bomb,Bomb,coins,150,Clears a 3x3 area,item,bomb:1,powerups
-rocket,Rocket,coins,200,Clears a full row or column,item,rocket:1,powerups
-rainbow,Rainbow Gem,coins,300,Clears every gem of one colour,item,rainbow:1,powerups
-lightning,Lightning,coins,300,Clears a column,item,lightning:1,powerups
-diamond,Diamond,coins,400,Clears all gems of the tapped colour,item,diamond:1,powerups
-target,Target Gem,coins,250,Clears the tapped gem and its neighbours,item,target:1,powerups
-star,Star,coins,350,Clears the tapped row and column,item,star:1,powerups
+blast,Blast,coins,150,Clears a 3x3 area,item,blast:1,powerups
+ray,Ray,coins,200,Clears a full row or column,item,ray:1,powerups
+prism,Prism,coins,300,Clears every gem on the board,item,prism:1,powerups
+bolt,Bolt,coins,300,Clears a column,item,bolt:1,powerups
+facet,Facet,coins,400,Clears all gems of the tapped colour,item,facet:1,powerups
+mark,Mark,coins,250,Clears the tapped gem and its neighbours,item,mark:1,powerups
+nova,Nova,coins,350,Clears the tapped row and column,item,nova:1,powerups
+spectrum,Spectrum,coins,400,Clears all gems of a random colour,item,spectrum:1,powerups
 vip,VIP Month,usd,499,1.5x coins on every win for 30 days,entitlement,vip:1,entitlements
 season_pass_premium,Season Pass Premium,usd,999,Premium battle pass track for the current season,entitlement,season_pass_premium:1,entitlements

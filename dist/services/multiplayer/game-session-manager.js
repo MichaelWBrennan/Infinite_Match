@@ -535,7 +535,7 @@ class GameSessionManager {
             }
             if (match.tiles.length >= 5) {
                 powerUps.push({
-                    type: 'bomb',
+                    type: 'blast',
                     position: match.tiles[0]
                 });
             }

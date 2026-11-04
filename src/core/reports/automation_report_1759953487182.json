@@ -94,7 +94,7 @@
         "tradable": true
       },
       {
-        "id": "booster_striped_candy",
+        "id": "booster_spectrum",
         "name": "Striped Candy",
         "type": "booster",
         "rarity": "common",
@@ -236,7 +236,7 @@
         "type": "item"
       },
       {
-        "id": "booster_striped_candy",
+        "id": "booster_spectrum",
         "name": "Striped Candy",
         "cost": 100,
         "currency": "coins",

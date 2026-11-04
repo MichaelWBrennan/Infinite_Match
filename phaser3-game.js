@@ -117,8 +117,8 @@ function dailyChallengeLevel(dateString) {
 }
 
 // Power-ups that need a tapped gem. They arm on press and fire on the next tap.
-const TARGETED_POWERUPS = ['diamond', 'target', 'star', 'swap', 'crush'];
-const POWERUP_TYPES = ['bomb', 'rainbow', 'lightning', 'diamond', 'target', 'star', 'swap', 'crush'];
+const TARGETED_POWERUPS = ['facet', 'mark', 'nova', 'shift', 'hammer'];
+const POWERUP_TYPES = ['blast', 'prism', 'bolt', 'facet', 'mark', 'nova', 'shift', 'hammer'];
 
 // Checkpoints are a presentation convenience, not a new reward rule. The server still
 // enforces its three-hour attempt lifetime and the 300-coin / 500-XP payout caps.
@@ -170,9 +170,9 @@ class PhaserMatch3Game {
         this.timerInterval = null;
         this.tutorialShown = false;
         this.powerUps = {
-            bomb: 3,
-            rainbow: 1,
-            lightning: 2,
+            blast: 3,
+            prism: 1,
+            bolt: 2,
             hammer: 1,
             shuffle: 1
         };
@@ -191,6 +191,16 @@ class PhaserMatch3Game {
         this.isAuthenticated = false;
         this.userData = null;
         this.platformInfo = null;
+        // ---- PvP (peer-to-peer via Socket.IO on our own server, no external deps) ----
+        this.pvpSocket = null;           // Socket.IO connection (same origin)
+        this.pvpSessionId = null;        // Active game session id
+        this.pvpRoomId = null;           // Room id we're in
+        this.pvpOpponentId = null;       // Opponent player id
+        this.pvpMyPlayerId = null;       // Our player id in the session
+        this.pvpIsMyTurn = false;        // Whether it's our turn
+        this.pvpScores = { me: 0, them: 0 };
+        this.pvpGameState = null;        // Last server-authoritative board state
+        this.pvpPendingMove = null;      // Move waiting for server ack
         this.analytics = {
             sessionStart: Date.now(),
             gamesPlayed: 0,
@@ -255,7 +265,13 @@ class PhaserMatch3Game {
             this.soundEffects = null;
         }
         this.playerUI = window.InfinitePlayerExperience?.mount(this, document.getElementById('phaser-game-container')) || null;
-        
+
+        // Connect PvP Socket.IO (same origin, served by our own server — no external deps).
+        // Only connects when the player is signed in; PvP requires an account.
+        if (this.getAuthToken() && typeof io !== 'undefined') {
+            this.connectPvpSocket();
+        }
+
         // Initialize Phaser 3 game
         const config = {
             type: Phaser.AUTO,
@@ -291,293 +307,69 @@ class PhaserMatch3Game {
     }
 
     preload() {
-        console.log('📦 Preloading Phaser 3 assets...');
-
-        // Stream critical launch resources (standard theme + UI) with programmatic fallback.
-        // Fire-and-forget: Phaser does not await async preload, so textures are applied
-        // as they arrive via applyStreamedTextures()/applyStreamedUiTextures().
-        const criticalResources = [];
-        for (const theme of allThemeUrls(this.config)) {
-            criticalResources.push({ url: theme.url, type: 'blob', priority: 'critical' });
-        }
-        for (const ui of allUiUrls(this.config)) {
-            criticalResources.push({ url: ui.url, type: 'blob', priority: 'critical' });
-        }
-        void this.resourceStreamer.preloadCritical(criticalResources).catch((error) => {
-            console.warn('[ResourceStreamer] Critical preload failed:', error);
-        });
-
-        // Create gem textures programmatically (fallback).
+        console.log('📦 Preparing Infinite Match artwork...');
+        // Artwork is local, deterministic, and shared with the offline exporter.
+        // Do not stream unrelated tile packs over the canonical jewel set.
         this.createGemTextures();
-
-        // Load UI assets
         this.loadUIAssets();
-
-        // Fetch ad mediation config from the server (non-blocking).
         this.fetchAdConfig();
+    }
 
-        // Background prefetch remaining themes during idle time.
-        // Defer when frames are over budget; skip entirely when hard-paused or on slow connections.
-        const remaining = allThemeUrls(this.config).map((t) => ({
-            url: t.url, type: 'blob', priority: 'background',
-        }));
-        const connection = this.perfMonitor ? this.perfMonitor.getConnectionInfo() : null;
-        const skipBackgroundPrefetch = connection
-            ? connection.lowBandwidthMode || connection.quality === 'slow'
-            : false;
-        if (remaining.length && (!this.perfMonitor || !this.perfMonitor.shouldDeferWork()) && !skipBackgroundPrefetch) {
-            void this.resourceStreamer.prefetchBackground(remaining);
-        } else if (remaining.length) {
-            if (skipBackgroundPrefetch) {
-                console.log('📶 Skipping background prefetch: slow connection / data saver');
-            } else {
-                console.log('⏸️ Deferring background prefetch: frames over budget');
-            }
+    refreshGemTextures() {
+        if (!this.scene?.textures) return;
+        if (this.textureAtlas) { this.textureAtlas.destroy(); this.textureAtlas = null; }
+        const list = this.scene.textures.list || {};
+        for (const key of Object.keys(list)) {
+            if (key.startsWith('gem_') || key.startsWith('shield_overlay_')) this.scene.textures.remove(key);
         }
-
-        // Apply streamed textures as they arrive (non-blocking).
-        // Skip when hard-paused to protect gameplay frame time.
-        if (!this.perfMonitor || !this.perfMonitor.isHardPaused()) {
-            void this.applyStreamedTextures();
-            void this.applyStreamedUiTextures();
-        } else {
-            console.log('⏸️ Pausing texture application: frames hard-paused');
-        }
+        this.createGemTextures();
     }
 
     createGemTextures() {
-        if (window.InfinitePlayerExperience && this.scene.textures?.createCanvas) {
-            const drawShieldFrame = (context, shield) => {
-                // The same original numbered frame is used both on instant-play gems
-                // and as fixed terrain above falling gems in staged presentation.
-                context.save();
-                context.strokeStyle = '#e8fbff'; context.lineWidth = shield === 2 ? 4 : 2;
-                context.strokeRect(2, 2, 60, 60);
-                context.fillStyle = '#12354b'; context.fillRect(41, 0, 23, 23);
-                context.fillStyle = '#ffffff'; context.font = 'bold 17px sans-serif';
-                context.textAlign = 'center'; context.textBaseline = 'middle';
-                context.fillText(String(shield), 52, 12); context.restore();
-            };
-
-            // Build a texture atlas so all gem frames share one texture,
-            // letting Phaser batch sprites and cut draw calls dramatically.
-            // Falls back to individual textures if TextureAtlas isn't available
-            // (e.g. VM-sandboxed test execution).
-            if (window.TextureAtlas) {
-                this.textureAtlas = new (window.TextureAtlas)(this.scene, {
-                    size: 64,
-                    padding: 2,
-                    maxAtlasSize: 2048,
-                });
-                void this.textureAtlas.buildFromVisuals(
-                    window.InfinitePlayerExperience.visuals,
-                    window.InfinitePlayerExperience.specialTypes,
-                    window.InfinitePlayerExperience.drawGem,
-                    drawShieldFrame
-                );
-
-                // Shield overlays are drawn directly into atlas frames by buildFromVisuals.
-                // No separate shield textures needed.
-                return;
-            }
-
-            // Fallback: individual canvas textures (VM sandbox, no TextureAtlas).
-            for (const shield of [1, 2]) {
-                const overlay = this.scene.textures.createCanvas(`shield_overlay_${shield}`, 64, 64);
-                drawShieldFrame(overlay.getContext(), shield);
-                overlay.refresh();
-            }
-            for (const type of Object.keys(window.InfinitePlayerExperience.visuals)) {
-                for (const special of [null, ...window.InfinitePlayerExperience.specialTypes]) {
-                    for (const shield of [0, 1, 2]) {
-                        const texture = this.scene.textures.createCanvas(this.gemTexture(type, special, shield), 64, 64);
-                        const context = texture.getContext();
-                        window.InfinitePlayerExperience.drawGem(context, type, special);
-                        if (shield) drawShieldFrame(context, shield);
-                        texture.refresh();
-                    }
-                }
-            }
+        const art = window.InfiniteArt;
+        const visuals = this.gemVisuals || window.InfinitePlayerExperience?.visuals || art?.visuals || {};
+        if (!art || !this.scene.textures?.createCanvas) return;
+        const drawShieldFrame = (context, shield) => art.drawShield(context, shield);
+        // Staged shield overlays are separate from the gem atlas.
+        for (const shield of [1, 2]) {
+            const overlay = this.scene.textures.createCanvas(`shield_overlay_${shield}`, 64, 64);
+            drawShieldFrame(overlay.getContext(), shield);
+            overlay.refresh();
+        }
+        if (window.TextureAtlas) {
+            this.textureAtlas = new window.TextureAtlas(this.scene, { size: 64, padding: 2, maxAtlasSize: 1024 });
+            void this.textureAtlas.buildFromVisuals(visuals, art.specialTypes, art.drawGem, drawShieldFrame);
             return;
         }
-        const gemColors = {
-            red: 0xff6b6b,
-            blue: 0x74b9ff,
-            green: 0x00b894,
-            yellow: 0xfdcb6e,
-            purple: 0xa29bfe,
-            orange: 0xfd79a8
-        };
+        for (const type of Object.keys(visuals)) {
+            for (const special of [null, ...art.specialTypes]) {
+                for (const shield of [0, 1, 2]) {
+                    const texture = this.scene.textures.createCanvas(this.gemTexture(type, special, shield), 64, 64);
+                    const context = texture.getContext();
+                    art.drawGem(context, type, special, visuals);
+                    if (shield) drawShieldFrame(context, shield);
+                    texture.refresh();
+                }
+            }
+        }
+    }
 
-        Object.keys(gemColors).forEach(color => {
-            // Create gem texture
-            const graphics = this.scene.add.graphics();
-            graphics.fillStyle(gemColors[color]);
-            graphics.fillCircle(32, 32, 30);
-            graphics.lineStyle(4, 0xffffff, 0.8);
-            graphics.strokeCircle(32, 32, 30);
-            graphics.generateTexture(`gem_${color}`, 64, 64);
-            graphics.destroy();
-        });
+    canvasTexture(key, draw) {
+        if (!this.scene.textures?.createCanvas) return null;
+        if (this.scene.textures.exists(key)) this.scene.textures.remove(key);
+        const texture = this.scene.textures.createCanvas(key, 64, 64);
+        draw(texture.getContext());
+        texture.refresh();
+        return texture;
     }
 
     loadUIAssets() {
-        // Create UI textures
-        const graphics = this.scene.add.graphics();
-        
-        // Power-up textures
-        graphics.fillStyle(0xff6b6b);  // --im-danger
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_bomb', 64, 64);
-
-        graphics.clear();
-        graphics.fillStyle(0x667eea);  // --im-secondary royal periwinkle
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_rainbow', 64, 64);
-
-        graphics.clear();
-        graphics.fillStyle(0xfdcb6e);  // --im-tile-yellow
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_lightning', 64, 64);
-
-        graphics.clear();
-        graphics.fillStyle(0xa29bfe);  // --im-tile-purple
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_diamond', 64, 64);
-
-        graphics.clear();
-        graphics.fillStyle(0xfd79a8);  // --im-tile-orange
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_target', 64, 64);
-
-        graphics.clear();
-        graphics.fillStyle(0xffd700);  // --im-gold
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_star', 64, 64);
-
-        // Rocket: clears a full row — blue with a tail
-        graphics.clear();
-        graphics.fillStyle(0x00cec9);  // --im-tile-cyan
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_rocket', 64, 64);
-
-        // Color bomb: clears all gems of one color — black with colored swirl
-        graphics.clear();
-        graphics.fillStyle(0x2d3436);  // --im-dark
-        graphics.fillRect(0, 0, 64, 64);
-        graphics.generateTexture('powerup_color_bomb', 64, 64);
-
-        graphics.destroy();
-    }
-
-    // ----- Resource streaming integration -----
-
-    /**
-     * Apply streamed theme textures over programmatic canvas textures.
-     * Called after createGemTextures() so streamed textures take precedence.
-     */
-    async applyStreamedTextures() {
-        if (!this.streamedTextures) this.streamedTextures = new Map();
-        if (!this.resourceStreamer) this.resourceStreamer = new ResourceStreamer(RESOURCE_CONFIG);
-        const scene = this.scene;
-        if (!scene || !scene.textures) return;
-        const promises = [];
-        for (const theme of allThemeUrls(this.config)) {
-            const objectUrl = this.resourceStreamer.getUrl(theme.url);
-            if (!objectUrl) continue;
-            const promise = this.loadTextureFromBlob(scene, `theme_${theme.themeId}`, objectUrl)
-                .then(() => { this.streamedTextures.set(theme.themeId, true); })
-                .catch(() => { this.streamedTextures.set(theme.themeId, false); });
-            promises.push(promise);
+        const art = window.InfiniteArt;
+        if (!art) return;
+        for (const type of art.boosterTypes) this.canvasTexture(`powerup_${type}`, (context) => art.drawBooster(context, type));
+        for (const kind of art.terrainTypes) {
+            for (const layers of [1, 2, 3]) this.canvasTexture(`terrain_${kind}_${layers}`, (context) => art.drawTerrain(context, kind, layers));
         }
-        await Promise.all(promises);
-    }
-
-    /**
-     * Apply streamed UI textures over programmatic UI textures.
-     */
-    async applyStreamedUiTextures() {
-        if (!this.streamedUiTextures) this.streamedUiTextures = new Map();
-        if (!this.resourceStreamer) this.resourceStreamer = new ResourceStreamer(RESOURCE_CONFIG);
-        const scene = this.scene;
-        if (!scene || !scene.textures) return;
-        const promises = [];
-        for (const ui of allUiUrls(this.config)) {
-            const objectUrl = this.resourceStreamer.getUrl(ui.url);
-            if (!objectUrl) continue;
-            const promise = this.loadTextureFromBlob(scene, `ui_${ui.name}`, objectUrl)
-                .then(() => { this.streamedUiTextures.set(ui.name, true); })
-                .catch(() => { this.streamedUiTextures.set(ui.name, false); });
-            promises.push(promise);
-        }
-        await Promise.all(promises);
-    }
-
-    /**
-     * Stream a theme texture for the given level context. Called when a new
-     * level starts (applyGeneratedDefinition) so the theme's art is ready
-     * before the board renders. Falls back to programmatic rendering if the
-     * stream fails.
-     */
-    async streamThemeTexture(context) {
-        if (!context || !context.season) return false;
-        if (!this.streamedTextures) this.streamedTextures = new Map();
-        if (!this.resourceStreamer) this.resourceStreamer = new ResourceStreamer(RESOURCE_CONFIG);
-        const themeId = context.season;
-        if (this.streamedTextures.has(themeId)) return this.streamedTextures.get(themeId);
-
-        const themeUrl = RESOURCE_CONFIG.themes[themeId] || `textures/gems/${themeId}.png`;
-        const url = RESOURCE_CONFIG.baseUrl
-            ? (RESOURCE_CONFIG.baseUrl.endsWith('/') ? RESOURCE_CONFIG.baseUrl : RESOURCE_CONFIG.baseUrl + '/') + themeUrl
-            : themeUrl;
-        try {
-            await this.resourceStreamer.fetchOne({ url, type: 'blob', priority: 'normal' });
-            const objectUrl = this.resourceStreamer.getUrl(url);
-            if (!objectUrl) return false;
-            const scene = this.scene;
-            if (!scene || !scene.textures) return false;
-            await this.loadTextureFromBlob(scene, `theme_${themeId}`, objectUrl);
-            this.streamedTextures.set(themeId, true);
-            return true;
-        } catch (error) {
-            this.streamedTextures.set(themeId, false);
-            return false;
-        }
-    }
-
-    /**
-     * Load a texture from a blob URL into Phaser's texture manager as a canvas texture.
-     */
-    loadTextureFromBlob(scene, key, blobUrl) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => {
-                try {
-                    const canvas = scene.textures.createCanvas(key, img.width, img.height);
-                    const ctx = canvas.getContext();
-                    ctx.drawImage(img, 0, 0);
-                    canvas.refresh();
-                    URL.revokeObjectURL(blobUrl);
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            };
-            img.onerror = () => {
-                URL.revokeObjectURL(blobUrl);
-                reject(new Error(`Failed to decode image: ${blobUrl}`));
-            };
-            img.src = blobUrl;
-        });
-    }
-
-    /**
-     * Return the texture key for a gem type, preferring streamed theme textures
-     * over programmatic canvas textures.
-     */
-    gemTextureKey(type, special = null, shield = 0) {
-        const base = special && window.InfinitePlayerExperience ? `gem_${type}_${special}` : `gem_${type}`;
-        return shield && window.InfinitePlayerExperience ? `${base}_shield${shield}` : base;
     }
 
     create() {
@@ -652,9 +444,20 @@ class PhaserMatch3Game {
             this.onBoardPointerBounds = () => this.refreshBoardInputBounds();
             for (const type of ['pointerdown', 'touchstart', 'mousedown']) this.playerUI.surface.addEventListener(type, this.onBoardPointerBounds, true);
             this.scene.scale.on('resize', () => this.fitBoardViewport());
+            let lastSurfaceWidth = 0;
+            let lastSurfaceHeight = 0;
             this.boardResizeObserver = new ResizeObserver(() => {
                 const { clientWidth: width, clientHeight: height } = this.playerUI.surface;
-                if (width > 0 && height > 0) { this.game.scale.resize(width, height); this.fitBoardViewport(); }
+                if (width <= 0 || height <= 0) return;
+                // Resizing the canvas on every observation can feed back into the
+                // observed surface and spam ResizeObserver loop errors. Only resize
+                // when the surface actually changed; camera fitting is cheap.
+                if (width !== lastSurfaceWidth || height !== lastSurfaceHeight) {
+                    lastSurfaceWidth = width;
+                    lastSurfaceHeight = height;
+                    this.game.scale.resize(width, height);
+                }
+                this.fitBoardViewport();
             });
             this.boardResizeObserver.observe(this.playerUI.surface);
             this.fitBoardViewport();
@@ -684,7 +487,10 @@ class PhaserMatch3Game {
         this.overlayButton(400, 300, 300, 60, 0x4ecdc4, 'Play', () => this.requestStart());
         this.overlayButton(400, 380, 300, 60, 0x9b59b6, signedIn ? 'Switch account' : 'Sign in / Register', () => this.openSignIn());
         this.overlayButton(400, 460, 300, 55, 0xe09d54, 'Today’s Local Level', () => this.startDaily());
-        if (this.playerUI) this.overlayButton(400, 530, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
+        if (signedIn && this.getAuthToken()) {
+            this.overlayButton(400, 530, 300, 55, 0x9b59b6, 'PvP Versus', () => this.showPvpMenu());
+        }
+        if (this.playerUI) this.overlayButton(400, 600, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
 
         // Performance-based quality adjustment after first frame.
         setTimeout(() => this.checkPerformanceAndAdjustQuality(), 2000);
@@ -801,6 +607,8 @@ class PhaserMatch3Game {
         this.liquorice = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.liquorice ? this.generatedLevel.liquorice.map((row) => row.slice()) : null;
         this.marmalade = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.marmalade ? this.generatedLevel.marmalade.map((row) => row.slice()) : null;
         this.frosting = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.frosting ? this.generatedLevel.frosting.map((row) => row.slice()) : null;
+        this.delivery = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.delivery ? this.generatedLevel.delivery.map((row) => row.slice()) : null;
+        this.hazards = this.generatedLevel?.generatorVersion >= 6 && this.generatedLevel.hazards ? this.generatedLevel.hazards.map((row) => row.slice()) : null;
 
         if (this.generatedLevel) {
             this.board = this.generatedLevel.board.map((row) => row.slice());
@@ -825,53 +633,39 @@ class PhaserMatch3Game {
         return globalThis.InfiniteLevels.GENERATOR_VERSION;
     }
 
-    /** Render all v6 obstacle overlays on top of gems. Only the family present
-     *  in the current level is drawn; others are null. */
-    // Backward-compatible wrapper: renders only the blocker overlay.
-    renderBlockers() {
-        const grid = this.blockers;
-        const gfx = this.blockerLayer;
-        if (!grid && !gfx?.active) return;
-        if (!gfx?.active) this.blockerLayer = this.scene.add.graphics().setDepth(3);
-        const g = this.blockerLayer;
-        g.clear();
-        if (!grid) return;
-        const fill = 0x0b1020; const stroke = 0xffd166;
-        grid.forEach((row, r) => row.forEach((on, c) => {
-            if (!on) return;
-            const x = this.cellX(c) - this.gemSize / 2;
-            const y = this.cellY(r) - this.gemSize / 2;
-            g.fillStyle(fill, 0.55).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
-            g.lineStyle(3, stroke, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
-        }));
-    }
+    /** Render v6 terrain with the same original overlays used by goal chips and exports. */
+    renderBlockers() { this.renderTerrain(); }
 
     renderTerrain() {
+        for (const sprite of this.terrainSprites || []) sprite.destroy();
+        this.terrainSprites = [];
+        if (!this.scene?.add?.image) return;
+        const weather = this.generatedLevel?.context?.weather?.condition;
+        const hazardKind = globalThis.InfiniteLevels?.environmentRules && this.generatedLevel?.context
+            ? globalThis.InfiniteLevels.environmentRules(this.generatedLevel.context).hazard?.type : null;
         const layers = [
-            { layer: 'blockerLayer', grid: this.blockers, fill: 0x0b1020, stroke: 0xffd166, symbol: 'B' },
-            { layer: 'lockedLayer', grid: this.lockedGems, fill: 0x2c3e50, stroke: 0xf1c40f, symbol: 'L' },
-            { layer: 'jellyLayer', grid: this.jelly, fill: 0x3498db, stroke: 0x2980b9, symbol: 'J' },
-            { layer: 'chocolateLayer', grid: this.chocolate, fill: 0x5d4037, stroke: 0x3e2723, symbol: 'C' },
-            { layer: 'liquoriceLayer', grid: this.liquorice, fill: 0x1a1a1a, stroke: 0x4a4a4a, symbol: 'Q' },
-            { layer: 'marmaladeLayer', grid: this.marmalade, fill: 0xff9800, stroke: 0xf57c00, symbol: 'M' },
-            { layer: 'frostingLayer', grid: this.frosting, fill: 0xe3f2fd, stroke: 0x90caf9, symbol: 'F' },
+            { grid: this.blockers, kind: 'blocker' },
+            { grid: this.lockedGems, kind: 'locked' },
+            { grid: this.jelly, kind: 'jelly' },
+            { grid: this.chocolate, kind: 'chocolate' },
+            { grid: this.liquorice, kind: 'liquorice' },
+            { grid: this.marmalade, kind: 'marmalade' },
+            { grid: this.frosting, kind: 'frosting' },
+            { grid: this.delivery, kind: 'delivery' },
+            { grid: this.hazards, kind: hazardKind || 'mist' },
         ];
-        for (const { layer, grid, fill, stroke, symbol } of layers) {
-            const gfx = this[layer];
-            if (!grid && !gfx?.active) continue;
-            if (!gfx?.active) this[layer] = this.scene.add.graphics().setDepth(3);
-            const g = this[layer];
-            g.clear();
+        for (const { grid, kind } of layers) {
             if (!grid) continue;
-            grid.forEach((row, r) => row.forEach((on, c) => {
-                if (!on) return;
-                const x = this.cellX(c) - this.gemSize / 2;
-                const y = this.cellY(r) - this.gemSize / 2;
-                g.fillStyle(fill, 0.55).fillRoundedRect(x, y, this.gemSize, this.gemSize, 8);
-                g.lineStyle(3, stroke, 1).strokeRoundedRect(x, y, this.gemSize, this.gemSize, 8);
-                // Draw the obstacle symbol in the center of the cell.
-                g.fillStyle(stroke, 0.9);
-                g.fillRect(x + this.gemSize * 0.4, y + this.gemSize * 0.4, this.gemSize * 0.2, this.gemSize * 0.2);
+            grid.forEach((row, r) => row.forEach((value, c) => {
+                if (!value) return;
+                const key = `terrain_${kind}_${value}`;
+                if (window.InfiniteArt && this.scene.textures?.createCanvas && !this.scene.textures.exists(key)) {
+                    this.canvasTexture(key, (context) => window.InfiniteArt.drawTerrain(context, kind, value));
+                }
+                const sprite = this.scene.add.image(this.cellX(c), this.cellY(r), key);
+                sprite.setScale(this.gemSize / 64);
+                if (sprite.setDepth) sprite.setDepth(3);
+                this.terrainSprites.push(sprite);
             }));
         }
     }
@@ -931,7 +725,7 @@ class PhaserMatch3Game {
         const result = globalThis.InfiniteLevels.simulateLevelMove(this.generatedLevel,
             { board: this.board, specials: this.specials, shields: this.shields, blockers: this.blockers,
               locked: this.lockedGems, jelly: this.jelly, chocolate: this.chocolate, liquorice: this.liquorice,
-              marmalade: this.marmalade, frosting: this.frosting,
+              marmalade: this.marmalade, frosting: this.frosting, delivery: this.delivery, hazards: this.hazards,
               refillState: this.levelRng.state, objectiveProgress: this.objectiveProgress }, cells, this.matchFeedback?.canStage() === true);
         if (!result) {
             if (cells.length === 4) this.shake([this.gemSprites[cells[0]][cells[1]], this.gemSprites[cells[2]][cells[3]]]);
@@ -966,6 +760,8 @@ class PhaserMatch3Game {
         if (result.liquorice) this.liquorice = result.liquorice;
         if (result.marmalade) this.marmalade = result.marmalade;
         if (result.frosting) this.frosting = result.frosting;
+        if (result.delivery) this.delivery = result.delivery;
+        if (result.hazards) this.hazards = result.hazards;
         this.levelRng.state = result.refillState;
         this.gemSprites = result.board.map((row, r) => row.map((type, c) => {
             const origin = result.origins[r][c];
@@ -1097,7 +893,7 @@ class PhaserMatch3Game {
             this.setSelectedGem(this.selectedGem);
             gem.setScale(this.gemScale * 1.08);
             const type = gem.getData('type');
-            this.playerUI?.announce(`Row ${cell[0] + 1}, column ${cell[1] + 1}: ${type} ${window.InfinitePlayerExperience.visuals[type].shape}${gem.getData('special') ? ` · ${window.InfinitePlayerExperience.specialNames[gem.getData('special')]}` : ''}. Space selects; Enter selects or activates.`);
+            this.playerUI?.announce(`Row ${cell[0] + 1}, column ${cell[1] + 1}: ${type} ${window.InfinitePlayerExperience.visuals[type]?.shape || ''}${gem.getData('special') ? ` · ${window.InfinitePlayerExperience.specialNames[gem.getData('special')]}` : ''}. Space selects; Enter selects or activates.`);
         } else if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault(); event.stopPropagation(); this.selectGem(this.gemSprites[row][col], { selectOnly: event.key === ' ' });
             if (this.selectedGem) this.playerUI?.announce(`Selected row ${row + 1}, column ${col + 1}. Choose an adjacent gem.`);
@@ -1388,6 +1184,17 @@ class PhaserMatch3Game {
     }
 
     trySwap(r1, c1, r2, c2) {
+        // PvP mode: send the swap to the server instead of resolving locally.
+        // The server validates the move, updates scores, and broadcasts the result.
+        if (this.mode === 'pvp') {
+            if (!this.pvpIsMyTurn) {
+                this.playerUI?.announce("Not your turn — wait for your opponent.");
+                return;
+            }
+            this.sendPvpMove(r1, c1, r2, c2);
+            return;
+        }
+
         if (!this.canInteractWithBoard() || !this.isInBounds(r1, c1) || !this.isInBounds(r2, c2) || !this.isAdjacent(r1, c1, r2, c2)) return;
         this.hintCells = null;
         if (this.usesEarnedSpecials()) return this.commitEarnedAction([r1, c1, r2, c2]);
@@ -1552,7 +1359,7 @@ class PhaserMatch3Game {
         // attempt. Legacy and guest spends remain playable but cannot claim replay.
         const receipt = this.powerReceipt;
         const track = this.replayEligible && receipt?.receiptId && inventoryAction?.type === receipt.type;
-        if (!track) this.replayEligible = false;
+        if (!track) this.replayEligible = false;        
         if (this.usesEarnedSpecials()) {
             const result = this.usesLevelObjectives()
                 ? globalThis.InfiniteLevels.simulateObjectiveClear(this.generatedLevel,
@@ -1587,7 +1394,7 @@ class PhaserMatch3Game {
         return keys;
     }
 
-    activateBomb() {
+    activateBlast() {
         // 3x3 blast around a random gem.
         const n = this.boardSize;
         const r0 = Math.floor(Math.random() * n);
@@ -1600,31 +1407,31 @@ class PhaserMatch3Game {
                 if (this.isInBounds(r, c)) keys.add(`${r},${c}`);
             }
         }
-        this.clearAndCascade(keys, 100, 'burst', { type: 'bomb', target: [r0, c0] });
+        this.clearAndCascade(keys, 100, 'burst', { type: 'blast', target: [r0, c0] });
     }
 
-    activateRainbow() {
+    activatePrism() {
         // Clears the whole board.
-        this.clearAndCascade(this.allCellKeys(), 500, 'prism', { type: 'rainbow' });
+        this.clearAndCascade(this.allCellKeys(), 500, 'prism', { type: 'prism' });
     }
 
-    activateLightning() {
+    activateBolt() {
         // Clears one random column.
         const col = Math.floor(Math.random() * this.boardSize);
         const keys = new Set();
         for (let r = 0; r < this.boardSize; r++) keys.add(`${r},${col}`);
-        this.clearAndCascade(keys, 300, 'beam', { type: 'lightning', target: [0, col] });
+        this.clearAndCascade(keys, 300, 'beam', { type: 'bolt', target: [0, col] });
     }
 
-    activateRocket() {
+    activateRay() {
         // Clears one full row.
         const row = Math.floor(Math.random() * this.boardSize);
         const keys = new Set();
         for (let c = 0; c < this.boardSize; c++) keys.add(`${row},${c}`);
-        this.clearAndCascade(keys, 300, 'beam', { type: 'rocket', target: [row, 0] });
+        this.clearAndCascade(keys, 300, 'beam', { type: 'ray', target: [row, 0] });
     }
 
-    activateColorBomb() {
+    activateSpectrum() {
         // Clears all gems of a random color present on the board.
         const n = this.boardSize;
         const colorCounts = {};
@@ -1654,7 +1461,7 @@ class PhaserMatch3Game {
                 if (gem && gem.getData?.('type') === targetColor) keys.add(`${r},${c}`);
             }
         }
-        this.clearAndCascade(keys, 500, 'prism', { type: 'color_bomb', target: anchor });
+        this.clearAndCascade(keys, 500, 'prism', { type: 'spectrum', target: anchor });
     }
 
     createUI() {
@@ -1789,49 +1596,49 @@ class PhaserMatch3Game {
 
     createPowerUps() {
         if (this.playerUI) {
-            for (const type of ['bomb', 'rainbow', 'lightning']) {
+            for (const type of ['blast', 'prism', 'bolt']) {
                 const slot = this.playerUI.powerups.get(type); this[`${type}Btn`] = slot.btn; this[`${type}Text`] = slot.text;
             }
-            this.powerButtons = Object.fromEntries(['diamond', 'target', 'star', 'swap', 'crush'].map((type) => [type, this.playerUI.powerups.get(type)]));
+            this.powerButtons = Object.fromEntries(['facet', 'mark', 'nova', 'shift', 'hammer'].map((type) => [type, this.playerUI.powerups.get(type)]));
             return;
         }
         const powerUpY = 530;
         const powerUpSpacing = 100;
         
-        // Bomb power-up
-        this.bombBtn = this.scene.add.image(150, powerUpY, 'powerup_bomb');
-        this.bombBtn.setDisplaySize(50, 50);
-        this.bombBtn.setInteractive();
-        this.bombBtn.setData('type', 'bomb');
-        this.bombBtn.setData('count', 3);
-        
-        this.bombText = this.scene.add.text(150, powerUpY + 40, '3', {
+// Blast power-up
+        this.blastBtn = this.scene.add.image(150, powerUpY, 'powerup_blast');
+        this.blastBtn.setDisplaySize(50, 50);
+        this.blastBtn.setInteractive();
+        this.blastBtn.setData('type', 'blast');
+        this.blastBtn.setData('count', 3);
+
+        this.blastText = this.scene.add.text(150, powerUpY + 40, '3', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
-        // Rainbow power-up
-        this.rainbowBtn = this.scene.add.image(250, powerUpY, 'powerup_rainbow');
-        this.rainbowBtn.setDisplaySize(50, 50);
-        this.rainbowBtn.setInteractive();
-        this.rainbowBtn.setData('type', 'rainbow');
-        this.rainbowBtn.setData('count', 1);
-        
-        this.rainbowText = this.scene.add.text(250, powerUpY + 40, '1', {
+        // Prism power-up
+        this.prismBtn = this.scene.add.image(250, powerUpY, 'powerup_prism');
+        this.prismBtn.setDisplaySize(50, 50);
+        this.prismBtn.setInteractive();
+        this.prismBtn.setData('type', 'prism');
+        this.prismBtn.setData('count', 1);
+
+        this.prismText = this.scene.add.text(250, powerUpY + 40, '1', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
         }).setOrigin(0.5);
         
-        // Lightning power-up
-        this.lightningBtn = this.scene.add.image(350, powerUpY, 'powerup_lightning');
-        this.lightningBtn.setDisplaySize(50, 50);
-        this.lightningBtn.setInteractive();
-        this.lightningBtn.setData('type', 'lightning');
-        this.lightningBtn.setData('count', 2);
-        
-        this.lightningText = this.scene.add.text(350, powerUpY + 40, '2', {
+        // Bolt power-up
+        this.boltBtn = this.scene.add.image(350, powerUpY, 'powerup_bolt');
+        this.boltBtn.setDisplaySize(50, 50);
+        this.boltBtn.setInteractive();
+        this.boltBtn.setData('type', 'bolt');
+        this.boltBtn.setData('count', 2);
+
+        this.boltText = this.scene.add.text(350, powerUpY + 40, '2', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: 'Arial'
@@ -1839,11 +1646,11 @@ class PhaserMatch3Game {
 
         // Targeted power-ups: press to arm, then tap a gem.
         const targeted = [
-            { type: 'diamond', x: 450, count: 1 },
-            { type: 'target', x: 550, count: 1 },
-            { type: 'star', x: 650, count: 1 },
-            { type: 'swap', x: 750, count: 1 },
-            { type: 'crush', x: 850, count: 1 },
+            { type: 'facet', x: 450, count: 1 },
+            { type: 'mark', x: 550, count: 1 },
+            { type: 'nova', x: 650, count: 1 },
+            { type: 'shift', x: 750, count: 1 },
+            { type: 'hammer', x: 850, count: 1 },
         ];
         for (const { type, x, count } of targeted) {
             const btn = this.scene.add.image(x, powerUpY, `powerup_${type}`);
@@ -1860,10 +1667,10 @@ class PhaserMatch3Game {
             this.powerButtons[type] = { btn, text };
         }
 
-        // Additional instant power-ups: rocket (clears a row) and color bomb (clears all gems of one color).
+        // Additional instant power-ups: ray (clears a row) and spectrum (clears all gems of one color).
         const extra = [
-            { type: 'rocket', x: 750, count: 1, btnProp: 'rocketBtn', textProp: 'rocketText' },
-            { type: 'color_bomb', x: 750, count: 1, y: powerUpY + 60, btnProp: 'colorBombBtn', textProp: 'colorBombText' },
+            { type: 'ray', x: 750, count: 1, btnProp: 'rayBtn', textProp: 'rayText' },
+            { type: 'spectrum', x: 750, count: 1, y: powerUpY + 60, btnProp: 'spectrumBtn', textProp: 'spectrumText' },
         ];
         for (const { type, x, count, y = powerUpY, btnProp, textProp } of extra) {
             const btn = this.scene.add.image(x, y, `powerup_${type}`);
@@ -1889,10 +1696,10 @@ class PhaserMatch3Game {
             this.scene.input.on('pointerupoutside', (pointer) => this.endGemGesture(pointer, true));
         }
         // Gems bind their own pointerdown handler in createGemSprite().
-        this.bombBtn.on('pointerdown', () => this.usePowerUp('bomb'));
-        this.rainbowBtn.on('pointerdown', () => this.usePowerUp('rainbow'));
-        this.lightningBtn.on('pointerdown', () => this.usePowerUp('lightning'));
-        for (const type of ['diamond', 'target', 'star', 'rocket', 'color_bomb']) {
+        this.blastBtn.on('pointerdown', () => this.usePowerUp('blast'));
+        this.prismBtn.on('pointerdown', () => this.usePowerUp('prism'));
+        this.boltBtn.on('pointerdown', () => this.usePowerUp('bolt'));
+        for (const type of ['facet', 'mark', 'nova', 'ray', 'spectrum']) {
             this.powerButtons[type]?.btn?.on('pointerdown', () => this.usePowerUp(type));
         }
     }
@@ -1955,11 +1762,11 @@ class PhaserMatch3Game {
 
     applyInstantPowerUp(type) {
         switch (type) {
-            case 'bomb': this.activateBomb(); break;
-            case 'rainbow': this.activateRainbow(); break;
-            case 'lightning': this.activateLightning(); break;
-            case 'rocket': this.activateRocket(); break;
-            case 'color_bomb': this.activateColorBomb(); break;
+            case 'blast': this.activateBlast(); break;
+            case 'prism': this.activatePrism(); break;
+            case 'bolt': this.activateBolt(); break;
+            case 'ray': this.activateRay(); break;
+            case 'spectrum': this.activateSpectrum(); break;
         }
     }
 
@@ -1970,6 +1777,257 @@ class PhaserMatch3Game {
             return '';
         }
     }
+
+    // ============================================================================
+    // PvP (Player vs Player) via Socket.IO on our own server — no external deps
+    // ============================================================================
+
+    connectPvpSocket() {
+        if (this.pvpSocket) return;
+        const token = this.getAuthToken();
+        if (!token) return;
+        try {
+            this.pvpSocket = io({ auth: { token }, transports: ['websocket', 'polling'] });
+            this.pvpSocket.on('connect', () => {
+                this.pvpMyPlayerId = this.pvpSocket.id;
+                console.log('🎮 PvP socket connected:', this.pvpMyPlayerId);
+            });
+            this.pvpSocket.on('disconnect', () => {
+                console.log('🎮 PvP socket disconnected');
+                this.pvpSocket = null;
+                if (this.pvpSessionId) this.endPvpSession('disconnected');
+            });
+            this.pvpSocket.on('pvp_error', (data) => {
+                console.warn('PvP error:', data);
+                this.playerUI?.announce(data.message || 'PvP error');
+            });
+            this.pvpSocket.on('room_created', (data) => {
+                this.pvpRoomId = data.room?.id;
+                this.playerUI?.announce(`Room created: ${this.pvpRoomId}`);
+            });
+            this.pvpSocket.on('room_joined', (data) => {
+                this.pvpRoomId = data.roomId;
+                this.playerUI?.announce('Joined room — waiting for opponent…');
+            });
+            this.pvpSocket.on('opponent_joined', (data) => {
+                this.pvpOpponentId = data.opponentId;
+                this.playerUI?.announce('Opponent joined! Starting match…');
+                // Auto-start session once both players are present
+                if (this.pvpRoomId) this.startPvpSession(this.pvpRoomId);
+            });
+            this.pvpSocket.on('session_started', (data) => {
+                this.pvpSessionId = data.sessionId;
+                this.pvpIsMyTurn = data.currentTurn === this.pvpMyPlayerId;
+                this.pvpScores = { me: 0, them: 0 };
+                this.pvpGameState = data.gameState;
+                this.playerUI?.announce(this.pvpIsMyTurn ? 'Your turn!' : "Opponent's turn...");
+                this.updateUI();
+                this.showPvpBoard();
+            });
+            this.pvpSocket.on('move_made', (data) => {
+                this.pvpScores = data.scores || this.pvpScores;
+                this.pvpIsMyTurn = data.currentTurn === this.pvpMyPlayerId;
+                this.pvpGameState = data.gameState;
+                this.pvpPendingMove = null;
+                if (data.playerId !== this.pvpMyPlayerId) {
+                    // Opponent made a move — apply it locally
+                    this.applyOpponentMove(data.move, data.result);
+                }
+                this.playerUI?.announce(this.pvpIsMyTurn ? 'Your turn!' : "Opponent's turn...");
+                this.updateUI();
+            });
+            this.pvpSocket.on('game_ended', (data) => {
+                this.isGameRunning = false;
+                this.pvpIsMyTurn = false;
+                const winner = data.winner;
+                const isDraw = winner === 'draw';
+                const won = winner === this.pvpMyPlayerId;
+                this.playerUI?.announce(isDraw ? "It's a draw!" : won ? 'You win!' : 'Opponent wins!');
+                this.showPvpResultScreen(won, isDraw, data.finalScores);
+            });
+        } catch (error) {
+            console.warn('PvP socket connection failed:', error);
+            this.pvpSocket = null;
+        }
+    }
+
+    disconnectPvpSocket() {
+        if (this.pvpSocket) {
+            this.pvpSocket.disconnect();
+            this.pvpSocket = null;
+        }
+        this.pvpSessionId = null;
+        this.pvpRoomId = null;
+        this.pvpOpponentId = null;
+        this.pvpIsMyTurn = false;
+        this.pvpScores = { me: 0, them: 0 };
+        this.pvpGameState = null;
+        this.pvpPendingMove = null;
+    }
+
+    endPvpSession(reason = 'ended') {
+        if (this.pvpSocket && this.pvpSessionId) {
+            this.pvpSocket.emit('pvp_leave_session', { sessionId: this.pvpSessionId });
+        }
+        this.disconnectPvpSocket();
+    }
+
+    createPvpRoom() {
+        if (!this.pvpSocket) {
+            this.playerUI?.announce('PvP not connected. Sign in and try again.');
+            return;
+        }
+        this.pvpSocket.emit('pvp_create_room', { gameType: 'match3_versus' }, (resp) => {
+            if (resp.success) {
+                this.playerUI?.announce('Room created. Waiting for opponent…');
+            } else {
+                this.playerUI?.announce('Failed to create room: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    joinPvpRoom(roomId) {
+        if (!this.pvpSocket) return;
+        this.pvpSocket.emit('pvp_join_room', { roomId }, (resp) => {
+            if (resp.success) {
+                this.playerUI?.announce('Joined room.');
+            } else {
+                this.playerUI?.announce('Failed to join: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    startPvpMatchmaking() {
+        if (!this.pvpSocket) return;
+        this.pvpSocket.emit('pvp_start_matchmaking', { gameType: 'match3_versus' }, (resp) => {
+            if (resp.success) {
+                this.playerUI?.announce('Matchmaking…');
+            } else {
+                this.playerUI?.announce('Matchmaking failed: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    startPvpSession(roomId) {
+        if (!this.pvpSocket) return;
+        this.pvpSocket.emit('pvp_start_session', {
+            roomId,
+            gameType: 'match3_versus',
+            settings: { boardSize: this.boardSize, gemTypes: this.gemTypes }
+        }, (resp) => {
+            if (!resp.success) {
+                this.playerUI?.announce('Failed to start session: ' + (resp.error || 'unknown'));
+            }
+        });
+    }
+
+    sendPvpMove(fromX, fromY, toX, toY) {
+        if (!this.pvpSocket || !this.pvpSessionId || !this.pvpIsMyTurn) return;
+        if (this.pvpPendingMove) return; // Wait for server ack
+
+        const move = { from: [fromX, fromY], to: [toX, toY] };
+        this.pvpPendingMove = move;
+        this.pvpSocket.emit('pvp_move', { sessionId: this.pvpSessionId, move }, (resp) => {
+            this.pvpPendingMove = null;
+            if (!resp.success) {
+                this.playerUI?.announce('Move refused: ' + (resp.error || 'unknown'));
+                this.pvpIsMyTurn = true; // Retry our turn
+            }
+        });
+    }
+
+    applyOpponentMove(move, result) {
+        // Apply the opponent's move to our local board for visual sync
+        const [fromX, fromY] = move.from;
+        const [toX, toY] = move.to;
+        if (fromX === undefined || fromY === undefined || toX === undefined || toY === undefined) return;
+
+        // Swap visually
+        this.swapSprites(fromX, fromY, toX, toY);
+        this.swapModel(fromX, fromY, toX, toY);
+
+        // Apply score and cascades if the server says it matched
+        if (result && result.success && result.matches && result.matches.length > 0) {
+            this.addScore(result.score || 0);
+            // Remove matched cells
+            result.matches.forEach((key) => {
+                const [r, c] = key.split(',').map(Number);
+                this.board[r][c] = null;
+                const sprite = this.gemSprites[r][c];
+                if (sprite) {
+                    this.scene.tweens.killTweensOf(sprite);
+                    sprite.setVisible(false);
+                }
+            });
+            this.collapseColumns();
+            this.resolveBoard();
+        }
+
+        this.updateUI();
+        this.checkPvpEndConditions();
+    }
+
+    checkPvpEndConditions() {
+        if (!this.pvpSessionId || !this.isGameRunning) return;
+        // PvP ends when the server says so (game_ended event). We just track locally.
+    }
+
+    showPvpBoard() {
+        // Switch game into PvP mode
+        this.mode = 'pvp';
+        this.isGameRunning = true;
+        this.moves = 999; // No move limit in PvP — server governs turns
+        this.targetScore = 0;
+        this.updateUI();
+        this.playerUI?.announce(this.pvpIsMyTurn ? 'Your turn!' : "Opponent's turn...");
+    }
+
+    showPvpResultScreen(won, isDraw, scores) {
+        this.openOverlay(isDraw ? 'PvP Draw' : won ? 'PvP Victory!' : 'PvP Defeat');
+        const myScore = scores?.[this.pvpMyPlayerId] ?? this.pvpScores.me;
+        const theirScore = scores?.[this.pvpOpponentId] ?? this.pvpScores.them;
+        this.overlayText(400, 170, isDraw ? "It's a draw!" : won ? 'You Win!' : 'You Lose!', { size: 32, color: won ? '#4ecdc4' : '#ff6b6b' });
+        this.overlayText(400, 230, `Your score: ${myScore}`, { size: 22 });
+        this.overlayText(400, 265, `Opponent: ${theirScore}`, { size: 22 });
+        if (!isDraw) {
+            this.overlayButton(400, 330, 250, 55, 0x4ecdc4, 'Play Again', () => {
+                this.closeOverlay();
+                this.createPvpRoom();
+            });
+        } else {
+            this.overlayButton(400, 330, 250, 55, 0x4ecdc4, 'Rematch', () => {
+                this.closeOverlay();
+                this.createPvpRoom();
+            });
+        }
+        this.overlayButton(400, 410, 250, 55, 0x555555, 'Main Menu', () => {
+            this.closeOverlay();
+            this.returnToMenu();
+        });
+    }
+
+    showPvpMenu() {
+        this.pauseGame();
+        this.openOverlay('PvP — Versus');
+        this.overlayText(400, 120, 'Play head-to-head Match-3 against another player.', { size: 16, width: 600 });
+        this.overlayButton(400, 190, 260, 55, 0x4ecdc4, 'Quick Match', () => {
+            this.closeOverlay();
+            this.startPvpMatchmaking();
+        });
+        this.overlayButton(400, 260, 260, 55, 0x9b59b6, 'Create Room', () => {
+            this.closeOverlay();
+            this.createPvpRoom();
+        });
+        this.overlayButton(400, 330, 260, 55, 0x666666, 'Cancel', () => {
+            this.closeOverlay();
+            this.resumeAfterOverlay();
+        });
+        this.updateUI();
+    }
+
+    // ============================================================================
+    // End PvP section
+    // ============================================================================
 
     // Spends one charge, then runs the effect. Signed-in players are checked against
     // the server first, so the effect runs only when the server agrees. Guests spend locally.
@@ -2074,7 +2132,7 @@ class PhaserMatch3Game {
         this.setSelectedGem(null);
         this.armedPowerUp = type;
         btn.setAlpha(0.5);
-        this.playerUI?.announce({ diamond: 'Color: tap a gem to clear that color.', target: 'Cross: tap a gem to clear it and its neighbours.', star: 'Sweep: tap a gem to clear its row and column.', swap: 'Switch: tap two adjacent gems to swap them.', crush: 'Hammer: tap a gem to crush it.' }[type]);
+        this.playerUI?.announce({ facet: 'Facet: tap a gem to clear that color.', mark: 'Mark: tap a gem to clear it and its neighbours.', nova: 'Nova: tap a gem to clear its row and column.', shift: 'Shift: tap two adjacent gems to swap them.', hammer: 'Hammer: tap a gem to crush it.' }[type]);
     }
 
     disarmPowerUp() {
@@ -2088,27 +2146,27 @@ class PhaserMatch3Game {
     powerUpKeys(type, r, c) {
         const n = this.boardSize;
         const keys = new Set();
-        if (type === 'diamond') {
+        if (type === 'facet') {
             const gemType = this.board[r][c];
             for (let rr = 0; rr < n; rr++) {
                 for (let cc = 0; cc < n; cc++) {
                     if (this.board[rr][cc] === gemType) keys.add(`${rr},${cc}`);
                 }
             }
-        } else if (type === 'target') {
+        } else if (type === 'mark') {
             // The tapped gem and its four orthogonal neighbours.
             const offsets = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
             for (const [dr, dc] of offsets) {
                 if (this.isInBounds(r + dr, c + dc)) keys.add(`${r + dr},${c + dc}`);
             }
-        } else if (type === 'star') {
+        } else if (type === 'nova') {
             // The tapped gem's whole row and column.
             for (let i = 0; i < n; i++) {
                 keys.add(`${r},${i}`);
                 keys.add(`${i},${c}`);
             }
-        } else if (type === 'crush') {
-            // Crush: just the tapped gem.
+        } else if (type === 'hammer') {
+            // Hammer: just the tapped gem.
             keys.add(`${r},${c}`);
         }
         return keys;
@@ -2118,20 +2176,20 @@ class PhaserMatch3Game {
         const type = this.armedPowerUp;
         const r = gem.getData('row');
         const c = gem.getData('col');
-        const wasSwap = type === 'swap';
+        const wasShift = type === 'shift';
         this.disarmPowerUp();
 
-        if (wasSwap) {
-            // Two-tap swap: first tap stores, second tap spends and swaps.
-            if (!this._swapCells) this._swapCells = [];
-            if (this._swapCells.length === 0) {
-                this._swapCells.push([r, c]);
-                this.armedPowerUp = 'swap'; // re-arm for second tap
+        if (wasShift) {
+            // Two-tap shift: first tap stores, second tap spends and shifts.
+            if (!this._shiftCells) this._shiftCells = [];
+            if (this._shiftCells.length === 0) {
+                this._shiftCells.push([r, c]);
+                this.armedPowerUp = 'shift'; // re-arm for second tap
                 this.powerButtons[type]?.btn?.setAlpha(0.5);
                 return;
             }
-            const [[r1, c1]] = this._swapCells;
-            this._swapCells = [];
+            const [[r1, c1]] = this._shiftCells;
+            this._shiftCells = [];
             const adjacent = Math.abs(r1 - r) + Math.abs(c1 - c) === 1;
             this.spendPowerUp(type, () => {
                 if (adjacent) {
@@ -2140,8 +2198,8 @@ class PhaserMatch3Game {
                     this.board[r][c] = tmp;
                     this.resolveBoard();
                     this.updateUI();
-                    this.playSound('swap');
-                    this.attemptMoves.push({ type: 'swap', target: [r1, c1, r, c], receiptId: this.powerReceipt?.receiptId });
+                    this.playSound('shift');
+                    this.attemptMoves.push({ type: 'shift', target: [r1, c1, r, c], receiptId: this.powerReceipt?.receiptId });
                 }
                 this.showPowerUpAnimation(type);
             });
@@ -2150,8 +2208,8 @@ class PhaserMatch3Game {
 
         this.spendPowerUp(type, () => {
             const keys = this.powerUpKeys(type, r, c);
-            const points = { diamond: 400, target: 200, star: 250, crush: 150 }[type];
-            this.clearAndCascade(keys, points, type === 'diamond' ? 'prism' : 'beam', { type, target: [r, c] });
+            const points = { facet: 400, mark: 200, nova: 250, hammer: 150 }[type];
+            this.clearAndCascade(keys, points, type === 'facet' ? 'prism' : 'beam', { type, target: [r, c] });
             this.showPowerUpAnimation(type);
         });
     }
@@ -2163,14 +2221,16 @@ class PhaserMatch3Game {
         }
         if (this.animationsReduced()) return;
         const animations = {
-            bomb: '💥',
-            rainbow: '🌈',
-            lightning: '⚡',
-            diamond: '💎',
-            target: '🎯',
-            star: '🌟',
-            swap: '🔄',
-            crush: '🔨'
+            blast: '💥',
+            prism: '🔮',
+            bolt: '⚡',
+            facet: '💎',
+            mark: '🎯',
+            nova: '✨',
+            shift: '🔄',
+            hammer: '🔨',
+            ray: '🔦',
+            spectrum: '🌈'
         };
         
         const animation = this.scene.add.text(400, 300, animations[powerType], {
@@ -2656,20 +2716,6 @@ class PhaserMatch3Game {
         this.soundEffects?.stop();
         if (this.timerInterval) clearInterval(this.timerInterval);
 
-        // Stream the level's theme texture in the background so it's ready
-        // before the board renders. Falls back to programmatic rendering.
-        // Defer when frames are over budget; skip entirely when hard-paused or on slow connections.
-        const connection = this.perfMonitor ? this.perfMonitor.getConnectionInfo() : null;
-        const skipThemeStream = connection ? connection.lowBandwidthMode || connection.quality === 'slow' : false;
-        if (definition?.context?.season && (!this.perfMonitor || (!this.perfMonitor.shouldDeferWork() && !this.perfMonitor.isHardPaused())) && !skipThemeStream) {
-            void this.streamThemeTexture(definition.context);
-        } else if (definition?.context?.season) {
-            if (skipThemeStream) {
-                console.log('📶 Skipping theme texture stream: slow connection / data saver');
-            } else {
-                console.log('⏸️ Deferring theme texture stream: frames over budget or hard-paused');
-            }
-        }
         for (const row of this.gemSprites || []) {
             for (const sprite of row) {
                 if (!sprite) continue;
@@ -2689,6 +2735,11 @@ class PhaserMatch3Game {
         if (this.mode === 'classic' || this.mode === 'timed') this.campaignLevel = Math.max(this.campaignLevel || 1, this.level);
         this.boardSize = definition.boardSize;
         this.gemTypes = definition.gemTypes.slice();
+        if (window.InfiniteArt) {
+            this.gemVisuals = window.InfiniteArt.setContext(definition.context, definition.gemTypes);
+            window.InfinitePlayerExperience?.setVisuals(this.gemVisuals);
+            this.refreshGemTextures();
+        }
         this.levelRng = { state: definition.refillState };
         this.score = 0;
         this.objectiveProgress = definition.generatorVersion >= 4 ? globalThis.InfiniteLevels.initialObjectiveProgress(definition) : null;

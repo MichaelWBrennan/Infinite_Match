@@ -157,7 +157,7 @@ describe('Game Server', () => {
     describe('POST /api/game/powerup-used', () => {
       test('should track power-up usage with valid data', async () => {
         const powerupData = {
-          type: 'bomb',
+          type: 'blast',
           level: 1,
           position: { x: 2, y: 3 },
           cost: 50,

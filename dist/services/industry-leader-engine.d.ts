@@ -4,7 +4,7 @@
  */
 export class IndustryLeaderEngine {
     logger: Logger;
-    supabase: {
+    supabase: (() => never) | {
         from(table: any): {
             select(columns: any): {
                 select(columns?: string): /*elided*/ any;
@@ -187,7 +187,7 @@ export class IndustryLeaderEngine {
                 }>;
             };
         };
-    } | (() => never);
+    };
     aiContentGenerator: AIContentGenerator;
     aiPersonalizationEngine: AIPersonalizationEngine;
     marketResearchEngine: MarketResearchEngine;

@@ -36,7 +36,7 @@ import verifiedCompetitionRoutes from '../routes/verified-competition.js';
 import weatherEventsRoutes from '../routes/weather-events.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
-import { router as multiplayerRoutes, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem } from '../routes/multiplayer.js';
+import { router as multiplayerRoutes, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem, getTournamentManager } from '../routes/multiplayer.js';
 import playerAccountRoutes from '../routes/player-accounts.js';
 import authRoutes from '../routes/auth.js';
 import accountEconomyRoutes from '../routes/account-economy.js';
@@ -92,6 +92,7 @@ const ROOT_GAME_ASSETS = new Set([
   'platform-detection.js',
   'shared-game.js',
   'shared-ui.css',
+  'unified.css',
   'test-phaser3.html',
 ]);
 

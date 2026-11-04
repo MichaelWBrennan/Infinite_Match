@@ -80,7 +80,7 @@
         "tradable": true
       },
       {
-        "id": "booster_color_bomb",
+        "id": "booster_spectrum",
         "name": "Color Bomb",
         "type": "booster",
         "rarity": "common",
@@ -94,7 +94,7 @@
         "tradable": true
       },
       {
-        "id": "booster_striped_candy",
+        "id": "booster_spectrum",
         "name": "Striped Candy",
         "type": "booster",
         "rarity": "common",
@@ -222,7 +222,7 @@
         "type": "item"
       },
       {
-        "id": "booster_color_bomb",
+        "id": "booster_spectrum",
         "name": "Color Bomb",
         "cost": 15,
         "currency": "gems",
@@ -236,7 +236,7 @@
         "type": "item"
       },
       {
-        "id": "booster_striped_candy",
+        "id": "booster_spectrum",
         "name": "Striped Candy",
         "cost": 100,
         "currency": "coins",

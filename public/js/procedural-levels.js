@@ -1751,14 +1751,14 @@ function environmentRules(context) {
   const skies = {
     disabled: { label: 'Weather effects off', favorite: null, bonuses: {}, moves: 0 },
     unknown: { label: 'Weather unavailable', favorite: null, bonuses: {}, moves: 0 },
-    clear: { label: 'Clear', favorite: 'yellow', bonuses: { yellow: 0.3, orange: 0.1 }, moves: 0, accent: '#ffe082' },
-    partly_cloudy: { label: 'Partly cloudy', favorite: 'green', bonuses: { green: 0.2, blue: 0.1 }, moves: 0, accent: '#b8dfdb' },
-    cloudy: { label: 'Cloudy', favorite: 'blue', bonuses: { blue: 0.2, purple: 0.1 }, moves: 0, accent: '#a9cce9' },
-    rain: { label: 'Rain', favorite: 'blue', bonuses: { blue: 0.4, green: 0.1 }, moves: 1, accent: '#83c9ff' },
-    snow: { label: 'Snow', favorite: 'blue', bonuses: { blue: 0.35, purple: 0.2 }, moves: 2, accent: '#dcefff' },
-    sleet: { label: 'Sleet', favorite: 'blue', bonuses: { blue: 0.35, green: 0.15 }, moves: 2, accent: '#b1e7f2' },
-    storm: { label: 'Storm', favorite: 'purple', bonuses: { purple: 0.35, yellow: 0.25 }, moves: 2, accent: '#dcc0ff' },
-    fog: { label: 'Fog', favorite: 'orange', bonuses: { orange: 0.25, yellow: 0.2 }, moves: 1, accent: '#f4dcb0' },
+    clear: { label: 'Clear', favorite: 'yellow', bonuses: { yellow: 0.3, orange: 0.1 }, moves: 0, accent: '#ffe082', hazard: { type: 'heat_haze', layers: 1, spreads: false, cap: 4 } },
+    partly_cloudy: { label: 'Partly cloudy', favorite: 'green', bonuses: { green: 0.2, blue: 0.1 }, moves: 0, accent: '#b8dfdb', hazard: { type: 'cloud_shadow', layers: 1, spreads: false, cap: 5 } },
+    cloudy: { label: 'Cloudy', favorite: 'blue', bonuses: { blue: 0.2, purple: 0.1 }, moves: 0, accent: '#a9cce9', hazard: { type: 'overcast', layers: 1, spreads: false, cap: 6 } },
+    rain: { label: 'Rain', favorite: 'blue', bonuses: { blue: 0.4, green: 0.1 }, moves: 1, accent: '#83c9ff', hazard: { type: 'raindrop', layers: 2, spreads: false, cap: 5 } },
+    snow: { label: 'Snow', favorite: 'blue', bonuses: { blue: 0.35, purple: 0.2 }, moves: 2, accent: '#dcefff', hazard: { type: 'snow_cover', layers: 2, spreads: false, cap: 5 } },
+    sleet: { label: 'Sleet', favorite: 'blue', bonuses: { blue: 0.35, green: 0.15 }, moves: 2, accent: '#b1e7f2', hazard: { type: 'ice', layers: 3, spreads: false, cap: 4 } },
+    storm: { label: 'Storm', favorite: 'purple', bonuses: { purple: 0.35, yellow: 0.25 }, moves: 2, accent: '#dcc0ff', hazard: { type: 'lightning', layers: 1, spreads: true, cap: 6 } },
+    fog: { label: 'Fog', favorite: 'orange', bonuses: { orange: 0.25, yellow: 0.2 }, moves: 1, accent: '#f4dcb0', hazard: { type: 'mist', layers: 1, spreads: false, cap: 5 } },
   };
   const clock = clocks[period];
   const sky = skies[condition];
@@ -1777,6 +1777,7 @@ function environmentRules(context) {
     minimumColors: condition === 'storm' ? 6 : clock.colors,
     moveBonus: clock.moves + sky.moves,
     tint: clock.tint, accent: sky.accent || null, label: labels.join(' · '),
+    hazard: sky.hazard ? { ...sky.hazard } : null,
   };
 }
 
@@ -2815,9 +2816,13 @@ function certifyDeliveryBoard(definition) {
  *
  * When no overriding context is active, the default standard tile set is used.
  *
- * License fields: every tile set records its Creative Commons license,
- * source URL, and attribution so the information can be surfaced in-game
- * credits and kept in `assets/licenses/`.
+ * Visual contract: every set uses the same six accessible silhouettes by
+ * slot (heart, diamond, square, triangle, hexagon, star). Colors and names
+ * provide theme flavor; IDs, weights, and rules are unchanged. The runtime
+ * renderer is public/js/art-direction.js (original MIT artwork).
+ *
+ * License fields record the artwork actually rendered. Legacy downloaded
+ * reference libraries under assets/match3 are not used by the game.
  */
 
 const SHAPES = {
@@ -2854,9 +2859,9 @@ const DEFAULT_TILE_SET = {
   id: 'standard',
   name: 'Standard',
   favorite: 'red',
-  license: 'CC0',
-  sourceUrl: 'https://kenney.nl/assets/match-3-pack',
-  attribution: 'Kenney.nl',
+  license: 'MIT',
+  sourceUrl: '',
+  attribution: 'Infinite Match contributors',
   gems: [
     { id: 'red', color: '#ff6384', shape: SHAPES.heart, symbol: 'R' },
     { id: 'blue', color: '#62baff', shape: SHAPES.diamond, symbol: 'B' },
@@ -2875,16 +2880,16 @@ const SEASON_TILE_SETS = {
     id: 'winter',
     name: 'Crystal Winter',
     favorite: 'ice_blue',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/winter-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'ice_blue', color: '#b2dfdb', shape: SHAPES.snowflake, symbol: 'I' },
-      { id: 'snow_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'S' },
-      { id: 'frost_purple', color: '#d7bde2', shape: SHAPES.snowflake, symbol: 'F' },
-      { id: 'crystal_blue', color: '#aed6f1', shape: SHAPES.diamond, symbol: 'C' },
-      { id: 'glacier_teal', color: '#76d7c4', shape: SHAPES.snowflake, symbol: 'T' },
-      { id: 'midnight_navy', color: '#2c3e50', shape: SHAPES.snowflake, symbol: 'M' },
+      { id: 'ice_blue', color: '#b2dfdb', shape: SHAPES.heart, symbol: 'I' },
+      { id: 'snow_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'S' },
+      { id: 'frost_purple', color: '#d7bde2', shape: SHAPES.square, symbol: 'F' },
+      { id: 'crystal_blue', color: '#aed6f1', shape: SHAPES.triangle, symbol: 'C' },
+      { id: 'glacier_teal', color: '#76d7c4', shape: SHAPES.hexagon, symbol: 'T' },
+      { id: 'midnight_navy', color: '#2c3e50', shape: SHAPES.star, symbol: 'M' },
     ],
     background: '#142c46',
     accent: '#9edfff',
@@ -2893,16 +2898,16 @@ const SEASON_TILE_SETS = {
     id: 'spring',
     name: 'Blooming Gardens',
     favorite: 'petal_pink',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/spring-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'petal_pink', color: '#f8bbd0', shape: SHAPES.rose, symbol: 'P' },
-      { id: 'leaf_green', color: '#c8e6c9', shape: SHAPES.leaf, symbol: 'L' },
-      { id: 'bloom_yellow', color: '#fff59d', shape: SHAPES.rose, symbol: 'B' },
-      { id: 'sprout_lime', color: '#dcedc8', shape: SHAPES.leaf, symbol: 'S' },
-      { id: 'blossom_mint', color: '#e8f5e9', shape: SHAPES.rose, symbol: 'O' },
-      { id: 'vine_olive', color: '#c5e1a5', shape: SHAPES.leaf, symbol: 'V' },
+      { id: 'petal_pink', color: '#f8bbd0', shape: SHAPES.heart, symbol: 'P' },
+      { id: 'leaf_green', color: '#c8e6c9', shape: SHAPES.diamond, symbol: 'L' },
+      { id: 'bloom_yellow', color: '#fff59d', shape: SHAPES.square, symbol: 'B' },
+      { id: 'sprout_lime', color: '#dcedc8', shape: SHAPES.triangle, symbol: 'S' },
+      { id: 'blossom_mint', color: '#e8f5e9', shape: SHAPES.hexagon, symbol: 'O' },
+      { id: 'vine_olive', color: '#c5e1a5', shape: SHAPES.star, symbol: 'V' },
     ],
     background: '#183f38',
     accent: '#9cf0b5',
@@ -2911,16 +2916,16 @@ const SEASON_TILE_SETS = {
     id: 'summer',
     name: 'Sunlit Shores',
     favorite: 'sun_orange',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/summer-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'sun_orange', color: '#ffcc80', shape: SHAPES.flame, symbol: 'U' },
-      { id: 'surf_blue', color: '#b2ebf2', shape: SHAPES.flame, symbol: 'F' },
-      { id: 'sand_yellow', color: '#ffe082', shape: SHAPES.flame, symbol: 'A' },
-      { id: 'wave_teal', color: '#b2dfdb', shape: SHAPES.flame, symbol: 'W' },
-      { id: 'coral_pink', color: '#ffab91', shape: SHAPES.flame, symbol: 'C' },
-      { id: 'sky_cyan', color: '#80deea', shape: SHAPES.flame, symbol: 'K' },
+      { id: 'sun_orange', color: '#ffcc80', shape: SHAPES.heart, symbol: 'U' },
+      { id: 'surf_blue', color: '#b2ebf2', shape: SHAPES.diamond, symbol: 'F' },
+      { id: 'sand_yellow', color: '#ffe082', shape: SHAPES.square, symbol: 'A' },
+      { id: 'wave_teal', color: '#b2dfdb', shape: SHAPES.triangle, symbol: 'W' },
+      { id: 'coral_pink', color: '#ffab91', shape: SHAPES.hexagon, symbol: 'C' },
+      { id: 'sky_cyan', color: '#80deea', shape: SHAPES.star, symbol: 'K' },
     ],
     background: '#163d54',
     accent: '#ffe082',
@@ -2929,16 +2934,16 @@ const SEASON_TILE_SETS = {
     id: 'autumn',
     name: 'Harvest Skies',
     favorite: 'amber_red',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/autumn-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'amber_red', color: '#ff8a80', shape: SHAPES.leaf, symbol: 'A' },
-      { id: 'rust_orange', color: '#ffab91', shape: SHAPES.leaf, symbol: 'R' },
-      { id: 'maple_yellow', color: '#ffe082', shape: SHAPES.leaf, symbol: 'M' },
-      { id: 'acorn_brown', color: '#d7ccc8', shape: SHAPES.leaf, symbol: 'C' },
-      { id: 'harvest_red', color: '#ef5350', shape: SHAPES.leaf, symbol: 'H' },
-      { id: 'pumpkin_gold', color: '#ffcc80', shape: SHAPES.leaf, symbol: 'G' },
+      { id: 'amber_red', color: '#ff8a80', shape: SHAPES.heart, symbol: 'A' },
+      { id: 'rust_orange', color: '#ffab91', shape: SHAPES.diamond, symbol: 'R' },
+      { id: 'maple_yellow', color: '#ffe082', shape: SHAPES.square, symbol: 'M' },
+      { id: 'acorn_brown', color: '#d7ccc8', shape: SHAPES.triangle, symbol: 'C' },
+      { id: 'harvest_red', color: '#ef5350', shape: SHAPES.hexagon, symbol: 'H' },
+      { id: 'pumpkin_gold', color: '#ffcc80', shape: SHAPES.star, symbol: 'G' },
     ],
     background: '#40253d',
     accent: '#ffc078',
@@ -2951,15 +2956,15 @@ const EVENT_TILE_SETS = {
     id: 'diwali_2026',
     name: 'Diwali Festival of Lights',
     favorite: 'diya_gold',
-    license: 'CC-BY',
-    sourceUrl: 'https://opengameart.org/content/diwali-gem-tileset',
-    attribution: 'OpenGameArt.org community',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'diya_gold', color: '#ffd700', shape: SHAPES.star, symbol: 'D' },
-      { id: 'rangoli_red', color: '#e53935', shape: SHAPES.star, symbol: 'R' },
-      { id: 'rangoli_orange', color: '#fb8c00', shape: SHAPES.star, symbol: 'N' },
-      { id: 'rangoli_green', color: '#43a047', shape: SHAPES.star, symbol: 'G' },
-      { id: 'rangoli_blue', color: '#1e88e5', shape: SHAPES.star, symbol: 'L' },
+      { id: 'diya_gold', color: '#ffd700', shape: SHAPES.heart, symbol: 'D' },
+      { id: 'rangoli_red', color: '#e53935', shape: SHAPES.diamond, symbol: 'R' },
+      { id: 'rangoli_orange', color: '#fb8c00', shape: SHAPES.square, symbol: 'N' },
+      { id: 'rangoli_green', color: '#43a047', shape: SHAPES.triangle, symbol: 'G' },
+      { id: 'rangoli_blue', color: '#1e88e5', shape: SHAPES.hexagon, symbol: 'L' },
       { id: 'sparkler_white', color: '#ffffff', shape: SHAPES.star, symbol: 'S' },
     ],
     background: '#2c1020',
@@ -2969,15 +2974,15 @@ const EVENT_TILE_SETS = {
     id: 'sky_race_nov',
     name: 'Sky Race',
     favorite: 'bolt_yellow',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/racing-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'bolt_yellow', color: '#ffeb3b', shape: SHAPES.star, symbol: 'L' },
-      { id: 'flash_white', color: '#ffffff', shape: SHAPES.star, symbol: 'F' },
-      { id: 'spark_orange', color: '#ffb74d', shape: SHAPES.star, symbol: 'S' },
-      { id: 'volt_blue', color: '#4fc3f7', shape: SHAPES.star, symbol: 'V' },
-      { id: 'surge_red', color: '#f44336', shape: SHAPES.star, symbol: 'U' },
+      { id: 'bolt_yellow', color: '#ffeb3b', shape: SHAPES.heart, symbol: 'L' },
+      { id: 'flash_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'F' },
+      { id: 'spark_orange', color: '#ffb74d', shape: SHAPES.square, symbol: 'S' },
+      { id: 'volt_blue', color: '#4fc3f7', shape: SHAPES.triangle, symbol: 'V' },
+      { id: 'surge_red', color: '#f44336', shape: SHAPES.hexagon, symbol: 'U' },
       { id: 'charge_green', color: '#4caf50', shape: SHAPES.star, symbol: 'C' },
     ],
     background: '#0a1e3c',
@@ -2987,16 +2992,16 @@ const EVENT_TILE_SETS = {
     id: 'kings_cup_nov',
     name: "King's Cup",
     favorite: 'gold_crown',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/crown-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'gold_crown', color: '#ffd700', shape: SHAPES.crown, symbol: 'K' },
-      { id: 'royal_purple', color: '#8e44ad', shape: SHAPES.crown, symbol: 'R' },
-      { id: 'throne_red', color: '#c0392b', shape: SHAPES.crown, symbol: 'T' },
-      { id: 'sceptre_gold', color: '#f1c40f', shape: SHAPES.crown, symbol: 'S' },
-      { id: 'realm_blue', color: '#2980b9', shape: SHAPES.crown, symbol: 'E' },
-      { id: 'emerald_seal', color: '#27ae60', shape: SHAPES.crown, symbol: 'M' },
+      { id: 'gold_crown', color: '#ffd700', shape: SHAPES.heart, symbol: 'K' },
+      { id: 'royal_purple', color: '#8e44ad', shape: SHAPES.diamond, symbol: 'R' },
+      { id: 'throne_red', color: '#c0392b', shape: SHAPES.square, symbol: 'T' },
+      { id: 'sceptre_gold', color: '#f1c40f', shape: SHAPES.triangle, symbol: 'S' },
+      { id: 'realm_blue', color: '#2980b9', shape: SHAPES.hexagon, symbol: 'E' },
+      { id: 'emerald_seal', color: '#27ae60', shape: SHAPES.star, symbol: 'M' },
     ],
     background: '#4a235a',
     accent: '#ffd700',
@@ -3005,15 +3010,15 @@ const EVENT_TILE_SETS = {
     id: 'lightning_dash_dec',
     name: 'Lightning Dash',
     favorite: 'volt_blue',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/sports-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'volt_blue', color: '#4fc3f7', shape: SHAPES.star, symbol: 'V' },
-      { id: 'flash_white', color: '#ffffff', shape: SHAPES.star, symbol: 'F' },
-      { id: 'bolt_yellow', color: '#ffeb3b', shape: SHAPES.star, symbol: 'L' },
-      { id: 'spark_orange', color: '#ffb74d', shape: SHAPES.star, symbol: 'S' },
-      { id: 'surge_red', color: '#f44336', shape: SHAPES.star, symbol: 'U' },
+      { id: 'volt_blue', color: '#4fc3f7', shape: SHAPES.heart, symbol: 'V' },
+      { id: 'flash_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'F' },
+      { id: 'bolt_yellow', color: '#ffeb3b', shape: SHAPES.square, symbol: 'L' },
+      { id: 'spark_orange', color: '#ffb74d', shape: SHAPES.triangle, symbol: 'S' },
+      { id: 'surge_red', color: '#f44336', shape: SHAPES.hexagon, symbol: 'U' },
       { id: 'charge_green', color: '#4caf50', shape: SHAPES.star, symbol: 'C' },
     ],
     background: '#1a237e',
@@ -3023,16 +3028,16 @@ const EVENT_TILE_SETS = {
     id: 'wonderful_winter_dec',
     name: 'Wonderful Winter',
     favorite: 'frost_blue',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/winter-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'frost_blue', color: '#4fc3f7', shape: SHAPES.snowflake, symbol: 'F' },
-      { id: 'snowcap_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'C' },
-      { id: 'ice_teal', color: '#4dd0e1', shape: SHAPES.diamond, symbol: 'I' },
-      { id: 'snowcap_blue', color: '#42a5f5', shape: SHAPES.snowflake, symbol: 'N' },
-      { id: 'hail_grey', color: '#b0bec5', shape: SHAPES.diamond, symbol: 'H' },
-      { id: 'glacier_cyan', color: '#00acc1', shape: SHAPES.snowflake, symbol: 'G' },
+      { id: 'frost_blue', color: '#4fc3f7', shape: SHAPES.heart, symbol: 'F' },
+      { id: 'snowcap_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'C' },
+      { id: 'ice_teal', color: '#4dd0e1', shape: SHAPES.square, symbol: 'I' },
+      { id: 'snowcap_blue', color: '#42a5f5', shape: SHAPES.triangle, symbol: 'N' },
+      { id: 'hail_grey', color: '#b0bec5', shape: SHAPES.hexagon, symbol: 'H' },
+      { id: 'glacier_cyan', color: '#00acc1', shape: SHAPES.star, symbol: 'G' },
     ],
     background: '#142c46',
     accent: '#4fc3f7',
@@ -3041,16 +3046,16 @@ const EVENT_TILE_SETS = {
     id: 'christmas_2026',
     name: 'Christmas Celebration',
     favorite: 'ornament_red',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/christmas-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'ornament_red', color: '#ef5350', shape: SHAPES.bauble, symbol: 'O' },
-      { id: 'ornament_green', color: '#4caf50', shape: SHAPES.bauble, symbol: 'R' },
-      { id: 'ornament_gold', color: '#ffd700', shape: SHAPES.bauble, symbol: 'G' },
-      { id: 'ornament_silver', color: '#eceff1', shape: SHAPES.bauble, symbol: 'S' },
-      { id: 'holly_dark', color: '#1b5e20', shape: SHAPES.leaf, symbol: 'H' },
-      { id: 'bell_gold', color: '#ffd700', shape: SHAPES.bauble, symbol: 'B' },
+      { id: 'ornament_red', color: '#ef5350', shape: SHAPES.heart, symbol: 'O' },
+      { id: 'ornament_green', color: '#4caf50', shape: SHAPES.diamond, symbol: 'R' },
+      { id: 'ornament_gold', color: '#ffd700', shape: SHAPES.square, symbol: 'G' },
+      { id: 'ornament_silver', color: '#eceff1', shape: SHAPES.triangle, symbol: 'S' },
+      { id: 'holly_dark', color: '#1b5e20', shape: SHAPES.hexagon, symbol: 'H' },
+      { id: 'bell_gold', color: '#ffd700', shape: SHAPES.star, symbol: 'B' },
     ],
     background: '#19372f',
     accent: '#f7d987',
@@ -3059,15 +3064,15 @@ const EVENT_TILE_SETS = {
     id: 'team_battle_dec',
     name: 'Team Battle',
     favorite: 'glory_red',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/sports-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'glory_red', color: '#d32f2f', shape: SHAPES.star, symbol: 'G' },
-      { id: 'honor_white', color: '#ffffff', shape: SHAPES.star, symbol: 'H' },
-      { id: 'valor_blue', color: '#1565c0', shape: SHAPES.star, symbol: 'V' },
-      { id: 'sacrifice_gold', color: '#ffd700', shape: SHAPES.star, symbol: 'S' },
-      { id: 'bravery_silver', color: '#b0bec5', shape: SHAPES.star, symbol: 'B' },
+      { id: 'glory_red', color: '#d32f2f', shape: SHAPES.heart, symbol: 'G' },
+      { id: 'honor_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'H' },
+      { id: 'valor_blue', color: '#1565c0', shape: SHAPES.square, symbol: 'V' },
+      { id: 'sacrifice_gold', color: '#ffd700', shape: SHAPES.triangle, symbol: 'S' },
+      { id: 'bravery_silver', color: '#b0bec5', shape: SHAPES.hexagon, symbol: 'B' },
       { id: 'freedom_navy', color: '#0d47a1', shape: SHAPES.star, symbol: 'F' },
     ],
     background: '#1a237e',
@@ -3077,16 +3082,16 @@ const EVENT_TILE_SETS = {
     id: 'new_year_challenge_jan',
     name: 'New Year Challenge',
     favorite: 'champagne_gold',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/party-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'champagne_gold', color: '#ffd700', shape: SHAPES.champagne, symbol: 'C' },
-      { id: 'fireworks_red', color: '#ff4d4d', shape: SHAPES.firework, symbol: 'F' },
-      { id: 'fireworks_blue', color: '#4d79ff', shape: SHAPES.firework, symbol: 'W' },
-      { id: 'fireworks_green', color: '#4dff4d', shape: SHAPES.firework, symbol: 'R' },
-      { id: 'confetti_pink', color: '#ff80ab', shape: SHAPES.firework, symbol: 'X' },
-      { id: 'midnight_black', color: '#263238', shape: SHAPES.firework, symbol: 'M' },
+      { id: 'champagne_gold', color: '#ffd700', shape: SHAPES.heart, symbol: 'C' },
+      { id: 'fireworks_red', color: '#ff4d4d', shape: SHAPES.diamond, symbol: 'F' },
+      { id: 'fireworks_blue', color: '#4d79ff', shape: SHAPES.square, symbol: 'W' },
+      { id: 'fireworks_green', color: '#4dff4d', shape: SHAPES.triangle, symbol: 'R' },
+      { id: 'confetti_pink', color: '#ff80ab', shape: SHAPES.hexagon, symbol: 'X' },
+      { id: 'midnight_black', color: '#263238', shape: SHAPES.star, symbol: 'M' },
     ],
     background: '#0c1445',
     accent: '#ffd700',
@@ -3095,15 +3100,15 @@ const EVENT_TILE_SETS = {
     id: 'lunar_new_year_2027',
     name: 'Lunar New Year',
     favorite: 'lantern_red',
-    license: 'CC-BY',
-    sourceUrl: 'https://opengameart.org/content/lunar-new-year-gem-tileset',
-    attribution: 'OpenGameArt.org community',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'lantern_red', color: '#d32f2f', shape: SHAPES.bauble, symbol: 'L' },
-      { id: 'envelope_red', color: '#c62828', shape: SHAPES.bauble, symbol: 'E' },
-      { id: 'orange_gold', color: '#ffb300', shape: SHAPES.bauble, symbol: 'O' },
-      { id: 'plum_blossom_pink', color: '#f06292', shape: SHAPES.rose, symbol: 'P' },
-      { id: 'jade_green', color: '#43a047', shape: SHAPES.bauble, symbol: 'J' },
+      { id: 'lantern_red', color: '#d32f2f', shape: SHAPES.heart, symbol: 'L' },
+      { id: 'envelope_red', color: '#c62828', shape: SHAPES.diamond, symbol: 'E' },
+      { id: 'orange_gold', color: '#ffb300', shape: SHAPES.square, symbol: 'O' },
+      { id: 'plum_blossom_pink', color: '#f06292', shape: SHAPES.triangle, symbol: 'P' },
+      { id: 'jade_green', color: '#43a047', shape: SHAPES.hexagon, symbol: 'J' },
       { id: 'dragon_gold', color: '#ffd700', shape: SHAPES.star, symbol: 'D' },
     ],
     background: '#3e2723',
@@ -3113,16 +3118,16 @@ const EVENT_TILE_SETS = {
     id: 'valentine_event_feb',
     name: "Valentine's Event",
     favorite: 'rose_red',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/valentine-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'rose_red', color: '#e91e63', shape: SHAPES.rose, symbol: 'V' },
-      { id: 'heart_pink', color: '#ff4081', shape: SHAPES.heart, symbol: 'H' },
-      { id: 'cupid_gold', color: '#ffd700', shape: SHAPES.heart, symbol: 'C' },
-      { id: 'rose_gold', color: '#f8bbd0', shape: SHAPES.rose, symbol: 'G' },
-      { id: 'passion_magenta', color: '#d81b60', shape: SHAPES.heart, symbol: 'P' },
-      { id: 'cherry_blossom', color: '#f48fb1', shape: SHAPES.rose, symbol: 'L' },
+      { id: 'rose_red', color: '#e91e63', shape: SHAPES.heart, symbol: 'V' },
+      { id: 'heart_pink', color: '#ff4081', shape: SHAPES.diamond, symbol: 'H' },
+      { id: 'cupid_gold', color: '#ffd700', shape: SHAPES.square, symbol: 'C' },
+      { id: 'rose_gold', color: '#f8bbd0', shape: SHAPES.triangle, symbol: 'G' },
+      { id: 'passion_magenta', color: '#d81b60', shape: SHAPES.hexagon, symbol: 'P' },
+      { id: 'cherry_blossom', color: '#f48fb1', shape: SHAPES.star, symbol: 'L' },
     ],
     background: '#461e38',
     accent: '#ff9ec2',
@@ -3131,16 +3136,16 @@ const EVENT_TILE_SETS = {
     id: 'womens_day_mar',
     name: "International Women's Day",
     favorite: 'purple_power',
-    license: 'CC-BY',
-    sourceUrl: 'https://opengameart.org/content/womens-day-gem-tileset',
-    attribution: 'OpenGameArt.org community',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'purple_power', color: '#9c27b0', shape: SHAPES.medal, symbol: 'W' },
-      { id: 'green_hope', color: '#4caf50', shape: SHAPES.medal, symbol: 'H' },
-      { id: 'white_equality', color: '#ffffff', shape: SHAPES.medal, symbol: 'E' },
-      { id: 'rose_strength', color: '#e91e63', shape: SHAPES.medal, symbol: 'S' },
-      { id: 'gold_achievement', color: '#ffd700', shape: SHAPES.medal, symbol: 'A' },
-      { id: 'violet_wisdom', color: '#673ab7', shape: SHAPES.medal, symbol: 'I' },
+      { id: 'purple_power', color: '#9c27b0', shape: SHAPES.heart, symbol: 'W' },
+      { id: 'green_hope', color: '#4caf50', shape: SHAPES.diamond, symbol: 'H' },
+      { id: 'white_equality', color: '#ffffff', shape: SHAPES.square, symbol: 'E' },
+      { id: 'rose_strength', color: '#e91e63', shape: SHAPES.triangle, symbol: 'S' },
+      { id: 'gold_achievement', color: '#ffd700', shape: SHAPES.hexagon, symbol: 'A' },
+      { id: 'violet_wisdom', color: '#673ab7', shape: SHAPES.star, symbol: 'I' },
     ],
     background: '#4a148c',
     accent: '#9c27b0',
@@ -3149,16 +3154,16 @@ const EVENT_TILE_SETS = {
     id: 'st_patrick_mar',
     name: "St. Patrick's Luck",
     favorite: 'clover_green',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/st-patrick-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'clover_green', color: '#4caf50', shape: SHAPES.clover, symbol: 'C' },
-      { id: 'gold_coin', color: '#ffd700', shape: SHAPES.medal, symbol: 'O' },
-      { id: 'rainbow_red', color: '#f44336', shape: SHAPES.clover, symbol: 'R' },
-      { id: 'rainbow_orange', color: '#ff9800', shape: SHAPES.clover, symbol: 'N' },
-      { id: 'rainbow_yellow', color: '#ffeb3b', shape: SHAPES.clover, symbol: 'Y' },
-      { id: 'shamrock_light', color: '#c8e6c9', shape: SHAPES.clover, symbol: 'M' },
+      { id: 'clover_green', color: '#4caf50', shape: SHAPES.heart, symbol: 'C' },
+      { id: 'gold_coin', color: '#ffd700', shape: SHAPES.diamond, symbol: 'O' },
+      { id: 'rainbow_red', color: '#f44336', shape: SHAPES.square, symbol: 'R' },
+      { id: 'rainbow_orange', color: '#ff9800', shape: SHAPES.triangle, symbol: 'N' },
+      { id: 'rainbow_yellow', color: '#ffeb3b', shape: SHAPES.hexagon, symbol: 'Y' },
+      { id: 'shamrock_light', color: '#c8e6c9', shape: SHAPES.star, symbol: 'M' },
     ],
     background: '#1b5e20',
     accent: '#81c784',
@@ -3167,16 +3172,16 @@ const EVENT_TILE_SETS = {
     id: 'easter_mar',
     name: 'Easter Celebration',
     favorite: 'egg_pastel_pink',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/easter-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'egg_pastel_pink', color: '#f8bbd0', shape: SHAPES.egg, symbol: 'E' },
-      { id: 'egg_pastel_blue', color: '#bbdefb', shape: SHAPES.egg, symbol: 'G' },
-      { id: 'egg_pastel_yellow', color: '#fff9c4', shape: SHAPES.egg, symbol: 'Y' },
-      { id: 'egg_pastel_purple', color: '#e1bee7', shape: SHAPES.egg, symbol: 'P' },
-      { id: 'egg_pastel_green', color: '#c8e6c9', shape: SHAPES.egg, symbol: 'L' },
-      { id: 'egg_pastel_orange', color: '#ffcc80', shape: SHAPES.egg, symbol: 'O' },
+      { id: 'egg_pastel_pink', color: '#f8bbd0', shape: SHAPES.heart, symbol: 'E' },
+      { id: 'egg_pastel_blue', color: '#bbdefb', shape: SHAPES.diamond, symbol: 'G' },
+      { id: 'egg_pastel_yellow', color: '#fff9c4', shape: SHAPES.square, symbol: 'Y' },
+      { id: 'egg_pastel_purple', color: '#e1bee7', shape: SHAPES.triangle, symbol: 'P' },
+      { id: 'egg_pastel_green', color: '#c8e6c9', shape: SHAPES.hexagon, symbol: 'L' },
+      { id: 'egg_pastel_orange', color: '#ffcc80', shape: SHAPES.star, symbol: 'O' },
     ],
     background: '#323b54',
     accent: '#d8b5ff',
@@ -3185,16 +3190,16 @@ const EVENT_TILE_SETS = {
     id: 'spring_bloom_apr',
     name: 'Spring Bloom',
     favorite: 'carnation_pink',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/spring-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'carnation_pink', color: '#f06292', shape: SHAPES.rose, symbol: 'M' },
-      { id: 'pearl_white', color: '#eceff1', shape: SHAPES.rose, symbol: 'P' },
-      { id: 'gold_love', color: '#ffd700', shape: SHAPES.rose, symbol: 'L' },
-      { id: 'rose_gold_warmth', color: '#ffccbc', shape: SHAPES.rose, symbol: 'W' },
-      { id: 'lavender_care', color: '#b399dd', shape: SHAPES.rose, symbol: 'C' },
-      { id: 'ivory_grace', color: '#fff3e0', shape: SHAPES.rose, symbol: 'G' },
+      { id: 'carnation_pink', color: '#f06292', shape: SHAPES.heart, symbol: 'M' },
+      { id: 'pearl_white', color: '#eceff1', shape: SHAPES.diamond, symbol: 'P' },
+      { id: 'gold_love', color: '#ffd700', shape: SHAPES.square, symbol: 'L' },
+      { id: 'rose_gold_warmth', color: '#ffccbc', shape: SHAPES.triangle, symbol: 'W' },
+      { id: 'lavender_care', color: '#b399dd', shape: SHAPES.hexagon, symbol: 'C' },
+      { id: 'ivory_grace', color: '#fff3e0', shape: SHAPES.star, symbol: 'G' },
     ],
     background: '#183f38',
     accent: '#f8bbd0',
@@ -3203,16 +3208,16 @@ const EVENT_TILE_SETS = {
     id: 'mothers_day_may',
     name: "Mother's Day",
     favorite: 'carnation_pink',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/mothers-day-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'carnation_pink', color: '#f06292', shape: SHAPES.rose, symbol: 'M' },
-      { id: 'pearl_white', color: '#eceff1', shape: SHAPES.rose, symbol: 'P' },
-      { id: 'gold_love', color: '#ffd700', shape: SHAPES.rose, symbol: 'L' },
-      { id: 'rose_gold_warmth', color: '#ffccbc', shape: SHAPES.rose, symbol: 'W' },
-      { id: 'lavender_care', color: '#b39ddb', shape: SHAPES.rose, symbol: 'C' },
-      { id: 'ivory_grace', color: '#fff3e0', shape: SHAPES.rose, symbol: 'G' },
+      { id: 'carnation_pink', color: '#f06292', shape: SHAPES.heart, symbol: 'M' },
+      { id: 'pearl_white', color: '#eceff1', shape: SHAPES.diamond, symbol: 'P' },
+      { id: 'gold_love', color: '#ffd700', shape: SHAPES.square, symbol: 'L' },
+      { id: 'rose_gold_warmth', color: '#ffccbc', shape: SHAPES.triangle, symbol: 'W' },
+      { id: 'lavender_care', color: '#b39ddb', shape: SHAPES.hexagon, symbol: 'C' },
+      { id: 'ivory_grace', color: '#fff3e0', shape: SHAPES.star, symbol: 'G' },
     ],
     background: '#4a148c',
     accent: '#f8bbd0',
@@ -3221,15 +3226,15 @@ const EVENT_TILE_SETS = {
     id: 'memorial_day_may',
     name: 'Memorial Day',
     favorite: 'glory_red',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/sports-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'glory_red', color: '#d32f2f', shape: SHAPES.star, symbol: 'G' },
-      { id: 'honor_white', color: '#ffffff', shape: SHAPES.star, symbol: 'H' },
-      { id: 'valor_blue', color: '#1565c0', shape: SHAPES.star, symbol: 'V' },
-      { id: 'sacrifice_gold', color: '#ffd700', shape: SHAPES.star, symbol: 'S' },
-      { id: 'bravery_silver', color: '#b0bec5', shape: SHAPES.star, symbol: 'B' },
+      { id: 'glory_red', color: '#d32f2f', shape: SHAPES.heart, symbol: 'G' },
+      { id: 'honor_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'H' },
+      { id: 'valor_blue', color: '#1565c0', shape: SHAPES.square, symbol: 'V' },
+      { id: 'sacrifice_gold', color: '#ffd700', shape: SHAPES.triangle, symbol: 'S' },
+      { id: 'bravery_silver', color: '#b0bec5', shape: SHAPES.hexagon, symbol: 'B' },
       { id: 'freedom_navy', color: '#0d47a1', shape: SHAPES.star, symbol: 'F' },
     ],
     background: '#2c3e50',
@@ -3239,16 +3244,16 @@ const EVENT_TILE_SETS = {
     id: 'summer_splash_jun',
     name: 'Summer Splash',
     favorite: 'wave_turquoise',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/summer-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'wave_turquoise', color: '#4dd0e1', shape: SHAPES.snowflake, symbol: 'W' },
-      { id: 'splash_blue', color: '#039be5', shape: SHAPES.snowflake, symbol: 'S' },
-      { id: 'foam_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'F' },
-      { id: 'seaweed_green', color: '#81c784', shape: SHAPES.snowflake, symbol: 'E' },
-      { id: 'sand_beige', color: '#ffe0b2', shape: SHAPES.snowflake, symbol: 'A' },
-      { id: 'surf_blue', color: '#b2ebf2', shape: SHAPES.flame, symbol: 'F' },
+      { id: 'wave_turquoise', color: '#4dd0e1', shape: SHAPES.heart, symbol: 'W' },
+      { id: 'splash_blue', color: '#039be5', shape: SHAPES.diamond, symbol: 'S' },
+      { id: 'foam_white', color: '#ffffff', shape: SHAPES.square, symbol: 'F' },
+      { id: 'seaweed_green', color: '#81c784', shape: SHAPES.triangle, symbol: 'E' },
+      { id: 'sand_beige', color: '#ffe0b2', shape: SHAPES.hexagon, symbol: 'A' },
+      { id: 'surf_blue', color: '#b2ebf2', shape: SHAPES.star, symbol: 'F' },
     ],
     background: '#163d54',
     accent: '#4dd0e1',
@@ -3257,16 +3262,16 @@ const EVENT_TILE_SETS = {
     id: 'independence_day_jul',
     name: 'Independence Day',
     favorite: 'liberty_red',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/sports-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'liberty_red', color: '#d32f2f', shape: SHAPES.star, symbol: 'L' },
-      { id: 'union_white', color: '#ffffff', shape: SHAPES.star, symbol: 'U' },
-      { id: 'justice_blue', color: '#0d47a1', shape: SHAPES.star, symbol: 'J' },
-      { id: 'fireworks_gold', color: '#ffd700', shape: SHAPES.firework, symbol: 'F' },
-      { id: 'sparkle_white', color: '#ffffff', shape: SHAPES.firework, symbol: 'K' },
-      { id: 'glow_amber', color: '#ffb300', shape: SHAPES.firework, symbol: 'G' },
+      { id: 'liberty_red', color: '#d32f2f', shape: SHAPES.heart, symbol: 'L' },
+      { id: 'union_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'U' },
+      { id: 'justice_blue', color: '#0d47a1', shape: SHAPES.square, symbol: 'J' },
+      { id: 'fireworks_gold', color: '#ffd700', shape: SHAPES.triangle, symbol: 'F' },
+      { id: 'sparkle_white', color: '#ffffff', shape: SHAPES.hexagon, symbol: 'K' },
+      { id: 'glow_amber', color: '#ffb300', shape: SHAPES.star, symbol: 'G' },
     ],
     background: '#2c3e50',
     accent: '#ffd700',
@@ -3275,16 +3280,16 @@ const EVENT_TILE_SETS = {
     id: 'labor_day_sep',
     name: 'Labor Day',
     favorite: 'tool_red',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/tools-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'tool_red', color: '#e53935', shape: SHAPES.medal, symbol: 'T' },
-      { id: 'gear_blue', color: '#1e88e5', shape: SHAPES.medal, symbol: 'G' },
-      { id: 'hardhat_yellow', color: '#ffd54f', shape: SHAPES.medal, symbol: 'H' },
-      { id: 'wrench_green', color: '#43a047', shape: SHAPES.medal, symbol: 'W' },
-      { id: 'steel_grey', color: '#90a4ae', shape: SHAPES.medal, symbol: 'S' },
-      { id: 'brick_orange', color: '#fb8c00', shape: SHAPES.medal, symbol: 'B' },
+      { id: 'tool_red', color: '#e53935', shape: SHAPES.heart, symbol: 'T' },
+      { id: 'gear_blue', color: '#1e88e5', shape: SHAPES.diamond, symbol: 'G' },
+      { id: 'hardhat_yellow', color: '#ffd54f', shape: SHAPES.square, symbol: 'H' },
+      { id: 'wrench_green', color: '#43a047', shape: SHAPES.triangle, symbol: 'W' },
+      { id: 'steel_grey', color: '#90a4ae', shape: SHAPES.hexagon, symbol: 'S' },
+      { id: 'brick_orange', color: '#fb8c00', shape: SHAPES.star, symbol: 'B' },
     ],
     background: '#455a64',
     accent: '#ffd54f',
@@ -3293,16 +3298,16 @@ const EVENT_TILE_SETS = {
     id: 'halloween_oct',
     name: 'Halloween Haunt',
     favorite: 'pumpkin_orange',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/halloween-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'pumpkin_orange', color: '#fb8c00', shape: SHAPES.pumpkin, symbol: 'P' },
-      { id: 'ghost_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'G' },
-      { id: 'bat_purple', color: '#7b1fa2', shape: SHAPES.pumpkin, symbol: 'B' },
-      { id: 'candy_corn_yellow', color: '#ffeb3b', shape: SHAPES.pumpkin, symbol: 'C' },
-      { id: 'witch_green', color: '#388e3c', shape: SHAPES.pumpkin, symbol: 'W' },
-      { id: 'moon_black', color: '#263238', shape: SHAPES.pumpkin, symbol: 'M' },
+      { id: 'pumpkin_orange', color: '#fb8c00', shape: SHAPES.heart, symbol: 'P' },
+      { id: 'ghost_white', color: '#ffffff', shape: SHAPES.diamond, symbol: 'G' },
+      { id: 'bat_purple', color: '#7b1fa2', shape: SHAPES.square, symbol: 'B' },
+      { id: 'candy_corn_yellow', color: '#ffeb3b', shape: SHAPES.triangle, symbol: 'C' },
+      { id: 'witch_green', color: '#388e3c', shape: SHAPES.hexagon, symbol: 'W' },
+      { id: 'moon_black', color: '#263238', shape: SHAPES.star, symbol: 'M' },
     ],
     background: '#25133b',
     accent: '#ffa658',
@@ -3311,16 +3316,16 @@ const EVENT_TILE_SETS = {
     id: 'thanksgiving_nov',
     name: 'Thanksgiving Feast',
     favorite: 'turkey_brown',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/thanksgiving-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'turkey_brown', color: '#8d6e63', shape: SHAPES.leaf, symbol: 'T' },
-      { id: 'corn_yellow', color: '#ffd54f', shape: SHAPES.leaf, symbol: 'C' },
-      { id: 'pumpkin_pie_orange', color: '#ffa726', shape: SHAPES.leaf, symbol: 'P' },
-      { id: 'apple_red', color: '#e53935', shape: SHAPES.leaf, symbol: 'A' },
-      { id: 'sage_green', color: '#aed581', shape: SHAPES.leaf, symbol: 'S' },
-      { id: 'cranberry_dark', color: '#ad1457', shape: SHAPES.leaf, symbol: 'R' },
+      { id: 'turkey_brown', color: '#8d6e63', shape: SHAPES.heart, symbol: 'T' },
+      { id: 'corn_yellow', color: '#ffd54f', shape: SHAPES.diamond, symbol: 'C' },
+      { id: 'pumpkin_pie_orange', color: '#ffa726', shape: SHAPES.square, symbol: 'P' },
+      { id: 'apple_red', color: '#e53935', shape: SHAPES.triangle, symbol: 'A' },
+      { id: 'sage_green', color: '#aed581', shape: SHAPES.hexagon, symbol: 'S' },
+      { id: 'cranberry_dark', color: '#ad1457', shape: SHAPES.star, symbol: 'R' },
     ],
     background: '#5d4037',
     accent: '#ffd54f',
@@ -3329,16 +3334,16 @@ const EVENT_TILE_SETS = {
     id: 'christmas_2027',
     name: 'Christmas Celebration',
     favorite: 'star_bethlehem',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/christmas-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'star_bethlehem', color: '#ffffff', shape: SHAPES.star, symbol: 'S' },
-      { id: 'candy_cane_red', color: '#e53935', shape: SHAPES.heart, symbol: 'C' },
-      { id: 'poinsettia_dark', color: '#ad1457', shape: SHAPES.rose, symbol: 'P' },
-      { id: 'pine_green', color: '#2e7d32', shape: SHAPES.leaf, symbol: 'I' },
-      { id: 'frost_blue', color: '#4fc3f7', shape: SHAPES.snowflake, symbol: 'F' },
-      { id: 'bell_gold', color: '#ffd700', shape: SHAPES.bauble, symbol: 'B' },
+      { id: 'star_bethlehem', color: '#ffffff', shape: SHAPES.heart, symbol: 'S' },
+      { id: 'candy_cane_red', color: '#e53935', shape: SHAPES.diamond, symbol: 'C' },
+      { id: 'poinsettia_dark', color: '#ad1457', shape: SHAPES.square, symbol: 'P' },
+      { id: 'pine_green', color: '#2e7d32', shape: SHAPES.triangle, symbol: 'I' },
+      { id: 'frost_blue', color: '#4fc3f7', shape: SHAPES.hexagon, symbol: 'F' },
+      { id: 'bell_gold', color: '#ffd700', shape: SHAPES.star, symbol: 'B' },
     ],
     background: '#19372f',
     accent: '#f7d987',
@@ -3351,16 +3356,16 @@ const WEATHER_TILE_SETS = {
     id: 'clear',
     name: 'Clear Skies',
     favorite: 'sun_yellow',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/weather-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'sun_yellow', color: '#ffd700', shape: SHAPES.star, symbol: 'S' },
+      { id: 'sun_yellow', color: '#ffd700', shape: SHAPES.heart, symbol: 'S' },
       { id: 'sky_blue', color: '#4fc3f7', shape: SHAPES.diamond, symbol: 'K' },
       { id: 'grass_green', color: '#66bb6a', shape: SHAPES.square, symbol: 'G' },
-      { id: 'earth_brown', color: '#8d6e63', shape: SHAPES.square, symbol: 'E' },
-      { id: 'flower_pink', color: '#f48fb1', shape: SHAPES.rose, symbol: 'F' },
-      { id: 'drop_blue', color: '#4fc3f7', shape: SHAPES.diamond, symbol: 'D' },
+      { id: 'earth_brown', color: '#8d6e63', shape: SHAPES.triangle, symbol: 'E' },
+      { id: 'flower_pink', color: '#f48fb1', shape: SHAPES.hexagon, symbol: 'F' },
+      { id: 'drop_blue', color: '#4fc3f7', shape: SHAPES.star, symbol: 'D' },
     ],
     background: '#163d54',
     accent: '#ffe082',
@@ -3369,16 +3374,16 @@ const WEATHER_TILE_SETS = {
     id: 'partly_cloudy',
     name: 'Partly Cloudy',
     favorite: 'puddle_teal',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/weather-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'puddle_teal', color: '#4db6ac', shape: SHAPES.square, symbol: 'P' },
-      { id: 'cloud_grey', color: '#78909c', shape: SHAPES.snowflake, symbol: 'L' },
-      { id: 'thunder_yellow', color: '#ffd700', shape: SHAPES.star, symbol: 'T' },
-      { id: 'mist_white', color: '#eceff1', shape: SHAPES.snowflake, symbol: 'M' },
+      { id: 'puddle_teal', color: '#4db6ac', shape: SHAPES.heart, symbol: 'P' },
+      { id: 'cloud_grey', color: '#78909c', shape: SHAPES.diamond, symbol: 'L' },
+      { id: 'thunder_yellow', color: '#ffd700', shape: SHAPES.square, symbol: 'T' },
+      { id: 'mist_white', color: '#eceff1', shape: SHAPES.triangle, symbol: 'M' },
       { id: 'storm_purple', color: '#9575cd', shape: SHAPES.hexagon, symbol: 'R' },
-      { id: 'flake_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'F' },
+      { id: 'flake_white', color: '#ffffff', shape: SHAPES.star, symbol: 'F' },
     ],
     background: '#1e3a5f',
     accent: '#b8dfdb',
@@ -3387,15 +3392,15 @@ const WEATHER_TILE_SETS = {
     id: 'cloudy',
     name: 'Cloudy',
     favorite: 'stratus_grey',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/weather-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'stratus_grey', color: '#b0bec5', shape: SHAPES.snowflake, symbol: 'S' },
+      { id: 'stratus_grey', color: '#b0bec5', shape: SHAPES.heart, symbol: 'S' },
       { id: 'overcast_blue', color: '#90caf9', shape: SHAPES.diamond, symbol: 'O' },
-      { id: 'drizzle_teal', color: '#4dd0e1', shape: SHAPES.diamond, symbol: 'D' },
-      { id: 'soft_purple', color: '#ba68c8', shape: SHAPES.hexagon, symbol: 'F' },
-      { id: 'pale_yellow', color: '#fff59d', shape: SHAPES.star, symbol: 'Y' },
+      { id: 'drizzle_teal', color: '#4dd0e1', shape: SHAPES.square, symbol: 'D' },
+      { id: 'soft_purple', color: '#ba68c8', shape: SHAPES.triangle, symbol: 'F' },
+      { id: 'pale_yellow', color: '#fff59d', shape: SHAPES.hexagon, symbol: 'Y' },
       { id: 'sun_break_yellow', color: '#ffd700', shape: SHAPES.star, symbol: 'U' },
     ],
     background: '#263238',
@@ -3405,16 +3410,16 @@ const WEATHER_TILE_SETS = {
     id: 'rain',
     name: 'Rainy Day',
     favorite: 'drop_blue',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/weather-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'drop_blue', color: '#4fc3f7', shape: SHAPES.diamond, symbol: 'D' },
-      { id: 'puddle_teal', color: '#4db6ac', shape: SHAPES.square, symbol: 'P' },
-      { id: 'cloud_grey', color: '#78909c', shape: SHAPES.snowflake, symbol: 'L' },
-      { id: 'thunder_yellow', color: '#ffd700', shape: SHAPES.star, symbol: 'T' },
-      { id: 'wind_grey', color: '#78909c', shape: SHAPES.snowflake, symbol: 'W' },
-      { id: 'tempest_purple', color: '#7e57c2', shape: SHAPES.hexagon, symbol: 'P' },
+      { id: 'drop_blue', color: '#4fc3f7', shape: SHAPES.heart, symbol: 'D' },
+      { id: 'puddle_teal', color: '#4db6ac', shape: SHAPES.diamond, symbol: 'P' },
+      { id: 'cloud_grey', color: '#78909c', shape: SHAPES.square, symbol: 'L' },
+      { id: 'thunder_yellow', color: '#ffd700', shape: SHAPES.triangle, symbol: 'T' },
+      { id: 'wind_grey', color: '#78909c', shape: SHAPES.hexagon, symbol: 'W' },
+      { id: 'tempest_purple', color: '#7e57c2', shape: SHAPES.star, symbol: 'P' },
     ],
     background: '#263238',
     accent: '#83c9ff',
@@ -3423,16 +3428,16 @@ const WEATHER_TILE_SETS = {
     id: 'snow',
     name: 'Snowy',
     favorite: 'snowcap_white',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/winter-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'snowcap_white', color: '#ffffff', shape: SHAPES.snowflake, symbol: 'C' },
+      { id: 'snowcap_white', color: '#ffffff', shape: SHAPES.heart, symbol: 'C' },
       { id: 'ice_teal', color: '#4dd0e1', shape: SHAPES.diamond, symbol: 'I' },
-      { id: 'snowcap_blue', color: '#42a5f5', shape: SHAPES.snowflake, symbol: 'N' },
-      { id: 'hail_grey', color: '#b0bec5', shape: SHAPES.diamond, symbol: 'H' },
-      { id: 'glacier_cyan', color: '#00acc1', shape: SHAPES.snowflake, symbol: 'G' },
-      { id: 'cloud_dark', color: '#37474f', shape: SHAPES.snowflake, symbol: 'L' },
+      { id: 'snowcap_blue', color: '#42a5f5', shape: SHAPES.square, symbol: 'N' },
+      { id: 'hail_grey', color: '#b0bec5', shape: SHAPES.triangle, symbol: 'H' },
+      { id: 'glacier_cyan', color: '#00acc1', shape: SHAPES.hexagon, symbol: 'G' },
+      { id: 'cloud_dark', color: '#37474f', shape: SHAPES.star, symbol: 'L' },
     ],
     background: '#142c46',
     accent: '#dcefff',
@@ -3441,16 +3446,16 @@ const WEATHER_TILE_SETS = {
     id: 'sleet',
     name: 'Sleet',
     favorite: 'ice_rain',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/weather-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'ice_rain', color: '#4dd0e1', shape: SHAPES.diamond, symbol: 'I' },
+      { id: 'ice_rain', color: '#4dd0e1', shape: SHAPES.heart, symbol: 'I' },
       { id: 'melt_blue', color: '#4fc3f7', shape: SHAPES.diamond, symbol: 'M' },
-      { id: 'freeze_cyan', color: '#00bcd4', shape: SHAPES.snowflake, symbol: 'F' },
-      { id: 'wet_grey', color: '#607d8b', shape: SHAPES.square, symbol: 'W' },
+      { id: 'freeze_cyan', color: '#00bcd4', shape: SHAPES.square, symbol: 'F' },
+      { id: 'wet_grey', color: '#607d8b', shape: SHAPES.triangle, symbol: 'W' },
       { id: 'chill_purple', color: '#7986cb', shape: SHAPES.hexagon, symbol: 'H' },
-      { id: 'sleet_white', color: '#eceff1', shape: SHAPES.snowflake, symbol: 'S' },
+      { id: 'sleet_white', color: '#eceff1', shape: SHAPES.star, symbol: 'S' },
     ],
     background: '#263238',
     accent: '#b1e7f2',
@@ -3459,16 +3464,16 @@ const WEATHER_TILE_SETS = {
     id: 'storm',
     name: 'Storm',
     favorite: 'tempest_purple',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/weather-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'tempest_purple', color: '#7e57c2', shape: SHAPES.hexagon, symbol: 'P' },
-      { id: 'storm_purple', color: '#9575cd', shape: SHAPES.hexagon, symbol: 'R' },
-      { id: 'thunder_yellow', color: '#ffd700', shape: SHAPES.star, symbol: 'T' },
-      { id: 'thunder_orange', color: '#ffa726', shape: SHAPES.star, symbol: 'T' },
-      { id: 'cloud_dark', color: '#37474f', shape: SHAPES.snowflake, symbol: 'L' },
-      { id: 'storm_grey', color: '#546e7a', shape: SHAPES.hexagon, symbol: 'O' },
+      { id: 'tempest_purple', color: '#7e57c2', shape: SHAPES.heart, symbol: 'P' },
+      { id: 'storm_purple', color: '#9575cd', shape: SHAPES.diamond, symbol: 'R' },
+      { id: 'thunder_yellow', color: '#ffd700', shape: SHAPES.square, symbol: 'T' },
+      { id: 'thunder_orange', color: '#ffa726', shape: SHAPES.triangle, symbol: 'T' },
+      { id: 'cloud_dark', color: '#37474f', shape: SHAPES.hexagon, symbol: 'L' },
+      { id: 'storm_grey', color: '#546e7a', shape: SHAPES.star, symbol: 'O' },
     ],
     background: '#263238',
     accent: '#dcc0ff',
@@ -3477,16 +3482,16 @@ const WEATHER_TILE_SETS = {
     id: 'fog',
     name: 'Foggy',
     favorite: 'mist_white',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/weather-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'mist_white', color: '#eceff1', shape: SHAPES.snowflake, symbol: 'M' },
-      { id: 'cloud_grey', color: '#78909c', shape: SHAPES.snowflake, symbol: 'L' },
-      { id: 'haze_grey', color: '#90a4ae', shape: SHAPES.snowflake, symbol: 'H' },
-      { id: 'vapour_blue', color: '#90caf9', shape: SHAPES.snowflake, symbol: 'V' },
-      { id: 'damp_green', color: '#81c784', shape: SHAPES.square, symbol: 'D' },
-      { id: 'grey_blue', color: '#7986cb', shape: SHAPES.hexagon, symbol: 'Y' },
+      { id: 'mist_white', color: '#eceff1', shape: SHAPES.heart, symbol: 'M' },
+      { id: 'cloud_grey', color: '#78909c', shape: SHAPES.diamond, symbol: 'L' },
+      { id: 'haze_grey', color: '#90a4ae', shape: SHAPES.square, symbol: 'H' },
+      { id: 'vapour_blue', color: '#90caf9', shape: SHAPES.triangle, symbol: 'V' },
+      { id: 'damp_green', color: '#81c784', shape: SHAPES.hexagon, symbol: 'D' },
+      { id: 'grey_blue', color: '#7986cb', shape: SHAPES.star, symbol: 'Y' },
     ],
     background: '#37474f',
     accent: '#cfd8dc',
@@ -3523,16 +3528,16 @@ const HOLIDAY_TILE_SETS = {
     id: 'new_years_day',
     name: "New Year's Day",
     favorite: 'champagne_gold',
-    license: 'CC0',
-    sourceUrl: 'https://kenney.nl/assets/party-pack',
-    attribution: 'Kenney.nl',
+    license: 'MIT',
+    sourceUrl: '',
+    attribution: 'Infinite Match contributors',
     gems: [
-      { id: 'champagne_gold', color: '#ffd700', shape: SHAPES.champagne, symbol: 'C' },
-      { id: 'fireworks_red', color: '#ff4d4d', shape: SHAPES.firework, symbol: 'F' },
-      { id: 'fireworks_blue', color: '#4d79ff', shape: SHAPES.firework, symbol: 'W' },
-      { id: 'fireworks_green', color: '#4dff4d', shape: SHAPES.firework, symbol: 'R' },
-      { id: 'confetti_pink', color: '#ff80ab', shape: SHAPES.firework, symbol: 'X' },
-      { id: 'midnight_black', color: '#263238', shape: SHAPES.firework, symbol: 'M' },
+      { id: 'champagne_gold', color: '#ffd700', shape: SHAPES.heart, symbol: 'C' },
+      { id: 'fireworks_red', color: '#ff4d4d', shape: SHAPES.diamond, symbol: 'F' },
+      { id: 'fireworks_blue', color: '#4d79ff', shape: SHAPES.square, symbol: 'W' },
+      { id: 'fireworks_green', color: '#4dff4d', shape: SHAPES.triangle, symbol: 'R' },
+      { id: 'confetti_pink', color: '#ff80ab', shape: SHAPES.hexagon, symbol: 'X' },
+      { id: 'midnight_black', color: '#263238', shape: SHAPES.star, symbol: 'M' },
     ],
     background: '#0c1445',
     accent: '#ffd700',
@@ -3646,9 +3651,9 @@ function accentForContext(context) {
 function licenseForContext(context) {
   const tileSet = tileSetForContext(context);
   return {
-    license: tileSet.license || 'CC0',
+    license: tileSet.license || 'MIT',
     sourceUrl: tileSet.sourceUrl || '',
-    attribution: tileSet.attribution || 'Kenney.nl',
+    attribution: tileSet.attribution || 'Infinite Match contributors',
   };
 }
 
@@ -3783,6 +3788,8 @@ function validObjectives(definition) {
       if (definition.generatorVersion < 6 || !validFrosting(definition.frosting, definition.boardSize) || goal.target !== frostingCount(definition.frosting)) return false;
     } else if (goal.type === 'clear-delivery') {
       if (definition.generatorVersion < 6 || !validDelivery(definition.delivery, definition.boardSize, definition.gemTypes) || goal.target !== deliveryCount(definition.delivery)) return false;
+    } else if (goal.type === 'clear-weather-hazards') {
+      if (definition.generatorVersion < 6 || !validWeatherHazards(definition.hazards, definition.boardSize) || goal.target !== weatherHazardCount(definition.hazards)) return false;
     } else if (goal.type === 'timed' || goal.type === 'boss') {
       if (!Number.isSafeInteger(goal.target) || goal.target <= 0 || goal.target > MAX_COLLECTED_GEMS) return false;
     } else if (goal.type !== 'score' && (goal.type !== 'collect' || !Array.isArray(definition.gemTypes) || !definition.gemTypes.includes(goal.gemType))) return false;
@@ -3806,6 +3813,7 @@ function initialObjectiveProgress(definition) {
     if (marmaladeCount(definition.marmalade) > 0) extra.marmaladeCleared = 0;
     if (frostingCount(definition.frosting) > 0) extra.frostingCleared = 0;
     if (deliveryCount(definition.delivery) > 0) extra.deliveryCleared = 0;
+    if (weatherHazardCount(definition.hazards) > 0) extra.hazardsCleared = 0;
   }
   return { ...base, ...extra };
 }
@@ -3822,7 +3830,8 @@ function validObjectiveProgress(definition, progress) {
   const hasMarmalade = definition?.generatorVersion >= 6 && marmaladeCount(definition.marmalade) > 0;
     const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
     const hasDelivery = definition?.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
-  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0) + (hasMarmalade ? 1 : 0) + (hasFrosting ? 1 : 0) + (hasDelivery ? 1 : 0);
+    const hasHazards = definition?.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
+  const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0) + (hasMarmalade ? 1 : 0) + (hasFrosting ? 1 : 0) + (hasDelivery ? 1 : 0) + (hasHazards ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
     && (!hasShields || (validShields(definition.shields, definition.boardSize)
       && Object.hasOwn(progress, 'shieldsCleared') && Number.isSafeInteger(progress.shieldsCleared) && progress.shieldsCleared >= 0
@@ -3850,13 +3859,16 @@ function validObjectiveProgress(definition, progress) {
       && progress.frostingCleared <= MAX_COLLECTED_GEMS))
     && (!hasDelivery || (validDelivery(definition.delivery, definition.boardSize, definition.gemTypes)
       && Object.hasOwn(progress, 'deliveryCleared') && Number.isSafeInteger(progress.deliveryCleared) && progress.deliveryCleared >= 0
-      && progress.deliveryCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
+      && progress.deliveryCleared <= MAX_COLLECTED_GEMS))
+    && (!hasHazards || (validWeatherHazards(definition.hazards, definition.boardSize)
+      && Object.hasOwn(progress, 'hazardsCleared') && Number.isSafeInteger(progress.hazardsCleared) && progress.hazardsCleared >= 0
+      && progress.hazardsCleared <= MAX_COLLECTED_GEMS)) && record(progress.collected)
     && Object.keys(progress.collected).length <= definition.gemTypes.length
     && Object.entries(progress.collected).every(([color, count]) => definition.gemTypes.includes(color)
       && Number.isSafeInteger(count) && count >= 0 && count <= MAX_COLLECTED_GEMS);
 }
 
-function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0, brokenChocolate = 0, brokenLiquorice = 0, brokenMarmalade = 0, brokenFrosting = 0, brokenDelivery = 0) {
+function addObjectiveProgress(definition, previous, collected, brokenShields = 0, brokenBlockers = 0, brokenLocks = 0, brokenJelly = 0, brokenChocolate = 0, brokenLiquorice = 0, brokenMarmalade = 0, brokenFrosting = 0, brokenDelivery = 0, brokenHazards = 0) {
   if (!validObjectiveProgress(definition, previous)) throw new RangeError('invalid_objective_progress');
   const next = initialObjectiveProgress(definition);
   for (const color of definition.gemTypes) {
@@ -3909,6 +3921,11 @@ function addObjectiveProgress(definition, previous, collected, brokenShields = 0
       if (!Number.isSafeInteger(brokenDelivery) || brokenDelivery < 0 || previous.deliveryCleared + brokenDelivery > MAX_COLLECTED_GEMS) throw new RangeError('invalid_delivery_delta');
       next.deliveryCleared = previous.deliveryCleared + brokenDelivery;
     }
+    const hasHazards = definition.hazards && weatherHazardCount(definition.hazards) > 0;
+    if (definition.generatorVersion >= 6 && hasHazards) {
+      if (!Number.isSafeInteger(brokenHazards) || brokenHazards < 0 || previous.hazardsCleared + brokenHazards > MAX_COLLECTED_GEMS) throw new RangeError('invalid_hazard_delta');
+      next.hazardsCleared = previous.hazardsCleared + brokenHazards;
+    }
   }
   return next;
 }
@@ -3929,7 +3946,8 @@ function objectiveStatus(definition, score, progress) {
                 : goal.type === 'clear-liquorice' ? progress.liquoriceCleared
                   : goal.type === 'clear-marmalade' ? progress.marmaladeCleared
                     : goal.type === 'clear-frosting' ? progress.frostingCleared
-                      : goal.type === 'clear-delivery' ? progress.deliveryCleared : ownCount(progress.collected, goal.gemType);
+                      : goal.type === 'clear-delivery' ? progress.deliveryCleared
+                : goal.type === 'clear-weather-hazards' ? progress.hazardsCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -4009,6 +4027,8 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
       ? applyFrostingClear({ events: [{ cleared: action.cells }] }, frosting) : null;
     const deliveryResult = goals.some((goal) => goal.type === 'clear-delivery') && delivery
       ? applyDeliveryClear({ events: [{ cleared: action.cells }], board: { length: delivery.length } }, delivery, board) : null;
+    const hazardResult = goals.some((goal) => goal.type === 'clear-weather-hazards') && hazards
+      ? applyWeatherHazardClear({ events: [{ cleared: action.cells }] }, hazards) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
       (goal.type === 'score' || goal.type === 'timed' || goal.type === 'boss') ? action.points : goal.type === 'clear-shields'
         ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
@@ -4020,7 +4040,8 @@ function objectiveActions(definition, board, specials, progress, score = 0, shie
                   : goal.type === 'clear-marmalade' ? (marmaladeResult?.cleared || 0)
                     : goal.type === 'clear-frosting' ? (frostingResult?.cleared || 0)
                       : goal.type === 'clear-delivery' ? (deliveryResult?.deliveryCleared || 0)
-                        : action.collected[goal.gemType] || 0) / goal.target, 0);
+                        : goal.type === 'clear-weather-hazards' ? (hazardResult?.hazardCleared || 0)
+                          : action.collected[goal.gemType] || 0) / goal.target, 0);
   }
   return actions;
 }
@@ -4035,6 +4056,7 @@ function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   const hasMarmalade = state.marmalade && marmaladeCount(state.marmalade) > 0;
   const hasFrosting = state.frosting && frostingCount(state.frosting) > 0;
   const hasDelivery = state.delivery && deliveryCount(state.delivery) > 0;
+  const hasHazards = state.hazards && weatherHazardCount(state.hazards) > 0;
   let baseResult;
   if (definition.generatorVersion >= 6) {
     if (hasLocked) {
@@ -4051,6 +4073,8 @@ function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
       baseResult = applyFrostingClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.frosting);
     } else if (hasDelivery) {
       baseResult = applyDeliveryClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.delivery, state.board);
+    } else if (hasHazards) {
+      baseResult = applyWeatherHazardClear(simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, true, visualTrace), state.hazards);
     } else {
       baseResult = simulateBlockerMove(definition, state, cells, visualTrace);
     }
@@ -4064,13 +4088,17 @@ function simulateObjectiveMove(definition, state, cells, visualTrace = false) {
   if (hasDelivery) {
     result = applyDeliveryClear(result, state.delivery, state.board);
   }
+  if (hasHazards) {
+    result = applyWeatherHazardClear(result, state.hazards);
+  }
   const brokenJelly = hasJelly ? result.jellyCleared || 0 : 0;
   const brokenChocolate = hasChocolate ? result.chocolateCleared || 0 : 0;
   const brokenLiquorice = hasLiquorice ? result.liquoriceCleared || 0 : 0;
   const brokenMarmalade = hasMarmalade ? result.marmaladeCleared || 0 : 0;
   const brokenFrosting = hasFrosting ? result.frostingCleared || 0 : 0;
   const brokenDelivery = hasDelivery ? result.deliveryCleared || 0 : 0;
-  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice, brokenMarmalade, brokenFrosting, brokenDelivery) };
+  const brokenHazards = hasHazards ? result.hazardCleared || 0 : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice, brokenMarmalade, brokenFrosting, brokenDelivery, brokenHazards) };
 }
 
 function simulateObjectiveClear(definition, state, keys, points, visualTrace = false) {
@@ -4083,6 +4111,7 @@ function simulateObjectiveClear(definition, state, keys, points, visualTrace = f
   const hasMarmalade = state.marmalade && marmaladeCount(state.marmalade) > 0;
   const hasFrosting = state.frosting && frostingCount(state.frosting) > 0;
   const hasDelivery = state.delivery && deliveryCount(state.delivery) > 0;
+  const hasHazards = state.hazards && weatherHazardCount(state.hazards) > 0;
   const baseResult = definition.generatorVersion >= 6
     ? (hasLocked ? simulateLockedGemClear(definition, state, keys, points, visualTrace)
       : simulateBlockerClear(definition, state, keys, points, visualTrace))
@@ -4097,13 +4126,15 @@ function simulateObjectiveClear(definition, state, keys, points, visualTrace = f
   else if (hasMarmalade) result = applyMarmaladeClear(result, state.marmalade);
   else if (hasFrosting) result = applyFrostingClear(result, state.frosting);
   else if (hasDelivery) result = applyDeliveryClear(result, state.delivery, state.board);
+  else if (hasHazards) result = applyWeatherHazardClear(result, state.hazards);
   const brokenJelly = hasJelly ? (result.jellyCleared || 0) : 0;
   const brokenChocolate = hasChocolate ? (result.chocolateCleared || 0) : 0;
   const brokenLiquorice = hasLiquorice ? (result.liquoriceCleared || 0) : 0;
   const brokenMarmalade = hasMarmalade ? (result.marmaladeCleared || 0) : 0;
   const brokenFrosting = hasFrosting ? (result.frostingCleared || 0) : 0;
   const brokenDelivery = hasDelivery ? (result.deliveryCleared || 0) : 0;
-  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice, brokenMarmalade, brokenFrosting, brokenDelivery) };
+  const brokenHazards = hasHazards ? (result.hazardCleared || 0) : 0;
+  return { ...result, objectiveProgress: addObjectiveProgress(definition, previous, result.collected, result.brokenShields, result.brokenBlockers, result.brokenLocks, brokenJelly, brokenChocolate, brokenLiquorice, brokenMarmalade, brokenFrosting, brokenDelivery, brokenHazards) };
 }
 
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
@@ -4116,8 +4147,9 @@ function certifyObjectiveLevel(definition) {
   const isMarmalade = definition.generatorVersion >= 6 && marmaladeCount(definition.marmalade) > 0;
   const isFrosting = definition.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
   const isDelivery = definition.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
+  const isHazards = definition.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
   const proof = definition.generatorVersion >= 6
-    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : isChocolate ? certifyChocolateBoard(definition) : isLiquorice ? certifyLiquoriceBoard(definition) : isMarmalade ? certifyMarmaladeBoard(definition) : isFrosting ? certifyFrostingBoard(definition) : isDelivery ? certifyDeliveryBoard(definition) : certifyBlockerBoard(definition))
+    ? (isLocked ? certifyLockedGemBoard(definition) : isJelly ? certifyJellyBoard(definition) : isChocolate ? certifyChocolateBoard(definition) : isLiquorice ? certifyLiquoriceBoard(definition) : isMarmalade ? certifyMarmaladeBoard(definition) : isFrosting ? certifyFrostingBoard(definition) : isDelivery ? certifyDeliveryBoard(definition) : isHazards ? certifyWeatherHazardBoard(definition) : certifyBlockerBoard(definition))
     : definition.generatorVersion >= 5 ? certifyShieldBoard(definition)
       : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
   const objectiveProgress = { collected: proof.collected,
@@ -4129,9 +4161,818 @@ function certifyObjectiveLevel(definition) {
     ...(definition.generatorVersion >= 6 && isLiquorice ? { liquoriceCleared: proof.liquoriceCleared } : {}),
     ...(definition.generatorVersion >= 6 && isMarmalade ? { marmaladeCleared: proof.marmaladeCleared } : {}),
     ...(definition.generatorVersion >= 6 && isFrosting ? { frostingCleared: proof.frostingCleared } : {}),
-    ...(definition.generatorVersion >= 6 && isDelivery ? { deliveryCleared: proof.deliveryCleared } : {}) };
+    ...(definition.generatorVersion >= 6 && isDelivery ? { deliveryCleared: proof.deliveryCleared } : {}),
+    ...(definition.generatorVersion >= 6 && isHazards ? { hazardsCleared: proof.hazardCleared } : {}) };
   return { ...proof, objectiveProgress, objectivesComplete: objectiveStatus(definition, proof.score, objectiveProgress).complete };
 }
+
+/** Rules v6: jelly terrain tiles. Jelly sits on top of ordinary gem cells and does not
+ * alter the board, specials, shields, blockers, locked gems, or refill path. A match
+ * that clears the gem on a jelly cell removes one layer of jelly; once all layers are
+ * gone the cell is clear. Jelly never blocks swaps and never spreads. Only the v6 path
+ * uses it.
+ *
+ * Each cell can carry 0, 1, or 2 jelly layers. A clear event over a jelly cell consumes
+ * one layer per cleared cell. Specials and inventory hits also consume layers on covered
+ * cells, matching how they hit shields.
+ */
+
+const JELLY_MAX_LAYERS = 2;
+
+function validJelly(jelly, size) {
+  return Array.isArray(jelly) && jelly.length === size && jelly.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) =>
+      Number.isInteger(value) && value >= 0 && value <= JELLY_MAX_LAYERS));
+}
+
+function jellyCount(jelly) {
+  return jelly.flat().filter(Boolean).length;
+}
+
+/** Blank grid of zeros. */
+function blankJelly(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+/** Place jelly only on cells the no-inventory witness actually clears, up to JELLY_CAP.
+ * Same existence-proof pattern as witnessedShields. One layer per cell unless the
+ * witness clears it twice or more, in which case two layers are used.
+ */
+function witnessedJelly(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('jelly_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 1).map(([key]) => key).sort();
+  const jelly = blankJelly(n);
+  if (!candidates.length) return jelly;
+  const offset = hashSeed(`${seed}|jelly-cells`) % candidates.length;
+  const cap = Math.min(3, candidates.length);
+  for (let i = 0; i < cap; i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    const hits = clears.get(`${row},${col}`);
+    jelly[row][col] = hits >= 2 ? 2 : 1;
+  }
+  return jelly;
+}
+
+/** Apply one clear pass over jelly cells: decrement each covered cell by 1 (floor 0).
+ * Returns { jelly, cleared: number of cells that lost a layer }. Never mutates input.
+ */
+function clearJelly(jelly, clearedKeys) {
+  const copy = jelly.map((row) => row.slice());
+  let lost = 0;
+  for (const key of clearedKeys) {
+    const [row, col] = key.split(',').map(Number);
+    if (copy[row][col] > 0) {
+      copy[row][col] -= 1;
+      lost += 1;
+    }
+  }
+  return { jelly: copy, cleared: lost };
+}
+
+/** Certify a jelly level: run the no-inventory witness and confirm every jelly cell
+ * is cleared by the witness path. Returns { score, collected, jellyCleared, events }.
+ */
+function certifyJellyBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, witness, jelly } = definition;
+  if (!Array.isArray(witness) || witness.length === 0) throw new Error('jelly_certify_no_witness');
+  let state = { board, specials: specials || blankSpecials(board.length), refillState };
+  let score = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  let jellyCleared = 0;
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, true);
+    if (!next) throw new Error('jelly_certify_move_failed');
+    score += next.score || 0;
+    for (const color of gemTypes) collected[color] = (collected[color] || 0) + (next.collected?.[color] || 0);
+    const cleared = applyJellyClear(next, state.jelly || blankJelly(board.length));
+    state.jelly = cleared.jelly;
+    jellyCleared += cleared.jellyCleared || 0;
+    state = { board: next.board, specials: next.specials, refillState: next.refillState };
+  }
+  const remaining = jellyCount(state.jelly || blankJelly(board.length));
+  if (remaining > 0) throw new Error(`jelly_certify_incomplete:${remaining}`);
+  return { score, collected, jellyCleared, witness, events: [] };
+}
+
+/** Thread jelly layers through a simulate-style result. Used by match-core's v6
+ * transition to decrement jelly on cleared cells and rebuild state. Never mutates input.
+ */
+function applyJellyClear(result, initialJelly) {
+  if (!result) return null;
+  const jelly = initialJelly.map((row) => row.slice());
+  const trace = result.presentation;
+  if (trace) trace.initial.jelly = initialJelly.map((row) => row.slice());
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.jelly = jelly.map((row) => row.slice());
+    const jellyHits = [];
+    for (const key of event.cleared) {
+      const [row, col] = key.split(',').map(Number);
+      if (jelly[row][col] > 0) {
+        jelly[row][col] -= 1;
+        jellyHits.push(key);
+      }
+    }
+    if (visual) visual.after.jelly = jelly.map((row) => row.slice());
+    return { ...event, jellyHits };
+  });
+  let totalJellyHits = 0;
+  for (const event of events) totalJellyHits += event.jellyHits.length;
+  return { ...result, events, jelly, jellyCleared: totalJellyHits };
+}
+
+
+/** Rules v6: chocolate terrain tiles. Chocolate spreads across the board like a
+ * contagious obstacle: after each accepted player move, chocolate spreads from
+ * each chocolate cell to one adjacent ordinary gem cell (lowest row,col eligible
+ * neighbour), unless blocked by shields, specials, blockers, locked gems, or
+ * existing chocolate. Chocolate can be cleared by matches over its cell, by
+ * specials, or by inventory hits. Each chocolate cell is a single-layer obstacle
+ * (cleared in one hit). Classic only: daily, timed and endless never receive chocolate.
+ *
+ * Chocolate never blocks swaps. It sits on top of gems like jelly, but unlike jelly
+ * it spreads after each move, creating time pressure. Cap of 8 chocolate cells per
+ * board stops runaway growth.
+ */
+
+const CHOCOLATE_CAP = 8;
+
+function validChocolate(chocolate, size) {
+  return Array.isArray(chocolate) && chocolate.length === size && chocolate.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) => value === 0 || value === 1));
+}
+
+function chocolateCount(chocolate) {
+  return chocolate.flat().filter(Boolean).length;
+}
+
+/** Blank grid of zeros. */
+function blankChocolate(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+/** Place chocolate only on cells the no-inventory witness actually clears, up to CHOCOLATE_CAP.
+ * Same existence-proof pattern as witnessedShields. One layer per cell.
+ */
+function witnessedChocolate(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('chocolate_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 1).map(([key]) => key).sort();
+  const chocolate = blankChocolate(n);
+  if (!candidates.length) return chocolate;
+  const offset = hashSeed(`${seed}|chocolate-cells`) % candidates.length;
+  const cap = Math.min(CHOCOLATE_CAP, candidates.length);
+  for (let i = 0; i < cap; i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    chocolate[row][col] = 1;
+  }
+  return chocolate;
+}
+
+/** Check if a cell is eligible for chocolate to spread into. */
+function spreadEligible(chocolate, specials, shields, blockers, locked, row, col, size) {
+  if (row < 0 || row >= size || col < 0 || col >= size) return false;
+  return !chocolate[row][col] && !specials[row][col] && !shields[row][col]
+    && !blockers[row][col] && !locked[row][col];
+}
+
+/** Spread chocolate from each existing chocolate cell to one eligible neighbour.
+ * Returns { chocolate, spread: [keys] } where spread is the list of newly chocolate cells.
+ * Never mutates input. Deterministic: lowest row,col neighbour chosen.
+ */
+function spreadChocolate(chocolate, specials, shields, blockers, locked) {
+  const size = chocolate?.length;
+  if (!validChocolate(chocolate, size)) return null;
+  const copy = chocolate.map((row) => row.slice());
+  const spread = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (!copy[r][c]) continue;
+      // Try neighbours in lowest row,col order: up, left, down, right
+      const neighbours = [
+        [r - 1, c], [r, c - 1], [r + 1, c], [r, c + 1],
+      ];
+      for (const [nr, nc] of neighbours) {
+        if (spreadEligible(copy, specials, shields, blockers, locked, nr, nc, size)) {
+          copy[nr][nc] = 1;
+          spread.push(`${nr},${nc}`);
+          break; // One spread per source cell per move
+        }
+      }
+    }
+  }
+  return { chocolate: copy, spread };
+}
+
+/** Clear chocolate cells covered by a clear event. Returns { chocolate, cleared: count }. */
+function clearChocolate(chocolate, clearedKeys) {
+  const copy = chocolate.map((row) => row.slice());
+  let lost = 0;
+  for (const key of clearedKeys) {
+    const [row, col] = key.split(',').map(Number);
+    if (copy[row][col] === 1) {
+      copy[row][col] = 0;
+      lost += 1;
+    }
+  }
+  return { chocolate: copy, cleared: lost };
+}
+
+function validChocolateState(definition, state) {
+  const n = state?.board?.length;
+  return validChocolate(definition.chocolate, n) && validChocolate(state.chocolate, n)
+    && state.chocolate.every((row, r) => row.every((v, c) => v <= definition.chocolate[r][c]));
+}
+
+/** Thread chocolate through a simulate-style result. Used by match-core's v6
+ * transition to clear chocolate on cleared cells and rebuild state. Never mutates input.
+ */
+function applyChocolateClear(result, initialChocolate) {
+  if (!result) return null;
+  const chocolate = initialChocolate.map((row) => row.slice());
+  const trace = result.presentation;
+  if (trace) trace.initial.chocolate = initialChocolate.map((row) => row.slice());
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.chocolate = chocolate.map((row) => row.slice());
+    const chocolateHits = [];
+    for (const key of event.cleared) {
+      const [row, col] = key.split(',').map(Number);
+      if (chocolate[row][col] === 1) {
+        chocolate[row][col] = 0;
+        chocolateHits.push(key);
+      }
+    }
+    if (visual) visual.after.chocolate = chocolate.map((row) => row.slice());
+    return { ...event, chocolateHits };
+  });
+  let totalChocolateHits = 0;
+  for (const event of events) totalChocolateHits += event.chocolateHits.length;
+  return { ...result, events, chocolate, chocolateCleared: totalChocolateHits };
+}
+
+/** Certify a chocolate level: run the no-inventory witness and confirm every chocolate
+ * cell is cleared by the witness path. Returns { score, collected, chocolateCleared, events }.
+ */
+function certifyChocolateBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, witness, chocolate } = definition;
+  if (!Array.isArray(witness) || witness.length === 0) throw new Error('chocolate_certify_no_witness');
+  let state = { board, specials: specials || blankSpecials(board.length), refillState };
+  let score = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  let chocolateCleared = 0;
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, true);
+    if (!next) throw new Error('chocolate_certify_move_failed');
+    score += next.score || 0;
+    for (const color of gemTypes) collected[color] = (collected[color] || 0) + (next.collected?.[color] || 0);
+    const cleared = applyChocolateClear(next, state.chocolate || blankChocolate(board.length));
+    state.chocolate = cleared.chocolate;
+    chocolateCleared += cleared.chocolateCleared || 0;
+    state = { board: next.board, specials: next.specials, refillState: next.refillState };
+  }
+  const remaining = chocolateCount(state.chocolate || blankChocolate(board.length));
+  if (remaining > 0) throw new Error(`chocolate_certify_incomplete:${remaining}`);
+  return { score, collected, chocolateCleared, witness, events: [] };
+}
+
+
+/** Rules v6: liquorice lock terrain tiles. A liquorice lock sits on a cell and
+ * prevents swaps involving that cell until an adjacent match clears it. Unlike
+ * locked gems (which block the gem underneath until freed), liquorice locks block
+ * the swap path itself: no swap may originate from or land on a locked cell.
+ * A match that includes a cell adjacent to a lock clears the lock on the next
+ * transition. Single-layer: one adjacent clear removes it entirely.
+ *
+ * Liquorice never spreads and never blocks gem matches directly — only swaps.
+ * Classic only: daily, timed and endless never receive liquorice.
+ */
+
+const LIQUORICE_CAP = 6;
+
+function validLiquorice(liquorice, size) {
+  return Array.isArray(liquorice) && liquorice.length === size && liquorice.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) => value === 0 || value === 1));
+}
+
+function liquoriceCount(liquorice) {
+  return liquorice.flat().filter(Boolean).length;
+}
+
+/** Blank grid of zeros. */
+function blankLiquorice(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+/** Check whether a cell has a liquorice lock. */
+function isLocked(liquorice, row, col, size) {
+  return row >= 0 && row < size && col >= 0 && col < size && liquorice[row][col] === 1;
+}
+
+/** Check whether a swap between two cells is legal given liquorice locks.
+ * A swap is illegal if either cell is locked. Returns true if the swap is allowed.
+ */
+function swapLegalWithLiquorice(liquorice, cellA, cellB, size) {
+  return !isLocked(liquorice, cellA[0], cellA[1], size)
+    && !isLocked(liquorice, cellB[0], cellB[1], size);
+}
+
+/** Place liquorice only on cells the no-inventory witness actually clears, up to LIQUORICE_CAP.
+ * Same existence-proof pattern as witnessedShields. One lock per cell.
+ */
+function witnessedLiquorice(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('liquorice_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 1).map(([key]) => key).sort();
+  const liquorice = blankLiquorice(n);
+  if (!candidates.length) return liquorice;
+  const offset = hashSeed(`${seed}|liquorice-cells`) % candidates.length;
+  const cap = Math.min(LIQUORICE_CAP, candidates.length);
+  for (let i = 0; i < cap; i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    liquorice[row][col] = 1;
+  }
+  return liquorice;
+}
+
+/** Return the set of liquorice lock keys adjacent to any cleared key. These locks
+ * are cleared by the clear event. Returns { liquorice, cleared: [keys] }.
+ */
+function clearLiquoriceAdjacent(liquorice, clearedKeys, size) {
+  const copy = liquorice.map((row) => row.slice());
+  const cleared = [];
+  for (const key of clearedKeys) {
+    const [r, c] = key.split(',').map(Number);
+    for (const [nr, nc] of [[r - 1, c], [r, c - 1], [r + 1, c], [r, c + 1]]) {
+      if (isLocked(copy, nr, nc, size)) {
+        copy[nr][nc] = 0;
+        cleared.push(`${nr},${nc}`);
+      }
+    }
+  }
+  return { liquorice: copy, cleared };
+}
+
+function validLiquoriceState(definition, state) {
+  const n = state?.board?.length;
+  return validLiquorice(definition.liquorice, n) && validLiquorice(state.liquorice, n)
+    && state.liquorice.every((row, r) => row.every((v, c) => v <= definition.liquorice[r][c]));
+}
+
+/** Thread liquorice locks through a simulate-style result. Locks adjacent to cleared
+ * cells are removed. Never mutates input. */
+function applyLiquoriceClear(result, initialLiquorice) {
+  if (!result) return null;
+  const size = result.board?.length || initialLiquorice.length;
+  let liquorice = initialLiquorice.map((row) => row.slice());
+  const trace = result.presentation;
+  if (trace) trace.initial.liquorice = initialLiquorice.map((row) => row.slice());
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.liquorice = liquorice.map((row) => row.slice());
+    const cleared = clearLiquoriceAdjacent(liquorice, event.cleared, size);
+    liquorice = cleared.liquorice;
+    if (visual) visual.after.liquorice = liquorice.map((row) => row.slice());
+    return { ...event, liquoriceHits: cleared.cleared };
+  });
+  let totalLiquoriceHits = 0;
+  for (const event of events) totalLiquoriceHits += event.liquoriceHits.length;
+  return { ...result, events, liquorice, liquoriceCleared: totalLiquoriceHits };
+}
+
+/** Certify a liquorice level: run the no-inventory witness and confirm every liquorice
+ * cell is cleared by the witness path. Returns { score, collected, liquoriceCleared, events }.
+ */
+function certifyLiquoriceBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, witness, liquorice } = definition;
+  if (!Array.isArray(witness) || witness.length === 0) throw new Error('liquorice_certify_no_witness');
+  let state = { board, specials: specials || blankSpecials(board.length), refillState };
+  let score = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  let liquoriceCleared = 0;
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, true);
+    if (!next) throw new Error('liquorice_certify_move_failed');
+    score += next.score || 0;
+    for (const color of gemTypes) collected[color] = (collected[color] || 0) + (next.collected?.[color] || 0);
+    const cleared = applyLiquoriceClear(next, state.liquorice || blankLiquorice(board.length));
+    state.liquorice = cleared.liquorice;
+    liquoriceCleared += cleared.liquoriceCleared || 0;
+    state = { board: next.board, specials: next.specials, refillState: next.refillState };
+  }
+  const remaining = liquoriceCount(state.liquorice || blankLiquorice(board.length));
+  if (remaining > 0) throw new Error(`liquorice_certify_incomplete:${remaining}`);
+  return { score, collected, liquoriceCleared, witness, events: [] };
+}
+
+
+/** Rules v6: marmalade terrain tiles. Marmalade is a sticky substance that covers
+ * ordinary gem cells and must be cleared by matches over its cell. Unlike jelly
+ * (which is consumed one layer per clear), marmalade is single-layer: one match
+ * over its cell removes it entirely. Marmalade never blocks swaps and never spreads.
+ * Classic only: daily, timed and endless never receive marmalade.
+ */
+
+const MARMALADE_CAP = 5;
+
+function validMarmalade(marmalade, size) {
+  return Array.isArray(marmalade) && marmalade.length === size && marmalade.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) => value === 0 || value === 1));
+}
+
+function marmaladeCount(marmalade) {
+  return marmalade.flat().filter(Boolean).length;
+}
+
+/** Blank grid of zeros. */
+function blankMarmalade(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+/** Place marmalade only on cells the no-inventory witness actually clears, up to MARMALADE_CAP.
+ * Same existence-proof pattern as witnessedShields. One layer per cell.
+ */
+function witnessedMarmalade(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('marmalade_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 1).map(([key]) => key).sort();
+  const marmalade = blankMarmalade(n);
+  if (!candidates.length) return marmalade;
+  const offset = hashSeed(`${seed}|marmalade-cells`) % candidates.length;
+  const cap = Math.min(MARMALADE_CAP, candidates.length);
+  for (let i = 0; i < cap; i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    marmalade[row][col] = 1;
+  }
+  return marmalade;
+}
+
+/** Clear marmalade cells covered by a clear event. Returns { marmalade, cleared: count }. */
+function clearMarmalade(marmalade, clearedKeys) {
+  const copy = marmalade.map((row) => row.slice());
+  let lost = 0;
+  for (const key of clearedKeys) {
+    const [row, col] = key.split(',').map(Number);
+    if (copy[row][col] === 1) {
+      copy[row][col] = 0;
+      lost += 1;
+    }
+  }
+  return { marmalade: copy, cleared: lost };
+}
+
+/** Thread marmalade through a simulate-style result. Marmalade on cleared cells is removed.
+ * Never mutates input. */
+function applyMarmaladeClear(result, initialMarmalade) {
+  if (!result) return null;
+  let grid = initialMarmalade.map((row) => row.slice());
+  const trace = result.presentation;
+  if (trace) trace.initial.marmalade = initialMarmalade.map((row) => row.slice());
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.marmalade = grid.map((row) => row.slice());
+    const cleared = clearMarmalade(grid, event.cleared);
+    grid = cleared.marmalade;
+    if (visual) visual.after.marmalade = grid.map((row) => row.slice());
+    return { ...event, marmaladeHits: cleared.cleared };
+  });
+  let totalMarmaladeHits = 0;
+  for (const event of events) totalMarmaladeHits += event.marmaladeHits.length;
+  return { ...result, events, marmalade: grid, marmaladeCleared: totalMarmaladeHits };
+}
+
+/** Certify a marmalade level: run the no-inventory witness and confirm every marmalade
+ * cell is cleared by the witness path. Returns { score, collected, marmaladeCleared, events }.
+ */
+function certifyMarmaladeBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, witness } = definition;
+  if (!Array.isArray(witness) || witness.length === 0) throw new Error('marmalade_certify_no_witness');
+  let state = { board, specials: specials || blankSpecials(board.length), refillState };
+  let score = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  let marmaladeCleared = 0;
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, true);
+    if (!next) throw new Error('marmalade_certify_move_failed');
+    score += next.score || 0;
+    for (const color of gemTypes) collected[color] = (collected[color] || 0) + (next.collected?.[color] || 0);
+    const cleared = applyMarmaladeClear(next, state.marmalade || blankMarmalade(board.length));
+    state.marmalade = cleared.marmalade;
+    marmaladeCleared += cleared.marmaladeCleared || 0;
+    state = { board: next.board, specials: next.specials, refillState: next.refillState };
+  }
+  const remaining = marmaladeCount(state.marmalade || blankMarmalade(board.length));
+  if (remaining > 0) throw new Error(`marmalade_certify_incomplete:${remaining}`);
+  return { score, collected, marmaladeCleared, witness, events: [] };
+}
+
+
+/** Rules v6: frosting terrain tiles. Frosting is a layered obstacle on top of
+ * ordinary gem cells, like shields but applied to gems. Each cell can carry 1-3
+ * layers of frosting. A match that clears the gem on a frosted cell removes one
+ * layer; once all layers are gone the cell is clear. Frosting never blocks swaps
+ * and never spreads. Classic only: daily, timed and endless never receive frosting.
+ */
+
+const FROSTING_MAX_LAYERS = 3;
+
+function validFrosting(frosting, size) {
+  return Array.isArray(frosting) && frosting.length === size && frosting.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) =>
+      Number.isInteger(value) && value >= 0 && value <= FROSTING_MAX_LAYERS));
+}
+
+function frostingCount(frosting) {
+  return frosting.flat().filter(Boolean).length;
+}
+
+/** Blank grid of zeros. */
+function blankFrosting(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+/** Place frosting only on cells the no-inventory witness actually clears, up to FROSTING_CAP.
+ * Same existence-proof pattern as witnessedShields. Cells cleared 2+ times get 2 layers,
+ * cells cleared 3+ times get 3 layers.
+ */
+function witnessedFrosting(board, refillState, palette, weights, specials, witness, seed) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('frosting_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 1).map(([key]) => key).sort();
+  const frosting = blankFrosting(n);
+  if (!candidates.length) return frosting;
+  const offset = hashSeed(`${seed}|frosting-cells`) % candidates.length;
+  const cap = Math.min(6, candidates.length);
+  for (let i = 0; i < cap; i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    const hits = clears.get(`${row},${col}`);
+    frosting[row][col] = hits >= 3 ? 3 : hits >= 2 ? 2 : 1;
+  }
+  return frosting;
+}
+
+/** Clear frosting layers on cells covered by a clear event. Each covered cell loses
+ * one layer. Returns { frosting, cleared: number of layers removed }. */
+function clearFrosting(frosting, clearedKeys) {
+  const copy = frosting.map((row) => row.slice());
+  let lost = 0;
+  for (const key of clearedKeys) {
+    const [row, col] = key.split(',').map(Number);
+    if (copy[row][col] > 0) {
+      copy[row][col] -= 1;
+      lost += 1;
+    }
+  }
+  return { frosting: copy, cleared: lost };
+}
+
+/** Thread frosting layers through a simulate-style result. Frosting on cleared cells
+ * loses one layer per clear. Never mutates input. */
+function applyFrostingClear(result, initialFrosting) {
+  if (!result) return null;
+  let grid = initialFrosting.map((row) => row.slice());
+  const trace = result.presentation;
+  if (trace) trace.initial.frosting = initialFrosting.map((row) => row.slice());
+  const events = result.events.map((event, index) => {
+    const visual = trace?.frames[index];
+    if (visual) visual.before.frosting = grid.map((row) => row.slice());
+    const cleared = clearFrosting(grid, event.cleared);
+    grid = cleared.frosting;
+    if (visual) visual.after.frosting = grid.map((row) => row.slice());
+    return { ...event, frostingHits: cleared.cleared };
+  });
+  let totalFrostingHits = 0;
+  for (const event of events) totalFrostingHits += event.frostingHits.length;
+  return { ...result, events, frosting: grid, frostingCleared: totalFrostingHits };
+}
+
+/** Certify a frosting level: run the no-inventory witness and confirm every frosting
+ * cell is fully cleared by the witness path. Returns { score, collected, frostingCleared, events }.
+ */
+function certifyFrostingBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, witness, frosting } = definition;
+  if (!Array.isArray(witness) || witness.length === 0) throw new Error('frosting_certify_no_witness');
+  let state = { board, specials: specials || blankSpecials(board.length), refillState };
+  let score = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  let frostingCleared = 0;
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, true);
+    if (!next) throw new Error('frosting_certify_move_failed');
+    score += next.score || 0;
+    for (const color of gemTypes) collected[color] = (collected[color] || 0) + (next.collected?.[color] || 0);
+    const cleared = applyFrostingClear(next, state.frosting || blankFrosting(board.length));
+    state.frosting = cleared.frosting;
+    frostingCleared += cleared.frostingCleared || 0;
+    state = { board: next.board, specials: next.specials, refillState: next.refillState };
+  }
+  const remaining = frostingCount(state.frosting || blankFrosting(board.length));
+  if (remaining > 0) throw new Error(`frosting_certify_incomplete:${remaining}`);
+  return { score, collected, frostingCleared, witness, events: [] };
+}
+
+
+/** Rules v6: weather-driven board hazards. Each active weather condition places
+ * a thematic hazard overlay on ordinary gem cells. Hazards are placed only on
+ * cells the no-inventory witness path clears, so every placed hazard is
+ * guaranteed clearable without boosters. Storm lightning spreads one cell per
+ * accepted move; other hazards never spread. Classic only: daily, timed and
+ * endless never receive weather hazards. */
+
+const WEATHER_HAZARD_CAP = 8;
+
+/** Validate a weather hazard grid: size x size, each cell 0..3 layers. */
+function validWeatherHazards(hazards, size) {
+  return Array.isArray(hazards) && hazards.length === size && hazards.every((row) =>
+    Array.isArray(row) && row.length === size && row.every((value) =>
+      Number.isInteger(value) && value >= 0 && value <= 3));
+}
+
+/** Count cells with at least one hazard layer. */
+function weatherHazardCount(hazards) {
+  return hazards.flat().filter(Boolean).length;
+}
+
+/** Blank grid of zeros. */
+function blankWeatherHazards(size) {
+  return Array.from({ length: size }, () => new Array(size).fill(0));
+}
+
+/** Place weather hazards only on cells the witness path clears. Cells cleared
+ * multiple times get more layers, capped at 3. Returns a size x size grid. */
+function witnessedWeatherHazards(board, refillState, palette, weights, specials, witness, seed, hazardDef) {
+  const n = board.length;
+  const clears = new Map();
+  let state = { board, specials, refillState };
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, palette, weights, cells, state.specials);
+    if (!next) throw new Error('weather_hazard_witness_invalid');
+    for (const event of next.events) for (const key of event.cleared) clears.set(key, (clears.get(key) || 0) + 1);
+    state = next;
+  }
+  const candidates = [...clears.entries()].filter(([, hits]) => hits >= 1).map(([key]) => key).sort();
+  const hazards = blankWeatherHazards(n);
+  if (!candidates.length) return hazards;
+  const offset = hashSeed(`${seed}|weather-hazard-cells`) % candidates.length;
+  const cap = Math.min(hazardDef.cap, candidates.length);
+  const layers = Math.min(3, hazardDef.layers);
+  for (let i = 0; i < cap; i++) {
+    const [row, col] = candidates[(offset + i) % candidates.length].split(',').map(Number);
+    const hits = clears.get(`${row},${col}`);
+    hazards[row][col] = Math.min(3, hits >= layers ? layers : hits);
+  }
+  return hazards;
+}
+
+/** Clear one hazard layer on each cell covered by clearedKeys. Returns
+ * { hazards, cleared } where cleared is the number of layers removed. */
+function clearWeatherHazards(hazards, clearedKeys) {
+  const size = hazards?.length;
+  if (!validWeatherHazards(hazards, size) || !Array.isArray(clearedKeys)) return null;
+  const copy = hazards.map((row) => row.slice());
+  let lost = 0;
+  for (const key of new Set(clearedKeys)) {
+    if (typeof key !== 'string') return null;
+    const [row, col] = key.split(',').map(Number);
+    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= size || col >= size) continue;
+    if (!copy[row][col]) continue;
+    copy[row][col] -= 1;
+    lost += 1;
+  }
+  return { hazards: copy, cleared: lost };
+}
+
+/** Spread weather hazards: one new hazard cell per accepted move on the lowest
+ * eligible orthogonal neighbour of an existing hazard cell. Never spreads onto
+ * specials, shields, or existing hazards. Only used by storm lightning. */
+function spreadWeatherHazards(hazards, specials, shields, cap = WEATHER_HAZARD_CAP) {
+  const size = hazards?.length;
+  if (!validWeatherHazards(hazards, size) || !Array.isArray(specials) || specials.length !== size
+    || !Array.isArray(shields) || shields.length !== size) return null;
+  const copy = hazards.map((row) => row.slice());
+  if (weatherHazardCount(hazards) >= cap) return { hazards: copy, spread: null };
+  let best = null;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (!copy[r][c]) continue;
+      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr < 0 || nc < 0 || nr >= size || nc >= size) continue;
+        if (copy[nr][nc] || specials[nr][nc] || shields[nr][nc]) continue;
+        if (!best || nr < best[0] || (nr === best[0] && nc < best[1])) best = [nr, nc];
+      }
+    }
+  }
+  if (!best) return { hazards: copy, spread: null };
+  copy[best[0]][best[1]] = 1;
+  return { hazards: copy, spread: `${best[0]},${best[1]}` };
+}
+
+/** Thread hazard layers through a simulate-style result. Hazards on cleared cells
+ * lose one layer per clear. Returns { ...result, hazards, hazardCleared }. */
+function applyWeatherHazardClear(result, initialHazards) {
+  if (!result) return null;
+  let grid = initialHazards.map((row) => row.slice());
+  const events = result.events.map((event) => {
+    const cleared = clearWeatherHazards(grid, event.cleared);
+    if (!cleared) return event;
+    grid = cleared.hazards;
+    return { ...event, hazardHits: cleared.cleared };
+  });
+  let totalHazardHits = 0;
+  for (const event of events) totalHazardHits += event.hazardHits || 0;
+  return { ...result, events, hazards: grid, hazardCleared: totalHazardHits };
+}
+
+/** Simulate one accepted player move with weather hazards: hazard clears on hit
+ * cells, then optional spread (storm lightning only). Never mutates input. */
+function simulateWeatherHazardMove(definition, state, cells, visualTrace = false) {
+  const hazards = state.hazards ?? definition.hazards;
+  const shielded = simulateSpecialMove(state.board, state.refillState, definition.gemTypes, definition.gemWeights, cells, state.specials, visualTrace);
+  if (!shielded || !validWeatherHazards(hazards, shielded.board.length)) return null;
+  const cleared = clearWeatherHazards(hazards, shielded.events.flatMap((e) => e.cleared));
+  if (!cleared) return null;
+  let result = { ...shielded, hazards: cleared.hazards, hazardCleared: cleared.cleared };
+  let spread = null;
+  if (definition.environment?.hazard?.spreads) {
+    const next = spreadWeatherHazards(result.hazards, result.specials, result.shields);
+    if (!next) return null;
+    result = { ...result, hazards: next.hazards };
+    spread = next.spread;
+  }
+  return { ...result, hazardSpread: spread };
+}
+
+/** Booster clear: removes hazard layers on hit cells but never spreads. */
+function simulateWeatherHazardClear(definition, state, keys, points, visualTrace = false) {
+  const hazards = state.hazards ?? definition.hazards;
+  const cleared = clearWeatherHazards(hazards, keys);
+  if (!cleared) return null;
+  return { hazards: cleared.hazards, hazardCleared: cleared.cleared };
+}
+
+/** Certify a weather-hazard level: replay the witness and confirm every hazard
+ * cell is fully cleared by the witness path. Throws if any hazard remains. */
+function certifyWeatherHazardBoard(definition) {
+  const { board, refillState, gemTypes, gemWeights, specials, witness, hazards } = definition;
+  if (!Array.isArray(witness) || witness.length === 0) throw new Error('weather_hazard_certify_no_witness');
+  let state = { board, specials: specials || blankSpecials(board.length), refillState, hazards };
+  let score = 0;
+  const collected = Object.fromEntries(gemTypes.map((color) => [color, 0]));
+  let hazardCleared = 0;
+  for (const cells of witness) {
+    const next = simulateSpecialMove(state.board, state.refillState, gemTypes, gemWeights, cells, state.specials, true);
+    if (!next) throw new Error('weather_hazard_certify_move_failed');
+    score += next.score || 0;
+    for (const color of gemTypes) collected[color] = (collected[color] || 0) + (next.collected?.[color] || 0);
+    const cleared = clearWeatherHazards(state.hazards, next.events.flatMap((e) => e.cleared));
+    if (!cleared) throw new Error('weather_hazard_certify_clear_failed');
+    state.hazards = cleared.hazards;
+    hazardCleared += cleared.cleared;
+    state = { board: next.board, specials: next.specials, refillState: next.refillState };
+  }
+  const remaining = weatherHazardCount(state.hazards);
+  if (remaining > 0) throw new Error(`weather_hazard_certify_incomplete:${remaining}`);
+  return { score, collected, hazardCleared, witness, events: [] };
+}
+
 
 /**
  * Pure, versioned match-3 generation shared by the server and the browser.
@@ -4347,7 +5188,20 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
     goals = { profile: 'clear-delivery', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-delivery', target: deliveryTotal }] };
   }
-  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery, objectives: goals.objectives }, proof.score,
+  // V6 weather hazards occupy cells the witness clears, one hazard type per
+  // active weather condition. Storm lightning spreads; other hazards stay put.
+  // Classic only: daily, timed and endless never receive weather hazards.
+  const weatherHazardStage = version >= 6 && !shieldStage && !lockedGemStage && !jellyStage && !blockerStage && !chocolateStage && !liquoriceStage && !marmaladeStage && !frostingStage && !deliveryStage && mode === 'classic' && level >= 3 && environment.hazard;
+  const hazards = version >= 6 ? weatherHazardStage
+    ? witnessedWeatherHazards(board, refillState, palette, weights, blankSpecials(size), proof.witness, seed, environment.hazard)
+    : blankWeatherHazards(size) : null;
+  const hazardsTotal = hazards ? weatherHazardCount(hazards) : 0;
+  if (weatherHazardStage && hazardsTotal) {
+    const scoreGoal = goals.objectives.find((goal) => goal.type === 'score');
+    goals = { profile: 'clear-weather-hazards', objectives: [...(scoreGoal ? [scoreGoal] : []), { type: 'clear-weather-hazards', target: hazardsTotal }] };
+  }
+
+  if (version >= 4 && !objectiveStatus({ generatorVersion: version, gemTypes: palette, boardSize: size, shields, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery, hazards, objectives: goals.objectives }, proof.score,
     { collected: proof.collected,
       ...(version >= 5 ? { shieldsCleared: shieldsTotal } : {}),
       ...(version >= 6 && blockersTotal > 0 ? { blockersCleared: blockersTotal } : {}),
@@ -4370,6 +5224,7 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
     ...(version >= 6 ? { liquorice } : {}),
     ...(version >= 6 ? { marmalade } : {}),
     ...(version >= 6 ? { frosting } : {}),
+    ...(version >= 6 ? { hazards } : {}),
     environmentKey: environment.key,
     level,
     mode,
@@ -4405,16 +5260,18 @@ function generateLevel(levelNumber, context, mode = 'classic', version = GENERAT
       ...(version >= 6 ? { verifiedMarmalade: marmaladeTotal } : {}),
       ...(version >= 6 ? { verifiedFrosting: frostingTotal } : {}),
       ...(version >= 6 ? { verifiedDelivery: deliveryTotal } : {}),
+      ...(version >= 6 && hazardsTotal > 0 ? { verifiedHazards: hazardsTotal } : {}),
     },
     ...(version >= 6 ? { delivery } : {}),
+    ...(version >= 6 ? { hazards } : {}),
     ...(version >= 6 ? { witness: proof.witness } : {}),
   };
 }
 
 
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate, liquorice = definition.liquorice, marmalade = definition.marmalade, frosting = definition.frosting, delivery = definition.delivery) {
-  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery);
+function levelActions(definition, board = definition.board, specials = definition.specials, progress, score = 0, shields = definition.shields, refillState = definition.refillState, blockers = definition.blockers, lockedGems = definition.lockedGems, jelly = definition.jelly, chocolate = definition.chocolate, liquorice = definition.liquorice, marmalade = definition.marmalade, frosting = definition.frosting, delivery = definition.delivery, hazards = definition.hazards) {
+  if (definition.generatorVersion >= 4) return objectiveActions(definition, board, specials, progress, score, shields, refillState, blockers, lockedGems, jelly, chocolate, liquorice, marmalade, frosting, delivery, hazards);
   return definition.generatorVersion >= 3 ? specialActions(board, specials) : legalSwaps(board);
 }
 
@@ -4436,5 +5293,5 @@ function certifyLevel(definition) {
     : certifyBoard(board, refillState, gemTypes, gemWeights, budget);
 }
 
-root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, PRESENTATION_FRAME_LIMIT, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, validShields, shieldCount, witnessedShields, simulateShieldMove, simulateShieldClear, certifyShieldBoard, BLOCKER_CAP, BLOCKER_STAGE_COUNT, blankBlockers, validBlockers, blockerCount, blockerKeys, spreadEligible, spreadBlockers, clearBlockers, witnessedBlockers, simulateBlockerMove, simulateBlockerClear, certifyBlockerBoard, LOCKED_GEM_CAP, LOCKED_GEM_STAGE_COUNT, blankLockedGems, validLockedGems, lockedGemCount, lockedGemKeys, lockEligible, clearLockedGems, witnessedLockedGems, simulateLockedGemMove, simulateLockedGemClear, certifyLockedGemBoard, legalSwapsExcludingLocks, DELIVERY_CAP, validDelivery, deliveryCount, blankDelivery, applyDeliveryClear, witnessedDelivery, certifyDeliveryBoard, GEM_COUNT, DEFAULT_TILE_SET, SEASON_TILE_SETS, EVENT_TILE_SETS, WEATHER_TILE_SETS, HOLIDAY_TILE_SETS, tileSetForContext, gemTypesForContext, gemWeightsForContext, gemVisualsForContext, backgroundForContext, accentForContext, licenseForContext, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
+root.InfiniteLevels = Object.freeze({ TIME_ZONE_REGIONS, DAY_PERIODS, WEATHER_CONDITIONS, periodForHour, timeOfDayContext, temperatureBand, environmentRules, blendHex, hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard, SPECIAL_TYPES, PRESENTATION_FRAME_LIMIT, blankSpecials, earnedMatches, simulateSpecialMove, simulateSpecialClear, specialActions, certifySpecialBoard, validShields, shieldCount, witnessedShields, simulateShieldMove, simulateShieldClear, certifyShieldBoard, BLOCKER_CAP, BLOCKER_STAGE_COUNT, blankBlockers, validBlockers, blockerCount, blockerKeys, spreadEligible, spreadBlockers, clearBlockers, witnessedBlockers, simulateBlockerMove, simulateBlockerClear, certifyBlockerBoard, LOCKED_GEM_CAP, LOCKED_GEM_STAGE_COUNT, blankLockedGems, validLockedGems, lockedGemCount, lockedGemKeys, lockEligible, clearLockedGems, witnessedLockedGems, simulateLockedGemMove, simulateLockedGemClear, certifyLockedGemBoard, legalSwapsExcludingLocks, DELIVERY_CAP, validDelivery, deliveryCount, blankDelivery, applyDeliveryClear, witnessedDelivery, certifyDeliveryBoard, GEM_COUNT, DEFAULT_TILE_SET, SEASON_TILE_SETS, EVENT_TILE_SETS, WEATHER_TILE_SETS, HOLIDAY_TILE_SETS, tileSetForContext, gemTypesForContext, gemWeightsForContext, gemVisualsForContext, backgroundForContext, accentForContext, licenseForContext, WIN_REWARDS, ENDLESS_REWARDS, levelTarget, starsForScore, starsForTarget, winRewards, endlessRewards, MAX_COLLECTED_GEMS, composeObjectives, levelObjectives, validObjectives, initialObjectiveProgress, validObjectiveProgress, addObjectiveProgress, objectiveStatus, objectiveStars, objectiveCompletionError, objectiveDescription, objectiveSummary, objectiveActions, simulateObjectiveMove, simulateObjectiveClear, certifyObjectiveLevel, JELLY_MAX_LAYERS, validJelly, jellyCount, blankJelly, witnessedJelly, clearJelly, certifyJellyBoard, applyJellyClear, CHOCOLATE_CAP, validChocolate, chocolateCount, blankChocolate, witnessedChocolate, spreadChocolate, clearChocolate, applyChocolateClear, certifyChocolateBoard, LIQUORICE_CAP, validLiquorice, liquoriceCount, blankLiquorice, isLocked, swapLegalWithLiquorice, witnessedLiquorice, clearLiquoriceAdjacent, applyLiquoriceClear, certifyLiquoriceBoard, MARMALADE_CAP, validMarmalade, marmaladeCount, blankMarmalade, witnessedMarmalade, clearMarmalade, applyMarmaladeClear, certifyMarmaladeBoard, FROSTING_MAX_LAYERS, validFrosting, frostingCount, blankFrosting, witnessedFrosting, clearFrosting, applyFrostingClear, certifyFrostingBoard, WEATHER_HAZARD_CAP, validWeatherHazards, weatherHazardCount, blankWeatherHazards, witnessedWeatherHazards, clearWeatherHazards, spreadWeatherHazards, applyWeatherHazardClear, simulateWeatherHazardMove, simulateWeatherHazardClear, certifyWeatherHazardBoard, GENERATOR_VERSION, GEM_TYPES, LEVEL_MODES, levelTheme, generationKey, generateLevel, levelActions, simulateLevelMove, certifyLevel });
 })(globalThis);

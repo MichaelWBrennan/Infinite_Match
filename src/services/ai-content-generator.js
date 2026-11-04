@@ -466,7 +466,7 @@ Return JSON with:
   ],
   "moves": 25,
   "timeLimit": null,
-  "powerUps": ["rocket", "bomb"],
+  "powerUps": ["ray", "blast"],
   "theme": "generated_theme",
   "estimatedDuration": 120,
   "difficultyCurve": 0.7

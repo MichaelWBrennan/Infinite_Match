@@ -92,7 +92,7 @@ export function certifyJellyBoard(definition) {
     const remaining = jellyCount(state.jelly || blankJelly(board.length));
     if (remaining > 0)
         throw new Error(`jelly_certify_incomplete:${remaining}`);
-    return { score, collected, jellyCleared, events: [] };
+    return { score, collected, jellyCleared, witness, events: [] };
 }
 /** Thread jelly layers through a simulate-style result. Used by match-core's v6
  * transition to decrement jelly on cleared cells and rebuild state. Never mutates input.

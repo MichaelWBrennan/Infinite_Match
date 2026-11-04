@@ -11,7 +11,7 @@ export const LOOTBOXES = Object.freeze({
       { id: 'coins_250', weight: 20, type: 'currency', currencyId: 'coins', amount: 250 },
       { id: 'energy_20', weight: 25, type: 'currency', currencyId: 'energy', amount: 20 },
       { id: 'stars_2', weight: 15, type: 'currency', currencyId: 'stars', amount: 2 },
-      { id: 'bomb_1', weight: 5, type: 'inventory', category: 'powerups', itemId: 'bomb', amount: 1 },
+      { id: 'blast_1', weight: 5, type: 'inventory', category: 'powerups', itemId: 'blast', amount: 1 },
     ]),
   }),
   rare: Object.freeze({
@@ -20,8 +20,8 @@ export const LOOTBOXES = Object.freeze({
       { id: 'coins_600', weight: 30, type: 'currency', currencyId: 'coins', amount: 600 },
       { id: 'stars_5', weight: 25, type: 'currency', currencyId: 'stars', amount: 5 },
       { id: 'energy_50', weight: 15, type: 'currency', currencyId: 'energy', amount: 50 },
-      { id: 'rainbow_1', weight: 20, type: 'inventory', category: 'powerups', itemId: 'rainbow', amount: 1 },
-      { id: 'diamond_1', weight: 10, type: 'inventory', category: 'powerups', itemId: 'diamond', amount: 1 },
+      { id: 'prism_1', weight: 20, type: 'inventory', category: 'powerups', itemId: 'prism', amount: 1 },
+      { id: 'facet_1', weight: 10, type: 'inventory', category: 'powerups', itemId: 'facet', amount: 1 },
     ]),
   }),
   epic: Object.freeze({
@@ -29,9 +29,9 @@ export const LOOTBOXES = Object.freeze({
     rewards: Object.freeze([
       { id: 'coins_1500', weight: 30, type: 'currency', currencyId: 'coins', amount: 1500 },
       { id: 'stars_15', weight: 20, type: 'currency', currencyId: 'stars', amount: 15 },
-      { id: 'star_1', weight: 20, type: 'inventory', category: 'powerups', itemId: 'star', amount: 1 },
-      { id: 'diamond_2', weight: 20, type: 'inventory', category: 'powerups', itemId: 'diamond', amount: 2 },
-      { id: 'rainbow_2', weight: 10, type: 'inventory', category: 'powerups', itemId: 'rainbow', amount: 2 },
+      { id: 'nova_1', weight: 20, type: 'inventory', category: 'powerups', itemId: 'nova', amount: 1 },
+      { id: 'facet_2', weight: 20, type: 'inventory', category: 'powerups', itemId: 'facet', amount: 2 },
+      { id: 'prism_2', weight: 10, type: 'inventory', category: 'powerups', itemId: 'prism', amount: 2 },
     ]),
   }),
 });

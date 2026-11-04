@@ -62,7 +62,7 @@ describe('blockers are classic-only', () => {
 describe('client opt-in for rules v6', () => {
   function loadClient() {
     const files = ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js',
-      'public/js/player-experience.js', 'public/js/assistive-board.js', 'public/js/match-feedback.js', 'phaser3-game.js'];
+      'public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/assistive-board.js', 'public/js/match-feedback.js', 'phaser3-game.js'];
     const sandbox: any = {
       console: { log() {}, info() {}, error() {}, warn() {} },
       navigator: {}, Intl, Date, URLSearchParams, AbortSignal,

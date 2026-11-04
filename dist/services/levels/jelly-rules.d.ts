@@ -23,6 +23,7 @@ export function certifyJellyBoard(definition: any): {
         [k: string]: any;
     };
     jellyCleared: number;
+    witness: any[];
     events: never[];
 };
 /** Thread jelly layers through a simulate-style result. Used by match-core's v6

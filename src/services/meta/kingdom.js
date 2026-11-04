@@ -31,25 +31,25 @@ export const STARS_TO_UNLOCK = Object.freeze([0, 5, 10, 20, 35, 50]);
 // Item granted on reaching a level within a room. Index = target level.
 // Every room level grants a milestone reward to keep renovation meaningful.
 export const MILESTONE_REWARDS = Object.freeze({
-  1: { category: 'powerups', itemId: 'bomb', amount: 1 },
-  2: { category: 'powerups', itemId: 'crush', amount: 1 },
-  3: { category: 'powerups', itemId: 'bomb', amount: 2 },
-  4: { category: 'powerups', itemId: 'swap', amount: 1 },
-  5: { category: 'powerups', itemId: 'rainbow', amount: 1 },
+  1: { category: 'powerups', itemId: 'blast', amount: 1 },
+  2: { category: 'powerups', itemId: 'hammer', amount: 1 },
+  3: { category: 'powerups', itemId: 'blast', amount: 2 },
+  4: { category: 'powerups', itemId: 'shift', amount: 1 },
+  5: { category: 'powerups', itemId: 'prism', amount: 1 },
 });
 
 // Completion bonus granted when every room reaches KINGDOM_MAX_LEVEL.
-export const KINGDOM_COMPLETION_REWARD = { category: 'powerups', itemId: 'rainbow', amount: 3 };
+export const KINGDOM_COMPLETION_REWARD = { category: 'powerups', itemId: 'prism', amount: 3 };
 
 // Kingdom-level milestones: total of all room levels across the kingdom.
 // These unlock as the player renovates more rooms, giving a second
 // progression axis beyond individual room levels.
 export const KINGDOM_LEVEL_MILESTONES = Object.freeze([
-  { totalLevel: 6,  reward: { category: 'powerups', itemId: 'bomb', amount: 1 } },
-  { totalLevel: 12, reward: { category: 'powerups', itemId: 'crush', amount: 1 } },
-  { totalLevel: 18, reward: { category: 'powerups', itemId: 'swap', amount: 1 } },
-  { totalLevel: 24, reward: { category: 'powerups', itemId: 'bomb', amount: 3 } },
-  { totalLevel: 30, reward: { category: 'powerups', itemId: 'rainbow', amount: 2 } },
+  { totalLevel: 6,  reward: { category: 'powerups', itemId: 'blast', amount: 1 } },
+  { totalLevel: 12, reward: { category: 'powerups', itemId: 'hammer', amount: 1 } },
+  { totalLevel: 18, reward: { category: 'powerups', itemId: 'shift', amount: 1 } },
+  { totalLevel: 24, reward: { category: 'powerups', itemId: 'blast', amount: 3 } },
+  { totalLevel: 30, reward: { category: 'powerups', itemId: 'prism', amount: 2 } },
 ]);
 
 /** Returns the kingdom level (0-5) based on the sum of all room levels. */

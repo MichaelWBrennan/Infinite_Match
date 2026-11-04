@@ -76,7 +76,7 @@ describe('monetization - PvP booster purchases', () => {
     expect(coinsAfter).toBe(coinsBefore - 50);
   });
 
-  test('buy color bomb booster with coins', async () => {
+  test('buy spectrum booster with coins', async () => {
     const coinsBefore = await getCoins('monet_bob');
 
     const res = await request(app)

@@ -434,9 +434,15 @@ class InfiniteMatchGame {
             const id = encodeURIComponent(f.playerId);
             const row = this.communityEl('div', '', 'community-row');
             row.appendChild(this.communityEl('span', `${f.label} · best ${f.bestScore || 0}`));
-            const gift = this.communityButton('Send energy', () => this.sendEnergyGift(f.playerId));
-            gift.setAttribute('aria-label', `Send 1 energy to ${f.label}`);
-            row.appendChild(gift);
+            const giftEnergy = this.communityButton('Send energy', () => this.sendEnergyGift(f.playerId));
+            giftEnergy.setAttribute('aria-label', `Send 1 energy to ${f.label}`);
+            row.appendChild(giftEnergy);
+            const giftBooster = this.communityButton('Send booster', () => this.sendBoosterGift(f.playerId));
+            giftBooster.setAttribute('aria-label', `Send 1 booster to ${f.label}`);
+            row.appendChild(giftBooster);
+            const giftLives = this.communityButton('Send lives', () => this.sendLivesGift(f.playerId));
+            giftLives.setAttribute('aria-label', `Send 1 life to ${f.label}`);
+            row.appendChild(giftLives);
             const remove = this.communityButton('Remove', () => this.communityAction(`/api/social/friends/${id}`, 'DELETE', 'friends'));
             remove.setAttribute('aria-label', `Remove ${f.label} from friends`);
             row.appendChild(remove);
@@ -469,6 +475,54 @@ class InfiniteMatchGame {
         delete this.giftIds[receiverId];
         this.communityFlash = !result.ok ? `Not sent: ${this.communityError(result.data)}.`
             : result.data.result.credited > 0 ? 'Energy sent.' : 'Gift recorded. Their energy is already full.';
+        this.showCommunityTab('friends');
+    }
+
+    // One booster gift. Same idempotent retry pattern as energy gifts.
+    async sendBoosterGift(receiverId) {
+        this.giftIds = this.giftIds || {};
+        const giftKey = `b:${receiverId}`;
+        const giftId = this.giftIds[giftKey] || (globalThis.crypto && crypto.randomUUID
+            ? crypto.randomUUID() : `b${Date.now()}${Math.random().toString(36).slice(2, 12)}`);
+        this.giftIds[giftKey] = giftId;
+        // Offer a small booster choice; default to extra_moves if the server accepts any.
+        const boosterId = 'extra_moves';
+        let result;
+        try {
+            result = await this.communityRequest('/api/social/gifts/booster', {
+                method: 'POST',
+                body: JSON.stringify({ receiverId, giftId, boosterId })
+            });
+        } catch (error) {
+            this.communityFlash = 'Could not reach the server. Tap Send booster again; it will not send twice.';
+            return this.showCommunityTab('friends');
+        }
+        delete this.giftIds[giftKey];
+        this.communityFlash = !result.ok ? `Not sent: ${this.communityError(result.data)}.`
+            : result.data.result.credited > 0 ? 'Booster sent.' : 'Gift recorded.';
+        this.showCommunityTab('friends');
+    }
+
+    // One lives gift. Same idempotent retry pattern as energy gifts.
+    async sendLivesGift(receiverId) {
+        this.giftIds = this.giftIds || {};
+        const giftKey = `l:${receiverId}`;
+        const giftId = this.giftIds[giftKey] || (globalThis.crypto && crypto.randomUUID
+            ? crypto.randomUUID() : `l${Date.now()}${Math.random().toString(36).slice(2, 12)}`);
+        this.giftIds[giftKey] = giftId;
+        let result;
+        try {
+            result = await this.communityRequest('/api/social/gifts/lives', {
+                method: 'POST',
+                body: JSON.stringify({ receiverId, giftId })
+            });
+        } catch (error) {
+            this.communityFlash = 'Could not reach the server. Tap Send lives again; it will not send twice.';
+            return this.showCommunityTab('friends');
+        }
+        delete this.giftIds[giftKey];
+        this.communityFlash = !result.ok ? `Not sent: ${this.communityError(result.data)}.`
+            : result.data.result.credited > 0 ? 'Lives sent.' : 'Gift recorded.';
         this.showCommunityTab('friends');
     }
 
@@ -1142,14 +1196,14 @@ class InfiniteMatchGame {
 
             // Apply power-up effect
             switch (powerType) {
-                case 'bomb':
-                    this.activateBomb();
+                case 'blast':
+                    this.activateBlast();
                     break;
-                case 'rainbow':
-                    this.activateRainbow();
+                case 'prism':
+                    this.activatePrism();
                     break;
-                case 'lightning':
-                    this.activateLightning();
+                case 'bolt':
+                    this.activateBolt();
                     break;
             }
 
@@ -1158,7 +1212,7 @@ class InfiniteMatchGame {
         }
     }
 
-    activateBomb() {
+    activateBlast() {
         // Remove random gems
         const gems = document.querySelectorAll('.game-gem');
         const randomGems = Array.from(gems).sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -1175,11 +1229,11 @@ class InfiniteMatchGame {
         
         // Play bomb sound
         if (this.gameState.settings.sfx) {
-            playSound('bomb_explode');
+            playSound('blast');
         }
     }
 
-    activateRainbow() {
+    activatePrism() {
         // Clear entire row
         const gems = document.querySelectorAll('.game-gem');
         gems.forEach(gem => {
@@ -1194,11 +1248,11 @@ class InfiniteMatchGame {
         
         // Play rainbow sound
         if (this.gameState.settings.sfx) {
-            playSound('rainbow_clear');
+            playSound('prism_clear');
         }
     }
 
-    activateLightning() {
+    activateBolt() {
         // Clear entire column
         const gems = document.querySelectorAll('.game-gem');
         gems.forEach(gem => {
@@ -1213,15 +1267,15 @@ class InfiniteMatchGame {
         
         // Play lightning sound
         if (this.gameState.settings.sfx) {
-            playSound('lightning_strike');
+            playSound('bolt_strike');
         }
     }
 
     showPowerUpAnimation(powerType) {
         const animations = {
-            bomb: '💥',
-            rainbow: '🌈',
-            lightning: '⚡'
+            blast: '💥',
+            prism: '🔮',
+            bolt: '⚡'
         };
 
         const animation = document.createElement('div');
@@ -2246,10 +2300,14 @@ performanceObserver.observe({ entryTypes: ['measure'] });
 
 // Add error handling
 window.addEventListener('error', (e) => {
-    console.error('Game Error:', e.error);
+    // Browsers report benign ResizeObserver delivery warnings as error events.
+    // They do not indicate a game fault and should not spam analytics/console.
+    if (/ResizeObserver loop/i.test(e.message || '')) return;
+    const error = e.error || new Error(e.message || 'Unknown error');
+    console.error('Game Error:', error);
     trackEvent('game_error', {
-        error: e.error.message,
-        stack: e.error.stack,
+        error: error.message,
+        stack: error.stack,
         timestamp: new Date().toISOString()
     });
 });

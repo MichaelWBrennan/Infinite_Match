@@ -17,12 +17,12 @@ export function pickWheelReward(randomInt: any): {
     currencyId?: never;
 } | undefined;
 export namespace ITEM_CATALOG {
-    namespace bomb {
+    namespace blast {
         let category: string;
         let currencyId: string;
         let price: number;
     }
-    namespace rocket {
+    namespace ray {
         let category_1: string;
         export { category_1 as category };
         let currencyId_1: string;
@@ -30,7 +30,7 @@ export namespace ITEM_CATALOG {
         let price_1: number;
         export { price_1 as price };
     }
-    namespace rainbow {
+    namespace prism {
         let category_2: string;
         export { category_2 as category };
         let currencyId_2: string;
@@ -38,7 +38,7 @@ export namespace ITEM_CATALOG {
         let price_2: number;
         export { price_2 as price };
     }
-    namespace lightning {
+    namespace bolt {
         let category_3: string;
         export { category_3 as category };
         let currencyId_3: string;
@@ -46,7 +46,7 @@ export namespace ITEM_CATALOG {
         let price_3: number;
         export { price_3 as price };
     }
-    namespace diamond {
+    namespace facet {
         let category_4: string;
         export { category_4 as category };
         let currencyId_4: string;
@@ -54,7 +54,7 @@ export namespace ITEM_CATALOG {
         let price_4: number;
         export { price_4 as price };
     }
-    namespace target {
+    namespace mark {
         let category_5: string;
         export { category_5 as category };
         let currencyId_5: string;
@@ -62,13 +62,21 @@ export namespace ITEM_CATALOG {
         let price_5: number;
         export { price_5 as price };
     }
-    namespace star {
+    namespace nova {
         let category_6: string;
         export { category_6 as category };
         let currencyId_6: string;
         export { currencyId_6 as currencyId };
         let price_6: number;
         export { price_6 as price };
+    }
+    namespace spectrum {
+        let category_7: string;
+        export { category_7 as category };
+        let currencyId_7: string;
+        export { currencyId_7 as currencyId };
+        let price_7: number;
+        export { price_7 as price };
     }
 }
 export namespace LEVEL_LIMITS {

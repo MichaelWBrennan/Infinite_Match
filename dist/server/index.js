@@ -36,7 +36,7 @@ import verifiedCompetitionRoutes from '../routes/verified-competition.js';
 import weatherEventsRoutes from '../routes/weather-events.js';
 import realtimeRoutes from '../routes/realtime.js';
 import asoRoutes from '../routes/aso-routes.js';
-import { router as multiplayerRoutes, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem } from '../routes/multiplayer.js';
+import { router as multiplayerRoutes, initializeMultiplayerServices, getRoomManager, getSessionManager, getAntiCheatSystem, getTournamentManager } from '../routes/multiplayer.js';
 import playerAccountRoutes from '../routes/player-accounts.js';
 import authRoutes from '../routes/auth.js';
 import accountEconomyRoutes from '../routes/account-economy.js';
@@ -61,19 +61,9 @@ import liveOpsRoutes from '../routes/live-ops.js';
 import kingdomRoutes from '../routes/kingdom.js';
 import battlepassRoutes from '../routes/battlepass.js';
 import socialRoutes from '../routes/social.js';
-import subscriptionsRoutes from '../routes/subscriptions.js';
-// Retention routes
+import cardsRoutes from '../routes/cards.js';
 import retentionRoutes from '../routes/retention.js';
-import onboardingRoutes from '../routes/retention/onboarding.js';
-import segmentationRoutes from '../routes/retention/segmentation.js';
-import streakProtectionRoutes from '../routes/retention/streak-protection.js';
-import eventCalendarRoutes from '../routes/retention/event-calendar.js';
-import levelAnalyticsRoutes from '../routes/retention/level-analytics.js';
-import pushPreferencesRoutes from '../routes/retention/push-preferences.js';
-import socialCompetitionRoutes from '../routes/retention/social-competition.js';
-import segmentedRetentionRoutes from '../routes/retention/segmented-retention.js';
-import winbackRoutes from '../routes/retention/winback.js';
-import retentionActionsRoutes from '../routes/retention/retention-actions.js';
+import subscriptionsRoutes from '../routes/subscriptions.js';
 import { adminAuth } from '../middleware/admin-auth.js';
 import aiOptimizedRoutes from '../routes/ai-optimized-routes.js';
 import { analyticsMiddleware, errorTrackingMiddleware, } from '../middleware/analytics-middleware.js';
@@ -92,6 +82,7 @@ const ROOT_GAME_ASSETS = new Set([
     'platform-detection.js',
     'shared-game.js',
     'shared-ui.css',
+    'unified.css',
     'test-phaser3.html',
 ]);
 /**
@@ -352,19 +343,10 @@ class GameServer {
         this.app.use('/api/battlepass', battlepassRoutes);
         // Friends, guilds, and best-score boards. Session-gated; acts on the caller's own data only.
         this.app.use('/api/social', socialRoutes);
-
-        // Retention system: D1/D7/D30 dashboard, heartbeat, and all retention features.
+        // Card collection (secondary progression). Session-gated; acts on the caller's own data only.
+        this.app.use('/api/cards', cardsRoutes);
+        // Retention dashboard: D1/D7/D30 cohorts vs genre benchmarks. Session-gated.
         this.app.use('/api/retention', retentionRoutes);
-        this.app.use('/api/retention/onboarding', onboardingRoutes);
-        this.app.use('/api/retention/segmentation', segmentationRoutes);
-        this.app.use('/api/retention/streak-protection', streakProtectionRoutes);
-        this.app.use('/api/retention/event-calendar', eventCalendarRoutes);
-        this.app.use('/api/retention/level-analytics', levelAnalyticsRoutes);
-        this.app.use('/api/retention/push-preferences', pushPreferencesRoutes);
-        this.app.use('/api/retention/social-competition', socialCompetitionRoutes);
-        this.app.use('/api/retention/segmented-retention', segmentedRetentionRoutes);
-        this.app.use('/api/retention/winback', winbackRoutes);
-        this.app.use('/api/retention/retention-actions', retentionActionsRoutes);
         // AI generation is operator-only. It returns 503 without OPENAI_API_KEY and 504 after 30s.
         this.app.use('/api/ai-optimized', adminAuth, aiOptimizedRoutes);
         // Phase 8: AI-first live ops - adaptive levels, dynamic offers, AI events, market pricing.

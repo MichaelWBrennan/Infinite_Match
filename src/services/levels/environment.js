@@ -70,14 +70,14 @@ export function environmentRules(context) {
   const skies = {
     disabled: { label: 'Weather effects off', favorite: null, bonuses: {}, moves: 0 },
     unknown: { label: 'Weather unavailable', favorite: null, bonuses: {}, moves: 0 },
-    clear: { label: 'Clear', favorite: 'yellow', bonuses: { yellow: 0.3, orange: 0.1 }, moves: 0, accent: '#ffe082' },
-    partly_cloudy: { label: 'Partly cloudy', favorite: 'green', bonuses: { green: 0.2, blue: 0.1 }, moves: 0, accent: '#b8dfdb' },
-    cloudy: { label: 'Cloudy', favorite: 'blue', bonuses: { blue: 0.2, purple: 0.1 }, moves: 0, accent: '#a9cce9' },
-    rain: { label: 'Rain', favorite: 'blue', bonuses: { blue: 0.4, green: 0.1 }, moves: 1, accent: '#83c9ff' },
-    snow: { label: 'Snow', favorite: 'blue', bonuses: { blue: 0.35, purple: 0.2 }, moves: 2, accent: '#dcefff' },
-    sleet: { label: 'Sleet', favorite: 'blue', bonuses: { blue: 0.35, green: 0.15 }, moves: 2, accent: '#b1e7f2' },
-    storm: { label: 'Storm', favorite: 'purple', bonuses: { purple: 0.35, yellow: 0.25 }, moves: 2, accent: '#dcc0ff' },
-    fog: { label: 'Fog', favorite: 'orange', bonuses: { orange: 0.25, yellow: 0.2 }, moves: 1, accent: '#f4dcb0' },
+    clear: { label: 'Clear', favorite: 'yellow', bonuses: { yellow: 0.3, orange: 0.1 }, moves: 0, accent: '#ffe082', hazard: { type: 'heat_haze', layers: 1, spreads: false, cap: 4 } },
+    partly_cloudy: { label: 'Partly cloudy', favorite: 'green', bonuses: { green: 0.2, blue: 0.1 }, moves: 0, accent: '#b8dfdb', hazard: { type: 'cloud_shadow', layers: 1, spreads: false, cap: 5 } },
+    cloudy: { label: 'Cloudy', favorite: 'blue', bonuses: { blue: 0.2, purple: 0.1 }, moves: 0, accent: '#a9cce9', hazard: { type: 'overcast', layers: 1, spreads: false, cap: 6 } },
+    rain: { label: 'Rain', favorite: 'blue', bonuses: { blue: 0.4, green: 0.1 }, moves: 1, accent: '#83c9ff', hazard: { type: 'raindrop', layers: 2, spreads: false, cap: 5 } },
+    snow: { label: 'Snow', favorite: 'blue', bonuses: { blue: 0.35, purple: 0.2 }, moves: 2, accent: '#dcefff', hazard: { type: 'snow_cover', layers: 2, spreads: false, cap: 5 } },
+    sleet: { label: 'Sleet', favorite: 'blue', bonuses: { blue: 0.35, green: 0.15 }, moves: 2, accent: '#b1e7f2', hazard: { type: 'ice', layers: 3, spreads: false, cap: 4 } },
+    storm: { label: 'Storm', favorite: 'purple', bonuses: { purple: 0.35, yellow: 0.25 }, moves: 2, accent: '#dcc0ff', hazard: { type: 'lightning', layers: 1, spreads: true, cap: 6 } },
+    fog: { label: 'Fog', favorite: 'orange', bonuses: { orange: 0.25, yellow: 0.2 }, moves: 1, accent: '#f4dcb0', hazard: { type: 'mist', layers: 1, spreads: false, cap: 5 } },
   };
   const clock = clocks[period];
   const sky = skies[condition];
@@ -96,6 +96,7 @@ export function environmentRules(context) {
     minimumColors: condition === 'storm' ? 6 : clock.colors,
     moveBonus: clock.moves + sky.moves,
     tint: clock.tint, accent: sky.accent || null, label: labels.join(' · '),
+    hazard: sky.hazard ? { ...sky.hazard } : null,
   };
 }
 

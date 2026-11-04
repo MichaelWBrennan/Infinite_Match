@@ -133,12 +133,12 @@ describe('server-priced economy operations', () => {
     eco.currencies.stars.earned = 15;
     await expect(economy.renovateRoom(playerId, 'throne')).resolves.toMatchObject({
       level: 3,
-      milestone: { itemId: 'bomb' },
+      milestone: { itemId: 'blast' },
     });
     const after = await economy.getPlayerEconomy(playerId);
-    // Level 1 grants bomb x1, level 3 grants bomb x2: 3 initial + 1 + 2 = 6
-    expect(after.inventory.powerups.bomb.count).toBe(6);
-    expect(after.inventory.powerups.crush.count).toBe(1);
+    // Level 1 grants blast x1, level 3 grants blast x2: 3 initial + 1 + 2 = 6
+    expect(after.inventory.powerups.blast.count).toBe(6);
+    expect(after.inventory.powerups.hammer.count).toBe(1);
     expect(after.kingdom.rooms.throne).toBe(3);
     expect(after.kingdom.renovations).toBe(3);
   });

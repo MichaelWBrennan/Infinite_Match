@@ -5,7 +5,7 @@ import vm from 'node:vm';
 function helpers() {
   const sandbox: any = {};
   vm.createContext(sandbox);
-  for (const file of ['public/js/player-experience.js', 'public/js/assistive-board.js']) vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
+  for (const file of ['public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/assistive-board.js']) vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   return { api: sandbox.InfiniteAssistiveBoard, experience: sandbox.InfinitePlayerExperience };
 }
 
@@ -103,7 +103,7 @@ describe('semantic controls forward to the guarded Phaser methods only', () => {
   });
 
   test('explicit special activation cannot fire an armed inventory booster, or a frozen plain-gem level', () => {
-    const { api } = helpers(); const g = game(); g.armedPowerUp = 'target'; expect(api.interact(g, 0, 1, true)).toBe(false);
+    const { api } = helpers(); const g = game(); g.armedPowerUp = 'mark'; expect(api.interact(g, 0, 1, true)).toBe(false);
     g.armedPowerUp = null; g.usesEarnedSpecials = () => false; expect(api.interact(g, 0, 1, true)).toBe(false); expect(g.calls).toEqual([]);
   });
 

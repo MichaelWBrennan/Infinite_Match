@@ -12,7 +12,10 @@ function methods() {
   const gift = script.slice(script.indexOf('    async sendEnergyGift('), script.indexOf('    // Guild milestone (S3)'));
   const milestone = script.slice(script.indexOf('    milestoneNodes(m) {'), script.indexOf('    async loadCommunityGuild(show) {'));
   // Object-literal members need commas between them; the source separates them with blank lines.
-  const members = [gift, milestone.replace('\n\n    async claimGuildMilestone', ',\n\n    async claimGuildMilestone')].join(',');
+  const giftWithCommas = gift
+    .replace('\n    // One booster gift. Same idempotent retry pattern as energy gifts.\n    async sendBoosterGift', ',\n    // One booster gift. Same idempotent retry pattern as energy gifts.\n    async sendBoosterGift')
+    .replace('\n    // One lives gift. Same idempotent retry pattern as energy gifts.\n    async sendLivesGift', ',\n    // One lives gift. Same idempotent retry pattern as energy gifts.\n    async sendLivesGift');
+  const members = [giftWithCommas, milestone.replace('\n\n    async claimGuildMilestone', ',\n\n    async claimGuildMilestone')].join(',');
   // The real error mapping from script.js, so the messages tested are the ones players see.
   const errors = script.slice(script.indexOf('    communityError(data) {'), script.indexOf('    // Runs a server action'));
   const document = { createElement: (tag: string) => ({ tag, attrs: {}, setAttribute(k: string, v: string) { this.attrs[k] = v; } }) };

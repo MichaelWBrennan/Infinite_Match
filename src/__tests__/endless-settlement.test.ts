@@ -63,9 +63,9 @@ describe('receipt-backed Endless settlement', () => {
     expect(settled.progression.level).toBe(10);
     expect(settled.currencies.coins.amount).toBe(1502);
     expect(settled.currencies.stars.amount).toBe(2);
-    expect(settled.inventory.powerups.rainbow.count).toBe(2);
+    expect(settled.inventory.powerups.prism.count).toBe(2);
     await service.settleEndlessAttempt(id, attemptId, 200, now + 2000);
-    expect((await service.getPlayerEconomy(id)).inventory.powerups.rainbow.count).toBe(2);
+    expect((await service.getPlayerEconomy(id)).inventory.powerups.prism.count).toBe(2);
   });
 
   test('a failed save does not consume the attempt or leak XP, coins, stats or receipt', async () => {

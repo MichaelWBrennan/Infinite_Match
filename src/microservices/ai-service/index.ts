@@ -288,8 +288,8 @@ async function generateRecommendations(playerId: string) {
       { id: 5, difficulty: 'medium', reason: 'Matches your skill level' },
     ],
     powerUps: [
-      { id: 'bomb', reason: 'Effective for your play style' },
-      { id: 'lightning', reason: 'High success rate for you' },
+      { id: 'blast', reason: 'Effective for your play style' },
+      { id: 'bolt', reason: 'High success rate for you' },
     ],
     tips: ['Try to create more horizontal matches', 'Use power-ups when you have 3+ moves left'],
   };

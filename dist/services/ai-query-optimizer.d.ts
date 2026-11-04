@@ -103,7 +103,7 @@ export class AIQueryOptimizer extends EventEmitter<[never]> {
         recommendedIndexes: any[];
         queryHints: never[];
     };
-    calculateQueryComplexity(query: any): "high" | "medium" | "low";
+    calculateQueryComplexity(query: any): "medium" | "high" | "low";
     estimateQueryCost(query: any): number;
     /**
      * Generate optimization recommendations

@@ -25,6 +25,7 @@ export function certifyFrostingBoard(definition: any): {
         [k: string]: any;
     };
     frostingCleared: number;
+    witness: any[];
     events: never[];
 };
 export const FROSTING_MAX_LAYERS: 3;

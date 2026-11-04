@@ -1,3 +1,14 @@
+/** Returns the kingdom level (0-5) based on the sum of all room levels. */
+export function kingdomLevel(rooms: any): number;
+/** Returns milestone rewards unlocked at the given kingdom level. */
+export function kingdomMilestonesAtLevel(level: any): {
+    totalLevel: number;
+    reward: {
+        category: string;
+        itemId: string;
+        amount: number;
+    };
+}[];
 export function roomById(roomId: any): {
     id: string;
     name: string;
@@ -9,9 +20,12 @@ export function initialKingdom(): {
     rooms: {
         [k: string]: number;
     };
+    unlockedRooms: string[];
     renovations: number;
     completedRooms: never[];
     completedAt: null;
+    kingdomLevel: number;
+    claimedKingdomMilestones: never[];
 };
 /** Fills in a kingdom for economies saved before this feature existed. */
 export function ensureKingdom(playerEconomy: any): any;
@@ -32,6 +46,21 @@ export function markRoomCompleted(kingdom: any, roomId: any, nowMs?: number): {
     kingdom: any;
     justCompleted: boolean;
     allCompleted: boolean;
+};
+/** The index of a room in KINGDOM_ROOMS, or -1 if unknown. */
+export function roomIndex(roomId: any): number;
+/** Rooms that are currently unlocked, in KINGDOM_ROOMS order. */
+export function unlockedRoomIds(kingdom: any): any[];
+/** True when a room is unlocked and can be renovated. */
+export function isRoomUnlocked(kingdom: any, roomId: any): boolean;
+/**
+ * Unlock rooms that the player's lifetime stars now qualify for. Rooms unlock
+ * in sequence — a room is eligible only when every earlier room is unlocked.
+ * Returns { kingdom, justUnlocked: [roomId, ...] }.
+ */
+export function unlockEligibleRooms(kingdom: any, lifetimeStars: any, nowMs?: number): {
+    kingdom: any;
+    justUnlocked: string[];
 };
 /**
  * What the next upgrade of a room would cost and require. `ok` is false with a
@@ -76,6 +105,8 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted }
         name: string;
         level: any;
         maxLevel: number;
+        unlocked: boolean;
+        starsToUnlock: number | null | undefined;
         completed: any;
         justCompleted: boolean;
         next: {
@@ -84,8 +115,8 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted }
             starsRequired: number | undefined;
             milestone: any;
         } | null;
-        canRenovate: boolean;
-        blockedBy: string | null | undefined;
+        canRenovate: boolean | undefined;
+        blockedBy: any;
     }[];
     renovations: any;
     totalLevel: number;
@@ -105,11 +136,14 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted }
  */
 export function kingdomCoinMultiplier(kingdom: any): number;
 /**
- * Kingdom renovation: six rooms, each upgraded from level 0 to KINGDOM_MAX_LEVEL.
+ * Kingdom renovation and star-gated progression: six rooms, each upgraded from
+ * level 0 to KINGDOM_MAX_LEVEL. Rooms unlock in sequence as the player earns
+ * lifetime stars from level wins — only unlocked rooms can be renovated. This
+ * makes every match-3 level win visibly advance the kingdom.
  *
  * Each upgrade costs coins and needs a lifetime star count. Reaching certain levels
  * grants an item. The server decides the price, the gate, and the reward. The client
- * only asks to renovate a room. Kingdom levels do not change gameplay yet.
+ * only asks to renovate a room.
  */
 export const KINGDOM_MAX_LEVEL: 5;
 export const KINGDOM_ROOMS: readonly {
@@ -118,8 +152,24 @@ export const KINGDOM_ROOMS: readonly {
     baseCost: number;
 }[];
 export const STARS_REQUIRED: readonly number[];
+export const STARS_TO_UNLOCK: readonly number[];
 export const MILESTONE_REWARDS: Readonly<{
+    1: {
+        category: string;
+        itemId: string;
+        amount: number;
+    };
+    2: {
+        category: string;
+        itemId: string;
+        amount: number;
+    };
     3: {
+        category: string;
+        itemId: string;
+        amount: number;
+    };
+    4: {
         category: string;
         itemId: string;
         amount: number;
@@ -135,6 +185,14 @@ export namespace KINGDOM_COMPLETION_REWARD {
     let itemId: string;
     let amount: number;
 }
+export const KINGDOM_LEVEL_MILESTONES: readonly {
+    totalLevel: number;
+    reward: {
+        category: string;
+        itemId: string;
+        amount: number;
+    };
+}[];
 export const ROOM_COIN_BONUS_PER_LEVEL: 0.01;
 export const ROOM_COIN_BONUS_CAP: 0.15;
 //# sourceMappingURL=kingdom.d.ts.map

@@ -86,10 +86,26 @@ export class InfiniteModeService {
         prestigeBonus: number;
         streak: any;
         noLevelCap: boolean;
+        witness?: number[][];
+        hazards?: any[][] | null;
+        delivery?: any[][] | null;
         difficulty: string | undefined;
-        theme: any;
+        theme: {
+            name: any;
+            background: any;
+            accent: any;
+            favorite: any;
+            environmentLabel: string;
+            monthName: string;
+            season: any;
+            holidayNames: any;
+            tileSetSource: any;
+            id: string;
+        };
         context: any;
         quality: {
+            verifiedHazards?: any;
+            verifiedDelivery?: any;
             verifiedFrosting?: any;
             verifiedMarmalade?: any;
             verifiedLiquorice?: any;

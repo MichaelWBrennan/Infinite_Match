@@ -103,7 +103,7 @@ export class AccountEconomyService {
      */
     initializeInventory(): {
         powerups: {
-            bomb: {
+            blast: {
                 id: string;
                 name: string;
                 count: number;
@@ -111,7 +111,7 @@ export class AccountEconomyService {
                 type: string;
                 rarity: string;
             };
-            rocket: {
+            ray: {
                 id: string;
                 name: string;
                 count: number;
@@ -119,7 +119,7 @@ export class AccountEconomyService {
                 type: string;
                 rarity: string;
             };
-            rainbow: {
+            prism: {
                 id: string;
                 name: string;
                 count: number;
@@ -127,7 +127,7 @@ export class AccountEconomyService {
                 type: string;
                 rarity: string;
             };
-            lightning: {
+            bolt: {
                 id: string;
                 name: string;
                 count: number;
@@ -135,7 +135,7 @@ export class AccountEconomyService {
                 type: string;
                 rarity: string;
             };
-            target: {
+            mark: {
                 id: string;
                 name: string;
                 count: number;
@@ -143,7 +143,7 @@ export class AccountEconomyService {
                 type: string;
                 rarity: string;
             };
-            diamond: {
+            facet: {
                 id: string;
                 name: string;
                 count: number;
@@ -151,7 +151,23 @@ export class AccountEconomyService {
                 type: string;
                 rarity: string;
             };
-            star: {
+            nova: {
+                id: string;
+                name: string;
+                count: number;
+                maxCount: number;
+                type: string;
+                rarity: string;
+            };
+            shift: {
+                id: string;
+                name: string;
+                count: number;
+                maxCount: number;
+                type: string;
+                rarity: string;
+            };
+            hammer: {
                 id: string;
                 name: string;
                 count: number;
@@ -169,15 +185,7 @@ export class AccountEconomyService {
                 type: string;
                 rarity: string;
             };
-            color_bomb: {
-                id: string;
-                name: string;
-                count: number;
-                maxCount: number;
-                type: string;
-                rarity: string;
-            };
-            striped_candy: {
+            spectrum: {
                 id: string;
                 name: string;
                 count: number;
@@ -550,6 +558,21 @@ export class AccountEconomyService {
      */
     creditBoosterGift(playerId: any, giftId: any, boosterId: any, amount?: number, nowMs?: number): Promise<any>;
     /**
+     * Credits one lives gift to the receiver, once per giftId. Lives are capped at the player's
+     * max (VIP-aware), so `credited` can be less than `amount` (or 0) when the receiver is full.
+     * Saved in one write.
+     */
+    creditLivesGift(playerId: any, giftId: any, amount?: number, nowMs?: number): Promise<any>;
+    /** Returns the player's card collection ({ cardId: count }). */
+    getCardCollection(playerId: any): Promise<any>;
+    /** Replaces the player's card collection (used after pack opening / conversion). */
+    setCardCollection(playerId: any, cards: any): Promise<any>;
+    /**
+     * Adds cards to the player's collection. Returns the updated collection.
+     * cards: array of { cardId, count }
+     */
+    addCards(playerId: any, cards: any): Promise<any>;
+    /**
      * Grants one guild-milestone reward of coins, once per milestone key for this player (S3).
      * Like the weekly event, it refuses rather than clip when the coin wallet would overflow, so
      * the player can claim later. Nothing is granted on a retry.
@@ -659,6 +682,12 @@ export class AccountEconomyService {
         };
         version: string;
     };
+    /**
+     * Get all player economies (for retention analytics, segmentation, win-back).
+     * Returns a Map of playerId -> economy. Uses the in-memory cache which is
+     * populated as players log in and play.
+     */
+    getAllPlayerEconomies(): Promise<Map<any, any>>;
 }
 import { AsyncLocalStorage } from 'node:async_hooks';
 //# sourceMappingURL=AccountEconomyService.d.ts.map

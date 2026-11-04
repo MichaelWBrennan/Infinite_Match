@@ -10,6 +10,7 @@ import { mfaProvider } from '../core/security/mfa.js';
 import { Logger } from '../core/logger/index.js';
 import { asyncHandler } from '../core/middleware/index.js';
 import { ValidationError } from '../core/errors/ErrorHandler.js';
+import { recordFirstLogin, recordLogin } from '../services/retention/retention-service.js';
 const router = express.Router();
 const logger = new Logger('AuthRoutes');
 // Validation middleware
@@ -51,6 +52,10 @@ router.post('/login', security.authRateLimit, validateLogin, asyncHandler(async 
         userAgent: req.get('User-Agent'),
         deviceInfo,
     });
+    // Record first login for retention cohort tracking (idempotent per player).
+    void recordFirstLogin(playerId);
+    // Record this login day for retention computation.
+    void recordLogin(playerId);
     res.json({
         success: true,
         token,
@@ -97,6 +102,8 @@ router.post('/register', security.authRateLimit, validateRegister, async (req, r
             userAgent: req.get('User-Agent'),
             deviceInfo,
         });
+        // Record first login for retention cohort tracking (fire and forget).
+        void recordFirstLogin(playerId);
         res.json({
             success: true,
             token,

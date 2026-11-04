@@ -124,26 +124,26 @@ class PurchaseManager {
           isActive: true,
           consumable: true
         },
-        'bomb_boost': {
-          id: 'bomb_boost',
-          name: 'Bomb Boost',
+        'blast_boost': {
+          id: 'blast_boost',
+          name: 'Blast Boost',
           type: 'powerup',
           price: 1.99,
           currency: 'USD',
-          rewards: { bomb_boost: 3 },
-          description: 'Add 3 bomb power-ups to your inventory',
+          rewards: { blast_boost: 3 },
+          description: 'Add 3 blast power-ups to your inventory',
           category: 'powerup',
           isActive: true,
           consumable: true
         },
-        'rainbow_boost': {
-          id: 'rainbow_boost',
-          name: 'Rainbow Boost',
+        'prism_boost': {
+          id: 'prism_boost',
+          name: 'Prism Boost',
           type: 'powerup',
           price: 2.99,
           currency: 'USD',
-          rewards: { rainbow_boost: 2 },
-          description: 'Add 2 rainbow power-ups to your inventory',
+          rewards: { prism_boost: 2 },
+          description: 'Add 2 prism power-ups to your inventory',
           category: 'powerup',
           isActive: true,
           consumable: true
@@ -449,11 +449,11 @@ class PurchaseManager {
         case 'extra_moves':
           await this.grantPowerUp(playerId, 'extra_moves', rewardValue);
           break;
-        case 'bomb_boost':
-          await this.grantPowerUp(playerId, 'bomb_boost', rewardValue);
+        case 'blast_boost':
+          await this.grantPowerUp(playerId, 'blast_boost', rewardValue);
           break;
-        case 'rainbow_boost':
-          await this.grantPowerUp(playerId, 'rainbow_boost', rewardValue);
+        case 'prism_boost':
+          await this.grantPowerUp(playerId, 'prism_boost', rewardValue);
           break;
         case 'ad_free':
           await this.grantEntitlement(playerId, 'ad_free', true);

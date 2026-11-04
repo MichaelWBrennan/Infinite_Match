@@ -13,12 +13,12 @@
 /* ------------------------------------------------------------------ */
 /* 1. DESIGN TOKENS                                                   */
 /* ------------------------------------------------------------------ */
-@import url('./src/frontend/assets/css/design-tokens.css');
+@import url('./css/design-tokens.css');
 
 /* ------------------------------------------------------------------ */
 /* 2. UNIFIED COMPONENTS                                              */
 /* ------------------------------------------------------------------ */
-@import url('./src/frontend/assets/css/components.css');
+@import url('./css/components.css');
 
 /* ------------------------------------------------------------------ */
 /* 3. LEGACY CLASS ALIASES (backward-compatible with existing JS)     */
