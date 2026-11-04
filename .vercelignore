@@ -60,6 +60,7 @@ requirements.txt
 !vercel.json
 !platform-config.json
 !platform-configs/*.json
+!public/art/manifest.json
 
 # Ignore other files
 *.zip

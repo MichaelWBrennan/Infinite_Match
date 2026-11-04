@@ -31,7 +31,7 @@ function boardGame(blockers: number[][] | null) {
 }
 
 describe('assistive names for blocked cells', () => {
-  const sandbox = sandboxWith(['public/js/player-experience.js', 'public/js/assistive-board.js']);
+  const sandbox = sandboxWith(['public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/assistive-board.js']);
   const api = sandbox.InfiniteAssistiveBoard;
 
   test('a blocked cell is named, with the rule for clearing it', () => {
@@ -52,43 +52,46 @@ describe('assistive names for blocked cells', () => {
 
 describe('phaser blocker overlay', () => {
   const files = ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js',
-    'public/js/player-experience.js', 'public/js/assistive-board.js', 'public/js/match-feedback.js', 'phaser3-game.js'];
+    'public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/assistive-board.js', 'public/js/match-feedback.js', 'phaser3-game.js'];
   const sandbox = sandboxWith(files);
 
   function recordingGame(blockers: number[][] | null) {
-    const calls: string[] = [];
-    let created = 0;
-    const layer: any = { active: true };
-    for (const name of ['fillStyle', 'lineStyle', 'setDepth']) layer[name] = () => layer;
-    layer.clear = () => { calls.push('clear'); return layer; };
-    layer.fillRoundedRect = () => { calls.push('fill'); return layer; };
-    layer.strokeRoundedRect = () => { calls.push('stroke'); return layer; };
+    const images: any[] = [];
     const game: any = Object.create(sandbox.PhaserMatch3Game.prototype);
     Object.assign(game, {
       blockers, gemSize: 50, cellX: (col: number) => col * 50, cellY: (row: number) => row * 50,
-      scene: { add: { graphics: () => { created++; return layer; } } },
+      terrainSprites: [],
+      scene: { add: { image: (x: number, y: number, key: string) => {
+        const sprite: any = { x, y, key, destroyed: false, setScale() { return sprite; }, setDepth() { return sprite; }, destroy() { sprite.destroyed = true; } };
+        images.push(sprite); return sprite;
+      } } },
     });
-    return { game, calls, created: () => created };
+    return { game, images };
   }
 
-  test('v2-v5 boards (no blockers) create no overlay and touch no scene graphics', () => {
-    const { game, calls, created } = recordingGame(null);
+  test('v2-v5 boards (no blockers) create no overlay sprites', () => {
+    const { game, images } = recordingGame(null);
     game.renderBlockers();
-    expect(created()).toBe(0);
-    expect(calls).toEqual([]);
+    expect(images).toHaveLength(0);
+    expect(game.terrainSprites).toHaveLength(0);
   });
 
-  test('each blocked cell gets one filled, outlined tile; the layer is cleared first', () => {
-    const { game, calls, created } = recordingGame([[0, 1, 0], [0, 0, 0], [0, 0, 1]]);
+  test('each blocked cell gets one canonical terrain overlay sprite', () => {
+    const { game, images } = recordingGame([[0, 1, 0], [0, 0, 0], [0, 0, 1]]);
     game.renderBlockers();
-    expect(created()).toBe(1);
-    expect(calls).toEqual(['clear', 'fill', 'stroke', 'fill', 'stroke']);
+    expect(images).toHaveLength(2);
+    expect(images.map((image) => image.key)).toEqual(['terrain_blocker_1', 'terrain_blocker_1']);
+    expect(game.terrainSprites).toHaveLength(2);
   });
 
-  test('clearing every blocker leaves an empty overlay, not a stale one', () => {
-    const { game, calls } = recordingGame([[0, 0, 0], [0, 0, 0], [0, 0, 0]]);
+  test('clearing every blocker destroys stale overlay sprites', () => {
+    const { game, images } = recordingGame([[0, 1, 0], [0, 0, 0], [0, 0, 0]]);
     game.renderBlockers();
-    expect(calls).toEqual(['clear']);
+    expect(images).toHaveLength(1);
+    game.blockers = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    game.renderBlockers();
+    expect(images[0].destroyed).toBe(true);
+    expect(game.terrainSprites).toHaveLength(0);
   });
 
   test('the phaser source describes blockers as an overlay, not a gem change', () => {
@@ -99,7 +102,7 @@ describe('phaser blocker overlay', () => {
 });
 
 describe('match feedback names blocker clears', () => {
-  const sandbox = sandboxWith(['public/js/player-experience.js', 'public/js/match-feedback.js']);
+  const sandbox = sandboxWith(['public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/match-feedback.js']);
   const { waveLabel } = sandbox.InfiniteMatchFeedback;
   const wave = (blockerHits?: any[]) => ({ combo: null, created: [], activated: [], points: 10, cleared: [], shieldHits: [], ...(blockerHits ? { blockerHits } : {}) });
 

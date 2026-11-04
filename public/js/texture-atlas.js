@@ -30,6 +30,8 @@ class TextureAtlas {
     this.cursorX = 0;
     this.cursorY = 0;
     this.rowHeight = 0;
+    this.width = 0;
+    this.height = 0;
     this.built = false;
   }
 
@@ -52,24 +54,22 @@ class TextureAtlas {
       }
     }
 
-    // Estimate atlas dimensions.
-    const cols = Math.floor(this.maxAtlasSize / (this.size + this.padding));
-    const rows = Math.ceil(entries.length / cols);
+    // Size the canvas to the frames actually packed, not to maxAtlasSize.
+    // A power-of-two square keeps WebGL uploads cheap and leaves transparent
+    // padding around every frame so linear filtering cannot pick up a neighbor.
+    const slot = this.size + this.padding;
     const atlasSize = Math.min(
       this.maxAtlasSize,
-      Math.max(512, Math.ceil(Math.sqrt(entries.length)) * (this.size + this.padding))
+      Math.max(64, Math.pow(2, Math.ceil(Math.log2(Math.max(1, Math.ceil(Math.sqrt(entries.length)) * slot)))))
     );
 
-    // Create the atlas canvas.
-    this.atlasCanvas = document.createElement('canvas');
-    this.atlasCanvas.width = atlasSize;
-    this.atlasCanvas.height = atlasSize;
-    this.atlasContext = this.atlasCanvas.getContext('2d', { willReadFrequently: false });
-    this.atlasContext.fillStyle = '#000000';
-    this.atlasContext.fillRect(0, 0, atlasSize, atlasSize);
-
-    // Create Phaser texture from the canvas.
-    this.atlasTexture = this.scene.textures.createCanvas(this.atlasName, this.atlasCanvas);
+    // Create the Phaser canvas texture at the packed size. Transparent padding
+    // around each frame avoids dark fringes when WebGL uses linear filtering.
+    this.width = atlasSize;
+    this.height = atlasSize;
+    this.atlasTexture = this.scene.textures.createCanvas(this.atlasName, atlasSize, atlasSize);
+    this.atlasCanvas = this.atlasTexture.canvas || null;
+    this.atlasContext = this.atlasTexture.getContext();
 
     this.cursorX = 0;
     this.cursorY = 0;
@@ -109,6 +109,9 @@ class TextureAtlas {
         width: this.size,
         height: this.size,
       });
+      if (this.atlasTexture.add) {
+        this.atlasTexture.add(frameKey, 0, frame.x, frame.y, this.size, this.size);
+      }
     }
 
     // Refresh the Phaser texture so uploaded frames are available.
@@ -127,12 +130,14 @@ class TextureAtlas {
    */
   _allocateFrame() {
     const slotW = this.size + this.padding;
-    if (this.cursorX + slotW > this.maxAtlasSize) {
+    const width = this.width || this.maxAtlasSize;
+    const height = this.height || this.maxAtlasSize;
+    if (this.cursorX + this.size > width) {
       // Wrap to next row.
       this.cursorX = 0;
       this.cursorY += this.rowHeight;
     }
-    if (this.cursorY + slotW > this.maxAtlasSize) {
+    if (this.cursorY + this.size > height) {
       return null; // Atlas full.
     }
     const frame = { x: this.cursorX, y: this.cursorY };
@@ -181,5 +186,3 @@ class TextureAtlas {
 if (typeof window !== 'undefined') {
   window.TextureAtlas = TextureAtlas;
 }
-
-export default TextureAtlas;

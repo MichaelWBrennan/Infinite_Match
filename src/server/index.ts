@@ -92,6 +92,7 @@ const ROOT_GAME_ASSETS = new Set([
   'platform-detection.js',
   'shared-game.js',
   'shared-ui.css',
+  'unified.css',
   'test-phaser3.html',
 ]);
 
