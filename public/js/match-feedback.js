@@ -195,6 +195,7 @@
         for (const item of event.created) {
           views[item.row * size + item.col].setTexture(game.gemTexture(visual.before.board[item.row][item.col], item.type));
         }
+        try { game.gameFeel?.wave?.(event, index, run.plan.total, visual.before); } catch { /* Juice is optional; feedback must survive. */ }
         const cleared = event.cleared.map((key) => { const [row, col] = key.split(',').map(Number); return views[row * size + col]; });
         if (cleared.length) scene.tweens.add({ targets: cleared, alpha: 0, duration: CLEAR_MS, ease: 'Quad.easeIn' });
         scene.tweens.add({ targets: footprint, alpha: 0, duration: CLEAR_MS });

@@ -27,6 +27,11 @@ export function authoredLevelFor(level: any, mode?: string): {
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -52,6 +57,11 @@ export function authoredLevelFor(level: any, mode?: string): {
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -76,6 +86,11 @@ export function authoredLevelFor(level: any, mode?: string): {
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -105,6 +120,11 @@ export function authoredLevelFor(level: any, mode?: string): {
     })[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -129,6 +149,11 @@ export function authoredLevelFor(level: any, mode?: string): {
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -153,6 +178,156 @@ export function authoredLevelFor(level: any, mode?: string): {
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple?: never;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    jelly: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple: number;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    chocolate: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        orange: number;
+        purple?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    liquorice: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple: number;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    marmalade: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple?: never;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    frosting: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
 } | null;
 /**
  * All authored level numbers for a given mode, sorted ascending.
@@ -192,6 +367,11 @@ export const AUTHORED_LEVELS: readonly ({
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -217,6 +397,11 @@ export const AUTHORED_LEVELS: readonly ({
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -241,6 +426,11 @@ export const AUTHORED_LEVELS: readonly ({
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -270,6 +460,11 @@ export const AUTHORED_LEVELS: readonly ({
     })[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -294,6 +489,11 @@ export const AUTHORED_LEVELS: readonly ({
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
 } | {
     level: number;
     mode: string;
@@ -318,6 +518,156 @@ export const AUTHORED_LEVELS: readonly ({
     }[];
     witness: number[][];
     difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple?: never;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    jelly: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple: number;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    chocolate: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    liquorice?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        orange: number;
+        purple?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    liquorice: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    marmalade?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple: number;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    marmalade: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    frosting?: never;
+} | {
+    level: number;
+    mode: string;
+    boardSize: number;
+    moves: number;
+    targetScore: number;
+    gemTypes: string[];
+    gemWeights: {
+        red: number;
+        blue: number;
+        green: number;
+        yellow: number;
+        purple?: never;
+        orange?: never;
+    };
+    shields: null;
+    blockers: null;
+    lockedGems: null;
+    frosting: number[][];
+    objectives: {
+        type: string;
+        target: number;
+    }[];
+    witness: number[][];
+    difficulty: string;
+    jelly?: never;
+    chocolate?: never;
+    liquorice?: never;
+    marmalade?: never;
 })[];
 declare namespace _default {
     export { AUTHORED_LEVELS };

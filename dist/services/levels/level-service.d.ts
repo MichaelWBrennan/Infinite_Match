@@ -180,161 +180,70 @@ export function liveGeneratedLevel({ level, mode, location, rulesVersion }?: {
         attribution: any;
     }>;
 }>): Promise<any>;
-/** Look up an authored level by number and mode. Returns null if none exists. */
-export function authoredLevel(level: any, mode?: string): {
-    level: number;
-    mode: string;
-    boardSize: number;
-    moves: number;
-    targetScore: number;
-    gemTypes: string[];
-    gemWeights: {
-        red: number;
-        blue: number;
-        green: number;
-        yellow?: never;
-        purple?: never;
-        orange?: never;
+/** Look up an authored level by number and mode, shaped into a full generated-level
+ *  definition with real certification. Returns null if no authored level exists. */
+export function authoredLevel(level: any, mode?: string, context?: {
+    localDate: string;
+}): {
+    quality: {
+        initialMatches: number;
+        legalOpeningMoves: number;
+        verifiedWithoutBoosters: boolean;
+        verifiedMoves: any;
+        verifiedScore: number;
+        verifiedCollected: {
+            [k: string]: any;
+        };
+        verifiedObjectives: boolean;
+        verifiedBlockers: any;
+        verifiedLockedGems: any;
+        verifiedJelly: any;
+        verifiedChocolate: any;
+        verifiedLiquorice: any;
+        verifiedMarmalade: any;
+        verifiedFrosting: any;
+        verifiedDelivery: any;
     };
-    shields: null;
-    blockers: null;
-    lockedGems: null;
-    objectives: {
-        type: string;
-        gemType: string;
-        target: number;
-    }[];
-    witness: number[][];
-    difficulty: string;
-} | {
-    level: number;
-    mode: string;
-    boardSize: number;
-    moves: number;
-    targetScore: number;
-    gemTypes: string[];
-    gemWeights: {
-        red: number;
-        blue: number;
-        green: number;
-        yellow: number;
-        purple?: never;
-        orange?: never;
+    id: string;
+    generatorVersion: number;
+    shields: any;
+    blockers: any;
+    lockedGems: any;
+    jelly: any;
+    chocolate: any;
+    liquorice: any;
+    marmalade: any;
+    frosting: any;
+    delivery: any;
+    specials: any;
+    witness: any;
+    environmentKey: string;
+    level: any;
+    mode: any;
+    isDaily: boolean;
+    isBoss: boolean;
+    seed: number;
+    refillState: number;
+    boardSize: any;
+    board: any;
+    gemTypes: any;
+    gemWeights: any;
+    targetScore: any;
+    moves: any;
+    timeLimit: number;
+    objectives: any;
+    objectiveProfile: any;
+    difficulty: any;
+    theme: {
+        name: string;
+        background: string;
+        accent: string;
+        favorite: string;
     };
-    shields: null;
-    blockers: null;
-    lockedGems: null;
-    objectives: {
-        type: string;
-        gemType: string;
-        target: number;
-    }[];
-    witness: number[][];
-    difficulty: string;
-} | {
-    level: number;
-    mode: string;
-    boardSize: number;
-    moves: number;
-    targetScore: number;
-    gemTypes: string[];
-    gemWeights: {
-        red: number;
-        blue: number;
-        green: number;
-        yellow: number;
-        purple?: never;
-        orange?: never;
-    };
-    shields: number[][];
-    blockers: null;
-    lockedGems: null;
-    objectives: {
-        type: string;
-        target: number;
-    }[];
-    witness: number[][];
-    difficulty: string;
-} | {
-    level: number;
-    mode: string;
-    boardSize: number;
-    moves: number;
-    targetScore: number;
-    gemTypes: string[];
-    gemWeights: {
-        red: number;
-        blue: number;
-        green: number;
-        yellow: number;
-        purple: number;
-        orange?: never;
-    };
-    shields: null;
-    blockers: number[][];
-    lockedGems: null;
-    objectives: ({
-        type: string;
-        gemType: string;
-        target: number;
-    } | {
-        type: string;
-        target: number;
-        gemType?: never;
-    })[];
-    witness: number[][];
-    difficulty: string;
-} | {
-    level: number;
-    mode: string;
-    boardSize: number;
-    moves: number;
-    targetScore: number;
-    gemTypes: string[];
-    gemWeights: {
-        red: number;
-        blue: number;
-        green: number;
-        yellow: number;
-        orange: number;
-        purple?: never;
-    };
-    shields: null;
-    blockers: null;
-    lockedGems: number[][];
-    objectives: {
-        type: string;
-        target: number;
-    }[];
-    witness: number[][];
-    difficulty: string;
-} | {
-    level: number;
-    mode: string;
-    boardSize: number;
-    moves: number;
-    targetScore: number;
-    gemTypes: string[];
-    gemWeights: {
-        red: number;
-        blue: number;
-        green: number;
-        yellow: number;
-        purple: number;
-        orange: number;
-    };
-    shields: number[][];
-    blockers: null;
-    lockedGems: null;
-    objectives: {
-        type: string;
-        target: number;
-    }[];
-    witness: number[][];
-    difficulty: string;
+    context: any;
 } | null;
 /** Untagged deployed v2 clients must never be charged for an unsupported newer-rules target. */
 /** Rules v6 is server-gated: the BLOCKER_LEVELS flag must be 'on', and the request must be classic. */
 export function blockerLevelsEnabled(env?: NodeJS.ProcessEnv): boolean;
-export function clientRulesVersion(value: any, mode?: undefined, blockers?: boolean): 3 | 2 | 5 | 4 | 6;
+export function clientRulesVersion(value: any, mode?: undefined, blockers?: boolean): 3 | 5 | 4 | 2 | 6;
 //# sourceMappingURL=level-service.d.ts.map

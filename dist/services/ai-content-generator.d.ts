@@ -49,7 +49,7 @@ export class AIContentGenerator {
             contentTypes: string[];
         };
     };
-    supabase: {
+    supabase: (() => never) | {
         from(table: any): {
             select(columns: any): {
                 select(columns?: string): /*elided*/ any;
@@ -232,7 +232,7 @@ export class AIContentGenerator {
                 }>;
             };
         };
-    } | (() => never);
+    };
     redis: any;
     memoryCache: LRUCache<{}, {}, unknown>;
     requestQueue: any[];

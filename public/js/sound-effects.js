@@ -7,6 +7,7 @@
   const DEFAULT_VOLUME = 0.55;
   const MAX_GAIN = 0.18;
   const MAX_VOICES = 8;
+  const MUSIC_MAX_VOICES = 24;
   const MIN_GAP = 0.035;
   const note = (frequency, delay, duration, gain, endFrequency = frequency, type = 'sine') =>
     Object.freeze({ frequency, delay, duration, gain, endFrequency, type });
@@ -36,7 +37,8 @@
     notification: Object.freeze([note(800, 0, 0.06, 0.1), note(1000, 0.1, 0.06, 0.1)]),
   });
   const priorities = Object.freeze({ select: 0, invalid: 1, match: 1, cascade: 2, earned: 2, beam: 2,
-    burst: 2, prism: 3, 'special-combo': 3, win: 4, loss: 4, bank: 4, stage: 2, hint: 1, inventory: 2, test: 4 });
+    burst: 2, prism: 3, 'special-combo': 3, win: 4, loss: 4, bank: 4, stage: 2, hint: 1, inventory: 2, test: 4,
+    ray: 2, spectrum: 3, shift: 1, hammer: 2, gift: 3, levelup: 4, notification: 2 });
   // Procedural music cues — synthesised patterns, no streaming or files.
   const musicCues = Object.freeze({
     title: Object.freeze([
@@ -48,11 +50,22 @@
       note(659, 1.5, 0.3, 0.04), note(554, 1.8, 0.3, 0.04), note(440, 2.1, 0.6, 0.05),
       note(523, 2.7, 0.3, 0.04), note(659, 3.0, 0.3, 0.04), note(784, 3.3, 0.3, 0.04), note(880, 3.6, 0.6, 0.05),
     ]),
+    kingdom: Object.freeze([
+      note(392, 0, 0.6, 0.05, 392, 'triangle'), note(494, 0.6, 0.6, 0.05), note(587, 1.2, 0.6, 0.05),
+      note(784, 1.8, 1.0, 0.06), note(587, 2.8, 0.6, 0.05), note(494, 3.4, 0.6, 0.05), note(392, 4.0, 1.0, 0.06),
+    ]),
     win: Object.freeze([
       note(523, 0, 0.2, 0.08), note(659, 0.2, 0.2, 0.08), note(784, 0.4, 0.2, 0.08), note(1046, 0.6, 0.4, 0.1),
       note(784, 1.0, 0.2, 0.08), note(1046, 1.2, 0.2, 0.08), note(1318, 1.4, 0.4, 0.1),
     ]),
+    levelcomplete: Object.freeze([
+      note(523, 0, 0.18, 0.08), note(659, 0.18, 0.18, 0.08), note(784, 0.36, 0.18, 0.08), note(1046, 0.54, 0.36, 0.1),
+      note(988, 0.9, 0.18, 0.08), note(1046, 1.08, 0.18, 0.08), note(1318, 1.26, 0.5, 0.1),
+    ]),
   });
+  const musicAliases = Object.freeze({ level_complete: 'levelcomplete', victory: 'win' });
+  const musicCueName = (name) => Object.hasOwn(musicAliases, name) ? musicAliases[name] : Object.hasOwn(musicCues, name) ? name : null;
+  const musicLoops = (name) => name !== 'win' && name !== 'levelcomplete';
 
   const aliases = Object.freeze({ gem_select: 'select', combo: 'cascade', blast: 'burst',
     prism_clear: 'prism', bolt_strike: 'beam' });
@@ -124,87 +137,96 @@
     const AudioContext = environment.AudioContext || environment.webkitAudioContext;
     let supported = typeof AudioContext === 'function';
     let preferences = normaliseSettings(settings);
-    let context = null; let master = null; let ready = false; let disposed = false;
+    let context = null; let master = null; let musicMaster = null; let ready = false; let disposed = false;
     let epoch = 0; let allowedEpoch = -1; let resumePending = null; let lastTime = -Infinity; let lastPriority = -1;
     const active = new Set();
     const lastCueTime = new Map();
-    // Music state
-    let musicSource = null; let musicGain = null; let musicIndex = 0; let musicLooping = false;
-    let musicPreferences = { enabled: false, volume: 0.5 };
+    // Music state: a bounded, cancellable procedural loop, never a streamed file.
+    let musicGain = null; let musicTimer = null; let musicLooping = false; let currentMusic = null;
+    const musicVoices = new Set();
+    let musicPreferences = { enabled: preferences.music, volume: preferences.musicVolume };
     const visible = () => document?.hidden !== true && document?.visibilityState !== 'hidden';
+    const sfxWanted = () => preferences.sfx && preferences.soundVolume > 0;
+    const musicWanted = () => musicPreferences.enabled && musicPreferences.volume > 0;
+    const audioWanted = () => sfxWanted() || musicWanted();
+    const later = (fn, ms) => (typeof environment.setTimeout === 'function' ? environment.setTimeout(fn, ms) : null);
+    const cancelLater = (timer) => { if (timer != null && typeof environment.clearTimeout === 'function') environment.clearTimeout(timer); };
 
-    function stop() {
+    function stopSfx() {
       for (const voice of active) {
         try { voice.oscillator.stop(); } catch { /* Already ended. */ }
         disconnect(voice);
       }
       active.clear(); lastCueTime.clear(); lastTime = -Infinity; lastPriority = -1;
-      stopMusic();
     }
 
     function stopMusic() {
-      if (musicSource) {
-        try { musicSource.stop(); } catch { /* Already ended. */ }
-        try { musicSource.disconnect(); } catch {}
-        musicSource = null;
+      musicLooping = false; currentMusic = null;
+      cancelLater(musicTimer); musicTimer = null;
+      for (const voice of musicVoices) {
+        try { voice.oscillator.stop(); } catch { /* Already ended. */ }
+        disconnect(voice);
       }
+      musicVoices.clear();
       if (musicGain) {
-        try { musicGain.disconnect(); } catch {}
+        try { musicGain.disconnect(); } catch { /* Already released. */ }
         musicGain = null;
       }
-      musicIndex = 0; musicLooping = false;
+    }
+
+    function stop() { stopSfx(); stopMusic(); }
+
+    function scheduleMusicPattern(notes) {
+      if (!context || !musicGain) return false;
+      let scheduled = false;
+      for (const item of notes) {
+        if (musicVoices.size >= MUSIC_MAX_VOICES) break;
+        try {
+          const start = context.currentTime + item.delay + 0.004;
+          const end = start + item.duration;
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          const voice = { oscillator, gain };
+          oscillator.type = item.type || 'triangle';
+          oscillator.frequency.setValueAtTime(item.frequency, start);
+          oscillator.frequency.exponentialRampToValueAtTime(item.endFrequency || item.frequency, end);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(item.gain * 0.5, start + Math.min(0.05, item.duration * 0.25));
+          gain.gain.exponentialRampToValueAtTime(0.0001, end);
+          gain.gain.linearRampToValueAtTime(0, end + 0.02);
+          oscillator.connect(gain); gain.connect(musicGain);
+          oscillator.onended = () => { disconnect(voice); musicVoices.delete(voice); };
+          oscillator.start(start); oscillator.stop(end + 0.03);
+          musicVoices.add(voice);
+          scheduled = true;
+        } catch { /* A missing optional node must never block play. */ }
+      }
+      return scheduled;
     }
 
     function playMusic(name) {
-      if (disposed || !supported || !musicPreferences.enabled || !context || context.state !== 'running') return false;
+      const cueName = musicCueName(name);
+      if (disposed || !supported || !musicWanted() || !context || context.state !== 'running' || !cueName) return false;
       stopMusic();
-      const cue = musicCues[name];
-      if (!cue) return false;
-      const notes = [...cue];
-      musicGain = context.createGain();
-      musicGain.gain.setValueAtTime(MAX_GAIN * musicPreferences.volume, context.currentTime);
-      musicGain.connect(master);
-      let scheduled = false;
-      for (const item of notes) {
-        const start = context.currentTime + item.delay;
-        const osc = context.createOscillator();
-        osc.type = item.type || 'triangle';
-        osc.frequency.setValueAtTime(item.frequency, start);
-        osc.frequency.exponentialRampToValueAtTime(item.endFrequency || item.frequency, start + item.duration);
-        const g = context.createGain();
-        g.gain.setValueAtTime(0, start);
-        g.gain.linearRampToValueAtTime(item.gain * 0.5, start + 0.05);
-        g.gain.exponentialRampToValueAtTime(0.0001, start + item.duration);
-        osc.connect(g); g.connect(musicGain);
-        osc.start(start); osc.stop(start + item.duration + 0.1);
-        scheduled = true;
+      const notes = musicCues[cueName];
+      try {
+        musicGain = context.createGain();
+        musicGain.gain.setValueAtTime(1, context.currentTime);
+        musicGain.connect(musicMaster || context.destination);
+      } catch { musicGain = null; return false; }
+      if (!scheduleMusicPattern(notes)) { stopMusic(); return false; }
+      currentMusic = cueName;
+      musicLooping = musicLoops(cueName);
+      if (musicLooping) {
+        const seconds = notes.reduce((max, item) => Math.max(max, item.delay + item.duration), 0) + 0.5;
+        const loop = () => {
+          musicTimer = null;
+          if (!musicLooping || disposed || !context || context.state !== 'running' || !musicWanted()) return;
+          if (!scheduleMusicPattern(notes)) { stopMusic(); return; }
+          musicTimer = later(loop, seconds * 1000);
+        };
+        musicTimer = later(loop, seconds * 1000);
       }
-      if (!scheduled) { stopMusic(); return false; }
-      musicSource = { stop: stopMusic };
-      musicLooping = true;
-      // Loop the music pattern
-      const loop = () => {
-        if (!musicLooping || !musicGain || disposed) return;
-        setTimeout(() => {
-          if (musicLooping && !disposed && context && context.state === 'running') {
-            for (const item of notes) {
-              const start = context.currentTime + item.delay;
-              const osc = context.createOscillator();
-              osc.type = item.type || 'triangle';
-              osc.frequency.setValueAtTime(item.frequency, start);
-              osc.frequency.exponentialRampToValueAtTime(item.endFrequency || item.frequency, start + item.duration);
-              const g = context.createGain();
-              g.gain.setValueAtTime(0, start);
-              g.gain.linearRampToValueAtTime(item.gain * 0.5, start + 0.05);
-              g.gain.exponentialRampToValueAtTime(0.0001, start + item.duration);
-              osc.connect(g); g.connect(musicGain);
-              osc.start(start); osc.stop(start + item.duration + 0.1);
-            }
-            loop();
-          }
-        }, notes[notes.length - 1].delay + notes[notes.length - 1].duration + 0.5);
-      };
-      loop();
       return true;
     }
 
@@ -212,66 +234,85 @@
       try { context?.suspend()?.catch(() => {}); } catch { /* Sound never blocks game controls. */ }
     }
     function interrupt() {
-      epoch++; allowedEpoch = -1; resumePending = null; ready = false; stop(); stopMusic(); suspend();
+      epoch++; allowedEpoch = -1; resumePending = null; ready = false; stop(); suspend();
+    }
+    function setBusGains() {
+      if (!context) return;
+      try {
+        if (master) {
+          master.gain.cancelScheduledValues(context.currentTime);
+          master.gain.setValueAtTime(MAX_GAIN * preferences.soundVolume, context.currentTime);
+        }
+        if (musicMaster) {
+          musicMaster.gain.cancelScheduledValues(context.currentTime);
+          musicMaster.gain.setValueAtTime(MAX_GAIN * musicPreferences.volume, context.currentTime);
+        }
+      } catch { interrupt(); }
     }
     function configure(next) {
       const previous = preferences;
       const previousMusic = musicPreferences;
       preferences = normaliseSettings(next);
       musicPreferences = { enabled: preferences.music, volume: preferences.musicVolume };
-      if (!preferences.sfx || preferences.soundVolume === 0) {
-        if (previous.sfx || active.size || resumePending) interrupt();
-      }
-      if (!musicPreferences.enabled || preferences.soundVolume === 0) {
-        if (previousMusic.enabled) stopMusic();
-      } else if (musicPreferences.enabled && !previousMusic.enabled && ready && context && context.state === 'running') {
-        playMusic('gameplay');
-      }
-      if (master && context) {
-        try {
-          master.gain.cancelScheduledValues(context.currentTime);
-          master.gain.setValueAtTime(MAX_GAIN * preferences.soundVolume, context.currentTime);
-        } catch { interrupt(); }
+      const wanted = audioWanted();
+      const previouslyWanted = (previous.sfx && previous.soundVolume > 0) || (previousMusic.enabled && previousMusic.volume > 0);
+      if (!wanted) {
+        if (previouslyWanted || active.size || musicVoices.size || resumePending) interrupt();
+      } else {
+        if (!sfxWanted()) stopSfx();
+        if (!musicWanted()) stopMusic();
+        else if (ready && context?.state === 'running' && (!previousMusic.enabled || !currentMusic)) playMusic(currentMusic || 'gameplay');
+        setBusGains();
       }
       return status();
     }
     function status() {
-      const state = !supported ? 'unavailable' : !preferences.sfx ? 'off' : preferences.soundVolume === 0 ? 'volume-zero'
+      const wanted = audioWanted();
+      const anyEnabled = preferences.sfx || musicPreferences.enabled;
+      const state = !supported ? 'unavailable' : !anyEnabled ? 'off' : !wanted ? 'volume-zero'
         : ready && visible() && context?.state === 'running' ? 'ready' : 'gesture-required';
       return { state, supported, enabled: preferences.sfx, volume: preferences.soundVolume,
         activeVoices: active.size, contextState: context?.state || 'not-created',
-        music: musicPreferences.enabled, musicVolume: musicPreferences.volume };
+        music: musicPreferences.enabled, musicVolume: musicPreferences.volume,
+        musicPlaying: musicLooping || musicVoices.size > 0, musicCue: currentMusic };
     }
     function onContextState() {
-      if (context.state !== 'running') { ready = false; stop(); stopMusic(); }
+      if (context.state !== 'running') { ready = false; stop(); }
     }
     function unlock(event) {
       // Never construct/resume in response to timers, data loading or synthetic events.
-      if (disposed || !supported || !preferences.sfx || preferences.soundVolume === 0 || !visible() || event?.isTrusted !== true) return Promise.resolve(false);
+      if (disposed || !supported || !audioWanted() || !visible() || event?.isTrusted !== true) return Promise.resolve(false);
       allowedEpoch = epoch;
       if (!context) {
         try {
           context = new AudioContext({ latencyHint: 'interactive' });
           master = context.createGain(); master.gain.setValueAtTime(MAX_GAIN * preferences.soundVolume, context.currentTime);
           master.connect(context.destination);
+          musicMaster = context.createGain(); musicMaster.gain.setValueAtTime(MAX_GAIN * musicPreferences.volume, context.currentTime);
+          musicMaster.connect(context.destination);
           context.addEventListener?.('statechange', onContextState);
         } catch {
           supported = false;
           try { context?.close()?.catch(() => {}); } catch { /* Partially constructed optional API. */ }
-          context = null; master = null; return Promise.resolve(false);
+          context = null; master = null; musicMaster = null; return Promise.resolve(false);
         }
       }
-      if (context.state === 'running') { ready = true; return Promise.resolve(true); }
+      const finishReady = () => {
+        ready = true;
+        if (musicWanted() && !currentMusic) playMusic(currentMusic || 'gameplay');
+        return true;
+      };
+      if (context.state === 'running') return Promise.resolve(finishReady());
       if (context.state === 'closed') return Promise.resolve(false);
       if (resumePending) return resumePending;
       const token = epoch;
       try {
         const attempt = Promise.resolve(context.resume()).then(() => {
-          const permitted = allowedEpoch === epoch && !disposed && preferences.sfx && preferences.soundVolume > 0 && visible();
+          const permitted = allowedEpoch === epoch && !disposed && audioWanted() && visible();
           if (token === epoch) ready = permitted && context.state === 'running';
           // Stale resumes cannot resurrect muted audio, or cancel a newer trusted unlock.
-          if (!permitted) { ready = false; suspend(); }
-          return token === epoch && ready;
+          if (!permitted) { ready = false; suspend(); return false; }
+          return token === epoch && ready ? finishReady() : false;
         }).catch(() => { if (token === epoch) ready = false; return false; });
         resumePending = attempt;
         attempt.finally(() => { if (resumePending === attempt) resumePending = null; });
@@ -280,11 +321,11 @@
     }
     function play(name) {
       const cue = cueName(name);
-      if (disposed || !cue || !preferences.sfx || preferences.soundVolume === 0 || !ready || !visible() || context?.state !== 'running') return false;
-      const now = context.currentTime; const priority = priorities[cue];
+      if (disposed || !cue || !sfxWanted() || !ready || !visible() || context?.state !== 'running') return false;
+      const now = context.currentTime; const priority = priorities[cue] ?? 1;
       if (now - (lastCueTime.get(cue) ?? -Infinity) < (cue === 'select' ? 0.055 : 0.09)) return false;
       if (now - lastTime < MIN_GAP && priority <= lastPriority) return false;
-      if (priority >= 3) stop();
+      if (priority >= 3) stopSfx();
       if (active.size + cues[cue].length > MAX_VOICES) return false;
       const voices = scheduleCue(context, master, cue, (voice) => active.delete(voice));
       for (const voice of voices) active.add(voice);
@@ -310,13 +351,15 @@
       environment.removeEventListener?.('pagehide', interrupt);
       context?.removeEventListener?.('statechange', onContextState);
       try { master?.disconnect(); } catch { /* Already released. */ }
+      try { musicMaster?.disconnect(); } catch { /* Already released. */ }
       try { context?.close()?.catch(() => {}); } catch { /* Optional browser teardown. */ }
     }
     return Object.freeze({ configure, unlock, play, stop, interrupt, destroy, status,
-      playMusic, stopMusic, musicStatus: () => ({ enabled: musicPreferences.enabled, volume: musicPreferences.volume }) });
+      playMusic, stopMusic, musicStatus: () => ({ enabled: musicPreferences.enabled, volume: musicPreferences.volume,
+        playing: musicLooping || musicVoices.size > 0, cue: currentMusic }) });
   }
 
-  root.InfiniteSoundEffects = Object.freeze({ SETTINGS_VERSION, DEFAULT_VOLUME, MAX_GAIN, MAX_VOICES,
+  root.InfiniteSoundEffects = Object.freeze({ SETTINGS_VERSION, DEFAULT_VOLUME, MAX_GAIN, MAX_VOICES, MUSIC_MAX_VOICES,
     cueNames: Object.freeze(Object.keys(cues)), musicCueNames: Object.freeze(Object.keys(musicCues)),
     cueForTransition, normaliseSettings, scheduleCue, create });
 })(globalThis);

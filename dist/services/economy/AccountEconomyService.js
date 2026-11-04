@@ -15,7 +15,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { pickWheelReward, ITEM_CATALOG, LEVEL_LIMITS } from './item-catalog.js';
 import { PlayerEconomyDb, isDurableEconomy } from './PlayerEconomyDb.js';
 import PurchaseLedgerDb from '../payments/PurchaseLedgerDb.js';
-import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier, markRoomCompleted, KINGDOM_MAX_LEVEL } from '../meta/kingdom.js';
+import { ensureKingdom, initialKingdom, planRenovation, roomById, MILESTONE_REWARDS, kingdomCoinMultiplier, markRoomCompleted, KINGDOM_MAX_LEVEL, unlockEligibleRooms, isRoomUnlocked } from '../meta/kingdom.js';
 import { LOOTBOXES, pickLootReward, ENERGY_PRICE_COINS } from '../meta/lootbox.js';
 import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInMs } from '../meta/energy.js';
 import { LIFE_COST_PER_ATTEMPT, COST_COINS_PER_LIFE, MAX_LIVES, LIFE_REGEN_MINUTES, regenerateLives, nextRegenInMs as nextLifeRegenInMs, spendLife, grantLives } from '../meta/lives.js';
@@ -105,6 +105,7 @@ class AccountEconomyService {
                 settings: this.initializeSettings(),
                 statistics: this.initializeStatistics(),
                 kingdom: initialKingdom(),
+                cards: {},
                 createdAt: new Date().toISOString(),
                 lastUpdated: new Date().toISOString(),
                 version: '1.0.0'
@@ -217,18 +218,19 @@ class AccountEconomyService {
     initializeInventory() {
         return {
             powerups: {
-                bomb: { id: 'bomb', name: 'Bomb', count: 3, maxCount: 99, type: 'powerup', rarity: 'common' },
-                rocket: { id: 'rocket', name: 'Rocket', count: 2, maxCount: 99, type: 'powerup', rarity: 'common' },
-                rainbow: { id: 'rainbow', name: 'Rainbow', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
-                lightning: { id: 'lightning', name: 'Lightning', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
-                target: { id: 'target', name: 'Target Gem', count: 0, maxCount: 99, type: 'powerup', rarity: 'rare' },
-                diamond: { id: 'diamond', name: 'Diamond', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
-                star: { id: 'star', name: 'Star', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' }
+                blast: { id: 'blast', name: 'Blast', count: 3, maxCount: 99, type: 'powerup', rarity: 'common' },
+                ray: { id: 'ray', name: 'Ray', count: 2, maxCount: 99, type: 'powerup', rarity: 'common' },
+                prism: { id: 'prism', name: 'Prism', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
+                bolt: { id: 'bolt', name: 'Bolt', count: 1, maxCount: 99, type: 'powerup', rarity: 'rare' },
+                mark: { id: 'mark', name: 'Mark', count: 0, maxCount: 99, type: 'powerup', rarity: 'rare' },
+                facet: { id: 'facet', name: 'Facet', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
+                nova: { id: 'nova', name: 'Nova', count: 0, maxCount: 99, type: 'powerup', rarity: 'epic' },
+                shift: { id: 'shift', name: 'Shift', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
+                hammer: { id: 'hammer', name: 'Hammer', count: 0, maxCount: 99, type: 'powerup', rarity: 'common' },
             },
             boosters: {
                 extra_moves: { id: 'extra_moves', name: 'Extra Moves', count: 0, maxCount: 99, type: 'booster', rarity: 'common' },
-                color_bomb: { id: 'color_bomb', name: 'Color Bomb', count: 0, maxCount: 99, type: 'booster', rarity: 'rare' },
-                striped_candy: { id: 'striped_candy', name: 'Striped Candy', count: 0, maxCount: 99, type: 'booster', rarity: 'common' }
+                spectrum: { id: 'spectrum', name: 'Spectrum', count: 0, maxCount: 99, type: 'booster', rarity: 'rare' },
             },
             decorations: {
                 castle: { id: 'castle', name: 'Castle', count: 1, maxCount: 1, type: 'decoration', rarity: 'legendary' },
@@ -578,10 +580,10 @@ class AccountEconomyService {
         rewards.push({ type: 'currency', currencyId: 'stars', amount: Math.floor(level / 5) });
         // Special rewards for milestone levels
         if (level % 10 === 0) {
-            rewards.push({ type: 'inventory', category: 'powerups', itemId: 'rainbow', amount: 1 });
+            rewards.push({ type: 'inventory', category: 'powerups', itemId: 'prism', amount: 1 });
         }
         if (level % 25 === 0) {
-            rewards.push({ type: 'inventory', category: 'powerups', itemId: 'lightning', amount: 1 });
+            rewards.push({ type: 'inventory', category: 'powerups', itemId: 'bolt', amount: 1 });
         }
         return rewards;
     }
@@ -1242,6 +1244,13 @@ class AccountEconomyService {
                     timestamp: new Date(nowMs).toISOString() });
                 this.applyReward(economy, { type: 'currency', currencyId: 'coins', amount: reward.coins });
                 this.applyReward(economy, { type: 'currency', currencyId: 'stars', amount: reward.stars });
+                // Star-gated kingdom progression: newly earned lifetime stars may unlock rooms.
+                const kingdom = ensureKingdom(economy);
+                const lifetimeStars = economy.currencies.stars.earned;
+                const { kingdom: updatedKingdom, justUnlocked } = unlockEligibleRooms(kingdom, lifetimeStars, nowMs);
+                if (justUnlocked.length > 0) {
+                    economy.kingdom = updatedKingdom;
+                }
                 const stats = economy.statistics;
                 stats.gamesPlayed++;
                 stats.levelsCompleted++;
@@ -1258,6 +1267,7 @@ class AccountEconomyService {
                     rewards: [{ type: 'currency', currencyId: 'coins', amount: reward.coins },
                         { type: 'currency', currencyId: 'stars', amount: reward.stars }],
                     stars, verified: replay?.verified === true, ranked, vip: isVip,
+                    ...(justUnlocked.length > 0 ? { justUnlocked } : {}),
                     balances: { coins: economy.currencies.coins.amount, stars: economy.currencies.stars.amount },
                     statistics: { gamesPlayed: stats.gamesPlayed, levelsCompleted: stats.levelsCompleted,
                         totalScore: stats.totalScore, averageScore: stats.averageScore, bestScore: stats.bestScore },
@@ -1443,6 +1453,63 @@ class AccountEconomyService {
             playerEconomy.lastUpdated = new Date(nowMs).toISOString();
             await this.updatePlayerEconomyCache(playerId, playerEconomy);
             return { duplicate: false, credited, booster: inventory.count };
+        });
+    }
+    /**
+     * Credits one lives gift to the receiver, once per giftId. Lives are capped at the player's
+     * max (VIP-aware), so `credited` can be less than `amount` (or 0) when the receiver is full.
+     * Saved in one write.
+     */
+    async creditLivesGift(playerId, giftId, amount = 1, nowMs = Date.now()) {
+        return this.withPlayerLock(playerId, async () => {
+            const playerEconomy = await this.getPlayerEconomy(playerId);
+            const prior = playerEconomy.livesGifts?.[giftId];
+            if (prior)
+                return { duplicate: true, credited: prior.credited, lives: playerEconomy.currencies.lives.amount };
+            const hasVip = await PurchaseLedgerDb.hasPurchase(playerId, 'vip');
+            const maxLives = getMaxLives(hasVip, MAX_LIVES);
+            const lives = regenerateLives(playerEconomy.currencies.lives, nowMs);
+            const credited = Math.max(0, Math.min(amount, maxLives - lives.amount));
+            lives.amount += credited;
+            playerEconomy.livesGifts = { ...(playerEconomy.livesGifts || {}), [giftId]: { credited, at: new Date(nowMs).toISOString() } };
+            playerEconomy.lastUpdated = new Date(nowMs).toISOString();
+            await this.updatePlayerEconomyCache(playerId, playerEconomy);
+            return { duplicate: false, credited, lives: lives.amount };
+        });
+    }
+    // ========================================================================
+    // CARD COLLECTION
+    // ========================================================================
+    /** Returns the player's card collection ({ cardId: count }). */
+    async getCardCollection(playerId) {
+        const playerEconomy = await this.getPlayerEconomy(playerId);
+        return { ...(playerEconomy.cards || {}) };
+    }
+    /** Replaces the player's card collection (used after pack opening / conversion). */
+    async setCardCollection(playerId, cards) {
+        return this.withPlayerLock(playerId, async () => {
+            const playerEconomy = await this.getPlayerEconomy(playerId);
+            playerEconomy.cards = { ...cards };
+            playerEconomy.lastUpdated = new Date().toISOString();
+            await this.updatePlayerEconomyCache(playerId, playerEconomy);
+            return { success: true, cards: playerEconomy.cards };
+        });
+    }
+    /**
+     * Adds cards to the player's collection. Returns the updated collection.
+     * cards: array of { cardId, count }
+     */
+    async addCards(playerId, cards) {
+        return this.withPlayerLock(playerId, async () => {
+            const playerEconomy = await this.getPlayerEconomy(playerId);
+            const collection = { ...(playerEconomy.cards || {}) };
+            for (const { cardId, count } of cards) {
+                collection[cardId] = (collection[cardId] || 0) + count;
+            }
+            playerEconomy.cards = collection;
+            playerEconomy.lastUpdated = new Date().toISOString();
+            await this.updatePlayerEconomyCache(playerId, playerEconomy);
+            return { success: true, cards: playerEconomy.cards };
         });
     }
     /**
@@ -1777,6 +1844,25 @@ class AccountEconomyService {
             features: this.economyFeatures,
             version: '1.0.0'
         };
+    }
+    /**
+     * Get all player economies (for retention analytics, segmentation, win-back).
+     * Returns a Map of playerId -> economy. Uses the in-memory cache which is
+     * populated as players log in and play.
+     */
+    async getAllPlayerEconomies() {
+        try {
+            const all = new Map();
+            // From memory cache (populated as players interact with the game)
+            for (const [playerId, economy] of this.accountEconomyData.entries()) {
+                all.set(playerId, structuredClone(economy));
+            }
+            return all;
+        }
+        catch (error) {
+            logger.error('Failed to get all player economies', { error: error.message });
+            return new Map();
+        }
     }
 }
 /** The one economy instance. Every route and the purchase path must share it, or balances diverge. */

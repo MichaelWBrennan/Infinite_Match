@@ -348,8 +348,10 @@
             if (description) description.textContent = state.state === 'unavailable' ? 'Sound is unavailable here. The game remains fully playable in silence.'
                 : state.state === 'off' ? 'Sound is off. Enable it only if you want local effects; no music plays.'
                     : state.state === 'volume-zero' ? 'Sound volume is zero. Raise it to hear effects.'
-                        : state.state === 'ready' ? 'Sound is on. Test the volume below; M mutes it while the board is focused.'
-                            : 'Sound is on but needs a player gesture. Press Test sound; device mute or browser media policy may still silence it.';
+                        : state.state === 'ready' ? (state.enabled ? 'Sound is on. Test the volume below; M mutes it while the board is focused.'
+                            : 'Music is on; sound effects are off. Enable sound effects separately if you want them.')
+                            : (state.enabled || state.music ? 'Audio is on but needs a player gesture. Press Test sound or toggle music; device mute or browser media policy may still silence it.'
+                                : 'Sound is off. Enable it only if you want local effects; no music plays.');
             const legacy = document.getElementById('sfx-toggle'); if (legacy) legacy.checked = !!game.settings.sfx;
             const musicCheckbox = find('[data-music-choice]');
             if (musicCheckbox) { musicCheckbox.checked = !!game.settings.music; musicCheckbox.disabled = !state.supported && !musicCheckbox.checked; }
@@ -661,7 +663,7 @@
             const musicOutput = document.createElement('span'); musicOutput.dataset.musicVolumeLabel = 'true'; musicOutput.setAttribute('aria-hidden', 'true');
             musicVolume.addEventListener('input', (event) => { game.setMusicVolume(Number(musicVolume.value) / 100, event); refresh(); });
             musicVolumeLabel.append(document.createTextNode('Music volume'), musicVolume, musicOutput); content.append(musicVolumeLabel);
-            for (const [key, title] of Object.entries({ textBoard: 'Text board (named cells and larger targets)', highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', haptics: 'Touch vibration' })) {
+            for (const [key, title] of Object.entries({ textBoard: 'Text board (named cells and larger targets)', highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', impactEffects: 'Impact effects (particles and camera shake)', haptics: 'Touch vibration' })) {
                 const label = document.createElement('label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
                 checkbox.checked = game.settings[key] === true; checkbox.disabled = key === 'textBoard' && !assistiveBoard; checkbox.addEventListener('change', () => {
                     game.settings[key] = checkbox.checked; game.saveUserData(); refresh();

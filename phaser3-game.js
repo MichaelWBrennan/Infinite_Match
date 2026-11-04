@@ -164,6 +164,7 @@ class PhaserMatch3Game {
             largeText: false,
             reduceAnimations: false,
             haptics: false,
+            impactEffects: true,
             textBoard: false,
             endlessAutoContinue: false
         };
@@ -215,7 +216,7 @@ class PhaserMatch3Game {
         this.pendingStreaming = null;
 
         // Game worker proxy: offloads CPU-intensive logic to Web Worker thread.
-        this.gameWorker = window.gameWorker || new (window.GameWorkerProxy)();
+        this.gameWorker = window.gameWorker || (typeof window.GameWorkerProxy === 'function' ? new window.GameWorkerProxy() : null);
 
         // Object pools: zero-GC gameplay object recycling.
         // spritePool holds reusable Phaser sprite Game Objects to avoid
@@ -254,15 +255,18 @@ class PhaserMatch3Game {
         console.log('🎮 Initializing Phaser 3 Match-3 Game...');
         const self = this;
         this.loadUserData(); // Local preferences are available on the title, not only after Play.
-        // Lazy-load sound effects (audio is opt-in and off by default).
-        void _getSoundEffects();
+        // Lazy-load sound effects (audio is opt-in and off by default). The
+        // context is never created here; a trusted player gesture unlocks it.
+        const attachSoundEffects = (api) => {
+            if (!api || this.soundEffects) return;
+            this.soundEffects = api.create(this.settings);
+            this.playerUI?.refresh();
+        };
         if (window.InfiniteSoundEffects) {
-            this.soundEffects = window.InfiniteSoundEffects.create(this.settings);
-            if (this.settings.music) {
-                try { this.soundEffects.playMusic('gameplay'); } catch { /* Music is optional; play continues silently. */ }
-            }
+            attachSoundEffects(window.InfiniteSoundEffects);
         } else {
             this.soundEffects = null;
+            void _getSoundEffects().then(attachSoundEffects).catch(() => {});
         }
         this.playerUI = window.InfinitePlayerExperience?.mount(this, document.getElementById('phaser-game-container')) || null;
 
@@ -658,6 +662,8 @@ class PhaserMatch3Game {
         this.setupAnimations();
         this.matchFeedback?.destroy();
         this.matchFeedback = window.InfiniteMatchFeedback?.create(this) || null;
+        this.gameFeel?.destroy();
+        this.gameFeel = window.InfiniteGameFeel?.create(this) || null;
         if (this.playerUI) {
             this.boardResizeObserver?.disconnect();
             // A goal/status row can move the canvas without changing its size.
@@ -1025,7 +1031,13 @@ class PhaserMatch3Game {
     showEarnedFeedback(result) {
         const first = result.events[0];
         if (!this.playerUI || !first) return;
-        if (this.settings.haptics && navigator.vibrate) navigator.vibrate(first.combo ? [15, 25, 15] : 15);
+        if (this.gameFeel) {
+            // The staged renderer emits one bounded impact per wave. When it is
+            // unavailable, the fallback still gets a single deterministic impact.
+            if (!this.matchFeedback?.isActive()) this.gameFeel.wave(first, 0, result.cascades);
+        } else if (this.settings.haptics && navigator.vibrate) {
+            navigator.vibrate(first.combo ? [15, 25, 15] : 15);
+        }
         if (this.matchFeedback || this.namedBoardActive() || this.animationsReduced() || !this.scene.add.graphics) return;
         // Compatibility-only footprint when the staged renderer is unavailable.
         // One soft footprint, not a strobing effect per cascade; no input hit area.
@@ -1399,6 +1411,7 @@ class PhaserMatch3Game {
     }
 
     shake(sprites) {
+        this.gameFeel?.invalid();
         if (this.animationsReduced()) return;
         sprites.forEach(s => {
             const x = s.x;
@@ -1437,6 +1450,7 @@ class PhaserMatch3Game {
         this.moves--;
         const scoreBefore = this.score;
         const chain = this.resolveBoard();
+        this.gameFeel?.pulse(chain);
         this.playSound(chain > 1 ? 'cascade' : 'match');
         if (!this.hasPossibleMove()) {
             this.reshuffleBoard();
@@ -2936,6 +2950,7 @@ class PhaserMatch3Game {
         this.feedbackEndPending = false;
         this.feedbackResultStars = null;
         this.matchFeedback?.finish('new-definition', false);
+        this.gameFeel?.reset();
         this.soundEffects?.stop();
         if (this.timerInterval) clearInterval(this.timerInterval);
 
@@ -3289,7 +3304,13 @@ class PhaserMatch3Game {
         this.settings.soundChoiceVersion = window.InfiniteSoundEffects?.SETTINGS_VERSION || 1;
         this.soundEffects?.configure(this.settings);
         if (this.settings.music) {
-            try { this.soundEffects.playMusic('gameplay'); } catch { /* Music start is optional. */ }
+            // Music is independently opt-in: a trusted gesture may unlock the
+            // context even when sound effects are off.
+            try {
+                Promise.resolve(this.soundEffects?.unlock(event)).then((accepted) => {
+                    if (accepted && this.settings.music) this.soundEffects.playMusic('gameplay');
+                }).catch(() => {});
+            } catch { /* Music start is optional. */ }
         } else {
             this.soundEffects?.stopMusic();
         }
@@ -4099,6 +4120,7 @@ class PhaserMatch3Game {
         this.soundEffects?.interrupt();
         this.isPaused = true;
         this.matchFeedback?.finish('pause');
+        this.gameFeel?.reset();
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
         }
@@ -4151,6 +4173,7 @@ class PhaserMatch3Game {
         let stars = 0;
         stars = this.starsFor(this.score);
         this.playSound(stars > 0 ? 'win' : 'loss');
+        this.gameFeel?.celebrate(stars);
         // Level-complete music on a win; gameplay music otherwise.
         try { this.soundEffects?.playMusic(stars > 0 ? 'levelcomplete' : 'gameplay'); } catch { /* Music optional. */ }
         
@@ -4261,6 +4284,7 @@ class PhaserMatch3Game {
         this.feedbackEndPending = false;
         this.feedbackResultStars = null;
         this.matchFeedback?.destroy();
+        this.gameFeel?.destroy();
         this.soundEffects?.destroy();
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.boardResizeObserver?.disconnect();

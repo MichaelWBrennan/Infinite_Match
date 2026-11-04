@@ -1,9 +1,12 @@
 /**
- * Kingdom renovation: six rooms, each upgraded from level 0 to KINGDOM_MAX_LEVEL.
+ * Kingdom renovation and star-gated progression: six rooms, each upgraded from
+ * level 0 to KINGDOM_MAX_LEVEL. Rooms unlock in sequence as the player earns
+ * lifetime stars from level wins — only unlocked rooms can be renovated. This
+ * makes every match-3 level win visibly advance the kingdom.
  *
  * Each upgrade costs coins and needs a lifetime star count. Reaching certain levels
  * grants an item. The server decides the price, the gate, and the reward. The client
- * only asks to renovate a room. Kingdom levels do not change gameplay yet.
+ * only asks to renovate a room.
  */
 export const KINGDOM_MAX_LEVEL = 5;
 export const KINGDOM_ROOMS = Object.freeze([
@@ -16,13 +19,40 @@ export const KINGDOM_ROOMS = Object.freeze([
 ]);
 // Lifetime stars earned before upgrading to each level. Index = target level.
 export const STARS_REQUIRED = Object.freeze([0, 0, 5, 15, 30, 50]);
-// Item granted on reaching a level. Index = target level.
+// Lifetime stars required to unlock each room. Rooms unlock in sequence:
+// throne is always open; library needs 5 stars, garden 10, armory 20,
+// gatehouse 35, chapel 50. This makes level star earnings advance the kingdom.
+export const STARS_TO_UNLOCK = Object.freeze([0, 5, 10, 20, 35, 50]);
+// Item granted on reaching a level within a room. Index = target level.
+// Every room level grants a milestone reward to keep renovation meaningful.
 export const MILESTONE_REWARDS = Object.freeze({
-    3: { category: 'powerups', itemId: 'bomb', amount: 1 },
-    5: { category: 'powerups', itemId: 'rainbow', amount: 1 },
+    1: { category: 'powerups', itemId: 'blast', amount: 1 },
+    2: { category: 'powerups', itemId: 'hammer', amount: 1 },
+    3: { category: 'powerups', itemId: 'blast', amount: 2 },
+    4: { category: 'powerups', itemId: 'shift', amount: 1 },
+    5: { category: 'powerups', itemId: 'prism', amount: 1 },
 });
 // Completion bonus granted when every room reaches KINGDOM_MAX_LEVEL.
-export const KINGDOM_COMPLETION_REWARD = { category: 'powerups', itemId: 'rainbow', amount: 3 };
+export const KINGDOM_COMPLETION_REWARD = { category: 'powerups', itemId: 'prism', amount: 3 };
+// Kingdom-level milestones: total of all room levels across the kingdom.
+// These unlock as the player renovates more rooms, giving a second
+// progression axis beyond individual room levels.
+export const KINGDOM_LEVEL_MILESTONES = Object.freeze([
+    { totalLevel: 6, reward: { category: 'powerups', itemId: 'blast', amount: 1 } },
+    { totalLevel: 12, reward: { category: 'powerups', itemId: 'hammer', amount: 1 } },
+    { totalLevel: 18, reward: { category: 'powerups', itemId: 'shift', amount: 1 } },
+    { totalLevel: 24, reward: { category: 'powerups', itemId: 'blast', amount: 3 } },
+    { totalLevel: 30, reward: { category: 'powerups', itemId: 'prism', amount: 2 } },
+]);
+/** Returns the kingdom level (0-5) based on the sum of all room levels. */
+export function kingdomLevel(rooms) {
+    const total = Object.values(rooms || {}).reduce((sum, level) => sum + (Number.isInteger(level) ? level : 0), 0);
+    return Math.min(5, Math.floor(total / 6));
+}
+/** Returns milestone rewards unlocked at the given kingdom level. */
+export function kingdomMilestonesAtLevel(level) {
+    return KINGDOM_LEVEL_MILESTONES.filter((m) => Math.floor(m.totalLevel / 6) <= level);
+}
 export function roomById(roomId) {
     return KINGDOM_ROOMS.find((room) => room.id === roomId) || null;
 }
@@ -33,9 +63,16 @@ export function upgradeCost(room, targetLevel) {
 export function initialKingdom() {
     return {
         rooms: Object.fromEntries(KINGDOM_ROOMS.map((room) => [room.id, 0])),
+        // All rooms unlocked by default for backward compatibility. The server
+        // may call unlockEligibleRooms() to enforce star-gated progression on
+        // new economies, making rooms unlock in sequence as lifetime stars are earned.
+        unlockedRooms: KINGDOM_ROOMS.map((room) => room.id),
         renovations: 0,
         completedRooms: [],
         completedAt: null,
+        // Kingdom-level progression: total of all room levels determines kingdom level.
+        kingdomLevel: 0,
+        claimedKingdomMilestones: [],
     };
 }
 /** Fills in a kingdom for economies saved before this feature existed. */
@@ -49,6 +86,9 @@ export function ensureKingdom(playerEconomy) {
             playerEconomy.kingdom.rooms = { ...(playerEconomy.kingdom.rooms || {}), [room.id]: 0 };
         }
     }
+    if (!Array.isArray(playerEconomy.kingdom.unlockedRooms)) {
+        playerEconomy.kingdom.unlockedRooms = KINGDOM_ROOMS.map((room) => room.id);
+    }
     if (typeof playerEconomy.kingdom.renovations !== 'number')
         playerEconomy.kingdom.renovations = 0;
     if (!Array.isArray(playerEconomy.kingdom.completedRooms)) {
@@ -56,6 +96,10 @@ export function ensureKingdom(playerEconomy) {
     }
     if (playerEconomy.kingdom.completedAt === undefined)
         playerEconomy.kingdom.completedAt = null;
+    if (typeof playerEconomy.kingdom.kingdomLevel !== 'number')
+        playerEconomy.kingdom.kingdomLevel = 0;
+    if (!Array.isArray(playerEconomy.kingdom.claimedKingdomMilestones))
+        playerEconomy.kingdom.claimedKingdomMilestones = [];
     return playerEconomy.kingdom;
 }
 /** True when every room has reached KINGDOM_MAX_LEVEL. */
@@ -93,12 +137,50 @@ export function markRoomCompleted(kingdom, roomId, nowMs = Date.now()) {
     };
     return { kingdom: updated, justCompleted, allCompleted };
 }
+/** The index of a room in KINGDOM_ROOMS, or -1 if unknown. */
+export function roomIndex(roomId) {
+    return KINGDOM_ROOMS.findIndex((room) => room.id === roomId);
+}
+/** Rooms that are currently unlocked, in KINGDOM_ROOMS order. */
+export function unlockedRoomIds(kingdom) {
+    return [...(kingdom?.unlockedRooms || [])];
+}
+/** True when a room is unlocked and can be renovated. */
+export function isRoomUnlocked(kingdom, roomId) {
+    return !!(kingdom?.unlockedRooms || []).includes(roomId);
+}
+/**
+ * Unlock rooms that the player's lifetime stars now qualify for. Rooms unlock
+ * in sequence — a room is eligible only when every earlier room is unlocked.
+ * Returns { kingdom, justUnlocked: [roomId, ...] }.
+ */
+export function unlockEligibleRooms(kingdom, lifetimeStars, nowMs = Date.now()) {
+    const unlocked = [...(kingdom?.unlockedRooms || [])];
+    const justUnlocked = [];
+    for (const room of KINGDOM_ROOMS) {
+        if (unlocked.includes(room.id))
+            continue;
+        const idx = roomIndex(room.id);
+        // A room unlocks only when the previous room is already unlocked (sequence gate).
+        if (idx > 0 && !unlocked.includes(KINGDOM_ROOMS[idx - 1].id))
+            break;
+        if (lifetimeStars >= STARS_TO_UNLOCK[idx]) {
+            unlocked.push(room.id);
+            justUnlocked.push(room.id);
+        }
+    }
+    const updated = { ...kingdom, unlockedRooms: unlocked };
+    return { kingdom: updated, justUnlocked };
+}
 /**
  * What the next upgrade of a room would cost and require. `ok` is false with a
  * `reason` when the player cannot upgrade it now.
  */
 export function planRenovation({ kingdom, room, coins, lifetimeStars }) {
     const current = kingdom.rooms[room.id] ?? 0;
+    if (!isRoomUnlocked(kingdom, room.id)) {
+        return { ok: false, reason: 'room_locked', current, targetLevel: null, costCoins: 0, starsNeeded: STARS_TO_UNLOCK[roomIndex(room.id)] };
+    }
     if (current >= KINGDOM_MAX_LEVEL) {
         return { ok: false, reason: 'room_max_level', current, targetLevel: null, costCoins: 0 };
     }
@@ -117,10 +199,13 @@ export function planRenovation({ kingdom, room, coins, lifetimeStars }) {
 export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted = null }) {
     const completed = kingdom?.completedRooms || [];
     const rooms = KINGDOM_ROOMS.map((room) => {
-        const plan = planRenovation({ kingdom, room, coins, lifetimeStars });
+        const isUnlocked = isRoomUnlocked(kingdom, room.id);
+        const idx = roomIndex(room.id);
+        const starsToUnlock = isUnlocked ? null : STARS_TO_UNLOCK[idx];
+        const plan = isUnlocked ? planRenovation({ kingdom, room, coins, lifetimeStars }) : null;
         const isCompleted = completed.includes(room.id);
         let next = null;
-        if (plan.targetLevel) {
+        if (plan && plan.targetLevel) {
             next = {
                 level: plan.targetLevel,
                 costCoins: plan.costCoins,
@@ -131,13 +216,17 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted =
         return {
             id: room.id,
             name: room.name,
-            level: plan.current,
+            level: plan ? plan.current : 0,
             maxLevel: KINGDOM_MAX_LEVEL,
+            unlocked: isUnlocked,
+            starsToUnlock,
             completed: isCompleted,
             justCompleted: roomJustCompleted === room.id,
             next,
-            canRenovate: plan.ok && !isCompleted,
-            blockedBy: isCompleted ? 'room_max_level' : plan.ok ? null : plan.reason,
+            canRenovate: plan?.ok && !isCompleted,
+            blockedBy: isCompleted ? 'room_max_level'
+                : !isUnlocked ? 'stars_required'
+                    : plan ? null : plan.reason,
         };
     });
     const allCompleted = completed.length >= KINGDOM_ROOMS.length;

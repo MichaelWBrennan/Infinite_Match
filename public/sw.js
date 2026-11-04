@@ -8,8 +8,8 @@
  * Strategy: Cache First for shell assets, Network First for API calls.
  */
 
-const SHELL_VERSION = 'v2';
-const SHELL_CACHE = 'infinite-match-shell-v4';
+const SHELL_VERSION = 'v3';
+const SHELL_CACHE = 'infinite-match-shell-v5';
 const SHELL = [
   '/',
   '/script.js',
@@ -31,6 +31,7 @@ const SHELL = [
   '/js/player-experience.js',
   '/js/assistive-board.js',
   '/js/match-feedback.js',
+  '/js/game-feel.js',
   '/js/score-challenge-card.js',
   '/js/win-queue.js',
   '/css/fonts.css',

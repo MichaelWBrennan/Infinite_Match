@@ -2300,10 +2300,14 @@ performanceObserver.observe({ entryTypes: ['measure'] });
 
 // Add error handling
 window.addEventListener('error', (e) => {
-    console.error('Game Error:', e.error);
+    // Cross-origin script/resource failures can deliver a null Error object.
+    // The reporter must never become a second uncaught exception.
+    if (/ResizeObserver loop/i.test(e.message || '')) return;
+    const error = e.error || {};
+    console.error('Game Error:', e.message || error.message || 'Unknown error');
     trackEvent('game_error', {
-        error: e.error.message,
-        stack: e.error.stack,
+        error: error.message || e.message || 'Unknown error',
+        stack: error.stack || null,
         timestamp: new Date().toISOString()
     });
 });

@@ -1,12 +1,39 @@
-export function levelTheme(context: any): any;
+export function levelTheme(context: any): {
+    name: any;
+    background: any;
+    accent: any;
+    favorite: any;
+    environmentLabel: string;
+    monthName: string;
+    season: any;
+    holidayNames: any;
+    tileSetSource: any;
+    id: string;
+};
 /** Cache/seed identity excludes fetch timestamps and small changes within weather bands. */
 export function generationKey(levelNumber: any, context: any, mode?: string, version?: number): string;
 /** Any positive safe level number; bounded difficulty instead of impossible linear score growth. */
 export function generateLevel(levelNumber: any, context: any, mode?: string, version?: number): {
+    witness?: number[][];
+    hazards?: any[][] | null;
+    delivery?: any[][] | null;
     difficulty: string | undefined;
-    theme: any;
+    theme: {
+        name: any;
+        background: any;
+        accent: any;
+        favorite: any;
+        environmentLabel: string;
+        monthName: string;
+        season: any;
+        holidayNames: any;
+        tileSetSource: any;
+        id: string;
+    };
     context: any;
     quality: {
+        verifiedHazards?: any;
+        verifiedDelivery?: any;
         verifiedFrosting?: any;
         verifiedMarmalade?: any;
         verifiedLiquorice?: any;
@@ -58,100 +85,15 @@ export function generateLevel(levelNumber: any, context: any, mode?: string, ver
     generatorVersion: number;
 };
 /** Use the frozen definition's rules, never today's generator version, during an active attempt. */
-export function levelActions(definition: any, board: any, specials: any, progress: any, score?: number, shields?: any, refillState?: any, blockers?: any, lockedGems?: any, jelly?: any, chocolate?: any, liquorice?: any, marmalade?: any, frosting?: any): {
+export function levelActions(definition: any, board: any, specials: any, progress: any, score?: number, shields?: any, refillState?: any, blockers?: any, lockedGems?: any, jelly?: any, chocolate?: any, liquorice?: any, marmalade?: any, frosting?: any, delivery?: any, hazards?: any): {
     cells: number[];
     count: number;
 }[];
 export function simulateLevelMove(definition: any, state: any, cells: any, visualTrace?: boolean): any;
 export function certifyLevel(definition: any): {
-    score: number;
-    witness: number[][];
-} | {
     objectiveProgress: {
-        frostingCleared?: any;
-        marmaladeCleared?: any;
-        liquoriceCleared?: any;
-        chocolateCleared?: any;
-        jellyCleared?: any;
-        lockedCleared?: any;
-        blockersCleared?: any;
-        shieldsCleared?: any;
-        collected: {
-            [k: string]: any;
-        } | null | undefined;
-    };
-    objectivesComplete: any;
-    score: number;
-    collected: {
-        [k: string]: any;
-    };
-    jellyCleared: number;
-    events: never[];
-} | {
-    objectiveProgress: {
-        frostingCleared?: any;
-        marmaladeCleared?: any;
-        liquoriceCleared?: any;
-        chocolateCleared?: any;
-        jellyCleared?: any;
-        lockedCleared?: any;
-        blockersCleared?: any;
-        shieldsCleared?: any;
-        collected: {
-            [k: string]: any;
-        } | null | undefined;
-    };
-    objectivesComplete: any;
-    score: number;
-    collected: {
-        [k: string]: any;
-    };
-    chocolateCleared: number;
-    events: never[];
-} | {
-    objectiveProgress: {
-        frostingCleared?: any;
-        marmaladeCleared?: any;
-        liquoriceCleared?: any;
-        chocolateCleared?: any;
-        jellyCleared?: any;
-        lockedCleared?: any;
-        blockersCleared?: any;
-        shieldsCleared?: any;
-        collected: {
-            [k: string]: any;
-        } | null | undefined;
-    };
-    objectivesComplete: any;
-    score: number;
-    collected: {
-        [k: string]: any;
-    };
-    liquoriceCleared: number;
-    events: never[];
-} | {
-    objectiveProgress: {
-        frostingCleared?: any;
-        marmaladeCleared?: any;
-        liquoriceCleared?: any;
-        chocolateCleared?: any;
-        jellyCleared?: any;
-        lockedCleared?: any;
-        blockersCleared?: any;
-        shieldsCleared?: any;
-        collected: {
-            [k: string]: any;
-        } | null | undefined;
-    };
-    objectivesComplete: any;
-    score: number;
-    collected: {
-        [k: string]: any;
-    };
-    marmaladeCleared: number;
-    events: never[];
-} | {
-    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
         frostingCleared?: any;
         marmaladeCleared?: any;
         liquoriceCleared?: any;
@@ -170,9 +112,157 @@ export function certifyLevel(definition: any): {
         [k: string]: any;
     };
     frostingCleared: number;
+    witness: any[];
     events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    deliveryCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    jellyCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    chocolateCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    liquoriceCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    marmaladeCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    hazardCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    score: number;
+    witness: number[][];
 };
-export const GENERATOR_VERSION: 5;
+export const GENERATOR_VERSION: 6;
 export const GEM_TYPES: string[];
 export const LEVEL_MODES: string[];
 export { hashSeed, nextRandom, pickGem, matchingCells, legalSwaps, dealPlayableBoard, simulateMove, certifyBoard } from "./match-core.js";

@@ -7,7 +7,7 @@ export class InfiniteContentPipeline {
     aiContentGenerator: AIContentGenerator;
     marketResearch: MarketResearchEngine;
     personalizationEngine: AIPersonalizationEngine;
-    supabase: {
+    supabase: (() => never) | {
         from(table: any): {
             select(columns: any): {
                 select(columns?: string): /*elided*/ any;
@@ -190,7 +190,7 @@ export class InfiniteContentPipeline {
                 }>;
             };
         };
-    } | (() => never);
+    };
     contentQueue: Map<any, any>;
     activeGenerators: Map<any, any>;
     contentMetrics: Map<any, any>;
