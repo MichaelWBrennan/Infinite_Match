@@ -2482,6 +2482,15 @@ body {
 .loss-review-actions button { flex: 1 1 140px; }
 .match-high-contrast .loss-review { border-color: #fff; background: #000; }
 
+/* Reward receipt: server settlement, verification status, and saved-win sync. */
+.reward-receipt-host { margin-top: 4px; }
+.reward-receipt { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #99c3e86b; border-radius: 16px; background: #1e3850; }
+.reward-receipt h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.match-dialog-content .reward-receipt p { margin: 0; font-size: 14px; color: #d3e6f2; }
+.reward-receipt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.reward-receipt-actions button { flex: 1 1 160px; }
+.match-high-contrast .reward-receipt { border-color: #fff; background: #000; }
+
 .match-high-contrast { --match-level-background: #07111e; color: #fff; }
 .match-high-contrast .match-player-stats > span, .match-high-contrast button { border-color: #fff; }
 .match-large-text .match-player-stats > span { font-size: 16px; }

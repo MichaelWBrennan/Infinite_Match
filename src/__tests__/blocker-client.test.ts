@@ -122,6 +122,7 @@ describe('match feedback names blocker clears', () => {
 describe('service worker cache is bumped for the changed client files', () => {
   test('the shell cache version moved past v1', () => {
     const sw = readFileSync('public/sw.js', 'utf8');
-    expect(sw).toMatch(/const SHELL_VERSION = 'v[2-9]'/);
+    const version = sw.match(/const SHELL_VERSION = 'v(\d+)'/);
+    expect(Number(version?.[1] || 0)).toBeGreaterThanOrEqual(2);
   });
 });

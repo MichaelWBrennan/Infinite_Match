@@ -3021,7 +3021,7 @@ class PhaserMatch3Game {
                 void this.syncAccountFromServer?.();
                 return;
             }
-            this.showEndGameScreen(0, { title: 'Run Over', subtitle });
+            this.showEndGameScreen(0, { title: 'Run Over', subtitle, receipt: true });
         } finally {
             this.endlessCheckpointPending = false;
             this.playerUI?.refresh();
@@ -4057,7 +4057,7 @@ class PhaserMatch3Game {
         else this.showEndGameScreen(stars);
     }
 
-    showEndGameScreen(stars, { title = null, subtitle = null } = {}) {
+    showEndGameScreen(stars, { title = null, subtitle = null, receipt = false } = {}) {
         this.openOverlay(title || (stars > 0 ? 'Level Complete!' : 'Level Failed'));
         const total = this.mode === 'endless' ? this.score + (this.endlessTotalScore || 0) : this.score;
         this.overlayText(400, 170, `Score: ${total.toLocaleString()}`, { size: 26 });
@@ -4071,7 +4071,79 @@ class PhaserMatch3Game {
         }
         this.overlayButton(400, 435, 250, 55, 0x555555, 'Main Menu', () => this.returnToMenu());
         if (stars > 0 && this.mode !== 'endless') void this.showKingdomPayoff();
+        if (stars > 0 || receipt) void this.showRewardReceipt();
         if (stars === 0 && this.mode !== 'endless') this.showLossReview();
+    }
+
+    // Trust receipt: show the server's settled result and any saved offline wins.
+    // It never grants a reward locally; sync reuses the idempotent win queue.
+    async pendingWinCount() {
+        try {
+            const token = this.getAuthToken();
+            if (!token) return 0;
+            if (!window.WinQueue && window.lazyLoad) {
+                try { await window.lazyLoad('win-queue'); } catch { /* Queue is optional. */ }
+            }
+            const playerId = window.WinQueue?.playerIdFromToken(token);
+            if (!playerId) return 0;
+            return window.WinQueue.create(localStorage).pendingFor(playerId, Date.now()).length;
+        } catch { return 0; }
+    }
+
+    async showRewardReceipt({ savedOnly = false } = {}) {
+        const overlay = this.activeOverlay;
+        let result = null;
+        if (!savedOnly) {
+            try { result = await this.rewardSubmission; } catch { result = null; }
+        }
+        const pendingCount = await this.pendingWinCount();
+        if (this.activeOverlay !== overlay) return;
+        const payload = window.InfiniteRewardReceipt?.view({
+            signedIn: !!this.getAuthToken(), mode: this.mode, result, pendingCount,
+        });
+        if (!payload) return;
+        if (this.playerUI?.renderRewardReceipt) {
+            this.playerUI.renderRewardReceipt(payload, {
+                sync: () => this.syncSavedWins(),
+                guide: () => this.showVerificationGuide(),
+            });
+            return;
+        }
+        this.overlayText(400, 480, payload.lines.join(' '), { size: 14, width: 650 });
+    }
+
+    async syncSavedWins() {
+        const overlay = this.activeOverlay;
+        this.setOverlayStatus('Syncing saved wins…');
+        const outcomes = await this.flushPendingWins();
+        if (this.activeOverlay !== overlay) return;
+        this.setOverlayStatus(window.InfiniteRewardReceipt?.syncLines(outcomes) || 'Sync finished.');
+        await this.showRewardReceipt({ savedOnly: overlay?.savedOnly === true });
+    }
+
+    showVerificationGuide() {
+        this.openOverlay('How verification works');
+        this.overlayText(400, 180, 'The server replays classic and daily moves against the paid board. A verified, booster-free win can rank. Booster-assisted wins can earn rewards but stay unranked.', { size: 16, width: 650 });
+        this.overlayText(400, 280, 'A saved win is sent again with the same attempt id. The server pays a settled attempt once and returns the original receipt for a retry.', { size: 16, width: 650 });
+        this.overlayButton(400, 380, 250, 55, 0x555555, 'Close', () => { this.closeOverlay(); if (!this.isGameRunning) this.showTitleOverlay(); });
+    }
+
+    async showSavedWins() {
+        const wasRunning = this.isGameRunning && !this.isPaused;
+        if (wasRunning) this.pauseGame();
+        this.openOverlay('Saved wins');
+        this.overlayButton(400, 500, 250, 55, 0x555555, 'Back', () => { this.closeOverlay(); if (wasRunning) this.resumeGame(); else if (!this.isGameRunning) this.showTitleOverlay(); });
+        const overlay = this.activeOverlay;
+        if (overlay) overlay.savedOnly = true;
+        const pendingCount = await this.pendingWinCount();
+        if (this.activeOverlay !== overlay) return;
+        const payload = window.InfiniteRewardReceipt?.view({ signedIn: !!this.getAuthToken(), mode: this.mode, result: null, pendingCount });
+        if (!payload) return;
+        if (this.playerUI?.renderRewardReceipt) {
+            this.playerUI.renderRewardReceipt(payload, { sync: () => this.syncSavedWins(), guide: () => this.showVerificationGuide() });
+        } else {
+            this.overlayText(400, 240, payload.lines.join(' '), { size: 16, width: 650 });
+        }
     }
 
     // Fair loss review: exact remaining goals and a free tip. It never grants a

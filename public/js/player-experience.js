@@ -306,6 +306,16 @@
             content.append(host);
             return api.render(host, payload, callbacks);
         }
+        function renderRewardReceipt(payload, callbacks = {}) {
+            const existing = content.querySelector('[data-reward-receipt]');
+            if (existing) existing.remove();
+            const api = root.InfiniteRewardReceipt;
+            if (!api) return null;
+            const host = document.createElement('div');
+            host.className = 'reward-receipt-host';
+            content.append(host);
+            return api.render(host, payload, callbacks);
+        }
         let kingdomStorySkipped = false;
         async function renderKingdomScene(data, callbacks = {}) {
             // Lazy-load kingdom-scene on demand when the player opens the kingdom.
@@ -421,6 +431,7 @@
             if (game.usesLevelObjectives()) overlayButton('Level goal guide', () => goalGuide(wasRunning));
             overlayButton('Game modes and local level settings', () => game.openMenu());
             overlayButton('Account / sign in', () => game.openSignIn());
+            overlayButton('Saved wins and reward receipts', () => game.showSavedWins());
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
             overlayButton('Weekly event', () => game.showWeeklyEvent());
@@ -724,7 +735,7 @@
         const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderLossReview, renderKingdomScene,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderLossReview, renderRewardReceipt, renderKingdomScene,
             showPreferences: preferences, showThisWeek: thisWeek, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
