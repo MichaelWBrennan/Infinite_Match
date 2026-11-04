@@ -116,7 +116,7 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted }
             milestone: any;
         } | null;
         canRenovate: boolean | undefined;
-        blockedBy: any;
+        blockedBy: string | null | undefined;
     }[];
     renovations: any;
     totalLevel: number;
@@ -129,6 +129,30 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted }
         itemId: string;
         amount: number;
     } | null;
+};
+/**
+ * The next kingdom goal shown after a win. This is a read-only recommendation:
+ * it never spends coins, grants stars, or changes the renovation rules. The
+ * server still prices and validates every actual renovation.
+ */
+export function kingdomNextGoal({ kingdom, coins, lifetimeStars }: {
+    kingdom: any;
+    coins: any;
+    lifetimeStars: any;
+}): {
+    kind: any;
+    roomId: any;
+    roomName: any;
+    currentLevel: any;
+    targetLevel: any;
+    costCoins: any;
+    starsRequired: any;
+    missingCoins: number;
+    missingStars: number;
+    coinProgress: number;
+    starProgress: number;
+    canRenovate: boolean;
+    milestone: any;
 };
 /**
  * The coin multiplier from kingdom rooms: 1 plus 1% per room level, capped at +15%. Reads only;

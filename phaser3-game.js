@@ -3990,6 +3990,70 @@ class PhaserMatch3Game {
             this.overlayButton(400, 350, 250, 55, 0x4ecdc4, this.mode === 'endless' ? 'New Run' : 'Replay', () => this.restartGame());
         }
         this.overlayButton(400, 435, 250, 55, 0x555555, 'Main Menu', () => this.returnToMenu());
+        if (stars > 0 && this.mode !== 'endless') void this.showKingdomPayoff();
+    }
+
+    // Post-win meta payoff: show the next server-priced kingdom goal and, when
+    // eligible, renovate without leaving the result screen. This never grants or
+    // prices anything locally; it only reads /api/kingdom and calls /renovate.
+    async showKingdomPayoff({ afterRenovate = false } = {}) {
+        const overlay = this.activeOverlay;
+        if (!this.getAuthToken()) return;
+        let result = null;
+        try { result = await this.rewardSubmission; } catch { result = null; }
+        if (this.activeOverlay !== overlay) return;
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom');
+            if (this.activeOverlay !== overlay || !ok || !data.success) return;
+            const payload = {
+                result: afterRenovate ? null : result,
+                kingdomData: data,
+                coins: data.coins,
+                lifetimeStars: data.lifetimeStars,
+            };
+            const callbacks = {
+                renovate: (roomId) => this.payoffRenovate(roomId),
+                openKingdom: () => this.showKingdom(),
+            };
+            if (this.playerUI?.renderKingdomPayoff) {
+                this.playerUI.renderKingdomPayoff(payload, callbacks);
+            } else {
+                const goal = data.nextGoal;
+                if (goal) this.overlayText(400, 480, `${goal.roomName}: ${goal.canRenovate ? 'ready to renovate' : 'keep playing to unlock'}`, { size: 16, width: 650 });
+                this.overlayButton(400, 520, 250, 45, 0x695039, 'Open Kingdom', () => this.showKingdom());
+            }
+        } catch {
+            // The result screen remains usable when the kingdom read is offline.
+        }
+    }
+
+    async payoffRenovate(roomId) {
+        if (this.kingdomPending || !roomId) return;
+        const overlay = this.activeOverlay;
+        this.kingdomPending = true;
+        this.setOverlayStatus('Renovating...');
+        try {
+            const { ok, data } = await this.fetchJson('/api/kingdom/renovate', {
+                method: 'POST',
+                body: JSON.stringify({ roomId }),
+            });
+            if (this.activeOverlay !== overlay) return;
+            if (!ok || !data.success) {
+                this.setOverlayStatus(this.ruleMessage(data.error));
+                return;
+            }
+            const { result } = data;
+            this.setOverlayStatus(`${result.roomId} reached level ${result.level}.${result.milestone ? ' Milestone reward granted.' : ''}`);
+            this.trackEvent('kingdom_renovated', { roomId, level: result.level, source: 'post_win_payoff' });
+            this.gameFeel?.celebrate(1);
+            try { this.soundEffects?.play('inventory'); } catch { /* Optional audio. */ }
+            await this.syncAccountFromServer();
+            await this.showKingdomPayoff({ afterRenovate: true });
+        } catch {
+            if (this.activeOverlay === overlay) this.setOverlayStatus('Could not reach the server. Try again.');
+        } finally {
+            this.kingdomPending = false;
+        }
     }
 
     // Every attempt spends energy on the server first. Nothing resets until the spend succeeds.

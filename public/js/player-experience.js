@@ -286,6 +286,16 @@
             const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
             button.addEventListener('click', onClick); content.append(button); return proxy(button);
         }
+        function renderKingdomPayoff(payload, callbacks = {}) {
+            const existing = content.querySelector('[data-kingdom-payoff]');
+            if (existing) existing.remove();
+            const api = root.InfiniteKingdomPayoff;
+            if (!api) return null;
+            const host = document.createElement('div');
+            host.className = 'kingdom-payoff-host';
+            content.append(host);
+            return api.render(host, payload, callbacks);
+        }
         let kingdomStorySkipped = false;
         async function renderKingdomScene(data, callbacks = {}) {
             // Lazy-load kingdom-scene on demand when the player opens the kingdom.
@@ -544,7 +554,7 @@
         const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomScene,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderKingdomScene,
             showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 

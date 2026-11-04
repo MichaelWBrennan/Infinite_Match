@@ -3,7 +3,7 @@ import { body, validationResult } from 'express-validator';
 import security from '../core/security/index.js';
 import { Logger } from '../core/logger/index.js';
 import { accountEconomy, EconomyRuleError } from '../services/economy/AccountEconomyService.js';
-import { ensureKingdom, kingdomCoinMultiplier, kingdomView } from '../services/meta/kingdom.js';
+import { ensureKingdom, kingdomCoinMultiplier, kingdomView, kingdomNextGoal } from '../services/meta/kingdom.js';
 import {
   DecorError,
   decorView,
@@ -28,11 +28,14 @@ router.get('/', security.sessionValidation, async (req, res) => {
     });
     const decor = decorView(ensureDecor(ensureKingdom(economy)));
     const coinBonus = kingdomCoinMultiplier(economy.kingdom) - 1;
+    const lifetimeStars = economy.currencies.stars.earned;
     res.json({
       success: true,
       kingdom: view,
       decor,
       coins: economy.currencies.coins.amount,
+      lifetimeStars,
+      nextGoal: kingdomNextGoal({ kingdom: ensureKingdom(economy), coins: economy.currencies.coins.amount, lifetimeStars }),
       coinBonus,
       requestId: req.requestId,
     });

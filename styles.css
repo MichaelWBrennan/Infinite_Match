@@ -2424,6 +2424,22 @@ body {
 .kingdom-room-choice-art { display: block; overflow: hidden; border-radius: 6px; aspect-ratio: 3 / 2; background: #1a3249; }
 .kingdom-room-choice-art svg { display: block; width: 100%; height: 100%; }
 .match-high-contrast .kingdom-room-art, .match-high-contrast .kingdom-room-choice { border-color: #fff; }
+.kingdom-payoff-host { margin-top: 4px; }
+.kingdom-payoff { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #e5c889; border-radius: 16px; background: #1e3850; }
+.kingdom-payoff h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.match-dialog-content .kingdom-payoff p { margin: 0; font-size: 14px; }
+.kingdom-payoff-reward { color: #8ce6be; font-weight: 700; }
+.kingdom-payoff-unlocked { color: #ffe4a4; font-weight: 700; }
+.kingdom-payoff-title { color: #fff2d2; font-weight: 700; }
+.kingdom-payoff-detail { color: #d3e6f2; }
+.kingdom-payoff-progress { display: grid; grid-template-columns: 1fr; gap: 4px; font-size: 13px; color: #d3e6f2; }
+.kingdom-payoff-progress progress { width: 100%; height: 10px; accent-color: #f5d58b; }
+.kingdom-payoff-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.match-dialog-content .kingdom-payoff-actions button { width: auto; flex: 1 1 160px; min-height: 48px; }
+.match-dialog-content .kingdom-payoff-renovate { background: #695039; border-color: #ffe4a4; }
+.match-dialog-content .kingdom-payoff-open { background: #31536a; }
+.match-high-contrast .kingdom-payoff { border-color: #fff; background: #000; }
+.match-reduced-motion .kingdom-payoff, .match-reduced-motion .kingdom-payoff * { animation: none !important; transition: none !important; }
 @media (max-width: 520px) {
     .kingdom-room-cards { grid-template-columns: 1fr; }
     .match-dialog-content .kingdom-room-choice { display: grid; grid-template-columns: minmax(72px, 28%) 1fr; align-items: center; min-height: 80px; }
