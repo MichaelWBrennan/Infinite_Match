@@ -505,8 +505,12 @@ class PhaserMatch3Game {
     // Adjust rendering quality based on measured performance score (0-100).
     checkPerformanceAndAdjustQuality() {
         if (!this.perfMonitor) return;
-        const report = this.perfMonitor.getReport();
-        const score = report.score;
+        // PerfMonitor exposes getScore(); older/alternate monitors may expose
+        // getReport(). Never let an optional quality probe become a boot error.
+        const score = typeof this.perfMonitor.getScore === 'function'
+            ? this.perfMonitor.getScore()
+            : (typeof this.perfMonitor.getReport === 'function' ? this.perfMonitor.getReport()?.score : null);
+        if (!Number.isFinite(score)) return;
         if (score < 40) {
             // Low-end device: reduce particle count, disable screen shake, lower animation fidelity.
             this.animationsReduced = () => true;
