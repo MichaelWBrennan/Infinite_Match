@@ -30,6 +30,7 @@
          Example: https://api.your-domain.example. Must be https (or http://localhost for development). -->
     <meta name="infinite-match-api-base" content="">
     <link rel="stylesheet" href="unified.css">
+    <link rel="stylesheet" href="styles.css">
     <link href="/css/fonts.css" rel="stylesheet">
     <style>
         /* Prevent zoom on input focus for mobile */
@@ -165,6 +166,11 @@
             <div class="header-spacer"></div>
         </div>
         <div class="mode-selection-container">
+            <section id="flow-suggestion" class="flow-suggestion" hidden aria-label="Local flow suggestion">
+                <h3>Suggested for this session</h3>
+                <p data-flow-suggestion-text></p>
+                <button type="button" class="mode-play-btn" onclick="playFlowSuggestion()">Play suggestion</button>
+            </section>
             <div class="mode-cards-grid">
                 <div class="mode-card-royal unlocked">
                     <div class="mode-card-bg">
@@ -888,12 +894,21 @@
     <script src="js/art-direction.js"></script>
     <script src="js/texture-atlas.js"></script>
     <script src="js/player-experience.js"></script>
+    <script src="js/sound-effects.js"></script>
+    <script src="js/game-feel.js"></script>
+    <script src="js/kingdom-payoff.js"></script>
+    <script src="js/play-flow.js"></script>
+    <script src="js/weekly-hub.js"></script>
+    <script src="js/loss-review.js"></script>
+    <script src="js/reward-receipt.js"></script>
+    <script src="js/first-play-coach.js"></script>
     <script src="phaser3-game.js"></script>
     <script src="script.js"></script>
 
     <!-- Non-critical scripts are lazy-loaded on demand via lazy-loader.js:
-         level-location, sound-effects, platform-detection (settings/audio/platform),
-         kingdom-scene, assistive-board, match-feedback, score-challenge-card, win-queue -->
+         level-location, platform-detection (settings/audio/platform),
+         kingdom-scene, assistive-board, match-feedback, score-challenge-card, win-queue.
+         game-feel is loaded upfront because it is small and needed on the first match. -->
     <script>
         // window.game is the Phaser game. window.ui is the DOM menu controller, which script.js
         // creates once at load. This page never creates a second menu controller.

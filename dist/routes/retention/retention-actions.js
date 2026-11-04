@@ -96,7 +96,7 @@ async function triggerD1Recovery(nowMs) {
             const levelsCompleted = stats.levelsCompleted || 0;
             if (createdAt >= cutoffMs && createdAt < nowMs - DAY_MS && levelsCompleted >= 1 && nowMs - lastPlayed > DAY_MS) {
                 try {
-                    await notifyPlayer({ userId: playerId, title: 'Come back for your second day!', body: "You're off to a great start. Log in today for your day 2 bonus!", data: { type: 'd1_recovery', playerId } });
+                    await notifyPlayer({ userId: playerId, title: 'Come back for your second day!', body: 'You\'re off to a great start. Log in today for your day 2 bonus!', data: { type: 'd1_recovery', playerId } });
                     actions.push({ type: 'd1_recovery', playerId, reason: 'D1 retention below benchmark', triggeredAt: new Date(nowMs).toISOString(), result: 'notification_sent' });
                     if (++count >= 50)
                         break;
@@ -154,7 +154,7 @@ async function triggerD30Recovery(nowMs) {
             const totalSpent = stats.totalSpent || 0;
             if (totalSpent > 0 && nowMs - lastPlayed > cutoffMs) {
                 try {
-                    await notifyPlayer({ userId: playerId, title: 'An exclusive offer awaits your return', body: "We've reserved a special welcome-back package just for you.", data: { type: 'd30_winback', playerId } });
+                    await notifyPlayer({ userId: playerId, title: 'An exclusive offer awaits your return', body: 'We\'ve reserved a special welcome-back package just for you.', data: { type: 'd30_winback', playerId } });
                     actions.push({ type: 'high_value_winback', playerId, reason: 'D30 retention below benchmark', triggeredAt: new Date(nowMs).toISOString(), result: 'notification_sent' });
                     if (++count >= 50)
                         break;

@@ -82,7 +82,7 @@ export function applyFrostingClear(result, initialFrosting) {
     return { ...event, frostingHits: cleared.cleared };
   });
   let totalFrostingHits = 0;
-  for (const event of events) totalFrostingHits += event.frostingHits.length;
+  for (const event of events) totalFrostingHits += event.frostingHits || 0;
   return { ...result, events, frosting: grid, frostingCleared: totalFrostingHits };
 }
 

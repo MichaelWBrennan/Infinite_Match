@@ -22,7 +22,7 @@ import { ATTEMPT_ENERGY_COST, ATTEMPT_MAX_AGE_MS, regenerateEnergy, nextRegenInM
 import { LIFE_COST_PER_ATTEMPT, COST_COINS_PER_LIFE, MAX_LIVES, LIFE_REGEN_MINUTES, regenerateLives, nextRegenInMs as nextLifeRegenInMs, spendLife, grantLives } from '../meta/lives.js';
 import { endlessRewards, winRewards } from '../meta/rewards.js';
 import { addSeasonXp } from '../meta/battlepass.js';
-import { VIP_ENTITLEMENT, applyVip, getMaxLives, getEnergyRegenRate, applyVipToDailyReward } from '../meta/vip.js';
+import { VIP_ENTITLEMENT, VIP_BENEFITS, applyVip, getMaxLives, getEnergyRegenRate, applyVipToDailyReward } from '../meta/vip.js';
 import {
   initializeDailyQuests,
   updateQuestProgress,

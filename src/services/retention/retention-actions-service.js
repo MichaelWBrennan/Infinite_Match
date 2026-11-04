@@ -176,8 +176,8 @@ class RetentionActionsService {
           try {
             await notifyPlayer({
               userId: playerId,
-              title: "Come back for your second day!",
-              body: "You're off to a great start. Log in today for your day 2 bonus!",
+              title: 'Come back for your second day!',
+              body: 'You\'re off to a great start. Log in today for your day 2 bonus!',
               data: { type: 'd1_recovery', playerId },
             });
 
@@ -235,7 +235,7 @@ class RetentionActionsService {
             await notifyPlayer({
               userId: playerId,
               title: 'Repair your streak!',
-              body: "Your streak is waiting to be restored. Come back and claim it!",
+              body: 'Your streak is waiting to be restored. Come back and claim it!',
               data: { type: 'streak_repair', playerId, offer: 'streak_repair' },
             });
 
@@ -287,7 +287,7 @@ class RetentionActionsService {
             await notifyPlayer({
               userId: playerId,
               title: 'An exclusive offer awaits your return',
-              body: "We've reserved a special welcome-back package just for you.",
+              body: 'We\'ve reserved a special welcome-back package just for you.',
               data: { type: 'd30_winback', playerId, offer: 'high_value_winback' },
             });
 

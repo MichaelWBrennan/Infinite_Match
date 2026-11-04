@@ -106,7 +106,7 @@ export function certifyDeliveryBoard(definition) {
     const remaining = deliveryCount(state.delivery || blankDelivery(board.length));
     if (remaining > 0)
         throw new Error(`delivery_certify_incomplete:${remaining}`);
-    return { score, collected, deliveryCleared, events: [] };
+    return { score, collected, deliveryCleared, witness, events: [] };
 }
 // Named exports only — build script strips 'export ' prefix.
 //# sourceMappingURL=delivery-rules.js.map

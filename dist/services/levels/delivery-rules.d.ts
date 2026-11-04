@@ -21,6 +21,7 @@ export function certifyDeliveryBoard(definition: any): {
         [k: string]: any;
     };
     deliveryCleared: number;
+    witness: any[];
     events: never[];
 };
 export const DELIVERY_CAP: 5;

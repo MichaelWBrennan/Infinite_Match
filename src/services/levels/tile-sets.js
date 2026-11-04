@@ -188,7 +188,7 @@ export const EVENT_TILE_SETS = {
   },
   kings_cup_nov: {
     id: 'kings_cup_nov',
-    name: "King's Cup",
+    name: 'King\'s Cup',
     favorite: 'gold_crown',
     license: 'MIT',
     sourceUrl: '',
@@ -314,7 +314,7 @@ export const EVENT_TILE_SETS = {
   },
   valentine_event_feb: {
     id: 'valentine_event_feb',
-    name: "Valentine's Event",
+    name: 'Valentine\'s Event',
     favorite: 'rose_red',
     license: 'MIT',
     sourceUrl: '',
@@ -332,7 +332,7 @@ export const EVENT_TILE_SETS = {
   },
   womens_day_mar: {
     id: 'womens_day_mar',
-    name: "International Women's Day",
+    name: 'International Women\'s Day',
     favorite: 'purple_power',
     license: 'MIT',
     sourceUrl: '',
@@ -350,7 +350,7 @@ export const EVENT_TILE_SETS = {
   },
   st_patrick_mar: {
     id: 'st_patrick_mar',
-    name: "St. Patrick's Luck",
+    name: 'St. Patrick\'s Luck',
     favorite: 'clover_green',
     license: 'MIT',
     sourceUrl: '',
@@ -404,7 +404,7 @@ export const EVENT_TILE_SETS = {
   },
   mothers_day_may: {
     id: 'mothers_day_may',
-    name: "Mother's Day",
+    name: 'Mother\'s Day',
     favorite: 'carnation_pink',
     license: 'MIT',
     sourceUrl: '',
@@ -724,7 +724,7 @@ export const HOLIDAY_TILE_SETS = {
   // New Year's Day standalone (not tied to New Year Challenge event)
   new_years_day: {
     id: 'new_years_day',
-    name: "New Year's Day",
+    name: 'New Year\'s Day',
     favorite: 'champagne_gold',
     license: 'MIT',
     sourceUrl: '',

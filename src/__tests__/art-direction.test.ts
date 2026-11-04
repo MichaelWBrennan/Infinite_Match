@@ -171,7 +171,7 @@ describe('canonical asset exports', () => {
     const ignore = read('.vercelignore').split('\n');
     expect(ignore).toContain('!public/art/manifest.json');
     const sw = read('public/sw.js');
-    expect(sw).toContain("'/js/art-direction.js'");
-    expect(sw).toContain("'/js/texture-atlas.js'");
+    expect(sw).toContain('\'/js/art-direction.js\'');
+    expect(sw).toContain('\'/js/texture-atlas.js\'');
   });
 });

@@ -82,7 +82,7 @@ export function applyFrostingClear(result, initialFrosting) {
     });
     let totalFrostingHits = 0;
     for (const event of events)
-        totalFrostingHits += event.frostingHits.length;
+        totalFrostingHits += event.frostingHits || 0;
     return { ...result, events, frosting: grid, frostingCleared: totalFrostingHits };
 }
 /** Certify a frosting level: run the no-inventory witness and confirm every frosting

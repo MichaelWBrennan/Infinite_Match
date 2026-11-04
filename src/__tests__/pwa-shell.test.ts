@@ -144,6 +144,7 @@ function loadWorker(opts: {
     }
   }
 
+  let skipWaiting: (() => Promise<void>) | undefined;
   const sandbox: any = {
     console,
     URL,
@@ -163,6 +164,10 @@ function loadWorker(opts: {
     location: new URL(`${origin}/sw.js`),
     addEventListener: (type: string, fn: Handler) => {
       listeners[type] = fn;
+    },
+    skipWaiting: () => {
+      skipWaiting?.();
+      return Promise.resolve();
     },
   };
   vm.createContext(sandbox);
@@ -195,7 +200,8 @@ function loadWorker(opts: {
     return { intercepted: responded !== undefined, response, background };
   }
 
-  return { caches, networkCalls, install, activate, fetchEvent, listeners };
+  return { caches, networkCalls, install, activate, fetchEvent, listeners,
+    setSkipWaiting(fn: () => void) { skipWaiting = () => { fn(); return Promise.resolve(); }; } };
 }
 
 const SHELL_CACHE = read('public/sw.js').match(/const SHELL_CACHE = '([^']+)'/)![1];
@@ -212,19 +218,28 @@ describe('service worker: precache', () => {
     expect(cached.has('/icons/icon-192.png')).toBe(true);
   });
 
-  test('a file missing from one deploy does not stop the rest of the shell installing', async () => {
+  test('an optional file missing from one deploy does not stop the shell installing', async () => {
     const w = loadWorker({
       network: (url) => {
-        if (url.endsWith('/script.js')) return new Response('nope', { status: 404 });
-        if (url.endsWith('/phaser3-game.js')) throw new TypeError('network down');
+        if (url.endsWith('/icons/apple-touch-icon.png')) return new Response('nope', { status: 404 });
         return new Response('ok', { status: 200 });
       },
     });
     await expect(w.install()).resolves.toBeUndefined();
     const cached = w.caches.get(SHELL_CACHE)!;
-    expect(cached.has('/script.js')).toBe(false);
-    expect(cached.has('/phaser3-game.js')).toBe(false);
+    expect(cached.has('/icons/apple-touch-icon.png')).toBe(false);
     expect(cached.has('/js/phaser.min.js')).toBe(true);
+  });
+
+  test('a missing critical guest-play file fails the install instead of advertising a broken offline shell', async () => {
+    const w = loadWorker({
+      network: (url) => {
+        if (url.endsWith('/js/procedural-levels.js')) throw new TypeError('network down');
+        return new Response('ok', { status: 200 });
+      },
+    });
+    await expect(w.install()).rejects.toThrow('network down');
+    expect(w.caches.has(SHELL_CACHE)).toBe(false);
   });
 
   test('precaches only same-origin files from the explicit list (never API or CDN URLs)', async () => {
@@ -234,6 +249,20 @@ describe('service worker: precache', () => {
       expect(key.startsWith('/api')).toBe(false);
     }
     expect(w.networkCalls.every((u) => u.startsWith(ORIGIN))).toBe(true);
+  });
+});
+
+describe('service worker: player-controlled updates', () => {
+  test('install does not skip waiting; only an explicit page message activates the waiting worker', async () => {
+    const w = loadWorker();
+    let skipped = 0;
+    (w as any).setSkipWaiting?.(() => { skipped++; });
+    await w.install();
+    expect(skipped).toBe(0);
+    const waits: Promise<unknown>[] = [];
+    w.listeners.message({ data: { type: 'SKIP_WAITING' }, waitUntil: (p: Promise<unknown>) => waits.push(p) });
+    await Promise.all(waits);
+    expect(skipped).toBe(1);
   });
 });
 

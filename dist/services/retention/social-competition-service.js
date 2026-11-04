@@ -206,7 +206,7 @@ class SocialCompetitionService {
             await notifyPlayers({
                 userIds: participantIds,
                 title: `${event.name} has ended!`,
-                body: `Congratulations to the top players! Check your rewards.`,
+                body: 'Congratulations to the top players! Check your rewards.',
                 data: { type: 'guild_event_ended', eventId, guildId: event.guildId },
             });
         }

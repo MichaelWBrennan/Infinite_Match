@@ -413,11 +413,11 @@ class GameServer {
     this.app.use('/api/weather', weatherEventsRoutes);
     // Infinite Mode: endless progression, paragon, prestige, perpetual events.
     this.app.use('/api/infinite-mode', infiniteModeRoutes);
-// CRM: operator-only campaign management. Requires ADMIN_API_TOKEN.
-this.app.use('/api/crm', crmRoutes);
+    // CRM: operator-only campaign management. Requires ADMIN_API_TOKEN.
+    this.app.use('/api/crm', crmRoutes);
 
-// Not mounted:
-// - economy: its write routes would reopen the exploits fixed in account-economy.
+    // Not mounted:
+    // - economy: its write routes would reopen the exploits fixed in account-economy.
 
     // Platform-specific API routes
     this.setupPlatformRoutes();

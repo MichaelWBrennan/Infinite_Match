@@ -117,9 +117,9 @@ export function validObjectiveProgress(definition, progress) {
   const hasChocolate = definition?.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
   const hasLiquorice = definition?.generatorVersion >= 6 && liquoriceCount(definition.liquorice) > 0;
   const hasMarmalade = definition?.generatorVersion >= 6 && marmaladeCount(definition.marmalade) > 0;
-    const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
-    const hasDelivery = definition?.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
-    const hasHazards = definition?.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
+  const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
+  const hasDelivery = definition?.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
+  const hasHazards = definition?.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
   const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0) + (hasMarmalade ? 1 : 0) + (hasFrosting ? 1 : 0) + (hasDelivery ? 1 : 0) + (hasHazards ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
     && (!hasShields || (validShields(definition.shields, definition.boardSize)
@@ -236,7 +236,7 @@ export function objectiveStatus(definition, score, progress) {
                   : goal.type === 'clear-marmalade' ? progress.marmaladeCleared
                     : goal.type === 'clear-frosting' ? progress.frostingCleared
                       : goal.type === 'clear-delivery' ? progress.deliveryCleared
-                : goal.type === 'clear-weather-hazards' ? progress.hazardsCleared : ownCount(progress.collected, goal.gemType);
+                        : goal.type === 'clear-weather-hazards' ? progress.hazardsCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -285,7 +285,7 @@ export function objectiveSummary(definition, score, progress, showRemaining = fa
 }
 
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
-export function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null, chocolate = null, liquorice = null, marmalade = null, frosting = null, delivery = null) {
+export function objectiveActions(definition, board, specials, progress, score = 0, shields = null, refillState = 0, blockers = null, lockedGems = null, jelly = null, chocolate = null, liquorice = null, marmalade = null, frosting = null, delivery = null, hazards = null) {
   const goals = objectiveStatus(definition, score, progress).items;
   const actions = specialActions(board, specials, true);
   const cellKeys = (action) => {
@@ -313,11 +313,11 @@ export function objectiveActions(definition, board, specials, progress, score = 
     const marmaladeResult = goals.some((goal) => goal.type === 'clear-marmalade') && marmalade
       ? applyMarmaladeClear({ events: [{ cleared: keys }] }, marmalade) : null;
     const frostingResult = goals.some((goal) => goal.type === 'clear-frosting') && frosting
-      ? applyFrostingClear({ events: [{ cleared: action.cells }] }, frosting) : null;
+      ? applyFrostingClear({ events: [{ cleared: keys }] }, frosting) : null;
     const deliveryResult = goals.some((goal) => goal.type === 'clear-delivery') && delivery
-      ? applyDeliveryClear({ events: [{ cleared: action.cells }], board: { length: delivery.length } }, delivery, board) : null;
+      ? applyDeliveryClear({ cleared: keys }, delivery, board) : null;
     const hazardResult = goals.some((goal) => goal.type === 'clear-weather-hazards') && hazards
-      ? applyWeatherHazardClear({ events: [{ cleared: action.cells }] }, hazards) : null;
+      ? applyWeatherHazardClear({ events: [{ cleared: keys }] }, hazards) : null;
     action.priority = goals.reduce((sum, goal) => sum + Math.min(goal.remaining,
       (goal.type === 'score' || goal.type === 'timed' || goal.type === 'boss') ? action.points : goal.type === 'clear-shields'
         ? (shieldResult?.brokenShields || 0) + (shieldResult?.events.flatMap((e) => e.shieldHits).length || 0) * 0.1
@@ -327,7 +327,7 @@ export function objectiveActions(definition, board, specials, progress, score = 
               : goal.type === 'clear-chocolate' ? (chocolateResult?.cleared || 0)
                 : goal.type === 'clear-liquorice' ? (liquoriceResult?.liquoriceCleared || 0)
                   : goal.type === 'clear-marmalade' ? (marmaladeResult?.cleared || 0)
-                    : goal.type === 'clear-frosting' ? (frostingResult?.cleared || 0)
+                    : goal.type === 'clear-frosting' ? (frostingResult?.frostingCleared || 0)
                       : goal.type === 'clear-delivery' ? (deliveryResult?.deliveryCleared || 0)
                         : goal.type === 'clear-weather-hazards' ? (hazardResult?.hazardCleared || 0)
                           : action.collected[goal.gemType] || 0) / goal.target, 0);
@@ -443,7 +443,7 @@ export function certifyObjectiveLevel(definition) {
       : certifySpecialBoard(definition.board, definition.refillState, definition.gemTypes, definition.gemWeights, budget, definition.specials, true);
   const objectiveProgress = { collected: proof.collected,
     ...(definition.generatorVersion >= 5 ? { shieldsCleared: proof.brokenShields } : {}),
-    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly && !isChocolate && !isLiquorice && !isMarmalade && !isFrosting ? { blockersCleared: proof.brokenBlockers } : {}),
+    ...(definition.generatorVersion >= 6 && !isLocked && !isJelly && !isChocolate && !isLiquorice && !isMarmalade && !isFrosting && !isDelivery && !isHazards ? { blockersCleared: proof.brokenBlockers } : {}),
     ...(definition.generatorVersion >= 6 && isLocked ? { lockedCleared: proof.brokenLocks } : {}),
     ...(definition.generatorVersion >= 6 && isJelly ? { jellyCleared: proof.jellyCleared } : {}),
     ...(definition.generatorVersion >= 6 && isChocolate ? { chocolateCleared: proof.chocolateCleared } : {}),

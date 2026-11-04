@@ -217,7 +217,7 @@ export class DynamicOffersService {
       id: `churn-rescue-${playerId}-${nowMs}`,
       type: 'churn_rescue',
       name: 'Comeback Bundle',
-      description: "We've missed you. Here's a special welcome-back deal.",
+      description: 'We\'ve missed you. Here\'s a special welcome-back deal.',
       baseCostCents: 499,
       priceCents: 199,
       discountPercent: 60,
@@ -240,7 +240,7 @@ export class DynamicOffersService {
     return {
       id: `whale-premium-${playerId}-${nowMs}`,
       type: 'premium',
-      name: "Player's Ultimate Pack",
+      name: 'Player\'s Ultimate Pack',
       description: 'For our most dedicated players. Maximum value, minimum friction.',
       baseCostCents: 4999,
       priceCents: 4499,

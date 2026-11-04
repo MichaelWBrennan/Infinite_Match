@@ -5,11 +5,13 @@
  *   - HTML, CSS, JS bundles
  *   - Critical textures and audio
  *
- * Strategy: Cache First for shell assets, Network First for API calls.
+ * Strategy: network-first navigation with offline shell fallback, stale-while-
+ * revalidate shell assets, and no interception of API or cross-origin requests.
+ * A new worker waits for an explicit player restart instead of reloading play.
  */
 
-const SHELL_VERSION = 'v4';
-const SHELL_CACHE = 'infinite-match-shell-v6';
+const SHELL_VERSION = 'v11';
+const SHELL_CACHE = 'infinite-match-shell-v13';
 const SHELL = [
   '/',
   '/script.js',
@@ -33,6 +35,16 @@ const SHELL = [
   '/js/player-experience.js',
   '/js/assistive-board.js',
   '/js/match-feedback.js',
+  '/js/game-feel.js',
+  '/js/kingdom-payoff.js',
+  '/js/play-flow.js',
+  '/js/weekly-hub.js',
+  '/js/loss-review.js',
+  '/js/reward-receipt.js',
+  '/js/first-play-coach.js',
+  '/js/offline-api.js',
+  '/js/lazy-loader.js',
+  '/js/perf-overlay.js',
   '/js/score-challenge-card.js',
   '/js/win-queue.js',
   '/unified.css',
@@ -46,22 +58,41 @@ const SHELL = [
   '/icons/apple-touch-icon.png',
 ];
 
-// Install: precache shell (fetch each URL and put into cache; skip failures)
+// The guest game must not advertise offline readiness from a half-installed shell.
+const CRITICAL_SHELL = new Set([
+  '/', '/index.html', '/script.js', '/phaser3-game.js', '/styles.css',
+  '/js/phaser.min.js', '/js/procedural-levels.js', '/js/offline-api.js',
+  '/js/pwa-register.js', '/js/player-experience.js', '/js/first-play-coach.js', '/js/lazy-loader.js',
+  '/js/cache-manager.js', '/js/art-direction.js', '/js/texture-atlas.js',
+]);
+
+// Install: precache the shell. Optional files may be skipped; a missing critical
+// file fails the install so the previous working shell remains active.
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(SHELL_CACHE)
-      .then((cache) => {
-        const promises = SHELL.map((url) =>
-          fetch(url).then((response) => {
-            if (response.ok) {
-              return cache.put(url, response);
-            }
-          }).catch(() => { /* skip unavailable shell files */ })
-        );
-        return Promise.all(promises);
-      })
-      .then(() => { if (self.skipWaiting) self.skipWaiting(); })
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(SHELL_CACHE);
+    try {
+      await Promise.all(SHELL.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          if (response.ok) return await cache.put(url, response);
+          if (CRITICAL_SHELL.has(url)) throw new Error(`Missing critical shell file: ${url}`);
+        } catch (error) {
+          if (CRITICAL_SHELL.has(url)) throw error;
+        }
+      }));
+    } catch (error) {
+      await caches.delete(SHELL_CACHE);
+      throw error;
+    }
+    // Do not skipWaiting here. The page applies an update only after an explicit restart.
+  })());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING' && self.skipWaiting) {
+    event.waitUntil(self.skipWaiting());
+  }
 });
 
 // Activate: clean old shell caches, keep unrelated ones
@@ -88,28 +119,24 @@ self.addEventListener('fetch', (event) => {
 
   const cacheOpened = caches.open(SHELL_CACHE);
 
-  // Navigation requests: serve the app shell from cache or network,
-  // with offline fallback to cached /index.html or a 503.
+  // Navigation requests: try the network first so a deployed HTML update is not
+  // hidden by an old shell; fall back to the cached shell when offline.
   if (request.mode === 'navigate') {
-    const cachedRoot = cacheOpened.then((cache) =>
-      cache.match(request) || cache.match('/index.html')
-    );
-    event.respondWith(
-      cachedRoot.then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            cacheOpened.then((cache) => cache.put('/index.html', response.clone()));
-          }
-          return response;
-        }).catch(() => {
-          return cacheOpened.then((cache) => cache.match('/index.html')).then((offline) => {
-            if (offline) return offline;
-            return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-          });
-        });
-      })
-    );
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await cacheOpened;
+          await cache.put('/index.html', response.clone());
+        }
+        return response;
+      } catch {
+        const cache = await cacheOpened;
+        const offline = await cache.match(request) || await cache.match('/index.html');
+        if (offline) return offline;
+        return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+      }
+    })());
     return;
   }
 

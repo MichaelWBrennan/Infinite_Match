@@ -2328,7 +2328,7 @@ body {
 .match-player-shell {
     --match-level-background: #152b43; --match-text: #f8fbff;
     position: absolute; inset: 0; display: grid;
-    grid-template-rows: auto auto auto auto auto minmax(180px, 1fr) auto auto;
+    grid-template-rows: auto auto auto auto auto auto minmax(180px, 1fr) auto auto;
     gap: 5px; box-sizing: border-box; color: var(--match-text);
     padding: max(10px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
     background: radial-gradient(ellipse at top, #35526c66, transparent 60%), var(--match-level-background);
@@ -2337,7 +2337,7 @@ body {
 }
 .match-player-shell [hidden] { display: none !important; }
 .match-player-header, .match-player-stats, .match-player-footer, .match-player-goal,
-.match-player-theme, .match-goal-progress, .match-player-announcement { width: min(100%, 720px); margin-inline: auto; box-sizing: border-box; }
+.match-player-theme, .match-goal-progress, .match-coach-host, .match-player-announcement { width: min(100%, 720px); margin-inline: auto; box-sizing: border-box; }
 .match-player-header { display: flex; justify-content: space-between; align-items: center; padding: 0 10px; gap: 8px; }
 .match-wordmark { font-size: 14px; letter-spacing: .13em; color: #cae2f2; }
 .match-wordmark b { color: #b5f9db; }
@@ -2355,6 +2355,15 @@ body {
 .match-goal-progress::-webkit-progress-value { background: #83e6bf; }
 .match-goal-progress::-moz-progress-bar { background: #83e6bf; }
 .match-player-theme { font-size: 11px; line-height: 1.3; text-align: center; white-space: pre-line; color: #d3e5f2; max-height: 44px; overflow: auto; }
+.match-coach-host { max-height: 148px; overflow: auto; overscroll-behavior: contain; }
+.first-play-coach { display: flex; flex-direction: column; gap: 5px; padding: 9px 12px; border: 1px solid #b5f9db66; border-radius: 14px; background: #08152d9c; }
+.first-play-coach h3 { margin: 0; font-size: 13px; letter-spacing: .04em; color: #b5f9db; text-transform: uppercase; }
+.first-play-coach p { margin: 0; font-size: 13px; line-height: 1.35; color: #e6f3fb; overflow-wrap: anywhere; }
+.first-play-coach-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.first-play-coach-actions button { flex: 1 1 150px; min-height: 44px; }
+.first-play-coach-actions [data-coach-hint] { background: #246552; border-color: #b5f9db66; }
+.match-high-contrast .first-play-coach { border-color: #fff; background: #000; }
+.match-large-text .first-play-coach p { font-size: 15px; }
 .match-board-surface { position: relative; width: min(100%, 760px); min-height: 180px; height: 100%; margin-inline: auto; overflow: hidden; touch-action: none; border-radius: 20px; background: #06182b55; }
 .match-board-surface canvas { display: block; touch-action: none; }
 .match-board-surface:focus-visible { outline: 3px solid #c3fce5; outline-offset: -3px; }
@@ -2424,11 +2433,73 @@ body {
 .kingdom-room-choice-art { display: block; overflow: hidden; border-radius: 6px; aspect-ratio: 3 / 2; background: #1a3249; }
 .kingdom-room-choice-art svg { display: block; width: 100%; height: 100%; }
 .match-high-contrast .kingdom-room-art, .match-high-contrast .kingdom-room-choice { border-color: #fff; }
+.kingdom-payoff-host { margin-top: 4px; }
+.kingdom-payoff { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #e5c889; border-radius: 16px; background: #1e3850; }
+.kingdom-payoff h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.match-dialog-content .kingdom-payoff p { margin: 0; font-size: 14px; }
+.kingdom-payoff-reward { color: #8ce6be; font-weight: 700; }
+.kingdom-payoff-unlocked { color: #ffe4a4; font-weight: 700; }
+.kingdom-payoff-title { color: #fff2d2; font-weight: 700; }
+.kingdom-payoff-detail { color: #d3e6f2; }
+.kingdom-payoff-progress { display: grid; grid-template-columns: 1fr; gap: 4px; font-size: 13px; color: #d3e6f2; }
+.kingdom-payoff-progress progress { width: 100%; height: 10px; accent-color: #f5d58b; }
+.kingdom-payoff-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.match-dialog-content .kingdom-payoff-actions button { width: auto; flex: 1 1 160px; min-height: 48px; }
+.match-dialog-content .kingdom-payoff-renovate { background: #695039; border-color: #ffe4a4; }
+.match-dialog-content .kingdom-payoff-open { background: #31536a; }
+.match-high-contrast .kingdom-payoff { border-color: #fff; background: #000; }
+.match-reduced-motion .kingdom-payoff, .match-reduced-motion .kingdom-payoff * { animation: none !important; transition: none !important; }
 @media (max-width: 520px) {
     .kingdom-room-cards { grid-template-columns: 1fr; }
     .match-dialog-content .kingdom-room-choice { display: grid; grid-template-columns: minmax(72px, 28%) 1fr; align-items: center; min-height: 80px; }
     .kingdom-room-choice-art { grid-row: 1 / span 3; }
 }
+/* Local flow suggestions: explicit, readable, and never a countdown or offer. */
+.play-flow-card { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #8ce6be; border-radius: 16px; background: #173a3a; }
+.play-flow-card h3 { margin: 0; font-size: 18px; color: #d9ffe9; }
+.match-dialog-content .play-flow-card p { margin: 0; font-size: 14px; color: #e7fff2; }
+.match-dialog-content .play-flow-card button { background: #286a58; }
+.match-dialog-content select { width: 100%; min-height: 44px; padding: 8px; border-radius: 10px; border: 1px solid #99c3e86b; background: #10233a; color: #f8fbff; font-size: 15px; }
+.match-dialog-content label:has(select) { display: grid; gap: 6px; align-items: stretch; }
+.flow-suggestion { margin: 0 auto 18px; max-width: 720px; padding: 16px; border: 1px solid #8ce6be; border-radius: 18px; background: #173a3a; color: #e7fff2; }
+.flow-suggestion h3 { margin: 0 0 8px; color: #d9ffe9; }
+.flow-suggestion p { margin: 0 0 12px; white-space: pre-line; line-height: 1.5; }
+.flow-suggestion .mode-play-btn { width: auto; min-width: 180px; }
+.match-high-contrast .play-flow-card, .match-high-contrast .flow-suggestion { border-color: #fff; background: #000; }
+.match-reduced-motion .play-flow-card, .match-reduced-motion .flow-suggestion { animation: none !important; transition: none !important; }
+
+/* This week: server event, optional local rhythm, and honest PWA status. */
+.weekly-hub-host { margin-top: 4px; }
+.weekly-hub { display: flex; flex-direction: column; gap: 12px; }
+.weekly-hub section { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #99c3e86b; border-radius: 16px; background: #1e3850; }
+.weekly-hub h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.match-dialog-content .weekly-hub p { margin: 0; font-size: 14px; color: #d3e6f2; }
+.weekly-hub progress { width: 100%; height: 10px; accent-color: #8ce6be; }
+.weekly-hub-rhythm { border-color: #8ce6be; background: #173a3a; }
+.weekly-hub-pwa { border-color: #e5c889; }
+.match-high-contrast .weekly-hub section { border-color: #fff; background: #000; }
+.match-reduced-motion .weekly-hub, .match-reduced-motion .weekly-hub * { animation: none !important; transition: none !important; }
+
+/* Fair loss review: exact remaining goals, free tip, transparent retry cost. */
+.loss-review-host { margin-top: 4px; }
+.loss-review { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #e5c88966; border-radius: 16px; background: #2a2f3e; }
+.loss-review h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.loss-review-goals { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.match-dialog-content .loss-review p { margin: 0; font-size: 14px; color: #d3e6f2; }
+.loss-review-tip { color: #8ce6be; }
+.loss-review-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.loss-review-actions button { flex: 1 1 140px; }
+.match-high-contrast .loss-review { border-color: #fff; background: #000; }
+
+/* Reward receipt: server settlement, verification status, and saved-win sync. */
+.reward-receipt-host { margin-top: 4px; }
+.reward-receipt { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #99c3e86b; border-radius: 16px; background: #1e3850; }
+.reward-receipt h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.match-dialog-content .reward-receipt p { margin: 0; font-size: 14px; color: #d3e6f2; }
+.reward-receipt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.reward-receipt-actions button { flex: 1 1 160px; }
+.match-high-contrast .reward-receipt { border-color: #fff; background: #000; }
+
 .match-high-contrast { --match-level-background: #07111e; color: #fff; }
 .match-high-contrast .match-player-stats > span, .match-high-contrast button { border-color: #fff; }
 .match-large-text .match-player-stats > span { font-size: 16px; }
@@ -2436,10 +2507,11 @@ body {
 .match-reduced-motion *, .match-reduced-motion button:active { animation: none !important; transition: none !important; transform: none; }
 @media (max-width: 380px) { .match-player-shell button { padding-inline: 8px; } .match-powerups button { padding-inline: 2px; } .match-player-stats > span { font-size: 12px; } }
 @media (max-height: 560px) and (orientation: landscape) {
-    .match-player-shell { grid-template-columns: minmax(170px, 230px) minmax(220px, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto; padding: 8px; }
-    .match-player-header, .match-player-stats, .match-player-goal, .match-goal-progress, .match-player-theme, .match-player-footer { grid-column: 1; }
+    .match-player-shell { grid-template-columns: minmax(170px, 230px) minmax(220px, 1fr); grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr) auto; padding: 8px; }
+    .match-player-header, .match-player-stats, .match-player-goal, .match-goal-progress, .match-player-theme, .match-coach-host, .match-player-footer { grid-column: 1; }
     .match-board-surface { grid-column: 2; grid-row: 1 / -1; height: 100%; }
-    .match-player-announcement { grid-column: 1; grid-row: 7; max-height: 30px; align-self: start; overflow: auto; font-size: 11px; }
+    .match-player-announcement { grid-column: 1; grid-row: 8; max-height: 30px; align-self: start; overflow: auto; font-size: 11px; }
+    .match-coach-host { max-height: 120px; }
     .match-player-stats { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
     .match-player-stats > span { white-space: normal; overflow-wrap: anywhere; padding: 6px 3px; }
     .match-player-theme { max-height: 24px; }

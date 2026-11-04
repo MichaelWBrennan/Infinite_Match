@@ -64,6 +64,7 @@
             <div class="match-player-goal" data-stat="goal"></div>
             <progress class="match-goal-progress" aria-label="Level goal progress" max="100" value="0"></progress>
             <div class="match-player-theme" data-stat="theme"></div>
+            <section class="match-coach-host" data-first-play-coach-host hidden></section>
             <div class="match-board-surface" tabindex="-1" role="group" aria-label="Puzzle board. Tap two adjacent gems or swipe. Keyboard: arrows navigate, Space selects gems for swaps, Enter selects or activates specials, H requests a free hint, M toggles optional sound, Escape clears selection." style="touch-action: none;"></div>
             <footer class="match-player-footer">
                 <div class="match-play-tools"><button type="button" data-action="hint">Hint <small>FREE</small></button><button type="button" data-action="finish-feedback" aria-label="Finish match animation" hidden>Finish <small>ANIMATION</small></button><button type="button" data-action="pause">Pause</button><button type="button" data-action="preferences">Preferences</button><button type="button" data-action="menu">Explore</button><button type="button" data-action="bank" hidden>Bank Run</button></div>
@@ -86,6 +87,7 @@
         let resolutionBusy = false;
         let goalKey = '';
         let goalLabels = [];
+        let coachSignature = '';
         const getField = (name) => name === 'level' ? find('.match-player-level') : find(`[data-stat="${name}"]`);
         const fields = Object.fromEntries(['score', 'moves', 'timer', 'level', 'goal', 'theme', 'energy', 'stars'].map((name) => [name, proxy(getField(name))]));
         const writeTheme = fields.theme.setText;
@@ -206,8 +208,10 @@
             if (description) description.textContent = state.state === 'unavailable' ? 'Sound is unavailable here. The game remains fully playable in silence.'
                 : state.state === 'off' ? 'Sound is off. Enable it only if you want local effects; no music plays.'
                     : state.state === 'volume-zero' ? 'Sound volume is zero. Raise it to hear effects.'
-                        : state.state === 'ready' ? 'Sound is on. Test the volume below; M mutes it while the board is focused.'
-                            : 'Sound is on but needs a player gesture. Press Test sound; device mute or browser media policy may still silence it.';
+                        : state.state === 'ready' ? (state.enabled ? 'Sound is on. Test the volume below; M mutes it while the board is focused.'
+                            : 'Music is on; sound effects are off. Enable sound effects separately if you want them.')
+                            : (state.enabled || state.music ? 'Audio is on but needs a player gesture. Press Test sound or toggle music; device mute or browser media policy may still silence it.'
+                                : 'Sound is off. Enable it only if you want local effects; no music plays.');
             const legacy = document.getElementById('sfx-toggle'); if (legacy) legacy.checked = !!game.settings.sfx;
             const musicCheckbox = find('[data-music-choice]');
             if (musicCheckbox) { musicCheckbox.checked = !!game.settings.music; musicCheckbox.disabled = !state.supported && !musicCheckbox.checked; }
@@ -221,6 +225,8 @@
             assistiveBoard?.sync();
             find('[data-action="pause"]').textContent = game.isPaused ? 'Resume' : 'Pause';
             find('[data-action="hint"]').disabled = !game.canInteractWithBoard();
+            const coachHint = find('[data-coach-hint]');
+            if (coachHint) coachHint.disabled = !game.canInteractWithBoard();
             find('[data-action="pause"]').disabled = !game.isGameRunning || game.levelStarting;
             find('[data-action="menu"]').disabled = !!game.levelStarting || !!game.powerUpPending || !!game.endlessCheckpointPending || (!!game.matchFeedback?.isActive() && !game.isGameRunning);
             find('[data-action="bank"]').disabled = !game.isGameRunning || game.isPaused || game.levelStarting || game.powerUpPending || !!game.endlessCheckpointPending;
@@ -283,6 +289,54 @@
         function overlayButton(label, onClick) {
             const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
             button.addEventListener('click', onClick); content.append(button); return proxy(button);
+        }
+        function renderKingdomPayoff(payload, callbacks = {}) {
+            const existing = content.querySelector('[data-kingdom-payoff]');
+            if (existing) existing.remove();
+            const api = root.InfiniteKingdomPayoff;
+            if (!api) return null;
+            const host = document.createElement('div');
+            host.className = 'kingdom-payoff-host';
+            content.append(host);
+            return api.render(host, payload, callbacks);
+        }
+        function renderLossReview(payload, callbacks = {}) {
+            const existing = content.querySelector('[data-loss-review]');
+            if (existing) existing.remove();
+            const api = root.InfiniteLossReview;
+            if (!api) return null;
+            const host = document.createElement('div');
+            host.className = 'loss-review-host';
+            content.append(host);
+            return api.render(host, payload, callbacks);
+        }
+        function renderFirstPlayCoach(payload, callbacks = {}) {
+            const host = find('[data-first-play-coach-host]');
+            const api = root.InfiniteFirstPlayCoach;
+            if (!payload || !api) {
+                coachSignature = '';
+                host.hidden = true;
+                host.replaceChildren();
+                return null;
+            }
+            // refresh() runs on every HUD update. Keep coach nodes stable so a
+            // score tick cannot steal keyboard focus from the board/buttons.
+            const signature = JSON.stringify(payload);
+            if (signature === coachSignature) return host.firstElementChild;
+            coachSignature = signature;
+            host.hidden = false;
+            host.replaceChildren();
+            return api.render(host, payload, callbacks);
+        }
+        function renderRewardReceipt(payload, callbacks = {}) {
+            const existing = content.querySelector('[data-reward-receipt]');
+            if (existing) existing.remove();
+            const api = root.InfiniteRewardReceipt;
+            if (!api) return null;
+            const host = document.createElement('div');
+            host.className = 'reward-receipt-host';
+            content.append(host);
+            return api.render(host, payload, callbacks);
         }
         let kingdomStorySkipped = false;
         async function renderKingdomScene(data, callbacks = {}) {
@@ -385,6 +439,8 @@
             game.openOverlay('Explore Infinite Match');
             overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard(); });
             overlayButton('Play preferences', () => preferences(wasRunning));
+            overlayButton('This week: event, rhythm, offline', () => thisWeek(wasRunning));
+            renderFlowCard(wasRunning);
             overlayButton(soundLabel(), (event) => { game.setSoundEffects(!game.settings.sfx, event); refresh(); });
             content.lastElementChild.dataset.soundToggle = 'true';
             overlayButton(game.settings.music ? 'Music on — mute' : 'Music off — enable', (event) => { game.setMusic(!game.settings.music, event); refresh(); });
@@ -393,10 +449,12 @@
                 game.settings.textBoard = game.settings.textBoard !== true; game.saveUserData();
                 game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard();
             });
+            overlayButton('First-play coach', () => game.openFirstPlayCoach(wasRunning));
             overlayButton('Special gem guide', () => specialGuide(wasRunning));
             if (game.usesLevelObjectives()) overlayButton('Level goal guide', () => goalGuide(wasRunning));
             overlayButton('Game modes and local level settings', () => game.openMenu());
             overlayButton('Account / sign in', () => game.openSignIn());
+            overlayButton('Saved wins and reward receipts', () => game.showSavedWins());
             overlayButton('Shop', () => game.showShop());
             overlayButton('Kingdom', () => game.showKingdom());
             overlayButton('Weekly event', () => game.showWeeklyEvent());
@@ -407,6 +465,151 @@
             overlayButton('Help improve the game (optional)', () => game.showRetentionResearch());
             overlayButton('Season and community', () => game.showBattlePass());
             overlayButton('Credits & Attribution', () => { credits(wasRunning); });
+        }
+        function renderFlowCard(wasRunning) {
+            const flow = root.InfinitePlayFlow;
+            if (!flow || typeof game.flowRecommendation !== 'function') return;
+            const card = document.createElement('section');
+            card.className = 'play-flow-card';
+            card.setAttribute('data-play-flow-card', 'true');
+            const heading = document.createElement('h3');
+            heading.textContent = 'Suggested for this session';
+            card.append(heading);
+            const recommendation = game.flowRecommendation();
+            for (const line of flow.cardLines(recommendation)) {
+                const p = document.createElement('p');
+                p.textContent = line;
+                card.append(p);
+            }
+            if (recommendation) {
+                if (game.isGameRunning || wasRunning) {
+                    const note = document.createElement('p');
+                    note.textContent = 'Finish or bank your current run first; suggestions never interrupt play.';
+                    card.append(note);
+                } else {
+                    const play = document.createElement('button');
+                    play.type = 'button';
+                    play.dataset.playFlowAccept = 'true';
+                    play.textContent = `Play ${recommendation.title}`;
+                    play.addEventListener('click', () => { void game.playFlowRecommendation(); });
+                    card.append(play);
+                }
+            }
+            const settingsButton = document.createElement('button');
+            settingsButton.type = 'button';
+            settingsButton.textContent = 'Flow preferences';
+            settingsButton.addEventListener('click', () => preferences(wasRunning));
+            card.append(settingsButton);
+            content.append(card);
+        }
+        function thisWeek(wasRunning = game.isGameRunning && !game.isPaused) {
+            const returnToTitle = !!game.titleShowing;
+            if (wasRunning) game.pauseGame();
+            const overlay = game.openOverlay('This week');
+            overlayButton(returnToTitle ? 'Back to title' : 'Back to game', () => {
+                game.closeOverlay(); delete game.playerOverlayResume;
+                if (returnToTitle) game.showTitleOverlay();
+                else { if (wasRunning) game.resumeGame(); refresh(); focusBoard(); }
+            });
+            content.lastElementChild.className = 'match-guide-close';
+            const host = document.createElement('div');
+            host.className = 'weekly-hub-host';
+            content.append(host);
+            const hub = root.InfiniteWeeklyHub;
+            if (!hub) {
+                overlayText('This week is unavailable in this shell. Guest play and the full Events tab still work.');
+                overlayButton('Open full events', () => game.showWeeklyEvent());
+                return;
+            }
+            let weekly = { state: 'loading', lines: ['Checking the weekly event…'] };
+            let claimPending = false;
+            const signedIn = !!game.getAuthToken();
+            const pwaStatus = () => root.InfinitePWA?.status?.() || {};
+            const draw = () => {
+                if (game.activeOverlay !== overlay || !host.isConnected) return;
+                hub.render(host, {
+                    weekly,
+                    signedIn,
+                    rhythm: hub.rhythmView(game.weeklyRhythmDays || [], Date.now()),
+                    rhythmEnabled: game.settings.weeklyRhythmEnabled === true,
+                    pwa: pwaStatus(),
+                }, {
+                    claim: (eventId, wins) => claim(eventId, wins),
+                    signIn: () => game.openSignIn(),
+                    openEvents: () => game.showWeeklyEvent(),
+                    setRhythmEnabled: (enabled) => {
+                        game.settings.weeklyRhythmEnabled = enabled === true;
+                        game.saveUserData();
+                        draw();
+                    },
+                    clearRhythm: () => { game.clearWeeklyRhythm(); draw(); },
+                    install: async () => { await root.InfinitePWA?.promptInstall?.(); draw(); },
+                    applyUpdate: () => {
+                        if (game.isGameRunning || game.levelStarting || game.powerUpPending || game.endlessCheckpointPending) {
+                            status.textContent = 'Finish or bank the current run before restarting. The update will wait.';
+                            return;
+                        }
+                        root.InfinitePWA?.applyUpdate?.();
+                    },
+                });
+            };
+            async function load() {
+                try {
+                    const { ok, data } = await game.fetchJson(signedIn ? '/api/live-ops/weekly' : '/api/live-ops/weekly/preview');
+                    if (game.activeOverlay !== overlay) return;
+                    weekly = ok && data.success !== false
+                        ? hub.weeklySummary(data, signedIn, Date.now())
+                        : { state: 'unavailable', lines: ['Weekly event unavailable right now. Guest puzzles remain playable.'] };
+                } catch {
+                    if (game.activeOverlay !== overlay) return;
+                    weekly = { state: 'unavailable', lines: ['Weekly event unavailable offline. Guest puzzles remain playable.'] };
+                }
+                draw();
+            }
+            async function claim(eventId, wins) {
+                if (claimPending) return;
+                claimPending = true;
+                status.textContent = 'Claiming free milestone…';
+                try {
+                    const { ok, data } = await game.fetchJson('/api/live-ops/weekly/claim', {
+                        method: 'POST', body: JSON.stringify({ eventId, wins }),
+                    });
+                    if (game.activeOverlay !== overlay) return;
+                    status.textContent = ok
+                        ? data.result?.duplicate ? 'Already claimed. No second reward.' : `+${data.result?.coins || 0} free coins claimed.`
+                        : data.error === 'weekly_wallet_full' ? 'Coin wallet full. Spend some coins and claim before the week ends.'
+                            : data.error === 'weekly_event_closed' ? 'The week has ended or is paused; no new claim was granted.'
+                                : `Not claimed: ${data.error || 'server unavailable'}.`;
+                    await load();
+                } catch {
+                    if (game.activeOverlay === overlay) status.textContent = 'Could not confirm the claim. Reopen This week before retrying.';
+                } finally {
+                    claimPending = false;
+                }
+            }
+            draw();
+            void root.InfinitePWA?.refresh?.().then(draw);
+            void load();
+        }
+        function flowSelect(labelText, key, options) {
+            const label = document.createElement('label');
+            const select = document.createElement('select');
+            select.dataset[key] = 'true';
+            select.setAttribute('aria-label', labelText);
+            for (const [value, title] of options) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = title;
+                option.selected = value === game.settings[key];
+                select.append(option);
+            }
+            select.addEventListener('change', () => {
+                game.settings[key] = select.value;
+                game.saveUserData();
+                refresh();
+            });
+            label.append(document.createTextNode(labelText), select);
+            content.append(label);
         }
         function credits(wasRunning = game.isGameRunning && !game.isPaused) {
             const returnToTitle = !!game.titleShowing;
@@ -519,7 +722,7 @@
             const musicOutput = document.createElement('span'); musicOutput.dataset.musicVolumeLabel = 'true'; musicOutput.setAttribute('aria-hidden', 'true');
             musicVolume.addEventListener('input', (event) => { game.setMusicVolume(Number(musicVolume.value) / 100, event); refresh(); });
             musicVolumeLabel.append(document.createTextNode('Music volume'), musicVolume, musicOutput); content.append(musicVolumeLabel);
-            for (const [key, title] of Object.entries({ textBoard: 'Text board (named cells and larger targets)', highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', haptics: 'Touch vibration' })) {
+            for (const [key, title] of Object.entries({ textBoard: 'Text board (named cells and larger targets)', highContrast: 'High contrast', largeText: 'Larger HUD text', reduceAnimations: 'Reduced motion', impactEffects: 'Impact effects (particles and camera shake)', haptics: 'Touch vibration' })) {
                 const label = document.createElement('label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
                 checkbox.checked = game.settings[key] === true; checkbox.disabled = key === 'textBoard' && !assistiveBoard; checkbox.addEventListener('change', () => {
                     game.settings[key] = checkbox.checked; game.saveUserData(); refresh();
@@ -534,16 +737,39 @@
             });
             endlessLabel.append(endlessChoice, document.createTextNode('Auto-bank signed-in Endless at a completed stage near 100,000 points or 3 hours, then start another run using 1 energy (no automatic refill). Only after the bank is confirmed. Optional, off by default.'));
             content.append(endlessLabel);
+            const flowLabel = document.createElement('label'); const flowChoice = document.createElement('input');
+            flowChoice.type = 'checkbox'; flowChoice.dataset.flowEnabled = 'true';
+            flowChoice.checked = game.settings.flowEnabled !== false;
+            flowChoice.addEventListener('change', () => {
+                game.settings.flowEnabled = flowChoice.checked; game.saveUserData(); refresh();
+            });
+            flowLabel.append(flowChoice, document.createTextNode('Local flow suggestions (optional, no network, no difficulty changes)'));
+            content.append(flowLabel);
+            flowSelect('Session length', 'flowSession', [['short', 'Short (about 5 minutes)'], ['medium', 'Standard (about 15 minutes)'], ['long', 'Long (about 30 minutes)']]);
+            flowSelect('Challenge preference', 'flowChallenge', [['relaxed', 'Relaxed (avoid clocks)'], ['steady', 'Steady'], ['spicy', 'Spicy (clocks are okay)']]);
+            flowSelect('Preferred mode', 'flowMode', [['auto', 'Let flow suggest'], ['classic', 'Classic'], ['daily', 'Today’s Local Level'], ['timed', 'Timed'], ['endless', 'Endless']]);
+            overlayButton('Clear local flow history', () => { game.clearFlowHistory(); });
+            overlayText('Flow only suggests a mode and session shape from your explicit preferences and up to 20 recent local results. It never changes boards, difficulty, rewards, prices, energy, or offers, and it never starts a run by itself.');
             overlayText('Text board uses the same puzzle and rewards. Click two adjacent cells to swap; a special is selected rather than fired. Enter or Activate special fires it. Arrows, Home/End and Control Home/End navigate; Tab leaves. Narrow text boards scroll instead of shrinking targets. Keyboard focus reveals named cells even with this preference off.');
             overlayText('Sound is generated locally, with no downloads or microphone permission. System reduced motion is respected; sound and vibration are separate, optional preferences. Hints are always free.');
             refresh();
         }
 
-        const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
+        let assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
+        // The assistive grid is lazy-loaded. If mount beat the download, attach
+        // it once available so text/keyboard play is not lost for this session.
+        if (!assistiveBoard && typeof window !== 'undefined' && window.lazyLoad) {
+            void window.lazyLoad('assistive-board').then(() => {
+                if (assistiveBoard || !root.InfiniteAssistiveBoard || !shell.isConnected) return;
+                assistiveBoard = root.InfiniteAssistiveBoard.mount(game, surface, announce);
+                surface.tabIndex = assistiveBoard ? -1 : 0;
+                refresh();
+            }).catch(() => {});
+        }
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomScene,
-            showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, get assistiveBoard() { return assistiveBoard; }, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderLossReview, renderRewardReceipt, renderFirstPlayCoach, renderKingdomScene,
+            showPreferences: preferences, showThisWeek: thisWeek, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
     root.InfinitePlayerExperience = Object.freeze({ get visuals() { return visuals; }, setVisuals, specialTypes, specialNames, drawGem, boardZoom, swipeCells, keyboardCell, mount });

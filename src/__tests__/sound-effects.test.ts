@@ -42,8 +42,13 @@ function environment(initialState = 'suspended') {
     addEventListener(type: string, fn: any) { this.events.addEventListener(type, fn); }
     removeEventListener(type: string, fn: any) { this.events.removeEventListener(type, fn); }
   }
-  return { instances, document, env: { document, AudioContext: FakeContext, addEventListener: globalEvents.addEventListener,
-    removeEventListener: globalEvents.removeEventListener }, globalEvents };
+  const timers: Array<{ id: number; fn: () => void; ms: number; cancelled: boolean }> = [];
+  let nextTimer = 1;
+  const env = { document, AudioContext: FakeContext, addEventListener: globalEvents.addEventListener,
+    removeEventListener: globalEvents.removeEventListener,
+    setTimeout: (fn: () => void, ms: number) => { const id = nextTimer++; timers.push({ id, fn, ms, cancelled: false }); return id; },
+    clearTimeout: (id: number) => { const timer = timers.find((item) => item.id === id); if (timer) timer.cancelled = true; } };
+  return { instances, document, env, globalEvents, timers };
 }
 
 describe('original opt-in sound settings and semantic cues', () => {
@@ -218,5 +223,58 @@ describe('bounded, gesture-gated optional audio lifetime', () => {
     sound.configure(enabled); await sound.unlock(gesture);
     for (const name of ['unknown', '__proto__', 'constructor', '', null, undefined]) expect(sound.play(name)).toBe(false);
     expect(mock.instances[0].oscillators).toHaveLength(0);
+  });
+});
+
+describe('independent, bounded procedural music layer', () => {
+  const musicEnabled = { sfx: false, music: true, soundChoiceVersion: 1, soundVolume: 0.55, musicVolume: 0.5 };
+
+  test('music-only opt-in unlocks on a trusted gesture without enabling sound effects', async () => {
+    const api = helpers(); const mock = environment(); const sound = api.create(musicEnabled, mock.env);
+    expect(sound.play('match')).toBe(false); expect(mock.instances).toHaveLength(0);
+    expect(await sound.unlock(gesture)).toBe(true);
+    expect(sound.status().musicPlaying).toBe(true); expect(sound.status().enabled).toBe(false);
+    expect(sound.play('match')).toBe(false);
+    expect(mock.instances[0].oscillators.length).toBeGreaterThan(0);
+  });
+
+  test('music cues cover title, gameplay, kingdom, win and level-complete without files or RNG', async () => {
+    const api = helpers(); const mock = environment(); const sound = api.create(musicEnabled, mock.env); await sound.unlock(gesture);
+    for (const cue of ['title', 'gameplay', 'kingdom', 'win', 'levelcomplete', 'level_complete', 'victory']) {
+      expect(sound.playMusic(cue)).toBe(true);
+      expect(sound.musicStatus().playing).toBe(true);
+    }
+    expect(sound.playMusic('unknown')).toBe(false);
+    expect(Array.from(api.musicCueNames)).toEqual(expect.arrayContaining(['title', 'gameplay', 'kingdom', 'win', 'levelcomplete']));
+    expect(source).not.toMatch(/Math\.random|nextRandom|fetch\(|new Image|\.load\.audio|mediaDevices|generateSpeech/);
+  });
+
+  test('music loops on a millisecond timer, stays bounded, and cancels on mute, hide and teardown', async () => {
+    const api = helpers(); const mock = environment(); const sound = api.create(musicEnabled, mock.env); await sound.unlock(gesture);
+    const loop = mock.timers.find((timer) => !timer.cancelled);
+    expect(loop).toBeTruthy(); expect(loop!.ms).toBeGreaterThan(1000);
+    const before = mock.instances[0].oscillators.length;
+    loop!.cancelled = true; // The fake timer has fired; only its successor is pending.
+    loop!.fn();
+    expect(mock.instances[0].oscillators.length).toBeGreaterThan(before);
+    expect(mock.instances[0].oscillators.length).toBeLessThanOrEqual(api.MUSIC_MAX_VOICES * 2);
+    const pending = mock.timers.filter((timer) => !timer.cancelled);
+    expect(pending).toHaveLength(1);
+    sound.configure({ ...musicEnabled, music: false });
+    expect(sound.musicStatus().playing).toBe(false);
+    expect(pending.every((timer) => timer.cancelled)).toBe(true);
+    sound.configure(musicEnabled); await sound.unlock(gesture);
+    mock.document.hidden = true; mock.document.emit('visibilitychange');
+    expect(sound.musicStatus().playing).toBe(false);
+    sound.destroy(); expect(sound.musicStatus().playing).toBe(false);
+  });
+
+  test('muting sound effects does not mute music, and zero music volume stops only music', async () => {
+    const api = helpers(); const mock = environment(); const sound = api.create({ ...musicEnabled, sfx: true }, mock.env); await sound.unlock(gesture);
+    expect(sound.play('match')).toBe(true);
+    sound.configure({ ...musicEnabled, sfx: false });
+    expect(sound.status().activeVoices).toBe(0); expect(sound.musicStatus().playing).toBe(true);
+    sound.configure({ ...musicEnabled, sfx: false, musicVolume: 0 });
+    expect(sound.musicStatus().playing).toBe(false); expect(sound.status().state).toBe('volume-zero');
   });
 });

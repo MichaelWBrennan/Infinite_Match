@@ -206,7 +206,7 @@ class StreakProtectionService {
         }
         return {
             atRisk: true,
-            message: "Your streak is at risk! Log in today to keep it going.",
+            message: 'Your streak is at risk! Log in today to keep it going.',
             daysRemaining: grace.daysRemaining,
         };
     }

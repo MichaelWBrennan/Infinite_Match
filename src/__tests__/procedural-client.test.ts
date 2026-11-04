@@ -37,7 +37,7 @@ function makeBrowserGame() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js', 'public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/assistive-board.js', 'public/js/match-feedback.js', 'phaser3-game.js']) {
+  for (const file of ['public/js/procedural-levels.js', 'public/js/level-location.js', 'public/js/sound-effects.js', 'public/js/art-direction.js', 'public/js/player-experience.js', 'public/js/assistive-board.js', 'public/js/match-feedback.js', 'public/js/first-play-coach.js', 'phaser3-game.js']) {
     vm.runInContext(readFileSync(file, 'utf8'), sandbox, { filename: file });
   }
   const game: any = Object.create(sandbox.PhaserMatch3Game.prototype);
@@ -74,6 +74,7 @@ function makeBrowserGame() {
         level: game.campaignLevel,
         achievements: game.achievements,
         settings: game.settings,
+        coachStatus: game.coachStatus,
       }));
     },
   });
@@ -604,9 +605,52 @@ describe('native player input keeps shared rules and economy untouched', () => {
     game.playerUI = {
       surface: { focus() {} }, shell: { querySelector: () => ({ open: false }) },
       refresh() {}, announce: (message: string) => { game.announcement = message; },
+      renderFirstPlayCoach: (payload: any) => { game.coachPayload = payload; }, focusBoard() {},
     };
     return result;
   }
+
+  test('first-play coach is skippable, persists, and never spends a move for a hint', async () => {
+    const { game, saved } = playable();
+    game.coachStatus = 'new';
+    expect(game.startFirstPlayCoach()).toBe(true);
+    expect(game.coach.step).toBe('goal');
+    const before = JSON.stringify([game.board, game.levelRng.state, game.moves, game.score]);
+    game.coachHint();
+    expect(game.coach.step).toBe('hint');
+    expect(JSON.stringify([game.board, game.levelRng.state, game.moves, game.score])).toBe(before);
+    expect(game.coachPayload.lines.join(' ')).toContain('Text board');
+    game.skipFirstPlayCoach();
+    expect(game.coachStatus).toBe('skipped');
+    expect(game.coach).toBeNull();
+    expect(game.startFirstPlayCoach()).toBe(false);
+    expect(game.startFirstPlayCoach({ replay: true })).toBe(true);
+    expect(JSON.parse(saved.get('phaser3_game_data')!).coachStatus).toBe('skipped');
+    game.finishFirstPlayCoach();
+    expect(game.coachStatus).toBe('completed');
+    expect(JSON.parse(saved.get('phaser3_game_data')!).coachStatus).toBe('completed');
+  });
+
+  test('a player-made valid move completes the coach, while inventory clears only reset a stale hint', () => {
+    const { game } = playable();
+    game.coachStatus = 'new';
+    game.startFirstPlayCoach();
+    game.coachHint();
+    const cells = game.coach.hint;
+    const moves = game.moves;
+    if (cells.length === 2) game.activateEarnedSpecial(...cells); else game.trySwap(...cells);
+    expect(game.moves).toBe(moves - 1);
+    expect(game.coachStatus).toBe('completed');
+    expect(game.coach.step).toBe('done');
+
+    const { game: boosterGame } = playable();
+    boosterGame.coachStatus = 'new';
+    boosterGame.startFirstPlayCoach();
+    boosterGame.coachHint();
+    boosterGame.resetCoachHint();
+    expect(boosterGame.coach.step).toBe('goal');
+    expect(boosterGame.coachStatus).toBe('new');
+  });
 
   test('native first-play guidance is immediate and cannot overwrite a later hint', async () => {
     const { game, sandbox } = playable();

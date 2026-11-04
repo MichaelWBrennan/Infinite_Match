@@ -91,6 +91,9 @@ export function levelActions(definition: any, board: any, specials: any, progres
 }[];
 export function simulateLevelMove(definition: any, state: any, cells: any, visualTrace?: boolean): any;
 export function certifyLevel(definition: any): {
+    score: number;
+    witness: number[][];
+} | {
     objectiveProgress: {
         hazardsCleared?: any;
         deliveryCleared?: any;
@@ -232,6 +235,7 @@ export function certifyLevel(definition: any): {
         [k: string]: any;
     };
     deliveryCleared: number;
+    witness: any[];
     events: never[];
 } | {
     objectiveProgress: {
@@ -257,9 +261,6 @@ export function certifyLevel(definition: any): {
     hazardCleared: number;
     witness: any[];
     events: never[];
-} | {
-    score: number;
-    witness: number[][];
 };
 export const GENERATOR_VERSION: 6;
 export const GEM_TYPES: string[];

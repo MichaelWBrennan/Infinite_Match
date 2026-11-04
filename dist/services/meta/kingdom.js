@@ -226,7 +226,7 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted =
             canRenovate: plan?.ok && !isCompleted,
             blockedBy: isCompleted ? 'room_max_level'
                 : !isUnlocked ? 'stars_required'
-                    : plan ? null : plan.reason,
+                    : plan && !plan.ok ? plan.reason : null,
         };
     });
     const allCompleted = completed.length >= KINGDOM_ROOMS.length;
@@ -239,6 +239,71 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted =
         completedAt: kingdom?.completedAt ?? null,
         allCompleted,
         completionReward: allCompleted ? KINGDOM_COMPLETION_REWARD : null,
+    };
+}
+/**
+ * The next kingdom goal shown after a win. This is a read-only recommendation:
+ * it never spends coins, grants stars, or changes the renovation rules. The
+ * server still prices and validates every actual renovation.
+ */
+export function kingdomNextGoal({ kingdom, coins, lifetimeStars }) {
+    const view = kingdomView({ kingdom, coins, lifetimeStars });
+    const safeCoins = Number.isSafeInteger(coins) ? Math.max(0, coins) : 0;
+    const safeStars = Number.isSafeInteger(lifetimeStars) ? Math.max(0, lifetimeStars) : 0;
+    const unlocked = view.rooms.filter((room) => room.unlocked && !room.completed && room.next);
+    const ready = unlocked.find((room) => room.canRenovate);
+    const goalFor = (room, kind, missingCoins, missingStars) => ({
+        kind,
+        roomId: room.id,
+        roomName: room.name,
+        currentLevel: room.level,
+        targetLevel: room.next?.level ?? null,
+        costCoins: room.next?.costCoins ?? 0,
+        starsRequired: room.next?.starsRequired ?? room.starsToUnlock ?? 0,
+        missingCoins: Math.max(0, missingCoins),
+        missingStars: Math.max(0, missingStars),
+        coinProgress: room.next?.costCoins > 0 ? Math.min(1, safeCoins / room.next.costCoins) : 1,
+        starProgress: (room.next?.starsRequired ?? room.starsToUnlock ?? 0) > 0
+            ? Math.min(1, safeStars / (room.next?.starsRequired ?? room.starsToUnlock)) : 1,
+        canRenovate: kind === 'renovate',
+        milestone: room.next?.milestone ?? null,
+    });
+    if (ready)
+        return goalFor(ready, 'renovate', 0, 0);
+    if (unlocked.length > 0) {
+        const ranked = unlocked
+            .map((room, index) => ({
+            room,
+            index,
+            missingCoins: Math.max(0, room.next.costCoins - safeCoins),
+            missingStars: Math.max(0, room.next.starsRequired - safeStars),
+        }))
+            .sort((a, b) => a.missingStars - b.missingStars || a.missingCoins - b.missingCoins || a.index - b.index);
+        const next = ranked[0];
+        return goalFor(next.room, next.missingStars > 0 ? 'stars' : 'coins', next.missingCoins, next.missingStars);
+    }
+    const locked = view.rooms.find((room) => !room.unlocked);
+    if (locked) {
+        return {
+            kind: 'unlock',
+            roomId: locked.id,
+            roomName: locked.name,
+            currentLevel: 0,
+            targetLevel: null,
+            costCoins: 0,
+            starsRequired: locked.starsToUnlock ?? 0,
+            missingCoins: 0,
+            missingStars: Math.max(0, (locked.starsToUnlock ?? 0) - safeStars),
+            coinProgress: 1,
+            starProgress: (locked.starsToUnlock ?? 0) > 0 ? Math.min(1, safeStars / locked.starsToUnlock) : 1,
+            canRenovate: false,
+            milestone: null,
+        };
+    }
+    return {
+        kind: 'complete', roomId: null, roomName: 'Kingdom', currentLevel: KINGDOM_MAX_LEVEL,
+        targetLevel: null, costCoins: 0, starsRequired: 0, missingCoins: 0, missingStars: 0,
+        coinProgress: 1, starProgress: 1, canRenovate: false, milestone: null,
     };
 }
 // Each room level adds this much to coins from a level win, up to the cap. These are tuning

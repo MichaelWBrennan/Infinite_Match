@@ -87,8 +87,8 @@ const TRIGGERS = Object.freeze({
     },
     streak_reminder: {
         type: 'streak_reminder',
-        title: "Don't break your streak!",
-        body: "You're on a {streak}-day login streak. Log in today to keep it going!",
+        title: 'Don\'t break your streak!',
+        body: 'You\'re on a {streak}-day login streak. Log in today to keep it going!',
         cooldownMs: 24 * 60 * 60 * 1000, // 24 hours
         evaluate: ({ playerId, economy, nowMs }) => {
             const dailyRewards = economy.dailyRewards;
@@ -103,7 +103,7 @@ const TRIGGERS = Object.freeze({
             if (now - lastClaimed > msPerDay && now - lastClaimed < msPerDay * 2) {
                 return {
                     shouldSend: true,
-                    title: "Don't break your streak!",
+                    title: 'Don\'t break your streak!',
                     body: `You're on a ${dailyRewards.streak}-day login streak. Log in today to keep it going!`,
                     data: { type: 'streak_reminder', playerId, streak: dailyRewards.streak },
                 };
@@ -156,7 +156,7 @@ const TRIGGERS = Object.freeze({
     comeback: {
         type: 'comeback',
         title: 'We miss you!',
-        body: "It's been {days} days since you last played. Come back and claim your daily reward!",
+        body: 'It\'s been {days} days since you last played. Come back and claim your daily reward!',
         cooldownMs: 7 * 24 * 60 * 60 * 1000, // 7 days
         evaluate: ({ playerId, economy, nowMs }) => {
             const dailyRewards = economy.dailyRewards;
