@@ -2459,6 +2459,18 @@ body {
 .match-high-contrast .play-flow-card, .match-high-contrast .flow-suggestion { border-color: #fff; background: #000; }
 .match-reduced-motion .play-flow-card, .match-reduced-motion .flow-suggestion { animation: none !important; transition: none !important; }
 
+/* This week: server event, optional local rhythm, and honest PWA status. */
+.weekly-hub-host { margin-top: 4px; }
+.weekly-hub { display: flex; flex-direction: column; gap: 12px; }
+.weekly-hub section { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #99c3e86b; border-radius: 16px; background: #1e3850; }
+.weekly-hub h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.match-dialog-content .weekly-hub p { margin: 0; font-size: 14px; color: #d3e6f2; }
+.weekly-hub progress { width: 100%; height: 10px; accent-color: #8ce6be; }
+.weekly-hub-rhythm { border-color: #8ce6be; background: #173a3a; }
+.weekly-hub-pwa { border-color: #e5c889; }
+.match-high-contrast .weekly-hub section { border-color: #fff; background: #000; }
+.match-reduced-motion .weekly-hub, .match-reduced-motion .weekly-hub * { animation: none !important; transition: none !important; }
+
 .match-high-contrast { --match-level-background: #07111e; color: #fff; }
 .match-high-contrast .match-player-stats > span, .match-high-contrast button { border-color: #fff; }
 .match-large-text .match-player-stats > span { font-size: 16px; }

@@ -170,9 +170,11 @@ class PhaserMatch3Game {
             flowEnabled: true,
             flowSession: 'medium',
             flowChallenge: 'steady',
-            flowMode: 'auto'
+            flowMode: 'auto',
+            weeklyRhythmEnabled: false
         };
         this.flowHistory = [];
+        this.weeklyRhythmDays = [];
         this.timerInterval = null;
         this.tutorialShown = false;
         this.powerUps = {
@@ -501,7 +503,10 @@ class PhaserMatch3Game {
         if (signedIn && this.getAuthToken()) {
             this.overlayButton(400, 530, 300, 55, 0x9b59b6, 'PvP Versus', () => this.showPvpMenu());
         }
-        if (this.playerUI) this.overlayButton(400, 600, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
+        if (this.playerUI) {
+            this.overlayButton(400, 600, 300, 55, 0x31536a, 'This week', () => this.showThisWeek());
+            this.overlayButton(400, 660, 300, 55, 0x555555, 'Play preferences', () => this.playerUI.showPreferences());
+        }
 
         // Performance-based quality adjustment after first frame.
         setTimeout(() => this.checkPerformanceAndAdjustQuality(), 2000);
@@ -2948,6 +2953,28 @@ class PhaserMatch3Game {
         return this.requestStart();
     }
 
+    // Optional local weekly rhythm. It records only a finished-run UTC day after
+    // explicit opt-in. It grants nothing and is separate from server weekly wins.
+    recordWeeklyRhythmDay() {
+        if (this.settings.weeklyRhythmEnabled !== true || !window.InfiniteWeeklyHub) return;
+        this.weeklyRhythmDays = window.InfiniteWeeklyHub.recordDay(this.weeklyRhythmDays, Date.now());
+    }
+
+    clearWeeklyRhythm() {
+        this.weeklyRhythmDays = [];
+        this.saveUserData();
+        this.playerUI?.refresh();
+    }
+
+    showThisWeek() {
+        const wasRunning = this.isGameRunning && !this.isPaused;
+        if (this.playerUI?.showThisWeek) {
+            this.playerUI.showThisWeek(wasRunning);
+            return;
+        }
+        this.showWeeklyEvent();
+    }
+
     // An endless run has no target, so it is never a level win. The server pays for the score.
     async finishEndless() {
         const score = Math.max(0, Math.floor(this.score + (this.endlessTotalScore || 0)));
@@ -2968,6 +2995,7 @@ class PhaserMatch3Game {
             const payment = this.submitEndlessRun(score);
             this.rewardSubmission = payment;
             this.recordFlowResult(0);
+            this.recordWeeklyRhythmDay();
             const result = await payment;
             this.endlessCheckpointBank = false;
             this.saveUserData();
@@ -3235,6 +3263,7 @@ class PhaserMatch3Game {
                 this.achievements = data.achievements || this.achievements;
                 this.settings = { ...this.settings, ...data.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(data.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
                 this.flowHistory = window.InfinitePlayFlow?.normalizeHistory(data.flowHistory) || [];
+                this.weeklyRhythmDays = window.InfiniteWeeklyHub?.normalizeDays(data.weeklyRhythmDays) || [];
                 console.log('✅ User data loaded');
                 return;
             }
@@ -3248,6 +3277,7 @@ class PhaserMatch3Game {
                         this.achievements = cached.achievements || this.achievements;
                         this.settings = { ...this.settings, ...cached.settings, ...(window.InfiniteSoundEffects?.normaliseSettings(cached.settings) || { sfx: false, soundChoiceVersion: 1, soundVolume: 0.55 }) };
                         this.flowHistory = window.InfinitePlayFlow?.normalizeHistory(cached.flowHistory) || [];
+                        this.weeklyRhythmDays = window.InfiniteWeeklyHub?.normalizeDays(cached.weeklyRhythmDays) || [];
                         console.log('✅ User data loaded from cache manager');
                     }
                 } catch (e) { /* ignore cache errors */ }
@@ -3267,6 +3297,7 @@ class PhaserMatch3Game {
                 achievements: this.achievements,
                 settings: this.settings,
                 flowHistory: window.InfinitePlayFlow?.normalizeHistory(this.flowHistory) || [],
+                weeklyRhythmDays: window.InfiniteWeeklyHub?.normalizeDays(this.weeklyRhythmDays) || [],
                 lastSaved: Date.now()
             };
             localStorage.setItem('phaser3_game_data', JSON.stringify(data));
@@ -3992,6 +4023,7 @@ class PhaserMatch3Game {
         let stars = 0;
         stars = this.starsFor(this.score);
         this.recordFlowResult(stars);
+        this.recordWeeklyRhythmDay();
         this.playSound(stars > 0 ? 'win' : 'loss');
         this.gameFeel?.celebrate(stars);
         // Level-complete music on a win; gameplay music otherwise.

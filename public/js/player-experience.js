@@ -397,6 +397,7 @@
             game.openOverlay('Explore Infinite Match');
             overlayButton('Back to game', () => { game.closeOverlay(); delete game.playerOverlayResume; if (wasRunning) game.resumeGame(); refresh(); focusBoard(); });
             overlayButton('Play preferences', () => preferences(wasRunning));
+            overlayButton('This week: event, rhythm, offline', () => thisWeek(wasRunning));
             renderFlowCard(wasRunning);
             overlayButton(soundLabel(), (event) => { game.setSoundEffects(!game.settings.sfx, event); refresh(); });
             content.lastElementChild.dataset.soundToggle = 'true';
@@ -456,6 +457,95 @@
             settingsButton.addEventListener('click', () => preferences(wasRunning));
             card.append(settingsButton);
             content.append(card);
+        }
+        function thisWeek(wasRunning = game.isGameRunning && !game.isPaused) {
+            const returnToTitle = !!game.titleShowing;
+            if (wasRunning) game.pauseGame();
+            const overlay = game.openOverlay('This week');
+            overlayButton(returnToTitle ? 'Back to title' : 'Back to game', () => {
+                game.closeOverlay(); delete game.playerOverlayResume;
+                if (returnToTitle) game.showTitleOverlay();
+                else { if (wasRunning) game.resumeGame(); refresh(); focusBoard(); }
+            });
+            content.lastElementChild.className = 'match-guide-close';
+            const host = document.createElement('div');
+            host.className = 'weekly-hub-host';
+            content.append(host);
+            const hub = root.InfiniteWeeklyHub;
+            if (!hub) {
+                overlayText('This week is unavailable in this shell. Guest play and the full Events tab still work.');
+                overlayButton('Open full events', () => game.showWeeklyEvent());
+                return;
+            }
+            let weekly = { state: 'loading', lines: ['Checking the weekly event…'] };
+            let claimPending = false;
+            const signedIn = !!game.getAuthToken();
+            const pwaStatus = () => root.InfinitePWA?.status?.() || {};
+            const draw = () => {
+                if (game.activeOverlay !== overlay || !host.isConnected) return;
+                hub.render(host, {
+                    weekly,
+                    signedIn,
+                    rhythm: hub.rhythmView(game.weeklyRhythmDays || [], Date.now()),
+                    rhythmEnabled: game.settings.weeklyRhythmEnabled === true,
+                    pwa: pwaStatus(),
+                }, {
+                    claim: (eventId, wins) => claim(eventId, wins),
+                    signIn: () => game.openSignIn(),
+                    openEvents: () => game.showWeeklyEvent(),
+                    setRhythmEnabled: (enabled) => {
+                        game.settings.weeklyRhythmEnabled = enabled === true;
+                        game.saveUserData();
+                        draw();
+                    },
+                    clearRhythm: () => { game.clearWeeklyRhythm(); draw(); },
+                    install: async () => { await root.InfinitePWA?.promptInstall?.(); draw(); },
+                    applyUpdate: () => {
+                        if (game.isGameRunning || game.levelStarting || game.powerUpPending || game.endlessCheckpointPending) {
+                            status.textContent = 'Finish or bank the current run before restarting. The update will wait.';
+                            return;
+                        }
+                        root.InfinitePWA?.applyUpdate?.();
+                    },
+                });
+            };
+            async function load() {
+                try {
+                    const { ok, data } = await game.fetchJson(signedIn ? '/api/live-ops/weekly' : '/api/live-ops/weekly/preview');
+                    if (game.activeOverlay !== overlay) return;
+                    weekly = ok && data.success !== false
+                        ? hub.weeklySummary(data, signedIn, Date.now())
+                        : { state: 'unavailable', lines: ['Weekly event unavailable right now. Guest puzzles remain playable.'] };
+                } catch {
+                    if (game.activeOverlay !== overlay) return;
+                    weekly = { state: 'unavailable', lines: ['Weekly event unavailable offline. Guest puzzles remain playable.'] };
+                }
+                draw();
+            }
+            async function claim(eventId, wins) {
+                if (claimPending) return;
+                claimPending = true;
+                status.textContent = 'Claiming free milestone…';
+                try {
+                    const { ok, data } = await game.fetchJson('/api/live-ops/weekly/claim', {
+                        method: 'POST', body: JSON.stringify({ eventId, wins }),
+                    });
+                    if (game.activeOverlay !== overlay) return;
+                    status.textContent = ok
+                        ? data.result?.duplicate ? 'Already claimed. No second reward.' : `+${data.result?.coins || 0} free coins claimed.`
+                        : data.error === 'weekly_wallet_full' ? 'Coin wallet full. Spend some coins and claim before the week ends.'
+                            : data.error === 'weekly_event_closed' ? 'The week has ended or is paused; no new claim was granted.'
+                                : `Not claimed: ${data.error || 'server unavailable'}.`;
+                    await load();
+                } catch {
+                    if (game.activeOverlay === overlay) status.textContent = 'Could not confirm the claim. Reopen This week before retrying.';
+                } finally {
+                    claimPending = false;
+                }
+            }
+            draw();
+            void root.InfinitePWA?.refresh?.().then(draw);
+            void load();
         }
         function flowSelect(labelText, key, options) {
             const label = document.createElement('label');
@@ -625,7 +715,7 @@
         surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
         return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderKingdomScene,
-            showPreferences: preferences, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
+            showPreferences: preferences, showThisWeek: thisWeek, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
     root.InfinitePlayerExperience = Object.freeze({ get visuals() { return visuals; }, setVisuals, specialTypes, specialNames, drawGem, boardZoom, swipeCells, keyboardCell, mount });
