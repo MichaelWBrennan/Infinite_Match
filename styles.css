@@ -2471,6 +2471,17 @@ body {
 .match-high-contrast .weekly-hub section { border-color: #fff; background: #000; }
 .match-reduced-motion .weekly-hub, .match-reduced-motion .weekly-hub * { animation: none !important; transition: none !important; }
 
+/* Fair loss review: exact remaining goals, free tip, transparent retry cost. */
+.loss-review-host { margin-top: 4px; }
+.loss-review { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid #e5c88966; border-radius: 16px; background: #2a2f3e; }
+.loss-review h3 { margin: 0; font-size: 18px; color: #fff2d2; }
+.loss-review-goals { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.match-dialog-content .loss-review p { margin: 0; font-size: 14px; color: #d3e6f2; }
+.loss-review-tip { color: #8ce6be; }
+.loss-review-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.loss-review-actions button { flex: 1 1 140px; }
+.match-high-contrast .loss-review { border-color: #fff; background: #000; }
+
 .match-high-contrast { --match-level-background: #07111e; color: #fff; }
 .match-high-contrast .match-player-stats > span, .match-high-contrast button { border-color: #fff; }
 .match-large-text .match-player-stats > span { font-size: 16px; }

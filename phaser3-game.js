@@ -4066,11 +4066,54 @@ class PhaserMatch3Game {
         if (stars > 0 && this.mode !== 'daily' && this.mode !== 'endless') {
             this.overlayButton(260, 350, 220, 55, 0x4ecdc4, 'Next Level', () => this.nextLevel());
             this.overlayButton(540, 350, 220, 55, 0x555555, 'Replay', () => this.restartGame());
-        } else {
+        } else if (this.mode === 'endless' || !this.playerUI?.renderLossReview) {
             this.overlayButton(400, 350, 250, 55, 0x4ecdc4, this.mode === 'endless' ? 'New Run' : 'Replay', () => this.restartGame());
         }
         this.overlayButton(400, 435, 250, 55, 0x555555, 'Main Menu', () => this.returnToMenu());
         if (stars > 0 && this.mode !== 'endless') void this.showKingdomPayoff();
+        if (stars === 0 && this.mode !== 'endless') this.showLossReview();
+    }
+
+    // Fair loss review: exact remaining goals and a free tip. It never grants a
+    // continue, changes the board, or spends energy until the player presses Retry.
+    showLossReview() {
+        const levels = globalThis.InfiniteLevels;
+        const goals = this.usesLevelObjectives() && levels
+            ? levels.objectiveStatus(this.generatedLevel, this.score, this.objectiveProgress).items
+            : [{ type: 'score', target: this.targetScore, current: this.score }];
+        const payload = window.InfiniteLossReview?.review({
+            mode: this.mode,
+            signedIn: !!this.getAuthToken(),
+            goals,
+            score: this.score,
+            targetScore: this.targetScore,
+            moves: this.moves,
+            movesLimit: this.generatedLevel?.moves ?? levelConfig(this.level, this.mode).moves,
+            time: this.time,
+            timeLimit: this.timeLimit,
+            hintsUsed: this.hintsUsed || 0,
+        });
+        if (!payload) return;
+        if (this.playerUI?.renderLossReview) {
+            this.playerUI.renderLossReview(payload, {
+                retry: () => this.restartGame(),
+                guide: () => this.showLossGuide(),
+            });
+            return;
+        }
+        this.overlayText(400, 480, payload.tip, { size: 15, width: 650 });
+        this.overlayText(400, 520, payload.retryLine, { size: 14, width: 650 });
+    }
+
+    showLossGuide() {
+        this.openOverlay('Level goals');
+        if (this.usesLevelObjectives() && globalThis.InfiniteLevels) {
+            this.overlayText(400, 180, globalThis.InfiniteLevels.objectiveDescription(this.generatedLevel), { size: 18, width: 650 });
+        } else {
+            this.overlayText(400, 180, `Score ${this.targetScore.toLocaleString()} to complete the level.`, { size: 18, width: 650 });
+        }
+        this.overlayText(400, 260, 'Hints are free and prefer unfinished goals. Earned specials come from 4+ matches, never from a purchase.', { size: 16, width: 650 });
+        this.overlayButton(400, 360, 250, 55, 0x555555, 'Back to results', () => this.showEndGameScreen(0));
     }
 
     // Post-win meta payoff: show the next server-priced kingdom goal and, when

@@ -10,8 +10,8 @@
  * A new worker waits for an explicit player restart instead of reloading play.
  */
 
-const SHELL_VERSION = 'v8';
-const SHELL_CACHE = 'infinite-match-shell-v10';
+const SHELL_VERSION = 'v9';
+const SHELL_CACHE = 'infinite-match-shell-v11';
 const SHELL = [
   '/',
   '/script.js',
@@ -39,6 +39,7 @@ const SHELL = [
   '/js/kingdom-payoff.js',
   '/js/play-flow.js',
   '/js/weekly-hub.js',
+  '/js/loss-review.js',
   '/js/offline-api.js',
   '/js/lazy-loader.js',
   '/js/perf-overlay.js',

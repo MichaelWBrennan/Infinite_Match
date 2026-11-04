@@ -296,6 +296,16 @@
             content.append(host);
             return api.render(host, payload, callbacks);
         }
+        function renderLossReview(payload, callbacks = {}) {
+            const existing = content.querySelector('[data-loss-review]');
+            if (existing) existing.remove();
+            const api = root.InfiniteLossReview;
+            if (!api) return null;
+            const host = document.createElement('div');
+            host.className = 'loss-review-host';
+            content.append(host);
+            return api.render(host, payload, callbacks);
+        }
         let kingdomStorySkipped = false;
         async function renderKingdomScene(data, callbacks = {}) {
             // Lazy-load kingdom-scene on demand when the player opens the kingdom.
@@ -714,7 +724,7 @@
         const assistiveBoard = root.InfiniteAssistiveBoard?.mount(game, surface, announce) || null;
         surface.tabIndex = assistiveBoard ? -1 : 0;
         refresh();
-        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderKingdomScene,
+        return Object.freeze({ shell, surface, fields, powerups, announce, refresh, assistiveBoard, focusBoard, setResolution, openOverlay, closeOverlay, overlayText, overlayButton, renderKingdomPayoff, renderLossReview, renderKingdomScene,
             showPreferences: preferences, showThisWeek: thisWeek, status: proxy(status), bankButton: proxy(find('[data-action="bank"]')) });
     }
 
