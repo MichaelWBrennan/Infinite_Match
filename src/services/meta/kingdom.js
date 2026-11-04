@@ -243,7 +243,7 @@ export function kingdomView({ kingdom, coins, lifetimeStars, roomJustCompleted =
       canRenovate: plan?.ok && !isCompleted,
       blockedBy: isCompleted ? 'room_max_level'
         : !isUnlocked ? 'stars_required'
-        : plan ? null : plan.reason,
+          : plan ? null : plan.reason,
     };
   });
   const allCompleted = completed.length >= KINGDOM_ROOMS.length;

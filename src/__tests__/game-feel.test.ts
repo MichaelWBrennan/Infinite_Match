@@ -12,7 +12,7 @@ function helpers() {
 
 function mockScene() {
   const objects: any[] = [];
-  const tweens: any[] = [];
+  const tweenConfigs: any[] = [];
   const make = (kind: string) => {
     const object: any = { kind, destroyed: false, setDepth() { return object; }, setStrokeStyle() { return object; },
       fillStyle() { return object; }, fillRoundedRect() { return object; },
@@ -21,9 +21,9 @@ function mockScene() {
     return object;
   };
   return {
-    objects, tweens,
+    objects, tweenConfigs,
     add: { circle: () => make('circle'), rectangle: () => make('rectangle'), graphics: () => make('graphics') },
-    tweens: { add: (config: any) => { tweens.push(config); return config; }, killTweensOf: () => {} },
+    tweens: { add: (config: any) => { tweenConfigs.push(config); return config; }, killTweensOf: () => {} },
     cameras: { main: { shake: jest.fn() } },
     events: { once: () => {}, off: () => {} },
   };
@@ -141,6 +141,6 @@ describe('opt-in, reduced-motion-safe runtime', () => {
     expect(phaser).toContain('this.gameFeel?.destroy()');
     expect(phaser).toContain('this.gameFeel?.reset()');
     expect(feedback).toContain('game.gameFeel?.wave?.(event, index, run.plan.total, visual.before)');
-    expect(worker).toContain("'/js/game-feel.js'");
+    expect(worker).toContain('\'/js/game-feel.js\'');
   });
 });

@@ -136,21 +136,21 @@ export function updateQuestProgress(quests, event, amount = 1, nowMs = Date.now(
 
     let progress = q.progress;
     switch (q.type) {
-      case 'levels_played':
-        if (event === 'level_played') progress = Math.min(q.target, q.progress + amount);
-        break;
-      case 'levels_won':
-        if (event === 'level_won') progress = Math.min(q.target, q.progress + amount);
-        break;
-      case 'stars_earned':
-        if (event === 'stars_earned') progress = Math.min(q.target, q.progress + amount);
-        break;
-      case 'booster_used':
-        if (event === 'booster_used') progress = Math.min(q.target, q.progress + amount);
-        break;
-      case 'coins_earned':
-        if (event === 'coins_earned') progress = Math.min(q.target, q.progress + amount);
-        break;
+    case 'levels_played':
+      if (event === 'level_played') progress = Math.min(q.target, q.progress + amount);
+      break;
+    case 'levels_won':
+      if (event === 'level_won') progress = Math.min(q.target, q.progress + amount);
+      break;
+    case 'stars_earned':
+      if (event === 'stars_earned') progress = Math.min(q.target, q.progress + amount);
+      break;
+    case 'booster_used':
+      if (event === 'booster_used') progress = Math.min(q.target, q.progress + amount);
+      break;
+    case 'coins_earned':
+      if (event === 'coins_earned') progress = Math.min(q.target, q.progress + amount);
+      break;
     }
 
     return { ...q, progress };

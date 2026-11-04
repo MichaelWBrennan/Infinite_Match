@@ -291,7 +291,7 @@ router.post('/skip-level', security.sessionValidation, [body('levelNumber').isIn
  * Purchase a streak freeze with coins (24h). Returns a Stripe checkout if paying with USD.
  * Body: { payWith: 'coins' | 'usd' }
  */
-router.post('/streak-freeze', security.sessionValidation, [body('payWith').optional().isIn(['coins', 'usd']).withMessage("payWith must be 'coins' or 'usd'")], async (req, res) => {
+router.post('/streak-freeze', security.sessionValidation, [body('payWith').optional().isIn(['coins', 'usd']).withMessage('payWith must be \'coins\' or \'usd\'')], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ success: false, errors: errors.array() });
@@ -342,7 +342,7 @@ router.post('/life-refill', security.sessionValidation, async (req, res) => {
  * Grant a reward for watching a rewarded ad.
  * Body: { rewardType: 'coins' | 'lives' }
  */
-router.post('/ads/rewarded', security.sessionValidation, [body('rewardType').isIn(['coins', 'lives']).withMessage("rewardType must be 'coins' or 'lives'")], async (req, res) => {
+router.post('/ads/rewarded', security.sessionValidation, [body('rewardType').isIn(['coins', 'lives']).withMessage('rewardType must be \'coins\' or \'lives\'')], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ success: false, errors: errors.array() });

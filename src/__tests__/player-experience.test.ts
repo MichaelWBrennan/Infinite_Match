@@ -88,7 +88,7 @@ describe('mobile-first player experience helpers', () => {
     const sandbox: any = { document };
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync('public/js/art-direction.js', 'utf8'), sandbox);
-  vm.runInContext(fs.readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
+    vm.runInContext(fs.readFileSync('public/js/player-experience.js', 'utf8'), sandbox);
     let saves = 0;
     const game: any = { mode: 'endless', isGameRunning: true, settings: { sfx: false, endlessAutoContinue: false },
       score: 0, targetScore: 500, isPaused: false, levelStarting: false, powerUpPending: false,

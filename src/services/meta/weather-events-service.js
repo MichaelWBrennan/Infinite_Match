@@ -30,7 +30,7 @@ const TIME_OF_DAY_EFFECTS = {
 
 const HOLIDAY_EFFECTS = {
   'new years day': { name: 'New Year Celebration', coinMultiplier: 2.0, lifeBonus: 3, boosterDropRate: 2.0, description: 'Celebrate the new year with bonus rewards!' },
-  "valentine's day": { name: "Valentine's Day", coinMultiplier: 1.5, lifeBonus: 1, boosterDropRate: 1.5, description: "Spread the love with bonus rewards." },
+  'valentine\'s day': { name: 'Valentine\'s Day', coinMultiplier: 1.5, lifeBonus: 1, boosterDropRate: 1.5, description: 'Spread the love with bonus rewards.' },
   halloween: { name: 'Halloween Spooktacular', coinMultiplier: 1.75, lifeBonus: 2, boosterDropRate: 1.75, description: 'Spooky bonuses all day!' },
   christmas: { name: 'Christmas Miracle', coinMultiplier: 2.0, lifeBonus: 5, boosterDropRate: 2.0, description: 'Merry Christmas - maximum rewards!' },
   thanksgiving: { name: 'Thanksgiving Feast', coinMultiplier: 1.5, lifeBonus: 2, boosterDropRate: 1.5, description: 'Give thanks with bonus rewards.' },

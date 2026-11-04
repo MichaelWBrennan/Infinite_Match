@@ -103,7 +103,7 @@ export class WeatherEventsService {
             boosterDropRate: number;
             description: string;
         };
-        "valentine's day": {
+        'valentine\'s day': {
             name: string;
             coinMultiplier: number;
             lifeBonus: number;

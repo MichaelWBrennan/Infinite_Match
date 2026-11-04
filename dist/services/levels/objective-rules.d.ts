@@ -58,7 +58,7 @@ export function objectiveStatus(definition: any, score: any, progress: any): {
 };
 /** One star for satisfying collection goals; further stars still use the pinned score thresholds. */
 export function objectiveStars(definition: any, score: any, progress: any): number;
-export function objectiveCompletionError(definition: any, score: any, progress: any): "invalid_score" | "invalid_level_objectives" | "objective_progress_required" | "invalid_objective_progress" | "score_below_target" | "objectives_incomplete" | null;
+export function objectiveCompletionError(definition: any, score: any, progress: any): "invalid_level_objectives" | "invalid_score" | "objective_progress_required" | "invalid_objective_progress" | "score_below_target" | "objectives_incomplete" | null;
 export function objectiveDescription(definition: any): any;
 export function objectiveSummary(definition: any, score: any, progress: any, showRemaining?: boolean): any;
 /** Immediate goal-aware hints without consuming RNG or running every full cascade. Not an optimal-win promise. */
@@ -70,54 +70,6 @@ export function simulateObjectiveMove(definition: any, state: any, cells: any, v
 export function simulateObjectiveClear(definition: any, state: any, keys: any, points: any, visualTrace?: boolean): any;
 /** The same bounded witness used to compose goals must satisfy every goal, not only a score threshold. */
 export function certifyObjectiveLevel(definition: any): {
-    objectiveProgress: {
-        hazardsCleared?: any;
-        deliveryCleared?: any;
-        frostingCleared?: any;
-        marmaladeCleared?: any;
-        liquoriceCleared?: any;
-        chocolateCleared?: any;
-        jellyCleared?: any;
-        lockedCleared?: any;
-        blockersCleared?: any;
-        shieldsCleared?: any;
-        collected: {
-            [k: string]: any;
-        } | null | undefined;
-    };
-    objectivesComplete: any;
-    score: number;
-    collected: {
-        [k: string]: any;
-    };
-    frostingCleared: number;
-    witness: any[];
-    events: never[];
-} | {
-    objectiveProgress: {
-        hazardsCleared?: any;
-        deliveryCleared?: any;
-        frostingCleared?: any;
-        marmaladeCleared?: any;
-        liquoriceCleared?: any;
-        chocolateCleared?: any;
-        jellyCleared?: any;
-        lockedCleared?: any;
-        blockersCleared?: any;
-        shieldsCleared?: any;
-        collected: {
-            [k: string]: any;
-        } | null | undefined;
-    };
-    objectivesComplete: any;
-    score: number;
-    collected: {
-        [k: string]: any;
-    };
-    deliveryCleared: number;
-    witness: any[];
-    events: never[];
-} | {
     objectiveProgress: {
         hazardsCleared?: any;
         deliveryCleared?: any;
@@ -233,6 +185,54 @@ export function certifyObjectiveLevel(definition: any): {
         [k: string]: any;
     };
     marmaladeCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    frostingCleared: number;
+    witness: any[];
+    events: never[];
+} | {
+    objectiveProgress: {
+        hazardsCleared?: any;
+        deliveryCleared?: any;
+        frostingCleared?: any;
+        marmaladeCleared?: any;
+        liquoriceCleared?: any;
+        chocolateCleared?: any;
+        jellyCleared?: any;
+        lockedCleared?: any;
+        blockersCleared?: any;
+        shieldsCleared?: any;
+        collected: {
+            [k: string]: any;
+        } | null | undefined;
+    };
+    objectivesComplete: any;
+    score: number;
+    collected: {
+        [k: string]: any;
+    };
+    deliveryCleared: number;
     witness: any[];
     events: never[];
 } | {

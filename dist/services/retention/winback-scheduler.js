@@ -19,26 +19,26 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Win-back offer tiers based on player value and churn risk
 const WINBACK_OFFERS = {
     free_churn_risk: {
-        title: "We miss you!",
-        body: "It's been {days} days. Come back and claim {coins} bonus coins!",
+        title: 'We miss you!',
+        body: 'It\'s been {days} days. Come back and claim {coins} bonus coins!',
         coins: 200,
         cooldownDays: 3,
     },
     paying_churn_risk: {
-        title: "Welcome back!",
-        body: "It's been {days} days. Here's {coins} coins and a free streak repair.",
+        title: 'Welcome back!',
+        body: 'It\'s been {days} days. Here\'s {coins} coins and a free streak repair.',
         coins: 500,
         cooldownDays: 3,
     },
     high_value_churn: {
-        title: "Exclusive offer just for you",
-        body: "We've saved {coins} coins and a special gift for your return.",
+        title: 'Exclusive offer just for you',
+        body: 'We\'ve saved {coins} coins and a special gift for your return.',
         coins: 1000,
         cooldownDays: 3,
     },
     streak_broken: {
-        title: "Repair your streak!",
-        body: "Your {day}-day streak is waiting. Log in today to restore it.",
+        title: 'Repair your streak!',
+        body: 'Your {day}-day streak is waiting. Log in today to restore it.',
         coins: 100,
         cooldownDays: 3,
     },

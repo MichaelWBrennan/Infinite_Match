@@ -337,7 +337,7 @@ router.post(
 router.post(
   '/streak-freeze',
   security.sessionValidation,
-  [body('payWith').optional().isIn(['coins', 'usd']).withMessage("payWith must be 'coins' or 'usd'")],
+  [body('payWith').optional().isIn(['coins', 'usd']).withMessage('payWith must be \'coins\' or \'usd\'')],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -399,7 +399,7 @@ router.post(
 router.post(
   '/ads/rewarded',
   security.sessionValidation,
-  [body('rewardType').isIn(['coins', 'lives']).withMessage("rewardType must be 'coins' or 'lives'")],
+  [body('rewardType').isIn(['coins', 'lives']).withMessage('rewardType must be \'coins\' or \'lives\'')],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

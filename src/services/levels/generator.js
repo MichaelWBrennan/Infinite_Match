@@ -48,9 +48,9 @@ export function levelTheme(context) {
     : (monthlyColors[context.season] || monthlyColors.winter)[context.month % 3];
   const holidayDisplayName = /halloween/.test(holidayName.toLowerCase()) ? 'Halloween'
     : /christmas|no[eë]l/.test(holidayName.toLowerCase()) ? 'Christmas'
-    : /valentine/.test(holidayName.toLowerCase()) ? 'Valentine Celebration'
-    : /easter/.test(holidayName.toLowerCase()) ? 'Easter Celebration'
-    : tileSet.name;
+      : /valentine/.test(holidayName.toLowerCase()) ? 'Valentine Celebration'
+        : /easter/.test(holidayName.toLowerCase()) ? 'Easter Celebration'
+          : tileSet.name;
   const baseName = tileSet.source === 'holiday'
     ? holidayDisplayName
     : tileSet.source === 'event'

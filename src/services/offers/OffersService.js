@@ -71,7 +71,7 @@ const OFFER_CATALOG = Object.freeze([
     segments: ['lapsed_7d', 'lapsed_30d'],
     segmentDiscounts: { lapsed_7d: 0.5, lapsed_30d: 0.7 },
     maxPurchases: 1,
-    reasonTemplate: "Welcome back! Here's a special offer",
+    reasonTemplate: 'Welcome back! Here\'s a special offer',
   },
   {
     sku: 'pack_streak',

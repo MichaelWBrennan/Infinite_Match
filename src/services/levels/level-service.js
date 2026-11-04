@@ -7,6 +7,7 @@ import { chocolateCount } from './chocolate-rules.js';
 import { liquoriceCount } from './liquorice-rules.js';
 import { marmaladeCount } from './marmalade-rules.js';
 import { frostingCount } from './frosting-rules.js';
+import { deliveryCount } from './delivery-rules.js';
 import { certifyObjectiveLevel } from './objective-rules.js';
 import { LevelInputError, localLevelContext } from './location-context.js';
 import { levelWeatherService } from './weather-context.js';

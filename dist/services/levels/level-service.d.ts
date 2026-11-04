@@ -245,5 +245,5 @@ export function authoredLevel(level: any, mode?: string, context?: {
 /** Untagged deployed v2 clients must never be charged for an unsupported newer-rules target. */
 /** Rules v6 is server-gated: the BLOCKER_LEVELS flag must be 'on', and the request must be classic. */
 export function blockerLevelsEnabled(env?: NodeJS.ProcessEnv): boolean;
-export function clientRulesVersion(value: any, mode?: undefined, blockers?: boolean): 3 | 5 | 4 | 2 | 6;
+export function clientRulesVersion(value: any, mode?: undefined, blockers?: boolean): 2 | 5 | 3 | 4 | 6;
 //# sourceMappingURL=level-service.d.ts.map

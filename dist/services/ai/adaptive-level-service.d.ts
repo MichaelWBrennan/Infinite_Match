@@ -64,7 +64,7 @@ export class AdaptiveLevelService {
     /**
      * Get the difficulty tier name for display.
      */
-    getDifficultyTier(skillScore: any): "gentle" | "steady" | "challenging" | "expert" | "beginner";
+    getDifficultyTier(skillScore: any): "expert" | "challenging" | "steady" | "gentle" | "beginner";
     /**
      * Clear all cached data (useful for testing or memory pressure).
      */

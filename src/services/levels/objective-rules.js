@@ -117,9 +117,9 @@ export function validObjectiveProgress(definition, progress) {
   const hasChocolate = definition?.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
   const hasLiquorice = definition?.generatorVersion >= 6 && liquoriceCount(definition.liquorice) > 0;
   const hasMarmalade = definition?.generatorVersion >= 6 && marmaladeCount(definition.marmalade) > 0;
-    const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
-    const hasDelivery = definition?.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
-    const hasHazards = definition?.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
+  const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
+  const hasDelivery = definition?.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
+  const hasHazards = definition?.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
   const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0) + (hasMarmalade ? 1 : 0) + (hasFrosting ? 1 : 0) + (hasDelivery ? 1 : 0) + (hasHazards ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
     && (!hasShields || (validShields(definition.shields, definition.boardSize)
@@ -236,7 +236,7 @@ export function objectiveStatus(definition, score, progress) {
                   : goal.type === 'clear-marmalade' ? progress.marmaladeCleared
                     : goal.type === 'clear-frosting' ? progress.frostingCleared
                       : goal.type === 'clear-delivery' ? progress.deliveryCleared
-                : goal.type === 'clear-weather-hazards' ? progress.hazardsCleared : ownCount(progress.collected, goal.gemType);
+                        : goal.type === 'clear-weather-hazards' ? progress.hazardsCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),

@@ -46,7 +46,7 @@ const DEFAULT_EVENT_CALENDAR = [
   },
   {
     id: 'sky_race',
-    name: "Sky Race",
+    name: 'Sky Race',
     type: 'recurring',
     recurrence: 'weekly',
     dayOfWeek: 1, // Monday
@@ -57,7 +57,7 @@ const DEFAULT_EVENT_CALENDAR = [
   },
   {
     id: 'kings_cup',
-    name: "King's Cup",
+    name: 'King\'s Cup',
     type: 'recurring',
     recurrence: 'weekly',
     dayOfWeek: 3, // Wednesday

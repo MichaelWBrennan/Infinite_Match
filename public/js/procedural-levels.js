@@ -2990,7 +2990,7 @@ const EVENT_TILE_SETS = {
   },
   kings_cup_nov: {
     id: 'kings_cup_nov',
-    name: "King's Cup",
+    name: 'King\'s Cup',
     favorite: 'gold_crown',
     license: 'MIT',
     sourceUrl: '',
@@ -3116,7 +3116,7 @@ const EVENT_TILE_SETS = {
   },
   valentine_event_feb: {
     id: 'valentine_event_feb',
-    name: "Valentine's Event",
+    name: 'Valentine\'s Event',
     favorite: 'rose_red',
     license: 'MIT',
     sourceUrl: '',
@@ -3134,7 +3134,7 @@ const EVENT_TILE_SETS = {
   },
   womens_day_mar: {
     id: 'womens_day_mar',
-    name: "International Women's Day",
+    name: 'International Women\'s Day',
     favorite: 'purple_power',
     license: 'MIT',
     sourceUrl: '',
@@ -3152,7 +3152,7 @@ const EVENT_TILE_SETS = {
   },
   st_patrick_mar: {
     id: 'st_patrick_mar',
-    name: "St. Patrick's Luck",
+    name: 'St. Patrick\'s Luck',
     favorite: 'clover_green',
     license: 'MIT',
     sourceUrl: '',
@@ -3206,7 +3206,7 @@ const EVENT_TILE_SETS = {
   },
   mothers_day_may: {
     id: 'mothers_day_may',
-    name: "Mother's Day",
+    name: 'Mother\'s Day',
     favorite: 'carnation_pink',
     license: 'MIT',
     sourceUrl: '',
@@ -3526,7 +3526,7 @@ const HOLIDAY_TILE_SETS = {
   // New Year's Day standalone (not tied to New Year Challenge event)
   new_years_day: {
     id: 'new_years_day',
-    name: "New Year's Day",
+    name: 'New Year\'s Day',
     favorite: 'champagne_gold',
     license: 'MIT',
     sourceUrl: '',
@@ -3828,9 +3828,9 @@ function validObjectiveProgress(definition, progress) {
   const hasChocolate = definition?.generatorVersion >= 6 && chocolateCount(definition.chocolate) > 0;
   const hasLiquorice = definition?.generatorVersion >= 6 && liquoriceCount(definition.liquorice) > 0;
   const hasMarmalade = definition?.generatorVersion >= 6 && marmaladeCount(definition.marmalade) > 0;
-    const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
-    const hasDelivery = definition?.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
-    const hasHazards = definition?.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
+  const hasFrosting = definition?.generatorVersion >= 6 && frostingCount(definition.frosting) > 0;
+  const hasDelivery = definition?.generatorVersion >= 6 && deliveryCount(definition.delivery) > 0;
+  const hasHazards = definition?.generatorVersion >= 6 && weatherHazardCount(definition.hazards) > 0;
   const keys = 1 + (hasShields ? 1 : 0) + (hasBlockers ? 1 : 0) + (hasLocked ? 1 : 0) + (hasJelly ? 1 : 0) + (hasChocolate ? 1 : 0) + (hasLiquorice ? 1 : 0) + (hasMarmalade ? 1 : 0) + (hasFrosting ? 1 : 0) + (hasDelivery ? 1 : 0) + (hasHazards ? 1 : 0);
   return Array.isArray(definition?.gemTypes) && record(progress) && Object.hasOwn(progress, 'collected') && Object.keys(progress).length === keys
     && (!hasShields || (validShields(definition.shields, definition.boardSize)
@@ -3947,7 +3947,7 @@ function objectiveStatus(definition, score, progress) {
                   : goal.type === 'clear-marmalade' ? progress.marmaladeCleared
                     : goal.type === 'clear-frosting' ? progress.frostingCleared
                       : goal.type === 'clear-delivery' ? progress.deliveryCleared
-                : goal.type === 'clear-weather-hazards' ? progress.hazardsCleared : ownCount(progress.collected, goal.gemType);
+                        : goal.type === 'clear-weather-hazards' ? progress.hazardsCleared : ownCount(progress.collected, goal.gemType);
     return { ...goal, current, remaining: Math.max(0, goal.target - current), complete: current >= goal.target };
   });
   return { items, complete: scoreValid && items.every((goal) => goal.complete),
@@ -5006,9 +5006,9 @@ function levelTheme(context) {
     : (monthlyColors[context.season] || monthlyColors.winter)[context.month % 3];
   const holidayDisplayName = /halloween/.test(holidayName.toLowerCase()) ? 'Halloween'
     : /christmas|no[eë]l/.test(holidayName.toLowerCase()) ? 'Christmas'
-    : /valentine/.test(holidayName.toLowerCase()) ? 'Valentine Celebration'
-    : /easter/.test(holidayName.toLowerCase()) ? 'Easter Celebration'
-    : tileSet.name;
+      : /valentine/.test(holidayName.toLowerCase()) ? 'Valentine Celebration'
+        : /easter/.test(holidayName.toLowerCase()) ? 'Easter Celebration'
+          : tileSet.name;
   const baseName = tileSet.source === 'holiday'
     ? holidayDisplayName
     : tileSet.source === 'event'
